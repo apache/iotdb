@@ -44,22 +44,22 @@ public class PipeTimePartitionListener {
       String dataRegionId, PipeRealtimeDataRegionSource source) {
     dataRegionId2Extractors
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
-        .put(extractor.getTaskID(), extractor);
-    // Assign the previously recorded upper and lower bounds of time partition to the extractor that
+        .put(source.getTaskID(), source);
+    // Assign the previously recorded upper and lower bounds of time partition to the source that
     // has just started listening to the growth of time partition.
     Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
     if (Objects.nonNull(timePartitionIdBound)) {
-      extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound);
+      source.setDataRegionTimePartitionIdBound(timePartitionIdBound);
     }
   }
 
-  public synchronized void stopListen(String dataRegionId, PipeRealtimeDataRegionSource extractor) {
-    Map<String, PipeRealtimeDataRegionSource> extractors =
+  public synchronized void stopListen(String dataRegionId, PipeRealtimeDataRegionSource source) {
+    Map<String, PipeRealtimeDataRegionSource> sources =
         dataRegionId2Extractors.get(dataRegionId);
-    if (Objects.isNull(extractors)) {
+    if (Objects.isNull(sources)) {
       return;
     }
-    extractors.remove(extractor.getTaskID());
+    sources.remove(source.getTaskID());
     if (extractors.isEmpty()) {
       dataRegionId2Extractors.remove(dataRegionId);
     }

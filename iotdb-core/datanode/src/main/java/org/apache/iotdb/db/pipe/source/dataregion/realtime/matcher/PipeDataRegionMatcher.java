@@ -29,18 +29,18 @@ import java.util.Set;
 public interface PipeDataRegionMatcher {
 
   /**
-   * Register a source. If the extractor's pattern matches the event's schema info, the event
-   * will be assigned to the extractor.
+   * Register a source. If the source's pattern matches the event's schema info, the event
+   * will be assigned to the source.
    */
-  void register(PipeRealtimeDataRegionSource extractor);
+  void register(PipeRealtimeDataRegionSource source);
 
-  /** Deregister a extractor. */
-  void deregister(PipeRealtimeDataRegionSource extractor);
+  /** Deregister a source. */
+  void deregister(PipeRealtimeDataRegionSource source);
 
   /** Invalidate cache */
   void invalidateCache();
 
-  /** Get the number of registered extractors in this matcher. */
+  /** Get the number of registered sources in this matcher. */
   int getRegisterCount();
 
   /**

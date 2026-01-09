@@ -43,12 +43,12 @@ public class TsFileEpoch {
   }
 
   public TsFileEpoch.State getState(final PipeRealtimeDataRegionSource source) {
-    AtomicReference<State> stateRef = dataRegionExtractor2State.get(extractor);
+    AtomicReference<State> stateRef = dataRegionExtractor2State.get(source);
 
     if (stateRef == null) {
       dataRegionExtractor2State.putIfAbsent(
-          extractor, stateRef = new AtomicReference<>(State.EMPTY));
-      extractor.increaseExtractEpochSize();
+          source, stateRef = new AtomicReference<>(State.EMPTY));
+      source.increaseExtractEpochSize();
       setExtractorsRecentProcessedTsFileEpochState();
     }
 
@@ -56,13 +56,13 @@ public class TsFileEpoch {
   }
 
   public void migrateState(
-      final PipeRealtimeDataRegionSource extractor, final TsFileEpochStateMigrator visitor) {
-    AtomicReference<State> stateRef = dataRegionExtractor2State.get(extractor);
+      final PipeRealtimeDataRegionSource source, final TsFileEpochStateMigrator visitor) {
+    AtomicReference<State> stateRef = dataRegionExtractor2State.get(source);
 
     if (stateRef == null) {
       dataRegionExtractor2State.putIfAbsent(
-          extractor, stateRef = new AtomicReference<>(State.EMPTY));
-      extractor.increaseExtractEpochSize();
+          source, stateRef = new AtomicReference<>(State.EMPTY));
+      source.increaseExtractEpochSize();
       setExtractorsRecentProcessedTsFileEpochState();
     }
 
@@ -73,9 +73,9 @@ public class TsFileEpoch {
     }
   }
 
-  public void clearState(final PipeRealtimeDataRegionSource extractor) {
-    if (dataRegionExtractor2State.containsKey(extractor)) {
-      extractor.decreaseExtractEpochSize();
+  public void clearState(final PipeRealtimeDataRegionSource source) {
+    if (dataRegionExtractor2State.containsKey(source)) {
+      source.decreaseExtractEpochSize();
     }
     if (extractor.extractEpochSizeIsEmpty()) {
       PipeDataRegionSourceMetrics.getInstance()

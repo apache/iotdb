@@ -181,12 +181,12 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
                 EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
             .trim();
     if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
-        extractorRealtimeLooseRangeValue)) {
+        sourceRealtimeLooseRangeValue)) {
       sloppyTimeRange = true;
       sloppyPattern = true;
     } else {
       final Set<String> sloppyOptionSet =
-          Arrays.stream(extractorRealtimeLooseRangeValue.split(","))
+          Arrays.stream(sourceRealtimeLooseRangeValue.split(","))
               .map(String::trim)
               .filter(s -> !s.isEmpty())
               .map(String::toLowerCase)
@@ -302,7 +302,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
           pipeName,
           dataRegionId,
           parameters);
@@ -331,7 +331,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   private void clearPendingQueue() {
     final List<Event> eventsToDrop = new ArrayList<>(pendingQueue.size());
 
-    // processor stage is closed later than extractor stage, {@link supply()} may be called after
+    // processor stage is closed later than source stage, {@link supply()} may be called after
     // processor stage is closed. To avoid concurrent issues, we should clear the pending queue
     // before clearing all the reference count of the events in the pending queue.
     pendingQueue.forEach(eventsToDrop::add);

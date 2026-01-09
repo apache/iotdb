@@ -262,9 +262,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     final String sourceQueueTabletSizeMessage =
         timeAssigned != 0 ? Integer.toString(sourceQueueTabletSize) : unknownMessage;
     final String sourceQueueTsFileSizeMessage =
-        timeAssigned != 0 ? Integer.toString(extractorQueueTsFileSize) : unknownMessage;
-    final String extractorQueueSizeMessage =
-        timeAssigned != 0 ? Integer.toString(extractorQueueSize) : unknownMessage;
+        timeAssigned != 0 ? Integer.toString(sourceQueueTsFileSize) : unknownMessage;
+    final String sourceQueueSizeMessage =
+        timeAssigned != 0 ? Integer.toString(sourceQueueSize) : unknownMessage;
 
     final String connectorQueueTabletSizeMessage =
         timeProcessed != 0 ? Integer.toString(connectorQueueTabletSize) : unknownMessage;
@@ -290,12 +290,12 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         + totalTimeMessage
         + ", disruptorSize="
         + disruptorSizeMessage
-        + ", extractorQueueTabletSize="
-        + extractorQueueTabletSizeMessage
-        + ", extractorQueueTsFileSize="
-        + extractorQueueTsFileSizeMessage
-        + ", extractorQueueSize="
-        + extractorQueueSizeMessage
+        + ", sourceQueueTabletSize="
+        + sourceQueueTabletSizeMessage
+        + ", sourceQueueTsFileSize="
+        + sourceQueueTsFileSizeMessage
+        + ", sourceQueueSize="
+        + sourceQueueSizeMessage
         + ", connectorQueueTabletSize="
         + connectorQueueTabletSizeMessage
         + ", connectorQueueTsFileSize="

@@ -87,38 +87,38 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
         Tag.NAME.toString(),
         source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_REALTIME_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractor,
+        source,
         IoTDBDataRegionSource::getRealtimeTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_TABLET_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractor,
+        source,
         IoTDBDataRegionSource::getTabletInsertionEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HEARTBEAT_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractor,
+        source,
         IoTDBDataRegionSource::getPipeHeartbeatEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
         String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),

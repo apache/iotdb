@@ -63,7 +63,7 @@ public class PipeDataRegionAssigner implements Closeable {
    */
   private final PipeDataRegionMatcher matcher;
 
-  /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
+  /** The {@link DisruptorQueue} is used to assign the event to the source. */
   private final DisruptorQueue disruptor;
 
   private final String dataRegionId;
@@ -140,17 +140,17 @@ public class PipeDataRegionAssigner implements Closeable {
     matchedAndUnmatched
         .getLeft()
         .forEach(
-            extractor -> {
+            source -> {
               if (disruptor.isClosed()) {
                 return;
               }
 
-              if (event.getEvent().isGeneratedByPipe() && !extractor.isForwardingPipeRequests()) {
+              if (event.getEvent().isGeneratedByPipe() && !source.isForwardingPipeRequests()) {
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
-                        extractor.getPipeName(),
-                        extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta());
+                        source.getPipeName(),
+                        source.getCreationTime(),
+                        source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
@@ -158,13 +158,13 @@ public class PipeDataRegionAssigner implements Closeable {
                       reportEvent);
                   return;
                 }
-                extractor.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
+                source.extract(PipeRealtimeEventFactory.createRealtimeEvent(reportEvent));
                 return;
               }
 
               final PipeRealtimeEvent copiedEvent =
                   event.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
-                      extractor.getPipeName(),
+                      source.getPipeName(),
                       extractor.getCreationTime(),
                       extractor.getPipeTaskMeta(),
                       extractor.getTreePattern(),

@@ -73,10 +73,10 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::deregister);
-    if (!extractorMap.isEmpty()) {
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
+    if (!sourceMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe schema region extractor metrics, extractor map not empty");
+          "Failed to unbind from pipe schema region source metrics, source map not empty");
     }
   }
 
@@ -85,7 +85,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   }
 
   private void removeAutoGauge(final String taskID) {
-    final IoTDBSchemaRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBSchemaRegionSource source = sourceMap.get(taskID);
     // pending event count
     metricService.remove(
         MetricType.AUTO_GAUGE,
