@@ -40,7 +40,7 @@ public class PipeSubtaskExecutorManager {
   }
 
   public Supplier<PipeSinkSubtaskExecutor> getConnectorExecutorSupplier() {
-    return connectorExecutorSupplier;
+    return sinkExecutorSupplier;
   }
 
   public PipeConsensusSubtaskExecutor getConsensusExecutor() {
@@ -56,7 +56,7 @@ public class PipeSubtaskExecutorManager {
 
   private PipeSubtaskExecutorManager() {
     processorExecutor = new PipeProcessorSubtaskExecutor();
-    connectorExecutorSupplier = PipeSinkSubtaskExecutor::new;
+    sinkExecutorSupplier = PipeSinkSubtaskExecutor::new;
     subscriptionExecutor =
         SubscriptionConfig.getInstance().getSubscriptionEnabled()
             ? new SubscriptionSubtaskExecutor()

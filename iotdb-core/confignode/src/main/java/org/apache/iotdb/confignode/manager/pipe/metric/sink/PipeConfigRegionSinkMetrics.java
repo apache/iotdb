@@ -77,7 +77,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::deregister);
     if (!subtaskMap.isEmpty()) {
       LOGGER.warn(
-          "Failed to unbind from pipe config region connector metrics, connector map not empty");
+          "Failed to unbind from pipe config region sink metrics, sink map not empty");
     }
   }
 
@@ -111,7 +111,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   public void deregister(final String taskID) {
     if (!subtaskMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe config region connector metrics, PipeConfigNodeSubtask({}) does not exist",
+          "Failed to deregister pipe config region sink metrics, PipeConfigNodeSubtask({}) does not exist",
           taskID);
       return;
     }

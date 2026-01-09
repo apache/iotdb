@@ -115,7 +115,7 @@ public class PipeSinkSubtaskManager {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
-          new ArrayList<>(connectorNum);
+          new ArrayList<>(sinkNum);
 
       AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
@@ -128,7 +128,7 @@ public class PipeSinkSubtaskManager {
         ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
       }
 
-      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
+      for (int sinkIndex = 0; sinkIndex < sinkNum; sinkIndex++) {
         final PipeConnector pipeConnector =
             isDataRegionConnector
                 ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
@@ -148,7 +148,7 @@ public class PipeSinkSubtaskManager {
             pipeConnector.close();
           } catch (final Exception closeException) {
             LOGGER.warn(
-                "Failed to close connector after failed to initialize connector. "
+                "Failed to close sink after failed to initialize sink. "
                     + "Ignore this exception.",
                 closeException);
           }
@@ -161,10 +161,10 @@ public class PipeSinkSubtaskManager {
             new PipeSinkSubtask(
                 String.format(
                     "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), connectorIndex),
+                    attributeSortedString, environment.getCreationTime(), sinkIndex),
                 environment.getCreationTime(),
                 attributeSortedString,
-                connectorIndex,
+                sinkIndex,
                 pendingQueue,
                 pipeConnector);
         final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
@@ -173,7 +173,7 @@ public class PipeSinkSubtaskManager {
       }
 
       LOGGER.info(
-          "Pipe connector subtasks with attributes {} is bounded with connectorExecutor {} and callbackExecutor {}.",
+          "Pipe sink subtasks with attributes {} is bounded with sinkExecutor {} and callbackExecutor {}.",
           attributeSortedString,
           executor.getWorkingThreadName(),
           executor.getCallbackThreadName());

@@ -89,7 +89,7 @@ public class PipeRuntimeMeta {
    * and will result in the halt of pipe execution.
    *
    * <p>2. {@link PipeRuntimeSinkCriticalException}, to record the exception reported by other pipes
-   * sharing the same connector, and will stop the pipe likewise.
+   * sharing the same sink, and will stop the pipe likewise.
    */
   private final ConcurrentMap<Integer, PipeRuntimeException> nodeId2PipeRuntimeExceptionMap =
       new ConcurrentHashMap<>();

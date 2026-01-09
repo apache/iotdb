@@ -98,7 +98,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
 
   private boolean eLanguageEnable;
 
-  // The air gap connector does not use clientManager thus we put handshake type here
+  // The air gap sink does not use clientManager thus we put handshake type here
   protected boolean supportModsIfIsDataNodeReceiver = true;
 
   private final Map<TEndPoint, Long> failLogTimes = new HashMap<>();

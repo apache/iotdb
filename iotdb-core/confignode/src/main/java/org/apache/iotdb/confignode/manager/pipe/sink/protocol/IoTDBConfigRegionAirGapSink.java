@@ -106,7 +106,7 @@ public class IoTDBConfigRegionAirGapSink extends IoTDBAirGapSink {
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region air gap connector does not support transferring single file piece bytes.");
+        "The config region air gap sink does not support transferring single file piece bytes.");
   }
 
   @Override

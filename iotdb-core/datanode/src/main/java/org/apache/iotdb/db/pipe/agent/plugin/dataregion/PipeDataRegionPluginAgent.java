@@ -65,11 +65,11 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
       String pipeName,
       Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> sinkAttributes)
       throws Exception {
     PipeExtractor temporaryExtractor = validateExtractor(sourceAttributes);
     PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateConnector(pipeName, connectorAttributes);
+    PipeConnector temporaryConnector = validateConnector(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
@@ -79,13 +79,13 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
-    Visibility connectorVisibility =
+    Visibility sinkVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
-        pipeVisibility, sourceVisibility, processorVisibility, connectorVisibility)) {
+        pipeVisibility, sourceVisibility, processorVisibility, sinkVisibility)) {
       throw new PipeParameterNotValidException(
           String.format(
-              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the source (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
+              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the source (%s, %s, %s), processor (%s, %s, %s), and sink (%s, %s, %s).",
               pipeName,
               pipeVisibility,
               sourceAttributes,
@@ -94,9 +94,9 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,
-              connectorAttributes,
+              sinkAttributes,
               temporaryConnector.getClass().getName(),
-              connectorVisibility));
+              sinkVisibility));
     }
   }
 }

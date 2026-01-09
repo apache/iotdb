@@ -211,9 +211,9 @@ public class PipeDataNodePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> sinkAttributes)
       throws Exception {
-    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, connectorAttributes);
+    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
     schemaRegionAgent.validate(
-        pipeName, sourceAttributes, processorAttributes, connectorAttributes);
+        pipeName, sourceAttributes, processorAttributes, sinkAttributes);
   }
 
   public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
