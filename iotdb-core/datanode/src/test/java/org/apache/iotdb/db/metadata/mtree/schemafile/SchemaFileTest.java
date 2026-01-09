@@ -570,22 +570,22 @@ public class SchemaFileTest {
      * ,{@linkplain PageManager#reEstimateSegSize}
      */
     ICachedMNode dbNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
-    ICachedMNode d1 = fillChildren(sgNode, 300, "d", this::supplyEntity);
+    ICachedMNode d1 = fillChildren(dbNode, 300, "d", this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     try {
-      writeMNodeInTest(sf, sgNode);
+      writeMNodeInTest(sf, dbNode);
 
       fillChildren(d1, 46, "s", this::supplyMeasurement);
       writeMNodeInTest(sf, d1);
 
       moveAllToBuffer(d1);
-      moveAllToBuffer(sgNode);
+      moveAllToBuffer(dbNode);
 
       // it's an edge case where a wrapped segment need to extend to another page while its expected
       // size
       // measured by insertion batch and existed size at same time.
-      fillChildren(sgNode, 350, "sd", this::supplyEntity);
-      writeMNodeInTest(sf, sgNode);
+      fillChildren(dbNode, 350, "sd", this::supplyEntity);
+      writeMNodeInTest(sf, dbNode);
       fillChildren(d1, 20, "ss", this::supplyMeasurement);
       writeMNodeInTest(sf, d1);
 
