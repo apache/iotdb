@@ -263,11 +263,11 @@ public class IoTDBSeriesPermissionIT {
     grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_DATA, "root.db.d1.s1");
     assertNonQueryTestFail(
         "insert into root.db.d1(time,s1,s2) values(1,1,1)",
-        "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg.d1.s2]",
+        "803: No permissions for this operation, please add privilege WRITE_DATA on [root.db.d1.s2]",
         "test1",
         "test123123456");
     assertNonQueryTestFail(
-        "delete from root.sg.d1.s1, root.sg.d1.s2",
+        "delete from root.db.d1.s1, root.db.d1.s2",
         "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg.d1.s2]",
         "test1",
         "test123123456");

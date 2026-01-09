@@ -409,19 +409,19 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.db1.d1.`1` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.``b` INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.text TEXT");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`a.b` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`a.``b` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.text TEXT");
       int pointCnt = 3;
       for (int i = 0; i < pointCnt; i++) {
         statement.execute(
             String.format(
-                "insert into root.sg1.d1(time,%s,%s,%s) values(%d,%d,%d,%d)",
+                "insert into root.db1.d1(time,%s,%s,%s) values(%d,%d,%d,%d)",
                 "`1`", "`a.b`", "`a.``b`", i, i, i, i));
       }
 
       int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT `1` + 1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -430,7 +430,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1` > 1")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1 where `1` > 1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -439,7 +439,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -448,7 +448,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.sg1.d1 where `1`>0")) {
+          statement.executeQuery("SELECT (`1`*`1`)+1-`a.b` FROM root.db1.d1 where `1`>0")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -456,7 +456,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT avg(`1`)+1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }
@@ -465,7 +465,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       cnt = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT count(`1`)+1 FROM root.sg1.d1 where `1`>1")) {
+          statement.executeQuery("SELECT count(`1`)+1 FROM root.db1.d1 where `1`>1")) {
         while (resultSet.next()) {
           Assert.assertEquals(2.0, resultSet.getDouble(1), 1e-7);
           cnt++;
@@ -474,7 +474,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       }
 
       cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT sin(`1`) + 1 FROM root.db1.d1")) {
         while (resultSet.next()) {
           cnt++;
         }

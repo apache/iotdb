@@ -151,7 +151,7 @@ public class IoTDBSystemPermissionIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
+            + "    INTO root.db_count.d(count_s1)\n"
             + "    FROM root.sg.d\n"
             + "    GROUP BY(10m)\n"
             + "END",

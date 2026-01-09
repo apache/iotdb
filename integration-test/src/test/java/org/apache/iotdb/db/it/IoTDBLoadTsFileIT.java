@@ -1091,7 +1091,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" ", file.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sgCount = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint, sgCount);

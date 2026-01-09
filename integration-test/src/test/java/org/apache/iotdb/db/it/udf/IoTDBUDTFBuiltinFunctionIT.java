@@ -87,9 +87,9 @@ public class IoTDBUDTFBuiltinFunctionIT {
       statement.execute("CREATE TIMESERIES root.db.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.db.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.db.d1.s6 with datatype=TEXT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s10 with datatype=DATE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s12 with datatype=STRING,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s10 with datatype=DATE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s12 with datatype=STRING,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -141,7 +141,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1",
                   functionName, functionName, functionName, functionName));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -160,7 +160,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.sg.d1 align by device",
+                  "select %s(s1), %s(s2), %s(s3), %s(s4) from root.db.d1 align by device",
                   functionName, functionName, functionName, functionName));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -191,7 +191,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.db.d1",
                   TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
 
       int columnCount = resultSet.getMetaData().getColumnCount();
@@ -214,7 +214,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.sg.d1 align by device",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s) from root.db.d1 align by device",
                   TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K, TOP_K, K));
 
       columnCount = resultSet.getMetaData().getColumnCount();
@@ -236,7 +236,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       ResultSet resultSet =
           statement.executeQuery(
               String.format(
-                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.sg.d1",
+                  "select %s(s1, %s), %s(s2, %s), %s(s3, %s), %s(s4, %s), %s(s6, %s), %s(s10, %s), %s(s11, %s), %s(s12, %s) from root.db.d1",
                   BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K, BOTTOM_K, K,
                   BOTTOM_K, K, BOTTOM_K, K));
 

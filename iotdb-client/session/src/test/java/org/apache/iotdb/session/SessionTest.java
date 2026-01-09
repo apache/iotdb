@@ -78,7 +78,7 @@ public class SessionTest {
             .build();
     Whitebox.setInternalState(session, "defaultSessionConnection", sessionConnection);
     TSQueryTemplateResp resp = new TSQueryTemplateResp();
-    resp.setMeasurements(Arrays.asList("root.sg1.d1.s1"));
+    resp.setMeasurements(Arrays.asList("root.db1.d1.s1"));
     Mockito.when(sessionConnection.querySchemaTemplate(any())).thenReturn(resp);
     HashMap<String, TEndPoint> deviceIdToEndpoint = new HashMap<>();
     deviceIdToEndpoint.put("device1", new TEndPoint());

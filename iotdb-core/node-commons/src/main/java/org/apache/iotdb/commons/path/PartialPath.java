@@ -458,7 +458,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    *
    * <p>For example:
    *
-   * <p>1) Pattern "root.db1.d1.*" can match prefix path "root.sg1.d1.s1", "root.sg1.d1",
+   * <p>1) Pattern "root.db1.d1.*" can match prefix path "root.db1.d1.s1", "root.db1.d1",
    * "root.sg1", "root" etc.
    *
    * <p>1) Pattern "root.sg1.d1.*" does not match prefix path "root.sg2", "root.sg1.d2".

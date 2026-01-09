@@ -85,12 +85,12 @@ public class IoTDBTemplatePermissionIT {
         "test",
         "test123123456");
     assertNonQueryTestFail(
-        "set device template t1 to root.sg1",
+        "set device template t1 to root.db1",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
     assertNonQueryTestFail(
-        "unset device template t1 from root.sg1",
+        "unset device template t1 from root.db1",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test",
         "test123123456");
@@ -105,7 +105,7 @@ public class IoTDBTemplatePermissionIT {
   public void otherTest() {
     executeNonQuery(
         "create device template t1 (temperature FLOAT encoding=RLE, status BOOLEAN encoding=PLAIN compression=SNAPPY)");
-    executeNonQuery("create database root.sg1");
+    executeNonQuery("create database root.db1");
     executeNonQuery("set device template t1 to root.sg1.d1");
 
     // active

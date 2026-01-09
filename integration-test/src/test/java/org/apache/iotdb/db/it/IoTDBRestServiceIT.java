@@ -836,7 +836,7 @@ public class IoTDBRestServiceIT {
       List<Object> expressions =
           new ArrayList<Object>() {
             {
-              add("root.sg25.s3");
+              add("root.db25.s3");
               add("root.sg25.s4");
               add("root.sg25.s5");
               add("root.sg25.s6");

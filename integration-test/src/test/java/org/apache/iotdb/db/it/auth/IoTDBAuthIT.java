@@ -205,8 +205,8 @@ public class IoTDBAuthIT {
         adminStmt.execute("GRANT SYSTEM ON root.** TO USER sgtest");
 
         try {
-          userStmt.execute("CREATE DATABASE root.sgtest");
-          userStmt.execute("DELETE DATABASE root.sgtest");
+          userStmt.execute("CREATE DATABASE root.dbtest");
+          userStmt.execute("DELETE DATABASE root.dbtest");
         } catch (SQLException e) {
           fail(e.getMessage());
         }
