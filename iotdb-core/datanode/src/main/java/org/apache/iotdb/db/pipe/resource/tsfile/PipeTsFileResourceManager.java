@@ -76,9 +76,9 @@ public class PipeTsFileResourceManager {
    * @param file tsfile, resource file or mod file. can be original file or hardlink/copy of
    *     original file
    * @param isTsFile {@code true} to create hardlink, {@code false} to copy file
-   * @param pipeName Nonnull if the pipe is from historical or assigner -> extractors, null if is
+   * @param pipeName Nonnull if the pipe is from historical or assigner -> sources, null if is
    *     dataRegion -> assigner
-   * @param sourceFile for inner use, historical extractor will use this to create hardlink from
+   * @param sourceFile for inner use, historical source will use this to create hardlink from
    *     pipe tsFile -> common tsFile
    * @return the hardlink or copied file
    * @throws IOException when create hardlink or copy file failed

@@ -65,7 +65,7 @@ public abstract class IoTDBSource implements PipeExtractor {
 
   protected boolean isForwardingPipeRequests;
 
-  // The value is always true after the first start even the extractor is closed
+  // The value is always true after the first start even the source is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
   protected String userId;
   protected String userName;
@@ -201,15 +201,15 @@ public abstract class IoTDBSource implements PipeExtractor {
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
   }
 
-  public static boolean getSkipIfNoPrivileges(final PipeParameters extractorParameters) {
-    final String extractorSkipIfValue =
-        extractorParameters
+  public static boolean getSkipIfNoPrivileges(final PipeParameters sourceParameters) {
+    final String sourceSkipIfValue =
+        sourceParameters
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_SKIP_IF_KEY, SOURCE_SKIP_IF_KEY),
                 EXTRACTOR_IOTDB_SKIP_IF_NO_PRIVILEGES)
             .trim();
     final Set<String> skipIfOptionSet =
-        Arrays.stream(extractorSkipIfValue.split(","))
+        Arrays.stream(sourceSkipIfValue.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)

@@ -70,8 +70,7 @@ public class PipeTaskSourceStage extends PipeTaskStage {
         pipeExtractor.close();
       } catch (Exception closeException) {
         LOGGER.warn(
-            "Failed to close source after failed to initialize source. "
-                + "Ignore this exception.",
+            "Failed to close source after failed to initialize source. " + "Ignore this exception.",
             closeException);
       }
       throw new PipeException(e.getMessage(), e);

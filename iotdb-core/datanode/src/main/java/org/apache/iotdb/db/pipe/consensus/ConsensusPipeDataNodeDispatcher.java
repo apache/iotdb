@@ -49,7 +49,7 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
   @Override
   public void createPipe(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes,
       boolean needManuallyStart)

@@ -46,8 +46,7 @@ public class TsFileEpoch {
     AtomicReference<State> stateRef = dataRegionExtractor2State.get(source);
 
     if (stateRef == null) {
-      dataRegionExtractor2State.putIfAbsent(
-          source, stateRef = new AtomicReference<>(State.EMPTY));
+      dataRegionExtractor2State.putIfAbsent(source, stateRef = new AtomicReference<>(State.EMPTY));
       source.increaseExtractEpochSize();
       setExtractorsRecentProcessedTsFileEpochState();
     }
@@ -60,8 +59,7 @@ public class TsFileEpoch {
     AtomicReference<State> stateRef = dataRegionExtractor2State.get(source);
 
     if (stateRef == null) {
-      dataRegionExtractor2State.putIfAbsent(
-          source, stateRef = new AtomicReference<>(State.EMPTY));
+      dataRegionExtractor2State.putIfAbsent(source, stateRef = new AtomicReference<>(State.EMPTY));
       source.increaseExtractEpochSize();
       setExtractorsRecentProcessedTsFileEpochState();
     }
@@ -77,17 +75,17 @@ public class TsFileEpoch {
     if (dataRegionExtractor2State.containsKey(source)) {
       source.decreaseExtractEpochSize();
     }
-    if (extractor.extractEpochSizeIsEmpty()) {
+    if (source.extractEpochSizeIsEmpty()) {
       PipeDataRegionSourceMetrics.getInstance()
-          .setRecentProcessedTsFileEpochState(extractor.getTaskID(), State.EMPTY);
+          .setRecentProcessedTsFileEpochState(source.getTaskID(), State.EMPTY);
     }
   }
 
   public void setExtractorsRecentProcessedTsFileEpochState() {
     dataRegionExtractor2State.forEach(
-        (extractor, state) ->
+        (source, state) ->
             PipeDataRegionSourceMetrics.getInstance()
-                .setRecentProcessedTsFileEpochState(extractor.getTaskID(), state.get()));
+                .setRecentProcessedTsFileEpochState(source.getTaskID(), state.get()));
   }
 
   public void updateInsertNodeMinTime(final long newComingMinTime) {

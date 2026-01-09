@@ -120,13 +120,13 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
         Tag.NAME.toString(),
         source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
   }
 
   private void createRate(final String taskID) {
-    final IoTDBDataRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBDataRegionSource source = sourceMap.get(taskID);
     // Supply event rate
     tabletRateMap.put(
         taskID,
@@ -134,37 +134,37 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
             Metric.PIPE_EXTRACTOR_TABLET_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            extractor.getPipeName(),
+            source.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getRegionId()),
+            String.valueOf(source.getRegionId()),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(extractor.getCreationTime())));
+            String.valueOf(source.getCreationTime())));
     tsFileRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_TSFILE_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            extractor.getPipeName(),
+            source.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getRegionId()),
+            String.valueOf(source.getRegionId()),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(extractor.getCreationTime())));
+            String.valueOf(source.getCreationTime())));
     pipeHeartbeatRateMap.put(
         taskID,
         metricService.getOrCreateRate(
             Metric.PIPE_EXTRACTOR_HEARTBEAT_SUPPLY.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            extractor.getPipeName(),
+            source.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getRegionId()),
+            String.valueOf(source.getRegionId()),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(extractor.getCreationTime())));
+            String.valueOf(source.getCreationTime())));
   }
 
   private void createGauge(final String taskID) {
-    final IoTDBDataRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBDataRegionSource source = sourceMap.get(taskID);
     // Tsfile epoch state
     recentProcessedTsFileEpochStateMap.put(
         taskID,
@@ -172,16 +172,16 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
             Metric.PIPE_EXTRACTOR_TSFILE_EPOCH_STATE.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
-            extractor.getPipeName(),
+            source.getPipeName(),
             Tag.REGION.toString(),
-            String.valueOf(extractor.getRegionId()),
+            String.valueOf(source.getRegionId()),
             Tag.CREATION_TIME.toString(),
-            String.valueOf(extractor.getCreationTime())));
+            String.valueOf(source.getCreationTime())));
   }
 
   @Override
   public void unbindFrom(final AbstractMetricService metricService) {
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sourceMap.keySet());
     for (final String taskID : taskIDs) {
       deregister(taskID);
     }

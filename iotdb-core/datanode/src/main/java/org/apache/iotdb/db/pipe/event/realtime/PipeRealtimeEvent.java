@@ -33,8 +33,7 @@ import java.util.Map;
 
 /**
  * {@link PipeRealtimeEvent} is an event that decorates the {@link EnrichedEvent} with the
- * information of {@link TsFileEpoch} and schema info. It only exists in the realtime event
- * source.
+ * information of {@link TsFileEpoch} and schema info. It only exists in the realtime event source.
  */
 public class PipeRealtimeEvent extends EnrichedEvent {
 

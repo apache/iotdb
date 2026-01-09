@@ -72,8 +72,7 @@ public class PipeConfigRegionSourceMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
     if (!sourceMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe config region source metrics, source map not empty");
+      LOGGER.warn("Failed to unbind from pipe config region source metrics, source map not empty");
     }
   }
 

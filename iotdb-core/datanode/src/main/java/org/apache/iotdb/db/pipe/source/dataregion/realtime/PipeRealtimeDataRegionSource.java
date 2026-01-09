@@ -180,8 +180,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
                 Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),
                 EXTRACTOR_REALTIME_LOOSE_RANGE_DEFAULT_VALUE)
             .trim();
-    if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(
-        sourceRealtimeLooseRangeValue)) {
+    if (EXTRACTOR_REALTIME_LOOSE_RANGE_ALL_VALUE.equalsIgnoreCase(sourceRealtimeLooseRangeValue)) {
       sloppyTimeRange = true;
       sloppyPattern = true;
     } else {

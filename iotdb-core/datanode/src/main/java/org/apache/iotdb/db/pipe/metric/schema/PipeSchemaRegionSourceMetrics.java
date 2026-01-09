@@ -75,8 +75,7 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::deregister);
     if (!sourceMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe schema region source metrics, source map not empty");
+      LOGGER.warn("Failed to unbind from pipe schema region source metrics, source map not empty");
     }
   }
 
@@ -91,34 +90,34 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE,
         Metric.UNTRANSFERRED_SCHEMA_COUNT.toString(),
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
   }
 
   //////////////////////////// register & deregister (pipe integration) ////////////////////////////
 
-  public void register(final IoTDBSchemaRegionSource extractor) {
-    final String taskID = extractor.getTaskID();
-    extractorMap.putIfAbsent(taskID, extractor);
+  public void register(final IoTDBSchemaRegionSource source) {
+    final String taskID = source.getTaskID();
+    sourceMap.putIfAbsent(taskID, source);
     if (Objects.nonNull(metricService)) {
       createMetrics(taskID);
     }
   }
 
   public void deregister(final String taskID) {
-    if (!extractorMap.containsKey(taskID)) {
+    if (!sourceMap.containsKey(taskID)) {
       LOGGER.warn(
-          "Failed to deregister pipe schema region extractor metrics, IoTDBSchemaRegionExtractor({}) does not exist",
+          "Failed to deregister pipe schema region source metrics, IoTDBSchemaRegionExtractor({}) does not exist",
           taskID);
       return;
     }
     if (Objects.nonNull(metricService)) {
       removeMetrics(taskID);
     }
-    extractorMap.remove(taskID);
+    sourceMap.remove(taskID);
   }
 
   //////////////////////////// singleton ////////////////////////////

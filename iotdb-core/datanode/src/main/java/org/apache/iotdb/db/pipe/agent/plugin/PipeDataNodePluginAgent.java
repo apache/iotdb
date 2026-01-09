@@ -211,8 +211,7 @@ public class PipeDataNodePluginAgent {
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    dataRegionAgent.validate(
-        pipeName, sourceAttributes, processorAttributes, connectorAttributes);
+    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, connectorAttributes);
     schemaRegionAgent.validate(
         pipeName, sourceAttributes, processorAttributes, connectorAttributes);
   }

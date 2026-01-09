@@ -148,9 +148,7 @@ public class PipeDataRegionAssigner implements Closeable {
               if (event.getEvent().isGeneratedByPipe() && !source.isForwardingPipeRequests()) {
                 final ProgressReportEvent reportEvent =
                     new ProgressReportEvent(
-                        source.getPipeName(),
-                        source.getCreationTime(),
-                        source.getPipeTaskMeta());
+                        source.getPipeName(), source.getCreationTime(), source.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(

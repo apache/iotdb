@@ -40,8 +40,7 @@ public class PipeTimePartitionListener {
 
   //////////////////////////// start & stop ////////////////////////////
 
-  public synchronized void startListen(
-      String dataRegionId, PipeRealtimeDataRegionSource source) {
+  public synchronized void startListen(String dataRegionId, PipeRealtimeDataRegionSource source) {
     dataRegionId2Extractors
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
         .put(source.getTaskID(), source);
@@ -54,8 +53,7 @@ public class PipeTimePartitionListener {
   }
 
   public synchronized void stopListen(String dataRegionId, PipeRealtimeDataRegionSource source) {
-    Map<String, PipeRealtimeDataRegionSource> sources =
-        dataRegionId2Extractors.get(dataRegionId);
+    Map<String, PipeRealtimeDataRegionSource> sources = dataRegionId2Extractors.get(dataRegionId);
     if (Objects.isNull(sources)) {
       return;
     }

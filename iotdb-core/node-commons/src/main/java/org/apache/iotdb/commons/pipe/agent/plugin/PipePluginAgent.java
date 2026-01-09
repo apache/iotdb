@@ -92,8 +92,7 @@ public abstract class PipePluginAgent {
     validateConnector(pipeName, connectorAttributes);
   }
 
-  protected PipeExtractor validateExtractor(Map<String, String> sourceAttributes)
-      throws Exception {
+  protected PipeExtractor validateExtractor(Map<String, String> sourceAttributes) throws Exception {
     final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
     final PipeExtractor temporaryExtractor = reflectSource(sourceParameters);
     try {
