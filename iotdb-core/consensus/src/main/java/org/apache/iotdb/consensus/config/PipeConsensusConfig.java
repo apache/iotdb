@@ -272,7 +272,7 @@ public class PipeConsensusConfig {
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
 
-    public String getExtractorPluginName() {
+    public String getSourcePluginName() {
       return sourcePluginName;
     }
 
@@ -280,7 +280,7 @@ public class PipeConsensusConfig {
       return processorPluginName;
     }
 
-    public String getConnectorPluginName() {
+    public String getSinkPluginName() {
       return sinkPluginName;
     }
 
