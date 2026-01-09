@@ -148,8 +148,8 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final IoTDBDataRegionSource extractor) {
-    final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
+  public void register(final IoTDBDataRegionSource source) {
+    final String pipeID = source.getPipeName() + "_" + source.getCreationTime();
     pipe.add(pipeID);
     if (Objects.nonNull(metricService)) {
       createMetrics(pipeID);

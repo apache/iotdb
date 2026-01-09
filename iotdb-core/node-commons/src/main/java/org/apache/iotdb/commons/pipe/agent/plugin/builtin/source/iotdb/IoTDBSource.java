@@ -28,10 +28,10 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
 
 /**
- * This class is a placeholder and should not be initialized. It represents the default extractor
- * when no extractor is specified. There is a real implementation in the server module but cannot be
+ * This class is a placeholder and should not be initialized. It represents the default source
+ * when no source is specified. There is a real implementation in the server module but cannot be
  * imported here. The pipe agent in the server module will replace this class with the real
- * implementation when initializing the extractor.
+ * implementation when initializing the source.
  */
 @TreeModel
 @TableModel

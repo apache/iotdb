@@ -42,14 +42,14 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, IoTDBSchemaRegionSource> extractorMap = new ConcurrentHashMap<>();
+  private final Map<String, IoTDBSchemaRegionSource> sourceMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    ImmutableSet.copyOf(extractorMap.keySet()).forEach(this::createMetrics);
+    ImmutableSet.copyOf(sourceMap.keySet()).forEach(this::createMetrics);
   }
 
   private void createMetrics(final String taskID) {
@@ -57,18 +57,18 @@ public class PipeSchemaRegionSourceMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String taskID) {
-    final IoTDBSchemaRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBSchemaRegionSource source = sourceMap.get(taskID);
     metricService.createAutoGauge(
         Metric.UNTRANSFERRED_SCHEMA_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractorMap.get(taskID),
+        sourceMap.get(taskID),
         IoTDBSchemaRegionSource::getUnTransferredEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
-        String.valueOf(extractor.getRegionId()),
+        String.valueOf(source.getRegionId()),
         Tag.CREATION_TIME.toString(),
-        String.valueOf(extractor.getCreationTime()));
+        String.valueOf(source.getCreationTime()));
   }
 
   @Override

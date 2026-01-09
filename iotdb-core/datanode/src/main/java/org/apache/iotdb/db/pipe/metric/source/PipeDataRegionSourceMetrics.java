@@ -45,7 +45,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   @SuppressWarnings("java:S3077")
   private volatile AbstractMetricService metricService;
 
-  private final Map<String, IoTDBDataRegionSource> extractorMap = new ConcurrentHashMap<>();
+  private final Map<String, IoTDBDataRegionSource> sourceMap = new ConcurrentHashMap<>();
 
   private final Map<String, Rate> tabletRateMap = new ConcurrentHashMap<>();
 
@@ -56,7 +56,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   private final Map<String, Gauge> recentProcessedTsFileEpochStateMap = new ConcurrentHashMap<>();
 
   public Map<String, IoTDBDataRegionSource> getExtractorMap() {
-    return extractorMap;
+    return sourceMap;
   }
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
@@ -64,7 +64,7 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   @Override
   public void bindTo(final AbstractMetricService metricService) {
     this.metricService = metricService;
-    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(extractorMap.keySet());
+    final ImmutableSet<String> taskIDs = ImmutableSet.copyOf(sourceMap.keySet());
     for (final String taskID : taskIDs) {
       createMetrics(taskID);
     }
@@ -77,15 +77,15 @@ public class PipeDataRegionSourceMetrics implements IMetricSet {
   }
 
   private void createAutoGauge(final String taskID) {
-    final IoTDBDataRegionSource extractor = extractorMap.get(taskID);
+    final IoTDBDataRegionSource source = sourceMap.get(taskID);
     // Pending event count
     metricService.createAutoGauge(
         Metric.UNPROCESSED_HISTORICAL_TSFILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        extractor,
+        source,
         IoTDBDataRegionSource::getHistoricalTsFileInsertionEventCount,
         Tag.NAME.toString(),
-        extractor.getPipeName(),
+        source.getPipeName(),
         Tag.REGION.toString(),
         String.valueOf(extractor.getRegionId()),
         Tag.CREATION_TIME.toString(),

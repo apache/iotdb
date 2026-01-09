@@ -241,7 +241,7 @@ public class PipeConsensusConfig {
   }
 
   public static class Pipe {
-    private final String extractorPluginName;
+    private final String sourcePluginName;
     private final String processorPluginName;
     private final String connectorPluginName;
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
@@ -252,7 +252,7 @@ public class PipeConsensusConfig {
     private final long consensusPipeGuardJobIntervalInSeconds;
 
     public Pipe(
-        String extractorPluginName,
+        String sourcePluginName,
         String processorPluginName,
         String connectorPluginName,
         ConsensusPipeDispatcher consensusPipeDispatcher,
@@ -261,7 +261,7 @@ public class PipeConsensusConfig {
         ReplicateProgressManager replicateProgressManager,
         ConsensusPipeReceiver consensusPipeReceiver,
         long consensusPipeGuardJobIntervalInSeconds) {
-      this.extractorPluginName = extractorPluginName;
+      this.sourcePluginName = sourcePluginName;
       this.processorPluginName = processorPluginName;
       this.connectorPluginName = connectorPluginName;
       this.consensusPipeDispatcher = consensusPipeDispatcher;
@@ -273,7 +273,7 @@ public class PipeConsensusConfig {
     }
 
     public String getExtractorPluginName() {
-      return extractorPluginName;
+      return sourcePluginName;
     }
 
     public String getProcessorPluginName() {
@@ -313,7 +313,7 @@ public class PipeConsensusConfig {
     }
 
     public static class Builder {
-      private String extractorPluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
+      private String sourcePluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
       private String processorPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName();
       private String connectorPluginName =
@@ -325,8 +325,8 @@ public class PipeConsensusConfig {
       private ConsensusPipeReceiver consensusPipeReceiver = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
-      public Pipe.Builder setExtractorPluginName(String extractorPluginName) {
-        this.extractorPluginName = extractorPluginName;
+      public Pipe.Builder setExtractorPluginName(String sourcePluginName) {
+        this.sourcePluginName = sourcePluginName;
         return this;
       }
 
@@ -375,7 +375,7 @@ public class PipeConsensusConfig {
 
       public Pipe build() {
         return new Pipe(
-            extractorPluginName,
+            sourcePluginName,
             processorPluginName,
             connectorPluginName,
             consensusPipeDispatcher,

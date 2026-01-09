@@ -63,34 +63,34 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   @Override
   public void validate(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateExtractor(extractorAttributes);
+    PipeExtractor temporaryExtractor = validateExtractor(sourceAttributes);
     PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
     PipeConnector temporaryConnector = validateConnector(pipeName, connectorAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
     Visibility pipeVisibility =
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(extractorAttributes));
-    Visibility extractorVisibility =
+        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
+    Visibility sourceVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
     Visibility connectorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
-        pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {
+        pipeVisibility, sourceVisibility, processorVisibility, connectorVisibility)) {
       throw new PipeParameterNotValidException(
           String.format(
-              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the extractor (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
+              "The visibility of the pipe (%s, %s) is not compatible with the visibility of the source (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
               pipeName,
               pipeVisibility,
-              extractorAttributes,
+              sourceAttributes,
               temporaryExtractor.getClass().getName(),
-              extractorVisibility,
+              sourceVisibility,
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,

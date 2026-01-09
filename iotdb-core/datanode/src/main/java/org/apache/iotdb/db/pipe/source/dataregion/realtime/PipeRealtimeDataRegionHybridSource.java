@@ -61,7 +61,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported event type %s for hybrid realtime extractor %s",
+              "Unsupported event type %s for hybrid realtime source %s",
               eventToExtract.getClass(), this));
     }
   }
@@ -134,7 +134,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       default:
         throw new UnsupportedOperationException(
             String.format(
-                "Unsupported state %s for hybrid realtime extractor %s",
+                "Unsupported state %s for hybrid realtime source %s",
                 state, PipeRealtimeDataRegionHybridSource.class.getName()));
     }
   }

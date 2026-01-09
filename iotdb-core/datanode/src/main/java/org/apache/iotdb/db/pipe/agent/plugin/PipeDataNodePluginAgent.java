@@ -207,14 +207,14 @@ public class PipeDataNodePluginAgent {
   // TODO: validate pipe plugin attributes for config node
   public void validate(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
     dataRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+        pipeName, sourceAttributes, processorAttributes, connectorAttributes);
     schemaRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+        pipeName, sourceAttributes, processorAttributes, connectorAttributes);
   }
 
   public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {

@@ -38,10 +38,10 @@ public abstract class PipeSourceConstructor extends PipePluginConstructor {
   }
 
   @Override
-  public final PipeExtractor reflectPlugin(PipeParameters extractorParameters) {
+  public final PipeExtractor reflectPlugin(PipeParameters sourceParameters) {
     return (PipeExtractor)
         reflectPluginByKey(
-            extractorParameters
+            sourceParameters
                 .getStringOrDefault(
                     Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
                     BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())

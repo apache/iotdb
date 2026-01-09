@@ -58,7 +58,7 @@ public class PipeDataRegionAssigner implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
   /**
-   * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
+   * The {@link PipeDataRegionMatcher} is used to match the event with the source based on the
    * pattern.
    */
   private final PipeDataRegionMatcher matcher;

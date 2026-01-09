@@ -52,7 +52,7 @@ import java.util.Set;
 
 public enum BuiltinPipePlugin {
 
-  // extractors
+  // sources
   DO_NOTHING_EXTRACTOR("do-nothing-extractor", DoNothingSource.class),
   IOTDB_EXTRACTOR("iotdb-extractor", IoTDBSource.class),
 

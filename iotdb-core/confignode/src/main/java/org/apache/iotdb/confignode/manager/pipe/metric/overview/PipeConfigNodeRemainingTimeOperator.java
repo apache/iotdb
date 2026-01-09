@@ -94,8 +94,8 @@ class PipeConfigNodeRemainingTimeOperator extends PipeRemainingOperator {
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBConfigRegionSource extractor) {
-    configRegionExtractors.add(extractor);
+  void register(final IoTDBConfigRegionSource source) {
+    configRegionExtractors.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////

@@ -34,7 +34,7 @@ import java.util.Map;
 /**
  * {@link PipeRealtimeEvent} is an event that decorates the {@link EnrichedEvent} with the
  * information of {@link TsFileEpoch} and schema info. It only exists in the realtime event
- * extractor.
+ * source.
  */
 public class PipeRealtimeEvent extends EnrichedEvent {
 
@@ -76,7 +76,7 @@ public class PipeRealtimeEvent extends EnrichedEvent {
       final long startTime,
       final long endTime) {
     // PipeTaskMeta is used to report the progress of the event, the PipeRealtimeEvent
-    // is only used in the realtime event extractor, which does not need to report the progress
+    // is only used in the realtime event source, which does not need to report the progress
     // of the event, so the pipeTaskMeta is always null.
     super(
         event != null ? event.getPipeName() : null,
@@ -112,8 +112,8 @@ public class PipeRealtimeEvent extends EnrichedEvent {
     device2Measurements = null;
   }
 
-  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource extractor) {
-    final TsFileEpoch.State state = tsFileEpoch.getState(extractor);
+  public boolean mayExtractorUseTablets(final PipeRealtimeDataRegionSource source) {
+    final TsFileEpoch.State state = tsFileEpoch.getState(source);
     return state.equals(TsFileEpoch.State.EMPTY) || state.equals(TsFileEpoch.State.USING_TABLET);
   }
 

@@ -42,7 +42,7 @@ public class TsFileEpoch {
     this.insertNodeMinTime = new AtomicLong(Long.MAX_VALUE);
   }
 
-  public TsFileEpoch.State getState(final PipeRealtimeDataRegionSource extractor) {
+  public TsFileEpoch.State getState(final PipeRealtimeDataRegionSource source) {
     AtomicReference<State> stateRef = dataRegionExtractor2State.get(extractor);
 
     if (stateRef == null) {

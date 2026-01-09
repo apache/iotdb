@@ -32,7 +32,7 @@ public class PipeDataNodeTask implements PipeTask {
   private final String pipeName;
   private final int regionId;
 
-  private final PipeTaskStage extractorStage;
+  private final PipeTaskStage sourceStage;
   private final PipeTaskStage processorStage;
   private final PipeTaskStage connectorStage;
 
@@ -41,13 +41,13 @@ public class PipeDataNodeTask implements PipeTask {
   public PipeDataNodeTask(
       final String pipeName,
       final int regionId,
-      final PipeTaskStage extractorStage,
+      final PipeTaskStage sourceStage,
       final PipeTaskStage processorStage,
       final PipeTaskStage connectorStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
-    this.extractorStage = extractorStage;
+    this.sourceStage = sourceStage;
     this.processorStage = processorStage;
     this.connectorStage = connectorStage;
   }
@@ -55,7 +55,7 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void create() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.create();
+    sourceStage.create();
     processorStage.create();
     connectorStage.create();
     LOGGER.info(
@@ -67,7 +67,7 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void drop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.drop();
+    sourceStage.drop();
     processorStage.drop();
     connectorStage.drop();
     LOGGER.info(
@@ -79,7 +79,7 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void start() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.start();
+    sourceStage.start();
     processorStage.start();
     connectorStage.start();
     LOGGER.info(
@@ -91,7 +91,7 @@ public class PipeDataNodeTask implements PipeTask {
   @Override
   public void stop() {
     final long startTime = System.currentTimeMillis();
-    extractorStage.stop();
+    sourceStage.stop();
     processorStage.stop();
     connectorStage.stop();
     LOGGER.info(

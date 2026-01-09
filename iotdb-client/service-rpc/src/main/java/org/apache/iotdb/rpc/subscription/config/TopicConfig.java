@@ -95,7 +95,7 @@ public class TopicConfig extends PipeParameters {
         attributes.getOrDefault(SQL_DIALECT_KEY, SQL_DIALECT_TREE_VALUE));
   }
 
-  /////////////////////////////// extractor attributes mapping ///////////////////////////////
+  /////////////////////////////// source attributes mapping ///////////////////////////////
 
   public Map<String, String> getAttributeWithSqlDialect() {
     return Collections.singletonMap(

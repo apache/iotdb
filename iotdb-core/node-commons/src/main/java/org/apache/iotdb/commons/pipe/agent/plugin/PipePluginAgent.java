@@ -69,8 +69,8 @@ public abstract class PipePluginAgent {
   protected abstract PipeSinkConstructor createPipeConnectorConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  public final PipeExtractor reflectSource(PipeParameters extractorParameters) {
-    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
+  public final PipeExtractor reflectSource(PipeParameters sourceParameters) {
+    return pipeExtractorConstructor.reflectPlugin(sourceParameters);
   }
 
   public final PipeProcessor reflectProcessor(PipeParameters processorParameters) {
@@ -83,26 +83,26 @@ public abstract class PipePluginAgent {
 
   public void validate(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
       Map<String, String> connectorAttributes)
       throws Exception {
-    validateExtractor(extractorAttributes);
+    validateExtractor(sourceAttributes);
     validateProcessor(processorAttributes);
     validateConnector(pipeName, connectorAttributes);
   }
 
-  protected PipeExtractor validateExtractor(Map<String, String> extractorAttributes)
+  protected PipeExtractor validateExtractor(Map<String, String> sourceAttributes)
       throws Exception {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
-    final PipeExtractor temporaryExtractor = reflectSource(extractorParameters);
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final PipeExtractor temporaryExtractor = reflectSource(sourceParameters);
     try {
-      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
+      temporaryExtractor.validate(new PipeParameterValidator(sourceParameters));
     } finally {
       try {
         temporaryExtractor.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
+        LOGGER.warn("Failed to close temporary source: {}", e.getMessage(), e);
       }
     }
     return temporaryExtractor;

@@ -174,7 +174,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       throw new PipeParameterNotValidException(e.getMessage());
     }
 
-    final String extractorRealtimeLooseRangeValue =
+    final String sourceRealtimeLooseRangeValue =
         parameters
             .getStringOrDefault(
                 Arrays.asList(EXTRACTOR_REALTIME_LOOSE_RANGE_KEY, SOURCE_REALTIME_LOOSE_RANGE_KEY),

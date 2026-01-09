@@ -168,7 +168,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     this.resource = resource;
 
-    // For events created at assigner or historical extractor, the tsFile is get from the resource
+    // For events created at assigner or historical source, the tsFile is get from the resource
     // For events created for source, the tsFile is inherited from the assigner, because the
     // original tsFile may be gone, and we need to get the assigner's hard-linked tsFile to
     // hard-link it to each pipe dir

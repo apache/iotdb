@@ -54,12 +54,12 @@ public class PipeStaticMeta {
   public PipeStaticMeta(
       final String pipeName,
       final long creationTime,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
       final Map<String, String> connectorAttributes) {
     this.pipeName = pipeName;
     this.creationTime = creationTime;
-    sourceParameters = new PipeParameters(extractorAttributes);
+    sourceParameters = new PipeParameters(sourceAttributes);
     processorParameters = new PipeParameters(processorAttributes);
     sinkParameters = new PipeParameters(connectorAttributes);
   }

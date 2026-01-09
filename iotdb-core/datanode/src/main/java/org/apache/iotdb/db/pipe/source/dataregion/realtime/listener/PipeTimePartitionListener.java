@@ -41,7 +41,7 @@ public class PipeTimePartitionListener {
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListen(
-      String dataRegionId, PipeRealtimeDataRegionSource extractor) {
+      String dataRegionId, PipeRealtimeDataRegionSource source) {
     dataRegionId2Extractors
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
         .put(extractor.getTaskID(), extractor);
