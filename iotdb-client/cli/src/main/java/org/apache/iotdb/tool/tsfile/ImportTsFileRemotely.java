@@ -301,7 +301,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
               new ThriftClientProperty.Builder()
                   .setConnectionTimeoutMs(PipeConfig.getInstance().getPipeSinkHandshakeTimeoutMs())
                   .setRpcThriftCompressionEnabled(
-                      PipeConfig.getInstance().isPipeConnectorRPCThriftCompressionEnabled())
+                      PipeConfig.getInstance().isPipeSinkRPCThriftCompressionEnabled())
                   .build(),
               getEndPoint().getIp(),
               getEndPoint().getPort(),
