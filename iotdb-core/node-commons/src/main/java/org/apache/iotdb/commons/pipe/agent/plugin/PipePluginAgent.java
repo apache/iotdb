@@ -126,18 +126,18 @@ public abstract class PipePluginAgent {
   protected PipeConnector validateConnector(
       String pipeName, Map<String, String> sinkAttributes) throws Exception {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
-    final PipeConnector temporaryConnector = reflectSink(connectorParameters);
+    final PipeConnector temporaryConnector = reflectSink(sinkParameters);
     try {
-      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
+      temporaryConnector.validate(new PipeParameterValidator(sinkParameters));
       temporaryConnector.customize(
-          connectorParameters,
+          sinkParameters,
           new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
       temporaryConnector.handshake();
     } finally {
       try {
         temporaryConnector.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
+        LOGGER.warn("Failed to close temporary sink: {}", e.getMessage(), e);
       }
     }
     return temporaryConnector;

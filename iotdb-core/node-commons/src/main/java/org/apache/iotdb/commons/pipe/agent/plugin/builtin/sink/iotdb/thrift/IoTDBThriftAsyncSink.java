@@ -24,7 +24,7 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 
 /**
  * This class is a placeholder and should not be initialized. It represents the IoTDB Thrift async
- * connector. There is a real implementation in the server module but cannot be imported here. The
+ * sink. There is a real implementation in the server module but cannot be imported here. The
  * pipe agent in the server module will replace this class with the real implementation when
  * initializing the IoTDB Thrift async connector.
  */
