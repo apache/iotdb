@@ -29,13 +29,20 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.utils.Binary;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import static org.apache.tsfile.file.metadata.statistics.Statistics.canMerge;
 
 public class SchemaUtilsTest {
   @Test
@@ -108,6 +115,162 @@ public class SchemaUtilsTest {
               abstractAlignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
         } catch (ClassCastException e) {
           Assert.fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  public static Object genValue(TSDataType dataType, int i) {
+    switch (dataType) {
+      case INT32:
+        return i;
+      case DATE:
+        return LocalDate.ofEpochDay(i);
+      case TIMESTAMP:
+      case INT64:
+        return (long) i;
+      case BOOLEAN:
+        return i % 2 == 0;
+      case FLOAT:
+        return i * 1.0f;
+      case DOUBLE:
+        return i * 1.0;
+      case STRING:
+      case TEXT:
+      case BLOB:
+        return new Binary(Integer.toString(i), StandardCharsets.UTF_8);
+      case UNKNOWN:
+      case VECTOR:
+      default:
+        throw new IllegalArgumentException("Unsupported data type: " + dataType);
+    }
+  }
+
+  @Test
+  public void mergeMetadataStatistics() throws Exception {
+    Set<TSDataType> unsupportTsDataType = new HashSet<>();
+    unsupportTsDataType.add(TSDataType.UNKNOWN);
+    unsupportTsDataType.add(TSDataType.VECTOR);
+    for (TSDataType sourceDataType : Arrays.asList(TSDataType.DOUBLE)) {
+      for (TSDataType targetDataType : Arrays.asList(TSDataType.TEXT, TSDataType.BLOB)) {
+
+        if (sourceDataType.equals(targetDataType)) {
+          continue;
+        }
+        if (unsupportTsDataType.contains(sourceDataType)
+            || unsupportTsDataType.contains(targetDataType)) {
+          continue;
+        }
+
+        System.out.println("from " + sourceDataType + " to " + targetDataType);
+
+        // Aligned series
+        Statistics<?> s1 = Statistics.getStatsByType(sourceDataType);
+        s1.update(new long[] {1, 2}, new double[] {1.0, 2.0}, 2);
+        Statistics<?> s2 = Statistics.getStatsByType(TSDataType.DOUBLE);
+        s2.update(new long[] {1, 2}, new double[] {1.0, 2.0}, 2);
+        List<IChunkMetadata> valueChunkMetadatas =
+            Arrays.asList(
+                new ChunkMetadata(
+                    "s0",
+                    sourceDataType,
+                    SchemaUtils.getDataTypeCompatibleEncoding(sourceDataType, TSEncoding.RLE),
+                    CompressionType.LZ4,
+                    0,
+                    s1),
+                new ChunkMetadata(
+                    "s1",
+                    TSDataType.DOUBLE,
+                    SchemaUtils.getDataTypeCompatibleEncoding(TSDataType.DOUBLE, TSEncoding.RLE),
+                    CompressionType.LZ4,
+                    0,
+                    s2));
+        IChunkMetadata alignedChunkMetadata =
+            new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
+
+        Statistics<?> s3 = Statistics.getStatsByType(targetDataType);
+        if (targetDataType == TSDataType.BLOB) {
+          s3.update(3, new Binary("3", StandardCharsets.UTF_8));
+          s3.update(4, new Binary("4", StandardCharsets.UTF_8));
+        } else {
+          s3.update(
+              new long[] {1, 2},
+              new Binary[] {
+                new Binary("3", StandardCharsets.UTF_8),
+                new Binary("4", StandardCharsets.UTF_8),
+                new Binary("3", StandardCharsets.UTF_8),
+                new Binary("4", StandardCharsets.UTF_8)
+              },
+              2);
+        }
+        Statistics<?> s4 = Statistics.getStatsByType(targetDataType);
+        if (targetDataType == TSDataType.BLOB) {
+          s3.update(4, new Binary("4", StandardCharsets.UTF_8));
+        } else {
+          s4.update(
+              new long[] {1, 2},
+              new Binary[] {
+                new Binary("5", StandardCharsets.UTF_8),
+                new Binary("6", StandardCharsets.UTF_8),
+                new Binary("5", StandardCharsets.UTF_8),
+                new Binary("6", StandardCharsets.UTF_8)
+              },
+              2);
+        }
+        List<IChunkMetadata> targetChunkMetadatas =
+            Arrays.asList(
+                new ChunkMetadata(
+                    "s0",
+                    targetDataType,
+                    SchemaUtils.getDataTypeCompatibleEncoding(targetDataType, TSEncoding.RLE),
+                    CompressionType.LZ4,
+                    0,
+                    s3),
+                new ChunkMetadata(
+                    "s1",
+                    targetDataType,
+                    SchemaUtils.getDataTypeCompatibleEncoding(targetDataType, TSEncoding.RLE),
+                    CompressionType.LZ4,
+                    0,
+                    s4));
+        AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
+            (AbstractAlignedChunkMetadata) alignedChunkMetadata;
+        try {
+          abstractAlignedChunkMetadata =
+              SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+                  abstractAlignedChunkMetadata, targetDataType);
+        } catch (ClassCastException e) {
+          Assert.fail(e.getMessage());
+        }
+
+        for (int i = 0; i < targetChunkMetadatas.size(); i++) {
+          if (!abstractAlignedChunkMetadata.getValueChunkMetadataList().isEmpty()
+              && abstractAlignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+            if (targetChunkMetadatas.get(i).getStatistics().getClass()
+                    == abstractAlignedChunkMetadata
+                        .getValueChunkMetadataList()
+                        .get(i)
+                        .getStatistics()
+                        .getClass()
+                || canMerge(
+                    abstractAlignedChunkMetadata
+                        .getValueChunkMetadataList()
+                        .get(i)
+                        .getStatistics()
+                        .getType(),
+                    targetChunkMetadatas.get(i).getStatistics().getType())) {
+              targetChunkMetadatas
+                  .get(i)
+                  .getStatistics()
+                  .mergeStatistics(
+                      abstractAlignedChunkMetadata
+                          .getValueChunkMetadataList()
+                          .get(i)
+                          .getStatistics());
+            } else {
+              throw new Exception("unsupported");
+            }
+          }
         }
       }
     }

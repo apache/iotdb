@@ -280,7 +280,8 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       if (!useFakeStatistics) {
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          if (!alignedChunkMetadata.getValueChunkMetadataList().isEmpty()
+              && alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
             exist[i] = true;
             valueTimeSeriesMetadataList
                 .get(i)
@@ -551,7 +552,9 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         chunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        if (targetDataType.isCompatible(chunkMetadata.getDataType())) {
+          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
         continue;
       }
       startTime = Math.min(startTime, chunkMetadata.getStartTime());
