@@ -337,8 +337,8 @@ public class ConfigMTreeTest {
                   databaseMNode.getAsMNode().getDatabaseSchema().getName()));
       databaseMNode.getAsMNode().getDatabaseSchema().setDataReplicationFactor(i);
       databaseMNode.getAsMNode().getDatabaseSchema().setSchemaReplicationFactor(i);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
-      storageGroupMNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
+      databaseMNode.getAsMNode().getDatabaseSchema().setTimePartitionInterval(i);
+      databaseMNode.getAsMNode().getDatabaseSchema().setIsTableModel(true);
 
       final String tableName = "table" + i;
       final TsTable table = new TsTable(tableName);
@@ -360,11 +360,11 @@ public class ConfigMTreeTest {
     newTree.deserialize(inputStream);
 
     for (int i = 0; i < pathList.length; i++) {
-      final TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema databaseSchema =
           newTree.getDatabaseNodeByDatabasePath(pathList[i]).getAsMNode().getDatabaseSchema();
-      Assert.assertEquals(i, storageGroupSchema.getSchemaReplicationFactor());
-      Assert.assertEquals(i, storageGroupSchema.getDataReplicationFactor());
-      Assert.assertEquals(i, storageGroupSchema.getTimePartitionInterval());
+      Assert.assertEquals(i, databaseSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(i, databaseSchema.getDataReplicationFactor());
+      Assert.assertEquals(i, databaseSchema.getTimePartitionInterval());
     }
 
     assertEquals(

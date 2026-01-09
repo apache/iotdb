@@ -710,7 +710,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       final String database, final TConsensusGroupType consensusGroupType) {
     databaseReadWriteLock.readLock().lock();
     try {
-      final TDatabaseSchema storageGroupSchema =
+      final TDatabaseSchema databaseSchema =
           (PathUtils.isTableModelDatabase(database) ? tableModelMTree : treeModelMTree)
               .getDatabaseNodeByDatabasePath(getQualifiedDatabasePartialPath(database))
               .getAsMNode()
