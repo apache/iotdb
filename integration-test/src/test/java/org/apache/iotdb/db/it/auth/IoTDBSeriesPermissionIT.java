@@ -277,15 +277,15 @@ public class IoTDBSeriesPermissionIT {
         "803: No permissions for this operation, please add privilege WRITE_SCHEMA on [root.db.d1.s1, root.db.d1.s2]",
         "test1",
         "test123123456");
-    executeNonQuery("delete from root.sg.d1.s1, root.sg.d1.s2", "test1", "test123123456");
-    grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_SCHEMA, "root.sg.d1.**");
+    executeNonQuery("delete from root.db.d1.s1, root.db.d1.s2", "test1", "test123123456");
+    grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_SCHEMA, "root.db.d1.**");
     assertNonQueryTestFail(
-        "insert into root.sg.d1(time,s1,s2) values(1,1,1)",
+        "insert into root.db.d1(time,s1,s2) values(1,1,1)",
         "803: No permissions for this operation, please add privilege SYSTEM",
         "test1",
         "test123123456");
     grantUserSystemPrivileges("test1", PrivilegeType.SYSTEM);
-    executeNonQuery("insert into root.sg.d1(time,s1,s2) values(1,1,1)", "test1", "test123123456");
+    executeNonQuery("insert into root.db.d1(time,s1,s2) values(1,1,1)", "test1", "test123123456");
   }
 
   private void testReadData() {

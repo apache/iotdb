@@ -655,8 +655,8 @@ public class IoTDBSimpleQueryIT {
       statement.execute("CREATE TIMESERIES root.db1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.db1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.db1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
 
@@ -680,12 +680,12 @@ public class IoTDBSimpleQueryIT {
         Statement statement = connection.createStatement()) {
 
       List<String> exps =
-          Arrays.asList("root.sg1.d0.s1", "root.sg1.d0.s2", "root.sg1.d0.s3", "root.sg1.d0.s4");
+          Arrays.asList("root.db1.d0.s1", "root.db1.d0.s2", "root.db1.d0.s3", "root.db1.d0.s4");
 
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s4) VALUES (5, 5)");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1")) {
@@ -703,7 +703,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d1,false", "root.sg1.d2,false");
+      List<String> exps = Arrays.asList("root.db1.d1,false", "root.db1.d2,false");
 
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");

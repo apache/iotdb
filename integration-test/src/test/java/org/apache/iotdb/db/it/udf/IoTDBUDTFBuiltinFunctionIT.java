@@ -441,7 +441,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
-              statement.executeQuery("select const(s8, 'type'='INT64') from root.sg.d1")) {
+              statement.executeQuery("select const(s8, 'type'='INT64') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("attribute \"value\" is required but was not provided"));
@@ -450,7 +450,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
               statement.executeQuery(
-                  "select const(s8, 'value'='1024', 'type'='long') from root.sg.d1")) {
+                  "select const(s8, 'value'='1024', 'type'='long') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("the given value type is not supported"));
@@ -459,7 +459,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       try (Statement statement = connection.createStatement();
           ResultSet ignored =
               statement.executeQuery(
-                  "select const(s8, 'value'='1024e', 'type'='INT64') from root.sg.d1")) {
+                  "select const(s8, 'value'='1024e', 'type'='INT64') from root.db.d1")) {
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("java.lang.NumberFormatException"));
@@ -483,7 +483,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet =
           statement.executeQuery(
-              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1");
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.db.d1");
 
       int columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(5, columnCount);
@@ -500,7 +500,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
       resultSet =
           statement.executeQuery(
-              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1 align by device");
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.db.d1 align by device");
 
       columnCount = resultSet.getMetaData().getColumnCount();
       assertEquals(6, columnCount);
@@ -524,24 +524,24 @@ public class IoTDBUDTFBuiltinFunctionIT {
   public void testContinuouslySatisfies() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d2.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d2.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d2.s5 with datatype=BOOLEAN,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
 
     // create timeseries with only 0,1 values
     String[] ZERO_ONE_SQL = {
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (0, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (1, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (2, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (3, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (4, 1, 1, 1, 1, true)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
-      "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (0, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (1, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (2, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (3, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (4, 1, 1, 1, 1, true)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (5, 0, 0, 0, 0, false)",
+      "insert into root.db.d2(time, s1, s2, s3, s4, s5) values (6, 0, 0, 0, 0, false)",
       "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (7, 1, 1, 1, 1, true)",
       "insert into root.sg.d2(time, s1, s2, s3, s4, s5) values (10000000000, 0, 0, 0, 0, false)",
     };

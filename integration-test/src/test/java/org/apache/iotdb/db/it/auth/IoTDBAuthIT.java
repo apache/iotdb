@@ -365,7 +365,7 @@ public class IoTDBAuthIT {
         adminStmt.execute(
             "insert into root.db.aligned_template(time,temperature,status) values(1,20,false),(2,22.1,true),(3,18,false);");
 
-        ResultSet set1 = adminStmt.executeQuery("SELECT * from root.sg.aligned_template");
+        ResultSet set1 = adminStmt.executeQuery("SELECT * from root.db.aligned_template");
         assertEquals(3, set1.getMetaData().getColumnCount());
         assertEquals("root.sg.aligned_template.temperature", set1.getMetaData().getColumnName(2));
         assertEquals("root.sg.aligned_template.status", set1.getMetaData().getColumnName(3));

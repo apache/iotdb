@@ -1015,7 +1015,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE TIMESERIES root.db.device_123.s1 INT32");
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg.device_123")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.db.device_123")) {
         Assert.assertTrue(resultSet.next());
         Assert.assertFalse(resultSet.next());
       }

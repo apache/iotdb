@@ -838,12 +838,12 @@ public class IoTDBRestServiceIT {
             {
               add("root.db25.s3");
               add("root.db25.s4");
-              add("root.sg25.s5");
-              add("root.sg25.s6");
-              add("root.sg25.s7");
-              add("root.sg25.s8");
-              add("root.sg25.s4 + 1");
-              add("root.sg25.s4 + 1");
+              add("root.db25.s5");
+              add("root.db25.s6");
+              add("root.db25.s7");
+              add("root.db25.s8");
+              add("root.db25.s4 + 1");
+              add("root.db25.s4 + 1");
             }
           };
       List<Object> timestamps =
@@ -925,7 +925,7 @@ public class IoTDBRestServiceIT {
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
       String sql =
-          "{\"sql\":\"select count(s4) from root.sg25 group by([1635232143960,1635232153960),1s),level=1\"}";
+          "{\"sql\":\"select count(s4) from root.db25 group by([1635232143960,1635232153960),1s),level=1\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -938,7 +938,7 @@ public class IoTDBRestServiceIT {
       Assert.assertTrue(map.size() > 0);
       Assert.assertTrue(timestampsResult.size() == 10);
       Assert.assertTrue(valuesResult.size() == 1);
-      Assert.assertTrue("count(root.sg25.s4)".equals(expressionsResult.get(0)));
+      Assert.assertTrue("count(root.db25.s4)".equals(expressionsResult.get(0)));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -958,7 +958,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\",\"rowLimit\":1}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\",\"rowLimit\":1}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -1008,7 +1008,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowChildPaths(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child paths root.sg25\"}";
+    String sql = "{\"sql\":\"show child paths root.db25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1023,12 +1023,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s3");
-            add("root.sg25.s4");
-            add("root.sg25.s5");
-            add("root.sg25.s6");
-            add("root.sg25.s7");
-            add("root.sg25.s8");
+            add("root.db25.s3");
+            add("root.db25.s4");
+            add("root.db25.s5");
+            add("root.db25.s6");
+            add("root.db25.s7");
+            add("root.db25.s8");
           }
         };
 
@@ -1037,7 +1037,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void queryShowNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root.sg25\"}";
+    String sql = "{\"sql\":\"show child nodes root.db25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1095,7 +1095,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showDatabase(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW DATABASES root.sg25\"}";
+    String sql = "{\"sql\":\"SHOW DATABASES root.db25\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1113,7 +1113,7 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
+            add("root.db25");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
@@ -1130,7 +1130,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show timeseries root.sg25.**\"}";
+    String sql = "{\"sql\":\"show timeseries root.db25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1154,12 +1154,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s3");
-            add("root.sg25.s4");
-            add("root.sg25.s5");
-            add("root.sg25.s6");
-            add("root.sg25.s7");
-            add("root.sg25.s8");
+            add("root.db25.s3");
+            add("root.db25.s4");
+            add("root.db25.s5");
+            add("root.db25.s6");
+            add("root.db25.s7");
+            add("root.db25.s8");
           }
         };
     List<Object> values2 =
@@ -1176,12 +1176,12 @@ public class IoTDBRestServiceIT {
     List<Object> values3 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
           }
         };
 
@@ -1192,7 +1192,7 @@ public class IoTDBRestServiceIT {
   }
 
   public void showLastTimeseries(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.sg25.**\"}";
+    String sql = "{\"sql\":\"SHOW LATEST TIMESERIES root.db25.**\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -1216,12 +1216,12 @@ public class IoTDBRestServiceIT {
     List<Object> values1 =
         new ArrayList<Object>() {
           {
-            add("root.sg25.s3");
-            add("root.sg25.s4");
-            add("root.sg25.s5");
-            add("root.sg25.s7");
-            add("root.sg25.s8");
-            add("root.sg25.s6");
+            add("root.db25.s3");
+            add("root.db25.s4");
+            add("root.db25.s5");
+            add("root.db25.s7");
+            add("root.db25.s8");
+            add("root.db25.s6");
           }
         };
     List<Object> values2 =
@@ -1238,9 +1238,9 @@ public class IoTDBRestServiceIT {
     List<Object> values3 =
         new ArrayList<Object>() {
           {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
+            add("root.db25");
+            add("root.db25");
+            add("root.db25");
             add("root.sg25");
             add("root.sg25");
             add("root.sg25");
