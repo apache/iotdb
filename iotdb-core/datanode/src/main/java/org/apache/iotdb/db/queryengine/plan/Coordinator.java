@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataTy
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -78,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
@@ -121,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
@@ -128,7 +131,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
@@ -534,6 +539,11 @@ public class Coordinator {
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
         || statement instanceof ShowFunctions
+        || statement instanceof CreateExternalService
+        || statement instanceof StartExternalService
+        || statement instanceof StopExternalService
+        || statement instanceof DropExternalService
+        || statement instanceof ShowExternalService
         || statement instanceof RelationalAuthorStatement
         || statement instanceof MigrateRegion
         || statement instanceof ReconstructRegion

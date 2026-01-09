@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -227,7 +228,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowExternalServiceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -1858,6 +1858,15 @@ public class ConfigManager implements IManager {
         : new TGetDataNodeLocationsResp(status, Collections.emptyList());
   }
 
+  public Map<Integer, TDataNodeLocation> getReadableDataNodeLocationMap() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.filterDataNodeThroughStatus(NodeStatus::isReadable).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location))
+        : Collections.emptyMap();
+  }
+
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     final long retryIntervalInMS = 100;
@@ -2640,11 +2649,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TShowExternalServiceResp showExternalService(int dataNodeId) {
+  public TExternalServiceListResp showExternalService(int dataNodeId) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? externalServiceManager.showService(dataNodeId)
-        : new TShowExternalServiceResp(status, Collections.emptyList());
+        : new TExternalServiceListResp(status, Collections.emptyList());
   }
 
   /**

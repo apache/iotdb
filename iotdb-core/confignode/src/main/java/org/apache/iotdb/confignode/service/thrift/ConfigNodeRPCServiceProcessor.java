@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -115,6 +116,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -1361,6 +1363,31 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowCQResp showCQ() {
     return configManager.showCQ();
+  }
+
+  @Override
+  public TSStatus createExternalService(TCreateExternalServiceReq req) {
+    return configManager.createExternalService(req);
+  }
+
+  @Override
+  public TSStatus startExternalService(int dataNodeId, String serviceName) {
+    return configManager.startExternalService(dataNodeId, serviceName);
+  }
+
+  @Override
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) {
+    return configManager.stopExternalService(dataNodeId, serviceName);
+  }
+
+  @Override
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) {
+    return configManager.dropExternalService(dataNodeId, serviceName);
+  }
+
+  @Override
+  public TExternalServiceListResp showExternalService(int dataNodeId) {
+    return configManager.showExternalService(dataNodeId);
   }
 
   @Override

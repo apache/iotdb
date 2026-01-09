@@ -48,6 +48,8 @@ import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNo
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;

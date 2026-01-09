@@ -22,23 +22,21 @@ package org.apache.iotdb.confignode.consensus.request.read.exernalservice;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
+import java.util.List;
 import java.util.Objects;
 
-/**
- * Get infos of ExternalService by the specific DataNode's id. And return all when dataNodeID is set
- * to -1.
- */
+/** Get infos of ExternalService by the DataNode's id. */
 public class ShowExternalServicePlan extends ConfigPhysicalReadPlan {
 
-  private final int dataNodeId;
+  private final List<Integer> dataNodeIds;
 
-  public ShowExternalServicePlan(final int dataNodeId) {
+  public ShowExternalServicePlan(List<Integer> dataNodeIds) {
     super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
-    this.dataNodeId = dataNodeId;
+    this.dataNodeIds = dataNodeIds;
   }
 
-  public Integer getDataNodeId() {
-    return dataNodeId;
+  public List<Integer> getDataNodeIds() {
+    return dataNodeIds;
   }
 
   @Override
@@ -50,11 +48,11 @@ public class ShowExternalServicePlan extends ConfigPhysicalReadPlan {
       return false;
     }
     final ShowExternalServicePlan that = (ShowExternalServicePlan) o;
-    return dataNodeId == that.dataNodeId;
+    return dataNodeIds.equals(that.dataNodeIds);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeId);
+    return Objects.hash(dataNodeIds);
   }
 }

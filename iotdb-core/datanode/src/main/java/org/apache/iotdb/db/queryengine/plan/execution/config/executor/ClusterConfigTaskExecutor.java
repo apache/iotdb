@@ -4839,4 +4839,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
   }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createExternalService(
+      int dataNodeId, String serviceName, String className) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> startExternalService(String serviceName) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> stopExternalService(String serviceName) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropExternalService(String serviceName) {
+    return null;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showExternalService(int dataNodeId) {
+    return null;
+  }
 }

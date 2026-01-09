@@ -22,6 +22,7 @@ package org.apache.iotdb.db.protocol.client;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
@@ -73,6 +74,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -1340,6 +1342,31 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TShowCQResp showCQ() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.showCQ(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TSStatus createExternalService(TCreateExternalServiceReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus startExternalService(int dataNodeId, String serviceName) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) throws TException {
+    return null;
+  }
+
+  @Override
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) throws TException {
+    return null;
+  }
+
+  @Override
+  public TExternalServiceListResp showExternalService(int dataNodeId) throws TException {
+    return null;
   }
 
   @Override

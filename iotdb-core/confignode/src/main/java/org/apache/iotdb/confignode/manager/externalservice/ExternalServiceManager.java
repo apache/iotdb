@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.confignode.manager.externalservice;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.consensus.request.read.exernalservice.ShowExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
@@ -29,15 +34,17 @@ import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopE
 import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowExternalServiceResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
+import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Map;
 
 public class ExternalServiceManager {
 
@@ -127,17 +134,65 @@ public class ExternalServiceManager {
     }
   }
 
-  public TShowExternalServiceResp showService(int dataNodeId) {
+  public TExternalServiceListResp showService(int dataNodeId) {
+    Map<Integer, TDataNodeLocation> targetDataNodes =
+        configManager.getReadableDataNodeLocationMap();
+
+    if (targetDataNodes.isEmpty()) {
+      // no readable DN, return directly
+      return new TExternalServiceListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), Collections.emptyList());
+    }
+
+    if (dataNodeId != -1) {
+      if (!targetDataNodes.containsKey(dataNodeId)) {
+        // target DN is not readable, return directly
+        return new TExternalServiceListResp(
+            new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), Collections.emptyList());
+      } else {
+        targetDataNodes = Collections.singletonMap(dataNodeId, targetDataNodes.get(dataNodeId));
+      }
+    }
+
+    // 1. get built-in services info from DN
+    Map<Integer, TExternalServiceListResp> builtInServiceInfos =
+        getBuiltInServiceInfosFromDataNodes(targetDataNodes);
+    if (builtInServiceInfos.isEmpty()) {
+      return new TExternalServiceListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), Collections.emptyList());
+    }
+
     try {
+      // 2. get user-defined services info from CN consensus
       DataSet response =
-          configManager.getConsensusManager().read(new ShowExternalServicePlan(dataNodeId));
-      return ((ShowExternalServiceResp) response).convertToRpcShowExternalServiceResp();
+          configManager
+              .getConsensusManager()
+              .read(new ShowExternalServicePlan(new ArrayList<>(builtInServiceInfos.keySet())));
+      TExternalServiceListResp resp =
+          ((ShowExternalServiceResp) response).convertToRpcShowExternalServiceResp();
+
+      // 3. combined built-in services info and user-defined services info
+      builtInServiceInfos
+          .values()
+          .forEach(
+              builtInResp ->
+                  resp.externalServiceInfos.addAll(builtInResp.getExternalServiceInfos()));
+      return resp;
     } catch (ConsensusException e) {
       LOGGER.warn("Unexpected error happened while showing Service: ", e);
       // consensus layer related errors
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
-      return new TShowExternalServiceResp(res, Collections.emptyList());
+      return new TExternalServiceListResp(res, Collections.emptyList());
     }
+  }
+
+  private Map<Integer, TExternalServiceListResp> getBuiltInServiceInfosFromDataNodes(
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    DataNodeAsyncRequestContext<TCreateFunctionInstanceReq, TExternalServiceListResp> context =
+        new DataNodeAsyncRequestContext<>(
+            CnToDnAsyncRequestType.GET_BUILTIN_SERVICE, dataNodeLocationMap);
+    CnToDnInternalServiceAsyncRequestManager.getInstance().sendAsyncRequestWithRetry(context);
+    return context.getResponseMap();
   }
 }

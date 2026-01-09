@@ -1098,17 +1098,6 @@ struct TCreateExternalServiceReq {
   3: required string className
 }
 
-struct TExternalServiceEntry {
-  1: required string serviceName
-  2: required string className
-  3: required byte state
-}
-
-struct TShowExternalServiceResp {
-  1: required common.TSStatus status
-  2: required list<TExternalServiceEntry> externalServiceInfos
-}
-
 struct TDeactivateSchemaTemplateReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -2013,7 +2002,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropExternalService(i32 dataNodeId, string serviceName)
 
-  TShowCQResp showExternalService(i32 dataNodeId)
+  common.TExternalServiceListResp showExternalService(i32 dataNodeId)
 
   // ======================================================
   // Quota

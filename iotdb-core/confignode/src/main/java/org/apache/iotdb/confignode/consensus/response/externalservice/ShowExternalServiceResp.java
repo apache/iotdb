@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.confignode.consensus.response.externalservice;
 
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TExternalServiceEntry;
-import org.apache.iotdb.confignode.rpc.thrift.TShowExternalServiceResp;
 import org.apache.iotdb.consensus.common.DataSet;
 
 import javax.validation.constraints.NotNull;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,15 +41,14 @@ public class ShowExternalServiceResp implements DataSet {
     this.serviceInfos = serviceInfos;
   }
 
-  public TShowExternalServiceResp convertToRpcShowExternalServiceResp() {
-    return new TShowExternalServiceResp(
+  public TExternalServiceListResp convertToRpcShowExternalServiceResp() {
+    return new TExternalServiceListResp(
         status,
         serviceInfos.stream()
             .map(
                 entry ->
                     new TExternalServiceEntry(
                         entry.getServiceName(), entry.getClassName(), entry.getState().getValue()))
-            .sorted(Comparator.comparing(entry -> entry.serviceName))
             .collect(Collectors.toList()));
   }
 }

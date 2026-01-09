@@ -214,6 +214,8 @@ keyWords
     | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE

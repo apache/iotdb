@@ -41,8 +41,6 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.externalservice.ServiceInfo.State.RUNNING;
 import static org.apache.iotdb.commons.externalservice.ServiceInfo.State.STOPPED;
-import static org.apache.iotdb.db.service.exernalservice.ServiceInfo.State.RUNNING;
-import static org.apache.iotdb.db.service.exernalservice.ServiceInfo.State.STOPPED;
 
 public class ExternalServiceManagementService {
   @GuardedBy("lock")
@@ -78,9 +76,9 @@ public class ExternalServiceManagementService {
             String.format("Failed to create External Service %s, it already exists!", serviceName));
       }
 
-      logAccessor.writeWal(
-          new ServiceLogAccessor.ServiceWalEntry(
-              ServiceLogAccessor.OperationType.CREATE, serviceName, className));
+      /*logAccessor.writeWal(
+      new ServiceLogAccessor.ServiceWalEntry(
+          ServiceLogAccessor.OperationType.CREATE, serviceName, className));*/
       serviceInfos.put(
           serviceName,
           new ServiceInfo(serviceName, className, ServiceInfo.ServiceType.USER_DEFINED));
@@ -112,9 +110,9 @@ public class ExternalServiceManagementService {
         }
       }
 
-      logAccessor.writeWal(
-          new ServiceLogAccessor.ServiceWalEntry(
-              ServiceLogAccessor.OperationType.START, serviceName, null));
+      /*logAccessor.writeWal(
+      new ServiceLogAccessor.ServiceWalEntry(
+          ServiceLogAccessor.OperationType.START, serviceName, null));*/
       serviceInfo.setState(RUNNING);
     } finally {
       lock.writeLock().unlock();
@@ -160,9 +158,9 @@ public class ExternalServiceManagementService {
         stopService(serviceInfo);
       }
 
-      logAccessor.writeWal(
-          new ServiceLogAccessor.ServiceWalEntry(
-              ServiceLogAccessor.OperationType.STOP, serviceName, null));
+      /*logAccessor.writeWal(
+      new ServiceLogAccessor.ServiceWalEntry(
+          ServiceLogAccessor.OperationType.STOP, serviceName, null));*/
       serviceInfo.setState(STOPPED);
     } finally {
       lock.writeLock().unlock();
@@ -213,9 +211,9 @@ public class ExternalServiceManagementService {
         }
       }
 
-      logAccessor.writeWal(
-          new ServiceLogAccessor.ServiceWalEntry(
-              ServiceLogAccessor.OperationType.DROP, serviceName, null));
+      /*logAccessor.writeWal(
+      new ServiceLogAccessor.ServiceWalEntry(
+          ServiceLogAccessor.OperationType.DROP, serviceName, null));*/
       serviceInfos.remove(serviceName);
     } finally {
       lock.writeLock().unlock();

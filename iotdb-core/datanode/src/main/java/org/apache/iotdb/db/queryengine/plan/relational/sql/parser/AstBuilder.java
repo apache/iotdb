@@ -58,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
@@ -80,6 +81,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
@@ -193,6 +195,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowIndex;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
@@ -212,9 +215,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
@@ -1085,6 +1090,41 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitShowFunctionsStatement(RelationalSqlParser.ShowFunctionsStatementContext ctx) {
     return new ShowFunctions();
+  }
+
+  @Override
+  public Node visitCreateServiceStatement(RelationalSqlParser.CreateServiceStatementContext ctx) {
+    String serviceName = ((Identifier) visit(ctx.serviceName)).getValue();
+    String className = ((StringLiteral) visit(ctx.className)).getValue();
+    return new CreateExternalService(getLocation(ctx), serviceName, className);
+  }
+
+  @Override
+  public Node visitStartServiceStatement(RelationalSqlParser.StartServiceStatementContext ctx) {
+    return new StartExternalService(
+        getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue());
+  }
+
+  @Override
+  public Node visitStopServiceStatement(RelationalSqlParser.StopServiceStatementContext ctx) {
+    return new StopExternalService(
+        getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue());
+  }
+
+  @Override
+  public Node visitDropServiceStatement(RelationalSqlParser.DropServiceStatementContext ctx) {
+    return new DropExternalService(
+        getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue());
+  }
+
+  @Override
+  public Node visitShowServiceStatement(RelationalSqlParser.ShowServiceStatementContext ctx) {
+    // show services on all DNs
+    int dataNodeId = -1;
+    if (ctx.ON() != null) {
+      dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    }
+    return new ShowExternalService(getLocation(ctx), dataNodeId);
   }
 
   @Override

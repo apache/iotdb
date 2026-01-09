@@ -84,6 +84,13 @@ statement
     | dropFunctionStatement
     | createFunctionStatement
 
+    // ExternalService Statement
+    | createServiceStatement
+    | startServiceStatement
+    | stopServiceStatement
+    | dropServiceStatement
+    | showServiceStatement
+
     // Load Statement
     | loadTsFileStatement
 
@@ -374,6 +381,27 @@ showFunctionsStatement
     ;
 
 
+// -------------------------------------------- ExternalService Statement ----------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier
+        AS className=string
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropServiceStatement
+    : DROP SERVICE serviceName=identifier
+    ;
+
+showServiceStatement
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_VALUE)?
+    ;
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
@@ -1764,6 +1792,8 @@ SECURITY: 'SECURITY';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';

@@ -315,6 +315,17 @@ public interface IConfigTaskExecutor {
 
   void handlePipeConfigClientExit(String clientId);
 
+  SettableFuture<ConfigTaskResult> createExternalService(
+      int dataNodeId, String serviceName, String className);
+
+  SettableFuture<ConfigTaskResult> startExternalService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> stopExternalService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> dropExternalService(String serviceName);
+
+  SettableFuture<ConfigTaskResult> showExternalService(int dataNodeId);
+
   // =============================== table syntax =========================================
 
   SettableFuture<ConfigTaskResult> showDatabases(

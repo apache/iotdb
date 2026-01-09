@@ -23,6 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -32,9 +36,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class ExternalServiceInfo implements SnapshotProcessor {
 
@@ -49,28 +55,117 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   }
 
   /**
-   * Add a new ExternalService only if there was no mapping for <tt>this service</tt> on target
-   * DataNode, otherwise ignore this operation.
+   * Add a new ExternalService on target DataNode.
    *
-   * @return SUCCESS_STATUS if there was no mapping for <tt>this service</tt> on target DataNode,
-   *     otherwise EXTERNAL_SERVICE_AlREADY_EXIST
+   * @return SUCCESS_STATUS if <tt>this service</tt> was not existed on target DataNode, otherwise
+   *     EXTERNAL_SERVICE_AlREADY_EXIST
    */
   public TSStatus addService(CreateExternalServicePlan plan) {
     TSStatus res = new TSStatus();
     Map<String, ServiceInfo> serviceInfos =
-        datanodeToServiceInfos.computeIfAbsent(plan.getDatanodeId(), k -> new HashMap<>());
+        datanodeToServiceInfos.computeIfAbsent(
+            plan.getDatanodeId(), k -> new ConcurrentHashMap<>());
     String serviceName = plan.getServiceInfo().getServiceName();
     if (serviceInfos.containsKey(serviceName)) {
       res.code = TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode();
       res.message =
           String.format(
-              "ExternalService %s has already been created on DataNode .",
+              "ExternalService %s has already been created on DataNode %s.",
               serviceName, plan.getDatanodeId());
     } else {
       serviceInfos.put(serviceName, plan.getServiceInfo());
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     }
     return res;
+  }
+
+  /**
+   * Drop the ExternalService whose name is same as <tt>serviceName</tt> in plan.
+   *
+   * @return SUCCESS_STATUS if <tt>this service</tt> was existed on target DataNode, otherwise
+   *     NO_SUCH_EXTERNAL_SERVICE
+   */
+  public TSStatus dropService(DropExternalServicePlan plan) {
+    TSStatus res = new TSStatus();
+    Map<String, ServiceInfo> serviceInfos =
+        datanodeToServiceInfos.computeIfAbsent(
+            plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
+    String serviceName = plan.getServiceName();
+    if (!serviceInfos.containsKey(serviceName)) {
+      res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
+      res.message =
+          String.format(
+              "ExternalService %s is not existed on DataNode %s.",
+              serviceName, plan.getDataNodeId());
+    } else {
+      serviceInfos.remove(serviceName);
+      res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+    return res;
+  }
+
+  /**
+   * Start the ExternalService whose name is same as <tt>serviceName</tt> in plan.
+   *
+   * @return SUCCESS_STATUS if <tt>this service</tt> was existed on target DataNode, otherwise
+   *     NO_SUCH_EXTERNAL_SERVICE
+   */
+  public TSStatus startService(StartExternalServicePlan plan) {
+    TSStatus res = new TSStatus();
+    Map<String, ServiceInfo> serviceInfos =
+        datanodeToServiceInfos.computeIfAbsent(
+            plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
+    String serviceName = plan.getServiceName();
+    if (!serviceInfos.containsKey(serviceName)) {
+      res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
+      res.message =
+          String.format(
+              "ExternalService %s is not existed on DataNode %s.",
+              serviceName, plan.getDataNodeId());
+    } else {
+      ServiceInfo serviceInfo = serviceInfos.get(serviceName);
+      // The WRITE operations of StateMachine are not concurrent
+      checkState(serviceInfo != null, "Target serviceInfo should not be null.");
+      serviceInfo.setState(ServiceInfo.State.RUNNING);
+      res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+    return res;
+  }
+
+  /**
+   * Stop the ExternalService whose name is same as <tt>serviceName</tt> in plan.
+   *
+   * @return SUCCESS_STATUS if <tt>this service</tt> was existed on target DataNode, otherwise
+   *     NO_SUCH_EXTERNAL_SERVICE
+   */
+  public TSStatus stopService(StopExternalServicePlan plan) {
+    TSStatus res = new TSStatus();
+    Map<String, ServiceInfo> serviceInfos =
+        datanodeToServiceInfos.computeIfAbsent(
+            plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
+    String serviceName = plan.getServiceName();
+    if (!serviceInfos.containsKey(serviceName)) {
+      res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
+      res.message =
+          String.format(
+              "ExternalService %s is not existed on DataNode %s.",
+              serviceName, plan.getDataNodeId());
+    } else {
+      ServiceInfo serviceInfo = serviceInfos.get(serviceName);
+      // The WRITE operations of StateMachine are not concurrent
+      checkState(serviceInfo != null, "Target serviceInfo should not be null.");
+      serviceInfo.setState(ServiceInfo.State.STOPPED);
+      res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+    return res;
+  }
+
+  public ShowExternalServiceResp showService() {
+    return new ShowExternalServiceResp(
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
+        datanodeToServiceInfos.values().stream()
+            .flatMap(stringServiceInfoMap -> stringServiceInfoMap.values().stream())
+            .collect(Collectors.toList()));
   }
 
   @Override

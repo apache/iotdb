@@ -187,6 +187,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -1091,6 +1096,38 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowTriggers(IoTDBSqlParser.ShowTriggersContext ctx) {
     return new ShowTriggersStatement();
+  }
+
+  @Override
+  public Statement visitCreateService(IoTDBSqlParser.CreateServiceContext ctx) {
+    String serviceName = parseIdentifier(ctx.serviceName.getText());
+    String className = parseStringLiteral(ctx.className.getText());
+    return new CreateExternalServiceStatement(serviceName, className);
+  }
+
+  @Override
+  public Statement visitStartService(IoTDBSqlParser.StartServiceContext ctx) {
+    return new StartExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+  }
+
+  @Override
+  public Statement visitStopService(IoTDBSqlParser.StopServiceContext ctx) {
+    return new StopExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+  }
+
+  @Override
+  public Statement visitDropService(IoTDBSqlParser.DropServiceContext ctx) {
+    return new DropExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+  }
+
+  @Override
+  public Statement visitShowService(IoTDBSqlParser.ShowServiceContext ctx) {
+    // show services on all DNs
+    int dataNodeId = -1;
+    if (ctx.ON() != null) {
+      dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+    }
+    return new ShowExternalServiceStatement(dataNodeId);
   }
 
   // Create PipePlugin =====================================================================

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
 import org.apache.iotdb.common.rpc.thrift.TNodeLocations;
@@ -2932,6 +2933,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.DROP_PIPE_PLUGIN_ON_DATANODE_ERROR.getStatusCode())
           .setMessage(e.getMessage());
+    }
+  }
+
+  @Override
+  public TExternalServiceListResp getBuiltInService() {
+    try {
+
+      // PipeDataNodeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
+      // TODO
+      return new TExternalServiceListResp(
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+    } catch (Exception e) {
+      return new TExternalServiceListResp(
+          new TSStatus(TSStatusCode.GET_BUILTIN_EXTERNAL_SERVICE_ERROR.getStatusCode())
+              .setMessage(e.getMessage()),
+          Collections.emptyList());
     }
   }
 
