@@ -111,7 +111,7 @@ public class SystemInfo {
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
-          "Report database Status to the system. " + "After adding {}, current sg mem cost is {}.",
+          "Report database Status to the system. " + "After adding {}, current db mem cost is {}.",
           delta,
           totalStorageGroupMemCost);
     }
@@ -122,7 +122,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost < REJECT_THRESHOLD) {
       logger.debug(
           "The total database mem costs are too large, call for flushing. "
-              + "Current sg cost is {}",
+              + "Current db cost is {}",
           totalStorageGroupMemCost);
       chooseMemTablesToMarkFlush(tsFileProcessor);
       return true;
@@ -151,7 +151,7 @@ public class SystemInfo {
   }
 
   /**
-   * Report resetting the mem cost of sg to system. It will be called after flushing, closing and
+   * Report resetting the mem cost of db to system. It will be called after flushing, closing and
    * failed to insert
    *
    * @param dataRegionInfo database
@@ -163,7 +163,7 @@ public class SystemInfo {
       delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - currentDataRegionMemCost;
       this.totalStorageGroupMemCost -= delta;
       dataRegionInfo.setLastReportedSize(currentDataRegionMemCost);
-      // report after reset sg status, because slow write may not reach the report threshold
+      // report after reset db status, because slow write may not reach the report threshold
       dataRegionInfo.setNeedToReportToSystem(true);
       reportedStorageGroupMemCostMap.put(dataRegionInfo, currentDataRegionMemCost);
     }

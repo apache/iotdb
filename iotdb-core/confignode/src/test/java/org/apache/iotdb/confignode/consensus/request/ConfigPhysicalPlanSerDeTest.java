@@ -276,7 +276,7 @@ public class ConfigPhysicalPlanSerDeTest {
         new DatabaseSchemaPlan(
             ConfigPhysicalPlanType.AlterDatabase,
             new TDatabaseSchema()
-                .setName("sg")
+                .setName("db")
                 .setSchemaReplicationFactor(3)
                 .setDataReplicationFactor(3)
                 .setTimePartitionInterval(604800)
@@ -300,7 +300,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetTTLPlanTest() throws IOException {
-    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
+    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "db0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
@@ -309,7 +309,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void PipeAlterTimeSeriesPlanTest() throws IOException {
     PipeAlterTimeSeriesPlan req0 =
         new PipeAlterTimeSeriesPlan(
-            new MeasurementPath(new String[] {"root", "sg0", "d1", "s1"}),
+            new MeasurementPath(new String[] {"root", "db0", "d1", "s1"}),
             (byte) 0,
             TSDataType.DOUBLE);
     PipeAlterTimeSeriesPlan req1 =
@@ -822,7 +822,7 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
-        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+        new SetSchemaTemplatePlan("template_name_test", "root.in.db.dw");
     final SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
         (SetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
@@ -1911,7 +1911,7 @@ public class ConfigPhysicalPlanSerDeTest {
             new DatabaseSchemaPlan(
                 ConfigPhysicalPlanType.CreateDatabase,
                 new TDatabaseSchema()
-                    .setName("sg")
+                    .setName("db")
                     .setTTL(Long.MAX_VALUE)
                     .setSchemaReplicationFactor(3)
                     .setDataReplicationFactor(3)

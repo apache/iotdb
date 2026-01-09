@@ -168,7 +168,7 @@ public class SchemaFileTest {
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
     ISchemaFile sf = SchemaFile.initSchemaFile("root.dbvt.vt", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICachedMNode> sgNode =
+    IDatabaseMNode<ICachedMNode> dbNode =
         nodeFactory.createDatabaseDeviceMNode(null, "sg").getAsDatabaseMNode();
     sf.updateDatabaseNode(sgNode);
 

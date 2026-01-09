@@ -67,81 +67,81 @@ public class PartialPathTest {
 
     PartialPath e = new PartialPath("root.db.`a.``b`");
     Assert.assertEquals("root.db.`a.``b`", e.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.``b`"};
+    nodes = new String[] {"root", "db", "`a.``b`"};
     checkNodes(nodes, e.getNodes());
 
-    PartialPath f = new PartialPath("root.`sg\"`.`a.``b`");
-    Assert.assertEquals("root.`sg\"`.`a.``b`", f.getFullPath());
-    nodes = new String[] {"root", "`sg\"`", "`a.``b`"};
+    PartialPath f = new PartialPath("root.`db\"`.`a.``b`");
+    Assert.assertEquals("root.`db\"`.`a.``b`", f.getFullPath());
+    nodes = new String[] {"root", "`db\"`", "`a.``b`"};
     checkNodes(nodes, f.getNodes());
 
     PartialPath g = new PartialPath("root.db.`a.b\\\\`");
     Assert.assertEquals("root.db.`a.b\\\\`", g.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b\\\\`"};
+    nodes = new String[] {"root", "db", "`a.b\\\\`"};
     checkNodes(nodes, g.getNodes());
 
     // quoted node of digits
     PartialPath h = new PartialPath("root.db.`111`");
     Assert.assertEquals("root.db.`111`", h.getFullPath());
-    nodes = new String[] {"root", "sg", "`111`"};
+    nodes = new String[] {"root", "db", "`111`"};
     checkNodes(nodes, h.getNodes());
 
     // quoted node of key word
     PartialPath i = new PartialPath("root.db.`select`");
     Assert.assertEquals("root.db.select", i.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, i.getNodes());
 
     // wildcard
     PartialPath j = new PartialPath("root.db.`a*b`");
     Assert.assertEquals("root.db.`a*b`", j.getFullPath());
-    nodes = new String[] {"root", "sg", "`a*b`"};
+    nodes = new String[] {"root", "db", "`a*b`"};
     checkNodes(nodes, j.getNodes());
 
     PartialPath k = new PartialPath("root.db.*");
     Assert.assertEquals("root.db.*", k.getFullPath());
-    nodes = new String[] {"root", "sg", "*"};
+    nodes = new String[] {"root", "db", "*"};
     checkNodes(nodes, k.getNodes());
 
     PartialPath l = new PartialPath("root.db.**");
     Assert.assertEquals("root.db.**", l.getFullPath());
-    nodes = new String[] {"root", "sg", "**"};
+    nodes = new String[] {"root", "db", "**"};
     checkNodes(nodes, l.getNodes());
 
     // raw key word
     PartialPath m = new PartialPath("root.db.select");
     Assert.assertEquals("root.db.select", m.getFullPath());
-    nodes = new String[] {"root", "sg", "select"};
+    nodes = new String[] {"root", "db", "select"};
     checkNodes(nodes, m.getNodes());
 
     PartialPath n = new PartialPath("root.db.device");
     Assert.assertEquals("root.db.device", n.getFullPath());
-    nodes = new String[] {"root", "sg", "device"};
+    nodes = new String[] {"root", "db", "device"};
     checkNodes(nodes, n.getNodes());
 
     PartialPath o = new PartialPath("root.db.datatype");
     Assert.assertEquals("root.db.datatype", o.getFullPath());
-    nodes = new String[] {"root", "sg", "datatype"};
+    nodes = new String[] {"root", "db", "datatype"};
     checkNodes(nodes, o.getNodes());
 
     PartialPath r = new PartialPath("root.db.boolean");
     Assert.assertEquals("root.db.boolean", r.getFullPath());
-    nodes = new String[] {"root", "sg", "boolean"};
+    nodes = new String[] {"root", "db", "boolean"};
     checkNodes(nodes, r.getNodes());
 
     PartialPath s = new PartialPath("root.db.DROP_TRIGGER");
     Assert.assertEquals("root.db.DROP_TRIGGER", s.getFullPath());
-    nodes = new String[] {"root", "sg", "DROP_TRIGGER"};
+    nodes = new String[] {"root", "db", "DROP_TRIGGER"};
     checkNodes(nodes, s.getNodes());
 
     PartialPath t = new PartialPath("root.db.`abc`");
     Assert.assertEquals("root.db.abc", t.getFullPath());
-    nodes = new String[] {"root", "sg", "abc"};
+    nodes = new String[] {"root", "db", "abc"};
     checkNodes(nodes, t.getNodes());
 
     PartialPath u = new PartialPath("root.db.set_database");
     Assert.assertEquals("root.db.set_database", u.getFullPath());
-    nodes = new String[] {"root", "sg", "set_database"};
+    nodes = new String[] {"root", "db", "set_database"};
     checkNodes(nodes, u.getNodes());
   }
 

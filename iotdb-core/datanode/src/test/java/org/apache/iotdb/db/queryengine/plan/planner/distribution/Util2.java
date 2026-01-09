@@ -97,14 +97,14 @@ public class Util2 {
 
     Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         dataPartitionMap = new HashMap<>();
-    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> sgPartitionMap =
+    Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> dbPartitionMap =
         new HashMap<>();
 
     SeriesPartitionExecutor executor =
         SeriesPartitionExecutor.getSeriesPartitionExecutor(
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
             IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum());
-    sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
+    dbPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
     DataPartition dataPartition =
         new DataPartition(

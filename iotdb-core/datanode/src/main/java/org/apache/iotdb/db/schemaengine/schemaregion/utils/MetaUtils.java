@@ -64,7 +64,7 @@ public class MetaUtils {
     String[] nodeNames = path.getNodes();
     if (nodeNames.length <= level) {
       throw new IllegalPathException(
-          path.getFullPath(), "it is no longer than default sg level: " + level);
+          path.getFullPath(), "it is no longer than default db level: " + level);
     }
     if (!nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(

@@ -262,7 +262,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
       return;
     }
     // Database with "`"
-    final String database = "`sg";
+    final String database = "`db";
     final String tableName = "t";
     final List<ColumnHeader> columnHeaderList =
         Arrays.asList(

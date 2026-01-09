@@ -90,7 +90,7 @@ public class AggregationNodeSerdeTest {
   /** Test AVG with COUNT and SUM (former or later). */
   @Test
   public void getDeduplicatedDescriptorsTest1() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
     List<TAggregationType> aggregationTypeList = new ArrayList<>();
     aggregationTypeList.add(TAggregationType.COUNT);
     aggregationTypeList.add(TAggregationType.AVG);
@@ -159,7 +159,7 @@ public class AggregationNodeSerdeTest {
   /** Test FIRST_VALUE with MIN_TIME (former or later). */
   @Test
   public void getDeduplicatedDescriptorsTest2() {
-    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "sg", "d1", "s1"});
+    PartialPath seriesPath1 = new PartialPath(new String[] {"root", "db", "d1", "s1"});
     List<TAggregationType> aggregationTypeList = new ArrayList<>();
     aggregationTypeList.add(TAggregationType.FIRST_VALUE);
     aggregationTypeList.add(TAggregationType.MIN_TIME);

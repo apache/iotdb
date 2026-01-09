@@ -74,7 +74,7 @@ public class PipeRealtimeExtractTest {
   private final String dataRegion2 = "2";
   private final String pattern1 = "root.db.d";
   private final String pattern2 = "root.db.d.a";
-  private final String[] device = new String[] {"root", "sg", "d"};
+  private final String[] device = new String[] {"root", "db", "d"};
   private final AtomicBoolean alive = new AtomicBoolean();
   private File tmpDir;
   private File tsFileDir;

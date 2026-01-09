@@ -321,9 +321,9 @@ public class SchemaEngine {
     schemaRegionMap.remove(schemaRegionId);
 
     // check whether the db dir is empty
-    File sgDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
+    File dbDir = new File(config.getSchemaDir(), schemaRegion.getDatabaseFullPath());
     File[] regionDirList =
-        sgDir.listFiles(
+        dbDir.listFiles(
             (dir, name) -> {
               try {
                 Integer.parseInt(name);
@@ -332,10 +332,10 @@ public class SchemaEngine {
                 return false;
               }
             });
-    // remove the empty sg dir
+    // remove the empty db dir
     if (regionDirList == null || regionDirList.length == 0) {
-      if (sgDir.exists()) {
-        FileUtils.deleteFileOrDirectory(sgDir);
+      if (dbDir.exists()) {
+        FileUtils.deleteFileOrDirectory(dbDir);
       }
     }
   }

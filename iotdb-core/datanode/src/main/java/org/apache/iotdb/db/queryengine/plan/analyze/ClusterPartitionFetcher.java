@@ -490,8 +490,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     TTimeSlotList sharedTTimeSlotList = null;
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
-        sgNameToQueryParamsMap.entrySet()) {
-      // for each sg
+        dbNameToQueryParamsMap.entrySet()) {
+      // for each db
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
 
       for (final DataPartitionQueryParam queryParam : entry.getValue()) {
