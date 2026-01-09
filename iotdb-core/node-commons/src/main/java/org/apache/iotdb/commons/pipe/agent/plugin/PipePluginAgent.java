@@ -77,19 +77,19 @@ public abstract class PipePluginAgent {
     return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
-  public final PipeConnector reflectSink(PipeParameters connectorParameters) {
-    return pipeSinkConstructor.reflectPlugin(connectorParameters);
+  public final PipeConnector reflectSink(PipeParameters sinkParameters) {
+    return pipeSinkConstructor.reflectPlugin(sinkParameters);
   }
 
   public void validate(
       String pipeName,
       Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> sinkAttributes)
       throws Exception {
     validateExtractor(sourceAttributes);
     validateProcessor(processorAttributes);
-    validateConnector(pipeName, connectorAttributes);
+    validateConnector(pipeName, sinkAttributes);
   }
 
   protected PipeExtractor validateExtractor(Map<String, String> sourceAttributes) throws Exception {
@@ -124,8 +124,8 @@ public abstract class PipePluginAgent {
   }
 
   protected PipeConnector validateConnector(
-      String pipeName, Map<String, String> connectorAttributes) throws Exception {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+      String pipeName, Map<String, String> sinkAttributes) throws Exception {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
     final PipeConnector temporaryConnector = reflectSink(connectorParameters);
     try {
       temporaryConnector.validate(new PipeParameterValidator(connectorParameters));

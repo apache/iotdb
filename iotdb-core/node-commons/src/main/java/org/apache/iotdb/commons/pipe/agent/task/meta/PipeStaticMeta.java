@@ -61,7 +61,7 @@ public class PipeStaticMeta {
     this.creationTime = creationTime;
     sourceParameters = new PipeParameters(sourceAttributes);
     processorParameters = new PipeParameters(processorAttributes);
-    sinkParameters = new PipeParameters(connectorAttributes);
+    sinkParameters = new PipeParameters(sinkAttributes);
   }
 
   public String getPipeName() {
