@@ -123,8 +123,8 @@ public abstract class PipePluginAgent {
     return temporaryProcessor;
   }
 
-  protected PipeConnector validateConnector(
-      String pipeName, Map<String, String> sinkAttributes) throws Exception {
+  protected PipeConnector validateConnector(String pipeName, Map<String, String> sinkAttributes)
+      throws Exception {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
     final PipeConnector temporaryConnector = reflectSink(sinkParameters);
     try {

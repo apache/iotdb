@@ -114,8 +114,7 @@ public class PipeSinkSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
-          new ArrayList<>(sinkNum);
+      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
 
       AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
@@ -148,8 +147,7 @@ public class PipeSinkSubtaskManager {
             pipeConnector.close();
           } catch (final Exception closeException) {
             LOGGER.warn(
-                "Failed to close sink after failed to initialize sink. "
-                    + "Ignore this exception.",
+                "Failed to close sink after failed to initialize sink. " + "Ignore this exception.",
                 closeException);
           }
           throw new PipeException(
@@ -160,8 +158,7 @@ public class PipeSinkSubtaskManager {
         final PipeSinkSubtask pipeSinkSubtask =
             new PipeSinkSubtask(
                 String.format(
-                    "%s_%s_%s",
-                    attributeSortedString, environment.getCreationTime(), sinkIndex),
+                    "%s_%s_%s", attributeSortedString, environment.getCreationTime(), sinkIndex),
                 environment.getCreationTime(),
                 attributeSortedString,
                 sinkIndex,

@@ -76,8 +76,7 @@ public class PipeConfigRegionSinkMetrics implements IMetricSet {
   public void unbindFrom(final AbstractMetricService metricService) {
     ImmutableSet.copyOf(subtaskMap.keySet()).forEach(this::deregister);
     if (!subtaskMap.isEmpty()) {
-      LOGGER.warn(
-          "Failed to unbind from pipe config region sink metrics, sink map not empty");
+      LOGGER.warn("Failed to unbind from pipe config region sink metrics, sink map not empty");
     }
   }
 

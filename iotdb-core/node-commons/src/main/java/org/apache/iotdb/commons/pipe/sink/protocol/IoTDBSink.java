@@ -638,8 +638,8 @@ public abstract class IoTDBSink implements PipeConnector {
   }
 
   /**
-   * When a pipe is dropped, the sink maybe reused and will not be closed. We need to discard
-   * its batched or queued events in the output pipe sink.
+   * When a pipe is dropped, the sink maybe reused and will not be closed. We need to discard its
+   * batched or queued events in the output pipe sink.
    */
   public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
     // Do nothing by default
