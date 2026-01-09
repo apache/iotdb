@@ -264,7 +264,8 @@ public class DeviceViewIntoOperator extends AbstractTreeIntoOperator {
 
   @Override
   protected long findWritten(String device, String measurement) {
-    for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
+    for (int i = insertTabletStatementGenerators.size() - 1; i >= 0; i--) {
+      InsertTabletStatementGenerator generator = insertTabletStatementGenerators.get(i);
       if (!Objects.equals(generator.getDevice(), device)) {
         continue;
       }
