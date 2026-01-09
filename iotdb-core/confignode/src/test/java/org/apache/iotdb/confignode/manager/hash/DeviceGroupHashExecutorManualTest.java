@@ -51,7 +51,7 @@ public class DeviceGroupHashExecutorManualTest {
     int deviceLength = random.nextInt(5) + 5;
 
     for (int i = 0; i < batchSize; i++) {
-      StringBuilder curDevice = new StringBuilder(sg);
+      StringBuilder curDevice = new StringBuilder(db);
       for (int j = 0; j < fatherLength; j++) {
         curDevice.append(chars.charAt(random.nextInt(chars.length())));
       }
