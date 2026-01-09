@@ -769,7 +769,7 @@ public class IoTDBLoadTsFileIT {
           long db1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, db1Count);
           long db2Count = resultSet.getLong("count(root.db.test_1.*.*)");
-          Assert.assertEquals(writtenPoint2, sg2Count);
+          Assert.assertEquals(writtenPoint2, db2Count);
         } else {
           Assert.fail("This ResultSet is empty.");
         }
