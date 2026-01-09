@@ -62,7 +62,7 @@ public class PartialPathTest {
     // quoted node
     PartialPath d = new PartialPath("root.db.`a.b`");
     Assert.assertEquals("root.db.`a.b`", d.getFullPath());
-    nodes = new String[] {"root", "sg", "`a.b`"};
+    nodes = new String[] {"root", "db", "`a.b`"};
     checkNodes(nodes, d.getNodes());
 
     PartialPath e = new PartialPath("root.db.`a.``b`");

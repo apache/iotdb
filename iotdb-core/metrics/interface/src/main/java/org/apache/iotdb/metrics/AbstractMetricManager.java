@@ -335,7 +335,7 @@ public abstract class AbstractMetricManager {
    * @param value the value to mark
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    */
   public Rate rate(long value, String name, MetricLevel metricLevel, String... tags) {
     Rate rate = getOrCreateRate(name, metricLevel, tags);
@@ -349,7 +349,7 @@ public abstract class AbstractMetricManager {
    * @param value the value to update
    * @param name the name of name
    * @param metricLevel the level of name
-   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   * @param tags string pairs, like db="ln" will be "db", "ln"
    */
   public Histogram histogram(long value, String name, MetricLevel metricLevel, String... tags) {
     Histogram histogram = getOrCreateHistogram(name, metricLevel, tags);

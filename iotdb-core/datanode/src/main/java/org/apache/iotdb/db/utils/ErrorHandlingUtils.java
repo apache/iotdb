@@ -144,7 +144,7 @@ public class ErrorHandlingUtils {
 
   private static TSStatus tryCatchQueryException(Exception e) {
     Throwable rootCause = getRootCause(e);
-    // ignore logging sg not ready exception
+    // ignore logging db not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
     }
@@ -211,7 +211,7 @@ public class ErrorHandlingUtils {
     String message = "Exception occurred while processing non-read. ";
     if (e instanceof BatchProcessException) {
       BatchProcessException batchException = (BatchProcessException) e;
-      // ignore logging sg not ready exception
+      // ignore logging db not ready exception
       for (TSStatus status : batchException.getFailingStatus()) {
         if (status.getCode() == TSStatusCode.STORAGE_ENGINE_NOT_READY.getStatusCode()) {
           return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
@@ -221,7 +221,7 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
       Throwable rootCause = getRootCause(e);
-      // ignore logging sg not ready exception
+      // ignore logging db not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);
       }
