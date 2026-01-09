@@ -32,27 +32,27 @@ public class PipeFunctionSupport {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeFunctionSupport.class);
 
   public static void applyNowFunctionToExtractorAttributes(
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final String sourceKey,
-      final String extractorKey,
+      final String sourceKey,
       final long currentTime) {
     final Pair<String, String> pair =
-        getExtractorAttributesKeyAndValue(extractorAttributes, sourceKey, extractorKey);
+        getExtractorAttributesKeyAndValue(sourceAttributes, sourceKey, sourceKey);
 
     if (pair == null) {
       return;
     }
     if (isNowFunction(pair.right)) {
-      extractorAttributes.replace(pair.left, String.valueOf(currentTime));
+      sourceAttributes.replace(pair.left, String.valueOf(currentTime));
     }
   }
 
   private static Pair<String, String> getExtractorAttributesKeyAndValue(
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final String sourceKey,
-      final String extractorKey) {
+      final String sourceKey) {
     String key = sourceKey;
-    String value = extractorAttributes.get(key);
+    String value = sourceAttributes.get(key);
     if (value != null) {
       return new Pair<>(key, value);
     }
@@ -60,7 +60,7 @@ public class PipeFunctionSupport {
     // "source.".length() == 7
     try {
       key = sourceKey.substring(7);
-      value = extractorAttributes.get(key);
+      value = sourceAttributes.get(key);
     } catch (Exception e) {
       LOGGER.warn(
           "The prefix of sourceKey is not 'source.'. Please check the parameters passed in: {}",
@@ -71,8 +71,8 @@ public class PipeFunctionSupport {
       return new Pair<>(key, value);
     }
 
-    key = extractorKey;
-    value = extractorAttributes.get(key);
+    key = sourceKey;
+    value = sourceAttributes.get(key);
     if (value != null) {
       return new Pair<>(key, value);
     }

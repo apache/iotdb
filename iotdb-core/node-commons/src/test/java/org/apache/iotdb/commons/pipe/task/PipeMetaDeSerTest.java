@@ -57,7 +57,7 @@ public class PipeMetaDeSerTest {
             123L,
             new HashMap<String, String>() {
               {
-                put("source-key", "extractor-value");
+                put("source-key", "source-value");
               }
             },
             new HashMap<String, String>() {

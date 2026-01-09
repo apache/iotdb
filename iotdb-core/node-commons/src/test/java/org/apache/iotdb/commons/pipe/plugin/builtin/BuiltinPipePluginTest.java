@@ -47,28 +47,28 @@ public class BuiltinPipePluginTest {
   public void testBuildInPipePlugin() {
     PipeExtractor source = new IoTDBSource();
     try {
-      extractor.validate(mock(PipeParameterValidator.class));
+      source.validate(mock(PipeParameterValidator.class));
       Assert.fail();
     } catch (Exception ignored) {
     }
     try {
-      extractor.customize(
+      source.customize(
           mock(PipeParameters.class), mock(PipeExtractorRuntimeConfiguration.class));
       Assert.fail();
     } catch (Exception ignored) {
     }
     try {
-      extractor.start();
+      source.start();
       Assert.fail();
     } catch (Exception ignored) {
     }
     try {
-      extractor.supply();
+      source.supply();
       Assert.fail();
     } catch (Exception ignored) {
     }
     try {
-      extractor.close();
+      source.close();
       Assert.fail();
     } catch (Exception ignored) {
     }

@@ -32,7 +32,7 @@ public class IoTDBConfigRegionSourceTest {
   @Test
   public void testIoTDBConfigExtractor() {
     try (final IoTDBConfigRegionSource source = new IoTDBConfigRegionSource()) {
-      extractor.validate(
+      source.validate(
           new PipeParameterValidator(
               new PipeParameters(
                   new HashMap<String, String>() {

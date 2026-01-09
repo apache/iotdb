@@ -48,7 +48,7 @@ public class PipeTableRespTest {
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
-    extractorAttributes.put("extractor", "iotdb-extractor");
+    sourceAttributes.put("extractor", "iotdb-extractor");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
@@ -59,16 +59,16 @@ public class PipeTableRespTest {
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+            "testPipe", 121, sourceAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta, pipeRuntimeMeta));
 
     // PipeMeta 2
-    Map<String, String> extractorAttributes1 = new HashMap<>();
+    Map<String, String> sourceAttributes1 = new HashMap<>();
     Map<String, String> processorAttributes1 = new HashMap<>();
     Map<String, String> connectorAttributes1 = new HashMap<>();
 
-    extractorAttributes1.put("extractor", "iotdb-extractor");
+    sourceAttributes1.put("source", "iotdb-extractor");
     processorAttributes1.put("processor", "do-nothing-processor");
     connectorAttributes1.put("connector", "iotdb-thrift-connector");
     connectorAttributes1.put("host", "127.0.0.1");
@@ -79,16 +79,16 @@ public class PipeTableRespTest {
     pipeTasks1.put(1, pipeTaskMeta1);
     PipeStaticMeta pipeStaticMeta1 =
         new PipeStaticMeta(
-            "testPipe1", 122, extractorAttributes1, processorAttributes1, connectorAttributes1);
+            "testPipe1", 122, sourceAttributes1, processorAttributes1, connectorAttributes1);
     PipeRuntimeMeta pipeRuntimeMeta1 = new PipeRuntimeMeta(pipeTasks1);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta1, pipeRuntimeMeta1));
 
     // PipeMeta 3
-    Map<String, String> extractorAttributes2 = new HashMap<>();
+    Map<String, String> sourceAttributes2 = new HashMap<>();
     Map<String, String> processorAttributes2 = new HashMap<>();
     Map<String, String> connectorAttributes2 = new HashMap<>();
 
-    extractorAttributes2.put("extractor", "iotdb-extractor");
+    sourceAttributes2.put("extractor", "iotdb-extractor");
     processorAttributes2.put("processor", "do-nothing-processor");
     connectorAttributes2.put("connector", "iotdb-thrift-connector");
     connectorAttributes2.put("host", "172.30.30.30");
@@ -99,7 +99,7 @@ public class PipeTableRespTest {
     pipeTasks2.put(1, pipeTaskMeta2);
     PipeStaticMeta pipeStaticMeta2 =
         new PipeStaticMeta(
-            "testPipe2", 123, extractorAttributes2, processorAttributes2, connectorAttributes2);
+            "testPipe2", 123, sourceAttributes2, processorAttributes2, connectorAttributes2);
     PipeRuntimeMeta pipeRuntimeMeta2 = new PipeRuntimeMeta(pipeTasks2);
     pipeMetaList.add(new PipeMeta(pipeStaticMeta2, pipeRuntimeMeta2));
 

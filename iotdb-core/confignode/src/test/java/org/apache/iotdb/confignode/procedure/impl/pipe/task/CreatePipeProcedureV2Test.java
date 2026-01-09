@@ -39,10 +39,10 @@ public class CreatePipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor", "iotdb-extractor");
+    sourceAttributes.put("source", "iotdb-source");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
@@ -52,7 +52,7 @@ public class CreatePipeProcedureV2Test {
         new CreatePipeProcedureV2(
             new TCreatePipeReq()
                 .setPipeName("testPipe")
-                .setExtractorAttributes(extractorAttributes)
+                .setExtractorAttributes(sourceAttributes)
                 .setProcessorAttributes(processorAttributes)
                 .setConnectorAttributes(connectorAttributes));
 

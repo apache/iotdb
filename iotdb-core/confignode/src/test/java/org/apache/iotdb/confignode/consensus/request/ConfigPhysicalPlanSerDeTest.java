@@ -926,10 +926,10 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void CreatePipePlanV2Test() throws IOException {
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
     final Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
+    sourceAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
