@@ -128,7 +128,7 @@ public class PipeInfoTest {
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
+            pipeName, 121, sourceAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);

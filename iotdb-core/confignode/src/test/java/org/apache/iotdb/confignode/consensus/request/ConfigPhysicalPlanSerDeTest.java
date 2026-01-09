@@ -937,7 +937,7 @@ public class ConfigPhysicalPlanSerDeTest {
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+            "testPipe", 121, sourceAttributes, processorAttributes, connectorAttributes);
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     final CreatePipePlanV2 createPipePlanV21 =
