@@ -200,6 +200,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeadingHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -373,7 +374,9 @@ public class StatementAnalyzer {
           "LEADER",
           new HintFactory(LeaderHint.hintName, LeaderHint::new, true),
           "FOLLOWER",
-          new HintFactory(FollowerHint.hintName, FollowerHint::new, true));
+          new HintFactory(FollowerHint.hintName, FollowerHint::new, true),
+          "LEADING",
+          new HintFactory(LeadingHint.hintName, LeadingHint::new, false));
 
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
@@ -1536,21 +1539,19 @@ public class StatementAnalyzer {
       return a.stream().filter(b::contains).collect(toImmutableList());
     }
 
-    private void addHint(String hintName, List<String> paramTables, Map<String, Hint> hintMap) {
+    private void addHint(String hintName, List<String> parameters, Map<String, Hint> hintMap) {
       HintFactory definition = HINT_DEFINITIONS.get(hintName);
       if (definition != null) {
-        // filter the relation of aliased relation
-        List<String> existingTables =
-            analysis.getRelationNames().entrySet().stream()
-                .filter(entry -> !analysis.isAliased(entry.getKey().getNode()))
-                .map(entry -> entry.getValue().getSuffix())
-                .collect(toImmutableList());
-
-        List<String> validTables =
-            paramTables != null ? intersect(paramTables, existingTables) : existingTables;
-
         if (definition.shouldExpandParameters()) {
-          for (String table : validTables) {
+          List<String> existingTables =
+              analysis.getRelationNames().entrySet().stream()
+                  .filter(entry -> !analysis.isAliased(entry.getKey().getNode()))
+                  .map(entry -> entry.getValue().getSuffix())
+                  .collect(toImmutableList());
+          for (String table : parameters) {
+            if (!existingTables.contains(table)) {
+              continue;
+            }
             Hint hint = definition.createHint(ImmutableList.of(table));
             String hintKey = hint.getKey();
             if (!hintMap.containsKey(hintKey)) {
@@ -1558,7 +1559,7 @@ public class StatementAnalyzer {
             }
           }
         } else {
-          Hint hint = definition.createHint(validTables);
+          Hint hint = definition.createHint(parameters);
           String hintKey = hint.getKey();
           if (!hintMap.containsKey(hintKey)) {
             hintMap.put(hintKey, hint);
