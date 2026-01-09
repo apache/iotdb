@@ -66,7 +66,7 @@ public class PipeSinkSubtaskManager {
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
       final PipeParameters pipeConnectorParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
-    final String connectorKey =
+    final String sinkKey =
         pipeConnectorParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
@@ -79,7 +79,7 @@ public class PipeSinkSubtaskManager {
             environment.getPipeName(),
             environment.getCreationTime(),
             environment.getRegionId(),
-            connectorKey);
+            sinkKey);
 
     final boolean isDataRegionConnector =
         StorageEngine.getInstance()
@@ -87,11 +87,11 @@ public class PipeSinkSubtaskManager {
                 .contains(new DataRegionId(environment.getRegionId()))
             || PipeRuntimeMeta.isSourceExternal(environment.getRegionId());
 
-    final int connectorNum;
+    final int sinkNum;
     boolean realTimeFirst = false;
     String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
     if (isDataRegionConnector) {
-      connectorNum =
+      sinkNum =
           pipeConnectorParameters.getIntOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
@@ -105,9 +105,9 @@ public class PipeSinkSubtaskManager {
               PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
       attributeSortedString = "data_" + attributeSortedString;
     } else {
-      // Do not allow parallel tasks for schema region connectors
+      // Do not allow parallel tasks for schema region sinks
       // to avoid the potential disorder of the schema region data transfer
-      connectorNum = 1;
+      sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);

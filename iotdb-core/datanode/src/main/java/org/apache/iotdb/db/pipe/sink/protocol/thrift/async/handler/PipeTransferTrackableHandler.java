@@ -36,18 +36,18 @@ public abstract class PipeTransferTrackableHandler
     implements AsyncMethodCallback<TPipeTransferResp>, AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeTransferTsFileHandler.class);
 
-  protected final IoTDBDataRegionAsyncSink connector;
+  protected final IoTDBDataRegionAsyncSink sink;
   protected volatile AsyncPipeDataTransferServiceClient client;
 
-  public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink connector) {
-    this.connector = connector;
+  public PipeTransferTrackableHandler(final IoTDBDataRegionAsyncSink sink) {
+    this.sink = sink;
   }
 
   @Override
   public void onComplete(final TPipeTransferResp response) {
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       return;
     }
 
@@ -56,7 +56,7 @@ public abstract class PipeTransferTrackableHandler
       // completed
       // NOTE: We should not clear the reference count of events, as this would cause the
       // `org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic.IoTDBPipeDataSinkIT#testSinkTsFileFormat3` test to fail.
-      connector.eliminateHandler(this, false);
+      sink.eliminateHandler(this, false);
     }
   }
 
@@ -67,14 +67,14 @@ public abstract class PipeTransferTrackableHandler
       client.setPrintLogWhenEncounterException(false);
     }
 
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       return;
     }
 
     onErrorInternal(exception);
-    connector.eliminateHandler(this, false);
+    sink.eliminateHandler(this, false);
   }
 
   /**
@@ -82,8 +82,8 @@ public abstract class PipeTransferTrackableHandler
    *
    * @param client the client used for data transfer
    * @param req the request containing transfer details
-   * @return {@code true} if the transfer was initiated successfully, {@code false} if the connector
-   *     is closed
+   * @return {@code true} if the transfer was initiated successfully, {@code false} if the sink is
+   *     closed
    * @throws TException if an error occurs during the transfer
    */
   protected boolean tryTransfer(
@@ -92,11 +92,11 @@ public abstract class PipeTransferTrackableHandler
     if (Objects.isNull(this.client)) {
       this.client = client;
     }
-    // track handler before checking if connector is closed
-    connector.trackHandler(this);
-    if (connector.isClosed()) {
+    // track handler before checking if sink is closed
+    sink.trackHandler(this);
+    if (sink.isClosed()) {
       clearEventsReferenceCount();
-      connector.eliminateHandler(this, true);
+      sink.eliminateHandler(this, true);
       client.setShouldReturnSelf(true);
       client.returnSelf(
           (e) -> {
@@ -137,7 +137,7 @@ public abstract class PipeTransferTrackableHandler
       client.invalidateAll();
     } catch (final Exception e) {
       LOGGER.warn(
-          "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
+          "Failed to close or invalidate client when sink is closed. Client: {}, Exception: {}",
           client,
           e.getMessage(),
           e);

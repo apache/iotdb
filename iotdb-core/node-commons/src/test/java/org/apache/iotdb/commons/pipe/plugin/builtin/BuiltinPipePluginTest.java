@@ -52,8 +52,7 @@ public class BuiltinPipePluginTest {
     } catch (Exception ignored) {
     }
     try {
-      source.customize(
-          mock(PipeParameters.class), mock(PipeExtractorRuntimeConfiguration.class));
+      source.customize(mock(PipeParameters.class), mock(PipeExtractorRuntimeConfiguration.class));
       Assert.fail();
     } catch (Exception ignored) {
     }

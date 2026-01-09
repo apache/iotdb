@@ -208,7 +208,7 @@ public class IoTDBSchemaRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   protected byte[] getTransferSingleFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The schema region air gap connector does not support transferring single file piece bytes.");
+        "The schema region air gap sink does not support transferring single file piece bytes.");
   }
 
   @Override

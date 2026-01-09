@@ -48,12 +48,12 @@ public class PipeConsensusTabletBatchEventHandler
   private final List<Long> requestCommitIds;
   private final List<EnrichedEvent> events;
   private final TPipeConsensusBatchTransferReq req;
-  private final PipeConsensusAsyncSink connector;
+  private final PipeConsensusAsyncSink sink;
   private final PipeConsensusSinkMetrics pipeConsensusSinkMetrics;
 
   public PipeConsensusTabletBatchEventHandler(
       final PipeConsensusAsyncBatchReqBuilder batchBuilder,
-      final PipeConsensusAsyncSink connector,
+      final PipeConsensusAsyncSink sink,
       final PipeConsensusSinkMetrics pipeConsensusSinkMetrics)
       throws IOException {
     // Deep copy to keep Ids' and events' reference
@@ -62,7 +62,7 @@ public class PipeConsensusTabletBatchEventHandler
     req = batchBuilder.toTPipeConsensusBatchTransferReq();
 
     this.pipeConsensusSinkMetrics = pipeConsensusSinkMetrics;
-    this.connector = connector;
+    this.sink = sink;
   }
 
   public void transfer(final AsyncPipeConsensusServiceClient client) throws TException {
@@ -91,16 +91,14 @@ public class PipeConsensusTabletBatchEventHandler
             .forEach(
                 tsStatus -> {
                   pipeConsensusSinkMetrics.recordRetryCounter();
-                  connector
-                      .statusHandler()
-                      .handle(tsStatus, tsStatus.getMessage(), events.toString());
+                  sink.statusHandler().handle(tsStatus, tsStatus.getMessage(), events.toString());
                 });
         // if any events failed, we will resend it all.
-        connector.addFailureEventsToRetryQueue(events);
+        sink.addFailureEventsToRetryQueue(events);
       }
       // if all events success, remove them from transferBuffer
       else {
-        events.forEach(event -> connector.removeEventFromBuffer((EnrichedEvent) event));
+        events.forEach(event -> sink.removeEventFromBuffer((EnrichedEvent) event));
       }
 
       for (final Event event : events) {
@@ -128,6 +126,6 @@ public class PipeConsensusTabletBatchEventHandler
             .collect(Collectors.toSet()),
         exception);
 
-    connector.addFailureEventsToRetryQueue(events);
+    sink.addFailureEventsToRetryQueue(events);
   }
 }

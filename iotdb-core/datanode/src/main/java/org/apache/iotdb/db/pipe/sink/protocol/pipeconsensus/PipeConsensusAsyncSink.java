@@ -178,7 +178,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     try {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
-            "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to connector buffer",
+            "PipeConsensus-ConsensusGroup-{}: no.{} event-{} added to sink buffer",
             consensusGroupId,
             event.getReplicateIndexForIoTV2(),
             event);
@@ -198,7 +198,7 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
       if (result) {
         event.increaseReferenceCount(PipeConsensusAsyncSink.class.getName());
       }
-      // if connector is closed when executing this method, need to clear this event's reference
+      // if sink is closed when executing this method, need to clear this event's reference
       // count to avoid unnecessarily pinning some resource such as WAL.
       if (isClosed.get()) {
         event.clearReferenceCount(PipeConsensusAsyncSink.class.getName());
@@ -681,12 +681,12 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
   }
 
   private TEndPoint getFollowerUrl() {
-    // In current pipeConsensus design, one connector corresponds to one follower, so the peers is
+    // In current pipeConsensus design, one sink corresponds to one follower, so the peers is
     // actually a singleton list
     return nodeUrls.get(0);
   }
 
-  // synchronized to avoid close connector when transfer event
+  // synchronized to avoid close sink when transfer event
   @Override
   public synchronized void close() {
     super.close();

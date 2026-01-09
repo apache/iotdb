@@ -193,7 +193,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   @Override
-  // Synchronized to avoid close connector when transfer event
+  // Synchronized to avoid close sink when transfer event
   public synchronized void handshake() throws Exception {
     syncSink.handshake();
   }
@@ -754,7 +754,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   @Override
-  // synchronized to avoid close connector when transfer event
+  // synchronized to avoid close sink when transfer event
   public synchronized void close() {
     isClosed.set(true);
 

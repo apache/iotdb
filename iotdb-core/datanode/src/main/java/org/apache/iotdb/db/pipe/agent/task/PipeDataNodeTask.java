@@ -34,7 +34,7 @@ public class PipeDataNodeTask implements PipeTask {
 
   private final PipeTaskStage sourceStage;
   private final PipeTaskStage processorStage;
-  private final PipeTaskStage connectorStage;
+  private final PipeTaskStage sinkStage;
 
   private volatile boolean isCompleted = false;
 
@@ -43,13 +43,13 @@ public class PipeDataNodeTask implements PipeTask {
       final int regionId,
       final PipeTaskStage sourceStage,
       final PipeTaskStage processorStage,
-      final PipeTaskStage connectorStage) {
+      final PipeTaskStage sinkStage) {
     this.pipeName = pipeName;
     this.regionId = regionId;
 
     this.sourceStage = sourceStage;
     this.processorStage = processorStage;
-    this.connectorStage = connectorStage;
+    this.sinkStage = sinkStage;
   }
 
   @Override
@@ -57,7 +57,7 @@ public class PipeDataNodeTask implements PipeTask {
     final long startTime = System.currentTimeMillis();
     sourceStage.create();
     processorStage.create();
-    connectorStage.create();
+    sinkStage.create();
     LOGGER.info(
         "Create pipe DN task {} successfully within {} ms",
         this,
@@ -69,7 +69,7 @@ public class PipeDataNodeTask implements PipeTask {
     final long startTime = System.currentTimeMillis();
     sourceStage.drop();
     processorStage.drop();
-    connectorStage.drop();
+    sinkStage.drop();
     LOGGER.info(
         "Drop pipe DN task {} successfully within {} ms",
         this,
@@ -81,7 +81,7 @@ public class PipeDataNodeTask implements PipeTask {
     final long startTime = System.currentTimeMillis();
     sourceStage.start();
     processorStage.start();
-    connectorStage.start();
+    sinkStage.start();
     LOGGER.info(
         "Start pipe DN task {} successfully within {} ms",
         this,
@@ -93,7 +93,7 @@ public class PipeDataNodeTask implements PipeTask {
     final long startTime = System.currentTimeMillis();
     sourceStage.stop();
     processorStage.stop();
-    connectorStage.stop();
+    sinkStage.stop();
     LOGGER.info(
         "Stop pipe DN task {} successfully within {} ms",
         this,

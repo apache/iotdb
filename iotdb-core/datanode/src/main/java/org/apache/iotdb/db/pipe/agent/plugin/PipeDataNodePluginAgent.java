@@ -209,7 +209,7 @@ public class PipeDataNodePluginAgent {
       String pipeName,
       Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> sinkAttributes)
       throws Exception {
     dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, connectorAttributes);
     schemaRegionAgent.validate(

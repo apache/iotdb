@@ -39,7 +39,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeAbstractSinkSubtask.class);
 
-  // For output (transfer events to the target system in connector)
+  // For output (transfer events to the target system in sink)
   protected PipeConnector outputPipeSink;
 
   // For thread pool to execute callbacks
@@ -91,15 +91,14 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
       if (isClosed.get()) {
         LOGGER.info(
-            "onFailure in pipe transfer, ignored because the connector subtask is dropped.",
-            throwable);
+            "onFailure in pipe transfer, ignored because the sink subtask is dropped.", throwable);
         clearReferenceCountAndReleaseLastEvent(null);
         return;
       }
 
       // We assume that the event is cleared as the "lastEvent" in processor subtask and reaches the
-      // connector subtask. Then, it may fail because of released resource and block the other pipes
-      // using the same connector. We simply discard it.
+      // sink subtask. Then, it may fail because of released resource and block the other pipes
+      // using the same sink. We simply discard it.
       if (lastExceptionEvent instanceof EnrichedEvent
           && ((EnrichedEvent) lastExceptionEvent).isReleased()) {
         LOGGER.info(
@@ -218,7 +217,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   /**
    * Submit a {@link PipeSubtask} to the executor to keep it running. Note that the function will be
-   * called when connector starts or the subTask finishes the last round, Thus the {@link
+   * called when sink starts or the subTask finishes the last round, Thus the {@link
    * PipeAbstractSinkSubtask#isSubmitted} sign is added to avoid concurrent problem of the two,
    * ensuring two or more submitting threads generates only one winner.
    */

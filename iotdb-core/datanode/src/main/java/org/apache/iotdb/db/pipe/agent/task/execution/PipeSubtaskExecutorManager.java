@@ -32,7 +32,7 @@ import java.util.function.Supplier;
  */
 public class PipeSubtaskExecutorManager {
   private final PipeProcessorSubtaskExecutor processorExecutor;
-  private final Supplier<PipeSinkSubtaskExecutor> connectorExecutorSupplier;
+  private final Supplier<PipeSinkSubtaskExecutor> sinkExecutorSupplier;
   private final SubscriptionSubtaskExecutor subscriptionExecutor;
 
   public PipeProcessorSubtaskExecutor getProcessorExecutor() {

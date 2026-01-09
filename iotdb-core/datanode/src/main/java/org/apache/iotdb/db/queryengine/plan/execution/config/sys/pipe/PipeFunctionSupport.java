@@ -48,9 +48,7 @@ public class PipeFunctionSupport {
   }
 
   private static Pair<String, String> getExtractorAttributesKeyAndValue(
-      final Map<String, String> sourceAttributes,
-      final String sourceKey,
-      final String sourceKey) {
+      final Map<String, String> sourceAttributes, final String sourceKey, final String sourceKey) {
     String key = sourceKey;
     String value = sourceAttributes.get(key);
     if (value != null) {

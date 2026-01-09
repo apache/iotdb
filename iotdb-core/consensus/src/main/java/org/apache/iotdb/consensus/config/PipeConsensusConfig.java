@@ -243,7 +243,7 @@ public class PipeConsensusConfig {
   public static class Pipe {
     private final String sourcePluginName;
     private final String processorPluginName;
-    private final String connectorPluginName;
+    private final String sinkPluginName;
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
@@ -254,7 +254,7 @@ public class PipeConsensusConfig {
     public Pipe(
         String sourcePluginName,
         String processorPluginName,
-        String connectorPluginName,
+        String sinkPluginName,
         ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
@@ -263,7 +263,7 @@ public class PipeConsensusConfig {
         long consensusPipeGuardJobIntervalInSeconds) {
       this.sourcePluginName = sourcePluginName;
       this.processorPluginName = processorPluginName;
-      this.connectorPluginName = connectorPluginName;
+      this.sinkPluginName = sinkPluginName;
       this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
@@ -281,7 +281,7 @@ public class PipeConsensusConfig {
     }
 
     public String getConnectorPluginName() {
-      return connectorPluginName;
+      return sinkPluginName;
     }
 
     public ConsensusPipeDispatcher getConsensusPipeDispatcher() {
@@ -316,7 +316,7 @@ public class PipeConsensusConfig {
       private String sourcePluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
       private String processorPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName();
-      private String connectorPluginName =
+      private String sinkPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName();
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
@@ -335,8 +335,8 @@ public class PipeConsensusConfig {
         return this;
       }
 
-      public Pipe.Builder setConnectorPluginName(String connectorPluginName) {
-        this.connectorPluginName = connectorPluginName;
+      public Pipe.Builder setConnectorPluginName(String sinkPluginName) {
+        this.sinkPluginName = sinkPluginName;
         return this;
       }
 
@@ -377,7 +377,7 @@ public class PipeConsensusConfig {
         return new Pipe(
             sourcePluginName,
             processorPluginName,
-            connectorPluginName,
+            sinkPluginName,
             consensusPipeDispatcher,
             consensusPipeGuardian,
             consensusPipeSelector,

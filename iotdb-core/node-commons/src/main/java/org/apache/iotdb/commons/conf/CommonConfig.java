@@ -1060,7 +1060,7 @@ public class CommonConfig {
     } catch (ArithmeticException e) {
       this.pipeConnectorHandshakeTimeoutMs = Integer.MAX_VALUE;
       logger.warn(
-          "Given pipe connector handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+          "Given pipe sink handshake timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
       if (fPipeConnectorHandshakeTimeoutMs != this.pipeConnectorHandshakeTimeoutMs) {
         logger.info(
@@ -1080,7 +1080,7 @@ public class CommonConfig {
     } catch (ArithmeticException e) {
       this.pipeConnectorTransferTimeoutMs = Integer.MAX_VALUE;
       logger.warn(
-          "Given pipe connector transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+          "Given pipe sink transfer timeout is too large, set to {} ms.", Integer.MAX_VALUE);
     } finally {
       if (fPipeConnectorTransferTimeoutMs != this.pipeConnectorTransferTimeoutMs) {
         logger.info("pipeConnectorTransferTimeoutMs is set to {}.", pipeConnectorTransferTimeoutMs);
