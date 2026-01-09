@@ -55,6 +55,7 @@ public class SchemaUtils {
 
   private static final Map<TSDataType, Class> dataTypeColumnClassMap;
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
+  private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
 
   static {
     dataTypeColumnClassMap = new HashMap<>();
@@ -520,17 +521,15 @@ public class SchemaUtils {
       case TEXT:
         if (targetDataType == TSDataType.STRING) {
           Binary[] binaryValues = new Binary[2];
-          binaryValues[0] = new Binary("", StandardCharsets.UTF_8);
-          binaryValues[1] = new Binary("", StandardCharsets.UTF_8);
+          binaryValues[0] = EMPTY_BINARY;
+          binaryValues[1] = EMPTY_BINARY;
           long[] longValues = new long[2];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
           statistics.update(longValues, binaryValues, binaryValues.length);
         } else if (targetDataType == TSDataType.BLOB) {
-          statistics.update(
-              chunkMetadata.getStatistics().getStartTime(), new Binary("", StandardCharsets.UTF_8));
-          statistics.update(
-              chunkMetadata.getStatistics().getEndTime(), new Binary("", StandardCharsets.UTF_8));
+          statistics.update(chunkMetadata.getStatistics().getStartTime(), EMPTY_BINARY);
+          statistics.update(chunkMetadata.getStatistics().getEndTime(), EMPTY_BINARY);
         } else {
           statistics = chunkMetadata.getStatistics();
         }
@@ -538,8 +537,8 @@ public class SchemaUtils {
       case BLOB:
         if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
-          binaryValues[0] = new Binary("", StandardCharsets.UTF_8);
-          binaryValues[1] = new Binary("", StandardCharsets.UTF_8);
+          binaryValues[0] = EMPTY_BINARY;
+          binaryValues[1] = EMPTY_BINARY;
           long[] longValues = new long[2];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
