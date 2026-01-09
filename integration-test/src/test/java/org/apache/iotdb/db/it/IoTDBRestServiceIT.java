@@ -822,7 +822,7 @@ public class IoTDBRestServiceIT {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:" + port + "/rest/v1/query");
-      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.sg25\"}";
+      String sql = "{\"sql\":\"select *,s4+1,s4+1 from root.db25\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();

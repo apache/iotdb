@@ -56,11 +56,11 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
   private static final String[] INSERTION_SQLS = {
     "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s8, s10, s11, s12) values (0, 0, 0, 0, 0, true, '0', 0, 0, '2024-01-01', 0, '0')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (8, 4, 4, 4, 4, true, '4', 4, '2024-01-05', 4, '4')",
-    "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (10000000000, 5, 5, 5, 5, false, '5', 5, '2024-01-06', 5, '5')"
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (2, 1, 1, 1, 1, false, '1', 1, '2024-01-02', 1, '1')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s7, s10, s11, s12) values (4, 2, 2, 2, 2, false, '2', 2, '2024-01-03', 2, '2')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (6, 3, 3, 3, 3, true, '3', 3, '2024-01-04', 3, '3')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (8, 4, 4, 4, 4, true, '4', 4, '2024-01-05', 4, '4')",
+    "insert into root.db.d1(time, s1, s2, s3, s4, s5, s6, s8, s10, s11, s12) values (10000000000, 5, 5, 5, 5, false, '5', 5, '2024-01-06', 5, '5')"
   };
 
   private static final double E = 0.0001;
@@ -80,13 +80,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
   private static void createTimeSeries() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s1 with datatype=INT32,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s2 with datatype=INT64,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s3 with datatype=FLOAT,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg.d1.s6 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("CREATE DATABASE root.db");
+      statement.execute("CREATE TIMESERIES root.db.d1.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s2 with datatype=INT64,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s4 with datatype=DOUBLE,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s5 with datatype=BOOLEAN,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db.d1.s6 with datatype=TEXT,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s10 with datatype=DATE,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s11 with datatype=TIMESTAMP,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg.d1.s12 with datatype=STRING,encoding=PLAIN");

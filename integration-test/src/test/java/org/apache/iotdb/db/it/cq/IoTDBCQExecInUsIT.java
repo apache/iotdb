@@ -155,11 +155,11 @@ public class IoTDBCQExecInUsIT {
       long startTime = firstExecutionTime - 3_000_000L;
 
       statement.execute("create timeseries root.db.d2.s1 WITH DATATYPE=INT64");
-      statement.execute("create timeseries root.sg.d2.s1_max WITH DATATYPE=INT64");
+      statement.execute("create timeseries root.db.d2.s1_max WITH DATATYPE=INT64");
 
       // firstly write one row to init data region, just for accelerating the following insert
       // statement.
-      statement.execute("INSERT INTO root.sg.d2(time, s1) VALUES (0,0)");
+      statement.execute("INSERT INTO root.db.d2(time, s1) VALUES (0,0)");
 
       statement.execute(
           String.format(
@@ -192,8 +192,8 @@ public class IoTDBCQExecInUsIT {
               + "RANGE 4s \n"
               + "BEGIN \n"
               + "  SELECT max_value(s1) \n"
-              + "  INTO root.sg.d2(s1_max)\n"
-              + "  FROM root.sg.d2\n"
+              + "  INTO root.db.d2(s1_max)\n"
+              + "  FROM root.db.d2\n"
               + "  GROUP BY(1s) \n"
               + "END");
 
@@ -218,11 +218,11 @@ public class IoTDBCQExecInUsIT {
       };
       long[] expectedValue = {2, 4, 6, 8, 10};
 
-      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.sg.d2")) {
+      try (ResultSet resultSet = statement.executeQuery("select s1_max from root.db.d2")) {
         int cnt = 0;
         while (resultSet.next()) {
           assertEquals(expectedTime[cnt], resultSet.getLong(TIMESTAMP_STR));
-          assertEquals(expectedValue[cnt], resultSet.getLong("root.sg.d2.s1_max"));
+          assertEquals(expectedValue[cnt], resultSet.getLong("root.db.d2.s1_max"));
           cnt++;
         }
         assertEquals(expectedTime.length, cnt);

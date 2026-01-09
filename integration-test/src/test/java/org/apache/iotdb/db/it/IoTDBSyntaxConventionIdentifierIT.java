@@ -287,10 +287,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       for (int i = 0; i < selectNodeNames.length; i++) {
         String selectSql =
-            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", selectNodeNames[i]);
+            String.format("SELECT %s FROM root.db1.d1 WHERE time = 1", selectNodeNames[i]);
         try (ResultSet resultSet = statement.executeQuery(selectSql)) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + suffixInResultColumns[i]));
+          Assert.assertEquals(1, resultSet.getInt("root.db1.d1." + suffixInResultColumns[i]));
         }
       }
 
@@ -307,76 +307,76 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       // nodeName with special characters should be quoted with '`'
       try {
-        statement.execute("create timeseries root.sg1.d1.`a INT32");
+        statement.execute("create timeseries root.db1.d1.`a INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.[a INT32");
+        statement.execute("create timeseries root.db1.d1.[a INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a! INT32");
+        statement.execute("create timeseries root.db1.d1.a! INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a\" INT32");
+        statement.execute("create timeseries root.db1.d1.a\" INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.a' INT32");
+        statement.execute("create timeseries root.db1.d1.a' INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // nodeName consists of numbers should be quoted with '`'
       try {
-        statement.execute("create timeseries root.sg1.d1.111 INT32");
+        statement.execute("create timeseries root.db1.d1.111 INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.012 INT32");
+        statement.execute("create timeseries root.db1.d1.012 INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // shouled use double '`' in a quoted nodeName
       try {
-        statement.execute("create timeseries root.sg1.d1.`a`` INT32");
+        statement.execute("create timeseries root.db1.d1.`a`` INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.``a` INT32");
+        statement.execute("create timeseries root.db1.d1.``a` INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       // reserved words can not be identifier
       try {
-        statement.execute("create timeseries root.sg1.d1.root INT32");
+        statement.execute("create timeseries root.db1.d1.root INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.time INT32");
+        statement.execute("create timeseries root.db1.d1.time INT32");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create timeseries root.sg1.d1.timestamp INT32");
+        statement.execute("create timeseries root.db1.d1.timestamp INT32");
         fail();
       } catch (Exception ignored) {
       }
@@ -393,7 +393,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         Statement statement = connection.createStatement()) {
 
       try {
-        statement.execute("create database root.sg1.d1.");
+        statement.execute("create database root.db1.d1.");
         fail();
       } catch (Exception ignored) {
       }
@@ -408,7 +408,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testExpression() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.`1` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.`a.``b` INT32");
       statement.execute("CREATE TIMESERIES root.sg1.d1.text TEXT");

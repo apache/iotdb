@@ -82,11 +82,11 @@ public class IoTDBUDFWindowQuery2IT {
       statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (3, 3, 3)");
       statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (9, 9, 9)");
       statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (5, 5, 5)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (14, 14, 14)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (18, 18, 18)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (21, 21, 21)");
-      statement.execute("INSERT INTO root.sg.d1(time, s1, s2) VALUES (24, 24, 24)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (12, 12, 12)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (14, 14, 14)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (18, 18, 18)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (21, 21, 21)");
+      statement.execute("INSERT INTO root.db.d1(time, s1, s2) VALUES (24, 24, 24)");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -129,7 +129,7 @@ public class IoTDBUDFWindowQuery2IT {
     if (displayBegin == null) {
       sql =
           String.format(
-              "select window_start_end(s1, '%s'='%s', '%s'='%s') from root.sg.d1",
+              "select window_start_end(s1, '%s'='%s', '%s'='%s') from root.db.d1",
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SESSION,
               UDFTestConstant.SESSION_GAP_KEY,
@@ -137,7 +137,7 @@ public class IoTDBUDFWindowQuery2IT {
     } else {
       sql =
           String.format(
-              "select window_start_end(s1, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.sg.d1",
+              "select window_start_end(s1, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.db.d1",
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SESSION,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
@@ -171,12 +171,12 @@ public class IoTDBUDFWindowQuery2IT {
       if (delta == null) {
         sql =
             String.format(
-                "select window_start_end(%s, '%s'='%s') from root.sg.d1",
+                "select window_start_end(%s, '%s'='%s') from root.db.d1",
                 "s2", UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_STATE);
       } else {
         sql =
             String.format(
-                "select window_start_end(%s, '%s'='%s', '%s'='%s') from root.sg.d1",
+                "select window_start_end(%s, '%s'='%s', '%s'='%s') from root.db.d1",
                 "s2",
                 UDFTestConstant.ACCESS_STRATEGY_KEY,
                 UDFTestConstant.ACCESS_STRATEGY_STATE,
@@ -186,7 +186,7 @@ public class IoTDBUDFWindowQuery2IT {
     } else {
       sql =
           String.format(
-              "select window_start_end(%s, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.sg.d1",
+              "select window_start_end(%s, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.db.d1",
               "s2",
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_STATE,

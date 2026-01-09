@@ -260,9 +260,9 @@ public class IoTDBSeriesPermissionIT {
   }
 
   private void testWriteData() {
-    grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_DATA, "root.sg.d1.s1");
+    grantUserSeriesPrivilege("test1", PrivilegeType.WRITE_DATA, "root.db.d1.s1");
     assertNonQueryTestFail(
-        "insert into root.sg.d1(time,s1,s2) values(1,1,1)",
+        "insert into root.db.d1(time,s1,s2) values(1,1,1)",
         "803: No permissions for this operation, please add privilege WRITE_DATA on [root.sg.d1.s2]",
         "test1",
         "test123123456");

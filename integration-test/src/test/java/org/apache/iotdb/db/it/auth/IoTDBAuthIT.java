@@ -200,7 +200,7 @@ public class IoTDBAuthIT {
           Statement userStmt = userCon.createStatement()) {
 
         Assert.assertThrows(
-            SQLException.class, () -> userStmt.execute("CREATE DATABASE root.sgtest"));
+            SQLException.class, () -> userStmt.execute("CREATE DATABASE root.dbtest"));
 
         adminStmt.execute("GRANT SYSTEM ON root.** TO USER sgtest");
 

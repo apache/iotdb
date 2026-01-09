@@ -979,7 +979,7 @@ public class IoTDBLoadTsFileIT {
 
       statement.execute(String.format("load \"%s\"", tmpDir.getAbsolutePath()));
 
-      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.sg")) {
+      try (final ResultSet resultSet = statement.executeQuery("show timeseries root.db")) {
         Assert.assertFalse(resultSet.next());
       }
     }
@@ -1047,7 +1047,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("load \"%s\" sglevel=2", tmpDir.getAbsolutePath()));
 
       try (final ResultSet resultSet =
-          statement.executeQuery("select count(*) from root.sg.** group by level=1,2")) {
+          statement.executeQuery("select count(*) from root.db.** group by level=1,2")) {
         if (resultSet.next()) {
           final long sg1Count = resultSet.getLong("count(root.db.test_0.*.*)");
           Assert.assertEquals(writtenPoint1, sg1Count);
