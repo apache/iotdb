@@ -157,7 +157,7 @@ public class StatementGeneratorTest {
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s1"), new PartialPath("root.db.d1.s2")),
         queryStatement.getPaths());
     assertEquals(
         new LogicAndExpression(
@@ -175,7 +175,7 @@ public class StatementGeneratorTest {
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s1"), new PartialPath("root.db.d1.s2")),
         queryStatement.getPaths());
     assertEquals(
         new GreaterEqualExpression(
@@ -194,7 +194,7 @@ public class StatementGeneratorTest {
     Statement statement = StatementGenerator.createStatement(req);
     QueryStatement queryStatement = (QueryStatement) statement;
     assertEquals(
-        Arrays.asList(new PartialPath("root.db.d1.s2"), new PartialPath("root.db.d1.s1")),
+        Arrays.asList(new PartialPath("root.db.d1.s1"), new PartialPath("root.db.d1.s2")),
         queryStatement.getPaths());
     assertEquals(
         new ResultColumn(

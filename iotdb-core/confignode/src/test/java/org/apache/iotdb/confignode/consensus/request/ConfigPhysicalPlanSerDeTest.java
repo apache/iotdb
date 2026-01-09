@@ -928,16 +928,15 @@ public class ConfigPhysicalPlanSerDeTest {
   public void CreatePipePlanV2Test() throws IOException {
     final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
-    sourceAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sourceAttributes.put("source", "org.apache.iotdb.pipe.source.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
-    connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
+    sinkAttributes.put("sink", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
-        new PipeStaticMeta(
-            "testPipe", 121, sourceAttributes, processorAttributes, connectorAttributes);
+        new PipeStaticMeta("testPipe", 121, sourceAttributes, processorAttributes, sinkAttributes);
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     final CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     final CreatePipePlanV2 createPipePlanV21 =
@@ -951,18 +950,17 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void AlterPipePlanV2Test() throws IOException {
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("pattern", "root.db");
+    final Map<String, String> sinkAttributes = new HashMap<>();
+    sourceAttributes.put("pattern", "root.db");
     processorAttributes.put("processor", "do-nothing-processor");
-    connectorAttributes.put("batch.enable", "false");
+    sinkAttributes.put("batch.enable", "false");
     final PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     final ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
     pipeTasks.put(1, pipeTaskMeta);
     final PipeStaticMeta pipeStaticMeta =
-        new PipeStaticMeta(
-            "testPipe", 121, extractorAttributes, processorAttributes, connectorAttributes);
+        new PipeStaticMeta("testPipe", 121, sourceAttributes, processorAttributes, sinkAttributes);
     final PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     final AlterPipePlanV2 alterPipePlanV2 = new AlterPipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     final AlterPipePlanV2 alterPipePlanV21 =
@@ -1093,7 +1091,7 @@ public class ConfigPhysicalPlanSerDeTest {
             123L,
             new HashMap<String, String>() {
               {
-                put("extractor-key", "extractor-value");
+                put("source-key", "source-value");
               }
             },
             new HashMap<String, String>() {

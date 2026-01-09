@@ -657,7 +657,7 @@ public class AnalyzeTest {
             .getDataPartitionInfo()
             .getDataPartitionMap()
             .get("root.db")
-            .get(new TSeriesPartitionSlot(1107))
+            .get(new TSeriesPartitionSlot(9133))
             .size());
   }
 
@@ -737,7 +737,7 @@ public class AnalyzeTest {
                 new Pair("root.db.d1.s1", new PartialPath("root.db.d1.s1_1")),
                 new Pair("root.db.d1.s2", new PartialPath("root.db.d1.s2_2")),
                 new Pair("root.db.d2.s1", new PartialPath("root.db.d2_2.s3_3")),
-                new Pair("root.db.d2.s2", new PartialPath("root.backup_sg.d2.s4"))),
+                new Pair("root.db.d2.s2", new PartialPath("root.backup_db.d2.s4"))),
             Arrays.asList(
                 new Pair("root.db.d1.s1", new PartialPath("root.db_bk.new_d1.s1")),
                 new Pair("root.db.d1.s2", new PartialPath("root.db_bk.new_d1.s2"))),
@@ -1034,7 +1034,7 @@ public class AnalyzeTest {
         "alias 'a' can only be matched with one time series");
   }
 
-  private void assertTestFail(String sql, String errMsg) {
+  private void assertTestFail(String sql, String errMdb) {
     try {
       Statement statement =
           StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
@@ -1044,7 +1044,7 @@ public class AnalyzeTest {
       analyzer.analyze(statement);
       fail("No exception!");
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMdb));
     }
   }
 
