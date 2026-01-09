@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.IllegalCompactionTaskSummaryException;
@@ -345,9 +346,10 @@ public class FastCompactionPerformer
         Throwable cause = e.getCause();
         if (cause instanceof CompactionLastTimeCheckFailedException) {
           throw (CompactionLastTimeCheckFailedException) cause;
-        }
-        if (cause instanceof StopReadTsFileByInterruptException) {
+        } else if (cause instanceof StopReadTsFileByInterruptException) {
           throw (StopReadTsFileByInterruptException) cause;
+        } else if (cause instanceof ChunkTypeInconsistentException) {
+          throw (ChunkTypeInconsistentException) cause;
         }
         throw new IOException("[Compaction] SubCompactionTask meet errors ", e);
       } catch (InterruptedException e) {
