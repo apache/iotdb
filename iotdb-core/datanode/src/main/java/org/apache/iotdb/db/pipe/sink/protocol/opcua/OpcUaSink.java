@@ -465,7 +465,7 @@ public class OpcUaSink implements PipeConnector {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       logger.warn(
-          "This Connector only support "
+          "This Sink only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);

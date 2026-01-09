@@ -28,7 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * This class is used to aggregate the write progress of all Connectors to calculate the minimum
+ * This class is used to aggregate the write progress of all Sinks to calculate the minimum
  * synchronization progress of all follower copies, thereby calculating syncLag.
  *
  * <p>Note: every consensusGroup/dataRegion has and only has 1 instance of this class.
@@ -36,7 +36,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class PipeConsensusSyncLagManager {
   long syncLag = Long.MIN_VALUE;
   ReentrantLock lock = new ReentrantLock();
-  Map<ConsensusPipeName, ConsensusPipeSink> consensusPipe2ConnectorMap = new ConcurrentHashMap<>();
+  Map<ConsensusPipeName, ConsensusPipeSink> consensusPipe2SinkMap = new ConcurrentHashMap<>();
 
   /**
    * pinnedCommitIndex - currentReplicateProgress. If res <= 0, indicating that replication is
@@ -44,7 +44,7 @@ public class PipeConsensusSyncLagManager {
    */
   public long getSyncLagForRegionMigration(
       ConsensusPipeName consensusPipeName, long pinnedCommitIndex) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
+    return Optional.ofNullable(consensusPipe2SinkMap.get(consensusPipeName))
         .map(
             consensusPipeSink ->
                 Math.max(pinnedCommitIndex - consensusPipeSink.getFollowerApplyProgress(), 0L))
@@ -56,7 +56,7 @@ public class PipeConsensusSyncLagManager {
    * finished.
    */
   public long getSyncLagForSpecificConsensusPipe(ConsensusPipeName consensusPipeName) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
+    return Optional.ofNullable(consensusPipe2SinkMap.get(consensusPipeName))
         .map(
             consensusPipeSink -> {
               long userWriteProgress = consensusPipeSink.getLeaderReplicateProgress();
@@ -67,25 +67,25 @@ public class PipeConsensusSyncLagManager {
   }
 
   public long getCurrentLeaderReplicateIndex(ConsensusPipeName consensusPipeName) {
-    return Optional.ofNullable(consensusPipe2ConnectorMap.get(consensusPipeName))
+    return Optional.ofNullable(consensusPipe2SinkMap.get(consensusPipeName))
         .map(ConsensusPipeSink::getLeaderReplicateProgress)
         .orElse(0L);
   }
 
-  public void addConsensusPipeConnector(
+  public void addConsensusPipeSink(
       ConsensusPipeName consensusPipeName, ConsensusPipeSink consensusPipeSink) {
     lock.lock();
     try {
-      consensusPipe2ConnectorMap.put(consensusPipeName, consensusPipeSink);
+      consensusPipe2SinkMap.put(consensusPipeName, consensusPipeSink);
     } finally {
       lock.unlock();
     }
   }
 
-  public void removeConsensusPipeConnector(ConsensusPipeName consensusPipeName) {
+  public void removeConsensusPipeSink(ConsensusPipeName consensusPipeName) {
     lock.lock();
     try {
-      consensusPipe2ConnectorMap.remove(consensusPipeName);
+      consensusPipe2SinkMap.remove(consensusPipeName);
     } finally {
       lock.unlock();
     }
@@ -100,12 +100,12 @@ public class PipeConsensusSyncLagManager {
     lock.lock();
     try {
       // if there isn't a consensus pipe task, the syncLag is 0
-      if (consensusPipe2ConnectorMap.isEmpty()) {
+      if (consensusPipe2SinkMap.isEmpty()) {
         return 0;
       }
       // else we find the biggest gap between leader and replicas in all consensus pipe task.
       syncLag = Long.MIN_VALUE;
-      consensusPipe2ConnectorMap
+      consensusPipe2SinkMap
           .keySet()
           .forEach(
               consensusPipeName ->
@@ -118,7 +118,7 @@ public class PipeConsensusSyncLagManager {
   }
 
   public void clear() {
-    this.consensusPipe2ConnectorMap.clear();
+    this.consensusPipe2SinkMap.clear();
   }
 
   private PipeConsensusSyncLagManager() {

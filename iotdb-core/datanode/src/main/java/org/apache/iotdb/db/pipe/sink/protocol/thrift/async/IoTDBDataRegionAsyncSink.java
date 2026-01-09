@@ -50,10 +50,10 @@ import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.handler.PipeTransferT
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeSinkRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -116,7 +116,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
 
-  // It is necessary to ensure that other classes that inherit Async Connector will not have NPE
+  // It is necessary to ensure that other classes that inherit Async Sink will not have NPE
   public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
@@ -212,7 +212,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "IoTDBThriftAsyncSink only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -376,7 +376,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "IoTDBThriftAsyncSink only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }

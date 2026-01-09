@@ -121,7 +121,7 @@ public class ConsensusPipeManager {
             .put(PROCESSOR_KEY, config.getProcessorPluginName())
             .build(),
         ImmutableMap.<String, String>builder()
-            .put(CONNECTOR_KEY, config.getConnectorPluginName())
+            .put(CONNECTOR_KEY, config.getSinkPluginName())
             .put(
                 CONNECTOR_CONSENSUS_GROUP_ID_KEY,
                 String.valueOf(consensusPipeName.getConsensusGroupId().getId()))

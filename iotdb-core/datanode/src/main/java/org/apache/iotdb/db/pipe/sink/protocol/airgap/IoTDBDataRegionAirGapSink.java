@@ -88,7 +88,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector only support "
+          "IoTDBDataRegionAirGapSink only support "
               + "PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Ignore {}.",
           tabletInsertionEvent);
@@ -120,7 +120,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     // PipeProcessor can change the type of tsFileInsertionEvent
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBDataRegionAirGapConnector only support PipeTsFileInsertionEvent. Ignore {}.",
+          "IoTDBDataRegionAirGapSink only support PipeTsFileInsertionEvent. Ignore {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -159,8 +159,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
         doTransferWrapper(socket, (PipeDeleteDataNodeEvent) event);
       } else if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
         LOGGER.warn(
-            "IoTDBDataRegionAirGapConnector does not support transferring generic event: {}.",
-            event);
+            "IoTDBDataRegionAirGapSink does not support transferring generic event: {}.", event);
       }
     } catch (final IOException e) {
       isSocketAlive.set(socketIndex, false);

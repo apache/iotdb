@@ -37,9 +37,9 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
-import org.apache.iotdb.pipe.api.PipeConnector;
+import org.apache.iotdb.pipe.api.PipeSink;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
-import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeSinkRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -91,7 +91,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 @TreeModel
-public class IoTDBLegacyPipeSink implements PipeConnector {
+public class IoTDBLegacyPipeSink implements PipeSink {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLegacyPipeSink.class);
 
@@ -107,7 +107,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private String user;
   private String password;
 
-  private String syncConnectorVersion;
+  private String syncSinkVersion;
 
   private String pipeName;
   private String databaseName;
@@ -173,7 +173,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
 
   @Override
   public void customize(
-      final PipeParameters parameters, final PipeConnectorRuntimeConfiguration configuration)
+      final PipeParameters parameters, final PipeSinkRuntimeConfiguration configuration)
       throws Exception {
     ipAddress = parameters.getStringByKeys(CONNECTOR_IOTDB_IP_KEY, SINK_IOTDB_IP_KEY);
     port = parameters.getIntByKeys(CONNECTOR_IOTDB_PORT_KEY, SINK_IOTDB_PORT_KEY);
@@ -191,7 +191,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
 
-    syncConnectorVersion =
+    syncSinkVersion =
         parameters.getStringOrDefault(
             Arrays.asList(
                 CONNECTOR_IOTDB_SYNC_CONNECTOR_VERSION_KEY, SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY),
@@ -227,7 +227,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
               trustStorePwd);
       final TSyncIdentityInfo identityInfo =
           new TSyncIdentityInfo(
-              pipeName, System.currentTimeMillis(), syncConnectorVersion, databaseName);
+              pipeName, System.currentTimeMillis(), syncSinkVersion, databaseName);
       final TSStatus status = client.handshake(identityInfo);
       if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         final String errorMsg =
@@ -268,7 +268,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
       doTransferWrapper((PipeRawTabletInsertionEvent) tabletInsertionEvent);
     } else {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support "
+          "IoTDBLegacyPipeSink only support "
               + "PipeInsertNodeInsertionEvent and PipeTabletInsertionEvent.");
     }
   }
@@ -277,7 +277,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   public void transfer(final TsFileInsertionEvent tsFileInsertionEvent) throws Exception {
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       throw new NotImplementedException(
-          "IoTDBLegacyPipeConnector only support PipeTsFileInsertionEvent.");
+          "IoTDBLegacyPipeSink only support PipeTsFileInsertionEvent.");
     }
 
     if (!((PipeTsFileInsertionEvent) tsFileInsertionEvent).waitForTsFileClose()) {
@@ -301,8 +301,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   @Override
   public void transfer(final Event event) throws Exception {
     if (!(event instanceof PipeHeartbeatEvent || event instanceof PipeTerminateEvent)) {
-      LOGGER.warn(
-          "IoTDBLegacyPipeConnector does not support transferring generic event: {}.", event);
+      LOGGER.warn("IoTDBLegacyPipeSink does not support transferring generic event: {}.", event);
     }
   }
 
@@ -386,7 +385,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
+    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeSinkReadFileBufferSize()];
     try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);

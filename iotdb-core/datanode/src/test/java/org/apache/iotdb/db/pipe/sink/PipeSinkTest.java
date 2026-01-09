@@ -46,7 +46,7 @@ import java.util.List;
 public class PipeSinkTest {
 
   @Test
-  public void testIoTDBLegacyPipeConnectorToOthers() {
+  public void testIoTDBLegacyPipeSinkToOthers() {
     try (IoTDBLegacyPipeSink sink = new IoTDBLegacyPipeSink()) {
       sink.validate(
           new PipeParameterValidator(
@@ -66,7 +66,7 @@ public class PipeSinkTest {
   }
 
   @Test
-  public void testIoTDBThriftSyncConnectorToOthers() {
+  public void testIoTDBThriftSyncSinkToOthers() {
     try (IoTDBDataRegionSyncSink sink = new IoTDBDataRegionSyncSink()) {
       sink.validate(
           new PipeParameterValidator(
@@ -86,7 +86,7 @@ public class PipeSinkTest {
   }
 
   @Test
-  public void testIoTDBThriftAsyncConnectorToOthers() {
+  public void testIoTDBThriftAsyncSinkToOthers() {
     try (IoTDBDataRegionAsyncSink sink = new IoTDBDataRegionAsyncSink()) {
       sink.validate(
           new PipeParameterValidator(
