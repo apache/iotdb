@@ -54,12 +54,15 @@ public class ShowAIDevicesTask implements IConfigTask {
             .map(ColumnHeader::getColumnType)
             .collect(Collectors.toList());
     TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (Map.Entry<String, String> deviceEntry : resp.getDeviceIdMap().entrySet()) {
-      builder.getTimeColumnBuilder().writeLong(0L);
-      builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(deviceEntry.getKey()));
-      builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(deviceEntry.getValue()));
-      builder.declarePosition();
-    }
+    resp.getDeviceIdMap().entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .forEach(
+            deviceEntry -> {
+              builder.getTimeColumnBuilder().writeLong(0L);
+              builder.getColumnBuilder(0).writeBinary(BytesUtils.valueOf(deviceEntry.getKey()));
+              builder.getColumnBuilder(1).writeBinary(BytesUtils.valueOf(deviceEntry.getValue()));
+              builder.declarePosition();
+            });
     DatasetHeader datasetHeader = DatasetHeaderFactory.getShowAIDevicesHeader();
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }

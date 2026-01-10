@@ -77,8 +77,6 @@ class InferenceRequestPool(mp.Process):
         self.ready_event = ready_event
         self.device = device
 
-        self._backend = DeviceManager()
-
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
         self._running_queue = mp.Queue()  # Requests that are currently being processed
@@ -89,8 +87,8 @@ class InferenceRequestPool(mp.Process):
         self._batcher = BasicBatcher()
         self._stop_event = mp.Event()
 
+        self._backend = None
         self._inference_pipeline = None
-
         self._logger = None
 
         # Fix inference seed
@@ -186,6 +184,7 @@ class InferenceRequestPool(mp.Process):
         self._logger = Logger(
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
+        self._backend = DeviceManager()
         self._request_scheduler.device = self.device
         self._inference_pipeline = load_pipeline(self.model_info, self.device)
         self.ready_event.set()
