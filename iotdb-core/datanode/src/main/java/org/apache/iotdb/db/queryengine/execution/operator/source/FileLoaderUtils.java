@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet;
@@ -488,7 +489,13 @@ public class FileLoaderUtils {
         chunkMetaData.setModified(true);
       }
       IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-      chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
+      try {
+        chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
+      } catch (ChunkTypeInconsistentException e) {
+        // if the chunk in tsfile is a value chunk of aligned series, we should skip all data of
+        // this chunk.
+        return Collections.emptyList();
+      }
     }
 
     return isModified
