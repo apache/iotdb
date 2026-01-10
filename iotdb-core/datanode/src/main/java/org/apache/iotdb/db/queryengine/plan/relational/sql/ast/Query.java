@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.db.utils.cte.CteDataStore;
+
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -40,6 +42,12 @@ public class Query extends Statement {
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
+  // whether this query needs materialization
+  private boolean materialized = false;
+  // whether this query has ever been executed
+  private boolean isExecuted = false;
+  // materialization has been executed successfully if cteDataStore is not null
+  private CteDataStore cteDataStore = null;
 
   public Query(
       Optional<With> with,
@@ -100,6 +108,34 @@ public class Query extends Statement {
 
   public Optional<Node> getLimit() {
     return limit;
+  }
+
+  public boolean isMaterialized() {
+    return materialized;
+  }
+
+  public void setMaterialized(boolean materialized) {
+    this.materialized = materialized;
+  }
+
+  public boolean isExecuted() {
+    return isExecuted;
+  }
+
+  public void setExecuted(boolean executed) {
+    isExecuted = executed;
+  }
+
+  public boolean isDone() {
+    return cteDataStore != null;
+  }
+
+  public void setCteDataStore(CteDataStore cteDataStore) {
+    this.cteDataStore = cteDataStore;
+  }
+
+  public CteDataStore getCteDataStore() {
+    return this.cteDataStore;
   }
 
   @Override

@@ -77,14 +77,14 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 public class ForecastTableFunction implements TableFunction {
 
   public static class ForecastTableFunctionHandle implements TableFunctionHandle {
-    String modelId;
-    int maxInputLength;
-    int outputLength;
-    long outputStartTime;
-    long outputInterval;
-    boolean keepInput;
-    Map<String, String> options;
-    List<Type> targetColumntypes;
+    protected String modelId;
+    protected int maxInputLength;
+    protected int outputLength;
+    protected long outputStartTime;
+    protected long outputInterval;
+    protected boolean keepInput;
+    protected Map<String, String> options;
+    protected List<Type> targetColumntypes;
 
     public ForecastTableFunctionHandle() {}
 
@@ -182,22 +182,22 @@ public class ForecastTableFunction implements TableFunction {
     }
   }
 
-  private static final String TARGETS_PARAMETER_NAME = "TARGETS";
-  private static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
-  private static final String OUTPUT_LENGTH_PARAMETER_NAME = "OUTPUT_LENGTH";
-  private static final int DEFAULT_OUTPUT_LENGTH = 96;
-  private static final String OUTPUT_START_TIME = "OUTPUT_START_TIME";
+  protected static final String TARGETS_PARAMETER_NAME = "TARGETS";
+  protected static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
+  protected static final String OUTPUT_LENGTH_PARAMETER_NAME = "OUTPUT_LENGTH";
+  protected static final int DEFAULT_OUTPUT_LENGTH = 96;
+  protected static final String OUTPUT_START_TIME = "OUTPUT_START_TIME";
   public static final long DEFAULT_OUTPUT_START_TIME = Long.MIN_VALUE;
-  private static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
+  protected static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
   public static final long DEFAULT_OUTPUT_INTERVAL = 0L;
   public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String DEFAULT_TIME_COL = "time";
-  private static final String KEEP_INPUT_PARAMETER_NAME = "PRESERVE_INPUT";
-  private static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
-  private static final String IS_INPUT_COLUMN_NAME = "is_input";
-  private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
-  private static final String DEFAULT_OPTIONS = "";
-  private static final int MAX_INPUT_LENGTH = 2880;
+  protected static final String DEFAULT_TIME_COL = "time";
+  protected static final String KEEP_INPUT_PARAMETER_NAME = "PRESERVE_INPUT";
+  protected static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
+  protected static final String IS_INPUT_COLUMN_NAME = "is_input";
+  protected static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
+  protected static final String DEFAULT_OPTIONS = "";
+  protected static final int MAX_INPUT_LENGTH = 2880;
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
@@ -366,7 +366,7 @@ public class ForecastTableFunction implements TableFunction {
   }
 
   // only allow for INT32, INT64, FLOAT, DOUBLE
-  private void checkType(Type type, String columnName) {
+  public void checkType(Type type, String columnName) {
     if (!ALLOWED_INPUT_TYPES.contains(type)) {
       throw new SemanticException(
           String.format(
@@ -375,7 +375,7 @@ public class ForecastTableFunction implements TableFunction {
     }
   }
 
-  private static Map<String, String> parseOptions(String options) {
+  public static Map<String, String> parseOptions(String options) {
     if (options.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -397,22 +397,22 @@ public class ForecastTableFunction implements TableFunction {
     return optionsMap;
   }
 
-  private static class ForecastDataProcessor implements TableFunctionDataProcessor {
+  protected static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
-    private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
+    protected static final TsBlockSerde SERDE = new TsBlockSerde();
+    protected static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
         AINodeClientManager.getInstance();
 
-    private final String modelId;
+    protected final String modelId;
     private final int maxInputLength;
-    private final int outputLength;
+    protected final int outputLength;
     private final long outputStartTime;
     private final long outputInterval;
     private final boolean keepInput;
-    private final Map<String, String> options;
-    private final LinkedList<Record> inputRecords;
-    private final List<ResultColumnAppender> resultColumnAppenderList;
-    private final TsBlockBuilder inputTsBlockBuilder;
+    protected final Map<String, String> options;
+    protected final LinkedList<Record> inputRecords;
+    protected final List<ResultColumnAppender> resultColumnAppenderList;
+    protected final TsBlockBuilder inputTsBlockBuilder;
 
     public ForecastDataProcessor(ForecastTableFunctionHandle functionHandle) {
       this.modelId = functionHandle.modelId;
@@ -536,7 +536,7 @@ public class ForecastTableFunction implements TableFunction {
       }
     }
 
-    private TsBlock forecast() {
+    protected TsBlock forecast() {
       // construct inputTSBlock for AINode
       while (!inputRecords.isEmpty()) {
         Record row = inputRecords.removeFirst();
