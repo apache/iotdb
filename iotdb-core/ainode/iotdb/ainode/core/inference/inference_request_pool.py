@@ -121,8 +121,8 @@ class InferenceRequestPool(mp.Process):
 
         for requests in grouped_requests:
             batch_inputs = self._backend.move_tensor(
-                self._batcher.batch_request(requests), self._backend.torch_device("cpu")
-            )  # The input data should first load to CPU in current version
+                self._batcher.batch_request(requests), self.device
+            )
             batch_input_list = []
             for i in range(batch_inputs.size(0)):
                 batch_input_list.append({"targets": batch_inputs[i]})
