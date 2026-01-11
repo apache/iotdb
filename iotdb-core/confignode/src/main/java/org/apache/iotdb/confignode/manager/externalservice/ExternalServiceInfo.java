@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager.externalservice;
 
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -37,6 +38,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -160,11 +162,21 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     return res;
   }
 
-  public ShowExternalServiceResp showService() {
+  public ShowExternalServiceResp showService(Set<Integer> dataNodes) {
     return new ShowExternalServiceResp(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        datanodeToServiceInfos.values().stream()
-            .flatMap(stringServiceInfoMap -> stringServiceInfoMap.values().stream())
+        datanodeToServiceInfos.entrySet().stream()
+            .filter(entry -> dataNodes.contains(entry.getKey()))
+            .flatMap(
+                entry ->
+                    entry.getValue().values().stream()
+                        .map(
+                            serviceInfo ->
+                                new TExternalServiceEntry(
+                                    serviceInfo.getServiceName(),
+                                    serviceInfo.getClassName(),
+                                    serviceInfo.getState().getValue(),
+                                    entry.getKey(),
+                                    ServiceInfo.ServiceType.USER_DEFINED.getValue())))
             .collect(Collectors.toList()));
   }
 
@@ -180,6 +192,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
+      // TODO
       // serializeExistedJarToMD5(fileOutputStream);
 
       // udfTable.serializeUDFTable(fileOutputStream);

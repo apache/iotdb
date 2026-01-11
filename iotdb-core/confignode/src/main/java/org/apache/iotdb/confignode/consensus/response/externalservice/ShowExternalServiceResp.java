@@ -22,33 +22,32 @@ package org.apache.iotdb.confignode.consensus.response.externalservice;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.validation.constraints.NotNull;
 
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ShowExternalServiceResp implements DataSet {
 
-  private final TSStatus status;
-  private final List<ServiceInfo> serviceInfos;
+  private final List<TExternalServiceEntry> serviceInfoEntryList;
 
-  public ShowExternalServiceResp(
-      @NotNull TSStatus status, @NotNull List<ServiceInfo> serviceInfos) {
-    this.status = status;
-    this.serviceInfos = serviceInfos;
+  public ShowExternalServiceResp(@NotNull List<TExternalServiceEntry> serviceInfoEntryList) {
+    this.serviceInfoEntryList = serviceInfoEntryList;
+  }
+
+  public List<TExternalServiceEntry> getServiceInfoEntryList() {
+    return serviceInfoEntryList;
   }
 
   public TExternalServiceListResp convertToRpcShowExternalServiceResp() {
+    serviceInfoEntryList.sort(
+        Comparator.comparingInt(TExternalServiceEntry::getDataNodId)
+            .thenComparing(TExternalServiceEntry::getServiceType)
+            .thenComparing(TExternalServiceEntry::getServiceName));
     return new TExternalServiceListResp(
-        status,
-        serviceInfos.stream()
-            .map(
-                entry ->
-                    new TExternalServiceEntry(
-                        entry.getServiceName(), entry.getClassName(), entry.getState().getValue()))
-            .collect(Collectors.toList()));
+        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), serviceInfoEntryList);
   }
 }

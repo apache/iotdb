@@ -17,39 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice;
 
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateExternalServiceTask implements IConfigTask {
+import java.util.Locale;
+
+public class StartExternalServiceTask implements IConfigTask {
 
   private final String serviceName;
-  private final String className;
 
-  private final int dataNodeId;
-
-  public CreateExternalServiceTask(CreateExternalServiceStatement statement) {
-    this.serviceName = statement.getServiceName();
-    this.className = statement.getClassName();
-    this.dataNodeId = QueryId.getDataNodeId();
-  }
-
-  public CreateExternalServiceTask(CreateFunction createFunctionStatement) {
-    this.serviceName = createFunctionStatement.getUdfName();
-    this.className = createFunctionStatement.getClassName();
-    this.dataNodeId = QueryId.getDataNodeId();
+  public StartExternalServiceTask(String serviceName) {
+    this.serviceName = serviceName.toUpperCase(Locale.ENGLISH);
+    ;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createExternalService(dataNodeId, serviceName, className);
+    return configTaskExecutor.startExternalService(serviceName);
   }
 }

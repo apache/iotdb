@@ -1346,27 +1346,35 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
 
   @Override
   public TSStatus createExternalService(TCreateExternalServiceReq req) throws TException {
-    return null;
+    return executeRemoteCallWithRetry(
+        () -> client.createExternalService(req), resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override
   public TSStatus startExternalService(int dataNodeId, String serviceName) throws TException {
-    return null;
+    return executeRemoteCallWithRetry(
+        () -> client.startExternalService(dataNodeId, serviceName),
+        resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override
   public TSStatus stopExternalService(int dataNodeId, String serviceName) throws TException {
-    return null;
+    return executeRemoteCallWithRetry(
+        () -> client.stopExternalService(dataNodeId, serviceName),
+        resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override
   public TSStatus dropExternalService(int dataNodeId, String serviceName) throws TException {
-    return null;
+    return executeRemoteCallWithRetry(
+        () -> client.dropExternalService(dataNodeId, serviceName),
+        resp -> !updateConfigNodeLeader(resp));
   }
 
   @Override
   public TExternalServiceListResp showExternalService(int dataNodeId) throws TException {
-    return null;
+    return executeRemoteCallWithRetry(
+        () -> client.showExternalService(dataNodeId), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

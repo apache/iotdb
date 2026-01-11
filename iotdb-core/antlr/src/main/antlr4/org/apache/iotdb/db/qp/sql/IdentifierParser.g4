@@ -115,6 +115,7 @@ keyWords
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION

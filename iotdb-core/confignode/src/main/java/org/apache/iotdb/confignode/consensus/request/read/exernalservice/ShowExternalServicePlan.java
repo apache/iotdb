@@ -22,20 +22,20 @@ package org.apache.iotdb.confignode.consensus.request.read.exernalservice;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.read.ConfigPhysicalReadPlan;
 
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /** Get infos of ExternalService by the DataNode's id. */
 public class ShowExternalServicePlan extends ConfigPhysicalReadPlan {
 
-  private final List<Integer> dataNodeIds;
+  private final Set<Integer> dataNodeIds;
 
-  public ShowExternalServicePlan(List<Integer> dataNodeIds) {
-    super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
+  public ShowExternalServicePlan(Set<Integer> dataNodeIds) {
+    super(ConfigPhysicalPlanType.ShowExternalService);
     this.dataNodeIds = dataNodeIds;
   }
 
-  public List<Integer> getDataNodeIds() {
+  public Set<Integer> getDataNodeIds() {
     return dataNodeIds;
   }
 

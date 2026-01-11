@@ -454,7 +454,8 @@ stopService
     ;
 
 dropService
-    : DROP SERVICE serviceName=identifier
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+
     ;
 
 showService

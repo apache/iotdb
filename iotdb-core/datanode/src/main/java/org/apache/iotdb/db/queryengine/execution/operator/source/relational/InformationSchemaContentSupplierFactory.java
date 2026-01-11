@@ -861,6 +861,8 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
+  // TODO add ExternalService
+
   private static class ConfigurationsSupplier extends TsBlockSupplier {
     private final Iterator<Pair<Binary, Binary>> resultIterator;
 

@@ -22,14 +22,14 @@ package org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 
 import java.util.Collections;
 import java.util.List;
 
-public class ShowExternalServiceStatement extends Statement implements IConfigStatement {
+public class ShowExternalServiceStatement extends ShowStatement implements IConfigStatement {
 
   private final int dataNodeId;
 
@@ -49,12 +49,12 @@ public class ShowExternalServiceStatement extends Statement implements IConfigSt
   }
 
   @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 }

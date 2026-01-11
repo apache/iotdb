@@ -19,11 +19,22 @@
 
 package org.apache.iotdb.db.service.exernalservice;
 
-import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.externalservice.api.IExternalService;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +43,7 @@ import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -55,30 +67,49 @@ public class ExternalServiceManagementService {
 
   private ExternalServiceManagementService(String libRoot) {
     this.serviceInfos = new HashMap<>();
+    restoreBuiltInServices();
     this.libRoot = libRoot;
   }
 
-  public List<ServiceInfo> getAllServices() {
+  public Iterator<TExternalServiceEntry> showService(int dataNodeId)
+      throws ClientManagerException, TException {
     try {
-      lock.writeLock().lock();
-      return serviceInfos.values().stream().collect(Collectors.toList());
+      lock.readLock().lock();
+
+      ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+      TExternalServiceListResp resp = client.showExternalService(dataNodeId);
+      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(resp.getStatus().message, resp.getStatus().code);
+      }
+      return resp.getExternalServiceInfos().iterator();
     } finally {
-      lock.writeLock().unlock();
+      lock.readLock().unlock();
     }
   }
 
-  public void createService(String serviceName, String className) {
+  public void createService(String serviceName, String className)
+      throws ClientManagerException, TException {
     try {
       lock.writeLock().lock();
 
+      // 1. validate
       if (serviceInfos.containsKey(serviceName)) {
         throw new ExternalServiceManagementException(
             String.format("Failed to create External Service %s, it already exists!", serviceName));
       }
 
-      /*logAccessor.writeWal(
-      new ServiceLogAccessor.ServiceWalEntry(
-          ServiceLogAccessor.OperationType.CREATE, serviceName, className));*/
+      // 2. persist on CN
+      ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+      TSStatus status =
+          client.createExternalService(
+              new TCreateExternalServiceReq(QueryId.getDataNodeId(), serviceName, className));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.message, status.code);
+      }
+
+      // 3. modify memory info
       serviceInfos.put(
           serviceName,
           new ServiceInfo(serviceName, className, ServiceInfo.ServiceType.USER_DEFINED));
@@ -87,17 +118,19 @@ public class ExternalServiceManagementService {
     }
   }
 
-  public void startService(String serviceName) {
+  public void startService(String serviceName) throws ClientManagerException, TException {
     try {
       lock.writeLock().lock();
 
+      // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
         throw new ExternalServiceManagementException(
             String.format(
-                "Failed to stop External Service %s, because it is not existed!", serviceName));
+                "Failed to start External Service %s, because it is not existed!", serviceName));
       }
 
+      // 2. call start method of ServiceInstance, create if Instance was not created
       if (serviceInfo.getState() == RUNNING) {
         return;
       } else {
@@ -110,9 +143,16 @@ public class ExternalServiceManagementService {
         }
       }
 
-      /*logAccessor.writeWal(
-      new ServiceLogAccessor.ServiceWalEntry(
-          ServiceLogAccessor.OperationType.START, serviceName, null));*/
+      // 3. persist on CN, rollback if failed
+      ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+      TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        serviceInfo.getServiceInstance().stop();
+        throw new IoTDBRuntimeException(status.message, status.code);
+      }
+
+      // 4. modify memory info
       serviceInfo.setState(RUNNING);
     } finally {
       lock.writeLock().unlock();
@@ -140,10 +180,11 @@ public class ExternalServiceManagementService {
     }
   }
 
-  public void stopService(String serviceName) {
+  public void stopService(String serviceName) throws ClientManagerException, TException {
     try {
       lock.writeLock().lock();
 
+      // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
         throw new ExternalServiceManagementException(
@@ -151,6 +192,7 @@ public class ExternalServiceManagementService {
                 "Failed to start External Service %s, because it is not existed!", serviceName));
       }
 
+      // 2. call stop method of ServiceInstance
       if (serviceInfo.getState() == STOPPED) {
         return;
       } else {
@@ -158,9 +200,16 @@ public class ExternalServiceManagementService {
         stopService(serviceInfo);
       }
 
-      /*logAccessor.writeWal(
-      new ServiceLogAccessor.ServiceWalEntry(
-          ServiceLogAccessor.OperationType.STOP, serviceName, null));*/
+      // 3. persist on CN, rollback if failed
+      ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+      TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        serviceInfo.getServiceInstance().start();
+        throw new IoTDBRuntimeException(status.message, status.code);
+      }
+
+      // 4. modify memory info
       serviceInfo.setState(STOPPED);
     } finally {
       lock.writeLock().unlock();
@@ -175,10 +224,12 @@ public class ExternalServiceManagementService {
     serviceInfo.getServiceInstance().stop();
   }
 
-  public void dropService(String serviceName, boolean forcedly) {
+  public void dropService(String serviceName, boolean forcedly)
+      throws ClientManagerException, TException {
     try {
       lock.writeLock().lock();
 
+      // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
         throw new ExternalServiceManagementException(
@@ -191,6 +242,7 @@ public class ExternalServiceManagementService {
                 "Failed to drop External Service %s, because it is BUILT-IN!", serviceName));
       }
 
+      // 2. stop or fail when service are not stopped
       if (serviceInfo.getState() == STOPPED) {
         // do nothing
       } else {
@@ -211,21 +263,24 @@ public class ExternalServiceManagementService {
         }
       }
 
-      /*logAccessor.writeWal(
-      new ServiceLogAccessor.ServiceWalEntry(
-          ServiceLogAccessor.OperationType.DROP, serviceName, null));*/
+      // 3. persist on CN
+      ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
+      TSStatus status = client.dropExternalService(QueryId.getDataNodeId(), serviceName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.message, status.code);
+      }
+
+      // 4. modify memory info
       serviceInfos.remove(serviceName);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-  public void start() throws StartupException {
+  public void restoreRunningServices() {
     lock.writeLock().lock();
     try {
-      restoreBuiltInServices();
-      restoreUserDefinedServices();
-
       // start services with RUNNING state
       serviceInfos
           .values()
@@ -253,8 +308,23 @@ public class ExternalServiceManagementService {
     }
   }
 
-  private void restoreUserDefinedServices() {
-    // TODO
+  public List<TExternalServiceEntry> getBuiltInServices() {
+    try {
+      lock.readLock().lock();
+      return serviceInfos.values().stream()
+          .filter(serviceInfo -> serviceInfo.getServiceType() == ServiceInfo.ServiceType.BUILTIN)
+          .map(
+              serviceInfo ->
+                  new TExternalServiceEntry(
+                      serviceInfo.getServiceName(),
+                      serviceInfo.getClassName(),
+                      serviceInfo.getState().getValue(),
+                      QueryId.getDataNodeId(),
+                      ServiceInfo.ServiceType.BUILTIN.getValue()))
+          .collect(Collectors.toList());
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public static ExternalServiceManagementService getInstance() {

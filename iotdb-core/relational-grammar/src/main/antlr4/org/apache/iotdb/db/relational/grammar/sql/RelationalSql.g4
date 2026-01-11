@@ -396,7 +396,7 @@ stopServiceStatement
     ;
 
 dropServiceStatement
-    : DROP SERVICE serviceName=identifier
+    : DROP SERVICE serviceName=identifier FORCEDLY?
     ;
 
 showServiceStatement
@@ -1604,6 +1604,7 @@ FIRST: 'FIRST';
 FLUSH: 'FLUSH';
 FOLLOWING: 'FOLLOWING';
 FOR: 'FOR';
+FORCEDLY: 'FORCEDLY';
 FORMAT: 'FORMAT';
 FROM: 'FROM';
 FULL: 'FULL';

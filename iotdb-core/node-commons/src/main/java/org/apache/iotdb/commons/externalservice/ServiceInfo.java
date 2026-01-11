@@ -111,8 +111,36 @@ public class ServiceInfo {
   }
 
   public enum ServiceType {
-    BUILTIN,
-    USER_DEFINED
+    BUILTIN((byte) 0, "built-in"),
+    USER_DEFINED((byte) 1, "user-defined");
+
+    private final byte value;
+
+    private final String displayName;
+
+    ServiceType(byte value, String displayName) {
+      this.value = value;
+      this.displayName = displayName;
+    }
+
+    public byte getValue() {
+      return value;
+    }
+
+    public String getDisplayName() {
+      return displayName;
+    }
+
+    public static ServiceType deserialize(byte t) {
+      switch (t) {
+        case 0:
+          return BUILTIN;
+        case 1:
+          return USER_DEFINED;
+        default:
+          throw new IllegalArgumentException("Unknown ServiceType: " + t);
+      }
+    }
   }
 
   public enum State {

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TLoadSample;
@@ -187,6 +188,7 @@ import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
+import org.apache.iotdb.db.service.exernalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
@@ -2940,10 +2942,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TExternalServiceListResp getBuiltInService() {
     try {
 
-      // PipeDataNodeAgent.plugin().deregister(req.getPipePluginName(), req.isNeedToDeleteJar());
-      // TODO
+      List<TExternalServiceEntry> serviceEntries =
+          ExternalServiceManagementService.getInstance().getBuiltInServices();
       return new TExternalServiceListResp(
-          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), null);
+          new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()), serviceEntries);
     } catch (Exception e) {
       return new TExternalServiceListResp(
           new TSStatus(TSStatusCode.GET_BUILTIN_EXTERNAL_SERVICE_ERROR.getStatusCode())

@@ -1117,7 +1117,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitDropService(IoTDBSqlParser.DropServiceContext ctx) {
-    return new DropExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+    return new DropExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()), false);
   }
 
   @Override

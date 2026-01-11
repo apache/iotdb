@@ -32,15 +32,21 @@ import java.util.List;
 public class DropExternalServiceStatement extends Statement implements IConfigStatement {
 
   private final String serviceName;
+  private final boolean forcedly;
 
-  public DropExternalServiceStatement(String serviceName) {
+  public DropExternalServiceStatement(String serviceName, boolean forcedly) {
     super();
     statementType = StatementType.DROP_EXTERNAL_SERVICE;
     this.serviceName = serviceName;
+    this.forcedly = forcedly;
   }
 
   public String getServiceName() {
     return serviceName;
+  }
+
+  public boolean isForcedly() {
+    return forcedly;
   }
 
   @Override

@@ -382,6 +382,11 @@ FOR
     : F O R
     ;
 
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
+
 FROM
     : F R O M
     ;

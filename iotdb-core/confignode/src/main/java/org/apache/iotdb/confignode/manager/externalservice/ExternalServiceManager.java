@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopE
 import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -42,7 +41,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Map;
 
@@ -164,20 +162,19 @@ public class ExternalServiceManager {
 
     try {
       // 2. get user-defined services info from CN consensus
-      DataSet response =
-          configManager
-              .getConsensusManager()
-              .read(new ShowExternalServicePlan(new ArrayList<>(builtInServiceInfos.keySet())));
-      TExternalServiceListResp resp =
-          ((ShowExternalServiceResp) response).convertToRpcShowExternalServiceResp();
+      ShowExternalServiceResp response =
+          (ShowExternalServiceResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new ShowExternalServicePlan(builtInServiceInfos.keySet()));
 
       // 3. combined built-in services info and user-defined services info
       builtInServiceInfos
           .values()
           .forEach(
               builtInResp ->
-                  resp.externalServiceInfos.addAll(builtInResp.getExternalServiceInfos()));
-      return resp;
+                  response.getServiceInfoEntryList().addAll(builtInResp.getExternalServiceInfos()));
+      return response.convertToRpcShowExternalServiceResp();
     } catch (ConsensusException e) {
       LOGGER.warn("Unexpected error happened while showing Service: ", e);
       // consensus layer related errors
