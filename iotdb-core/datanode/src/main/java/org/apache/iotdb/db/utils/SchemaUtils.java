@@ -440,7 +440,6 @@ public class SchemaUtils {
       IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
     switch (chunkMetadata.getDataType()) {
       case INT32:
-      case DATE:
       case INT64:
       case TIMESTAMP:
       case FLOAT:
@@ -465,11 +464,9 @@ public class SchemaUtils {
                 new Binary(
                     chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
           }
-          long[] longValues = new long[4];
+          long[] longValues = new long[2];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
-          longValues[2] = longValues[1];
-          longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
         } else if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
@@ -490,6 +487,51 @@ public class SchemaUtils {
           statistics.update(longValues, binaryValues, binaryValues.length);
         } else {
           statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case DATE:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getLastValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[2] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getMinValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[3] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getMaxValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getLastValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
         }
         break;
       case STRING:
@@ -521,8 +563,8 @@ public class SchemaUtils {
       case TEXT:
         if (targetDataType == TSDataType.STRING) {
           Binary[] binaryValues = new Binary[2];
-          binaryValues[0] = EMPTY_BINARY;
-          binaryValues[1] = EMPTY_BINARY;
+          binaryValues[0] = (Binary) chunkMetadata.getStatistics().getFirstValue();
+          binaryValues[1] = (Binary) chunkMetadata.getStatistics().getLastValue();
           long[] longValues = new long[2];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();

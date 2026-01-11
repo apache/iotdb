@@ -140,6 +140,7 @@ public class IoTDBAlterColumnTypeIT {
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
       session.executeNonQueryStatement("SET CONFIGURATION enable_unseq_space_compaction='false'");
+      session.executeNonQueryStatement("SET CONFIGURATION enable_seq_space_compaction='false'");
       if (from == TSDataType.DATE && !to.isCompatible(from)) {
         throw new NotSupportedException("Not supported DATE type.");
       }
