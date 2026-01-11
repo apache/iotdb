@@ -3308,14 +3308,15 @@ public class DataRegion implements IDataRegionForQuery {
                   fileEndTime);
             }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
-                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)) {
+                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && !isDropMeasurementExist) {
               ++matchSize;
             } else {
               deletedByMods.add(sealedTsFile);
               break;
             }
           }
-          if (matchSize == devicesInFile.size() && !isDropMeasurementExist) {
+          if (matchSize == devicesInFile.size()) {
             deletedByFiles.add(sealedTsFile);
           }
 
