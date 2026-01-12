@@ -916,10 +916,13 @@ public class SeriesScanUtil implements Accountable {
     if (length > 0) {
       for (int i = 0; i < length; i++) {
         TSDataType finalDataType = getTsDataTypeList().get(i);
-        if ((valueColumns[i].getDataType() != finalDataType)
-            && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
-                || (valueColumns[i].getDataType().equals(TSDataType.DATE)
-                    && (finalDataType == TSDataType.STRING || finalDataType == TSDataType.TEXT)))) {
+        if ((valueColumns[i].getDataType().equals(TSDataType.DATE)
+                && (valueColumns[i].getDataType() != TSDataType.INT32))
+            || ((valueColumns[i].getDataType() != finalDataType)
+                && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
+                    || (valueColumns[i].getDataType().equals(TSDataType.DATE)
+                        && (finalDataType == TSDataType.STRING
+                            || finalDataType == TSDataType.TEXT))))) {
           isTypeInconsistent = true;
           break;
         }
@@ -1230,14 +1233,19 @@ public class SeriesScanUtil implements Accountable {
           break;
         case DATE:
           if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
-            newValueColumns[i] = valueColumns[i];
+            newValueColumns[i] =
+                new IntColumn(
+                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
+            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
+              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
+              if (!valueColumns[i].isNull()[j]) {
+                newValueColumns[i].getInts()[j] = valueColumns[i].getInts()[j];
+              }
+            }
           } else {
             newValueColumns[i] =
                 new IntColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new int[positionCount],
-                    TSDataType.DATE);
+                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
             for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = true;
             }
@@ -1931,7 +1939,6 @@ public class SeriesScanUtil implements Accountable {
         return true;
       }
       if (valueTimeseriesMetadataList != null) {
-        int incompactibleCount = 0;
         for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
           TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
           if (valueTimeSeriesMetadata != null
@@ -1939,10 +1946,8 @@ public class SeriesScanUtil implements Accountable {
                   .get(i)
                   .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
             valueTimeseriesMetadataList.set(i, null);
-            incompactibleCount++;
           }
         }
-        return incompactibleCount != getTsDataTypeList().size();
       }
       return true;
     }
