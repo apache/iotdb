@@ -108,7 +108,7 @@ public class SchemaUtilsTest {
         try {
           AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
               SchemaUtils.rewriteAlignedChunkMetadataStatistics(
-                  alignedChunkMetadata, targetDataType);
+                  alignedChunkMetadata, 0, targetDataType);
           if (!abstractAlignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
             Assert.assertEquals(
                 targetDataType,
@@ -205,9 +205,11 @@ public class SchemaUtilsTest {
         AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
             (AbstractAlignedChunkMetadata) alignedChunkMetadata;
         try {
-          abstractAlignedChunkMetadata =
-              SchemaUtils.rewriteAlignedChunkMetadataStatistics(
-                  abstractAlignedChunkMetadata, targetDataType);
+          for (int i = 0; i < 2; i++) {
+            abstractAlignedChunkMetadata =
+                SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+                    abstractAlignedChunkMetadata, i, targetDataType);
+          }
         } catch (ClassCastException e) {
           Assert.fail(e.getMessage());
         }
