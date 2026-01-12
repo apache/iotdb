@@ -278,21 +278,31 @@ public class ExternalServiceManagementService {
     }
   }
 
-  public void restoreRunningServices() {
-    lock.writeLock().lock();
-    try {
-      // start services with RUNNING state
-      serviceInfos
-          .values()
-          .forEach(
-              serviceInfo -> {
-                if (serviceInfo.getState() == RUNNING) {
-                  serviceInfo.setServiceInstance(
-                      createExternalServiceInstance(serviceInfo.getServiceName()));
-                }
-              });
-    } finally {
-      lock.writeLock().unlock();
+  public void restoreRunningServiceInstance() {
+    // Needn't use lock here, we use this method when active DN and there is no concurrent risk
+    serviceInfos
+        .values()
+        .forEach(
+            serviceInfo -> {
+              // start services with RUNNING state
+              if (serviceInfo.getState() == RUNNING) {
+                IExternalService serviceInstance = serviceInfo.getServiceInstance();
+                serviceInfo.setServiceInstance(serviceInstance);
+                serviceInstance.start();
+              }
+            });
+  }
+
+  public void restoreUserDefinedServices(List<TExternalServiceEntry> serviceEntryList) {
+    // Needn't use lock here, we use this method when active DN and there is no concurrent risk
+    for (TExternalServiceEntry serviceEntry : serviceEntryList) {
+      serviceInfos.put(
+          serviceEntry.getServiceName(),
+          new ServiceInfo(
+              serviceEntry.getServiceName(),
+              serviceEntry.getClassName(),
+              ServiceInfo.ServiceType.USER_DEFINED,
+              ServiceInfo.State.deserialize(serviceEntry.getState())));
     }
   }
 

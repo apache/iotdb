@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.externalservice;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
@@ -42,7 +43,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+
+import static com.google.common.base.Preconditions.checkState;
 
 public class ExternalServiceManager {
 
@@ -181,6 +185,22 @@ public class ExternalServiceManager {
       TSStatus res = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
       res.setMessage(e.getMessage());
       return new TExternalServiceListResp(res, Collections.emptyList());
+    }
+  }
+
+  public List<TExternalServiceEntry> getUserDefinedService(int dataNodeId) {
+    try {
+      checkState(dataNodeId != -1, "dataNodeId should not be -1 here");
+
+      ShowExternalServiceResp response =
+          (ShowExternalServiceResp)
+              configManager
+                  .getConsensusManager()
+                  .read(new ShowExternalServicePlan(Collections.singleton(dataNodeId)));
+      return response.getServiceInfoEntryList();
+    } catch (ConsensusException e) {
+      LOGGER.warn("Unexpected error happened while getting user-defined Service: ", e);
+      return Collections.emptyList();
     }
   }
 

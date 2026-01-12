@@ -121,6 +121,7 @@ struct TRuntimeConfiguration {
   8: required TAuditConfig auditConfig
   9: required string superUserName
   10: optional bool enableSeparationOfAdminPowers
+  11: required list<common.TExternalServiceEntry> allUserDefinedServiceInfo
 }
 
 struct TDataNodeRegisterReq {

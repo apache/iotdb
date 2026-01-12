@@ -57,7 +57,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   private final Map<Integer, Map<String, ServiceInfo>> datanodeToServiceInfos;
 
   private static final String SNAPSHOT_FILENAME = "service_info.bin";
-  private static final int SERIALIZATION_VERSION = 1;
+  private static final byte SERIALIZATION_VERSION = 1;
   private final CRC32 crc32 = new CRC32();
 
   private static final String SERVICE_NOT_EXISTED =
@@ -208,7 +208,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   }
 
   private void deserializeInfos(InputStream inputStream) throws IOException {
-    if (ReadWriteIOUtils.readInt(inputStream) != SERIALIZATION_VERSION) {
+    if (ReadWriteIOUtils.readByte(inputStream) != SERIALIZATION_VERSION) {
       throw new IOException("Incorrect version of " + SNAPSHOT_FILENAME);
     }
 

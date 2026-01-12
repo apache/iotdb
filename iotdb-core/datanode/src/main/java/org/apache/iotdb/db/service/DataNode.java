@@ -101,6 +101,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.service.exernalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -468,6 +469,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    * <p>5. All Pipe information
    *
    * <p>6. All TTL information
+   *
+   * <p>7. All ExternalService information
    */
   protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
@@ -488,6 +491,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store triggerInformationList */
     getTriggerInformationList(runtimeConfiguration.getAllTriggerInformation());
+
+    /* Store externalServiceEntryList */
+    resourcesInformationHolder.setExternalServiceEntryList(
+        runtimeConfiguration.getAllUserDefinedServiceInfo());
 
     /* Store pipeInformationList */
     getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
@@ -754,6 +761,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void prepareResources() throws StartupException {
     prepareUDFResources();
     prepareTriggerResources();
+    prepareExternalServiceResources();
     preparePipeResources();
   }
 
@@ -1177,6 +1185,26 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       }
       resourcesInformationHolder.setTriggerInformationList(list);
     }
+  }
+
+  private void prepareExternalServiceResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
+    if (resourcesInformationHolder.getExternalServiceEntryList() == null
+        || resourcesInformationHolder.getExternalServiceEntryList().isEmpty()) {
+      return;
+    }
+
+    try {
+      ExternalServiceManagementService.getInstance()
+          .restoreUserDefinedServices(resourcesInformationHolder.getExternalServiceEntryList());
+      ExternalServiceManagementService.getInstance().restoreRunningServiceInstance();
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+
+    logger.info(
+        "Prepare external-service resources successfully, which takes {} ms.",
+        System.currentTimeMillis() - startTime);
   }
 
   private void preparePipeResources() throws StartupException {

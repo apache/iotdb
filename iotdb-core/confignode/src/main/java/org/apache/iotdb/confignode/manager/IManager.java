@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -480,6 +481,8 @@ public interface IManager {
    * @return CNAuditLogger
    */
   CNAuditLogger getAuditLogger();
+
+  ExternalServiceManager getExternalServiceManager();
 
   TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId);
 

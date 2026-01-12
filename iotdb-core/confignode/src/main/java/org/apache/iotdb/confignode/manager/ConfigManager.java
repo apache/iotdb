@@ -1296,6 +1296,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public ExternalServiceManager getExternalServiceManager() {
+    return externalServiceManager;
+  }
+
+  @Override
   public TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId) {
     Map<TConsensusGroupId, Integer> regionLeaderMap =
         getLoadManager().getLoadCache().getRegionLeaderMap();
