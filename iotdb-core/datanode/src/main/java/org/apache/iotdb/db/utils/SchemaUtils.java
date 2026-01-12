@@ -27,7 +27,6 @@ import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
-import org.apache.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
@@ -41,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -400,25 +398,20 @@ public class SchemaUtils {
     }
   }
 
-  public static AbstractAlignedChunkMetadata rewriteAlignedChunkMetadataStatistics(
-      AbstractAlignedChunkMetadata alignedChunkMetadata, TSDataType targetDataType) {
-    List<IChunkMetadata> newValueChunkMetadataList = new ArrayList<>();
-    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (valueChunkMetadata != null
-          && targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
-        Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
-        statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
+  public static void rewriteAlignedChunkMetadataStatistics(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, int index, TSDataType targetDataType) {
+    IChunkMetadata valueChunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(index);
+    if (valueChunkMetadata != null
+        && targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
-        ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
-        newChunkMetadata.setTsDataType(targetDataType);
-        newChunkMetadata.setStatistics(statistics);
-        newValueChunkMetadataList.add(newChunkMetadata);
-      } else {
-        newValueChunkMetadataList.add(null);
-      }
+      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      newChunkMetadata.setTsDataType(targetDataType);
+      newChunkMetadata.setStatistics(statistics);
+    } else {
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
     }
-    return new AlignedChunkMetadata(
-        alignedChunkMetadata.getTimeChunkMetadata(), newValueChunkMetadataList);
   }
 
   public static void rewriteNonAlignedChunkMetadataStatistics(

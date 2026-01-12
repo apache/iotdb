@@ -268,13 +268,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       modified = (modified || alignedChunkMetadata.isModified());
       TSDataType targetDataType = alignedFullPath.getSchemaList().get(index).getType();
       if (targetDataType.equals(TSDataType.STRING)
-          && (alignedChunkMetadata.getValueChunkMetadataList().stream()
-                  .filter(iChunkMetadata -> iChunkMetadata.getDataType() != targetDataType)
-                  .count()
-              > 0)) {
+          && ((alignedChunkMetadata.getValueChunkMetadataList().get(index) != null)
+              && (alignedChunkMetadata.getValueChunkMetadataList().get(index).getDataType()
+                  != targetDataType))) {
         // create new statistics object via new data type, and merge statistics information
-        alignedChunkMetadata =
-            SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, targetDataType);
+        SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+            alignedChunkMetadata, index, targetDataType);
         alignedChunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
