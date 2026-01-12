@@ -265,7 +265,11 @@ class InferenceManager:
             req,
             data_getter=lambda r: r.dataset,
             extract_attrs=lambda r: {
-                "output_length": int(r.inferenceAttributes.pop("outputLength", 96)),
+                "output_length": (
+                    96
+                    if r.inferenceAttributes is None
+                    else int(r.inferenceAttributes.pop("outputLength", 96))
+                ),
                 **(r.inferenceAttributes or {}),
             },
             resp_cls=TInferenceResp,
