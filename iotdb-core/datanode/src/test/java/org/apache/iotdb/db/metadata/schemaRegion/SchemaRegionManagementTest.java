@@ -60,7 +60,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
-      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+      ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
@@ -74,7 +74,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       tags.put("tag-key", "tag-value");
       schemaRegion.createTimeSeries(
           SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-              new MeasurementPath("root.sg.d1.s1"),
+              new MeasurementPath("root.db.d1.s1"),
               TSDataType.INT32,
               TSEncoding.PLAIN,
               CompressionType.UNCOMPRESSED,
@@ -87,7 +87,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       Template template = generateTemplate();
       schemaRegion.activateSchemaTemplate(
           SchemaRegionWritePlanFactory.getActivateTemplateInClusterPlan(
-              new PartialPath("root.sg.d2"), 1, template.getId()),
+              new PartialPath("root.db.d2"), 1, template.getId()),
           template);
 
       File snapshotDir = new File(config.getSchemaDir() + File.separator + "snapshot");
@@ -98,26 +98,26 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
+              schemaRegion, new PartialPath("root.db.**"), false, "tag-key", "tag-value");
 
       ITimeSeriesSchemaInfo seriesResult = result.get(0);
       Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getFullPath());
+          new PartialPath("root.db.d1.s1").getFullPath(), seriesResult.getFullPath());
       Map<String, String> resultTagMap = seriesResult.getTags();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
 
       simulateRestart();
 
-      ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
+      ISchemaRegion newSchemaRegion = getSchemaRegion("root.db", 0);
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
+              newSchemaRegion, new PartialPath("root.db.**"), false, "tag-key", "tag-value");
 
       seriesResult = result.get(0);
       Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), seriesResult.getFullPath());
+          new PartialPath("root.db.d1.s1").getFullPath(), seriesResult.getFullPath());
       resultTagMap = seriesResult.getTags();
       Assert.assertEquals(1, resultTagMap.size());
       Assert.assertEquals("tag-value", resultTagMap.get("tag-key"));
@@ -125,13 +125,13 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
       result =
           SchemaRegionTestUtil.showTimeseries(
               newSchemaRegion,
-              new PartialPath("root.sg.*.s1"),
+              new PartialPath("root.db.*.s1"),
               Collections.singletonMap(template.getId(), template));
       result.sort(Comparator.comparing(ISchemaInfo::getFullPath));
       Assert.assertEquals(
-          new PartialPath("root.sg.d1.s1").getFullPath(), result.get(0).getFullPath());
+          new PartialPath("root.db.d1.s1").getFullPath(), result.get(0).getFullPath());
       Assert.assertEquals(
-          new PartialPath("root.sg.d2.s1").getFullPath(), result.get(1).getFullPath());
+          new PartialPath("root.db.d2.s1").getFullPath(), result.get(1).getFullPath());
 
     } finally {
       config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
@@ -155,7 +155,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
-      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+      ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
 
       File mLogFile =
           SystemFileFactory.INSTANCE.getFile(
@@ -173,17 +173,17 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
 
       List<ITimeSeriesSchemaInfo> result =
           SchemaRegionTestUtil.showTimeseries(
-              schemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
+              schemaRegion, new PartialPath("root.db.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
 
       simulateRestart();
 
-      ISchemaRegion newSchemaRegion = getSchemaRegion("root.sg", 0);
+      ISchemaRegion newSchemaRegion = getSchemaRegion("root.db", 0);
       newSchemaRegion.loadSnapshot(snapshotDir);
       result =
           SchemaRegionTestUtil.showTimeseries(
-              newSchemaRegion, new PartialPath("root.sg.**"), false, "tag-key", "tag-value");
+              newSchemaRegion, new PartialPath("root.db.**"), false, "tag-key", "tag-value");
 
       Assert.assertEquals(0, result.size());
     } finally {
@@ -197,7 +197,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
     String schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
     try {
-      ISchemaRegion schemaRegion = getSchemaRegion("root.sg", 0);
+      ISchemaRegion schemaRegion = getSchemaRegion("root.db", 0);
 
       Map<String, String> tags = new HashMap<>();
       tags.put("tag-key", "tag-value");
@@ -207,7 +207,7 @@ public class SchemaRegionManagementTest extends AbstractSchemaRegionTest {
         for (int j = 0; j < 1000; j++) {
           schemaRegion.createTimeSeries(
               SchemaRegionWritePlanFactory.getCreateTimeSeriesPlan(
-                  new MeasurementPath("root.sg.d" + i + ".s" + j),
+                  new MeasurementPath("root.db.d" + i + ".s" + j),
                   TSDataType.INT32,
                   TSEncoding.PLAIN,
                   CompressionType.UNCOMPRESSED,

@@ -43,55 +43,55 @@ import static org.junit.Assert.fail;
 public class IoTDBUDAFGroupByCountIT {
   private static final String[] dataset =
       new String[] {
-        "CREATE DATABASE root.sg.beijing.car01",
-        "CREATE TIMESERIES root.sg.beijing.car01.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car01.soc WITH DATATYPE=INT64, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car01.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
-        "INSERT INTO root.sg.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2600000000, 0, 101, 1)",
+        "CREATE DATABASE root.db.beijing.car01",
+        "CREATE TIMESERIES root.db.beijing.car01.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car01.soc WITH DATATYPE=INT64, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car01.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
+        "INSERT INTO root.db.beijing.car01(timestamp, charging_status, soc, vehicle_status) values(2600000000, 0, 101, 1)",
         "flush",
-        "CREATE DATABASE root.sg.beijing.car02",
-        "CREATE TIMESERIES root.sg.beijing.car02.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car02.soc WITH DATATYPE=INT64, ENCODING=PLAIN",
-        "CREATE TIMESERIES root.sg.beijing.car02.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
-        "INSERT INTO root.sg.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2600000000, 0, 101, 1)",
+        "CREATE DATABASE root.db.beijing.car02",
+        "CREATE TIMESERIES root.db.beijing.car02.charging_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car02.soc WITH DATATYPE=INT64, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.beijing.car02.vehicle_status WITH DATATYPE=INT32, ENCODING=PLAIN",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1, 1, 14, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2, 1, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(3, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(4, 0, 16, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(5, 1, 18, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(6, 1, 24, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(7, 1, 36, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(8, null, 36, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(9, 1, 45, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(10, 1, 60, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1100000000, null, 60, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1200000000, null, 0, 0)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(1900000000, 1, 55, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2000000000, 1, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2100000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2200000000, null, 70, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2300000000, null, 69, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2400000000, 1, 80, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2500000000, 1, 100, 1)",
+        "INSERT INTO root.db.beijing.car02(timestamp, charging_status, soc, vehicle_status) values(2600000000, 0, 101, 1)",
         "flush"
       };
 
@@ -134,13 +134,13 @@ public class IoTDBUDAFGroupByCountIT {
     };
     String sqlWithoutEndTime =
         "SELECT sum_udaf(charging_status), count_udaf(vehicle_status), last_value(soc) "
-            + "FROM root.sg.beijing.car01 "
+            + "FROM root.db.beijing.car01 "
             + "GROUP BY COUNT(charging_status, 5)";
     UDAFGroupByCountITChecker(sqlWithoutEndTime, expected, false);
 
     String sqlWithEndTime =
         "SELECT __endTime, sum_udaf(charging_status), count_udaf(vehicle_status), last_value(soc) "
-            + "FROM root.sg.beijing.car01 "
+            + "FROM root.db.beijing.car01 "
             + "GROUP BY COUNT(charging_status, 5)";
     UDAFGroupByCountITChecker(sqlWithEndTime, expected, true);
   }
@@ -153,7 +153,7 @@ public class IoTDBUDAFGroupByCountIT {
     };
     String sql =
         "SELECT sum_udaf(charging_status), count_udaf(vehicle_status), last_value(soc) "
-            + "FROM root.sg.beijing.car01 "
+            + "FROM root.db.beijing.car01 "
             + "GROUP BY COUNT(charging_status, 2) "
             + "HAVING sum_udaf(charging_status) < 2";
     UDAFGroupByCountITChecker(sql, expected, false);
@@ -170,13 +170,13 @@ public class IoTDBUDAFGroupByCountIT {
 
     String sqlWithoutEndTime =
         "SELECT sum_udaf(charging_status), count_udaf(vehicle_status), last_value(soc) "
-            + "FROM root.sg.beijing.car01 "
+            + "FROM root.db.beijing.car01 "
             + "GROUP BY COUNT(charging_status, 5, ignoreNull=false)";
     UDAFGroupByCountITChecker(sqlWithoutEndTime, expected, false);
 
     String sqlWithEndTime =
         "SELECT __endTime, sum_udaf(charging_status), count_udaf(vehicle_status), last_value(soc) "
-            + "FROM root.sg.beijing.car01 "
+            + "FROM root.db.beijing.car01 "
             + "GROUP BY COUNT(charging_status, 5, ignoreNull=false)";
     UDAFGroupByCountITChecker(sqlWithEndTime, expected, true);
   }
@@ -184,20 +184,20 @@ public class IoTDBUDAFGroupByCountIT {
   @Test
   public void UDAFGroupByCountAlignByDeviceTest() {
     String[][] expected = {
-      {"1", "root.sg.beijing.car01", "2", "2.0", "2", "16"},
-      {"3", "root.sg.beijing.car01", "4", "0.0", "2", "16"},
-      {"5", "root.sg.beijing.car01", "6", "2.0", "2", "24"},
-      {"7", "root.sg.beijing.car01", "9", "2.0", "2", "45"},
-      {"10", "root.sg.beijing.car01", "1900000000", "2.0", "2", "55"},
-      {"2000000000", "root.sg.beijing.car01", "2400000000", "2.0", "2", "80"},
-      {"2500000000", "root.sg.beijing.car01", "2600000000", "1.0", "2", "101"},
-      {"1", "root.sg.beijing.car02", "2", "2.0", "2", "16"},
-      {"3", "root.sg.beijing.car02", "4", "0.0", "2", "16"},
-      {"5", "root.sg.beijing.car02", "6", "2.0", "2", "24"},
-      {"7", "root.sg.beijing.car02", "9", "2.0", "2", "45"},
-      {"10", "root.sg.beijing.car02", "1900000000", "2.0", "2", "55"},
-      {"2000000000", "root.sg.beijing.car02", "2400000000", "2.0", "2", "80"},
-      {"2500000000", "root.sg.beijing.car02", "2600000000", "1.0", "2", "101"},
+      {"1", "root.db.beijing.car01", "2", "2.0", "2", "16"},
+      {"3", "root.db.beijing.car01", "4", "0.0", "2", "16"},
+      {"5", "root.db.beijing.car01", "6", "2.0", "2", "24"},
+      {"7", "root.db.beijing.car01", "9", "2.0", "2", "45"},
+      {"10", "root.db.beijing.car01", "1900000000", "2.0", "2", "55"},
+      {"2000000000", "root.db.beijing.car01", "2400000000", "2.0", "2", "80"},
+      {"2500000000", "root.db.beijing.car01", "2600000000", "1.0", "2", "101"},
+      {"1", "root.db.beijing.car02", "2", "2.0", "2", "16"},
+      {"3", "root.db.beijing.car02", "4", "0.0", "2", "16"},
+      {"5", "root.db.beijing.car02", "6", "2.0", "2", "24"},
+      {"7", "root.db.beijing.car02", "9", "2.0", "2", "45"},
+      {"10", "root.db.beijing.car02", "1900000000", "2.0", "2", "55"},
+      {"2000000000", "root.db.beijing.car02", "2400000000", "2.0", "2", "80"},
+      {"2500000000", "root.db.beijing.car02", "2600000000", "1.0", "2", "101"},
     };
 
     String sqlWithoutEndTime =
@@ -216,9 +216,9 @@ public class IoTDBUDAFGroupByCountIT {
   }
 
   private void UDAFGroupByCountITChecker(String sql, String[][] expected, boolean hasEndTime) {
-    String targetSeries1 = "root.sg.beijing.car01.charging_status";
-    String targetSeries2 = "root.sg.beijing.car01.vehicle_status";
-    String targetSeries3 = "root.sg.beijing.car01.soc";
+    String targetSeries1 = "root.db.beijing.car01.charging_status";
+    String targetSeries2 = "root.db.beijing.car01.vehicle_status";
+    String targetSeries3 = "root.db.beijing.car01.soc";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

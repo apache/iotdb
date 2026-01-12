@@ -117,7 +117,7 @@ public class IoTDBFilterTableViewIT {
         }
       }
       statement.execute(
-          " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
+          " insert into root.db1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
       statement.execute(
           " insert into root.vehicle.testUDTF.d1(time, s1, s2) values (1,\"ss\",0), (2,\"d\",3)");
     } catch (SQLException throwable) {
@@ -137,7 +137,7 @@ public class IoTDBFilterTableViewIT {
       statement.execute(
           "CREATE VIEW testUDTF(device STRING TAG, s1 TEXT FIELD, s2 DOUBLE FIELD) as root.vehicle.testUDTF.**");
       statement.execute(
-          "CREATE VIEW sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.sg1.**");
+          "CREATE VIEW sg1(device STRING TAG, s1 DOUBLE FIELD, s2 TEXT FIELD) as root.db1.**");
 
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

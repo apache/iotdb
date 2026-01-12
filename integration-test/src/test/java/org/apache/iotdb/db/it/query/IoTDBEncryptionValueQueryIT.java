@@ -96,29 +96,29 @@ public class IoTDBEncryptionValueQueryIT {
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466080000,false)",
         "insert into root.ln.wf02.wt02(timestamp,status) values(1509466140000,false)",
         "flush",
-        "CREATE DATABASE root.sgcc",
-        "create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465720000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465780000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465840000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465900000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509465960000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466020000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466080000,false)",
-        "insert into root.sgcc.wf03.wt01(timestamp,status) values(1509466140000,false)",
-        "create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465600000,25.957603)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465660000,24.359503)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465720000,20.092794)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465780000,20.182663)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465840000,21.125198)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465900000,22.720892)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509465960000,20.71)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466020000,21.451046)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466080000,22.57987)",
-        "insert into root.sgcc.wf03.wt01(timestamp,temperature) values(1509466140000,20.98177)",
+        "CREATE DATABASE root.dbcc",
+        "create timeseries root.dbcc.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465600000,true)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465660000,true)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465720000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465780000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465840000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465900000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509465960000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509466020000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509466080000,false)",
+        "insert into root.dbcc.wf03.wt01(timestamp,status) values(1509466140000,false)",
+        "create timeseries root.dbcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465600000,25.957603)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465660000,24.359503)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465720000,20.092794)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465780000,20.182663)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465840000,21.125198)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465900000,22.720892)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509465960000,20.71)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509466020000,21.451046)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509466080000,22.57987)",
+        "insert into root.dbcc.wf03.wt01(timestamp,temperature) values(1509466140000,20.98177)",
         "flush",
       };
 
@@ -167,14 +167,14 @@ public class IoTDBEncryptionValueQueryIT {
         Statement statement = connection.createStatement()) {
 
       ResultSet resultSet =
-          statement.executeQuery("select * from root.ln.**,root.sgcc.** where time>10");
+          statement.executeQuery("select * from root.ln.**,root.dbcc.** where time>10");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,
@@ -226,14 +226,14 @@ public class IoTDBEncryptionValueQueryIT {
 
       ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.ln.**,root.sgcc.** where time>10 limit 5 offset 3");
+              "select * from root.ln.**,root.dbcc.** where time>10 limit 5 offset 3");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,
@@ -265,15 +265,15 @@ public class IoTDBEncryptionValueQueryIT {
       Assert.assertEquals(10000, statement.getFetchSize());
       resultSet =
           statement.executeQuery(
-              "select * from root.ln.**,root.sgcc.** where time>10 limit 5 offset 3");
+              "select * from root.ln.**,root.dbcc.** where time>10 limit 5 offset 3");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,
@@ -325,14 +325,14 @@ public class IoTDBEncryptionValueQueryIT {
       Assert.assertEquals(4, statement.getFetchSize());
       ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.ln.**,root.sgcc.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.ln.**,root.dbcc.** where time in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       List<Integer> actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,
@@ -369,15 +369,15 @@ public class IoTDBEncryptionValueQueryIT {
           };
       resultSet =
           statement.executeQuery(
-              "select * from root.ln.**,root.sgcc.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
+              "select * from root.ln.**,root.dbcc.** where time not in (1509465780000, 1509465840000, 1509465900000, 1509465960000, 1509466020000)");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,
@@ -413,15 +413,15 @@ public class IoTDBEncryptionValueQueryIT {
 
       resultSet =
           statement.executeQuery(
-              "select * from root.ln.**,root.sgcc.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
+              "select * from root.ln.**,root.dbcc.** where root.ln.wf01.wt01.temperature in (20.18, 20.71, 22.58)");
 
       resultSetMetaData = resultSet.getMetaData();
       actualIndexToExpectedIndexList =
           checkHeader(
               resultSetMetaData,
               "Time,root.ln.wf01.wt01.status,root.ln.wf01.wt01.temperature,"
-                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.sgcc.wf03.wt01.status,"
-                  + "root.sgcc.wf03.wt01.temperature,",
+                  + "root.ln.wf02.wt02.hardware,root.ln.wf02.wt02.status,root.dbcc.wf03.wt01.status,"
+                  + "root.dbcc.wf03.wt01.temperature,",
               new int[] {
                 Types.TIMESTAMP,
                 Types.BOOLEAN,

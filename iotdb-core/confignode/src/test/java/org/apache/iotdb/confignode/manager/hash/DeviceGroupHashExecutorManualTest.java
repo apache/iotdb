@@ -38,7 +38,7 @@ import java.util.Random;
 public class DeviceGroupHashExecutorManualTest {
 
   private static final int deviceGroupCount = 10_000;
-  private static final String sg = "root.SGGroup.";
+  private static final String db = "root.DBGroup.";
   private static final int batchCount = 10_000;
   private static final int batchSize = 10_000;
   private static final String chars =
@@ -51,7 +51,7 @@ public class DeviceGroupHashExecutorManualTest {
     int deviceLength = random.nextInt(5) + 5;
 
     for (int i = 0; i < batchSize; i++) {
-      StringBuilder curDevice = new StringBuilder(sg);
+      StringBuilder curDevice = new StringBuilder(db);
       for (int j = 0; j < fatherLength; j++) {
         curDevice.append(chars.charAt(random.nextInt(chars.length())));
       }

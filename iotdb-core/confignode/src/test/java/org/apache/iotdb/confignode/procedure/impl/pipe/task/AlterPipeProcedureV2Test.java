@@ -40,7 +40,7 @@ public class AlterPipeProcedureV2Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
@@ -51,7 +51,7 @@ public class AlterPipeProcedureV2Test {
 
     TAlterPipeReq req =
         new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true);
-    req.setExtractorAttributes(extractorAttributes);
+    req.setExtractorAttributes(sourceAttributes);
     req.setIsReplaceAllExtractorAttributes(false);
     AlterPipeProcedureV2 proc =
         new AlterPipeProcedureV2(req, ProcedureType.ALTER_PIPE_PROCEDURE_V2);

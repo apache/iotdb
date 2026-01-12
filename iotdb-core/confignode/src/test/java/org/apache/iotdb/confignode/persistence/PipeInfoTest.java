@@ -78,11 +78,11 @@ public class PipeInfoTest {
   @Test
   public void testSnapshot() throws TException, IOException {
     // Create pipe test pipe
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
-    extractorAttributes.put("extractor", "iotdb-extractor");
+    sourceAttributes.put("extractor", "iotdb-extractor");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
@@ -93,7 +93,7 @@ public class PipeInfoTest {
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
+            pipeName, 121, sourceAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);
@@ -117,10 +117,10 @@ public class PipeInfoTest {
   @Test
   public void testManagement() {
     // Create pipe test pipe
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
+    sourceAttributes.put("extractor", "org.apache.iotdb.pipe.extractor.DefaultExtractor");
     processorAttributes.put("processor", "org.apache.iotdb.pipe.processor.SDTFilterProcessor");
     connectorAttributes.put("connector", "org.apache.iotdb.pipe.protocol.ThriftTransporter");
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
@@ -128,7 +128,7 @@ public class PipeInfoTest {
     pipeTasks.put(1, pipeTaskMeta);
     PipeStaticMeta pipeStaticMeta =
         new PipeStaticMeta(
-            pipeName, 121, extractorAttributes, processorAttributes, connectorAttributes);
+            pipeName, 121, sourceAttributes, processorAttributes, connectorAttributes);
     PipeRuntimeMeta pipeRuntimeMeta = new PipeRuntimeMeta(pipeTasks);
     CreatePipePlanV2 createPipePlanV2 = new CreatePipePlanV2(pipeStaticMeta, pipeRuntimeMeta);
     pipeInfo.getPipeTaskInfo().createPipe(createPipePlanV2);

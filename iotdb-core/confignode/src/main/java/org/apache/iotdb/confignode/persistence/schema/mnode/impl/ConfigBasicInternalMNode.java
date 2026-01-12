@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.persistence.schema.mnode.impl;
 
 import org.apache.iotdb.commons.schema.node.MNodeType;
@@ -146,7 +147,7 @@ public class ConfigBasicInternalMNode extends ConfigBasicMNode {
 
   @Override
   public MNodeType getMNodeType() {
-    return MNodeType.SG_INTERNAL;
+    return MNodeType.DB_INTERNAL;
   }
 
   @Override

@@ -363,7 +363,7 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   }
 
   /**
-   * Get level from root to NextMatchedNode. Level of root is 0. For example, root.sg.d1.s1,
+   * Get level from root to NextMatchedNode. Level of root is 0. For example, root.db.d1.s1,
    * NextMatchedNode is s1, then return 3.
    *
    * @return level from root to NextMatchedNode
@@ -423,8 +423,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected void releaseNodeIterator(Iterator<N> nodeIterator) {}
 
   /**
-   * Internal-match means the node matches an internal node name of the given path pattern. root.sg
-   * internal match root.sg.**(pattern). This method should be implemented according to concrete
+   * Internal-match means the node matches an internal node name of the given path pattern. root.db
+   * internal match root.db.**(pattern). This method should be implemented according to concrete
    * tasks.
    *
    * <p>Return whether the subtree of given node should be processed. If return true, the traversing
@@ -434,8 +434,8 @@ public abstract class AbstractTreeVisitor<N extends ITreeNode, R> implements Sch
   protected abstract boolean shouldVisitSubtreeOfInternalMatchedNode(N node);
 
   /**
-   * Full-match means the node matches the last node name of the given path pattern. root.sg.d full
-   * match root.sg.**(pattern) This method should be implemented according to concrete tasks.
+   * Full-match means the node matches the last node name of the given path pattern. root.db.d full
+   * match root.db.**(pattern) This method should be implemented according to concrete tasks.
    *
    * <p>Return whether the subtree of given node should be processed. If return {@code true}, the
    * traversing process will keep traversing the subtree. If return {@code false}, the traversing

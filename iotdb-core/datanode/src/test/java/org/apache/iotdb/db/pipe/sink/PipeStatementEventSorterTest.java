@@ -48,7 +48,7 @@ public class PipeStatementEventSorterTest {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet("root.sg.device", schemaList, 30);
+    Tablet tablet = new Tablet("root.db.device", schemaList, 30);
 
     long timestamp = 300;
     for (long i = 0; i < 10; i++) {
@@ -108,7 +108,7 @@ public class PipeStatementEventSorterTest {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    final Tablet tablet = new Tablet("root.sg.device", schemaList, 10);
+    final Tablet tablet = new Tablet("root.db.device", schemaList, 10);
 
     final long timestamp = 300;
     for (long i = 0; i < 10; i++) {
@@ -152,7 +152,7 @@ public class PipeStatementEventSorterTest {
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
-    Tablet tablet = new Tablet("root.sg.device", schemaList, 30);
+    Tablet tablet = new Tablet("root.db.device", schemaList, 30);
 
     for (long i = 0; i < 10; i++) {
       int rowIndex = tablet.getRowSize();

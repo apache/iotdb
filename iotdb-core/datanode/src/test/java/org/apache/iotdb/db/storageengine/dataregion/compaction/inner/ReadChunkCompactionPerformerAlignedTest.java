@@ -683,29 +683,29 @@ public class ReadChunkCompactionPerformerAlignedTest {
           new TsPrimitiveType.TsBoolean(false)
         };
         originData
-            .computeIfAbsent(new PartialPath("root.sg.d1.s0"), k -> new ArrayList<>())
+            .computeIfAbsent(new PartialPath("root.db.d1.s0"), k -> new ArrayList<>())
             .add(new TimeValuePair(j, values[0]));
         originData
-            .computeIfAbsent(new PartialPath("root.sg.d1.s1"), k -> new ArrayList<>())
+            .computeIfAbsent(new PartialPath("root.db.d1.s1"), k -> new ArrayList<>())
             .add(new TimeValuePair(j, values[1]));
-        originData.computeIfAbsent(new PartialPath("root.sg.d1.s2"), k -> null);
-        originData.computeIfAbsent(new PartialPath("root.sg.d1.s3"), k -> null);
+        originData.computeIfAbsent(new PartialPath("root.db.d1.s2"), k -> null);
+        originData.computeIfAbsent(new PartialPath("root.db.d1.s3"), k -> null);
         originData
-            .computeIfAbsent(new PartialPath("root.sg.d1.s4"), k -> new ArrayList<>())
+            .computeIfAbsent(new PartialPath("root.db.d1.s4"), k -> new ArrayList<>())
             .add(new TimeValuePair(j, values[4]));
         originData
-            .computeIfAbsent(new PartialPath("root.sg.d1.s5"), k -> new ArrayList<>())
+            .computeIfAbsent(new PartialPath("root.db.d1.s5"), k -> new ArrayList<>())
             .add(new TimeValuePair(j, values[5]));
         alignedChunkWriter.write(j, values);
       }
-      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.sg.d1"));
+      writer.startChunkGroup(IDeviceID.Factory.DEFAULT_FACTORY.create("root.db.d1"));
       alignedChunkWriter.writeToFileWriter(writer);
       writer.endChunkGroup();
       writer.endFile();
       TsFileResource resource = new TsFileResource(writer.getFile(), TsFileResourceStatus.NORMAL);
       resource
           .getModFileForWrite()
-          .write(new TreeDeletionEntry(new MeasurementPath("root.sg.d1.*"), i * 100, i * 100 + 20));
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.*"), i * 100, i * 100 + 20));
       resource.getModFileForWrite().close();
       int finalI = i;
       originData.forEach(

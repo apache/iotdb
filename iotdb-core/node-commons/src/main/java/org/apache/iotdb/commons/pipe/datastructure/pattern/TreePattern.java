@@ -359,7 +359,7 @@ public abstract class TreePattern {
 
     // 1. Sort patterns by "Broadness"
     // Heuristic: Shorter paths and paths with wildcards should come first.
-    // This allows us to insert 'root.**' first, so we can quickly skip 'root.sg.d1' later.
+    // This allows us to insert 'root.**' first, so we can quickly skip 'root.db.d1' later.
     final List<TreePattern> sortedPatterns = new ArrayList<>(patterns);
     sortedPatterns.sort(
         (o1, o2) -> {
@@ -368,13 +368,13 @@ public abstract class TreePattern {
           final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
           final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
 
-          // 1. Length: Shorter is generally broader (e.g., root.** vs root.sg.d1)
+          // 1. Length: Shorter is generally broader (e.g., root.** vs root.db.d1)
           final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
           if (lenCompare != 0) {
             return lenCompare;
           }
 
-          // 2. Wildcards: Pattern with wildcards is broader (e.g., root.sg.* vs root.sg.d1)
+          // 2. Wildcards: Pattern with wildcards is broader (e.g., root.db.* vs root.db.d1)
           final boolean w1 = p1.hasWildcard();
           final boolean w2 = p2.hasWildcard();
           if (w1 && !w2) {
@@ -758,7 +758,7 @@ public abstract class TreePattern {
       // Optimized field for One Level Wildcard (*) child to reduce map lookups
       TrieNode wildcardNode = null;
 
-      // Marks if a pattern ends here (e.g., "root.sg" is a set path)
+      // Marks if a pattern ends here (e.g., "root.db" is a set path)
       boolean isLeaf = false;
       // Special flags for optimization
       boolean isMultiLevelWildcard = false; // Ends with **

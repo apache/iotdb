@@ -62,7 +62,7 @@ public class BloomFilterCacheTest {
               .concat(File.separator)
               .concat("sequence")
               .concat(File.separator)
-              .concat("root.sg" + (i + 1))
+              .concat("root.db" + (i + 1))
               .concat(File.separator)
               .concat(Integer.toString(i))
               .concat(File.separator)

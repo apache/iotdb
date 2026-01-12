@@ -176,11 +176,11 @@ public class IoTDBInsertMultiRowIT {
   @Test
   public void testInsertMultiRowWithMultiTimePartition() throws Exception {
     try (Statement st1 = connection.createStatement()) {
-      st1.execute("insert into root.sg1.d1(time,s1) values(604800010,1)");
+      st1.execute("insert into root.db1.d1(time,s1) values(604800010,1)");
       st1.execute("flush");
-      st1.execute("insert into root.sg1.d1(time,s1) values(604799990,1), (604800001,1)");
+      st1.execute("insert into root.db1.d1(time,s1) values(604799990,1), (604800001,1)");
       st1.execute("flush");
-      ResultSet rs1 = st1.executeQuery("select s1 from root.sg1.d1");
+      ResultSet rs1 = st1.executeQuery("select s1 from root.db1.d1");
       assertTrue(rs1.next());
       assertEquals(604799990, rs1.getLong("Time"));
       assertTrue(rs1.next());

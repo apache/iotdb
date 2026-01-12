@@ -59,9 +59,9 @@ public class IoTDBCountMultiTimesWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("insert into root.sg1.d1(time, s1) aligned values (1,1), (2,2)");
+      statement.execute("insert into root.db1.d1(time, s1) aligned values (1,1), (2,2)");
       statement.execute("flush");
-      statement.execute("delete from root.sg1.d1.s1 where time > 1");
+      statement.execute("delete from root.db1.d1.s1 where time > 1");
     } catch (Exception e) {
       fail(e.getMessage());
       e.printStackTrace();
@@ -77,13 +77,13 @@ public class IoTDBCountMultiTimesWithDeletionIT {
   public void countSingleAlignedWithoutTimeFilterMultiTimesTest() {
     String[] retArray = new String[] {"1"};
     String[] columnNames = {
-      "count(root.sg1.d1.s1)",
+      "count(root.db1.d1.s1)",
     };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // first time
-      try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.db1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
@@ -106,7 +106,7 @@ public class IoTDBCountMultiTimesWithDeletionIT {
       }
 
       //  second time
-      try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.sg1.d1")) {
+      try (ResultSet resultSet = statement.executeQuery("select count(s1) from root.db1.d1")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {

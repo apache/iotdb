@@ -172,7 +172,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(sourcePluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe extractor plugin %s does not exist",
+              "Failed to create or alter pipe, the pipe source plugin %s does not exist",
               sourcePluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);
@@ -199,7 +199,7 @@ public class PipePluginInfo implements SnapshotProcessor {
     if (!pipePluginMetaKeeper.containsPipePlugin(sinkPluginName)) {
       final String exceptionMessage =
           String.format(
-              "Failed to create or alter pipe, the pipe connector plugin %s does not exist",
+              "Failed to create or alter pipe, the pipe sink plugin %s does not exist",
               sinkPluginName);
       LOGGER.warn(exceptionMessage);
       throw new PipeException(exceptionMessage);

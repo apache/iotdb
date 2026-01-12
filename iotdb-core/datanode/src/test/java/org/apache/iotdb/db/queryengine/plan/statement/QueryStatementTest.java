@@ -49,84 +49,84 @@ public class QueryStatementTest {
     List<Pair<String, String>> errorSqlWithMessages =
         Arrays.asList(
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 "
+                "SELECT s1 FROM root.db.d1 "
                     + "GROUP BY ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d)",
                 "Common queries and aggregated queries are not allowed to appear at the same time"),
             new Pair<>(
-                "SELECT count(s1),s2 FROM root.sg.d1", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG),
+                "SELECT count(s1),s2 FROM root.db.d1", RAW_AGGREGATION_HYBRID_QUERY_ERROR_MSG),
 
             // test for where clause
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 WHERE count(s1) > 0",
+                "SELECT s1 FROM root.db.d1 WHERE count(s1) > 0",
                 "aggregate functions are not supported in WHERE clause"),
 
             // test for having clause
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 HAVING(s1 > 0)",
+                "SELECT s1 FROM root.db.d1 HAVING(s1 > 0)",
                 "Expression of HAVING clause must to be an Aggregation"),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 HAVING(count(s1) > 0)",
+                "SELECT s1 FROM root.db.d1 HAVING(count(s1) > 0)",
                 "Expression of HAVING clause can not be used in NonAggregationQuery"),
             new Pair<>(
-                "SELECT count(d1.s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(s1) > 0)",
+                "SELECT count(d1.s1) FROM root.db.d1 GROUP BY level=1 HAVING (count(s1) > 0)",
                 "When Having used with GroupByLevel: "
                     + "the suffix paths can only be measurement or one-level wildcard"),
             new Pair<>(
-                "SELECT count(s1) FROM root.sg.d1 GROUP BY level=1 HAVING (count(sg.d1.s1) > 0)",
+                "SELECT count(s1) FROM root.db.d1 GROUP BY level=1 HAVING (count(db.d1.s1) > 0)",
                 "When Having used with GroupByLevel: "
                     + "the suffix paths can only be measurement or one-level wildcard"),
 
             // test for align by device clause
             new Pair<>(
-                "SELECT d1.s1 FROM root.sg.d1 align by device", ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
+                "SELECT d1.s1 FROM root.db.d1 align by device", ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT count(s1) FROM root.sg.d1 group by variation(sg.s1) align by device",
+                "SELECT count(s1) FROM root.db.d1 group by variation(db.s1) align by device",
                 ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 order by root.sg.d1.s1 align by device",
+                "SELECT s1 FROM root.db.d1 order by root.db.d1.s1 align by device",
                 ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 where root.sg.d1.s1 > 0 align by device",
+                "SELECT s1 FROM root.db.d1 where root.db.d1.s1 > 0 align by device",
                 ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT count(s1) FROM root.sg.d1 having(count(root.sg.d1.s1) > 0) align by device",
+                "SELECT count(s1) FROM root.db.d1 having(count(root.db.d1.s1) > 0) align by device",
                 ALIGN_BY_DEVICE_ONE_LEVEL_ERROR),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 order by timeseries align by device",
+                "SELECT s1 FROM root.db.d1 order by timeseries align by device",
                 "Sorting by timeseries is only supported in last queries."),
 
             // test for last query
             new Pair<>(
-                "SELECT last s1 FROM root.sg.d1 align by device",
+                "SELECT last s1 FROM root.db.d1 align by device",
                 "Last query doesn't support align by device."),
             new Pair<>(
-                "SELECT last s1+s2 FROM root.sg.d1",
+                "SELECT last s1+s2 FROM root.db.d1",
                 "Last queries can only be applied on raw time series."),
             new Pair<>(
-                "SELECT last s1 FROM root.sg.d1 order by device",
+                "SELECT last s1 FROM root.db.d1 order by device",
                 "Sorting by device is only supported in ALIGN BY DEVICE queries."),
             new Pair<>(
-                "SELECT last s1 FROM root.sg.d1 SLIMIT 1 SOFFSET 2",
+                "SELECT last s1 FROM root.db.d1 SLIMIT 1 SOFFSET 2",
                 "SLIMIT and SOFFSET can not be used in LastQuery."),
 
             // test for select into clause
             new Pair<>(
-                "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SLIMIT 5",
+                "SELECT s1 INTO root.db.d2(t1) FROM root.db.d1 SLIMIT 5",
                 "select into: slimit clauses are not supported."),
             new Pair<>(
-                "SELECT s1 INTO root.sg.d2(t1) FROM root.sg.d1 SOFFSET 6",
+                "SELECT s1 INTO root.db.d2(t1) FROM root.db.d1 SOFFSET 6",
                 "select into: soffset clauses are not supported."),
             new Pair<>(
-                "SELECT last s1 INTO root.sg.d2(t1) FROM root.sg.d1",
+                "SELECT last s1 INTO root.db.d2(t1) FROM root.db.d1",
                 "select into: last clauses are not supported."),
             new Pair<>(
-                "SELECT count(s1) INTO root.sg.d2(t1) FROM root.sg.d1 GROUP BY TAGS(a)",
+                "SELECT count(s1) INTO root.db.d2(t1) FROM root.db.d1 GROUP BY TAGS(a)",
                 "select into: GROUP BY TAGS clause are not supported."),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 order by timeseries",
+                "SELECT s1 FROM root.db.d1 order by timeseries",
                 "Sorting by timeseries is only supported in last queries."),
             new Pair<>(
-                "SELECT s1 FROM root.sg.d1 order by device",
+                "SELECT s1 FROM root.db.d1 order by device",
                 "Sorting by device is only supported in ALIGN BY DEVICE queries."));
 
     for (Pair<String, String> pair : errorSqlWithMessages) {
@@ -146,13 +146,13 @@ public class QueryStatementTest {
 
   @Test
   public void getPathsTest() {
-    String sql = "SELECT count(s1 + s3) FROM root.sg.d1 WHERE s2 > 0 and time < 1000";
+    String sql = "SELECT count(s1 + s3) FROM root.db.d1 WHERE s2 > 0 and time < 1000";
     QueryStatement statement =
         (QueryStatement) StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
     List<PartialPath> fullPaths = statement.getPaths();
     assertEquals(2, fullPaths.size());
-    assertEquals("root.sg.d1.s1", fullPaths.get(0).getFullPath());
-    assertEquals("root.sg.d1.s3", fullPaths.get(1).getFullPath());
+    assertEquals("root.db.d1.s3", fullPaths.get(0).getFullPath());
+    assertEquals("root.db.d1.s1", fullPaths.get(1).getFullPath());
   }
 
   private void checkErrorQuerySql(String sql) {

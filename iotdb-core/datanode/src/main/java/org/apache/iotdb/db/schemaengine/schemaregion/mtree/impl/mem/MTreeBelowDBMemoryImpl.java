@@ -134,9 +134,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
  *   <li>Interfaces and Implementation for Template check
  * </ol>
  */
-public class MTreeBelowSGMemoryImpl {
+public class MTreeBelowDBMemoryImpl {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowSGMemoryImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MTreeBelowDBMemoryImpl.class);
 
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private final MemMTreeStore store;
@@ -153,7 +153,7 @@ public class MTreeBelowSGMemoryImpl {
   private final MemSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSGMemoryImpl(
+  public MTreeBelowDBMemoryImpl(
       final PartialPath databasePath,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter,
@@ -168,7 +168,7 @@ public class MTreeBelowSGMemoryImpl {
     this.attributeGetter = attributeGetter;
   }
 
-  private MTreeBelowSGMemoryImpl(
+  private MTreeBelowDBMemoryImpl(
       final PartialPath databasePath,
       final MemMTreeStore store,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
@@ -192,7 +192,7 @@ public class MTreeBelowSGMemoryImpl {
     return store.createSnapshot(snapshotDir);
   }
 
-  public static MTreeBelowSGMemoryImpl loadFromSnapshot(
+  public static MTreeBelowDBMemoryImpl loadFromSnapshot(
       final File snapshotDir,
       final String databaseFullPath,
       final MemSchemaRegionStatistics regionStatistics,
@@ -203,7 +203,7 @@ public class MTreeBelowSGMemoryImpl {
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> tagGetter,
       final Function<IMeasurementMNode<IMemMNode>, Map<String, String>> attributeGetter)
       throws IOException, IllegalPathException {
-    return new MTreeBelowSGMemoryImpl(
+    return new MTreeBelowDBMemoryImpl(
         PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
         MemMTreeStore.loadFromSnapshot(
             snapshotDir,
@@ -427,7 +427,7 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode cur = databaseMNode;
     IMemMNode child;
     String childName;
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
+    // e.g, path = root.db.d1.s1,  create internal nodes and set cur to db node, parent of d1
     for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
       childName = nodeNames[i];
       child = cur.getChild(childName);
@@ -447,7 +447,7 @@ public class MTreeBelowSGMemoryImpl {
       final String deviceName, final IMemMNode deviceParent)
       throws PathAlreadyExistException, ExceedQuotaException {
     if (deviceParent == null) {
-      // device is sg
+      // device is db
       return databaseMNode;
     }
     IMemMNode device = store.getChild(deviceParent, deviceName);
@@ -798,7 +798,7 @@ public class MTreeBelowSGMemoryImpl {
   /**
    * Add an interval path to MTree. This is only used for automatically creating schema
    *
-   * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
+   * <p>e.g., get root.db.d1, get or create all internal nodes and return the node of d1
    */
   public IMemMNode getDeviceNodeWithAutoCreating(final PartialPath deviceId)
       throws MetadataException {

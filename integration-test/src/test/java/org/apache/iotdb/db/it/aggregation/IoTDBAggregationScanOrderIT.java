@@ -41,31 +41,31 @@ public class IoTDBAggregationScanOrderIT {
 
   private static final String[] sqls =
       new String[] {
-        "insert into root.sg1.d1(time, s1) values (12, 12);",
+        "insert into root.db1.d1(time, s1) values (12, 12);",
         "flush;",
-        "insert into root.sg1.d1(time, s2) values (30, 30);",
+        "insert into root.db1.d1(time, s2) values (30, 30);",
         "flush;",
-        "insert into root.sg1.d1(time, s1) values (0, 0);",
-        "insert into root.sg1.d1(time, s1) values (8, 8);",
+        "insert into root.db1.d1(time, s1) values (0, 0);",
+        "insert into root.db1.d1(time, s1) values (8, 8);",
         "flush;",
-        "insert into root.sg1.d1(time, s1) values (0, 0);",
-        "insert into root.sg1.d1(time, s1) values (10, 10);",
+        "insert into root.db1.d1(time, s1) values (0, 0);",
+        "insert into root.db1.d1(time, s1) values (10, 10);",
         "flush;",
-        "insert into root.sg1.d1(time, s1) values (17, 17);",
-        "insert into root.sg1.d1(time, s1) values (20, 20);",
+        "insert into root.db1.d1(time, s1) values (17, 17);",
+        "insert into root.db1.d1(time, s1) values (20, 20);",
         "flush;",
-        "insert into root.sg1.d2(time, s1) aligned values (12, 12);",
+        "insert into root.db1.d2(time, s1) aligned values (12, 12);",
         "flush;",
-        "insert into root.sg1.d2(time, s2) aligned values (30, 30);",
+        "insert into root.db1.d2(time, s2) aligned values (30, 30);",
         "flush;",
-        "insert into root.sg1.d2(time, s1) aligned values (0, 0);",
-        "insert into root.sg1.d2(time, s1) aligned values (8, 8);",
+        "insert into root.db1.d2(time, s1) aligned values (0, 0);",
+        "insert into root.db1.d2(time, s1) aligned values (8, 8);",
         "flush;",
-        "insert into root.sg1.d2(time, s1) aligned values (0, 0);",
-        "insert into root.sg1.d2(time, s1) aligned values (10, 10);",
+        "insert into root.db1.d2(time, s1) aligned values (0, 0);",
+        "insert into root.db1.d2(time, s1) aligned values (10, 10);",
         "flush;",
-        "insert into root.sg1.d2(time, s1) aligned values (17, 17);",
-        "insert into root.sg1.d2(time, s1) aligned values (20, 20);",
+        "insert into root.db1.d2(time, s1) aligned values (17, 17);",
+        "insert into root.db1.d2(time, s1) aligned values (20, 20);",
         "flush;"
       };
 
@@ -88,21 +88,21 @@ public class IoTDBAggregationScanOrderIT {
 
   @Test
   public void test() {
-    String d1s1 = "root.sg1.d1.s1";
+    String d1s1 = "root.db1.d1.s1";
     String[] expectedHeader = new String[] {firstValue(d1s1), lastValue(d1s1)};
     String[] retArray = new String[] {"0.0,20.0,"};
 
     resultSetEqualWithDescOrderTest(
-        "select first_value(s1), last_value(s1) from root.sg1.d1", expectedHeader, retArray);
+        "select first_value(s1), last_value(s1) from root.db1.d1", expectedHeader, retArray);
   }
 
   @Test
   public void alignedTest() {
-    String d2s1 = "root.sg1.d2.s1";
+    String d2s1 = "root.db1.d2.s1";
     String[] expectedHeader = new String[] {firstValue(d2s1), lastValue(d2s1)};
     String[] retArray = new String[] {"0.0,20.0,"};
 
     resultSetEqualWithDescOrderTest(
-        "select first_value(s1), last_value(s1) from root.sg1.d2", expectedHeader, retArray);
+        "select first_value(s1), last_value(s1) from root.db1.d2", expectedHeader, retArray);
   }
 }

@@ -866,93 +866,96 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
 
   @Override
   public synchronized void handleExit() {
-    if (writingFileWriter != null) {
-      try {
-        writingFileWriter.close();
-        LOGGER.info(
-            "Receiver id = {}: Handling exit: Writing file writer was closed.", receiverId.get());
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Receiver id = {}: Handling exit: Close writing file writer error.",
-            receiverId.get(),
-            e);
-      }
-      writingFileWriter = null;
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Receiver id = {}: Handling exit: Writing file writer is null. No need to close.",
-            receiverId.get());
-      }
-    }
-
-    if (writingFile != null) {
-      try {
-        RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
-        LOGGER.info(
-            "Receiver id = {}: Handling exit: Writing file {} was deleted.",
-            receiverId.get(),
-            writingFile.getPath());
-      } catch (Exception e) {
-        LOGGER.warn(
-            "Receiver id = {}: Handling exit: Delete writing file {} error.",
-            receiverId.get(),
-            writingFile.getPath(),
-            e);
-      }
-      writingFile = null;
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Receiver id = {}: Handling exit: Writing file is null. No need to delete.",
-            receiverId.get());
-      }
-    }
-
-    // Clear the original receiver file dir if exists
-    if (receiverFileDirWithIdSuffix.get() != null) {
-      if (receiverFileDirWithIdSuffix.get().exists()) {
+    try {
+      if (writingFileWriter != null) {
         try {
-          RetryUtils.retryOnException(
-              () -> {
-                FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
-                return null;
-              });
+          writingFileWriter.close();
           LOGGER.info(
-              "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
-              receiverId.get(),
-              receiverFileDirWithIdSuffix.get().getPath());
+              "Receiver id = {}: Handling exit: Writing file writer was closed.", receiverId.get());
         } catch (Exception e) {
           LOGGER.warn(
-              "Receiver id = {}: Handling exit: Delete original receiver file dir {} error.",
+              "Receiver id = {}: Handling exit: Close writing file writer error.",
               receiverId.get(),
-              receiverFileDirWithIdSuffix.get().getPath(),
               e);
         }
+        writingFileWriter = null;
       } else {
         if (LOGGER.isDebugEnabled()) {
           LOGGER.debug(
-              "Receiver id = {}: Handling exit: Original receiver file dir {} does not exist. No need to delete.",
-              receiverId.get(),
-              receiverFileDirWithIdSuffix.get().getPath());
+              "Receiver id = {}: Handling exit: Writing file writer is null. No need to close.",
+              receiverId.get());
         }
       }
-      receiverFileDirWithIdSuffix.set(null);
-    } else {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "Receiver id = {}: Handling exit: Original receiver file dir is null. No need to delete.",
-            receiverId.get());
+
+      if (writingFile != null) {
+        try {
+          RetryUtils.retryOnException(() -> FileUtils.delete(writingFile));
+          LOGGER.info(
+              "Receiver id = {}: Handling exit: Writing file {} was deleted.",
+              receiverId.get(),
+              writingFile.getPath());
+        } catch (Exception e) {
+          LOGGER.warn(
+              "Receiver id = {}: Handling exit: Delete writing file {} error.",
+              receiverId.get(),
+              writingFile.getPath(),
+              e);
+        }
+        writingFile = null;
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Receiver id = {}: Handling exit: Writing file is null. No need to delete.",
+              receiverId.get());
+        }
       }
-    }
 
-    // Close the session
-    closeSession();
+      // Clear the original receiver file dir if exists
+      if (receiverFileDirWithIdSuffix.get() != null) {
+        if (receiverFileDirWithIdSuffix.get().exists()) {
+          try {
+            RetryUtils.retryOnException(
+                () -> {
+                  FileUtils.deleteDirectory(receiverFileDirWithIdSuffix.get());
+                  return null;
+                });
+            LOGGER.info(
+                "Receiver id = {}: Handling exit: Original receiver file dir {} was deleted.",
+                receiverId.get(),
+                receiverFileDirWithIdSuffix.get().getPath());
+          } catch (Exception e) {
+            LOGGER.warn(
+                "Receiver id = {}: Handling exit: Delete original receiver file dir {} error.",
+                receiverId.get(),
+                receiverFileDirWithIdSuffix.get().getPath(),
+                e);
+          }
+        } else {
+          if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(
+                "Receiver id = {}: Handling exit: Original receiver file dir {} does not exist. No need to delete.",
+                receiverId.get(),
+                receiverFileDirWithIdSuffix.get().getPath());
+          }
+        }
+        receiverFileDirWithIdSuffix.set(null);
+      } else {
+        if (LOGGER.isDebugEnabled()) {
+          LOGGER.debug(
+              "Receiver id = {}: Handling exit: Original receiver file dir is null. No need to delete.",
+              receiverId.get());
+        }
+      }
 
-    LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
+      // Close the session
+      closeSession();
 
-    if (originalThreadName != null) {
-      Thread.currentThread().setName(originalThreadName);
+      LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
+
+    } finally {
+      if (originalThreadName != null) {
+        Thread.currentThread().setName(originalThreadName);
+      }
     }
   }
 

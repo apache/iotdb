@@ -50,7 +50,7 @@ public class InsertRowsNodeSerdeTest {
     node.addOneInsertRowNode(
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             new TSDataType[] {
@@ -68,7 +68,7 @@ public class InsertRowsNodeSerdeTest {
     node.addOneInsertRowNode(
         new InsertRowNode(
             new PlanNodeId("plan node 1"),
-            new PartialPath("root.sg.d2"),
+            new PartialPath("root.db.d2"),
             false,
             new String[] {"s1", "s4"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},
@@ -92,7 +92,7 @@ public class InsertRowsNodeSerdeTest {
     insertRowsNode.addOneInsertRowNode(
         new InsertRowNode(
             new PlanNodeId(""),
-            new PartialPath("root.sg.d1"),
+            new PartialPath("root.db.d1"),
             false,
             new String[] {"s1", "s2", "s3", "s4", "s5"},
             new TSDataType[] {
@@ -117,7 +117,7 @@ public class InsertRowsNodeSerdeTest {
     insertRowsNode.addOneInsertRowNode(
         new InsertRowNode(
             new PlanNodeId(""),
-            new PartialPath("root.sg.d2"),
+            new PartialPath("root.db.d2"),
             false,
             new String[] {"s1", "s4"},
             new TSDataType[] {TSDataType.DOUBLE, TSDataType.BOOLEAN},

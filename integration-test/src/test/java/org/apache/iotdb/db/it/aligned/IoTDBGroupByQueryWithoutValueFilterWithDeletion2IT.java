@@ -52,9 +52,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletion2IT
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s3 where time > 25");
+      statement.execute("delete from root.db1.d1.s1 where time <= 15");
+      statement.execute("delete timeseries root.db1.d1.s2");
+      statement.execute("delete from root.db1.d1.s3 where time > 25");
     } catch (Exception e) {
       e.printStackTrace();
     }

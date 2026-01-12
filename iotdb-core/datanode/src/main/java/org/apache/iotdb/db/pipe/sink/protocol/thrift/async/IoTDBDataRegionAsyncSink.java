@@ -116,7 +116,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   private IoTDBDataNodeAsyncClientManager clientManager;
   private IoTDBDataNodeAsyncClientManager transferTsFileClientManager;
 
-  // It is necessary to ensure that other classes that inherit Async Connector will not have NPE
+  // It is necessary to ensure that other classes that inherit Async Sink will not have NPE
   public AtomicInteger transferTsFileCounter = new AtomicInteger(0);
 
   private PipeTransferBatchReqBuilder tabletBatchBuilder;
@@ -193,7 +193,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   @Override
-  // Synchronized to avoid close connector when transfer event
+  // Synchronized to avoid close sink when transfer event
   public synchronized void handshake() throws Exception {
     syncSink.handshake();
   }
@@ -212,7 +212,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
     if (!(tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent)
         && !(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftAsyncConnector only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
+          "IoTDBThriftAsyncSink only support PipeInsertNodeTabletInsertionEvent and PipeRawTabletInsertionEvent. "
               + "Current event: {}.",
           tabletInsertionEvent);
       return;
@@ -376,7 +376,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
     if (!(tsFileInsertionEvent instanceof PipeTsFileInsertionEvent)) {
       LOGGER.warn(
-          "IoTDBThriftAsyncConnector only support PipeTsFileInsertionEvent. Current event: {}.",
+          "IoTDBThriftAsyncSink only support PipeTsFileInsertionEvent. Current event: {}.",
           tsFileInsertionEvent);
       return;
     }
@@ -599,7 +599,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
 
       // Stop retrying if the execution time exceeds the threshold for better realtime performance
       if (System.currentTimeMillis() - retryStartTime
-          > PipeConfig.getInstance().getPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall()) {
+          > PipeConfig.getInstance().getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall()) {
         if (retryEventQueueEventCounter.getTabletInsertionEventCount()
                 < PipeConfig.getInstance().getPipeAsyncSinkForcedRetryTabletEventQueueSize()
             && retryEventQueueEventCounter.getTsFileInsertionEventCount()
@@ -754,7 +754,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
   }
 
   @Override
-  // synchronized to avoid close connector when transfer event
+  // synchronized to avoid close sink when transfer event
   public synchronized void close() {
     isClosed.set(true);
 

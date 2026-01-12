@@ -41,7 +41,7 @@ public class TsFileIdentifierUT {
     String firstPath =
         "sequence"
             + File.separator
-            + "root.test.sg"
+            + "root.test.db"
             + File.separator
             + "0"
             + File.separator
@@ -50,7 +50,7 @@ public class TsFileIdentifierUT {
             + "1-1-0-0.tsfile";
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromFilePath(firstPath);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
-    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.db");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
     Assert.assertEquals(firstInfo.getDataRegionId(), "0");
     Assert.assertTrue(firstInfo.isSequence());
@@ -58,7 +58,7 @@ public class TsFileIdentifierUT {
     String secondPath =
         "unsequence"
             + File.separator
-            + "root.test.sg"
+            + "root.test.db"
             + File.separator
             + "0"
             + File.separator
@@ -68,13 +68,13 @@ public class TsFileIdentifierUT {
 
     TsFileIdentifier secondInfo = TsFileIdentifier.getFileIdentifierFromFilePath(secondPath);
     Assert.assertEquals(secondInfo.getFilename(), "999-3-24-12.tsfile");
-    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.db");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "426");
     Assert.assertEquals(secondInfo.getDataRegionId(), "0");
     Assert.assertFalse(secondInfo.isSequence());
 
     String illegalPath =
-        "root.test.sg"
+        "root.test.db"
             + File.separator
             + "0"
             + File.separator
@@ -91,24 +91,24 @@ public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromInfoString() {
-    String[] firstInfoArray = new String[] {"sequence", "root.test.sg", "0", "0", "1-1-0-0.tsfile"};
+    String[] firstInfoArray = new String[] {"sequence", "root.test.db", "0", "0", "1-1-0-0.tsfile"};
     String firstInfoString = String.join(INFO_SEPARATOR, firstInfoArray);
     TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromInfoString(firstInfoString);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
     Assert.assertEquals(firstInfo.getDataRegionId(), "0");
-    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.db");
     Assert.assertTrue(firstInfo.isSequence());
 
     String[] secondInfoArray =
-        new String[] {"unsequence", "root.test.sg", "0", "425", "666-888-222-131.tsfile"};
+        new String[] {"unsequence", "root.test.db", "0", "425", "666-888-222-131.tsfile"};
     String secondInfoString = String.join(INFO_SEPARATOR, secondInfoArray);
     TsFileIdentifier secondInfo =
         TsFileIdentifier.getFileIdentifierFromInfoString(secondInfoString);
     Assert.assertEquals(secondInfo.getFilename(), "666-888-222-131.tsfile");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "425");
     Assert.assertEquals(secondInfo.getDataRegionId(), "0");
-    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
+    Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.db");
     Assert.assertFalse(secondInfo.isSequence());
 
     String[] illegalInfoArray = new String[] {"unsequence", "0", "425", "666-888-222-131.tsfile"};
@@ -127,7 +127,7 @@ public class TsFileIdentifierUT {
     String firstPath =
         "sequence"
             + File.separator
-            + "root.test.sg"
+            + "root.test.db"
             + File.separator
             + "0"
             + File.separator
@@ -171,7 +171,7 @@ public class TsFileIdentifierUT {
     String filePath =
         "sequence"
             + File.separator
-            + "root.test.sg"
+            + "root.test.db"
             + File.separator
             + "0"
             + File.separator

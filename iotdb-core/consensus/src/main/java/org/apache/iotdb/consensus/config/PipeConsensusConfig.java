@@ -241,9 +241,9 @@ public class PipeConsensusConfig {
   }
 
   public static class Pipe {
-    private final String extractorPluginName;
+    private final String sourcePluginName;
     private final String processorPluginName;
-    private final String connectorPluginName;
+    private final String sinkPluginName;
     private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
@@ -252,18 +252,18 @@ public class PipeConsensusConfig {
     private final long consensusPipeGuardJobIntervalInSeconds;
 
     public Pipe(
-        String extractorPluginName,
+        String sourcePluginName,
         String processorPluginName,
-        String connectorPluginName,
+        String sinkPluginName,
         ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
         ReplicateProgressManager replicateProgressManager,
         ConsensusPipeReceiver consensusPipeReceiver,
         long consensusPipeGuardJobIntervalInSeconds) {
-      this.extractorPluginName = extractorPluginName;
+      this.sourcePluginName = sourcePluginName;
       this.processorPluginName = processorPluginName;
-      this.connectorPluginName = connectorPluginName;
+      this.sinkPluginName = sinkPluginName;
       this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
@@ -272,16 +272,16 @@ public class PipeConsensusConfig {
       this.consensusPipeGuardJobIntervalInSeconds = consensusPipeGuardJobIntervalInSeconds;
     }
 
-    public String getExtractorPluginName() {
-      return extractorPluginName;
+    public String getSourcePluginName() {
+      return sourcePluginName;
     }
 
     public String getProcessorPluginName() {
       return processorPluginName;
     }
 
-    public String getConnectorPluginName() {
-      return connectorPluginName;
+    public String getSinkPluginName() {
+      return sinkPluginName;
     }
 
     public ConsensusPipeDispatcher getConsensusPipeDispatcher() {
@@ -313,10 +313,10 @@ public class PipeConsensusConfig {
     }
 
     public static class Builder {
-      private String extractorPluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
+      private String sourcePluginName = BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName();
       private String processorPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName();
-      private String connectorPluginName =
+      private String sinkPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName();
       private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
@@ -325,8 +325,8 @@ public class PipeConsensusConfig {
       private ConsensusPipeReceiver consensusPipeReceiver = null;
       private long consensusPipeGuardJobIntervalInSeconds = 180L;
 
-      public Pipe.Builder setExtractorPluginName(String extractorPluginName) {
-        this.extractorPluginName = extractorPluginName;
+      public Pipe.Builder setExtractorPluginName(String sourcePluginName) {
+        this.sourcePluginName = sourcePluginName;
         return this;
       }
 
@@ -335,8 +335,8 @@ public class PipeConsensusConfig {
         return this;
       }
 
-      public Pipe.Builder setConnectorPluginName(String connectorPluginName) {
-        this.connectorPluginName = connectorPluginName;
+      public Pipe.Builder setConnectorPluginName(String sinkPluginName) {
+        this.sinkPluginName = sinkPluginName;
         return this;
       }
 
@@ -375,9 +375,9 @@ public class PipeConsensusConfig {
 
       public Pipe build() {
         return new Pipe(
-            extractorPluginName,
+            sourcePluginName,
             processorPluginName,
-            connectorPluginName,
+            sinkPluginName,
             consensusPipeDispatcher,
             consensusPipeGuardian,
             consensusPipeSelector,

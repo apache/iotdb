@@ -385,10 +385,10 @@ public class IoTDBDeletionIT {
       statement.execute(
           "INSERT INTO root.ln10.wf01.wt01(Time,status) VALUES (2022-10-11 10:20:50,true),(2022-10-11 10:20:51,true);");
       statement.execute(
-          "create timeseries root.sg10.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN;");
+          "create timeseries root.db10.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN;");
 
       statement.execute(
-          "DELETE FROM root.ln10.wf01.wt01.status,root.sg.wf01.wt01.status WHERE time >2022-10-11 10:20:50;");
+          "DELETE FROM root.ln10.wf01.wt01.status,root.db.wf01.wt01.status WHERE time >2022-10-11 10:20:50;");
 
       try (ResultSet resultSet = statement.executeQuery("select ** from root.ln10")) {
         int cnt = 0;

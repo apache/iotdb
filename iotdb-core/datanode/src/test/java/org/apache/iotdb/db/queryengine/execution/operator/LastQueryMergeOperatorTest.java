@@ -86,8 +86,8 @@ public class LastQueryMergeOperatorTest {
           private final long[][] timeArray = new long[][] {{3, 4, 5, 3}, {5, 4, 4, 6}};
           private final String[][] timeSeriesArray =
               new String[][] {
-                {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d1.s3", "root.sg.d1.s4"},
-                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"}
+                {"root.db.d1.s1", "root.db.d1.s2", "root.db.d1.s3", "root.db.d1.s4"},
+                {"root.db.d2.s1", "root.db.d2.s2", "root.db.d2.s3", "root.db.d2.s4"}
               };
           private final String[][] valueArray =
               new String[][] {{"3", "4", "5", "3"}, {"5", "4", "4", "6"}};
@@ -160,8 +160,8 @@ public class LastQueryMergeOperatorTest {
           private final long[][] timeArray = new long[][] {{2, 3, 3, 2}, {5, 4, 4, 6}};
           private final String[][] timeSeriesArray =
               new String[][] {
-                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"},
-                {"root.sg.d3.s1", "root.sg.d3.s2", "root.sg.d3.s3", "root.sg.d3.s4"}
+                {"root.db.d2.s1", "root.db.d2.s2", "root.db.d2.s3", "root.db.d2.s4"},
+                {"root.db.d3.s1", "root.db.d3.s2", "root.db.d3.s3", "root.db.d3.s4"}
               };
           private final String[][] valueArray =
               new String[][] {{"2", "3", "3", "2"}, {"5", "4", "4", "6"}};
@@ -242,18 +242,18 @@ public class LastQueryMergeOperatorTest {
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
     final String[] timeSeriesArray =
         new String[] {
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d1.s3",
-          "root.sg.d1.s4",
-          "root.sg.d2.s1",
-          "root.sg.d2.s2",
-          "root.sg.d2.s3",
-          "root.sg.d2.s4",
-          "root.sg.d3.s1",
-          "root.sg.d3.s2",
-          "root.sg.d3.s3",
-          "root.sg.d3.s4"
+          "root.db.d1.s1",
+          "root.db.d1.s2",
+          "root.db.d1.s3",
+          "root.db.d1.s4",
+          "root.db.d2.s1",
+          "root.db.d2.s2",
+          "root.db.d2.s3",
+          "root.db.d2.s4",
+          "root.db.d3.s1",
+          "root.db.d3.s2",
+          "root.db.d3.s3",
+          "root.db.d3.s4"
         };
     final String[] valueArray =
         new String[] {"3", "4", "5", "3", "5", "4", "4", "6", "5", "4", "4", "6"};
@@ -310,8 +310,8 @@ public class LastQueryMergeOperatorTest {
           private final long[][] timeArray = new long[][] {{3, 4, 5, 3}, {5, 4, 4, 6}};
           private final String[][] timeSeriesArray =
               new String[][] {
-                {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d1.s3", "root.sg.d1.s4"},
-                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"}
+                {"root.db.d1.s1", "root.db.d1.s2", "root.db.d1.s3", "root.db.d1.s4"},
+                {"root.db.d2.s1", "root.db.d2.s2", "root.db.d2.s3", "root.db.d2.s4"}
               };
           private final String[][] valueArray =
               new String[][] {{"3", "4", "5", "3"}, {"5", "4", "4", "6"}};
@@ -385,8 +385,8 @@ public class LastQueryMergeOperatorTest {
           private final long[][] timeArray = new long[][] {{2, 3, 3, 2}, {5, 4, 4, 6}};
           private final String[][] timeSeriesArray =
               new String[][] {
-                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"},
-                {"root.sg.d3.s1", "root.sg.d3.s2", "root.sg.d3.s3", "root.sg.d3.s4"}
+                {"root.db.d2.s1", "root.db.d2.s2", "root.db.d2.s3", "root.db.d2.s4"},
+                {"root.db.d3.s1", "root.db.d3.s2", "root.db.d3.s3", "root.db.d3.s4"}
               };
           private final String[][] valueArray =
               new String[][] {{"2", "3", "3", "2"}, {"5", "4", "4", "6"}};
@@ -468,18 +468,18 @@ public class LastQueryMergeOperatorTest {
     final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
     final String[] timeSeriesArray =
         new String[] {
-          "root.sg.d1.s1",
-          "root.sg.d1.s2",
-          "root.sg.d1.s3",
-          "root.sg.d1.s4",
-          "root.sg.d2.s1",
-          "root.sg.d2.s2",
-          "root.sg.d2.s3",
-          "root.sg.d2.s4",
-          "root.sg.d3.s1",
-          "root.sg.d3.s2",
-          "root.sg.d3.s3",
-          "root.sg.d3.s4"
+          "root.db.d1.s1",
+          "root.db.d1.s2",
+          "root.db.d1.s3",
+          "root.db.d1.s4",
+          "root.db.d2.s1",
+          "root.db.d2.s2",
+          "root.db.d2.s3",
+          "root.db.d2.s4",
+          "root.db.d3.s1",
+          "root.db.d3.s2",
+          "root.db.d3.s3",
+          "root.db.d3.s4"
         };
     final String[] valueArray =
         new String[] {"3", "4", "5", "3", "5", "4", "4", "6", "5", "4", "4", "6"};

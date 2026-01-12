@@ -86,7 +86,7 @@ public class PipeConfigNodeTaskAgent extends PipeTaskAgent {
       final PipeStaticMeta pipeStaticMeta,
       final PipeTaskMeta pipeTaskMeta)
       throws IllegalPathException {
-    // Advance the extractor parameters parsing logic to avoid creating un-relevant pipeTasks
+    // Advance the source parameters parsing logic to avoid creating un-relevant pipeTasks
     if (consensusGroupId == Integer.MIN_VALUE
         && pipeTaskMeta.getLeaderNodeId()
             == ConfigNodeDescriptor.getInstance().getConf().getConfigNodeId()

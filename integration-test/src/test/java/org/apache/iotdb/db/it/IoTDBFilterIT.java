@@ -116,7 +116,7 @@ public class IoTDBFilterIT {
         }
       }
       statement.execute(
-          " insert into root.sg1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
+          " insert into root.db1.d1(time, s1, s2) aligned values (1,1, \"1\"), (2,2,\"2\")");
       statement.execute(
           " insert into root.vehicle.testUDTF(time, s1, s2) values (1,\"ss\",0), (2,\"d\",3)");
     } catch (SQLException throwable) {
@@ -185,7 +185,7 @@ public class IoTDBFilterIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet =
             statement.executeQuery(
-                "select s2 from root.sg1.d1 where s1 = 1 and s2 >= \"1\" and s2 <= \"2\";")) {
+                "select s2 from root.db1.d1 where s1 = 1 and s2 >= \"1\" and s2 <= \"2\";")) {
       int count = 0;
       while (resultSet.next()) {
         ++count;
@@ -199,16 +199,16 @@ public class IoTDBFilterIT {
   @Test
   public void testMismatchedDataTypes() {
     assertTestFail(
-        "select s1 from root.sg1.d1 where s1;",
+        "select s1 from root.db1.d1 where s1;",
         "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
-        "select s1 from root.sg1.d1 where s1 align by device;",
+        "select s1 from root.db1.d1 where s1 align by device;",
         "The output type of the expression in WHERE clause should be BOOLEAN, actual data type: DOUBLE.");
     assertTestFail(
-        "select count(s1) from root.sg1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
+        "select count(s1) from root.db1.d1 group by ([0, 40), 5ms) having count(s1) + 1 align by device;",
         "The output type of the expression in HAVING clause should be BOOLEAN, actual data type: DOUBLE.");
   }
 

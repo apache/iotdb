@@ -34,9 +34,9 @@ public class PipeConsensusTabletInsertNodeEventHandler
   public PipeConsensusTabletInsertNodeEventHandler(
       PipeInsertNodeTabletInsertionEvent event,
       TPipeConsensusTransferReq req,
-      PipeConsensusAsyncSink connector,
+      PipeConsensusAsyncSink sink,
       PipeConsensusSinkMetrics metric) {
-    super(event, req, connector, metric);
+    super(event, req, sink, metric);
   }
 
   @Override

@@ -195,13 +195,13 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartition(
-      final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+      final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
+    DataPartition dataPartition = partitionCache.getDataPartition(dbNameToQueryParamsMap);
     if (null == dataPartition) {
       try (ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDataPartitionTableResp dataPartitionTableResp =
-            client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+            client.getDataPartitionTable(constructDataPartitionReqForQuery(dbNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
@@ -221,14 +221,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getDataPartitionWithUnclosedTimeRange(
-      final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     // In this method, we must fetch from config node because it contains -oo or +oo
     // and there is no need to update cache because since we will never fetch it from cache, the
     // update operation will be only time waste
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TDataPartitionTableResp dataPartitionTableResp =
-          client.getDataPartitionTable(constructDataPartitionReqForQuery(sgNameToQueryParamsMap));
+          client.getDataPartitionTable(constructDataPartitionReqForQuery(dbNameToQueryParamsMap));
       if (dataPartitionTableResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionTableResp);
@@ -245,14 +245,14 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   @Override
   public DataPartition getOrCreateDataPartition(
-      final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-    DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+      final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
+    DataPartition dataPartition = partitionCache.getDataPartition(dbNameToQueryParamsMap);
     if (null == dataPartition) {
       // Do not use data partition cache
       try (final ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDataPartitionTableResp dataPartitionTableResp =
-            client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+            client.getOrCreateDataPartitionTable(constructDataPartitionReq(dbNameToQueryParamsMap));
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
@@ -454,11 +454,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TDataPartitionReq constructDataPartitionReq(
-      final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
-        sgNameToQueryParamsMap.entrySet()) {
-      // for each sg
+        dbNameToQueryParamsMap.entrySet()) {
+      // for each db
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
 
       final Map<TSeriesPartitionSlot, ComplexTimeSlotList> seriesSlotTimePartitionMap =
@@ -486,12 +486,12 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   /** For query, DataPartitionQueryParam is shared by each device */
   private TDataPartitionReq constructDataPartitionReqForQuery(
-      final Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      final Map<String, List<DataPartitionQueryParam>> dbNameToQueryParamsMap) {
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     TTimeSlotList sharedTTimeSlotList = null;
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
-        sgNameToQueryParamsMap.entrySet()) {
-      // for each sg
+        dbNameToQueryParamsMap.entrySet()) {
+      // for each db
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
 
       for (final DataPartitionQueryParam queryParam : entry.getValue()) {

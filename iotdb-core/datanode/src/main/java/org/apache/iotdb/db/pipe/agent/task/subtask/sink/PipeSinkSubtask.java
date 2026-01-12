@@ -58,9 +58,9 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
-  private final int connectorIndex;
+  private final int sinkIndex;
 
-  // Now parallel connectors run the same time, thus the heartbeat events are not sure
+  // Now parallel sinks run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
@@ -71,12 +71,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final String taskID,
       final long creationTime,
       final String attributeSortedString,
-      final int connectorIndex,
+      final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
-    this.connectorIndex = connectorIndex;
+    this.sinkIndex = sinkIndex;
     this.inputPendingQueue = inputPendingQueue;
 
     if (!attributeSortedString.startsWith("schema_")) {
@@ -142,7 +142,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         throw e;
       } else {
         LOGGER.info(
-            "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
+            "{} in pipe transfer, ignored because the sink subtask is dropped.{}",
             e.getClass().getSimpleName(),
             e.getMessage() != null ? " Message: " + e.getMessage() : "");
         clearReferenceCountAndReleaseLastEvent(event);
@@ -208,13 +208,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final long startTime = System.currentTimeMillis();
       outputPipeSink.close();
       LOGGER.info(
-          "Pipe: connector subtask {} ({}) was closed within {} ms",
+          "Pipe: sink subtask {} ({}) was closed within {} ms",
           taskID,
           outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
-          "Exception occurred when closing pipe connector subtask {}, root cause: {}",
+          "Exception occurred when closing pipe sink subtask {}, root cause: {}",
           taskID,
           ErrorHandlingUtils.getRootCause(e).getMessage(),
           e);
@@ -227,8 +227,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. So we just discard
-   * its queued events in the output pipe connector.
+   * When a pipe is dropped, the sink maybe reused and will not be closed. So we just discard its
+   * queued events in the output pipe sink.
    */
   public void discardEventsOfPipe(final String pipeNameToDrop, int regionId) {
     // Try to remove the events as much as possible
@@ -289,7 +289,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public int getConnectorIndex() {
-    return connectorIndex;
+    return sinkIndex;
   }
 
   public int getTsFileInsertionEventCount() {

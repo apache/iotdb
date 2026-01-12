@@ -64,8 +64,8 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq \n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY([0, 10), 30m)\n"
                 + "END";
         statement.execute(sql);
@@ -83,8 +83,8 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq \n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    WHERE time >= 0 and time <= 10\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
@@ -103,8 +103,8 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq \n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "END";
         statement.execute(sql);
         fail();
@@ -121,7 +121,7 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq_2\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    FROM root.sg.d\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -141,8 +141,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE EVERY 50ms\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -161,8 +161,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE -1m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -181,8 +181,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE 0m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)\n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -201,8 +201,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE 30m, -1m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -221,8 +221,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE 30m, 30m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -241,8 +241,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE 30m, 31m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -261,8 +261,8 @@ public class IoTDBCQIT {
                 + "RESAMPLE RANGE 30m\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1) \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(1h)\n"
                 + "END";
         statement.execute(sql);
@@ -282,8 +282,8 @@ public class IoTDBCQIT {
                 + "TIMEOUT POLICY UNKNOWN\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(1h)\n"
                 + "END";
         statement.execute(sql);
@@ -301,8 +301,8 @@ public class IoTDBCQIT {
             "CREATE CQ s1_count_cq \n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -339,8 +339,8 @@ public class IoTDBCQIT {
                 + "TIMEOUT POLICY BLOCKED\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -354,8 +354,8 @@ public class IoTDBCQIT {
             "CREATE CQ correct_cq_2\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(30m)\n"
                 + "END";
         statement.execute(sql);
@@ -371,8 +371,8 @@ public class IoTDBCQIT {
                 + "TIMEOUT POLICY DISCARD\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(10m)\n"
                 + "END";
         statement.execute(sql);
@@ -388,8 +388,8 @@ public class IoTDBCQIT {
                 + "TIMEOUT POLICY DISCARD\n"
                 + "BEGIN \n"
                 + "  SELECT count(s1)  \n"
-                + "    INTO root.sg_count.d(count_s1)\n"
-                + "    FROM root.sg.d\n"
+                + "    INTO root.db_count.d(count_s1)\n"
+                + "    FROM root.db.d\n"
                 + "    GROUP BY(10m)\n"
                 + "END";
         statement.execute(sql);
@@ -423,15 +423,15 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY BLOCKED\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(30m)\n"
             + "END",
         "CREATE CQ show_cq_2\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(30m)\n"
             + "END",
         "CREATE CQ show_cq_3\n"
@@ -439,8 +439,8 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
         "CREATE CQ show_cq_4\n"
@@ -448,8 +448,8 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END"
       };
@@ -497,15 +497,15 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY BLOCKED\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(30m)\n"
             + "END",
         "CREATE CQ drop_cq_2\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(30m)\n"
             + "END",
         "CREATE CQ drop_cq_3\n"
@@ -513,8 +513,8 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END",
         "CREATE CQ drop_cq_4\n"
@@ -522,8 +522,8 @@ public class IoTDBCQIT {
             + "TIMEOUT POLICY DISCARD\n"
             + "BEGIN \n"
             + "  SELECT count(s1)  \n"
-            + "    INTO root.sg_count.d(count_s1)\n"
-            + "    FROM root.sg.d\n"
+            + "    INTO root.db_count.d(count_s1)\n"
+            + "    FROM root.db.d\n"
             + "    GROUP BY(10m)\n"
             + "END"
       };

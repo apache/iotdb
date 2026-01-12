@@ -36,8 +36,8 @@ import static org.junit.Assert.assertTrue;
 
 public class DistributionPlannerCycleTest {
 
-  // Query sql: `select * from root.sg.d1,root.sg.d2`
-  // root.sg.d1 has 2 SeriesScanNodes, root.sg.d2 has 3 SeriesScanNodes.
+  // Query sql: `select * from root.db.d1,root.db.d2`
+  // root.db.d1 has 2 SeriesScanNodes, root.db.d2 has 3 SeriesScanNodes.
   //
   // -----------------------------------------------------------------------------------------
   // Note: d1.s1[1] means a SeriesScanNode with target series d1.s1 and its data region is 1
@@ -57,7 +57,7 @@ public class DistributionPlannerCycleTest {
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
 
-    String sql = "select * from root.sg.d1,root.sg.d2";
+    String sql = "select * from root.db.d1,root.db.d2";
     Analysis analysis = Util2.analyze(sql, context);
     PlanNode logicalPlanNode = Util2.genLogicalPlan(analysis, context);
     DistributionPlanner planner =

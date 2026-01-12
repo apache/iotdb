@@ -40,12 +40,12 @@ public class AlterPipeProcedureV3Test {
     PublicBAOS byteArrayOutputStream = new PublicBAOS();
     DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-    Map<String, String> extractorAttributes = new HashMap<>();
+    Map<String, String> sourceAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
 
-    extractorAttributes.put("source", "iotdb-source");
-    extractorAttributes.put("source.pattern", "root.test1.wf01");
+    sourceAttributes.put("source", "iotdb-source");
+    sourceAttributes.put("source.pattern", "root.test1.wf01");
     processorAttributes.put("processor", "do-nothing-processor");
     connectorAttributes.put("connector", "iotdb-thrift-connector");
     connectorAttributes.put("host", "127.0.0.1");
@@ -53,7 +53,7 @@ public class AlterPipeProcedureV3Test {
 
     TAlterPipeReq req =
         new TAlterPipeReq("testPipe", processorAttributes, connectorAttributes, false, true);
-    req.setExtractorAttributes(extractorAttributes);
+    req.setExtractorAttributes(sourceAttributes);
     req.setIsReplaceAllExtractorAttributes(false);
     AlterPipeProcedureV2 proc = new AlterPipeProcedureV2(req);
 

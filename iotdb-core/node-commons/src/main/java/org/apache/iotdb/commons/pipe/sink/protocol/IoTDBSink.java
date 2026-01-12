@@ -428,14 +428,14 @@ public abstract class IoTDBSink implements PipeConnector {
     }
     LOGGER.info("IoTDBConnector shouldMarkAsPipeRequest: {}", shouldMarkAsPipeRequest);
 
-    final String connectorSkipIfValue =
+    final String sinkSkipIfValue =
         parameters
             .getStringOrDefault(
                 Arrays.asList(CONNECTOR_SKIP_IF_KEY, SINK_SKIP_IF_KEY),
                 IOTDB_CONNECTOR_SKIP_IF_DEFAULT_VALUE)
             .trim();
     final Set<String> skipIfOptionSet =
-        Arrays.stream(connectorSkipIfValue.split(","))
+        Arrays.stream(sinkSkipIfValue.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
             .map(String::toLowerCase)
@@ -638,8 +638,8 @@ public abstract class IoTDBSink implements PipeConnector {
   }
 
   /**
-   * When a pipe is dropped, the connector maybe reused and will not be closed. We need to discard
-   * its batched or queued events in the output pipe connector.
+   * When a pipe is dropped, the sink maybe reused and will not be closed. We need to discard its
+   * batched or queued events in the output pipe sink.
    */
   public synchronized void discardEventsOfPipe(final String pipeName, final int regionId) {
     // Do nothing by default

@@ -272,12 +272,12 @@ public class StorageEngine implements IService {
   /** get StorageGroup -> DataRegionIdList map from data/system directory. */
   public Map<String, List<DataRegionId>> getLocalDataRegionInfo() {
     File system = SystemFileFactory.INSTANCE.getFile(systemDir);
-    File[] sgDirs = system.listFiles();
+    File[] dbDirs = system.listFiles();
     Map<String, List<DataRegionId>> localDataRegionInfo = new HashMap<>();
-    if (sgDirs == null) {
+    if (dbDirs == null) {
       return localDataRegionInfo;
     }
-    for (File sgDir : sgDirs) {
+    for (File sgDir : dbDirs) {
       if (!sgDir.isDirectory()) {
         continue;
       }
@@ -461,7 +461,7 @@ public class StorageEngine implements IService {
    * build a new data region
    *
    * @param dataRegionId data region id e.g. 1
-   * @param databaseName database name e.g. root.sg1
+   * @param databaseName database name e.g. root.db1
    */
   public DataRegion buildNewDataRegion(String databaseName, DataRegionId dataRegionId)
       throws DataRegionException {

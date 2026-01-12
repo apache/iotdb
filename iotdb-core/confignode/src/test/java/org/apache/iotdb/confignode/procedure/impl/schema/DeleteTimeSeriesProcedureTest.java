@@ -39,8 +39,8 @@ public class DeleteTimeSeriesProcedureTest {
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     String queryId = "1";
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(new PartialPath("root.sg1.**"));
-    patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.db1.**"));
+    patternTree.appendPathPattern(new PartialPath("root.db2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
         new DeleteTimeSeriesProcedure(queryId, patternTree, false, false);
@@ -61,7 +61,7 @@ public class DeleteTimeSeriesProcedureTest {
 
     List<PartialPath> pathList = deserializedProcedure.getPatternTree().getAllPathPatterns();
     pathList.sort(PartialPath::compareTo);
-    Assert.assertEquals("root.sg1.**", pathList.get(0).getFullPath());
-    Assert.assertEquals("root.sg2.*.s1", pathList.get(1).getFullPath());
+    Assert.assertEquals("root.db1.**", pathList.get(0).getFullPath());
+    Assert.assertEquals("root.db2.*.s1", pathList.get(1).getFullPath());
   }
 }

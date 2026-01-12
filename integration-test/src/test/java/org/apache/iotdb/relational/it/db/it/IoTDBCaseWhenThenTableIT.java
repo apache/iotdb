@@ -435,7 +435,7 @@ public class IoTDBCaseWhenThenTableIT {
   @Test
   @Ignore
   public void testKind1Wildcard() {
-    String sql = "select case when *=* then * else * end from root.sg.d2";
+    String sql = "select case when *=* then * else * end from root.db.d2";
     String[] expectedHeaders = new String[16];
     for (int i = 0; i < expectedHeaders.length; i++) {
       expectedHeaders[i] = "_col" + i;
@@ -501,10 +501,10 @@ public class IoTDBCaseWhenThenTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
 
     //     from same device
-    sql = "select case when s3<=11 then s3 else s4 end from table1, root.sg.d2 align by device";
+    sql = "select case when s3<=11 then s3 else s4 end from table1, root.db.d2 align by device";
     retArray =
         new String[] {
-          "root.sg.d2,0.0,", "root.sg.d2,11.0,", "root.sg.d2,66.0,", "root.sg.d2,77.0,",
+          "root.db.d2,0.0,", "root.db.d2,11.0,", "root.db.d2,66.0,", "root.db.d2,77.0,",
         };
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
 
@@ -521,10 +521,10 @@ public class IoTDBCaseWhenThenTableIT {
           "table1,11.0,null,",
           "table1,44.0,null,",
           "table1,66.0,null,",
-          "root.sg.d2,null,0.0,",
-          "root.sg.d2,null,11.0,",
-          "root.sg.d2,null,66.0,",
-          "root.sg.d2,null,77.0,",
+          "root.db.d2,null,0.0,",
+          "root.db.d2,null,11.0,",
+          "root.db.d2,null,66.0,",
+          "root.db.d2,null,77.0,",
         };
     tableResultSetEqualTest(sql, new String[] {"_col0", "_col1"}, retArray, DATABASE);
   }
@@ -538,7 +538,7 @@ public class IoTDBCaseWhenThenTableIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE);
 
     // from same device
-    sql = "select case s3 when 11 then s3 else s4 end from table1, root.sg.d2 align by device";
+    sql = "select case s3 when 11 then s3 else s4 end from table1, root.db.d2 align by device";
     retArray =
         new String[] {
           "table2,44.0,", "table2,11.0,", "table2,66.0,", "table2,77.0,",
@@ -550,17 +550,17 @@ public class IoTDBCaseWhenThenTableIT {
         "select "
             + "case s1 when 11 then s1 else s1*2 end, "
             + "case s3 when 11 then s3 else s4 end "
-            + "from table1, root.sg.d2 align by device";
+            + "from table1, root.db.d2 align by device";
     retArray =
         new String[] {
           "0,table1,0.0,null,",
           "1000000,table1,11.0,null,",
           "20000000,table1,44.0,null,",
           "210000000,table1,66.0,null,",
-          "0,root.sg.d2,null,44.0,",
-          "1000000,root.sg.d2,null,11.0,",
-          "20000000,root.sg.d2,null,66.0,",
-          "210000000,root.sg.d2,null,77.0,",
+          "0,root.db.d2,null,44.0,",
+          "1000000,root.db.d2,null,11.0,",
+          "20000000,root.db.d2,null,66.0,",
+          "210000000,root.db.d2,null,77.0,",
         };
     resultSetEqualTest(sql, expectedHeader, retArray);
   }
@@ -610,7 +610,7 @@ public class IoTDBCaseWhenThenTableIT {
         "select "
             + "case s2%2 when 1 then s2 else s2/2 end, "
             + "case s3 when 11 then s3 else s4 end "
-            + "from table1, root.sg.d2 limit 5 offset 98";
+            + "from table1, root.db.d2 limit 5 offset 98";
     retArray =
         new String[] {
           "49.0,null,", "99.0,null,", "null,11.0,", "null,66.0,", "null,77.0,",

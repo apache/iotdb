@@ -71,7 +71,7 @@ public class PartitionCacheTest {
   private static final Map<TConsensusGroupId, TRegionReplicaSet>
       consensusGroupIdToRegionReplicaSet = new HashMap<>();
 
-  private static final String STORAGE_GROUP_PREFIX = "root.sg";
+  private static final String STORAGE_GROUP_PREFIX = "root.db";
   private static final Integer STORAGE_GROUP_NUMBER = 5;
   private static final String DEVICE_PREFIX = "d";
   private static final Integer DEVICE_PER_STORAGE_GROUP = 10;
@@ -167,11 +167,11 @@ public class PartitionCacheTest {
     List<List<IDeviceID>> existedDevicesInOneStorageGroup =
         Arrays.asList(
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg1.d2")),
+                Factory.DEFAULT_FACTORY.create("root.db1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db1.d2")),
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg2.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
+                Factory.DEFAULT_FACTORY.create("root.db2.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db2.d2")));
     for (List<IDeviceID> searchDevices : existedDevicesInOneStorageGroup) {
       storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(
@@ -189,11 +189,11 @@ public class PartitionCacheTest {
     List<List<IDeviceID>> existedDevicesInMultiStorageGroup =
         Arrays.asList(
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg2.d2")),
+                Factory.DEFAULT_FACTORY.create("root.db1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db2.d2")),
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg1.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg2.d2")));
+                Factory.DEFAULT_FACTORY.create("root.db1.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db2.d2")));
     for (List<IDeviceID> searchDevices : existedDevicesInMultiStorageGroup) {
       storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(
@@ -211,14 +211,14 @@ public class PartitionCacheTest {
     List<List<IDeviceID>> nonExistedDevices =
         Arrays.asList(
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg5.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg5.d2")),
+                Factory.DEFAULT_FACTORY.create("root.db5.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db5.d2")),
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg.d1"),
-                Factory.DEFAULT_FACTORY.create("root.sg.d2")),
+                Factory.DEFAULT_FACTORY.create("root.db.d1"),
+                Factory.DEFAULT_FACTORY.create("root.db.d2")),
             Arrays.asList(
-                Factory.DEFAULT_FACTORY.create("root.sg3.**"),
-                Factory.DEFAULT_FACTORY.create("root.sg4.**")));
+                Factory.DEFAULT_FACTORY.create("root.db3.**"),
+                Factory.DEFAULT_FACTORY.create("root.db4.**")));
     for (List<IDeviceID> searchDevices : nonExistedDevices) {
       storageGroupToDeviceMap =
           partitionCache.getDatabaseToDevice(
@@ -232,7 +232,7 @@ public class PartitionCacheTest {
     // test invalid all cache
     partitionCache.invalidAllCache();
     List<IDeviceID> oneDeviceList =
-        Collections.singletonList(Factory.DEFAULT_FACTORY.create("root.sg1.d1"));
+        Collections.singletonList(Factory.DEFAULT_FACTORY.create("root.db1.d1"));
     storageGroupToDeviceMap =
         partitionCache.getDatabaseToDevice(
             oneDeviceList, false, false, AuthorityChecker.SUPER_USER);
@@ -310,7 +310,7 @@ public class PartitionCacheTest {
       }
     }
     // test missed storageGroups in schemaPartitionCache
-    List<String> missedStorageGroupNames = Arrays.asList("root.sg", "root.*");
+    List<String> missedStorageGroupNames = Arrays.asList("root.db", "root.*");
     for (String missedStorageGroupName : missedStorageGroupNames) {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =
@@ -389,7 +389,7 @@ public class PartitionCacheTest {
     }
 
     // test missed storageGroups in dataPartitionCache
-    List<String> missedStorageGroupNames = Arrays.asList("root.sg", "root.*");
+    List<String> missedStorageGroupNames = Arrays.asList("root.db", "root.*");
     for (String missedStorageGroupName : missedStorageGroupNames) {
       for (int deviceNumber = 0; deviceNumber < DEVICE_PER_STORAGE_GROUP; deviceNumber++) {
         IDeviceID deviceID =

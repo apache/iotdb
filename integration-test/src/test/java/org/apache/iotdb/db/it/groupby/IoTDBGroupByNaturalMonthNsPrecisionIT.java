@@ -45,7 +45,7 @@ public class IoTDBGroupByNaturalMonthNsPrecisionIT extends IoTDBGroupByNaturalMo
         i <= 1617148800000L /* 2021-03-31 00:00:00 */;
         i += 86400_000L) {
       dataSet.add(
-          "insert into root.sg1.d1(timestamp, temperature) values (" + i * 1000000 + ", 1)");
+          "insert into root.db1.d1(timestamp, temperature) values (" + i * 1000000 + ", 1)");
     }
 
     // TimeRange: [2023-01-01 00:00:00, 2027-01-01 00:00:00]
@@ -72,13 +72,13 @@ public class IoTDBGroupByNaturalMonthNsPrecisionIT extends IoTDBGroupByNaturalMo
   @Test
   public void groupByNaturalMonthFailTest() {
     assertTestFail(
-        "select sum(temperature) from root.sg1.d1 "
+        "select sum(temperature) from root.db1.d1 "
             + "GROUP BY ([2021-01-31, 2021-03-31), 1mo) order by time desc",
         "doesn't support order by time desc now.");
 
     // 2970-01-01 in ns precision has exceeded field of long number
     assertTestFail(
-        "select sum(temperature) from root.sg1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
+        "select sum(temperature) from root.db1.d1 GROUP BY ([1970-01-01, 2970-01-01), 40d, 1mo)",
         "Input time format 2970-01-01 error.");
   }
 

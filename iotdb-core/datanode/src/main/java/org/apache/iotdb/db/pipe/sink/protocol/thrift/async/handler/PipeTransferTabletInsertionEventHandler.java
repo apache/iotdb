@@ -44,15 +44,15 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
   protected PipeTransferTabletInsertionEventHandler(
       final PipeInsertionEvent event,
       final TPipeTransferReq req,
-      final IoTDBDataRegionAsyncSink connector) {
-    super(connector);
+      final IoTDBDataRegionAsyncSink sink) {
+    super(sink);
 
     this.event = event;
     this.req = req;
   }
 
   public void transfer(final AsyncPipeDataTransferServiceClient client) throws TException {
-    connector.rateLimitIfNeeded(
+    sink.rateLimitIfNeeded(
         event.getPipeName(), event.getCreationTime(), client.getEndPoint(), req.getBody().length);
 
     tryTransfer(client, req);
@@ -71,8 +71,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
       // Only handle the failed statuses to avoid string format performance overhead
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        connector
-            .statusHandler()
+        sink.statusHandler()
             .handle(response.getStatus(), response.getStatus().getMessage(), event.toString());
       }
       event.decreaseReferenceCount(PipeTransferTabletInsertionEventHandler.class.getName(), true);
@@ -98,7 +97,7 @@ public abstract class PipeTransferTabletInsertionEventHandler extends PipeTransf
           event.getCommitterKey(),
           event.getCommitId());
     } finally {
-      connector.addFailureEventToRetryQueue(event);
+      sink.addFailureEventToRetryQueue(event);
     }
   }
 

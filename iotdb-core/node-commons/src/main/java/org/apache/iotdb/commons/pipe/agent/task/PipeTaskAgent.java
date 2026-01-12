@@ -543,9 +543,9 @@ public abstract class PipeTaskAgent {
 
   protected void calculateMemoryUsage(
       final PipeStaticMeta staticMeta,
-      final PipeParameters extractorParameters,
+      final PipeParameters sourceParameters,
       final PipeParameters processorParameters,
-      final PipeParameters connectorParameters) {
+      final PipeParameters sinkParameters) {
     // do nothing
   }
 
@@ -1009,7 +1009,7 @@ public abstract class PipeTaskAgent {
   }
 
   private void stopAllPipesWithCriticalExceptionInternal(final int currentNodeId) {
-    // 1. track exception in all pipe tasks that share the same connector that have critical
+    // 1. track exception in all pipe tasks that share the same sink that have critical
     // exceptions.
     final Map<PipeParameters, PipeRuntimeSinkCriticalException>
         reusedConnectorParameters2ExceptionMap = new HashMap<>();
@@ -1064,7 +1064,7 @@ public abstract class PipeTaskAgent {
                           PipeLogger.log(
                               LOGGER::warn,
                               "Pipe %s (creation time = %s) will be stopped because of critical exception "
-                                  + "(occurred time %s) in connector %s.",
+                                  + "(occurred time %s) in sink %s.",
                               staticMeta.getPipeName(),
                               staticMeta.getCreationTime(),
                               exception.getTimeStamp(),

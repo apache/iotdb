@@ -184,7 +184,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final Pair<IoTDBSyncClient, Boolean> clientAndStatus,
       final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
@@ -227,7 +227,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
         position += readLength;
 
         final TSStatus status = resp.getStatus();
-        // This case only happens when the connection is broken, and the connector is reconnected
+        // This case only happens when the connection is broken, and the sink is reconnected
         // to the receiver, then the receiver will redirect the file position to the last position
         if (status.getCode() == TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET.getStatusCode()) {
           position = resp.getEndWritingOffset();

@@ -43,7 +43,7 @@ def test_numpy_tablet_serialization():
     ]
     timestamps_ = [16, 17, 18, 19]
     tablet_ = Tablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+        "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_ = [
         np.array([False, True, False, True], np.dtype(">?")),
@@ -55,7 +55,7 @@ def test_numpy_tablet_serialization():
     ]
     np_timestamps_ = np.array([16, 17, 18, 19], np.dtype(">i8"))
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_
+        "root.db_test_01.d_01", measurements_, data_types_, np_values_, np_timestamps_
     )
     assert tablet_.get_binary_timestamps() == np_tablet_.get_binary_timestamps()
     assert tablet_.get_binary_values() == np_tablet_.get_binary_values()
@@ -80,7 +80,7 @@ def test_numpy_tablet_with_none_serialization():
     ]
     timestamps_ = [16, 17, 18, 19]
     tablet_ = Tablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+        "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_ = [
         np.array([False, True, False, True], np.dtype(">?")),
@@ -100,7 +100,7 @@ def test_numpy_tablet_with_none_serialization():
     np_bitmaps_[4].mark(3)
     np_bitmaps_[5].mark(3)
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01",
+        "root.db_test_01.d_01",
         measurements_,
         data_types_,
         np_values_,
@@ -131,7 +131,7 @@ def test_sort_numpy_tablet():
     ]
     timestamps_ = [5, 6, 7, 8, 9]
     tablet_ = Tablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+        "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_unsorted = [
         np.array([False, False, False, True, True], np.dtype(">?")),
@@ -143,7 +143,7 @@ def test_sort_numpy_tablet():
     ]
     np_timestamps_unsorted = np.array([9, 8, 7, 6, 5], np.dtype(">i8"))
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01",
+        "root.db_test_01.d_01",
         measurements_,
         data_types_,
         np_values_unsorted,
@@ -173,7 +173,7 @@ def test_numpy_tablet_auto_correct_datatype():
     ]
     timestamps_ = [5, 6, 7, 8, 9]
     tablet_ = Tablet(
-        "root.sg_test_01.d_01", measurements_, data_types_, values_, timestamps_
+        "root.db_test_01.d_01", measurements_, data_types_, values_, timestamps_
     )
     np_values_unsorted = [
         np.array([False, False, False, True, True]),
@@ -189,7 +189,7 @@ def test_numpy_tablet_auto_correct_datatype():
     for i in range(1, 4):
         assert np_values_unsorted[i].dtype != data_types_[i].np_dtype()
     np_tablet_ = NumpyTablet(
-        "root.sg_test_01.d_01",
+        "root.db_test_01.d_01",
         measurements_,
         data_types_,
         np_values_unsorted,

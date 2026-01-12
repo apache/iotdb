@@ -39,7 +39,7 @@ public class ExpressionTest {
   @Test
   public void testIsMappable() {
     try {
-      TimeSeriesOperand input = new TimeSeriesOperand(new PartialPath("root.sg.a"));
+      TimeSeriesOperand input = new TimeSeriesOperand(new PartialPath("root.db.a"));
       FunctionExpression masterRepair =
           new FunctionExpression(
               "Master_Repair", new LinkedHashMap<>(), Collections.singletonList(input));

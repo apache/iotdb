@@ -46,14 +46,14 @@ public class ExpressionAnalyzerTest {
   public void testRemoveWildcardInFilter() throws IllegalPathException {
     ISchemaTree fakeSchemaTree =
         new FakeSchemaFetcherImpl().fetchSchema(new PathPatternTree(), true, null, false);
-    List<PartialPath> prefixPaths = Arrays.asList(path("root.sg.d1"), path("root.sg.d2"));
+    List<PartialPath> prefixPaths = Arrays.asList(path("root.db.d1"), path("root.db.d2"));
 
     assertEquals(
         Arrays.asList(
-            gt(timeSeries("root.sg.d1.s1"), intValue("1")),
-            gt(timeSeries("root.sg.d2.s1"), intValue("1")),
-            gt(timeSeries("root.sg.d1.s2"), intValue("1")),
-            gt(timeSeries("root.sg.d2.s2"), intValue("1"))),
+            gt(timeSeries("root.db.d1.s1"), intValue("1")),
+            gt(timeSeries("root.db.d2.s1"), intValue("1")),
+            gt(timeSeries("root.db.d1.s2"), intValue("1")),
+            gt(timeSeries("root.db.d2.s2"), intValue("1"))),
         ExpressionAnalyzer.bindSchemaForPredicate(
             and(
                 gt(new TimeSeriesOperand(new PartialPath("s1")), intValue("1")),
@@ -67,20 +67,20 @@ public class ExpressionAnalyzerTest {
         Arrays.asList(
             count(
                 and(
-                    gt(timeSeries("root.sg.d1.s1"), intValue("1")),
-                    gt(timeSeries("root.sg.d1.s2"), intValue("1")))),
+                    gt(timeSeries("root.db.d1.s1"), intValue("1")),
+                    gt(timeSeries("root.db.d1.s2"), intValue("1")))),
             count(
                 and(
-                    gt(timeSeries("root.sg.d1.s1"), intValue("1")),
-                    gt(timeSeries("root.sg.d2.s2"), intValue("1")))),
+                    gt(timeSeries("root.db.d1.s1"), intValue("1")),
+                    gt(timeSeries("root.db.d2.s2"), intValue("1")))),
             count(
                 and(
-                    gt(timeSeries("root.sg.d2.s1"), intValue("1")),
-                    gt(timeSeries("root.sg.d1.s2"), intValue("1")))),
+                    gt(timeSeries("root.db.d2.s1"), intValue("1")),
+                    gt(timeSeries("root.db.d1.s2"), intValue("1")))),
             count(
                 and(
-                    gt(timeSeries("root.sg.d2.s1"), intValue("1")),
-                    gt(timeSeries("root.sg.d2.s2"), intValue("1"))))),
+                    gt(timeSeries("root.db.d2.s1"), intValue("1")),
+                    gt(timeSeries("root.db.d2.s2"), intValue("1"))))),
         ExpressionAnalyzer.bindSchemaForPredicate(
             count(
                 and(

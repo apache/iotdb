@@ -107,7 +107,7 @@ public abstract class PipeTaskStage {
       throw new PipeException(MESSAGE_PIPE_TASK_STAGE_HAS_BEEN_DROPPED);
     }
 
-    // status == PipeStatus.RUNNING, stop the connector
+    // status == PipeStatus.RUNNING, stop the sink
     stopSubtask();
 
     status = PipeStatus.STOPPED;
@@ -134,7 +134,7 @@ public abstract class PipeTaskStage {
     // the subtask might be in an inconsistent state!
     stop();
 
-    // status == PipeStatus.STOPPED, drop the connector
+    // status == PipeStatus.STOPPED, drop the sink
     dropSubtask();
 
     status = PipeStatus.DROPPED;

@@ -146,7 +146,7 @@ public class ConfigMTree {
     }
     IConfigMNode cur = root;
     int i = 1;
-    // e.g., path = root.a.b.sg, create internal nodes for a, b
+    // e.g., path = root.a.b.db, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
       final IConfigMNode temp = store.getChild(cur, nodeNames[i]);
       if (temp == null) {
@@ -163,7 +163,7 @@ public class ConfigMTree {
     // only write operations on mtree will be synchronized
     synchronized (this) {
       if (store.hasChild(cur, nodeNames[i])) {
-        // node b has child sg
+        // node b has child db
         throw store.getChild(cur, nodeNames[i]).isDatabase()
             ? new DatabaseAlreadySetException(path.getFullPath())
             : new DatabaseConflictException(path.getFullPath(), true);
@@ -184,11 +184,11 @@ public class ConfigMTree {
   public void deleteDatabase(final PartialPath path) throws MetadataException {
     final IDatabaseMNode<IConfigMNode> databaseMNode = getDatabaseNodeByDatabasePath(path);
     IConfigMNode cur = databaseMNode.getParent();
-    // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
-    // delete the database node sg1
+    // Suppose current system has root.a.b.db1, root.a.db2, and delete root.a.b.db1
+    // delete the database node db1
     store.deleteChild(cur, databaseMNode.getName());
 
-    // delete node a while retain root.a.sg2
+    // delete node a while retain root.a.db2
     while (cur.getParent() != null && cur.getChildren().isEmpty()) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
@@ -198,9 +198,9 @@ public class ConfigMTree {
   /**
    * Get the database that given path pattern matches or belongs to.
    *
-   * <p>Suppose we have (root.sg1.d1.s1, root.sg2.d2.s2), refer the following cases: 1. given path
-   * "root.sg1", ("root.sg1") will be returned. 2. given path "root.*", ("root.sg1", "root.sg2")
-   * will be returned. 3. given path "root.*.d1.s1", ("root.sg1", "root.sg2") will be returned.
+   * <p>Suppose we have (root.db1.d1.s1, root.db2.d2.s2), refer the following cases: 1. given path
+   * "root.db1", ("root.db1") will be returned. 2. given path "root.*", ("root.db1", "root.db2")
+   * will be returned. 3. given path "root.*.d1.s1", ("root.db1", "root.db2") will be returned.
    *
    * @param pathPattern a path pattern or a full path
    * @return a list contains all databases related to given path
@@ -293,7 +293,7 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.sg is database given [root, sg], if the give path is not a database, throw exception
+   * E.g., root.db is database given [root, db], if the give path is not a database, throw exception
    */
   public IDatabaseMNode<IConfigMNode> getDatabaseNodeByDatabasePath(final PartialPath databasePath)
       throws MetadataException {
@@ -324,8 +324,8 @@ public class ConfigMTree {
   }
 
   /**
-   * E.g., root.sg is database given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], return the MNode of root.sg Get database node, the give path don't need to be database
+   * E.g., root.db is database given [root, db], return the MNode of root.db given [root, db,
+   * device], return the MNode of root.db Get database node, the give path don't need to be database
    * path.
    */
   public IDatabaseMNode<IConfigMNode> getDatabaseNodeByPath(final PartialPath path)
@@ -1120,15 +1120,15 @@ public class ConfigMTree {
   }
 
   private void serializeDatabaseNode(
-      final IDatabaseMNode<IConfigMNode> storageGroupNode, final OutputStream outputStream)
+      final IDatabaseMNode<IConfigMNode> databaseNode, final OutputStream outputStream)
       throws IOException {
-    serializeChildren(storageGroupNode.getAsMNode(), outputStream);
+    serializeChildren(databaseNode.getAsMNode(), outputStream);
 
     ReadWriteIOUtils.write(DATABASE_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
-    ReadWriteIOUtils.write(storageGroupNode.getAsMNode().getSchemaTemplateId(), outputStream);
+    ReadWriteIOUtils.write(databaseNode.getName(), outputStream);
+    ReadWriteIOUtils.write(databaseNode.getAsMNode().getSchemaTemplateId(), outputStream);
     ThriftConfigNodeSerDeUtils.serializeTDatabaseSchema(
-        storageGroupNode.getAsMNode().getDatabaseSchema(), outputStream);
+        databaseNode.getAsMNode().getDatabaseSchema(), outputStream);
   }
 
   private void serializeTableNode(final ConfigTableNode tableNode, final OutputStream outputStream)

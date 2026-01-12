@@ -163,8 +163,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
-    // and finally exception occurs, we need to release the actual last event from the connector
+    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (sink close)
+    // and finally exception occurs, we need to release the actual last event from the sink
     // given by the parameter
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {
@@ -183,8 +183,8 @@ public abstract class PipeSubtask
       return;
     }
 
-    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (connector close)
-    // and finally exception occurs, we need to release the actual last event from the connector
+    // If lastEvent is set to null due to PipeConnectorSubtask#discardEventsOfPipe (sink close)
+    // and finally exception occurs, we need to release the actual last event from the sink
     // given by the parameter
     if (actualLastEvent instanceof EnrichedEvent
         && !((EnrichedEvent) actualLastEvent).isReleased()) {

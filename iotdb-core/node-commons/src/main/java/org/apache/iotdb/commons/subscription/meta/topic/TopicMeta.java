@@ -183,35 +183,35 @@ public class TopicMeta {
   /////////////////////////////// utilities ///////////////////////////////
 
   public Map<String, String> generateExtractorAttributes(final String username) {
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     // disable meta sync
-    extractorAttributes.put("source", "iotdb-source");
-    extractorAttributes.put("inclusion", "data.insert");
-    extractorAttributes.put("inclusion.exclusion", "data.delete");
+    sourceAttributes.put("source", "iotdb-source");
+    sourceAttributes.put("inclusion", "data.insert");
+    sourceAttributes.put("inclusion.exclusion", "data.delete");
     // user
-    extractorAttributes.put("username", username);
+    sourceAttributes.put("username", username);
     // TODO: currently set skipif to no-privileges
-    extractorAttributes.put("skipif", "no-privileges");
+    sourceAttributes.put("skipif", "no-privileges");
     // sql dialect
-    extractorAttributes.putAll(config.getAttributeWithSqlDialect());
+    sourceAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
       // table model: database name and table name
-      extractorAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
+      sourceAttributes.putAll(config.getAttributesWithSourceDatabaseAndTableName());
     } else {
       // tree model: path or pattern
-      extractorAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
+      sourceAttributes.putAll(config.getAttributesWithSourcePathOrPattern());
     }
     // time
-    extractorAttributes.putAll(config.getAttributesWithSourceTimeRange());
+    sourceAttributes.putAll(config.getAttributesWithSourceTimeRange());
     // realtime mode
-    extractorAttributes.putAll(config.getAttributesWithSourceRealtimeMode());
+    sourceAttributes.putAll(config.getAttributesWithSourceRealtimeMode());
     // source mode
-    extractorAttributes.putAll(config.getAttributesWithSourceMode());
+    sourceAttributes.putAll(config.getAttributesWithSourceMode());
     // loose range or strict
-    extractorAttributes.putAll(config.getAttributesWithSourceLooseRangeOrStrict());
+    sourceAttributes.putAll(config.getAttributesWithSourceLooseRangeOrStrict());
     // backdoor configs
-    extractorAttributes.putAll(config.getAttributesWithSourcePrefix());
-    return extractorAttributes;
+    sourceAttributes.putAll(config.getAttributesWithSourcePrefix());
+    return sourceAttributes;
   }
 
   public Map<String, String> generateProcessorAttributes() {

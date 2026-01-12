@@ -38,7 +38,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   protected final int regionId;
   protected final Supplier<? extends PipeSinkSubtaskExecutor> executor;
 
-  protected String connectorSubtaskId;
+  protected String sinkSubtaskId;
 
   public PipeTaskSinkStage(
       String pipeName,
@@ -56,7 +56,7 @@ public class PipeTaskSinkStage extends PipeTaskStage {
   }
 
   protected void registerSubtask() {
-    this.connectorSubtaskId =
+    this.sinkSubtaskId =
         PipeSinkSubtaskManager.instance()
             .register(
                 executor,
@@ -71,21 +71,20 @@ public class PipeTaskSinkStage extends PipeTaskStage {
 
   @Override
   public void startSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().start(connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().start(sinkSubtaskId);
   }
 
   @Override
   public void stopSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance().stop(connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().stop(sinkSubtaskId);
   }
 
   @Override
   public void dropSubtask() throws PipeException {
-    PipeSinkSubtaskManager.instance()
-        .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
+    PipeSinkSubtaskManager.instance().deregister(pipeName, creationTime, regionId, sinkSubtaskId);
   }
 
   public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
-    return PipeSinkSubtaskManager.instance().getPipeConnectorPendingQueue(connectorSubtaskId);
+    return PipeSinkSubtaskManager.instance().getPipeConnectorPendingQueue(sinkSubtaskId);
   }
 }

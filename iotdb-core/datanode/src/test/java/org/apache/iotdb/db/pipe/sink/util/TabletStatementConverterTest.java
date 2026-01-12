@@ -47,7 +47,7 @@ public class TabletStatementConverterTest {
   public void testConvertStatementToTabletTreeModel() throws MetadataException {
     final int columnCount = 1000;
     final int rowCount = 100;
-    final String deviceName = "root.sg.device";
+    final String deviceName = "root.db.device";
     final boolean isAligned = true;
 
     // Generate Tablet and construct Statement from it
@@ -86,7 +86,7 @@ public class TabletStatementConverterTest {
   public void testDeserializeStatementFromTabletFormat() throws IOException, MetadataException {
     final int columnCount = 1000;
     final int rowCount = 100;
-    final String deviceName = "root.sg.device";
+    final String deviceName = "root.db.device";
 
     // Generate test Tablet
     final Tablet originalTablet = generateTreeModelTablet(deviceName, columnCount, rowCount);
@@ -122,7 +122,7 @@ public class TabletStatementConverterTest {
   public void testRoundTripConversionTreeModel() throws MetadataException, IOException {
     final int columnCount = 1000;
     final int rowCount = 100;
-    final String deviceName = "root.sg.device";
+    final String deviceName = "root.db.device";
 
     // Generate original Tablet
     final Tablet originalTablet = generateTreeModelTablet(deviceName, columnCount, rowCount);

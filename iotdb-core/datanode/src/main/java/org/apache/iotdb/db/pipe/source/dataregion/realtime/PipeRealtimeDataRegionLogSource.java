@@ -55,7 +55,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
     } else {
       throw new UnsupportedOperationException(
           String.format(
-              "Unsupported event type %s for log realtime extractor %s",
+              "Unsupported event type %s for log realtime source %s",
               eventToExtract.getClass(), this));
     }
   }

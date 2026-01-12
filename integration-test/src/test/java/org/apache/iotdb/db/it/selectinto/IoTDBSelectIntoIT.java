@@ -55,38 +55,38 @@ public class IoTDBSelectIntoIT {
   public static final List<String> SELECT_INTO_SQL_LIST =
       new ArrayList<>(
           Arrays.asList(
-              "CREATE DATABASE root.sg",
-              "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (1, 1)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (2, 2, 2)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (3, 3, 3)",
-              "INSERT INTO root.sg.d1(time, s2) VALUES (4, 4)",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (5, 5)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (6, 6, 6)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (7, 7, 7)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (8, 8, 8)",
-              "INSERT INTO root.sg.d1(time, s2) VALUES (9, 9)",
-              "INSERT INTO root.sg.d1(time, s1) VALUES (10, 10)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (11, 11, 11)",
-              "INSERT INTO root.sg.d1(time, s1, s2) VALUES (12, 12, 12)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (1, 1, 1)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (2, 2)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (3, 3)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (4, 4, 4)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (5, 5)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (6, 6)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (7, 7)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (8, 8, 8)",
-              "INSERT INTO root.sg.d2(time, s1, s2) VALUES (10, 10, 10)",
-              "INSERT INTO root.sg.d2(time, s2) VALUES (11, 11)",
-              "INSERT INTO root.sg.d2(time, s1) VALUES (12, 12)",
+              "CREATE DATABASE root.db",
+              "CREATE TIMESERIES root.db.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+              "CREATE TIMESERIES root.db.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+              "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+              "CREATE TIMESERIES root.db.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+              "INSERT INTO root.db.d1(time, s1) VALUES (1, 1)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (2, 2, 2)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (3, 3, 3)",
+              "INSERT INTO root.db.d1(time, s2) VALUES (4, 4)",
+              "INSERT INTO root.db.d1(time, s1) VALUES (5, 5)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (6, 6, 6)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (7, 7, 7)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (8, 8, 8)",
+              "INSERT INTO root.db.d1(time, s2) VALUES (9, 9)",
+              "INSERT INTO root.db.d1(time, s1) VALUES (10, 10)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (11, 11, 11)",
+              "INSERT INTO root.db.d1(time, s1, s2) VALUES (12, 12, 12)",
+              "INSERT INTO root.db.d2(time, s1, s2) VALUES (1, 1, 1)",
+              "INSERT INTO root.db.d2(time, s2) VALUES (2, 2)",
+              "INSERT INTO root.db.d2(time, s1) VALUES (3, 3)",
+              "INSERT INTO root.db.d2(time, s1, s2) VALUES (4, 4, 4)",
+              "INSERT INTO root.db.d2(time, s2) VALUES (5, 5)",
+              "INSERT INTO root.db.d2(time, s2) VALUES (6, 6)",
+              "INSERT INTO root.db.d2(time, s1) VALUES (7, 7)",
+              "INSERT INTO root.db.d2(time, s1, s2) VALUES (8, 8, 8)",
+              "INSERT INTO root.db.d2(time, s1, s2) VALUES (10, 10, 10)",
+              "INSERT INTO root.db.d2(time, s2) VALUES (11, 11)",
+              "INSERT INTO root.db.d2(time, s1) VALUES (12, 12)",
               "flush",
-              "CREATE DATABASE root.sg1",
-              "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
-              "CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+              "CREATE DATABASE root.db1",
+              "CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE",
+              "CREATE TIMESERIES root.db1.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
               "create timeseries root.db.d1.s1 BOOLEAN encoding=PLAIN",
               "create timeseries root.db.d1.s2 FLOAT encoding=RLE",
               "create timeseries root.db.d1.s3 TEXT encoding=PLAIN",
@@ -103,12 +103,12 @@ public class IoTDBSelectIntoIT {
               "insert into root.db.d1(time,s2) values(2,1.2)"));
 
   static {
-    SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
+    SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.db_type");
     for (int deviceId = 0; deviceId < 6; deviceId++) {
       for (TSDataType dataType : TSDataTypeTestUtils.getSupportedTypes()) {
         SELECT_INTO_SQL_LIST.add(
             String.format(
-                "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
+                "CREATE TIMESERIES root.db_type.d_%d.s_%s %s",
                 deviceId, dataType.name().toLowerCase(), dataType));
       }
     }
@@ -116,7 +116,7 @@ public class IoTDBSelectIntoIT {
       SELECT_INTO_SQL_LIST.add(
           String.format(
               Locale.ENGLISH,
-              "INSERT INTO root.sg_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
+              "INSERT INTO root.db_type.d_0(time, s_int32, s_int64, s_float, s_double, s_boolean, s_text) "
                   + "VALUES (%d, %d, %d, %f, %f, %s, 'text%d')",
               time,
               time,
@@ -170,39 +170,39 @@ public class IoTDBSelectIntoIT {
   public void testRawDataQuery1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk1.new_d.t1,10,",
-          "root.sg.d2.s1,root.sg_bk1.new_d.t2,7,",
-          "root.sg.d1.s2,root.sg_bk1.new_d.t3,9,",
-          "root.sg.d2.s2,root.sg_bk1.new_d.t4,8,",
+          "root.db.d1.s1,root.db_bk1.new_d.t1,10,",
+          "root.db.d2.s1,root.db_bk1.new_d.t2,7,",
+          "root.db.d1.s2,root.db_bk1.new_d.t3,9,",
+          "root.db.d2.s2,root.db_bk1.new_d.t4,8,",
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk1.new_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into root.db_bk1.new_d(t1, t2, t3, t4) from root.db.*;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk1.new_d.t1,root.sg_bk1.new_d.t3,root.sg_bk1.new_d.t2,root.sg_bk1.new_d.t4,";
+        "Time,root.db_bk1.new_d.t1,root.db_bk1.new_d.t3,root.db_bk1.new_d.t2,root.db_bk1.new_d.t4,";
     resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk1.new_d;", expectedQueryHeader, rawDataSet);
+        "select t1, t3, t2, t4 from root.db_bk1.new_d;", expectedQueryHeader, rawDataSet);
   }
 
   @Test
   public void testRawDataQuery2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk2.new_d1.s1,10,",
-          "root.sg.d2.s1,root.sg_bk2.new_d2.s1,7,",
-          "root.sg.d1.s2,root.sg_bk2.new_d1.s2,9,",
-          "root.sg.d2.s2,root.sg_bk2.new_d2.s2,8,"
+          "root.db.d1.s1,root.db_bk2.new_d1.s1,10,",
+          "root.db.d2.s1,root.db_bk2.new_d2.s1,7,",
+          "root.db.d1.s2,root.db_bk2.new_d1.s2,9,",
+          "root.db.d2.s2,root.db_bk2.new_d2.s2,8,"
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk2.new_${2}(::) from root.sg.*;",
+        "select s1, s2 into root.db_bk2.new_${2}(::) from root.db.*;",
         selectIntoHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk2.new_d1.s1,root.sg_bk2.new_d1.s2,root.sg_bk2.new_d2.s1,root.sg_bk2.new_d2.s2,";
+        "Time,root.db_bk2.new_d1.s1,root.db_bk2.new_d1.s2,root.db_bk2.new_d2.s1,root.db_bk2.new_d2.s2,";
     resultSetEqualTest(
-        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_bk2;",
+        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.db_bk2;",
         expectedQueryHeader,
         rawDataSet);
   }
@@ -211,18 +211,18 @@ public class IoTDBSelectIntoIT {
   public void testSamePathQuery() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk3.new_d1.t1,10,",
-          "root.sg.d1.s2,root.sg_bk3.new_d1.t2,9,",
-          "root.sg.d1.s1,root.sg_bk3.new_d2.t1,10,",
-          "root.sg.d1.s2,root.sg_bk3.new_d2.t2,9,"
+          "root.db.d1.s1,root.db_bk3.new_d1.t1,10,",
+          "root.db.d1.s2,root.db_bk3.new_d1.t2,9,",
+          "root.db.d1.s1,root.db_bk3.new_d2.t1,10,",
+          "root.db.d1.s2,root.db_bk3.new_d2.t2,9,"
         };
     resultSetEqualTest(
-        "select s1, s2, s1, s2 into root.sg_bk3.new_d1(t1, t2), aligned root.sg_bk3.new_d2(t1, t2) from root.sg.d1;",
+        "select s1, s2, s1, s2 into root.db_bk3.new_d1(t1, t2), aligned root.db_bk3.new_d2(t1, t2) from root.db.d1;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_bk3.new_d1.t1,root.sg_bk3.new_d1.t2,root.sg_bk3.new_d2.t1,root.sg_bk3.new_d2.t2,";
+        "Time,root.db_bk3.new_d1.t1,root.db_bk3.new_d1.t2,root.db_bk3.new_d2.t1,root.db_bk3.new_d2.t2,";
     String[] queryRetArray =
         new String[] {
           "1,1,null,1,null,",
@@ -239,7 +239,7 @@ public class IoTDBSelectIntoIT {
           "12,12,12.0,12,12.0,"
         };
     resultSetEqualTest(
-        "select new_d1.t1, new_d1.t2, new_d2.t1, new_d2.t2 from root.sg_bk3;",
+        "select new_d1.t1, new_d1.t2, new_d2.t1, new_d2.t2 from root.db_bk3;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -247,7 +247,7 @@ public class IoTDBSelectIntoIT {
   @Test
   public void testEmptyQuery() {
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk4.new_${2}(::) from root.sg1.d1, root.sg1.d2;",
+        "select s1, s2 into root.db_bk4.new_${2}(::) from root.db1.d1, root.db1.d2;",
         selectIntoHeader, new String[] {});
   }
 
@@ -255,23 +255,23 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQuery1() {
     String[] intoRetArray =
         new String[] {
-          "count(root.sg.d1.s1),root.sg_agg1.d1.count_s1,1,",
-          "last_value(root.sg.d1.s2),root.sg_agg1.d1.last_value_s2,1,",
-          "count(root.sg.d2.s1),root.sg_agg1.d2.count_s1,1,",
-          "last_value(root.sg.d2.s2),root.sg_agg1.d2.last_value_s2,1,"
+          "count(root.db.d1.s1),root.db_agg1.d1.count_s1,1,",
+          "last_value(root.db.d1.s2),root.db_agg1.d1.last_value_s2,1,",
+          "count(root.db.d2.s1),root.db_agg1.d2.count_s1,1,",
+          "last_value(root.db.d2.s2),root.db_agg1.d2.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into root.sg_agg1.d1(count_s1, last_value_s2), aligned root.sg_agg1.d2(count_s1, last_value_s2) "
-            + "from root.sg;",
+            + "into root.db_agg1.d1(count_s1, last_value_s2), aligned root.db_agg1.d2(count_s1, last_value_s2) "
+            + "from root.db;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg1.d1.count_s1,root.sg_agg1.d2.count_s1,root.sg_agg1.d1.last_value_s2,root.sg_agg1.d2.last_value_s2,";
+        "Time,root.db_agg1.d1.count_s1,root.db_agg1.d2.count_s1,root.db_agg1.d1.last_value_s2,root.db_agg1.d2.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg1.d1, root.sg_agg1.d2;",
+        "select count_s1, last_value_s2 from root.db_agg1.d1, root.db_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -280,24 +280,24 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQuery2() {
     String[] intoRetArray =
         new String[] {
-          "count(root.sg.d1.s1),root.sg_agg2.d1.count_s1,4,",
-          "last_value(root.sg.d1.s2),root.sg_agg2.d1.last_value_s2,4,",
-          "count(root.sg.d2.s1),root.sg_agg2.d2.count_s1,4,",
-          "last_value(root.sg.d2.s2),root.sg_agg2.d2.last_value_s2,4,"
+          "count(root.db.d1.s1),root.db_agg2.d1.count_s1,4,",
+          "last_value(root.db.d1.s2),root.db_agg2.d1.last_value_s2,4,",
+          "count(root.db.d2.s1),root.db_agg2.d2.count_s1,4,",
+          "last_value(root.db.d2.s2),root.db_agg2.d2.last_value_s2,4,"
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into aligned root.sg_agg2.d1(count_s1, last_value_s2), aligned root.sg_agg2.d2(count_s1, last_value_s2) "
-            + "from root.sg group by ([1, 13), 3ms);",
+            + "into aligned root.db_agg2.d1(count_s1, last_value_s2), aligned root.db_agg2.d2(count_s1, last_value_s2) "
+            + "from root.db group by ([1, 13), 3ms);",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg2.d1.count_s1,root.sg_agg2.d2.count_s1,root.sg_agg2.d1.last_value_s2,root.sg_agg2.d2.last_value_s2,";
+        "Time,root.db_agg2.d1.count_s1,root.db_agg2.d2.count_s1,root.db_agg2.d1.last_value_s2,root.db_agg2.d2.last_value_s2,";
     String[] queryRetArray =
         new String[] {"1,3,2,3.0,2.0,", "4,2,1,6.0,6.0,", "7,2,2,9.0,8.0,", "10,3,2,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg2.d1, root.sg_agg2.d2;",
+        "select count_s1, last_value_s2 from root.db_agg2.d1, root.db_agg2.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -306,17 +306,17 @@ public class IoTDBSelectIntoIT {
   public void testExpression() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1 + root.sg.d2.s1,root.sg_expr.d.k1,6,",
-          "-sin(root.sg.d1.s2),root.sg_expr.d.k2,9,",
-          "top_k(root.sg.d2.s2, \"k\"=\"3\"),root.sg_expr.d.k3,3,"
+          "root.db.d1.s1 + root.db.d2.s1,root.db_expr.d.k1,6,",
+          "-sin(root.db.d1.s2),root.db_expr.d.k2,9,",
+          "top_k(root.db.d2.s2, \"k\"=\"3\"),root.db_expr.d.k3,3,"
         };
     resultSetEqualTest(
         "select  d1.s1 + d2.s1, -sin(d1.s2), top_k(d2.s2,'k'='3') "
-            + "into root.sg_expr.d(k1, k2, k3) from root.sg;",
+            + "into root.db_expr.d(k1, k2, k3) from root.db;",
         selectIntoHeader,
         intoRetArray);
 
-    String expectedQueryHeader = "Time,root.sg_expr.d.k1,root.sg_expr.d.k2,root.sg_expr.d.k3,";
+    String expectedQueryHeader = "Time,root.db_expr.d.k1,root.db_expr.d.k2,root.db_expr.d.k3,";
     String[] queryRetArray =
         new String[] {
           "1,2.0,null,null,",
@@ -332,37 +332,37 @@ public class IoTDBSelectIntoIT {
           "12,24.0,0.5365729180004349,null,"
         };
     resultSetEqualTest(
-        "select k1, k2, k3 from root.sg_expr.d;", expectedQueryHeader, queryRetArray);
+        "select k1, k2, k3 from root.db_expr.d;", expectedQueryHeader, queryRetArray);
   }
 
   @Test
   public void testUsingUnMatchedAlignment() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1.s1,root.sg_bk1.new_aligned_d.t1,10,",
-          "root.sg.d2.s1,root.sg_bk1.new_aligned_d.t2,7,",
-          "root.sg.d1.s2,root.sg_bk1.new_aligned_d.t3,9,",
-          "root.sg.d2.s2,root.sg_bk1.new_aligned_d.t4,8,",
+          "root.db.d1.s1,root.db_bk1.new_aligned_d.t1,10,",
+          "root.db.d2.s1,root.db_bk1.new_aligned_d.t2,7,",
+          "root.db.d1.s2,root.db_bk1.new_aligned_d.t3,9,",
+          "root.db.d2.s2,root.db_bk1.new_aligned_d.t4,8,",
         };
     executeNonQuery(
-        "CREATE ALIGNED TIMESERIES root.sg_bk1.new_aligned_d(t1 INT32, t2 INT32, t3 FLOAT, t4 FLOAT);");
+        "CREATE ALIGNED TIMESERIES root.db_bk1.new_aligned_d(t1 INT32, t2 INT32, t3 FLOAT, t4 FLOAT);");
     // use matched interface (aligned == aligned)
     resultSetEqualTest(
-        "select s1, s2 into aligned root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into aligned root.db_bk1.new_aligned_d(t1, t2, t3, t4) from root.db.*;",
         selectIntoHeader,
         intoRetArray);
     String expectedQueryHeader =
-        "Time,root.sg_bk1.new_aligned_d.t1,root.sg_bk1.new_aligned_d.t3,root.sg_bk1.new_aligned_d.t2,root.sg_bk1.new_aligned_d.t4,";
+        "Time,root.db_bk1.new_aligned_d.t1,root.db_bk1.new_aligned_d.t3,root.db_bk1.new_aligned_d.t2,root.db_bk1.new_aligned_d.t4,";
     resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
+        "select t1, t3, t2, t4 from root.db_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
 
     // use unmatched interface (non-aligned != aligned)
     resultSetEqualTest(
-        "select s1, s2 into root.sg_bk1.new_aligned_d(t1, t2, t3, t4) from root.sg.*;",
+        "select s1, s2 into root.db_bk1.new_aligned_d(t1, t2, t3, t4) from root.db.*;",
         selectIntoHeader,
         intoRetArray);
     resultSetEqualTest(
-        "select t1, t3, t2, t4 from root.sg_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
+        "select t1, t3, t2, t4 from root.db_bk1.new_aligned_d;", expectedQueryHeader, rawDataSet);
   }
 
   // -------------------------------------- ALIGN BY DEVICE -------------------------------------
@@ -371,39 +371,39 @@ public class IoTDBSelectIntoIT {
   public void testRawDataQueryAlignByDevice1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1,root.sg_abd_bk1.new_d.t1,10,",
-          "root.sg.d1,s2,root.sg_abd_bk1.new_d.t2,9,",
-          "root.sg.d2,s1,root.sg_abd_bk1.new_d.t3,7,",
-          "root.sg.d2,s2,root.sg_abd_bk1.new_d.t4,8,",
+          "root.db.d1,s1,root.db_abd_bk1.new_d.t1,10,",
+          "root.db.d1,s2,root.db_abd_bk1.new_d.t2,9,",
+          "root.db.d2,s1,root.db_abd_bk1.new_d.t3,7,",
+          "root.db.d2,s2,root.db_abd_bk1.new_d.t4,8,",
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_abd_bk1.new_d(t1, t2), root.sg_abd_bk1.new_d(t3, t4) from root.sg.* align by device;",
+        "select s1, s2 into root.db_abd_bk1.new_d(t1, t2), root.db_abd_bk1.new_d(t3, t4) from root.db.* align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_bk1.new_d.t1,root.sg_abd_bk1.new_d.t2,root.sg_abd_bk1.new_d.t3,root.sg_abd_bk1.new_d.t4,";
+        "Time,root.db_abd_bk1.new_d.t1,root.db_abd_bk1.new_d.t2,root.db_abd_bk1.new_d.t3,root.db_abd_bk1.new_d.t4,";
     resultSetEqualTest(
-        "select t1, t2, t3, t4 from root.sg_abd_bk1.new_d;", expectedQueryHeader, rawDataSet);
+        "select t1, t2, t3, t4 from root.db_abd_bk1.new_d;", expectedQueryHeader, rawDataSet);
   }
 
   @Test
   public void testRawDataQueryAlignByDevice2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1,root.sg_abd_bk2.new_d1.s1,10,",
-          "root.sg.d1,s2,root.sg_abd_bk2.new_d1.s2,9,",
-          "root.sg.d2,s1,root.sg_abd_bk2.new_d2.s1,7,",
-          "root.sg.d2,s2,root.sg_abd_bk2.new_d2.s2,8,"
+          "root.db.d1,s1,root.db_abd_bk2.new_d1.s1,10,",
+          "root.db.d1,s2,root.db_abd_bk2.new_d1.s2,9,",
+          "root.db.d2,s1,root.db_abd_bk2.new_d2.s1,7,",
+          "root.db.d2,s2,root.db_abd_bk2.new_d2.s2,8,"
         };
     resultSetEqualTest(
-        "select s1, s2 into root.sg_abd_bk2.new_${2}(::) from root.sg.* align by device;",
+        "select s1, s2 into root.db_abd_bk2.new_${2}(::) from root.db.* align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_bk2.new_d1.s1,root.sg_abd_bk2.new_d1.s2,root.sg_abd_bk2.new_d2.s1,root.sg_abd_bk2.new_d2.s2,";
+        "Time,root.db_abd_bk2.new_d1.s1,root.db_abd_bk2.new_d1.s2,root.db_abd_bk2.new_d2.s1,root.db_abd_bk2.new_d2.s2,";
     resultSetEqualTest(
-        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.sg_abd_bk2;",
+        "select new_d1.s1, new_d1.s2, new_d2.s1, new_d2.s2 from root.db_abd_bk2;",
         expectedQueryHeader,
         rawDataSet);
   }
@@ -412,18 +412,18 @@ public class IoTDBSelectIntoIT {
   public void testSamePathQueryAlignByDevice() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1,root.sg_abd_bk3.new_d1.t1,10,",
-          "root.sg.d1,s2,root.sg_abd_bk3.new_d1.t2,9,",
-          "root.sg.d1,s1,root.sg_abd_bk3.new_d1.t3,10,",
-          "root.sg.d1,s2,root.sg_abd_bk3.new_d1.t4,9,"
+          "root.db.d1,s1,root.db_abd_bk3.new_d1.t1,10,",
+          "root.db.d1,s2,root.db_abd_bk3.new_d1.t2,9,",
+          "root.db.d1,s1,root.db_abd_bk3.new_d1.t3,10,",
+          "root.db.d1,s2,root.db_abd_bk3.new_d1.t4,9,"
         };
     resultSetEqualTest(
-        "select s1, s2, s1, s2 into root.sg_abd_bk3.new_d1(t1, t2, t3, t4) from root.sg.d1 align by device;",
+        "select s1, s2, s1, s2 into root.db_abd_bk3.new_d1(t1, t2, t3, t4) from root.db.d1 align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_bk3.new_d1.t1,root.sg_abd_bk3.new_d1.t2,root.sg_abd_bk3.new_d1.t3,root.sg_abd_bk3.new_d1.t4,";
+        "Time,root.db_abd_bk3.new_d1.t1,root.db_abd_bk3.new_d1.t2,root.db_abd_bk3.new_d1.t3,root.db_abd_bk3.new_d1.t4,";
     String[] queryRetArray =
         new String[] {
           "1,1,null,1,null,",
@@ -440,13 +440,13 @@ public class IoTDBSelectIntoIT {
           "12,12,12.0,12,12.0,"
         };
     resultSetEqualTest(
-        "select t1, t2, t3, t4 from root.sg_abd_bk3.new_d1;", expectedQueryHeader, queryRetArray);
+        "select t1, t2, t3, t4 from root.db_abd_bk3.new_d1;", expectedQueryHeader, queryRetArray);
   }
 
   @Test
   public void testEmptyQueryAlignByDevice() {
     resultSetEqualTest(
-        "select s1, s2 into root.sg_abd_bk4.new_${2}(::) from root.sg1.d1, root.sg1.d2 align by device;",
+        "select s1, s2 into root.db_abd_bk4.new_${2}(::) from root.db1.d1, root.db1.d2 align by device;",
         selectIntoAlignByDeviceHeader, new String[] {});
   }
 
@@ -454,23 +454,23 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQueryAlignByDevice1() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,count(s1),root.sg_abd_agg1.d1.count_s1,1,",
-          "root.sg.d1,last_value(s2),root.sg_abd_agg1.d1.last_value_s2,1,",
-          "root.sg.d2,count(s1),root.sg_abd_agg1.d2.count_s1,1,",
-          "root.sg.d2,last_value(s2),root.sg_abd_agg1.d2.last_value_s2,1,"
+          "root.db.d1,count(s1),root.db_abd_agg1.d1.count_s1,1,",
+          "root.db.d1,last_value(s2),root.db_abd_agg1.d1.last_value_s2,1,",
+          "root.db.d2,count(s1),root.db_abd_agg1.d2.count_s1,1,",
+          "root.db.d2,last_value(s2),root.db_abd_agg1.d2.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into root.sg_abd_agg1.${2}(count_s1, last_value_s2) "
-            + "from root.sg.* align by device;",
+            + "into root.db_abd_agg1.${2}(count_s1, last_value_s2) "
+            + "from root.db.* align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_agg1.d1.count_s1,root.sg_abd_agg1.d2.count_s1,"
-            + "root.sg_abd_agg1.d1.last_value_s2,root.sg_abd_agg1.d2.last_value_s2,";
+        "Time,root.db_abd_agg1.d1.count_s1,root.db_abd_agg1.d2.count_s1,"
+            + "root.db_abd_agg1.d1.last_value_s2,root.db_abd_agg1.d2.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_abd_agg1.d1, root.sg_abd_agg1.d2;",
+        "select count_s1, last_value_s2 from root.db_abd_agg1.d1, root.db_abd_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -479,24 +479,24 @@ public class IoTDBSelectIntoIT {
   public void testAggregationQueryAlignByDevice2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,count(s1),root.sg_abd_agg2.d1.count_s1,4,",
-          "root.sg.d1,last_value(s2),root.sg_abd_agg2.d1.last_value_s2,4,",
-          "root.sg.d2,count(s1),root.sg_abd_agg2.d2.count_s1,4,",
-          "root.sg.d2,last_value(s2),root.sg_abd_agg2.d2.last_value_s2,4,"
+          "root.db.d1,count(s1),root.db_abd_agg2.d1.count_s1,4,",
+          "root.db.d1,last_value(s2),root.db_abd_agg2.d1.last_value_s2,4,",
+          "root.db.d2,count(s1),root.db_abd_agg2.d2.count_s1,4,",
+          "root.db.d2,last_value(s2),root.db_abd_agg2.d2.last_value_s2,4,"
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into aligned root.sg_abd_agg2.${2}(count_s1, last_value_s2) "
-            + "from root.sg.* group by ([1, 13), 3ms) align by device;",
+            + "into aligned root.db_abd_agg2.${2}(count_s1, last_value_s2) "
+            + "from root.db.* group by ([1, 13), 3ms) align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_agg2.d1.count_s1,root.sg_abd_agg2.d2.count_s1,"
-            + "root.sg_abd_agg2.d1.last_value_s2,root.sg_abd_agg2.d2.last_value_s2,";
+        "Time,root.db_abd_agg2.d1.count_s1,root.db_abd_agg2.d2.count_s1,"
+            + "root.db_abd_agg2.d1.last_value_s2,root.db_abd_agg2.d2.last_value_s2,";
     String[] queryRetArray =
         new String[] {"1,3,2,3.0,2.0,", "4,2,1,6.0,6.0,", "7,2,2,9.0,8.0,", "10,3,2,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_abd_agg2.d1, root.sg_abd_agg2.d2;",
+        "select count_s1, last_value_s2 from root.db_abd_agg2.d1, root.db_abd_agg2.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -505,22 +505,22 @@ public class IoTDBSelectIntoIT {
   public void testExpressionAlignByDevice() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1 + s2,root.sg_abd_expr.d1.k1,7,",
-          "root.sg.d1,-sin(s1),root.sg_abd_expr.d1.k2,10,",
-          "root.sg.d1,top_k(s2, \"k\"=\"3\"),root.sg_abd_expr.d1.k3,3,",
-          "root.sg.d2,s1 + s2,root.sg_abd_expr.d2.k1,4,",
-          "root.sg.d2,-sin(s1),root.sg_abd_expr.d2.k2,7,",
-          "root.sg.d2,top_k(s2, \"k\"=\"3\"),root.sg_abd_expr.d2.k3,3,",
+          "root.db.d1,s1 + s2,root.db_abd_expr.d1.k1,7,",
+          "root.db.d1,-sin(s1),root.db_abd_expr.d1.k2,10,",
+          "root.db.d1,top_k(s2, \"k\"=\"3\"),root.db_abd_expr.d1.k3,3,",
+          "root.db.d2,s1 + s2,root.db_abd_expr.d2.k1,4,",
+          "root.db.d2,-sin(s1),root.db_abd_expr.d2.k2,7,",
+          "root.db.d2,top_k(s2, \"k\"=\"3\"),root.db_abd_expr.d2.k3,3,",
         };
     resultSetEqualTest(
         "select s1 + s2, -sin(s1), top_k(s2,'k'='3') "
-            + "into root.sg_abd_expr.::(k1, k2, k3) from root.sg.* align by device;",
+            + "into root.db_abd_expr.::(k1, k2, k3) from root.db.* align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_expr.d1.k1,root.sg_abd_expr.d2.k1,root.sg_abd_expr.d1.k2,"
-            + "root.sg_abd_expr.d2.k2,root.sg_abd_expr.d1.k3,root.sg_abd_expr.d2.k3,";
+        "Time,root.db_abd_expr.d1.k1,root.db_abd_expr.d2.k1,root.db_abd_expr.d1.k2,"
+            + "root.db_abd_expr.d2.k2,root.db_abd_expr.d1.k3,root.db_abd_expr.d2.k3,";
     String[] queryRetArray =
         new String[] {
           "1,null,2.0,-0.8414709848078965,-0.8414709848078965,null,null,",
@@ -537,24 +537,24 @@ public class IoTDBSelectIntoIT {
           "12,24.0,null,0.5365729180004349,0.5365729180004349,12.0,null,"
         };
     resultSetEqualTest(
-        "select k1, k2, k3 from root.sg_abd_expr.*;", expectedQueryHeader, queryRetArray);
+        "select k1, k2, k3 from root.db_abd_expr.*;", expectedQueryHeader, queryRetArray);
   }
 
   @Test
   public void testExpressionAlignByDevice2() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,avg(s1),root.agg_expr.d1.avg_s1,1,",
-          "root.sg.d1,sum(s1) + sum(s1),root.agg_expr.d1.sum_s1_add_s1,1,",
-          "root.sg.d1,count(s2),root.agg_expr.d1.count_s2,1,",
-          "root.sg.d2,avg(s1),root.agg_expr.d2.avg_s1,1,",
-          "root.sg.d2,sum(s1) + sum(s1),root.agg_expr.d2.sum_s1_add_s1,1,",
-          "root.sg.d2,count(s2),root.agg_expr.d2.count_s2,1,",
+          "root.db.d1,avg(s1),root.agg_expr.d1.avg_s1,1,",
+          "root.db.d1,sum(s1) + sum(s1),root.agg_expr.d1.sum_s1_add_s1,1,",
+          "root.db.d1,count(s2),root.agg_expr.d1.count_s2,1,",
+          "root.db.d2,avg(s1),root.agg_expr.d2.avg_s1,1,",
+          "root.db.d2,sum(s1) + sum(s1),root.agg_expr.d2.sum_s1_add_s1,1,",
+          "root.db.d2,count(s2),root.agg_expr.d2.count_s2,1,",
         };
     resultSetEqualTest(
         "select avg(s1), sum(s1) + sum(s1), count(s2)"
             + " into root.agg_expr.${2}(avg_s1, sum_s1_add_s1, count_s2)"
-            + " from root.sg.d1, root.sg.d2 align by device;",
+            + " from root.db.d1, root.db.d2 align by device;",
         selectIntoAlignByDeviceHeader, intoRetArray);
 
     String expectedQueryHeader =
@@ -574,19 +574,19 @@ public class IoTDBSelectIntoIT {
   public void testAliasAlignByDevice() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,s1,root.sg_abd_alias.d1.k1,10,",
+          "root.db.d1,s1,root.db_abd_alias.d1.k1,10,",
         };
     resultSetEqualTest(
-        "select s1 as k1 " + "into root.sg_abd_alias.d1(::) from root.sg.d1 align by device;",
+        "select s1 as k1 " + "into root.db_abd_alias.d1(::) from root.db.d1 align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     intoRetArray =
         new String[] {
-          "k1,root.sg_abd_alias.d2.k1,10,",
+          "k1,root.db_abd_alias.d2.k1,10,",
         };
     resultSetEqualTest(
-        "select s1 as k1 " + "into root.sg_abd_alias.d2(::) from root.sg.d1;",
+        "select s1 as k1 " + "into root.db_abd_alias.d2(::) from root.db.d1;",
         selectIntoHeader,
         intoRetArray);
   }
@@ -598,14 +598,14 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser1 'temppw1123456'");
-      adminStmt.execute("GRANT WRITE_DATA on root.sg_bk.** TO USER tempuser1;");
+      adminStmt.execute("GRANT WRITE_DATA on root.db_bk.** TO USER tempuser1;");
       ResultSet resultSet;
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
-            "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
-        resultSet = userStmt.executeQuery("select * from root.sg_bk.new_d");
+            "select s1, s2 into root.db_bk.new_d(t1, t2, t3, t4) from root.db.*;");
+        resultSet = userStmt.executeQuery("select * from root.db_bk.new_d");
         Assert.assertEquals(resultSet.next(), false);
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -621,12 +621,12 @@ public class IoTDBSelectIntoIT {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser2 'temppw2123456'");
-      adminStmt.execute("GRANT WRITE_DATA on root.sg.** TO USER tempuser2;");
+      adminStmt.execute("GRANT WRITE_DATA on root.db.** TO USER tempuser2;");
 
       try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
-            "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
+            "select s1, s2 into root.db_bk.new_d(t1, t2, t3, t4) from root.db.*;");
         fail("No exception!");
       } catch (SQLException e) {
         Assert.assertTrue(
@@ -643,112 +643,112 @@ public class IoTDBSelectIntoIT {
   public void testDataTypeIncompatible() {
     // test INT32
     assertTestFail(
-        "select s_int32 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
+        "select s_int32 into root.db_type.d_1(s_boolean) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.db_type.d_0.s_int32[INT32]).");
     assertTestFail(
-        "select s_int32 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
+        "select s_int32 into root.db_type.d_1(s_text) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.db_type.d_0.s_int32[INT32]).");
 
     // test INT64
     assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "select s_int64 into root.db_type.d_1(s_int32) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.db_type.d_0.s_int64[INT64]).");
     assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "select s_int64 into root.db_type.d_1(s_float) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.db_type.d_0.s_int64[INT64]).");
     assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "select s_int64 into root.db_type.d_1(s_boolean) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.db_type.d_0.s_int64[INT64]).");
     assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "select s_int64 into root.db_type.d_1(s_text) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.db_type.d_0.s_int64[INT64]).");
 
     // test FLOAT
     assertTestFail(
-        "select s_float into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "select s_float into root.db_type.d_1(s_int32) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.db_type.d_0.s_float[FLOAT]).");
     assertTestFail(
-        "select s_float into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "select s_float into root.db_type.d_1(s_int64) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.db_type.d_0.s_float[FLOAT]).");
     assertTestFail(
-        "select s_float into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "select s_float into root.db_type.d_1(s_boolean) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.db_type.d_0.s_float[FLOAT]).");
     assertTestFail(
-        "select s_float into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "select s_float into root.db_type.d_1(s_text) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.db_type.d_0.s_float[FLOAT]).");
 
     // test DOUBLE
     assertTestFail(
-        "select s_double into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "select s_double into root.db_type.d_1(s_int32) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.db_type.d_0.s_double[DOUBLE]).");
     assertTestFail(
-        "select s_double into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "select s_double into root.db_type.d_1(s_int64) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.db_type.d_0.s_double[DOUBLE]).");
     assertTestFail(
-        "select s_double into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "select s_double into root.db_type.d_1(s_float) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.db_type.d_0.s_double[DOUBLE]).");
     assertTestFail(
-        "select s_double into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "select s_double into root.db_type.d_1(s_boolean) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.db_type.d_0.s_double[DOUBLE]).");
     assertTestFail(
-        "select s_double into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "select s_double into root.db_type.d_1(s_text) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.db_type.d_0.s_double[DOUBLE]).");
 
     // test BOOLEAN
     assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "select s_boolean into root.db_type.d_1(s_int32) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.db_type.d_0.s_boolean[BOOLEAN]).");
     assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "select s_boolean into root.db_type.d_1(s_int64) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.db_type.d_0.s_boolean[BOOLEAN]).");
     assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "select s_boolean into root.db_type.d_1(s_float) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.db_type.d_0.s_boolean[BOOLEAN]).");
     assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "select s_boolean into root.db_type.d_1(s_double) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.db_type.d_0.s_boolean[BOOLEAN]).");
     assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "select s_boolean into root.db_type.d_1(s_text) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.db_type.d_0.s_boolean[BOOLEAN]).");
 
     // test TEXT
     assertTestFail(
-        "select s_text into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "select s_text into root.db_type.d_1(s_int32) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.db_type.d_0.s_text[TEXT]).");
     assertTestFail(
-        "select s_text into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "select s_text into root.db_type.d_1(s_int64) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.db_type.d_0.s_text[TEXT]).");
     assertTestFail(
-        "select s_text into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "select s_text into root.db_type.d_1(s_float) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.db_type.d_0.s_text[TEXT]).");
     assertTestFail(
-        "select s_text into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "select s_text into root.db_type.d_1(s_double) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.db_type.d_0.s_text[TEXT]).");
     assertTestFail(
-        "select s_text into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "select s_text into root.db_type.d_1(s_boolean) from root.db_type.d_0;",
+        "The data type of target path (root.db_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.db_type.d_0.s_text[TEXT]).");
   }
 
   @Test
   public void testDataTypeAutoCast() {
     String[] intoRetArray =
         new String[] {
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_int64,12,",
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_float,12,",
-          "root.sg_type.d_0.s_int32,root.sg_type.d_1.s_double,12,",
-          "root.sg_type.d_0.s_int64,root.sg_type.d_2.s_double,12,",
-          "root.sg_type.d_0.s_float,root.sg_type.d_3.s_double,12,",
+          "root.db_type.d_0.s_int32,root.db_type.d_1.s_int64,12,",
+          "root.db_type.d_0.s_int32,root.db_type.d_1.s_float,12,",
+          "root.db_type.d_0.s_int32,root.db_type.d_1.s_double,12,",
+          "root.db_type.d_0.s_int64,root.db_type.d_2.s_double,12,",
+          "root.db_type.d_0.s_float,root.db_type.d_3.s_double,12,",
         };
     resultSetEqualTest(
         "select s_int32, s_int32, s_int32, s_int64, s_float "
-            + " into root.sg_type.d_1(s_int64, s_float, s_double), root.sg_type.d_2(s_double), root.sg_type.d_3(s_double) "
-            + " from root.sg_type.d_0;",
+            + " into root.db_type.d_1(s_int64, s_float, s_double), root.db_type.d_2(s_double), root.db_type.d_3(s_double) "
+            + " from root.db_type.d_0;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_type.d_1.s_int64,root.sg_type.d_1.s_float,root.sg_type.d_1.s_double,"
-            + "root.sg_type.d_2.s_double,root.sg_type.d_3.s_double,";
+        "Time,root.db_type.d_1.s_int64,root.db_type.d_1.s_float,root.db_type.d_1.s_double,"
+            + "root.db_type.d_2.s_double,root.db_type.d_3.s_double,";
     String[] queryRetArray =
         new String[] {
           "0,0,0.0,0.0,0.0,0.0,",
@@ -765,7 +765,7 @@ public class IoTDBSelectIntoIT {
           "11,11,11.0,11.0,11.0,11.0,"
         };
     resultSetEqualTest(
-        "select d_1.s_int64, d_1.s_float, d_1.s_double, d_2.s_double, d_3.s_double from root.sg_type;",
+        "select d_1.s_int64, d_1.s_float, d_1.s_double, d_2.s_double, d_3.s_double from root.db_type;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -812,23 +812,23 @@ public class IoTDBSelectIntoIT {
   public void testRemoveBackQuote() {
     String[] intoRetArray =
         new String[] {
-          "count(root.sg.d1.s1),root.sg_agg1.d1.count_s1,1,",
-          "last_value(root.sg.d1.s2),root.sg_agg1.d1.last_value_s2,1,",
-          "count(root.sg.d2.s1),root.sg_agg1.d2.count_s1,1,",
-          "last_value(root.sg.d2.s2),root.sg_agg1.d2.last_value_s2,1,"
+          "count(root.db.d1.s1),root.db_agg1.d1.count_s1,1,",
+          "last_value(root.db.d1.s2),root.db_agg1.d1.last_value_s2,1,",
+          "count(root.db.d2.s1),root.db_agg1.d2.count_s1,1,",
+          "last_value(root.db.d2.s2),root.db_agg1.d2.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(d1.s1), last_value(d1.s2), count(d2.s1), last_value(d2.s2) "
-            + "into root.sg_agg1.`d1`(`count_s1`, last_value_s2), aligned root.sg_agg1.d2(count_s1, last_value_s2) "
-            + "from root.sg;",
+            + "into root.db_agg1.`d1`(`count_s1`, last_value_s2), aligned root.db_agg1.d2(count_s1, last_value_s2) "
+            + "from root.db;",
         selectIntoHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_agg1.d1.count_s1,root.sg_agg1.d2.count_s1,root.sg_agg1.d1.last_value_s2,root.sg_agg1.d2.last_value_s2,";
+        "Time,root.db_agg1.d1.count_s1,root.db_agg1.d2.count_s1,root.db_agg1.d1.last_value_s2,root.db_agg1.d2.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,7,12.0,11.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_agg1.d1, root.sg_agg1.d2;",
+        "select count_s1, last_value_s2 from root.db_agg1.d1, root.db_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }
@@ -837,21 +837,21 @@ public class IoTDBSelectIntoIT {
   public void testRemoveBackQuoteAlignByDevice() {
     String[] intoRetArray =
         new String[] {
-          "root.sg.d1,count(s1),root.sg_abd_agg1.d1.count_s1,1,",
-          "root.sg.d1,last_value(s2),root.sg_abd_agg1.d1.last_value_s2,1,"
+          "root.db.d1,count(s1),root.db_abd_agg1.d1.count_s1,1,",
+          "root.db.d1,last_value(s2),root.db_abd_agg1.d1.last_value_s2,1,"
         };
     resultSetEqualTest(
         "select count(s1), last_value(s2) "
-            + "into root.sg_abd_agg1.`d1`(`count_s1`, last_value_s2) "
-            + "from root.sg.d1 align by device;",
+            + "into root.db_abd_agg1.`d1`(`count_s1`, last_value_s2) "
+            + "from root.db.d1 align by device;",
         selectIntoAlignByDeviceHeader,
         intoRetArray);
 
     String expectedQueryHeader =
-        "Time,root.sg_abd_agg1.d1.count_s1," + "root.sg_abd_agg1.d1.last_value_s2,";
+        "Time,root.db_abd_agg1.d1.count_s1," + "root.db_abd_agg1.d1.last_value_s2,";
     String[] queryRetArray = new String[] {"0,10,12.0,"};
     resultSetEqualTest(
-        "select count_s1, last_value_s2 from root.sg_abd_agg1.d1, root.sg_abd_agg1.d2;",
+        "select count_s1, last_value_s2 from root.db_abd_agg1.d1, root.db_abd_agg1.d2;",
         expectedQueryHeader,
         queryRetArray);
   }

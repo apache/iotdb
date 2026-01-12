@@ -84,7 +84,7 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
    *
    * <p>Note that this method should be called after the {@link PipeSinkSubtask} is stopped.
    * Otherwise, the {@link PipeSinkSubtaskLifeCycle#runningTaskCount} might be inconsistent with the
-   * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel connector scheduling.
+   * {@link PipeSinkSubtaskLifeCycle#registeredTaskCount} because of parallel sink scheduling.
    *
    * @param pipeNameToDeregister pipe name
    * @param regionId region id

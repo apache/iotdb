@@ -75,7 +75,7 @@ public class TsFileIdentifier {
    * This function generates an instance of CompactionFileIdentifier by parsing the path of a
    * tsfile. Notice, the path of the file should include information of its logical database, data
    * region id, time partition, sequence or not and its filename, such as
-   * "sequence/root.test.sg/0/0/1-1-0-0.tsfile".
+   * "sequence/root.test.db/0/0/1-1-0-0.tsfile".
    */
   public static TsFileIdentifier getFileIdentifierFromFilePath(String filepath) {
     String splitter = File.separator;
@@ -103,7 +103,7 @@ public class TsFileIdentifier {
 
   /**
    * This function generates an instance of CompactionFileIdentifier by parsing the info string of a
-   * tsfile(usually recorded in a compaction.log), such as “sequence root.test.sg 0 0
+   * tsfile(usually recorded in a compaction.log), such as “sequence root.test.db 0 0
    * 0-0-0-0.tsfile"
    */
   public static TsFileIdentifier getFileIdentifierFromInfoString(String infoString) {

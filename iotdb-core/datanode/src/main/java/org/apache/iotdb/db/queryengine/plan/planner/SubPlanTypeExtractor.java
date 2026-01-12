@@ -46,7 +46,7 @@ public class SubPlanTypeExtractor {
 
   private SubPlanTypeExtractor() {}
 
-  public static TypeProvider extractor(PlanNode root, TypeProvider allTypes) {
+  public static TypeProvider source(PlanNode root, TypeProvider allTypes) {
 
     TypeProvider typeProvider =
         new TypeProvider(allTypes.getTreeModelTypeMap(), allTypes.getTemplatedInfo());

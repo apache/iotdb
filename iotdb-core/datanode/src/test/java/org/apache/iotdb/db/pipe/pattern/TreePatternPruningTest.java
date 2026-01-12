@@ -72,15 +72,15 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1,root.sg.d2");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.d1");
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.d1,root.db.d2");
+                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.db.d1");
               }
             });
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
     Assert.assertTrue(result instanceof IoTDBTreePattern);
-    Assert.assertEquals("root.sg.d2", result.getPattern());
+    Assert.assertEquals("root.db.d2", result.getPattern());
   }
 
   @Test
@@ -89,8 +89,8 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.**");
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.d1");
+                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.db.**");
               }
             });
 
@@ -108,15 +108,15 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.A,root.sg.B,root.sg.A.sub");
-                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.sg.A,root.sg.A.**");
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.A,root.db.B,root.db.A.sub");
+                put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.db.A,root.db.A.**");
               }
             });
 
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
     Assert.assertTrue(result instanceof IoTDBTreePattern);
-    Assert.assertEquals("root.sg.B", result.getPattern());
+    Assert.assertEquals("root.db.B", result.getPattern());
   }
 
   @Test
@@ -125,8 +125,8 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.sg.A,root.sg.B,root.sg.A.sub");
-                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.sg.A");
+                put(PipeSourceConstant.SOURCE_PATTERN_KEY, "root.db.A,root.db.B,root.db.A.sub");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.db.A");
                 put(PipeSourceConstant.SOURCE_PATTERN_FORMAT_KEY, "prefix");
               }
             });
@@ -134,7 +134,7 @@ public class TreePatternPruningTest {
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
     Assert.assertTrue(result instanceof PrefixTreePattern);
-    Assert.assertEquals("root.sg.B", result.getPattern());
+    Assert.assertEquals("root.db.B", result.getPattern());
   }
 
   @Test
@@ -143,7 +143,7 @@ public class TreePatternPruningTest {
         new PipeParameters(
             new HashMap<String, String>() {
               {
-                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.sg.d1,root.sg.d2");
+                put(PipeSourceConstant.SOURCE_PATH_KEY, "root.db.d1,root.db.d2");
                 put(PipeSourceConstant.SOURCE_PATH_EXCLUSION_KEY, "root.other");
               }
             });
@@ -151,6 +151,6 @@ public class TreePatternPruningTest {
     final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
 
     Assert.assertTrue(result instanceof UnionIoTDBTreePattern);
-    Assert.assertEquals("root.sg.d1,root.sg.d2", result.getPattern());
+    Assert.assertEquals("root.db.d1,root.db.d2", result.getPattern());
   }
 }

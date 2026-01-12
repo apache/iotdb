@@ -59,7 +59,7 @@ public class PipeConfigNodeRuntimeAgent implements IService {
     // PipeTasks will not be started here and will be started by "HandleLeaderChange"
     // procedure when the consensus layer notify leader ready
 
-    // Clean sender (connector) hardlink snapshot dir
+    // Clean sender (sink) hardlink snapshot dir
     PipeConfigNodeCopiedFileDirStartupCleaner.clean();
 
     // Clean receiver file dir

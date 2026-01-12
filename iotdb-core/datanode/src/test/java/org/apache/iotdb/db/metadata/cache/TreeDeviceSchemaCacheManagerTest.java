@@ -71,7 +71,7 @@ public class TreeDeviceSchemaCacheManagerTest {
 
   @Test
   public void testGetSchemaEntity() throws IllegalPathException {
-    final PartialPath device1 = new PartialPath("root.sg1.d1");
+    final PartialPath device1 = new PartialPath("root.db1.d1");
     final String[] measurements = new String[3];
     measurements[0] = "s1";
     measurements[1] = "s2";
@@ -88,17 +88,17 @@ public class TreeDeviceSchemaCacheManagerTest {
                     o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.INT32,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTsDataType());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s1")).getTsDataType());
     Assert.assertEquals(
-        s1TagMap, schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s1")).getTagMap());
+        s1TagMap, schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s1")).getTagMap());
     Assert.assertEquals(
         TSDataType.FLOAT,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s2")).getTsDataType());
-    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s2")).getTagMap());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s2")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s2")).getTagMap());
     Assert.assertEquals(
         TSDataType.BOOLEAN,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
-    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s3")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s3")).getTagMap());
 
     final String[] otherMeasurements = new String[3];
     otherMeasurements[0] = "s3";
@@ -116,16 +116,16 @@ public class TreeDeviceSchemaCacheManagerTest {
                     o -> new SchemaCacheEntry(o.getMeasurementSchema(), o.getTagMap())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTsDataType());
-    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s3")).getTagMap());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s3")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s3")).getTagMap());
     Assert.assertEquals(
         TSDataType.TEXT,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTsDataType());
-    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s4")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s4")).getTagMap());
     Assert.assertEquals(
         TSDataType.INT64,
-        schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
-    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s4")).getTagMap());
+        schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s5")).getTsDataType());
+    Assert.assertNull(schemaCacheEntryMap.get(new PartialPath("root.db1.d1.s4")).getTagMap());
   }
 
   private ISchemaTree generateSchemaTree1() throws IllegalPathException {
@@ -133,27 +133,27 @@ public class TreeDeviceSchemaCacheManagerTest {
     final Map<String, String> s1TagMap = new HashMap<>();
     s1TagMap.put("k1", "v1");
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s1"),
+        new PartialPath("root.db1.d1.s1"),
         new MeasurementSchema("s1", TSDataType.INT32),
         s1TagMap,
         null,
         null,
         false);
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s2"),
+        new PartialPath("root.db1.d1.s2"),
         new MeasurementSchema("s2", TSDataType.FLOAT),
         null,
         null,
         null,
         false);
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s3"),
+        new PartialPath("root.db1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
         null,
         null,
         false);
-    schemaTree.setDatabases(Collections.singleton("root.sg1"));
+    schemaTree.setDatabases(Collections.singleton("root.db1"));
     return schemaTree;
   }
 
@@ -161,27 +161,27 @@ public class TreeDeviceSchemaCacheManagerTest {
     final ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s3"),
+        new PartialPath("root.db1.d1.s3"),
         new MeasurementSchema("s3", TSDataType.BOOLEAN),
         null,
         null,
         null,
         false);
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s4"),
+        new PartialPath("root.db1.d1.s4"),
         new MeasurementSchema("s4", TSDataType.TEXT),
         null,
         null,
         null,
         false);
     schemaTree.appendSingleMeasurement(
-        new PartialPath("root.sg1.d1.s5"),
+        new PartialPath("root.db1.d1.s5"),
         new MeasurementSchema("s5", TSDataType.INT64),
         null,
         null,
         null,
         false);
-    schemaTree.setDatabases(Collections.singleton("root.sg1"));
+    schemaTree.setDatabases(Collections.singleton("root.db1"));
     return schemaTree;
   }
 
@@ -293,18 +293,18 @@ public class TreeDeviceSchemaCacheManagerTest {
     template2.setId(2);
     ClusterTemplateManager.getInstance().putTemplate(template1);
     ClusterTemplateManager.getInstance().putTemplate(template2);
-    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.sg1.d1"), false, 1, template1);
-    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.sg1.d2"), false, 2, template2);
-    clusterSchemaTree.setDatabases(Collections.singleton("root.sg1"));
+    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.db1.d1"), false, 1, template1);
+    clusterSchemaTree.appendTemplateDevice(new PartialPath("root.db1.d2"), false, 2, template2);
+    clusterSchemaTree.setDatabases(Collections.singleton("root.db1"));
     clusterSchemaTree.appendSingleMeasurementPath(
-        new MeasurementPath("root.sg1.d3.s1", TSDataType.FLOAT));
+        new MeasurementPath("root.db1.d3.s1", TSDataType.FLOAT));
     treeDeviceSchemaCacheManager.put(clusterSchemaTree);
     final ClusterSchemaTree d1Tree =
-        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d1"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.db1.d1"));
     final ClusterSchemaTree d2Tree =
-        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.sg1.d2"));
+        treeDeviceSchemaCacheManager.getMatchedTemplateSchema(new PartialPath("root.db1.d2"));
     final ClusterSchemaTree d3Tree =
-        treeDeviceSchemaCacheManager.getMatchedNormalSchema(new MeasurementPath("root.sg1.d3.s1"));
+        treeDeviceSchemaCacheManager.getMatchedNormalSchema(new MeasurementPath("root.db1.d3.s1"));
     List<MeasurementPath> measurementPaths = d1Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(2, measurementPaths.size());
     for (final MeasurementPath measurementPath : measurementPaths) {
@@ -322,10 +322,10 @@ public class TreeDeviceSchemaCacheManagerTest {
     measurementPaths = d3Tree.searchMeasurementPaths(ALL_MATCH_PATTERN).left;
     Assert.assertEquals(1, measurementPaths.size());
     Assert.assertEquals(TSDataType.FLOAT, measurementPaths.get(0).getMeasurementSchema().getType());
-    Assert.assertEquals("root.sg1.d3.s1", measurementPaths.get(0).getFullPath());
+    Assert.assertEquals("root.db1.d3.s1", measurementPaths.get(0).getFullPath());
 
-    treeDeviceSchemaCacheManager.invalidateLastCache(new MeasurementPath("root.sg1.**"));
-    treeDeviceSchemaCacheManager.invalidateDatabaseLastCache("root.sg1");
+    treeDeviceSchemaCacheManager.invalidateLastCache(new MeasurementPath("root.db1.**"));
+    treeDeviceSchemaCacheManager.invalidateDatabaseLastCache("root.db1");
     TableDeviceSchemaCache.getInstance().invalidateTreeSchema();
     Assert.assertTrue(TableDeviceSchemaCache.getInstance().getMemoryUsage() > 0);
 

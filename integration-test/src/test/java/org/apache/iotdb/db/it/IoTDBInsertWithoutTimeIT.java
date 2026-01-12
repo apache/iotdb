@@ -46,10 +46,10 @@ public class IoTDBInsertWithoutTimeIT {
 
   private static final List<String> sqls =
       Arrays.asList(
-          "CREATE DATABASE root.sg1",
-          "CREATE TIMESERIES root.sg1.d1.s1 INT64",
-          "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
-          "CREATE TIMESERIES root.sg1.d1.s3 TEXT");
+          "CREATE DATABASE root.db1",
+          "CREATE TIMESERIES root.db1.d1.s1 INT64",
+          "CREATE TIMESERIES root.db1.d1.s2 FLOAT",
+          "CREATE TIMESERIES root.db1.d1.s3 TEXT");
 
   @Before
   public void setUp() throws Exception {
@@ -78,50 +78,50 @@ public class IoTDBInsertWithoutTimeIT {
   public void testInsertWithoutTime() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
+      statement.execute("insert into root.db1.d1(s1, s2, s3) values (1, 1, '1')");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
+      statement.execute("insert into root.db1.d1(s2, s1, s3) values (2, 2, '2')");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
+      statement.execute("insert into root.db1.d1(s3, s2, s1) values ('3', 3, 3)");
       Thread.sleep(1);
-      statement.execute("insert into root.sg1.d1(s1) values (1)");
-      statement.execute("insert into root.sg1.d1(s2) values (2)");
-      statement.execute("insert into root.sg1.d1(s3) values ('3')");
+      statement.execute("insert into root.db1.d1(s1) values (1)");
+      statement.execute("insert into root.db1.d1(s2) values (2)");
+      statement.execute("insert into root.db1.d1(s3) values ('3')");
     } catch (SQLException | InterruptedException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
 
-    String expectedHeader = "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+    String expectedHeader = "count(root.db1.d1.s1),count(root.db1.d1.s2),count(root.db1.d1.s3),";
     String[] retArray = new String[] {"4,4,4,"};
     resultSetEqualTest(
-        "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
+        "select count(s1), count(s2), count(s3) from root.db1.d1", expectedHeader, retArray);
   }
 
   @Test
   public void testInsertWithoutValueColumns() {
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(time) values (1)",
+        "insert into root.db1.d1(time) values (1)",
         "InsertStatement should contain at least one measurement");
   }
 
   @Test
   public void testInsertMultiRow() {
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(s3) values ('1'), ('2')",
+        "insert into root.db1.d1(s3) values ('1'), ('2')",
         "need timestamps when insert multi rows");
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(s1, s2) values (1, 1), (2, 2)",
+        "insert into root.db1.d1(s1, s2) values (1, 1), (2, 2)",
         "need timestamps when insert multi rows");
   }
 
   @Test
   public void testInsertWithMultiTimesColumns() {
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, time) values (1, 1)",
+        "insert into root.db1.d1(time, time) values (1, 1)",
         "One row should only have one time value");
     assertNonQueryTestFail(
-        "insert into root.sg1.d1(time, s1, time) values (1, 1, 1)",
+        "insert into root.db1.d1(time, s1, time) values (1, 1, 1)",
         "One row should only have one time value");
   }
 }

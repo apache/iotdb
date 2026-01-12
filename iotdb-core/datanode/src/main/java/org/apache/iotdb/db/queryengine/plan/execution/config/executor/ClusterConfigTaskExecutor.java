@@ -1371,7 +1371,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
         future.setException(
             new IoTDBException(
-                "not all sg is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+                "not all db is ready", TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
         return future;
       }
       if (!CompactionTaskManager.getInstance().isInit()) {
@@ -2174,7 +2174,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 .setPipeName(createPipeStatement.getPipeName() + "_realtime")
                 // NOTE: set if not exists always to true to handle partial failure
                 .setIfNotExistsCondition(true)
-                // Use extractor parameters for real-time data
+                // Use source parameters for real-time data
                 .setExtractorAttributes(
                     sourcePipeParameters
                         .addOrReplaceEquivalentAttributesWithClone(

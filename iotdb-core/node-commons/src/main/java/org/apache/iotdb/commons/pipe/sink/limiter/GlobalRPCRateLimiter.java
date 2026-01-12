@@ -21,13 +21,13 @@ package org.apache.iotdb.commons.pipe.sink.limiter;
 
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
-/** This is a global rate limiter for all connectors. */
+/** This is a global rate limiter for all sinks. */
 public class GlobalRPCRateLimiter extends GlobalRateLimiter {
 
   private static final PipeConfig CONFIG = PipeConfig.getInstance();
 
   @Override
   protected double getThroughputBytesPerSecond() {
-    return CONFIG.getPipeAllConnectorsRateLimitBytesPerSecond();
+    return CONFIG.getPipeAllSinksRateLimitBytesPerSecond();
   }
 }

@@ -59,7 +59,7 @@ public class PipeTabletInsertionEventTest {
   private InsertTabletNode insertTabletNode;
   private InsertTabletNode insertTabletNodeAligned;
 
-  final String deviceId = "root.sg.d1";
+  final String deviceId = "root.db.d1";
   final long[] times = new long[] {110L, 111L, 112L, 113L, 114L};
   final String[] measurementIds =
       new String[] {"s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10"};
@@ -79,7 +79,7 @@ public class PipeTabletInsertionEventTest {
 
   final MeasurementSchema[] schemas = new MeasurementSchema[10];
 
-  final String pattern = "root.sg.d1";
+  final String pattern = "root.db.d1";
 
   Tablet tabletForInsertRowNode;
   Tablet tabletForInsertTabletNode;

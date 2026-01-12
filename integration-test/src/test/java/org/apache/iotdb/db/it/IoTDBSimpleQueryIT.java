@@ -72,10 +72,10 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.s1")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.d0.s1")) {
         if (resultSet.next()) {
           assertEquals("PLAIN", resultSet.getString(ColumnHeaderConstant.ENCODING).toUpperCase());
         }
@@ -91,20 +91,20 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       try {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
+            "CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
         fail();
       } catch (Exception e) {
         assertEquals(
             TSStatusCode.ILLEGAL_PARAMETER.getStatusCode()
-                + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+                + ": SDT compression deviation cannot be negative. Failed to create timeseries for path root.db1.d0.s1",
             e.getMessage());
       }
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -159,21 +159,21 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -182,7 +182,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -200,28 +200,28 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2");
 
       for (int time = 1; time < 8; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(15,10)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(16,20)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(17,1)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(18,30)";
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       String[] timestamps = {"1", "7", "15", "16", "17", "18"};
@@ -229,7 +229,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -243,28 +243,28 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMINTIME=1");
 
       for (int time = 1; time < 8; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(15,10)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(15,10)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(16,20)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(16,20)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(17,1)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(17,1)";
       statement.execute(sql);
-      sql = "insert into root.sg1.d0(timestamp,s0) values(18,30)";
+      sql = "insert into root.db1.d0(timestamp,s0) values(18,30)";
       statement.execute(sql);
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       // will not store time = 16 since time distance to last stored time 15 is within compMinTime
@@ -273,7 +273,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -287,18 +287,18 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,LOSS=SDT,COMPDEV=2, COMPMAXTIME=20");
 
       for (int time = 1; time < 50; time++) {
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + ",1)";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + ",1)";
         statement.execute(sql);
       }
       statement.execute("flush");
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       int count = 0;
 
       String[] timestamps = {"1", "21", "41", "49"};
@@ -306,7 +306,7 @@ public class IoTDBSimpleQueryIT {
 
       while (resultSet.next()) {
         assertEquals(timestamps[count], resultSet.getString("Time"));
-        assertEquals(values[count], resultSet.getString("root.sg1.d0.s0"));
+        assertEquals(values[count], resultSet.getString("root.db1.d0.s0"));
         count++;
       }
     } catch (SQLException e) {
@@ -320,25 +320,25 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // insert unseq
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -347,7 +347,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -365,21 +365,21 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -388,7 +388,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -405,25 +405,25 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       // test set sdt property
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=DOUBLE,ENCODING=PLAIN,LOSS=SDT,COMPDEV=0.01");
 
       int degree = 0;
       for (int time = 0; time < 100; time++) {
         // generate data in sine wave pattern
         double value = 10 * Math.sin(degree++ * 3.141592653589793D / 180.0D);
-        String sql = "insert into root.sg1.d0(timestamp,s0) values(" + time + "," + value + ")";
+        String sql = "insert into root.db1.d0(timestamp,s0) values(" + time + "," + value + ")";
         statement.execute(sql);
       }
 
       // insert unseq
-      String sql = "insert into root.sg1.d0(timestamp,s0) values(2,19)";
+      String sql = "insert into root.db1.d0(timestamp,s0) values(2,19)";
       statement.execute(sql);
 
       // before SDT encoding
-      ResultSet resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      ResultSet resultSet = statement.executeQuery("select s0 from root.db1.d0");
       int count = 0;
       while (resultSet.next()) {
         count++;
@@ -432,7 +432,7 @@ public class IoTDBSimpleQueryIT {
 
       // after flush and SDT encoding
       statement.execute("flush");
-      resultSet = statement.executeQuery("select s0 from root.sg1.d0");
+      resultSet = statement.executeQuery("select s0 from root.db1.d0");
       count = 0;
       while (resultSet.next()) {
         count++;
@@ -449,7 +449,7 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      ResultSet resultSet = statement.executeQuery("select * from root.sg1.**");
+      ResultSet resultSet = statement.executeQuery("select * from root.db1.**");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
       try {
@@ -473,7 +473,7 @@ public class IoTDBSimpleQueryIT {
           fail();
         }
 
-        resultSet = statement.executeQuery("select * from root.sg1.** align by device");
+        resultSet = statement.executeQuery("select * from root.db1.** align by device");
         // has time and device columns
         Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
@@ -509,15 +509,15 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (2, 2)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (3, 3)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (4, 4)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (3, 3)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (1, 1)");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (2, 2)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (3, 3)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (4, 4)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (3, 3)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (1, 1)");
       statement.execute("flush");
 
       String[] ret =
@@ -527,14 +527,14 @@ public class IoTDBSimpleQueryIT {
 
       int cur = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("select * from root.sg1.** order by time desc")) {
+          statement.executeQuery("select * from root.db1.** order by time desc")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(ColumnHeaderConstant.TIME)
                   + ","
-                  + resultSet.getString("root.sg1.d0.s0")
+                  + resultSet.getString("root.db1.d0.s0")
                   + ","
-                  + resultSet.getString("root.sg1.d0.s1");
+                  + resultSet.getString("root.db1.d0.s1");
           assertEquals(ret[cur], ans);
           cur++;
         }
@@ -547,22 +547,22 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -580,22 +580,22 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(10);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -613,22 +613,22 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(15);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
 
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -646,17 +646,17 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s2 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s3 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s4 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s5 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s6 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s7 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s8 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s9 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s10 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       statement.execute("flush");
 
@@ -680,12 +680,12 @@ public class IoTDBSimpleQueryIT {
         Statement statement = connection.createStatement()) {
 
       List<String> exps =
-          Arrays.asList("root.sg1.d0.s1", "root.sg1.d0.s2", "root.sg1.d0.s3", "root.sg1.d0.s4");
+          Arrays.asList("root.db1.d0.s1", "root.db1.d0.s2", "root.db1.d0.s3", "root.db1.d0.s4");
 
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s4) VALUES (5, 5)");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1")) {
@@ -703,12 +703,12 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d1,false", "root.sg1.d2,false");
+      List<String> exps = Arrays.asList("root.db1.d1,false", "root.db1.d2,false");
 
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d3(timestamp, s4) VALUES (5, 5)");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2 offset 1")) {
@@ -727,12 +727,12 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      List<String> exps = Arrays.asList("root.sg1.d0,false", "root.sg1.d1,false");
+      List<String> exps = Arrays.asList("root.db1.d0,false", "root.db1.d1,false");
 
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d2(timestamp, s3) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d3(timestamp, s4) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d1(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d2(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d3(timestamp, s4) VALUES (5, 5)");
 
       int count = 0;
       try (ResultSet resultSet = statement.executeQuery("show devices limit 2")) {
@@ -750,30 +750,30 @@ public class IoTDBSimpleQueryIT {
   public void testFirstOverlappedPageFiltered() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       // seq chunk : [1,10]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (10, 10)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (10, 10)");
 
       statement.execute("flush");
 
       // seq chunk : [13,20]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (13, 13)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (20, 20)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (13, 13)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (20, 20)");
 
       statement.execute("flush");
 
       // unseq chunk : [5,15]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 15)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (15, 15)");
 
       statement.execute("flush");
 
       long count = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("select s0 from root.sg1.d0 where s0 > 18")) {
+          statement.executeQuery("select s0 from root.db1.d0 where s0 > 18")) {
         while (resultSet.next()) {
           count++;
         }
@@ -787,21 +787,21 @@ public class IoTDBSimpleQueryIT {
   public void testPartialInsertion() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       try {
-        statement.execute("INSERT INTO root.sg1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
+        statement.execute("INSERT INTO root.db1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
         fail();
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("s1"));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select s0, s1 from root.sg1.d0")) {
+      try (ResultSet resultSet = statement.executeQuery("select s0, s1 from root.db1.d0")) {
         while (resultSet.next()) {
-          assertEquals(1, resultSet.getInt("root.sg1.d0.s0"));
-          assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
+          assertEquals(1, resultSet.getInt("root.db1.d0.s0"));
+          assertEquals(null, resultSet.getString("root.db1.d0.s1"));
         }
       }
     }
@@ -811,35 +811,35 @@ public class IoTDBSimpleQueryIT {
   public void testOverlappedPagesMerge() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       // seq chunk : start-end [1000, 1000]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1000, 0)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1000, 0)");
 
       statement.execute("flush");
 
       // unseq chunk : [1,10]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1, 1)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (10, 10)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (10, 10)");
 
       statement.execute("flush");
 
       // usneq chunk : [5,15]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (5, 5)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 15)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (15, 15)");
 
       statement.execute("flush");
 
       // unseq chunk : [15,15]
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (15, 150)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (15, 150)");
 
       statement.execute("flush");
 
       long count = 0;
 
       try (ResultSet resultSet =
-          statement.executeQuery("select s0 from root.sg1.d0 where s0 < 100")) {
+          statement.executeQuery("select s0 from root.db1.d0 where s0 < 100")) {
         while (resultSet.next()) {
           count++;
         }
@@ -853,16 +853,16 @@ public class IoTDBSimpleQueryIT {
   public void testUnseqUnsealedDeleteQuery() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
       // seq data
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (1000, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s0) VALUES (1000, 1)");
       statement.execute("flush");
 
       for (int i = 1; i <= 10; i++) {
         statement.execute(
-            String.format("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (%d, %d)", i, i));
+            String.format("INSERT INTO root.db1.d0(timestamp, s0) VALUES (%d, %d)", i, i));
       }
 
       statement.execute("flush");
@@ -870,14 +870,14 @@ public class IoTDBSimpleQueryIT {
       // unseq data
       for (int i = 11; i <= 20; i++) {
         statement.execute(
-            String.format("INSERT INTO root.sg1.d0(timestamp, s0) VALUES (%d, %d)", i, i));
+            String.format("INSERT INTO root.db1.d0(timestamp, s0) VALUES (%d, %d)", i, i));
       }
 
-      statement.execute("delete from root.sg1.d0.s0 where time <= 15");
+      statement.execute("delete from root.db1.d0.s0 where time <= 15");
 
       long count = 0;
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db1.**")) {
         while (resultSet.next()) {
           count++;
         }
@@ -891,16 +891,16 @@ public class IoTDBSimpleQueryIT {
   public void testTimeseriesMetadataCache() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       for (int i = 0; i < 10000; i++) {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d0.s" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
+            "CREATE TIMESERIES root.db1.d0.s" + i + " WITH DATATYPE=INT32,ENCODING=PLAIN");
       }
       for (int i = 1; i < 10000; i++) {
-        statement.execute("INSERT INTO root.sg1.d0(timestamp, s" + i + ") VALUES (1000, 1)");
+        statement.execute("INSERT INTO root.db1.d0(timestamp, s" + i + ") VALUES (1000, 1)");
       }
       statement.execute("flush");
-      statement.executeQuery("select s0 from root.sg1.d0");
+      statement.executeQuery("select s0 from root.db1.d0");
     } catch (SQLException e) {
       fail();
     }
@@ -910,10 +910,10 @@ public class IoTDBSimpleQueryIT {
   public void testInvalidSchema() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       try {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
+            "CREATE TIMESERIES root.db1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -924,7 +924,7 @@ public class IoTDBSimpleQueryIT {
 
       try {
         statement.execute(
-            "CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
+            "CREATE TIMESERIES root.db1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -934,7 +934,7 @@ public class IoTDBSimpleQueryIT {
       }
 
       try {
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
+        statement.execute("CREATE TIMESERIES root.db1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -952,29 +952,29 @@ public class IoTDBSimpleQueryIT {
   public void testUseSameStatement() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d0.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s0 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
 
-      statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(1,1,1)");
-      statement.execute("insert into root.sg1.d1(timestamp,s0,s1) values(1000,1000,1000)");
-      statement.execute("insert into root.sg1.d0(timestamp,s0,s1) values(10,10,10)");
+      statement.execute("insert into root.db1.d0(timestamp,s0,s1) values(1,1,1)");
+      statement.execute("insert into root.db1.d1(timestamp,s0,s1) values(1000,1000,1000)");
+      statement.execute("insert into root.db1.d0(timestamp,s0,s1) values(10,10,10)");
 
       List<ResultSet> resultSetList = new ArrayList<>();
 
-      ResultSet r1 = statement.executeQuery("select * from root.sg1.d0 where time <= 1");
+      ResultSet r1 = statement.executeQuery("select * from root.db1.d0 where time <= 1");
       resultSetList.add(r1);
 
-      ResultSet r2 = statement.executeQuery("select * from root.sg1.d1 where s0 == 1000");
+      ResultSet r2 = statement.executeQuery("select * from root.db1.d1 where s0 == 1000");
       resultSetList.add(r2);
 
-      ResultSet r3 = statement.executeQuery("select * from root.sg1.d0 where s1 == 10");
+      ResultSet r3 = statement.executeQuery("select * from root.db1.d0 where s1 == 10");
       resultSetList.add(r3);
 
       r1.next();
@@ -998,38 +998,38 @@ public class IoTDBSimpleQueryIT {
   public void testInvalidMaxPointNumber() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
+          "CREATE TIMESERIES root.db1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
               + "'max_point_number'='4'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
+          "CREATE TIMESERIES root.db1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
               + "'max_point_number'='2.5'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
+          "CREATE TIMESERIES root.db1.d1.s3 with datatype=FLOAT, encoding=RLE, "
               + "'max_point_number'='q'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
+          "CREATE TIMESERIES root.db1.d1.s4 with datatype=FLOAT, encoding=RLE, "
               + "'max_point_number'='-1'");
       statement.execute(
-          "insert into root.sg1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+          "insert into root.db1.d1(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
 
-      try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.d1")) {
+      try (ResultSet r1 = statement.executeQuery("select s1 from root.db1.d1")) {
         r1.next();
         Assert.assertEquals(1.1234f, r1.getFloat(2), 0);
       }
 
-      try (ResultSet r2 = statement.executeQuery("select s3 from root.sg1.d1")) {
+      try (ResultSet r2 = statement.executeQuery("select s3 from root.db1.d1")) {
         r2.next();
         Assert.assertEquals(1.12f, r2.getFloat(2), 0);
       }
 
-      try (ResultSet r3 = statement.executeQuery("select s3 from root.sg1.d1")) {
+      try (ResultSet r3 = statement.executeQuery("select s3 from root.db1.d1")) {
         r3.next();
         Assert.assertEquals(1.12f, r3.getFloat(2), 0);
       }
 
-      try (ResultSet r4 = statement.executeQuery("select s4 from root.sg1.d1")) {
+      try (ResultSet r4 = statement.executeQuery("select s4 from root.db1.d1")) {
         r4.next();
         Assert.assertEquals(1.12f, r4.getFloat(2), 0);
       }
@@ -1067,9 +1067,9 @@ public class IoTDBSimpleQueryIT {
   public void testDisableAlign() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
-      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1 disable align");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db1.d1 disable align");
       ResultSetMetaData metaData = resultSet.getMetaData();
       int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BIGINT, Types.BOOLEAN};
       int columnCount = metaData.getColumnCount();
@@ -1083,9 +1083,9 @@ public class IoTDBSimpleQueryIT {
   public void testEnableAlign() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT32");
-      statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=BOOLEAN");
-      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.sg1.d1");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s1 WITH DATATYPE=INT32");
+      statement.execute("CREATE TIMESERIES root.db1.d1.s2 WITH DATATYPE=BOOLEAN");
+      ResultSet resultSet = statement.executeQuery("select s1, s2 from root.db1.d1");
       ResultSetMetaData metaData = resultSet.getMetaData();
       int[] types = {Types.TIMESTAMP, Types.INTEGER, Types.BOOLEAN};
       int columnCount = metaData.getColumnCount();
@@ -1099,25 +1099,25 @@ public class IoTDBSimpleQueryIT {
   public void testFromFuzzyMatching() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
+          "CREATE TIMESERIES root.db1.d1.s1 with datatype=FLOAT, encoding=TS_2DIFF, "
               + "'max_point_number'='4'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
+          "CREATE TIMESERIES root.db1.d1.s2 with datatype=FLOAT, encoding=TS_2DIFF, "
               + "'max_point_number'='2.5'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s3 with datatype=FLOAT, encoding=RLE, "
+          "CREATE TIMESERIES root.db1.d1.s3 with datatype=FLOAT, encoding=RLE, "
               + "'max_point_number'='q'");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s4 with datatype=FLOAT, encoding=RLE, "
+          "CREATE TIMESERIES root.db1.d1.s4 with datatype=FLOAT, encoding=RLE, "
               + "'max_point_number'='-1'");
       statement.execute(
-          "insert into root.sg1.da1cb(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+          "insert into root.db1.da1cb(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
       statement.execute(
-          "insert into root.sg1.da1ce(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
+          "insert into root.db1.da1ce(timestamp,s1,s2,s3,s4) values(1,1.1234,1.1234,1.1234,1.1234)");
 
-      try (ResultSet r1 = statement.executeQuery("select s1 from root.sg1.*a*")) {
+      try (ResultSet r1 = statement.executeQuery("select s1 from root.db1.*a*")) {
         while (r1.next()) {
           Assert.assertEquals(1.1234f, r1.getDouble(2), 0.001);
         }
@@ -1134,23 +1134,23 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s6 WITH DATATYPE=BLOB, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s6 WITH DATATYPE=BLOB, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s7 WITH DATATYPE=STRING, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s7 WITH DATATYPE=STRING, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
-                "insert into root.sg1.d1(timestamp, s4, s5, s6, s7) values(%d, \"%s\", %d, %s, \"%s\")",
+                "insert into root.db1.d1(timestamp, s4, s5, s6, s7) values(%d, \"%s\", %d, %s, \"%s\")",
                 i, LocalDate.of(2024, 5, i % 31 + 1), i, "X'cafebabe'", i));
       }
 
-      try (ResultSet resultSet = statement.executeQuery("select * from root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("select * from root.db1.**")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         final int columnCount = metaData.getColumnCount();
         assertEquals(5, columnCount);
@@ -1192,13 +1192,13 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("CREATE DATABASE root.db1");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s4 WITH DATATYPE=DATE, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       statement.execute(
-          "CREATE TIMESERIES root.sg1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
+          "CREATE TIMESERIES root.db1.d1.s5 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN, COMPRESSOR=SNAPPY");
       try {
-        statement.execute("insert into root.sg1.d1(timestamp, s4) values(1, '2022-04-31')");
+        statement.execute("insert into root.db1.d1(timestamp, s4) values(1, '2022-04-31')");
         fail();
       } catch (Exception e) {
         assertEquals(
@@ -1210,7 +1210,7 @@ public class IoTDBSimpleQueryIT {
       }
       try {
         statement.execute(
-            "insert into root.sg1.d1(timestamp, s5) values(1999-04-31T00:00:00.000+08:00, 1999-04-31T00:00:00.000+08:00)");
+            "insert into root.db1.d1(timestamp, s5) values(1999-04-31T00:00:00.000+08:00, 1999-04-31T00:00:00.000+08:00)");
         fail();
       } catch (Exception e) {
         assertEquals(

@@ -57,32 +57,32 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListenAndAssign(
-      final String dataRegionId, final PipeRealtimeDataRegionSource extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionSource source) {
     dataRegionId2Assigner
         .computeIfAbsent(dataRegionId, o -> new PipeDataRegionAssigner(dataRegionId))
-        .startAssignTo(extractor);
+        .startAssignTo(source);
 
-    if (extractor.isNeedListenToTsFile()) {
+    if (source.isNeedListenToTsFile()) {
       listenToTsFileExtractorCount.incrementAndGet();
     }
-    if (extractor.isNeedListenToInsertNode()) {
+    if (source.isNeedListenToInsertNode()) {
       listenToInsertNodeExtractorCount.incrementAndGet();
     }
   }
 
   public synchronized void stopListenAndAssign(
-      final String dataRegionId, final PipeRealtimeDataRegionSource extractor) {
+      final String dataRegionId, final PipeRealtimeDataRegionSource source) {
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);
     if (assigner == null) {
       return;
     }
 
-    assigner.stopAssignTo(extractor);
+    assigner.stopAssignTo(source);
 
-    if (extractor.isNeedListenToTsFile()) {
+    if (source.isNeedListenToTsFile()) {
       listenToTsFileExtractorCount.decrementAndGet();
     }
-    if (extractor.isNeedListenToInsertNode()) {
+    if (source.isNeedListenToInsertNode()) {
       listenToInsertNodeExtractorCount.decrementAndGet();
     }
 
@@ -102,7 +102,7 @@ public class PipeInsertionDataNodeListener {
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
     // We don't judge whether listenToTsFileExtractorCount.get() == 0 here on purpose
-    // because extractors may use tsfile events when some exceptions occur in the
+    // because sources may use tsfile events when some exceptions occur in the
     // insert nodes listening process.
 
     final PipeDataRegionAssigner assigner = dataRegionId2Assigner.get(dataRegionId);

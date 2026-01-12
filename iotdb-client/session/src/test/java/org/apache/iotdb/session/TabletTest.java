@@ -50,7 +50,7 @@ public class TabletTest {
     schemaList.add(new MeasurementSchema("s9", TSDataType.STRING));
     ;
     // insert three rows data
-    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 3);
+    Tablet tablet = new Tablet("root.db1.d1", schemaList, 3);
     Object[] values = tablet.getValues();
 
     /*

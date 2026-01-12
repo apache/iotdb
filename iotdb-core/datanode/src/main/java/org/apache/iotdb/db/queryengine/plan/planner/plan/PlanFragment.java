@@ -95,7 +95,7 @@ public class PlanFragment {
   }
 
   public void generateTypeProvider(TypeProvider allTypes) {
-    this.typeProvider = SubPlanTypeExtractor.extractor(planNodeTree, allTypes);
+    this.typeProvider = SubPlanTypeExtractor.source(planNodeTree, allTypes);
   }
 
   public void generateTableModelTypeProvider(TypeProvider allTypes) {

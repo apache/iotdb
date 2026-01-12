@@ -167,10 +167,10 @@ public class SchemaFileTest {
 
   @Test
   public void testVerticalTree() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
-    IDatabaseMNode<ICachedMNode> sgNode =
-        nodeFactory.createDatabaseDeviceMNode(null, "sg").getAsDatabaseMNode();
-    sf.updateDatabaseNode(sgNode);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.dbvt.vt", TEST_SCHEMA_REGION_ID);
+    IDatabaseMNode<ICachedMNode> dbNode =
+        nodeFactory.createDatabaseDeviceMNode(null, "db").getAsDatabaseMNode();
+    sf.updateDatabaseNode(dbNode);
 
     ICachedMNode root = getVerticalTree(100, "VT");
     Iterator<ICachedMNode> ite = getTreeBFT(root);
@@ -197,7 +197,7 @@ public class SchemaFileTest {
             .size());
     sf.close();
 
-    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
+    ISchemaFile nsf = SchemaFile.loadSchemaFile("root.dbvt.vt", TEST_SCHEMA_REGION_ID);
 
     ICachedMNodeContainer.getCachedMNodeContainer(vt1).getNewChildBuffer().clear();
     ICachedMNodeContainer.getCachedMNodeContainer(vt4).getNewChildBuffer().clear();
@@ -212,7 +212,7 @@ public class SchemaFileTest {
     writeMNodeInTest(nsf, vt4);
 
     nsf.close();
-    nsf = SchemaFile.loadSchemaFile("root.sgvt.vt", TEST_SCHEMA_REGION_ID);
+    nsf = SchemaFile.loadSchemaFile("root.dbvt.vt", TEST_SCHEMA_REGION_ID);
 
     Iterator<ICachedMNode> vt1Children = nsf.getChildren(vt1);
     Iterator<ICachedMNode> vt4Children = nsf.getChildren(vt4);
@@ -285,7 +285,7 @@ public class SchemaFileTest {
   @Test
   public void test2KMeasurement() throws MetadataException, IOException {
     int i = 2000, j = 20;
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
     ISchemaFile sf = SchemaFile.initSchemaFile(dbNode.getName(), TEST_SCHEMA_REGION_ID);
 
     while (j >= 0) {
@@ -317,7 +317,7 @@ public class SchemaFileTest {
 
   @Test
   public void testMassiveSegment() throws MetadataException, IOException {
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
     fillChildren(dbNode, 500, "MEN", this::supplyEntity);
     ISchemaFile sf = SchemaFile.initSchemaFile(dbNode.getName(), TEST_SCHEMA_REGION_ID);
 
@@ -328,7 +328,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    ICachedMNode dbNode2 = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot2");
+    ICachedMNode dbNode2 = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot2");
     fillChildren(dbNode2, 5000, "MEN", this::supplyEntity);
     ISchemaFile sf2 = SchemaFile.initSchemaFile(dbNode2.getName(), TEST_SCHEMA_REGION_ID);
     try {
@@ -361,7 +361,7 @@ public class SchemaFileTest {
   @Test
   public void testDevices() throws MetadataException, IOException {
     int i = 100;
-    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
+    ICachedMNode dbNode = nodeFactory.createDatabaseDeviceMNode(null, "dbRoot");
 
     // write with empty entitiy
     while (i >= 0) {
@@ -468,7 +468,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    sf = SchemaFile.loadSchemaFile("sgRoot", TEST_SCHEMA_REGION_ID);
+    sf = SchemaFile.loadSchemaFile("dbRoot", TEST_SCHEMA_REGION_ID);
 
     // verify alias of random measurement
     for (String key : resName) {
@@ -491,7 +491,7 @@ public class SchemaFileTest {
 
   @Test
   public void testUpdateOnFullPageSegment() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     ICachedMNode root = getFlatTree(783, "aa");
     Iterator<ICachedMNode> ite = getTreeBFT(root);
     while (ite.hasNext()) {
@@ -569,23 +569,23 @@ public class SchemaFileTest {
      * related methods shall be merged further: {@linkplain SchemaFile#reEstimateSegSize}
      * ,{@linkplain PageManager#reEstimateSegSize}
      */
-    ICachedMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
-    ICachedMNode d1 = fillChildren(sgNode, 300, "d", this::supplyEntity);
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ICachedMNode dbNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
+    ICachedMNode d1 = fillChildren(dbNode, 300, "d", this::supplyEntity);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     try {
-      writeMNodeInTest(sf, sgNode);
+      writeMNodeInTest(sf, dbNode);
 
       fillChildren(d1, 46, "s", this::supplyMeasurement);
       writeMNodeInTest(sf, d1);
 
       moveAllToBuffer(d1);
-      moveAllToBuffer(sgNode);
+      moveAllToBuffer(dbNode);
 
       // it's an edge case where a wrapped segment need to extend to another page while its expected
       // size
       // measured by insertion batch and existed size at same time.
-      fillChildren(sgNode, 350, "sd", this::supplyEntity);
-      writeMNodeInTest(sf, sgNode);
+      fillChildren(dbNode, 350, "sd", this::supplyEntity);
+      writeMNodeInTest(sf, dbNode);
       fillChildren(d1, 20, "ss", this::supplyMeasurement);
       writeMNodeInTest(sf, d1);
 
@@ -603,7 +603,7 @@ public class SchemaFileTest {
 
   @Test
   public void test2KAlias() throws Exception {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     ICachedMNode sgNode = nodeFactory.createDatabaseMNode(null, "mma").getAsMNode();
     // 5 devices, each for 200k measurements
     int factor2K = 2000;
@@ -644,7 +644,7 @@ public class SchemaFileTest {
       sf.close();
     }
 
-    sf = SchemaFile.loadSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    sf = SchemaFile.loadSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     try {
       ICachedMNode dev2 = devs.get(2);
       for (ICachedMNode child : dev2.getChildren().values()) {
@@ -659,7 +659,7 @@ public class SchemaFileTest {
       sf.sync();
       sf.close();
 
-      sf = SchemaFile.loadSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+      sf = SchemaFile.loadSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
 
       for (Map.Entry<String, String> entry : aliasAns.entrySet()) {
         Assert.assertEquals(entry.getKey(), sf.getChildNode(dev2, entry.getValue()).getName());
@@ -680,7 +680,7 @@ public class SchemaFileTest {
 
   @Test
   public void testRearrangementWhenInsert() throws MetadataException, IOException {
-    ISchemaFile sf = SchemaFile.initSchemaFile("root.sg", TEST_SCHEMA_REGION_ID);
+    ISchemaFile sf = SchemaFile.initSchemaFile("root.db", TEST_SCHEMA_REGION_ID);
     ICachedMNode root = nodeFactory.createDatabaseDeviceMNode(null, "sgRoot");
 
     root.getChildren().clear();

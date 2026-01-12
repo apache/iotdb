@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
-  // Calculate from schema region extractors directly for it requires less computation
+  // Calculate from schema region sources directly for it requires less computation
   private final Set<IoTDBSchemaRegionSource> schemaRegionExtractors =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -192,8 +192,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionSource extractor) {
-    schemaRegionExtractors.add(extractor);
+  void register(final IoTDBSchemaRegionSource source) {
+    schemaRegionExtractors.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////

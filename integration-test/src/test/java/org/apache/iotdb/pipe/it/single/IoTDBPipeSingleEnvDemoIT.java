@@ -41,11 +41,11 @@ public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
   public void testSingleEnv() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.realtime.mode", "log");
+      sourceAttributes.put("source.realtime.mode", "log");
 
       connectorAttributes.put("connector", "iotdb-thrift-connector");
       connectorAttributes.put("connector.ip", "127.0.0.1");
@@ -54,7 +54,7 @@ public class IoTDBPipeSingleEnvDemoIT extends AbstractPipeSingleIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }

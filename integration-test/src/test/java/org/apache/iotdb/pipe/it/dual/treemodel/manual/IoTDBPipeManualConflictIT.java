@@ -220,40 +220,40 @@ public class IoTDBPipeManualConflictIT extends AbstractPipeDualTreeModelManualIT
         senderEnv,
         Arrays.asList(
             "create device template t1 (s1 INT64 encoding=RLE, s2 INT64 encoding=RLE, s3 INT64 encoding=RLE compression=SNAPPY)",
-            "create database root.sg1",
-            "set device template t1 to root.sg1",
-            "create timeseries using device template on root.sg1.d1",
-            "insert into root.sg1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
+            "create database root.db1",
+            "set device template t1 to root.db1",
+            "create timeseries using device template on root.db1.d1",
+            "insert into root.db1.d1(time, s1, s2, s3) values(0, 1, 2, 3);",
             "flush"),
         null);
 
     TestUtils.executeNonQueries(
         receiverEnv,
         Arrays.asList(
-            "create timeseries using device template on root.sg1.d2",
-            "insert into root.sg1.d2(time, s1, s2, s3) values(0, 1, 2, 3);",
+            "create timeseries using device template on root.db1.d2",
+            "insert into root.db1.d2(time, s1, s2, s3) values(0, 1, 2, 3);",
             "flush"),
         null);
 
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "count timeseries root.sg1.**",
+        "count timeseries root.db1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         senderEnv,
-        "select count(*) from root.sg1.** group by level=1",
-        "count(root.sg1.*.*),",
+        "select count(*) from root.db1.** group by level=1",
+        "count(root.db1.*.*),",
         Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "count timeseries root.sg1.**",
+        "count timeseries root.db1.**",
         "count(timeseries),",
         Collections.singleton("6,"));
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.sg1.** group by level=1",
-        "count(root.sg1.*.*),",
+        "select count(*) from root.db1.** group by level=1",
+        "count(root.db1.*.*),",
         Collections.singleton("6,"));
   }
 }

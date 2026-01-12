@@ -63,9 +63,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
 
   private ConcurrentIterableLinkedQueue<Event>.DynamicIterator iterator;
 
-  // If close() is called, hasBeenClosed will be set to true even if the extractor is started again.
-  // If the extractor is closed, it should not be started again. This is to avoid the case that
-  // the extractor is closed and then be reused by processor.
+  // If close() is called, hasBeenClosed will be set to true even if the source is started again.
+  // If the source is closed, it should not be started again. This is to avoid the case that
+  // the source is closed and then be reused by processor.
   protected final AtomicBoolean hasBeenClosed = new AtomicBoolean(false);
 
   protected PipeWritePlanEvent lastEvent = null;

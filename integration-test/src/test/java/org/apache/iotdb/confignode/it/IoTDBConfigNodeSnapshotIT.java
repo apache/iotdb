@@ -105,7 +105,7 @@ public class IoTDBConfigNodeSnapshotIT {
 
   @Test
   public void testPartitionInfoSnapshot() throws Exception {
-    final String sg = "root.sg";
+    final String db = "root.db";
     final int databaseNum = 10;
     final int seriesPartitionSlotsNum = 10;
     final int timePartitionSlotsNum = 10;
@@ -119,7 +119,7 @@ public class IoTDBConfigNodeSnapshotIT {
       Set<TCQEntry> expectedCQEntries = createCQs(client);
 
       for (int i = 0; i < databaseNum; i++) {
-        String database = sg + i;
+        String database = db + i;
         TDatabaseSchema databaseSchema = new TDatabaseSchema(database);
         TSStatus status = client.setDatabase(databaseSchema);
         assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -327,8 +327,8 @@ public class IoTDBConfigNodeSnapshotIT {
   }
 
   private Set<TCQEntry> createCQs(SyncConfigNodeIServiceClient client) throws TException {
-    String sql1 = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.sg.d1 END";
-    String sql2 = "create cq testCq2 BEGIN select s1 into root.backup.d2(s1) from root.sg.d2 END";
+    String sql1 = "create cq testCq1 BEGIN select s1 into root.backup.d1(s1) from root.db.d1 END";
+    String sql2 = "create cq testCq2 BEGIN select s1 into root.backup.d2(s1) from root.db.d2 END";
     TCreateCQReq req1 =
         new TCreateCQReq(
             "testCq1",
@@ -337,7 +337,7 @@ public class IoTDBConfigNodeSnapshotIT {
             1000,
             0,
             (byte) 0,
-            "select s1 into root.backup.d1(s1) from root.sg.d1",
+            "select s1 into root.backup.d1(s1) from root.db.d1",
             sql1,
             "UTC",
             "root");
@@ -349,7 +349,7 @@ public class IoTDBConfigNodeSnapshotIT {
             1000,
             0,
             (byte) 1,
-            "select s1 into root.backup.d2(s1) from root.sg.d2",
+            "select s1 into root.backup.d2(s1) from root.db.d2",
             sql2,
             "UTC",
             "root");

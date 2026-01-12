@@ -97,7 +97,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
   protected PipeTransferFilePieceReq getTransferSingleFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) {
     throw new UnsupportedOperationException(
-        "The config region connector does not support transferring single file piece req.");
+        "The config region sink does not support transferring single file piece req.");
   }
 
   @Override
