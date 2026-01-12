@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,15 @@ public class DeviceTableScanMatcher extends TableScanMatcher {
     super(expectedTableName, hasTableLayout, outputSymbols, assignmentsKeys);
   }
 
+  public DeviceTableScanMatcher(
+      String expectedTableName,
+      Optional<Boolean> hasTableLayout,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      Expression pushDownPredicate) {
+    super(expectedTableName, hasTableLayout, outputSymbols, assignmentsKeys, pushDownPredicate);
+  }
+
   @Override
   public boolean shapeMatches(PlanNode node) {
     return node instanceof DeviceTableScanNode;
@@ -51,6 +61,7 @@ public class DeviceTableScanMatcher extends TableScanMatcher {
         .add("hasTableLayout", hasTableLayout.orElse(null))
         .add("outputSymbols", outputSymbols)
         .add("assignmentsKeys", assignmentsKeys)
+        .add("pushDownPredicate", pushDownPredicate)
         .toString();
   }
 }

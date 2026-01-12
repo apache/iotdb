@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -707,6 +708,9 @@ public interface IManager {
   TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
 
   TSStatus alterLogicalView(TAlterLogicalViewReq req);
+
+  /** Alter timeseries data type. */
+  TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req);
 
   /**
    * Create Pipe.

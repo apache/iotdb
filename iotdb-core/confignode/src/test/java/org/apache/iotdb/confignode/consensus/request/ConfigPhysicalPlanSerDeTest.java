@@ -41,6 +41,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
@@ -53,6 +54,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
@@ -93,6 +95,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.AutoCleanPa
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -131,6 +134,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -174,7 +178,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeSinkInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerState;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
@@ -299,6 +302,18 @@ public class ConfigPhysicalPlanSerDeTest {
   public void SetTTLPlanTest() throws IOException {
     SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void PipeAlterTimeSeriesPlanTest() throws IOException {
+    PipeAlterTimeSeriesPlan req0 =
+        new PipeAlterTimeSeriesPlan(
+            new MeasurementPath(new String[] {"root", "sg0", "d1", "s1"}),
+            (byte) 0,
+            TSDataType.DOUBLE);
+    PipeAlterTimeSeriesPlan req1 =
+        (PipeAlterTimeSeriesPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 
@@ -1520,6 +1535,24 @@ public class ConfigPhysicalPlanSerDeTest {
         setTableColumnCommentPlan.getTableName(), setTableColumnCommentPlan1.getTableName());
     Assert.assertEquals(
         setTableColumnCommentPlan.getColumnName(), setTableColumnCommentPlan1.getColumnName());
+  }
+
+  @Test
+  public void PreAlterTableColumnDataTypePlanTest() throws IOException {
+    final AlterColumnDataTypePlan alterColumnDataTypePlan =
+        new AlterColumnDataTypePlan("database1", "table1", "field", TSDataType.FLOAT);
+    final AlterColumnDataTypePlan alterColumnDataTypePlan1 =
+        (AlterColumnDataTypePlan)
+            ConfigPhysicalPlan.Factory.create(alterColumnDataTypePlan.serializeToByteBuffer());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getDatabase(), alterColumnDataTypePlan1.getDatabase());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getTableName(), alterColumnDataTypePlan1.getTableName());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getColumnName(), alterColumnDataTypePlan1.getColumnName());
+    Assert.assertEquals(alterColumnDataTypePlan.getType(), alterColumnDataTypePlan1.getType());
+    Assert.assertEquals(
+        alterColumnDataTypePlan.getNewType(), alterColumnDataTypePlan1.getNewType());
   }
 
   @Test

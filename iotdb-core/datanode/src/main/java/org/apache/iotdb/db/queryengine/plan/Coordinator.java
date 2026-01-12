@@ -40,6 +40,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Log
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -93,6 +95,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -130,6 +133,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -394,6 +398,50 @@ public class Coordinator {
     return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
+  /**
+   * This method is specifically used following subquery:
+   *
+   * <p>1. When uncorrelated scalar subquery is handled
+   * (fetchUncorrelatedSubqueryResultForPredicate), we try to fold it and get constant value. Since
+   * CTE might be referenced, we need to add CTE materialization result into subquery's
+   * MPPQueryContext.
+   *
+   * <p>2. When CTE subquery is handled (fetchCteQueryResult), the main query, however, might be
+   * 'Explain' or 'Explain Analyze' statement. So we need to keep explain/explain analyze results
+   * along with CTE query dataset.
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      ExplainType explainType,
+      long timeOut,
+      boolean userQuery) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        ((queryContext, startTime) -> {
+          queryContext.setInnerTriggeredQuery(true);
+          queryContext.setCteQueries(cteQueries);
+          queryContext.setExplainType(explainType);
+          return createQueryExecutionForTableModel(
+              statement,
+              sqlParser,
+              clientSession,
+              queryContext,
+              metadata,
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+              startTime);
+        }));
+  }
+
   public ExecutionResult executeForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
@@ -493,6 +541,7 @@ public class Coordinator {
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
         || statement instanceof AddColumn
+        || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable

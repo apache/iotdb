@@ -40,8 +40,8 @@ struct TAIHeartbeatResp {
 }
 
 struct TRegisterModelReq {
-  1: required string uri
-  2: required string modelId
+  1: required string modelId
+  2: required string uri
 }
 
 struct TConfigs {
@@ -85,7 +85,9 @@ struct TForecastReq {
   1: required string modelId
   2: required binary inputData
   3: required i32 outputLength
-  4: optional map<string, string> options
+  4: optional string historyCovs
+  5: optional string futureCovs
+  6: optional map<string, string> options
 }
 
 struct TForecastResp {

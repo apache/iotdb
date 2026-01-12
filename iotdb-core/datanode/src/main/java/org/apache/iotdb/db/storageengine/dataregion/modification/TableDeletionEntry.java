@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.modification;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.IDPredicateType;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -134,6 +135,14 @@ public class TableDeletionEntry extends ModEntry {
 
   public String getTableName() {
     return predicate.getTableName();
+  }
+
+  public boolean isDroppingTable() {
+    IDPredicate idPredicate = predicate.getIdPredicate();
+    return idPredicate.type == IDPredicateType.NOP
+        && predicate.getMeasurementNames().isEmpty()
+        && timeRange.getMin() == Long.MIN_VALUE
+        && timeRange.getMax() == Long.MAX_VALUE;
   }
 
   @Override

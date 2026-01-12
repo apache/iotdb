@@ -113,6 +113,7 @@ import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.Cr
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.DropTopicPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.runtime.TopicHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -586,6 +587,9 @@ public class ConfigPlanExecutor {
       case CommitDeleteTable:
       case CommitDeleteView:
         return clusterSchemaInfo.dropTable((CommitDeleteTablePlan) physicalPlan);
+      case AlterColumnDataType:
+        return clusterSchemaInfo.commitAlterColumnDataType(
+            ((AlterColumnDataTypePlan) physicalPlan));
       case SetTableComment:
       case SetViewComment:
         return clusterSchemaInfo.setTableComment((SetTableCommentPlan) physicalPlan);
@@ -655,6 +659,7 @@ public class ConfigPlanExecutor {
       case PipeDeactivateTemplate:
       case PipeDeleteDevices:
       case PipeAlterEncodingCompressor:
+      case PipeAlterTimeSeries:
         // Pipe payload, used to trigger plan extraction.
         // Will not be actually executed.
         return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

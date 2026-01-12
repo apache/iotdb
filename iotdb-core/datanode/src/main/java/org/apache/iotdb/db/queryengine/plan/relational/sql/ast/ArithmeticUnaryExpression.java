@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -33,6 +34,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class ArithmeticUnaryExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ArithmeticUnaryExpression.class);
 
   public enum Sign {
     PLUS,
@@ -140,5 +144,12 @@ public class ArithmeticUnaryExpression extends Expression {
     }
 
     return sign == ((ArithmeticUnaryExpression) other).sign;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(value);
   }
 }

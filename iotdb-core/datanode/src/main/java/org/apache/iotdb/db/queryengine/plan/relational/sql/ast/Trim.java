@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +31,8 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class Trim extends Expression {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Trim.class);
+
   private final Specification specification;
   private final Expression trimSource;
   @Nullable private final Expression trimCharacter;
@@ -137,5 +140,14 @@ public class Trim extends Expression {
     public String getFunctionName() {
       return functionName;
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trimSource);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trimCharacter);
+    return size;
   }
 }

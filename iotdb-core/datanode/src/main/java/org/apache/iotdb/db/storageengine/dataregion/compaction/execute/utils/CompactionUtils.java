@@ -25,9 +25,12 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.constant.CompactionTaskType;
@@ -46,6 +49,8 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.SystemMetric;
 
+import com.google.common.io.BaseEncoding;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -55,8 +60,13 @@ import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -472,6 +482,11 @@ public class CompactionUtils {
 
   public static ArrayDeviceTimeIndex buildDeviceTimeIndex(TsFileResource resource)
       throws IOException {
+    return buildDeviceTimeIndex(resource, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
+  }
+
+  public static ArrayDeviceTimeIndex buildDeviceTimeIndex(
+      TsFileResource resource, IDeviceID.Deserializer deserializer) throws IOException {
     long resourceFileSize =
         new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).length();
     CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
@@ -496,5 +511,133 @@ public class CompactionUtils {
           new DeletionPredicate(deviceID.getTableName(), new FullExactMatch(deviceID)),
           new TimeRange(Long.MIN_VALUE, timeLowerBound));
     }
+  }
+
+  public static void executeTTLCheckObjectFilesForTableModel(
+      File regionObjectDir, String databaseName) {
+    File[] tableDirs = regionObjectDir.listFiles();
+    if (tableDirs == null) {
+      return;
+    }
+    boolean restrictObjectLimit =
+        CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit();
+    for (File tableDir : tableDirs) {
+      if (!tableDir.isDirectory()) {
+        continue;
+      }
+      String tableName = tableDir.getName();
+      if (!restrictObjectLimit) {
+        try {
+          tableName =
+              new String(
+                  BaseEncoding.base32().omitPadding().decode(tableName), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+          continue;
+        }
+      }
+      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+      if (tsTable == null) {
+        continue;
+      }
+      long ttlInMS = CommonDateTimeUtils.convertIoTDBTimeToMillis(tsTable.getCachedTableTTL());
+      if (ttlInMS == Long.MAX_VALUE) {
+        continue;
+      }
+      // buffer 60s to avoid concurrent issues with querying
+      final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS - 60 * 1000;
+      try {
+        recursiveTTLCheckForTableDir(
+            tableDir, 0, tsTable.getTagNum() + 1, !restrictObjectLimit, timeLowerBoundInMS);
+      } catch (Exception e) {
+        logger.warn(
+            "Meet exception when checking for object files for table {}.{} in region {}",
+            databaseName,
+            tableName,
+            regionObjectDir.getName(),
+            e);
+      }
+    }
+  }
+
+  // We try to avoid expensive 'stat' system calls by first checking file name and only performing
+  // Files.readAttributes when the file may be expired
+  private static void recursiveTTLCheckForTableDir(
+      File currentFile,
+      int depth,
+      int maxObjectFileDepth,
+      boolean canDistinguishDirectoryByFileName,
+      long lowerBoundInMS) {
+    canDistinguishDirectoryByFileName |= depth > maxObjectFileDepth;
+    String fileName = currentFile.getName();
+    boolean maybeObjectFile = fileName.endsWith(".bin");
+    if (maybeObjectFile) {
+      if (canDistinguishDirectoryByFileName) {
+        checkTTLAndDeleteExpiredObjectFile(currentFile, null, lowerBoundInMS);
+        return;
+      }
+      try {
+        BasicFileAttributes basicFileAttributes =
+            Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
+        if (!basicFileAttributes.isDirectory()) {
+          checkTTLAndDeleteExpiredObjectFile(currentFile, basicFileAttributes, lowerBoundInMS);
+          return;
+        }
+      } catch (IOException ignored) {
+      }
+    }
+    File[] children = currentFile.listFiles();
+    if (children == null) {
+      return;
+    }
+    // The rate limit may only work on filesystems like ext4, directory File.length() is
+    // block-aligned and reflects allocated directory entry blocks.
+    acquireCompactionReadRate(currentFile.length());
+    for (File child : children) {
+      recursiveTTLCheckForTableDir(
+          child, depth + 1, maxObjectFileDepth, canDistinguishDirectoryByFileName, lowerBoundInMS);
+    }
+  }
+
+  private static void checkTTLAndDeleteExpiredObjectFile(
+      File file, @Nullable BasicFileAttributes attributes, long timeLowerBoundInMS) {
+    String fileName = file.getName();
+    long fileTimestampInMS;
+    try {
+      fileTimestampInMS = Long.parseLong(fileName.substring(0, fileName.length() - 4));
+    } catch (NumberFormatException ignored) {
+      return;
+    }
+
+    if (fileTimestampInMS >= timeLowerBoundInMS) {
+      return;
+    }
+
+    try {
+      attributes =
+          attributes == null
+              ? Files.readAttributes(file.toPath(), BasicFileAttributes.class)
+              : attributes;
+      if (attributes.isDirectory()) {
+        return;
+      }
+      Files.delete(file.toPath());
+      FileMetrics.getInstance().decreaseObjectFileNum(1);
+      FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
+      logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
+    } catch (Exception ignored) {
+    }
+  }
+
+  private static void acquireCompactionReadRate(long size) {
+    if (size <= 0) {
+      return;
+    }
+    CompactionTaskManager.getInstance().getCompactionReadOperationRateLimiter().acquire(1);
+    RateLimiter rateLimiter = CompactionTaskManager.getInstance().getCompactionReadRateLimiter();
+    while (size >= Integer.MAX_VALUE) {
+      size -= Integer.MAX_VALUE;
+      rateLimiter.acquire(Integer.MAX_VALUE);
+    }
+    rateLimiter.acquire((int) size);
   }
 }

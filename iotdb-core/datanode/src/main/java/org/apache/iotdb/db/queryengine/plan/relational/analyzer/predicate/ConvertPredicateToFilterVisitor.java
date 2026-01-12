@@ -49,14 +49,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.math.DoubleMath;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.regexp.LikePattern;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
 import org.apache.tsfile.read.filter.factory.ValueFilterApi;
 import org.apache.tsfile.read.filter.operator.ExtractTimeFilterOperators;
+import org.apache.tsfile.read.filter.operator.FalseLiteralFilter;
+import org.apache.tsfile.read.filter.operator.ValueIsNotNullOperator;
 import org.apache.tsfile.utils.Binary;
 
 import javax.annotation.Nullable;
@@ -77,6 +81,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.PredicatePushIntoScanChecker.isSymbolReference;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isExtractTimeColumn;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.tsfile.enums.TSDataType.INT32;
+import static org.apache.tsfile.enums.TSDataType.INT64;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 public class ConvertPredicateToFilterVisitor
@@ -155,9 +161,117 @@ public class ConvertPredicateToFilterVisitor
 
     int measurementIndex = context.getMeasurementIndex(symbolReference.getName());
     Type type = context.getType(Symbol.from(symbolReference));
+    TSDataType columnDataType = InternalTypeManager.getTSDataType(type);
+
+    // when literal is the doubleLiteral type and the columnDataType is INT64 or INT32,
+    // the doubleLiteral has to be converted.
+    if (literal instanceof DoubleLiteral) {
+      DoubleLiteral doubleLiteral = (DoubleLiteral) literal;
+      double doubleLiteralValue = doubleLiteral.getValue();
+
+      if (columnDataType == INT64) {
+        if (doubleLiteralValue > Long.MAX_VALUE) {
+          return constructFilterForGreaterThanMax(operator, measurementIndex);
+        }
+        if (doubleLiteralValue < Long.MIN_VALUE) {
+          return constructFilterForLessThanMin(operator, measurementIndex);
+        }
+        return constructFilterFromDouble(operator, doubleLiteralValue, measurementIndex, type);
+
+      } else if (columnDataType == INT32) {
+        if (doubleLiteralValue > Integer.MAX_VALUE) {
+          return constructFilterForGreaterThanMax(operator, measurementIndex);
+        }
+
+        if (doubleLiteralValue < Integer.MIN_VALUE) {
+          return constructFilterForLessThanMin(operator, measurementIndex);
+        }
+        return constructFilterFromDouble(operator, doubleLiteralValue, measurementIndex, type);
+      }
+    }
+
+    if (literal instanceof LongLiteral && columnDataType == INT32) {
+      return constructValueFilter(operator, literal, LongType.INT64, measurementIndex);
+    }
+
+    return constructValueFilter(operator, literal, type, measurementIndex);
+  }
+
+  private static Filter constructFilterFromDouble(
+      ComparisonExpression.Operator operator, double doubleValue, int measurementIndex, Type type) {
+
+    switch (operator) {
+      case GREATER_THAN_OR_EQUAL:
+      case LESS_THAN:
+        double ceil = Math.ceil(doubleValue);
+        //  for targeted type is INT32 or INT64, transformed the double value to LongLiteral
+        Literal ceilLiteral = new LongLiteral(String.valueOf((long) ceil));
+        return constructValueFilter(operator, ceilLiteral, type, measurementIndex);
+
+      case LESS_THAN_OR_EQUAL:
+      case GREATER_THAN:
+        double floor = Math.floor(doubleValue);
+        Literal floorLiteral = new LongLiteral(String.valueOf((long) floor));
+        return constructValueFilter(operator, floorLiteral, type, measurementIndex);
+
+      case EQUAL:
+      case NOT_EQUAL:
+        if (DoubleMath.isMathematicalInteger(doubleValue)) {
+          Literal literal = new LongLiteral(String.valueOf((long) doubleValue));
+          return constructValueFilter(operator, literal, type, measurementIndex);
+        }
+
+        return (operator == ComparisonExpression.Operator.EQUAL)
+            ? new FalseLiteralFilter()
+            : new ValueIsNotNullOperator(measurementIndex);
+
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unsupported comparison operator %s", operator));
+    }
+  }
+
+  private static Filter constructFilterForLessThanMin(
+      ComparisonExpression.Operator operator, int measurementIndex) {
+    switch (operator) {
+      case LESS_THAN_OR_EQUAL:
+      case LESS_THAN:
+      case EQUAL:
+        return new FalseLiteralFilter();
+      case GREATER_THAN_OR_EQUAL:
+      case GREATER_THAN:
+      case NOT_EQUAL:
+        return new ValueIsNotNullOperator(measurementIndex);
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unsupported comparison operator %s", operator));
+    }
+  }
+
+  private static Filter constructFilterForGreaterThanMax(
+      ComparisonExpression.Operator operator, int measurementIndex) {
+    switch (operator) {
+      case GREATER_THAN_OR_EQUAL:
+      case GREATER_THAN:
+      case EQUAL:
+        return new FalseLiteralFilter();
+
+      case LESS_THAN_OR_EQUAL:
+      case LESS_THAN:
+      case NOT_EQUAL:
+        return new ValueIsNotNullOperator(measurementIndex);
+
+      default:
+        throw new IllegalArgumentException(
+            String.format("Unsupported comparison operator %s", operator));
+    }
+  }
+
+  private static <T extends Comparable<T>> Filter constructValueFilter(
+      ComparisonExpression.Operator operator, Literal literal, Type type, int measurementIndex) {
+
     T value = getValue(literal, type);
     TSDataType dataType = InternalTypeManager.getTSDataType(type);
-
     switch (operator) {
       case EQUAL:
         return ValueFilterApi.eq(measurementIndex, value, dataType);

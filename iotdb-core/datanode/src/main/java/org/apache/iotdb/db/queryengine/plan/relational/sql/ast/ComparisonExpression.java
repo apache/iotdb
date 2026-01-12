@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nonnull;
@@ -33,6 +34,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class ComparisonExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ComparisonExpression.class);
 
   public enum Operator {
     EQUAL("="),
@@ -97,7 +101,9 @@ public class ComparisonExpression extends Expression {
 
   private final Operator operator;
   private final Expression left;
+  private Expression shadowLeft;
   private final Expression right;
+  private Expression shadowRight;
 
   public ComparisonExpression(Operator operator, Expression left, Expression right) {
     super(null);
@@ -127,11 +133,11 @@ public class ComparisonExpression extends Expression {
   }
 
   public Expression getLeft() {
-    return left;
+    return shadowLeft != null ? shadowLeft : left;
   }
 
   public Expression getRight() {
-    return right;
+    return shadowRight != null ? shadowRight : right;
   }
 
   @Override
@@ -142,6 +148,22 @@ public class ComparisonExpression extends Expression {
   @Override
   public List<Node> getChildren() {
     return ImmutableList.of(left, right);
+  }
+
+  // set by unfold of subquery
+  public void setShadowLeft(Expression shadowLeft) {
+    this.shadowLeft = shadowLeft;
+  }
+
+  // set by unfold of subquery
+  public void setShadowRight(Expression shadowRight) {
+    this.shadowRight = shadowRight;
+  }
+
+  // called after the stage is finished
+  public void clearShadow() {
+    this.shadowLeft = null;
+    this.shadowRight = null;
   }
 
   @Override
@@ -191,5 +213,13 @@ public class ComparisonExpression extends Expression {
     operator = Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     left = deserialize(byteBuffer);
     right = deserialize(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(left)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(right);
   }
 }

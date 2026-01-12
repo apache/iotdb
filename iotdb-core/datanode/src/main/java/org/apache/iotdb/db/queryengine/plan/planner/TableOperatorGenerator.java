@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
@@ -118,6 +119,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Abst
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -182,6 +184,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -267,6 +270,7 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -1190,6 +1194,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CteScanOperator.class.getSimpleName());
+    return new CteScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getDataStore(),
+        context.getFragmentInstanceId().getQueryId());
+  }
+
+  @Override
   public Operator visitTreeDeviceViewScan(
       TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
@@ -1339,13 +1359,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     ColumnTransformer filterOutputTransformer =
         predicate
             .map(
                 p -> {
                   ColumnTransformerBuilder.Context filterColumnTransformerContext =
                       new ColumnTransformerBuilder.Context(
-                          context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                          fragmentInstanceContext.getSessionInfo(),
                           filterLeafColumnTransformerList,
                           inputLocations,
                           filterExpressionColumnTransformerMap,
@@ -1354,7 +1376,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata);
+                          metadata,
+                          fragmentInstanceContext);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -1372,7 +1395,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+            fragmentInstanceContext.getSessionInfo(),
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
@@ -1381,7 +1404,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata);
+            metadata,
+            fragmentInstanceContext);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -2013,15 +2037,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitGroup(GroupNode node, LocalExecutionPlanContext context) {
-    StreamSortNode streamSortNode =
-        new StreamSortNode(
-            node.getPlanNodeId(),
-            node.getChild(),
-            node.getOrderingScheme(),
-            false,
-            false,
-            node.getPartitionKeyCount() - 1);
-    return visitStreamSort(streamSortNode, context);
+    if (node.getPartitionKeyCount() == 0) {
+      SortNode sortNode =
+          new SortNode(
+              node.getPlanNodeId(), node.getChild(), node.getOrderingScheme(), false, false);
+      return visitSort(sortNode, context);
+    } else {
+      StreamSortNode streamSortNode =
+          new StreamSortNode(
+              node.getPlanNodeId(),
+              node.getChild(),
+              node.getOrderingScheme(),
+              false,
+              false,
+              node.getPartitionKeyCount() - 1);
+      return visitStreamSort(streamSortNode, context);
+    }
   }
 
   @Override
@@ -2256,9 +2287,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
     switch (joinKeyType.getTypeEnum()) {
       case INT32:
+        return (inputColumn, rowIndex) ->
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
       case DATE:
         return (inputColumn, rowIndex) ->
-            new IntColumn(1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)});
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return (inputColumn, rowIndex) ->
@@ -2454,6 +2489,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         context
@@ -2475,10 +2512,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         .process(
                             node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
-                                context
-                                    .getDriverContext()
-                                    .getFragmentInstanceContext()
-                                    .getSessionInfo(),
+                                fragmentInstanceContext.getSessionInfo(),
                                 filterLeafColumnTransformerList,
                                 makeLayout(Collections.singletonList(node)),
                                 new HashMap<>(),
@@ -2487,7 +2521,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
+                                metadata,
+                                fragmentInstanceContext)),
                     columnSchemaList,
                     database,
                     table)
@@ -3821,6 +3856,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         case MAX:
         case MIN:
           if (BlobType.BLOB.equals(argumentType)
+              || ObjectType.OBJECT.equals(argumentType)
               || BinaryType.TEXT.equals(argumentType)
               || BooleanType.BOOLEAN.equals(argumentType)) {
             canUseStatistic = false;
@@ -3836,8 +3872,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             descendingCount++;
           }
 
-          // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-          if (BlobType.BLOB.equals(argumentType)) {
+          // first/last/first_by/last_by aggregation with BLOB or OBJECT type can not use statistics
+          if (BlobType.BLOB.equals(argumentType) || ObjectType.OBJECT.equals(argumentType)) {
             canUseStatistic = false;
             break;
           }

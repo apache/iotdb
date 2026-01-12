@@ -21,12 +21,17 @@ package org.apache.iotdb.commons.schema.filter.impl.singlechild;
 
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public abstract class AbstractSingleChildFilter extends SchemaFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AbstractSingleChildFilter.class);
 
   private SchemaFilter child;
 
@@ -72,5 +77,16 @@ public abstract class AbstractSingleChildFilter extends SchemaFilter {
   @Override
   public int hashCode() {
     return Objects.hash(child);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += child == null ? 0L : child.ramBytesUsed();
+    return size;
+  }
+
+  protected long ramBytesUsedForFields() {
+    return child == null ? 0L : child.ramBytesUsed();
   }
 }

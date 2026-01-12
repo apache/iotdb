@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -34,6 +35,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class WindowSpecification extends Node implements Window {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WindowSpecification.class);
+
   private final Optional<Identifier> existingWindowName;
   private final List<Expression> partitionBy;
   private final Optional<OrderBy> orderBy;
@@ -202,5 +206,19 @@ public class WindowSpecification extends Node implements Window {
     } else {
       frame = Optional.empty();
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(partitionBy);
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            existingWindowName.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(frame.orElse(null));
+    return size;
   }
 }

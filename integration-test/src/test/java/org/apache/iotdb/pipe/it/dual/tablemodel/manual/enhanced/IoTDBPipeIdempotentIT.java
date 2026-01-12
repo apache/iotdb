@@ -204,6 +204,14 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
         Collections.singletonList("create table test(a tag)"), "COMMENT ON COLUMN test.a IS 'tag'");
   }
 
+  @Test
+  public void testAlterColumnDataTypeIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList(
+            "CREATE TABLE t1 (time TIMESTAMP TIME,dId STRING TAG,s1 INT32 FIELD)"),
+        "ALTER TABLE t1 ALTER COLUMN s1 SET DATA TYPE INT64");
+  }
+
   private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
       throws Exception {
     final String database = "test";
@@ -215,28 +223,28 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-      extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("extractor.capture.tree", "false");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("source.capture.tree", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
