@@ -96,11 +96,7 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
-          else
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
-          fi
+          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
