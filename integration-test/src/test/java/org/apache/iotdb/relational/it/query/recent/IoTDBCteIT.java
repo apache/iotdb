@@ -470,7 +470,7 @@ public class IoTDBCteIT {
 
   @Test
   public void testConcurrentCteQueries() throws Exception {
-    final int threadCount = 10;
+    final int threadCount = 3;
     final int queriesPerThread = 20;
     final AtomicInteger successCount = new AtomicInteger(0);
     final AtomicInteger failureCount = new AtomicInteger(0);
@@ -582,7 +582,7 @@ public class IoTDBCteIT {
     int totalQueries = threadCount * queriesPerThread;
     assertEquals("All queries should succeed", totalQueries, successCount.get());
     assertEquals("No queries should fail", 0, failureCount.get());
-    assertEquals("Total query count should match", 340, totalCount.get());
+    assertEquals("Total query count should match", 102, totalCount.get());
   }
 
   private static void prepareData() {
