@@ -35,9 +35,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -98,8 +96,6 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
-
-  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -1079,20 +1075,6 @@ public class TableMetadataImpl implements Metadata {
                 "Scalar function %s only accepts three arguments, first argument must be BlOB type, "
                     + "second argument must be int32 or int64 type, third argument must be BLOB type.",
                 functionName));
-      }
-      return BLOB;
-    } else if (TableBuiltinScalarFunction.READ_OBJECT
-        .getFunctionName()
-        .equalsIgnoreCase(functionName)) {
-      if (argumentTypes.isEmpty()
-          || argumentTypes.size() > 3
-          || !isObjectType(argumentTypes.get(0))
-          || (argumentTypes.size() >= 2 && !isIntegerNumber(argumentTypes.get(1)))
-          || (argumentTypes.size() >= 3 && !isIntegerNumber(argumentTypes.get(2)))) {
-        throw new SemanticException(
-            "Scalar function "
-                + functionName.toLowerCase(Locale.ENGLISH)
-                + " must have at 1~3 arguments, and first argument must be OBJECT type, other arguments must be int32 or int64 type");
       }
       return BLOB;
     }
