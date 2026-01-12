@@ -946,31 +946,31 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
   public TSStatus visitCreateExternalService(
       CreateExternalServiceStatement createExternalServiceStatement,
       TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(context, PrivilegeType.SYSTEM, () -> "");
   }
 
   @Override
   public TSStatus visitStartExternalService(
       StartExternalServiceStatement startExternalServiceStatement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(context, PrivilegeType.SYSTEM, () -> "");
   }
 
   @Override
   public TSStatus visitStopExternalService(
       StopExternalServiceStatement stopExternalServiceStatement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(context, PrivilegeType.SYSTEM, () -> "");
   }
 
   @Override
   public TSStatus visitDropExternalService(
       DropExternalServiceStatement dropExternalServiceStatement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(context, PrivilegeType.SYSTEM, () -> "");
   }
 
   @Override
   public TSStatus visitShowExternalService(
       ShowExternalServiceStatement showExternalServiceStatement, TreeAccessCheckContext context) {
-    return checkGlobalAuth(context, PrivilegeType.MAINTAIN, () -> "");
+    return checkGlobalAuth(context, PrivilegeType.SYSTEM, () -> "");
   }
 
   // ============================== database related ===========================

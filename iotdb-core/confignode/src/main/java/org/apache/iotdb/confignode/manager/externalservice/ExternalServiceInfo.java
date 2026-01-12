@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
@@ -30,17 +31,23 @@ import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopE
 import org.apache.iotdb.confignode.consensus.response.externalservice.ShowExternalServiceResp;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.zip.CRC32;
 
 import static com.google.common.base.Preconditions.checkState;
 
@@ -51,6 +58,8 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   private final Map<Integer, Map<String, ServiceInfo>> datanodeToServiceInfos;
 
   private static final String SNAPSHOT_FILENAME = "service_info.bin";
+  private static final int SERIALIZATION_VERSION = 1;
+  private final CRC32 crc32 = new CRC32();
 
   public ExternalServiceInfo() {
     datanodeToServiceInfos = new ConcurrentHashMap<>();
@@ -180,6 +189,79 @@ public class ExternalServiceInfo implements SnapshotProcessor {
             .collect(Collectors.toList()));
   }
 
+  private void serializeInfos(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(SERIALIZATION_VERSION, outputStream);
+    ReadWriteIOUtils.write(datanodeToServiceInfos.size(), outputStream);
+    for (Map.Entry<Integer, Map<String, ServiceInfo>> outerEntry :
+        datanodeToServiceInfos.entrySet()) {
+      ReadWriteIOUtils.write(outerEntry.getKey(), outputStream); // DataNode ID
+
+      Map<String, ServiceInfo> innerMap = outerEntry.getValue();
+      // inner Map
+      ReadWriteIOUtils.write(innerMap.size(), outputStream);
+      for (ServiceInfo innerEntry : innerMap.values()) {
+        serializeServiceInfoWithCRC(innerEntry, outputStream);
+      }
+    }
+  }
+
+  private void serializeServiceInfoWithCRC(ServiceInfo serviceInfo, OutputStream outputStream)
+      throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream tempDos = new DataOutputStream(byteArrayOutputStream);
+    serviceInfo.serialize(tempDos);
+    tempDos.flush();
+    byte[] bytes = byteArrayOutputStream.toByteArray();
+
+    crc32.reset();
+    crc32.update(bytes, 0, bytes.length);
+
+    ReadWriteIOUtils.write(bytes.length, outputStream);
+    outputStream.write(bytes);
+    ReadWriteIOUtils.write(crc32.getValue(), outputStream);
+  }
+
+  private void deserializeInfos(InputStream inputStream) throws IOException {
+    if (ReadWriteIOUtils.readInt(inputStream) != SERIALIZATION_VERSION) {
+      throw new IOException("Incorrect version of " + SNAPSHOT_FILENAME);
+    }
+
+    int outerSize = ReadWriteIOUtils.readInt(inputStream);
+    for (int i = 0; i < outerSize; i++) {
+      int dataNodeId = ReadWriteIOUtils.readInt(inputStream);
+      int innerSize = ReadWriteIOUtils.readInt(inputStream);
+
+      Map<String, ServiceInfo> innerMap =
+          datanodeToServiceInfos.computeIfAbsent(
+              dataNodeId, k -> new ConcurrentHashMap<>(innerSize));
+      for (int j = 0; j < innerSize; j++) {
+        ServiceInfo value = deserializeServiceInfoConsiderCRC(inputStream);
+        if (value != null) {
+          innerMap.put(value.getServiceName(), value);
+        }
+      }
+      datanodeToServiceInfos.put(dataNodeId, innerMap);
+    }
+  }
+
+  private ServiceInfo deserializeServiceInfoConsiderCRC(InputStream inputStream)
+      throws IOException {
+    int length = ReadWriteIOUtils.readInt(inputStream);
+    byte[] bytes = new byte[length];
+    inputStream.read(bytes);
+
+    crc32.reset();
+    crc32.update(bytes, 0, length);
+
+    long expectedCRC = ReadWriteIOUtils.readLong(inputStream);
+    if (crc32.getValue() != expectedCRC) {
+      LOGGER.error("Mismatched CRC32 code when deserializing service info.");
+      return null;
+    }
+
+    return ServiceInfo.deserialize(inputStream);
+  }
+
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
@@ -192,10 +274,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
-      // TODO
-      // serializeExistedJarToMD5(fileOutputStream);
-
-      // udfTable.serializeUDFTable(fileOutputStream);
+      serializeInfos(fileOutputStream);
 
       // fsync
       fileOutputStream.getFD().sync();
@@ -214,21 +293,21 @@ public class ExternalServiceInfo implements SnapshotProcessor {
       return;
     }
 
-    // acquireUDFTableLock();
     try (FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
 
       clear();
 
-      // deserializeExistedJarToMD5(fileInputStream);
-
-      // udfTable.deserializeUDFTable(fileInputStream);
-    } finally {
-      // releaseUDFTableLock();
+      deserializeInfos(fileInputStream);
     }
   }
 
   public void clear() {
-    // existedJarToMD5.clear();
-    // udfTable.clear();
+    datanodeToServiceInfos.values().forEach(subMap -> subMap.clear());
+    datanodeToServiceInfos.clear();
+  }
+
+  @TestOnly
+  public Map<Integer, Map<String, ServiceInfo>> getRawDatanodeToServiceInfos() {
+    return datanodeToServiceInfos;
   }
 }

@@ -24,8 +24,9 @@ import org.apache.iotdb.externalservice.api.IExternalService;
 import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class ServiceInfo {
@@ -79,7 +80,7 @@ public class ServiceInfo {
     this.serviceInstance = serviceInstance;
   }
 
-  public void serialize(DataOutputStream stream) throws IOException {
+  public void serialize(OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(serviceName, stream);
     ReadWriteIOUtils.write(className, stream);
     ReadWriteIOUtils.write(state.getValue(), stream);
@@ -91,6 +92,14 @@ public class ServiceInfo {
         ReadWriteIOUtils.readString(buffer),
         ServiceType.USER_DEFINED,
         State.deserialize(ReadWriteIOUtils.readByte(buffer)));
+  }
+
+  public static ServiceInfo deserialize(InputStream stream) throws IOException {
+    return new ServiceInfo(
+        ReadWriteIOUtils.readString(stream),
+        ReadWriteIOUtils.readString(stream),
+        ServiceType.USER_DEFINED,
+        State.deserialize(ReadWriteIOUtils.readByte(stream)));
   }
 
   @Override

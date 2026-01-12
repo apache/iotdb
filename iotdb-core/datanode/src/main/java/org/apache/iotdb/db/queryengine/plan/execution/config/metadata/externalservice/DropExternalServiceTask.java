@@ -34,7 +34,6 @@ public class DropExternalServiceTask implements IConfigTask {
 
   public DropExternalServiceTask(String serviceName, boolean forcedly) {
     this.serviceName = serviceName.toUpperCase(Locale.ENGLISH);
-    ;
     this.forcedly = forcedly;
   }
 

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externals
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
@@ -39,9 +39,9 @@ public class CreateExternalServiceTask implements IConfigTask {
     this.className = statement.getClassName();
   }
 
-  public CreateExternalServiceTask(CreateFunction createFunctionStatement) {
-    this.serviceName = createFunctionStatement.getUdfName();
-    this.className = createFunctionStatement.getClassName();
+  public CreateExternalServiceTask(CreateExternalService createExternalService) {
+    this.serviceName = createExternalService.getServiceName().toUpperCase(Locale.ENGLISH);
+    this.className = createExternalService.getClassName();
   }
 
   @Override

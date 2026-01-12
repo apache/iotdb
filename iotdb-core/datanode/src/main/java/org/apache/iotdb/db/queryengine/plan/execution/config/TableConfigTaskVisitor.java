@@ -71,6 +71,10 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAID
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowLoadedModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.UnloadModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.CreateExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.DropExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StartExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StopExternalServiceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -208,7 +212,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
@@ -1519,31 +1522,32 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   @Override
   protected IConfigTask visitCreateExternalService(
       CreateExternalService node, MPPQueryContext context) {
-    return super.visitCreateExternalService(node, context);
+    context.setQueryType(QueryType.WRITE);
+    return new CreateExternalServiceTask(node);
   }
 
   @Override
   protected IConfigTask visitStartExternalService(
       StartExternalService node, MPPQueryContext context) {
-    return super.visitStartExternalService(node, context);
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new StartExternalServiceTask(node.getServiceName());
   }
 
   @Override
   protected IConfigTask visitStopExternalService(
       StopExternalService node, MPPQueryContext context) {
-    return super.visitStopExternalService(node, context);
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new StopExternalServiceTask(node.getServiceName());
   }
 
   @Override
   protected IConfigTask visitDropExternalService(
       DropExternalService node, MPPQueryContext context) {
-    return super.visitDropExternalService(node, context);
-  }
-
-  @Override
-  protected IConfigTask visitShowExternalService(
-      ShowExternalService node, MPPQueryContext context) {
-    return super.visitShowExternalService(node, context);
+    context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context);
+    return new DropExternalServiceTask(node.getServiceName(), node.isForcedly());
   }
 
   @Override

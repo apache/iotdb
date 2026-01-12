@@ -33,14 +33,20 @@ public class DropExternalService extends Statement {
       RamUsageEstimator.shallowSizeOfInstance(DropExternalService.class);
 
   private final String serviceName;
+  private final boolean forcedly;
 
-  public DropExternalService(NodeLocation location, String serviceName) {
+  public DropExternalService(NodeLocation location, String serviceName, boolean forcedly) {
     super(requireNonNull(location, "location is null"));
     this.serviceName = requireNonNull(serviceName, "serviceName is null");
+    this.forcedly = forcedly;
   }
 
   public String getServiceName() {
     return serviceName;
+  }
+
+  public boolean isForcedly() {
+    return forcedly;
   }
 
   @Override

@@ -1114,17 +1114,28 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   @Override
   public Node visitDropServiceStatement(RelationalSqlParser.DropServiceStatementContext ctx) {
     return new DropExternalService(
-        getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue());
+        getLocation(ctx), ((Identifier) visit(ctx.serviceName)).getValue(), ctx.FORCEDLY() != null);
   }
 
   @Override
   public Node visitShowServiceStatement(RelationalSqlParser.ShowServiceStatementContext ctx) {
     // show services on all DNs
-    int dataNodeId = -1;
+    Optional<Expression> where = Optional.empty();
     if (ctx.ON() != null) {
-      dataNodeId = Integer.parseInt(ctx.targetDataNodeId.getText());
+      where =
+          Optional.of(
+              new ComparisonExpression(
+                  ComparisonExpression.Operator.EQUAL,
+                  new Identifier("datanode_id"),
+                  new LongLiteral(ctx.targetDataNodeId.getText())));
     }
-    return new ShowExternalService(getLocation(ctx), dataNodeId);
+    return new ShowExternalService(
+        getLocation(ctx),
+        InformationSchema.SERVICES,
+        where,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 
   @Override

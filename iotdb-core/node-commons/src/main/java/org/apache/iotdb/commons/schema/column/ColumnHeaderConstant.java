@@ -123,6 +123,9 @@ public class ColumnHeaderConstant {
   public static final String SERVICE_NAME = "ServiceName";
   public static final String SERVICE_TYPE = "ServiceType";
 
+  public static final String SERVICE_NAME_TABLE_MODEL = "service_name";
+  public static final String SERVICE_TYPE_TABLE_MODEL = "service_type";
+
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
   public static final String PLUGIN_TYPE = "PluginType";

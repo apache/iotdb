@@ -125,7 +125,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimest
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
@@ -590,7 +589,6 @@ public class Coordinator {
         || statement instanceof StartExternalService
         || statement instanceof StopExternalService
         || statement instanceof DropExternalService
-        || statement instanceof ShowExternalService
         || statement instanceof RelationalAuthorStatement
         || statement instanceof MigrateRegion
         || statement instanceof ReconstructRegion
