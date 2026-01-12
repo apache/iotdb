@@ -464,9 +464,11 @@ public class SchemaUtils {
                 new Binary(
                     chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
           }
-          long[] longValues = new long[2];
+          long[] longValues = new long[4];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
         } else if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
@@ -512,9 +514,11 @@ public class SchemaUtils {
                   TSDataType.getDateStringValue(
                       (Integer) chunkMetadata.getStatistics().getMaxValue()),
                   StandardCharsets.UTF_8);
-          long[] longValues = new long[2];
+          long[] longValues = new long[4];
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
         } else if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
