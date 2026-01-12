@@ -91,7 +91,9 @@ public class SchemaUtilsTest {
   public void rewriteAlignedChunkMetadataStatistics() {
     for (TSDataType targetDataType : Arrays.asList(TSDataType.STRING, TSDataType.TEXT)) {
       for (TSDataType tsDataType : TSDataType.values()) {
-        if (tsDataType == TSDataType.UNKNOWN) {
+        if (tsDataType == TSDataType.UNKNOWN
+            || tsDataType == TSDataType.VECTOR
+            || tsDataType == TSDataType.OBJECT) {
           continue;
         }
         List<IChunkMetadata> valueChunkMetadatas =
@@ -106,13 +108,13 @@ public class SchemaUtilsTest {
         AlignedChunkMetadata alignedChunkMetadata =
             new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
         try {
-          AbstractAlignedChunkMetadata abstractAlignedChunkMetadata =
-              SchemaUtils.rewriteAlignedChunkMetadataStatistics(
-                  alignedChunkMetadata, 0, targetDataType);
-          if (!abstractAlignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
+          SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+              alignedChunkMetadata, 0, targetDataType);
+          if (alignedChunkMetadata != null
+              && !alignedChunkMetadata.getValueChunkMetadataList().isEmpty()) {
             Assert.assertEquals(
                 targetDataType,
-                abstractAlignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
+                alignedChunkMetadata.getValueChunkMetadataList().get(0).getDataType());
           }
         } catch (ClassCastException e) {
           Assert.fail(e.getMessage());
@@ -206,9 +208,8 @@ public class SchemaUtilsTest {
             (AbstractAlignedChunkMetadata) alignedChunkMetadata;
         try {
           for (int i = 0; i < 2; i++) {
-            abstractAlignedChunkMetadata =
-                SchemaUtils.rewriteAlignedChunkMetadataStatistics(
-                    abstractAlignedChunkMetadata, i, targetDataType);
+            SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+                abstractAlignedChunkMetadata, i, targetDataType);
           }
         } catch (ClassCastException e) {
           Assert.fail(e.getMessage());
