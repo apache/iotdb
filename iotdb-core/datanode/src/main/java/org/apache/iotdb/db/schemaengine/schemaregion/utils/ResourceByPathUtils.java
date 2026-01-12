@@ -552,7 +552,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         chunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
-        if (targetDataType.isCompatible(chunkMetadata.getDataType())) {
+        if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
           seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
         }
         continue;

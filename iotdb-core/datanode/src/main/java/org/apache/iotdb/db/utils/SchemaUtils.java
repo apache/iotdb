@@ -404,7 +404,8 @@ public class SchemaUtils {
       AbstractAlignedChunkMetadata alignedChunkMetadata, TSDataType targetDataType) {
     List<IChunkMetadata> newValueChunkMetadataList = new ArrayList<>();
     for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-      if (targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
+      if (valueChunkMetadata != null
+          && targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
         Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
         statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
@@ -412,6 +413,8 @@ public class SchemaUtils {
         newChunkMetadata.setTsDataType(targetDataType);
         newChunkMetadata.setStatistics(statistics);
         newValueChunkMetadataList.add(newChunkMetadata);
+      } else {
+        newValueChunkMetadataList.add(null);
       }
     }
     return new AlignedChunkMetadata(
@@ -420,7 +423,7 @@ public class SchemaUtils {
 
   public static void rewriteNonAlignedChunkMetadataStatistics(
       ChunkMetadata chunkMetadata, TSDataType targetDataType) {
-    if (targetDataType.isCompatible(chunkMetadata.getDataType())) {
+    if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
 

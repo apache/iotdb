@@ -171,10 +171,7 @@ public class SchemaUtilsTest {
           s3.update(
               new long[] {1, 2},
               new Binary[] {
-                new Binary("3", StandardCharsets.UTF_8),
-                new Binary("4", StandardCharsets.UTF_8),
-                new Binary("3", StandardCharsets.UTF_8),
-                new Binary("4", StandardCharsets.UTF_8)
+                new Binary("3", StandardCharsets.UTF_8), new Binary("4", StandardCharsets.UTF_8),
               },
               2);
         }
@@ -185,10 +182,7 @@ public class SchemaUtilsTest {
           s4.update(
               new long[] {1, 2},
               new Binary[] {
-                new Binary("5", StandardCharsets.UTF_8),
-                new Binary("6", StandardCharsets.UTF_8),
-                new Binary("5", StandardCharsets.UTF_8),
-                new Binary("6", StandardCharsets.UTF_8)
+                new Binary("5", StandardCharsets.UTF_8), new Binary("6", StandardCharsets.UTF_8),
               },
               2);
         }
