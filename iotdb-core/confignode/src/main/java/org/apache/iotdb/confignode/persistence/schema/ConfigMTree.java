@@ -107,6 +107,8 @@ public class ConfigMTree {
   private static final String TABLE_ERROR_MSG =
       "Failed to recover configNode, because there exists data from an older incompatible version, will shutdown soon. Please delete all data, and then restart again.";
 
+  private static final int MARKER_HAVE_PREALTERED_COLUMNS = Integer.MIN_VALUE;
+
   private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
   private IConfigMNode root;
   // this store is only used for traverser invoking
@@ -1136,14 +1138,21 @@ public class ConfigMTree {
     tableNode.getTable().serialize(outputStream);
     tableNode.getStatus().serialize(outputStream);
     final Set<String> preDeletedColumns = tableNode.getPreDeletedColumns();
-    ReadWriteIOUtils.write(preDeletedColumns.size(), outputStream);
+
+    int preAlteredColumnSize = tableNode.getPreAlteredColumns().size();
+    int preDeletedColumnSize = preDeletedColumns.size();
+    if (preAlteredColumnSize > 0) {
+      ReadWriteIOUtils.write(MARKER_HAVE_PREALTERED_COLUMNS, outputStream);
+      ReadWriteForEncodingUtils.writeVarInt(preAlteredColumnSize, outputStream);
+      for (Entry<String, TSDataType> entry : tableNode.getPreAlteredColumns().entrySet()) {
+        ReadWriteIOUtils.writeVar(entry.getKey(), outputStream);
+        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+      }
+    }
+
+    ReadWriteIOUtils.write(preDeletedColumnSize, outputStream);
     for (final String column : preDeletedColumns) {
       ReadWriteIOUtils.write(column, outputStream);
-    }
-    ReadWriteForEncodingUtils.writeVarInt(tableNode.getPreAlteredColumns().size(), outputStream);
-    for (Entry<String, TSDataType> entry : tableNode.getPreAlteredColumns().entrySet()) {
-      ReadWriteIOUtils.writeVar(entry.getKey(), outputStream);
-      ReadWriteIOUtils.write(entry.getValue(), outputStream);
     }
   }
 
@@ -1238,16 +1247,20 @@ public class ConfigMTree {
     tableNode.setTable(TsTable.deserialize(inputStream));
     tableNode.setStatus(TableNodeStatus.deserialize(inputStream));
     int size = ReadWriteIOUtils.readInt(inputStream);
+    if (size == MARKER_HAVE_PREALTERED_COLUMNS) {
+      size = ReadWriteForEncodingUtils.readVarInt(inputStream);
+      for (int i = 0; i < size; i++) {
+        tableNode.addPreAlteredColumn(
+            ReadWriteIOUtils.readVarIntString(inputStream),
+            ReadWriteIOUtils.readDataType(inputStream));
+      }
+      size = ReadWriteIOUtils.readInt(inputStream);
+    }
+
     for (int i = 0; i < size; ++i) {
       tableNode.addPreDeletedColumn(ReadWriteIOUtils.readString(inputStream));
     }
 
-    size = ReadWriteForEncodingUtils.readVarInt(inputStream);
-    for (int i = 0; i < size; i++) {
-      tableNode.addPreAlteredColumn(
-          ReadWriteIOUtils.readVarIntString(inputStream),
-          ReadWriteIOUtils.readDataType(inputStream));
-    }
     return tableNode;
   }
 
