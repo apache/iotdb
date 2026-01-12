@@ -88,8 +88,8 @@ public class AINodeDeviceManageIT {
       while (resultSet.next()) {
         String deviceId = resultSet.getString(1);
         String deviceType = resultSet.getString(2);
-        Assert.assertEquals(expectedDeviceIdList.removeFirst(), deviceId);
-        Assert.assertEquals(expectedDeviceTypeList.removeFirst(), deviceType);
+        Assert.assertEquals(expectedDeviceIdList.remove(0), deviceId);
+        Assert.assertEquals(expectedDeviceTypeList.remove(0), deviceType);
       }
     }
   }

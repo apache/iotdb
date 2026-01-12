@@ -16,8 +16,6 @@
 # under the License.
 #
 
-from typing import Optional
-
 import torch
 
 from iotdb.ainode.core.device.backend.base import BackendAdapter, BackendType
@@ -49,11 +47,6 @@ class DeviceManager:
 
         self.type: BackendType
         self.backend: BackendAdapter = self._auto_select_backend()
-        self.default_index: Optional[int] = self._select_default_index()
-
-        # ensure process uses correct device early
-        self._set_device_for_process()
-        self.device: torch.device = self.backend.make_device(self.default_index)
 
     # ==================== selection ====================
     def _auto_select_backend(self) -> BackendAdapter:
@@ -63,17 +56,6 @@ class DeviceManager:
                 self.type = backend.type
                 return backend
         return self.backends[BackendType.CPU]
-
-    def _select_default_index(self) -> Optional[int]:
-        if self.backend.type == BackendType.CPU:
-            return None
-        if self.use_local_rank_if_distributed and self.env.world_size > 1:
-            return self.env.local_rank
-        return 0
-
-    def _set_device_for_process(self) -> None:
-        if self.backend.type in (BackendType.CUDA,) and self.default_index is not None:
-            self.backend.set_device(self.default_index)
 
     # ==================== public API ====================
     def device_ids(self) -> list[int]:
@@ -96,15 +78,18 @@ class DeviceManager:
     def torch_device(self, device: DeviceLike) -> torch.device:
         """
         Convert a DeviceLike specification into a torch.device object.
-        If device is None, returns the default device of current process.
         Args:
             device: Could be any of the following formats:
                 an integer (e.g., 0, 1, ...),
                 a string (e.g., "0", "cuda:0", "cpu", ...),
                 a torch.device object, return itself if so.
+        Raise:
+            ValueError: If device is None or incorrect.
         """
         if device is None:
-            return self.device
+            raise ValueError(
+                "Device must be specified explicitly; None is not allowed."
+            )
         if isinstance(device, torch.device):
             return device
         spec = parse_device_like(device)
