@@ -30,7 +30,6 @@ import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -61,7 +60,6 @@ public class ExternalServiceInfoTest {
     }
   }
 
-  @Ignore
   @Test
   public void testSnapshot() throws TException, IOException, IllegalPathException {
     CreateExternalServicePlan createExternalServicePlan =

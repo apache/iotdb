@@ -43,6 +43,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -259,7 +260,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
       return null;
     }
 
-    return ServiceInfo.deserialize(inputStream);
+    return ServiceInfo.deserialize(ByteBuffer.wrap(bytes));
   }
 
   @Override

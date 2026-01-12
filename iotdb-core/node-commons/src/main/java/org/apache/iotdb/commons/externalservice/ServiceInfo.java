@@ -25,7 +25,6 @@ import com.google.common.base.Objects;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
@@ -87,19 +86,10 @@ public class ServiceInfo {
   }
 
   public static ServiceInfo deserialize(ByteBuffer buffer) {
-    return new ServiceInfo(
-        ReadWriteIOUtils.readString(buffer),
-        ReadWriteIOUtils.readString(buffer),
-        ServiceType.USER_DEFINED,
-        State.deserialize(ReadWriteIOUtils.readByte(buffer)));
-  }
-
-  public static ServiceInfo deserialize(InputStream stream) throws IOException {
-    return new ServiceInfo(
-        ReadWriteIOUtils.readString(stream),
-        ReadWriteIOUtils.readString(stream),
-        ServiceType.USER_DEFINED,
-        State.deserialize(ReadWriteIOUtils.readByte(stream)));
+    String serviceName = ReadWriteIOUtils.readString(buffer);
+    String className = ReadWriteIOUtils.readString(buffer);
+    State state = State.deserialize(ReadWriteIOUtils.readByte(buffer));
+    return new ServiceInfo(serviceName, className, ServiceType.USER_DEFINED, state);
   }
 
   @Override
