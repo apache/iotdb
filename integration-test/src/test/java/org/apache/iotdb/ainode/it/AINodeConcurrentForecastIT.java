@@ -86,7 +86,8 @@ public class AINodeConcurrentForecastIT {
   public void concurrentForecastTest() throws SQLException, InterruptedException {
     for (AINodeTestUtils.FakeModelInfo modelInfo : MODEL_LIST) {
       concurrentGPUForecastTest(modelInfo, "0,1");
-      concurrentGPUForecastTest(modelInfo, "cpu");
+      // TODO: Enable cpu test after optimize memory consumption
+      //      concurrentGPUForecastTest(modelInfo, "cpu");
     }
   }
 

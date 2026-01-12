@@ -37,6 +37,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
@@ -78,16 +79,17 @@ public class AINodeDeviceManageIT {
 
   private void showAIDevicesTest(Statement statement) throws SQLException {
     final String showSql = "SHOW AI_DEVICES";
-    final List<String> expectedDeviceIdList = Arrays.asList("0", "1", "cpu");
-    final List<String> expectedDeviceTypeList = Arrays.asList("cuda", "cuda", "cpu");
+    final List<String> expectedDeviceIdList = new LinkedList<>(Arrays.asList("0", "1", "cpu"));
+    final List<String> expectedDeviceTypeList =
+        new LinkedList<>(Arrays.asList("cuda", "cuda", "cpu"));
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "DeviceId,DeviceType");
       while (resultSet.next()) {
         String deviceId = resultSet.getString(1);
         String deviceType = resultSet.getString(2);
-        Assert.assertEquals(expectedDeviceIdList.remove(0), deviceId);
-        Assert.assertEquals(expectedDeviceTypeList.remove(0), deviceType);
+        Assert.assertEquals(expectedDeviceIdList.removeFirst(), deviceId);
+        Assert.assertEquals(expectedDeviceTypeList.removeFirst(), deviceType);
       }
     }
   }
