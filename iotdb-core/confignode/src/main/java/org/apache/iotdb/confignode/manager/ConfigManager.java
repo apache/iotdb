@@ -221,6 +221,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadBalanceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrationInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
@@ -3128,7 +3129,7 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus balanceRegions() {
+  public TSStatus loadBalance(TLoadBalanceReq req) {
     List<TDataNodeConfiguration> availableDataNodes =
         getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
     Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
@@ -3143,13 +3144,18 @@ public class ConfigManager implements IManager {
     List<TRegionReplicaSet> dataRegions =
         getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
 
+    List<Integer> targetNodeIds = null;
+    if (req.isSetTargetNodeIds() && !req.getTargetNodeIds().isEmpty()) {
+      targetNodeIds = req.getTargetNodeIds();
+    }
     Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroupMap =
         getLoadManager()
             .autoBalanceRegionReplicasDistribution(
                 availableDataNodeMap,
                 regionGroupStatisticsMap,
                 dataRegions,
-                dataRegions.get(0).getDataNodeLocationsSize());
+                dataRegions.get(0).getDataNodeLocationsSize(),
+                targetNodeIds);
     Map<Integer, Integer> regionCounter = new TreeMap<>();
     for (TRegionReplicaSet regionReplicaSet : targetRegionGroupMap.values()) {
       regionReplicaSet

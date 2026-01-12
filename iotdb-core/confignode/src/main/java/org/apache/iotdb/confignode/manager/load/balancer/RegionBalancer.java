@@ -160,9 +160,14 @@ public class RegionBalancer {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      int replicationFactor) {
+      int replicationFactor,
+      List<Integer> targetNodeIds) {
     return regionGroupMigrator.autoBalanceRegionReplicasDistribution(
-        availableDataNodeMap, regionGroupStatisticsMap, allocatedRegionGroups, replicationFactor);
+        availableDataNodeMap,
+        regionGroupStatisticsMap,
+        allocatedRegionGroups,
+        replicationFactor,
+        targetNodeIds);
   }
 
   private NodeManager getNodeManager() {

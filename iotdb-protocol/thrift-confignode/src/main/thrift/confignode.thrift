@@ -333,6 +333,11 @@ struct TReconstructRegionReq {
     3: required common.Model model
 }
 
+// Load balance request
+struct TLoadBalanceReq {
+    1: optional list<i32> targetNodeIds
+}
+
 struct TExtendRegionReq {
     1: required list<i32> regionId
     2: required i32 dataNodeId
@@ -1787,8 +1792,8 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
-  /** Auto balance regions */
-  common.TSStatus balanceRegions()
+  /** Load balance */
+  common.TSStatus loadBalance(TLoadBalanceReq req)
 
   common.TSStatus reconstructRegion(TReconstructRegionReq req)
 

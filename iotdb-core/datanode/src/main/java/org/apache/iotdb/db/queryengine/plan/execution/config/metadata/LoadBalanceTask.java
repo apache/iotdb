@@ -22,21 +22,21 @@ package org.apache.iotdb.db.queryengine.plan.execution.config.metadata;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.BalanceRegionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.LoadBalanceStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class BalanceRegionsTask implements IConfigTask {
+public class LoadBalanceTask implements IConfigTask {
 
-  protected final BalanceRegionsStatement statement;
+  protected final LoadBalanceStatement statement;
 
-  public BalanceRegionsTask(BalanceRegionsStatement balanceRegionsStatement) {
-    this.statement = balanceRegionsStatement;
+  public LoadBalanceTask(LoadBalanceStatement loadBalanceStatement) {
+    this.statement = loadBalanceStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.balanceRegions();
+    return configTaskExecutor.loadBalance(statement);
   }
 }

@@ -136,6 +136,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadBalanceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -1312,9 +1313,9 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
-  public TSStatus balanceRegions() throws TException {
+  public TSStatus loadBalance(TLoadBalanceReq req) throws TException {
     return executeRemoteCallWithRetry(
-        () -> client.balanceRegions(), status -> !updateConfigNodeLeader(status));
+        () -> client.loadBalance(req), status -> !updateConfigNodeLeader(status));
   }
 
   @Override

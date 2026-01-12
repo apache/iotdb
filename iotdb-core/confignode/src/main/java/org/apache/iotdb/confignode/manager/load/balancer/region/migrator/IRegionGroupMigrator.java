@@ -36,11 +36,14 @@ public interface IRegionGroupMigrator {
    * @param regionGroupStatisticsMap Statistics of RegionGroups
    * @param allocatedRegionGroups Allocated RegionGroups
    * @param replicationFactor Replication factor of TRegionReplicaSet
+   * @param targetNodeIds Optional target node IDs. If null or empty, automatically select the node
+   *     with lowest disk usage
    * @return The optimal TRegionReplicaSet derived by the specified algorithm
    */
   Map<TConsensusGroupId, TRegionReplicaSet> autoBalanceRegionReplicasDistribution(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      int replicationFactor);
+      int replicationFactor,
+      List<Integer> targetNodeIds);
 }

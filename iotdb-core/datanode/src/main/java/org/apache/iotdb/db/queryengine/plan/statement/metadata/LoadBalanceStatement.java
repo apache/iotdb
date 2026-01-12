@@ -28,15 +28,30 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
-public class BalanceRegionsStatement extends Statement implements IConfigStatement {
+public class LoadBalanceStatement extends Statement implements IConfigStatement {
 
-  public BalanceRegionsStatement() {
+  private final List<Integer> targetNodeIds;
+
+  public LoadBalanceStatement() {
+    this(null);
+  }
+
+  public LoadBalanceStatement(List<Integer> targetNodeIds) {
     super();
+    this.targetNodeIds = targetNodeIds;
+  }
+
+  public List<Integer> getTargetNodeIds() {
+    return targetNodeIds;
+  }
+
+  public boolean hasTargetNode() {
+    return targetNodeIds != null && !targetNodeIds.isEmpty();
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitBalanceRegions(this, context);
+    return visitor.visitLoadBalance(this, context);
   }
 
   @Override

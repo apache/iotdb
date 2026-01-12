@@ -123,7 +123,8 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
   private void prepare(
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      List<TRegionReplicaSet> databaseAllocatedRegionGroups) {
+      List<TRegionReplicaSet> databaseAllocatedRegionGroups,
+      List<Integer> targetNodeIds) {
 
     // Store the maximum DataNodeId
     int maxDataNodeId =
@@ -193,24 +194,42 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
           regionCounter[nodeId]);
     }
     availableToDataNodeSet = new HashSet<>();
-    for (int i = 0; i < 1; i++) {
-      availableToDataNodeSet.add(dataNodeIdList.get(i));
-      System.out.println("Available To Node: " + dataNodeIdList.get(i));
+    if (targetNodeIds != null && !targetNodeIds.isEmpty()) {
+      // Use specified target nodes
+      for (Integer targetNodeId : targetNodeIds) {
+        if (availableDataNodeMap.containsKey(targetNodeId)) {
+          availableToDataNodeSet.add(targetNodeId);
+          LOGGER.info(
+              "[LoadBalance] Using specified target node: Node {} (diskUsage={}, regionCount={})",
+              targetNodeId,
+              diskCounter[targetNodeId],
+              regionCounter[targetNodeId]);
+        } else {
+          LOGGER.warn(
+              "[LoadBalance] Specified target node {} is not available, skipping", targetNodeId);
+        }
+      }
+    }
+    // If no target nodes were specified or all specified nodes are invalid, auto-select
+    if (availableToDataNodeSet.isEmpty() && !dataNodeIdList.isEmpty()) {
+      availableToDataNodeSet.add(dataNodeIdList.get(0));
       LOGGER.info(
-          "[LoadBalance] Selected as target node: Node {} (diskUsage={}, regionCount={})",
-          dataNodeIdList.get(i),
-          diskCounter[dataNodeIdList.get(i)],
-          regionCounter[dataNodeIdList.get(i)]);
+          "[LoadBalance] Auto-selected target node: Node {} (diskUsage={}, regionCount={})",
+          dataNodeIdList.get(0),
+          diskCounter[dataNodeIdList.get(0)],
+          regionCounter[dataNodeIdList.get(0)]);
     }
     availableFromDataNodeSet = new HashSet<>();
-    for (int i = 1; i < dataNodeIdList.size(); i++) {
-      availableFromDataNodeSet.add(dataNodeIdList.get(i));
-      System.out.println("Available From Node: " + dataNodeIdList.get(i));
-      LOGGER.info(
-          "[LoadBalance] Selected as source node: Node {} (diskUsage={}, regionCount={})",
-          dataNodeIdList.get(i),
-          diskCounter[dataNodeIdList.get(i)],
-          regionCounter[dataNodeIdList.get(i)]);
+    for (int i = 0; i < dataNodeIdList.size(); i++) {
+      Integer nodeId = dataNodeIdList.get(i);
+      if (!availableToDataNodeSet.contains(nodeId)) {
+        availableFromDataNodeSet.add(nodeId);
+        LOGGER.info(
+            "[LoadBalance] Selected as source node: Node {} (diskUsage={}, regionCount={})",
+            nodeId,
+            diskCounter[nodeId],
+            regionCounter[nodeId]);
+      }
     }
   }
 
@@ -219,7 +238,8 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
       Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
       Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap,
       List<TRegionReplicaSet> allocatedRegionGroups,
-      int replicationFactor) {
+      int replicationFactor,
+      List<Integer> targetNodeIds) {
     this.regionGroupStatisticsMap = regionGroupStatisticsMap;
     this.replicationFactor = replicationFactor;
     this.replicaNodesIdMap =
@@ -232,7 +252,7 @@ public class GreedyCopySetRegionGroupMigrator implements IRegionGroupMigrator {
                             .map(TDataNodeLocation::getDataNodeId)
                             .collect(Collectors.toList())));
     // 1. prepare: compute regionCounter, databaseRegionCounter, and combinationCounter
-    prepare(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList());
+    prepare(availableDataNodeMap, allocatedRegionGroups, Collections.emptyList(), targetNodeIds);
 
     // 2. Build allowed migration set for each region.
     // No migration: 1 option.

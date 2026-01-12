@@ -64,7 +64,7 @@ ddlStatement
     | showVariables | showCluster | showMigrations | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
-    | verifyConnection | balanceRegions
+    | verifyConnection | loadBalance
     // AINode
     | showAINodes | createModel | dropModel | showModels | showLoadedModels | showAIDevices
     | callInference | loadModel | unloadModel
@@ -567,8 +567,8 @@ verifyConnection
     : VERIFY CONNECTION (DETAILS)?
     ;
 
-balanceRegions
-    : LOAD BALANCE
+loadBalance
+    : LOAD BALANCE (TO DATANODE targetNodeIds+=INTEGER_LITERAL (COMMA targetNodeIds+=INTEGER_LITERAL)*)?
     ;
 
 // ---- Remove DataNode
