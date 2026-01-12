@@ -34,7 +34,7 @@ logger = Logger()
 
 class Chronos2Pipeline(ForecastPipeline):
     def __init__(self, model_info, **model_kwargs):
-        super().__init__(model_info, model_kwargs=model_kwargs)
+        super().__init__(model_info, **model_kwargs)
 
     def preprocess(self, inputs, **infer_kwargs):
         """

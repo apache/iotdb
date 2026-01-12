@@ -76,7 +76,7 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11.0,<3.14.0"
+python = ">=3.11.0,<3.12.0"
 
 # ---- DL / HF stack ----
 torch = "^2.8.0,<2.9.0"
@@ -88,9 +88,9 @@ safetensors = "^0.6.2"
 einops = "^0.8.1"
 
 # ---- Core scientific stack ----
-numpy = "^2.3.2"
+numpy = ">=2.0,<2.4.0"
+pandas = ">=2.0,<2.4.0"
 scipy = "^1.12.0"
-pandas = "^2.3.2"
 scikit-learn = "^1.7.1"
 statsmodels = "^0.14.5"
 sktime = "0.40.1"

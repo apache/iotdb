@@ -40,8 +40,8 @@ from iotdb.ainode.core.inference.request_scheduler.basic_request_scheduler impor
     BasicRequestScheduler,
 )
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.model.model_storage import ModelInfo
-from iotdb.ainode.core.util.gpu_mapping import convert_device_id_to_torch_device
 
 
 class PoolState(Enum):
@@ -64,7 +64,7 @@ class InferenceRequestPool(mp.Process):
         self,
         pool_id: int,
         model_info: ModelInfo,
-        device: str,
+        device: torch.device,
         request_queue: mp.Queue,
         result_queue: mp.Queue,
         ready_event,
@@ -75,7 +75,7 @@ class InferenceRequestPool(mp.Process):
         self.model_info = model_info
         self.pool_kwargs = pool_kwargs
         self.ready_event = ready_event
-        self.device = convert_device_id_to_torch_device(device)
+        self.device = device
 
         self._threads = []
         self._waiting_queue = request_queue  # Requests that are waiting to be processed
@@ -87,8 +87,8 @@ class InferenceRequestPool(mp.Process):
         self._batcher = BasicBatcher()
         self._stop_event = mp.Event()
 
+        self._backend = None
         self._inference_pipeline = None
-
         self._logger = None
 
         # Fix inference seed
@@ -102,7 +102,7 @@ class InferenceRequestPool(mp.Process):
             request.mark_running()
             self._running_queue.put(request)
             self._logger.debug(
-                f"[Inference][Device-{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
+                f"[Inference][{self.device}][Pool-{self.pool_id}][Req-{request.req_id}] Request is activated with inputs shape {request.inputs.shape}"
             )
 
     def _requests_activate_loop(self):
@@ -120,9 +120,9 @@ class InferenceRequestPool(mp.Process):
         grouped_requests = list(grouped_requests.values())
 
         for requests in grouped_requests:
-            batch_inputs = self._batcher.batch_request(requests).to(
-                "cpu"
-            )  # The input data should first load to CPU in current version
+            batch_inputs = self._backend.move_tensor(
+                self._batcher.batch_request(requests), self.device
+            )
             batch_input_list = []
             for i in range(batch_inputs.size(0)):
                 batch_input_list.append({"targets": batch_inputs[i]})
@@ -153,7 +153,9 @@ class InferenceRequestPool(mp.Process):
 
             offset = 0
             for request in requests:
-                request.output_tensor = request.output_tensor.to(self.device)
+                request.output_tensor = self._backend.move_tensor(
+                    request.output_tensor, self.device
+                )
                 cur_batch_size = request.batch_size
                 cur_output = batch_output[offset : offset + cur_batch_size]
                 offset += cur_batch_size
@@ -164,12 +166,12 @@ class InferenceRequestPool(mp.Process):
                     request.output_tensor = request.output_tensor.cpu()
                     self._finished_queue.put(request)
                     self._logger.debug(
-                        f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
+                        f"[Inference][{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is finished"
                     )
                 else:
                     self._waiting_queue.put(request)
                     self._logger.debug(
-                        f"[Inference][Device-{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
+                        f"[Inference][{self.device}][Pool-{self.pool_id}][ID-{request.req_id}] Request is not finished, re-queueing"
                     )
         return
 
@@ -182,8 +184,9 @@ class InferenceRequestPool(mp.Process):
         self._logger = Logger(
             INFERENCE_LOG_FILE_NAME_PREFIX_TEMPLATE.format(self.device)
         )
+        self._backend = DeviceManager()
         self._request_scheduler.device = self.device
-        self._inference_pipeline = load_pipeline(self.model_info, str(self.device))
+        self._inference_pipeline = load_pipeline(self.model_info, self.device)
         self.ready_event.set()
 
         activate_daemon = threading.Thread(
@@ -197,12 +200,12 @@ class InferenceRequestPool(mp.Process):
         self._threads.append(execute_daemon)
         execute_daemon.start()
         self._logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} is activated."
+            f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} is activated."
         )
         for thread in self._threads:
             thread.join()
         self._logger.info(
-            f"[Inference][Device-{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} exited cleanly."
+            f"[Inference][{self.device}][Pool-{self.pool_id}] InferenceRequestPool for model {self.model_info.model_id} exited cleanly."
         )
 
     def stop(self):
