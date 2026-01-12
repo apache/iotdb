@@ -89,16 +89,12 @@ def query_data():
     session = session_pool.get_session()
 
     print("get data from root.test.d0")
-    with session.execute_query_statement(
-        "select * from root.test.d0"
-    ) as res:
+    with session.execute_query_statement("select * from root.test.d0") as res:
         while res.has_next():
             print(res.next())
 
     print("get data from root.test.d1")
-    with session.execute_query_statement(
-        "select * from root.test.d1"
-    ) as res:
+    with session.execute_query_statement("select * from root.test.d1") as res:
         while res.has_next():
             print(res.next())
 
@@ -109,9 +105,7 @@ def delete_data():
     session = session_pool.get_session()
     session.delete_storage_group(STORAGE_GROUP_NAME)
     print("data has been deleted. now the devices are:")
-    with session.execute_statement(
-        "show devices root.test.**"
-    ) as res:
+    with session.execute_statement("show devices root.test.**") as res:
         while res.has_next():
             print(res.next())
     session_pool.put_back(session)
