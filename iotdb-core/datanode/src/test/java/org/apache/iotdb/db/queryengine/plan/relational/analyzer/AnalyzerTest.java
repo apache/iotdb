@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -81,6 +82,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -144,6 +146,11 @@ public class AnalyzerTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {

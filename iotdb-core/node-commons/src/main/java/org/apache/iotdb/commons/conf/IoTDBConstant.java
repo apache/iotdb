@@ -216,6 +216,9 @@ public class IoTDBConstant {
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
+  public static final String CTE_QUERY = "CTE Query";
+  public static final String MAIN_QUERY = "Main Query";
+
   // sdt parameters
   public static final String LOSS = "loss";
   public static final String SDT = "sdt";
@@ -269,6 +272,7 @@ public class IoTDBConstant {
   public static final String TRIGGER_FOLDER_NAME = "trigger";
   public static final String EXTERNAL_SERVICE_FOLDER_NAME = "external_service";
   public static final String PIPE_FOLDER_NAME = "pipe";
+  public static final String CTE_FOLDER_NAME = "cte";
   public static final String TMP_FOLDER_NAME = "tmp";
   public static final String DELETION_FOLDER_NAME = "deletion";
 
@@ -301,6 +305,7 @@ public class IoTDBConstant {
   public static final String SETTLE_SUFFIX = ".settle";
   public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";
   public static final String BLANK = "";
+  public static final String SPACE = " ";
 
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";

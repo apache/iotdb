@@ -22,54 +22,94 @@ import torch
 
 from iotdb.ainode.core.exception import InferenceModelInternalException
 from iotdb.ainode.core.inference.pipeline.basic_pipeline import ForecastPipeline
+from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.model.model_info import ModelInfo
+
+logger = Logger()
 
 
 class SktimePipeline(ForecastPipeline):
-    def __init__(self, model_info, **model_kwargs):
+    def __init__(self, model_info: ModelInfo, **model_kwargs):
         model_kwargs.pop("device", None)  # sktime models run on CPU
         super().__init__(model_info, model_kwargs=model_kwargs)
 
-    def preprocess(self, inputs):
-        inputs = super().preprocess(inputs)
+    def preprocess(
+        self,
+        inputs: list[dict[str, dict[str, torch.Tensor] | torch.Tensor]],
+        **infer_kwargs,
+    ) -> list[pd.Series]:
+        """
+        Preprocess the input data for forecasting.
+
+        Parameters:
+            inputs (list): A list of dictionaries containing input data with key 'targets'.
+
+        Returns:
+            list of pd.Series: Processed inputs for the model with each of shape [input_length, ].
+        """
+        model_id = self.model_info.model_id
+
+        inputs = super().preprocess(inputs, **infer_kwargs)
+
+        # Here, we assume element in list has same history_length,
+        # otherwise, the model cannot proceed
+        if inputs[0].get("past_covariates", None) or inputs[0].get(
+            "future_covariates", None
+        ):
+            logger.warning(
+                f"[Inference] Past_covariates and future_covariates will be ignored, as they are not supported for model {model_id}."
+            )
+
+        # stack the data and get a 3D-tensor: [batch_size, target_count(1), input_length]
+        inputs = torch.stack([data["targets"] for data in inputs], dim=0)
         if inputs.shape[1] != 1:
             raise InferenceModelInternalException(
-                f"[Inference] Sktime model only supports univarate forecast, but receives {inputs.shape[1]} target variables."
+                f"Model {model_id} only supports univariate forecast, but receives {inputs.shape[1]} target variables."
             )
+        # Transform into a 2D-tensor: [batch_size, input_length]
         inputs = inputs.squeeze(1)
+        # Transform into a list of Series with each of shape [input_length,]
+        inputs = [pd.Series(data.cpu().numpy()) for i, data in enumerate(inputs)]
+
         return inputs
 
-    def forecast(self, inputs, **infer_kwargs):
-        predict_length = infer_kwargs.get("predict_length", 96)
+    def forecast(self, inputs: list[pd.Series], **infer_kwargs) -> np.ndarray:
+        """
+        Generate forecasts from the model for given inputs.
 
-        # Convert to pandas Series for sktime (sktime expects Series or DataFrame)
-        # Handle batch dimension: if batch_size > 1, process each sample separately
-        if len(inputs.shape) == 2 and inputs.shape[0] > 1:
-            # Batch processing: convert each row to Series
-            outputs = []
-            for i in range(inputs.shape[0]):
-                series = pd.Series(
-                    inputs[i].cpu().numpy()
-                    if isinstance(inputs, torch.Tensor)
-                    else inputs[i]
-                )
-                output = self.model.generate(series, predict_length=predict_length)
-                outputs.append(output)
-            outputs = np.array(outputs)
-        else:
-            # Single sample: convert to Series
-            if isinstance(inputs, torch.Tensor):
-                series = pd.Series(inputs.squeeze().cpu().numpy())
-            else:
-                series = pd.Series(inputs.squeeze())
-            outputs = self.model.generate(series, predict_length=predict_length)
-            # Add batch dimension if needed
-            if len(outputs.shape) == 1:
-                outputs = outputs[np.newaxis, :]
+        Parameters:
+            inputs (list[Series]): A list of input data for forecasting with each of shape [input_length,].
+            **infer_kwargs: Additional inference parameters such as:
+                - 'output_length'(int): The number of time points that model should generate.
+
+        Returns:
+            np.ndarray: Forecasted outputs.
+        """
+        output_length = infer_kwargs.get("output_length", 96)
+
+        # Batch processing
+        outputs = []
+        for series in inputs:
+            output = self.model.generate(series, output_length=output_length)
+            outputs.append(output)
+        outputs = np.array(outputs)
 
         return outputs
 
-    def postprocess(self, outputs):
-        if isinstance(outputs, np.ndarray):
-            outputs = torch.from_numpy(outputs).float()
-        outputs = super().postprocess(outputs.unsqueeze(1))
+    def postprocess(self, outputs: np.ndarray, **infer_kwargs) -> list[torch.Tensor]:
+        """
+        Postprocess the model's outputs.
+
+        Parameters:
+            outputs (np.ndarray): Model output to be processed.
+            **infer_kwargs: Additional inference parameters.
+
+        Returns:
+            list of torch.Tensor: List of 2D-tensors with shape [target_count(1), output_length].
+        """
+
+        # Transform outputs into a 2D-tensor: [batch_size, output_length]
+        outputs = torch.from_numpy(outputs).float()
+        outputs = [outputs[i].unsqueeze(0) for i in range(outputs.size(0))]
+        outputs = super().postprocess(outputs, **infer_kwargs)
         return outputs
