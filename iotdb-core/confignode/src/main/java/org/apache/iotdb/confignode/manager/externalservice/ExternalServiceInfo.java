@@ -50,8 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 
-import static com.google.common.base.Preconditions.checkState;
-
 public class ExternalServiceInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ExternalServiceInfo.class);
@@ -61,6 +59,9 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   private static final String SNAPSHOT_FILENAME = "service_info.bin";
   private static final int SERIALIZATION_VERSION = 1;
   private final CRC32 crc32 = new CRC32();
+
+  private static final String SERVICE_NOT_EXISTED =
+      "ExternalService %s is not existed on DataNode %s.";
 
   public ExternalServiceInfo() {
     datanodeToServiceInfos = new ConcurrentHashMap<>();
@@ -80,10 +81,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     String serviceName = plan.getServiceInfo().getServiceName();
     if (serviceInfos.containsKey(serviceName)) {
       res.code = TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode();
-      res.message =
-          String.format(
-              "ExternalService %s has already been created on DataNode %s.",
-              serviceName, plan.getDatanodeId());
+      res.message = String.format(SERVICE_NOT_EXISTED, serviceName, plan.getDatanodeId());
     } else {
       serviceInfos.put(serviceName, plan.getServiceInfo());
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
@@ -103,14 +101,11 @@ public class ExternalServiceInfo implements SnapshotProcessor {
         datanodeToServiceInfos.computeIfAbsent(
             plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
     String serviceName = plan.getServiceName();
-    if (!serviceInfos.containsKey(serviceName)) {
+    ServiceInfo removed = serviceInfos.remove(serviceName);
+    if (removed == null) {
       res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
-      res.message =
-          String.format(
-              "ExternalService %s is not existed on DataNode %s.",
-              serviceName, plan.getDataNodeId());
+      res.message = String.format(SERVICE_NOT_EXISTED, serviceName, plan.getDataNodeId());
     } else {
-      serviceInfos.remove(serviceName);
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     }
     return res;
@@ -128,16 +123,11 @@ public class ExternalServiceInfo implements SnapshotProcessor {
         datanodeToServiceInfos.computeIfAbsent(
             plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
     String serviceName = plan.getServiceName();
-    if (!serviceInfos.containsKey(serviceName)) {
+    ServiceInfo serviceInfo = serviceInfos.get(serviceName);
+    if (serviceInfo == null) {
       res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
-      res.message =
-          String.format(
-              "ExternalService %s is not existed on DataNode %s.",
-              serviceName, plan.getDataNodeId());
+      res.message = String.format(SERVICE_NOT_EXISTED, serviceName, plan.getDataNodeId());
     } else {
-      ServiceInfo serviceInfo = serviceInfos.get(serviceName);
-      // The WRITE operations of StateMachine are not concurrent
-      checkState(serviceInfo != null, "Target serviceInfo should not be null.");
       serviceInfo.setState(ServiceInfo.State.RUNNING);
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     }
@@ -156,16 +146,11 @@ public class ExternalServiceInfo implements SnapshotProcessor {
         datanodeToServiceInfos.computeIfAbsent(
             plan.getDataNodeId(), k -> new ConcurrentHashMap<>());
     String serviceName = plan.getServiceName();
-    if (!serviceInfos.containsKey(serviceName)) {
+    ServiceInfo serviceInfo = serviceInfos.get(serviceName);
+    if (serviceInfo == null) {
       res.code = TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode();
-      res.message =
-          String.format(
-              "ExternalService %s is not existed on DataNode %s.",
-              serviceName, plan.getDataNodeId());
+      res.message = String.format(SERVICE_NOT_EXISTED, serviceName, plan.getDataNodeId());
     } else {
-      ServiceInfo serviceInfo = serviceInfos.get(serviceName);
-      // The WRITE operations of StateMachine are not concurrent
-      checkState(serviceInfo != null, "Target serviceInfo should not be null.");
       serviceInfo.setState(ServiceInfo.State.STOPPED);
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     }
@@ -219,7 +204,7 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
     ReadWriteIOUtils.write(bytes.length, outputStream);
     outputStream.write(bytes);
-    ReadWriteIOUtils.write(crc32.getValue(), outputStream);
+    ReadWriteIOUtils.write((int) crc32.getValue(), outputStream);
   }
 
   private void deserializeInfos(InputStream inputStream) throws IOException {
@@ -254,8 +239,8 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     crc32.reset();
     crc32.update(bytes, 0, length);
 
-    long expectedCRC = ReadWriteIOUtils.readLong(inputStream);
-    if (crc32.getValue() != expectedCRC) {
+    int expectedCRC = ReadWriteIOUtils.readInt(inputStream);
+    if ((int) crc32.getValue() != expectedCRC) {
       LOGGER.error("Mismatched CRC32 code when deserializing service info.");
       return null;
     }
@@ -303,7 +288,6 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    datanodeToServiceInfos.values().forEach(subMap -> subMap.clear());
     datanodeToServiceInfos.clear();
   }
 

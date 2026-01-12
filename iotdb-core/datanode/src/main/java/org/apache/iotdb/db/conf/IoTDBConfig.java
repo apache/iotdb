@@ -270,7 +270,7 @@ public class IoTDBConfig {
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
-  /** External lib directory for UDF, stores user-uploaded JAR files */
+  /** External lib directory for ExternalService, stores user-uploaded JAR files */
   private String externalServiceDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXTERNAL_SERVICE_FOLDER_NAME;
 
