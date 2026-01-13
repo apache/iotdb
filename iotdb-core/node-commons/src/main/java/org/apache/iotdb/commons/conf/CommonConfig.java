@@ -254,6 +254,9 @@ public class CommonConfig {
   private long pipeSubtaskExecutorBasicCheckPointIntervalByTimeDuration = 10 * 1000L;
   private long pipeSubtaskExecutorPendingQueueMaxBlockingTimeMs = 50;
 
+  private volatile long pipeSinkSubtaskSleepIntervalInitMs = 250L;
+  private volatile long pipeSinkSubtaskSleepIntervalMaxMs = 1000L;
+
   private long pipeSubtaskExecutorCronHeartbeatEventIntervalSeconds = 20;
 
   private long pipeMaxWaitFinishTime = 10 * 1000;
@@ -279,6 +282,7 @@ public class CommonConfig {
       Math.max(32, Runtime.getRuntime().availableProcessors() * 2);
   private int pipeAsyncConnectorMaxTsFileClientNumber =
       Math.max(16, Runtime.getRuntime().availableProcessors());
+  private boolean printLogWhenEncounterException = false;
 
   private double pipeSendTsFileRateLimitBytesPerSecond = 32 * MB;
   private double pipeAllSinksRateLimitBytesPerSecond = -1;
@@ -469,6 +473,8 @@ public class CommonConfig {
   private PrivilegeLevel auditableOperationLevel = PrivilegeLevel.GLOBAL;
 
   private String auditableOperationResult = "SUCCESS, FAIL";
+  private int pathLogMaxSize = 100;
+  private boolean restrictObjectLimit = false;
 
   CommonConfig() {
     // Empty constructor
@@ -1251,6 +1257,18 @@ public class CommonConfig {
         "pipeAsyncConnectorMaxClientNumber is set to {}.", pipeAsyncConnectorMaxTsFileClientNumber);
   }
 
+  public boolean isPrintLogWhenEncounterException() {
+    return printLogWhenEncounterException;
+  }
+
+  public void setPrintLogWhenEncounterException(boolean printLogWhenEncounterException) {
+    if (this.printLogWhenEncounterException == printLogWhenEncounterException) {
+      return;
+    }
+    this.printLogWhenEncounterException = printLogWhenEncounterException;
+    logger.info("printLogWhenEncounterException is set to {}.", printLogWhenEncounterException);
+  }
+
   public boolean isSeperatedPipeHeartbeatEnabled() {
     return isSeperatedPipeHeartbeatEnabled;
   }
@@ -1413,6 +1431,32 @@ public class CommonConfig {
     this.pipeRetryLocallyForParallelOrUserConflict = pipeRetryLocallyForParallelOrUserConflict;
     logger.info(
         "pipeRetryLocallyForParallelOrUserConflict is set to {}.", pipeSubtaskExecutorMaxThreadNum);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalInitMs() {
+    return pipeSinkSubtaskSleepIntervalInitMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalInitMs(long pipeSinkSubtaskSleepIntervalInitMs) {
+    if (this.pipeSinkSubtaskSleepIntervalInitMs == pipeSinkSubtaskSleepIntervalInitMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalInitMs = pipeSinkSubtaskSleepIntervalInitMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalInitMs is set to {}.", pipeSinkSubtaskSleepIntervalInitMs);
+  }
+
+  public long getPipeSinkSubtaskSleepIntervalMaxMs() {
+    return pipeSinkSubtaskSleepIntervalMaxMs;
+  }
+
+  public void setPipeSinkSubtaskSleepIntervalMaxMs(long pipeSinkSubtaskSleepIntervalMaxMs) {
+    if (this.pipeSinkSubtaskSleepIntervalMaxMs == pipeSinkSubtaskSleepIntervalMaxMs) {
+      return;
+    }
+    this.pipeSinkSubtaskSleepIntervalMaxMs = pipeSinkSubtaskSleepIntervalMaxMs;
+    logger.info(
+        "pipeSinkSubtaskSleepIntervalMaxMs is set to {}.", pipeSinkSubtaskSleepIntervalMaxMs);
   }
 
   public long getPipeSubtaskExecutorPendingQueueMaxBlockingTimeMs() {
@@ -2502,6 +2546,14 @@ public class CommonConfig {
     this.log2SizeClassGroup = log2SizeClassGroup;
   }
 
+  public int getPathLogMaxSize() {
+    return pathLogMaxSize;
+  }
+
+  public void setPathLogMaxSize(int pathLogMaxSize) {
+    this.pathLogMaxSize = pathLogMaxSize;
+  }
+
   /**
    * @param querySamplingRateLimit query_sample_throughput_bytes_per_sec
    */
@@ -2689,5 +2741,13 @@ public class CommonConfig {
 
   public void setAuditableOperationResult(String auditableOperationResult) {
     this.auditableOperationResult = auditableOperationResult;
+  }
+
+  public boolean isRestrictObjectLimit() {
+    return restrictObjectLimit;
+  }
+
+  public void setRestrictObjectLimit(boolean restrictObjectLimit) {
+    this.restrictObjectLimit = restrictObjectLimit;
   }
 }

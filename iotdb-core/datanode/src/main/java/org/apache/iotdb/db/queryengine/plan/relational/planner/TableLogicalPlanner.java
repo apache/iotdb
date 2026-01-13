@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
@@ -115,6 +116,9 @@ public class TableLogicalPlanner {
   private final Metadata metadata;
   private final WarningCollector warningCollector;
 
+  private PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
+
   @TestOnly
   public TableLogicalPlanner(
       MPPQueryContext queryContext,
@@ -145,6 +149,16 @@ public class TableLogicalPlanner {
     this.symbolAllocator = requireNonNull(symbolAllocator, "symbolAllocator is null");
     this.warningCollector = requireNonNull(warningCollector, "warningCollector is null");
     this.planOptimizers = planOptimizers;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        new PredicateWithUncorrelatedScalarSubqueryReconstructor();
+  }
+
+  @TestOnly
+  public void setPredicateWithUncorrelatedScalarSubqueryReconstructor(
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public LogicalQueryPlan plan(final Analysis analysis) {
@@ -316,7 +330,7 @@ public class TableLogicalPlanner {
 
     int columnNumber = 0;
     // TODO perfect the logic of outputDescriptor
-    if (queryContext.isExplainAnalyze()) {
+    if (queryContext.isExplainAnalyze() && !queryContext.isInnerTriggeredQuery()) {
       outputs.add(new Symbol(ColumnHeaderConstant.EXPLAIN_ANALYZE));
       names.add(ColumnHeaderConstant.EXPLAIN_ANALYZE);
       columnHeaders.add(new ColumnHeader(ColumnHeaderConstant.EXPLAIN_ANALYZE, TSDataType.TEXT));
@@ -372,6 +386,10 @@ public class TableLogicalPlanner {
   }
 
   private RelationPlan createRelationPlan(Analysis analysis, Query query) {
+    // materialize cte if needed
+    if (!queryContext.isInnerTriggeredQuery()) {
+      CteMaterializer.getInstance().materializeCTE(analysis, queryContext);
+    }
     return getRelationPlanner(analysis).process(query, null);
   }
 
@@ -385,7 +403,13 @@ public class TableLogicalPlanner {
 
   private RelationPlanner getRelationPlanner(Analysis analysis) {
     return new RelationPlanner(
-        analysis, symbolAllocator, queryContext, Optional.empty(), sessionInfo, ImmutableMap.of());
+        analysis,
+        symbolAllocator,
+        queryContext,
+        Optional.empty(),
+        sessionInfo,
+        ImmutableMap.of(),
+        predicateWithUncorrelatedScalarSubqueryReconstructor);
   }
 
   private PlanNode planCreateOrUpdateDevice(

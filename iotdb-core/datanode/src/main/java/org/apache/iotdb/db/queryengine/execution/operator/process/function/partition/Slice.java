@@ -19,21 +19,28 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.function.partition;
 
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.udf.api.relational.access.Record;
 import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
+import java.io.File;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator.OBJECT_ERR_MSG;
+import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
 /** Parts of partition. */
 public class Slice {
@@ -166,14 +173,28 @@ public class Slice {
 
     @Override
     public Binary getBinary(int columnIndex) {
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        throw new UnsupportedOperationException(OBJECT_ERR_MSG);
+      }
+      return getBinarySafely(columnIndex);
+    }
+
+    public Binary getBinarySafely(int columnIndex) {
       return originalColumns[columnIndex].getBinary(offset);
     }
 
     @Override
     public String getString(int columnIndex) {
-      return originalColumns[columnIndex]
-          .getBinary(offset)
-          .getStringValue(TSFileConfig.STRING_CHARSET);
+      Binary binary = originalColumns[columnIndex].getBinary(offset);
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        return BytesUtils.parseObjectByteArrayToString(binary.getValues());
+      } else if (type == Type.BLOB) {
+        return BytesUtils.parseBlobByteArrayToString(binary.getValues());
+      } else {
+        return binary.getStringValue(TSFileConfig.STRING_CHARSET);
+      }
     }
 
     @Override
@@ -183,7 +204,42 @@ public class Slice {
 
     @Override
     public Object getObject(int columnIndex) {
+      Type type = dataTypes.get(columnIndex);
+      if (type == OBJECT) {
+        throw new UnsupportedOperationException(OBJECT_ERR_MSG);
+      }
       return originalColumns[columnIndex].getObject(offset);
+    }
+
+    @Override
+    public Optional<File> getObjectFile(int columnIndex) {
+      if (getDataType(columnIndex) != Type.OBJECT) {
+        throw new UnsupportedOperationException("current column is not object column");
+      }
+      return ObjectTypeUtils.getObjectPathFromBinary(getBinarySafely(columnIndex));
+    }
+
+    @Override
+    public long objectLength(int columnIndex) {
+      if (getDataType(columnIndex) != Type.OBJECT) {
+        throw new UnsupportedOperationException("current column is not object column");
+      }
+      Binary binary = getBinarySafely(columnIndex);
+      return ObjectTypeUtils.getObjectLength(binary);
+    }
+
+    @Override
+    public Binary readObject(int columnIndex, long offset, int length) {
+      if (getDataType(columnIndex) != Type.OBJECT) {
+        throw new UnsupportedOperationException("current column is not object column");
+      }
+      Binary binary = getBinarySafely(columnIndex);
+      return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
+    }
+
+    @Override
+    public Binary readObject(int columnIndex) {
+      return readObject(columnIndex, 0L, -1);
     }
 
     @Override

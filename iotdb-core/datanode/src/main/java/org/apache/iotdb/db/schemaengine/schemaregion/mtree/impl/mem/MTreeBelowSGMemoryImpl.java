@@ -30,8 +30,10 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
@@ -71,7 +73,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -524,6 +525,50 @@ public class MTreeBelowSGMemoryImpl {
       }
     }
     return failingMeasurementMap;
+  }
+
+  public boolean alterTimeSeriesDataType(
+      final MeasurementPath measurementPath, final String measurement, TSDataType newDataType)
+      throws MetadataException {
+    boolean result = false;
+    try (final MeasurementUpdater<IMemMNode> collector =
+        new MeasurementUpdater<IMemMNode>(
+            rootNode, measurementPath, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateMeasurement(final IMeasurementMNode<IMemMNode> node)
+              throws MetadataException {
+            if (node.isLogicalView()) {
+              throw new MetadataException("View table is not allowed.");
+            }
+            if (node.isPreDeleted()) {
+              throw new MeasurementInBlackListException(
+                  measurementPath.concatAsMeasurementPath(measurement));
+            }
+            if (!MetadataUtils.canAlter(
+                measurementPath.getMeasurementSchema().getType(), newDataType)) {
+              throw new MetadataException(
+                  String.format(
+                      "The timeseries %s used new type %s is not compatible with the existing one %s",
+                      measurementPath.getFullPath(),
+                      newDataType,
+                      measurementPath.getMeasurementSchema().getType()));
+            }
+
+            final IMeasurementSchema schema = node.getSchema();
+            node.setSchema(
+                new MeasurementSchema(
+                    schema.getMeasurementName(),
+                    newDataType,
+                    SchemaUtils.getDataTypeCompatibleEncoding(
+                        newDataType, schema.getEncodingType()),
+                    schema.getCompressor(),
+                    schema.getProps()));
+          }
+        }) {
+      collector.traverse();
+      result = true;
+    }
+    return result;
   }
 
   public boolean changeAlias(final String alias, final PartialPath fullPath)

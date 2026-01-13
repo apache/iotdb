@@ -35,6 +35,7 @@ import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
 import org.apache.tsfile.read.common.type.DoubleType;
 import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
 
 import java.util.ArrayList;
@@ -161,7 +162,9 @@ public class PatternExpressionComputation {
       return partition.getFloat(channel, position);
     } else if (type instanceof DoubleType) {
       return partition.getDouble(channel, position);
-    } else if (type instanceof AbstractVarcharType || type instanceof BlobType) {
+    } else if (type instanceof AbstractVarcharType
+        || type instanceof BlobType
+        || type instanceof ObjectType) {
       return partition.getBinary(channel, position);
     } else {
       throw new SemanticException("Unsupported type: " + type.getClass().getSimpleName());

@@ -146,54 +146,6 @@ IF DEFINED CONFIG_FILE (
   set dn_data_region_consensus_port=10760
 )
 
-echo Check whether the ports are occupied....
-set occupied=0
-set dn_rpc_port_occupied=0
-set dn_internal_port_occupied=0
-set dn_mpp_data_exchange_port_occupied=0
-set dn_schema_region_consensus_port_occupied=0
-set dn_data_region_consensus_port_occupied=0
-for /f  "tokens=1,3,7 delims=: " %%i in ('netstat /ano') do (
-    if %%i==TCP (
-       if %%j==%dn_rpc_port% (
-         if !dn_rpc_port_occupied!==0 (
-           echo The dn_rpc_port %dn_rpc_port% is already occupied, pid:%%k
-           set occupied=1
-           set dn_rpc_port_occupied=1
-         )
-       ) else if %%j==%dn_internal_port% (
-         if !dn_internal_port_occupied!==0 (
-           echo The dn_internal_port %dn_internal_port% is already occupied, pid:%%k
-           set occupied=1
-           set dn_internal_port_occupied=1
-         )
-       ) else if %%j==%dn_mpp_data_exchange_port% (
-         if !dn_mpp_data_exchange_port_occupied!==0 (
-           echo The dn_mpp_data_exchange_port %dn_mpp_data_exchange_port% is already occupied, pid:%%k
-           set occupied=1
-           set dn_mpp_data_exchange_port_occupied=1
-         )
-       ) else if %%j==%dn_schema_region_consensus_port% (
-         if !dn_schema_region_consensus_port_occupied!==0 (
-           echo The dn_schema_region_consensus_port %dn_schema_region_consensus_port% is already occupied, pid:%%k
-           set occupied=1
-           set dn_schema_region_consensus_port_occupied=1
-         )
-       ) else if %%j==%dn_data_region_consensus_port% (
-         if !dn_data_region_consensus_port_occupied!==0 (
-           echo The dn_data_region_consensus_port %dn_data_region_consensus_port% is already occupied, pid:%%k
-           set occupied=1
-         )
-       )
-    )
-)
-
-if %occupied%==1 (
-  echo There exists occupied port, please change the configuration.
-  TIMEOUT /T 10 /NOBREAK
-  exit 0
-)
-
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-s
 if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.service.DataNode

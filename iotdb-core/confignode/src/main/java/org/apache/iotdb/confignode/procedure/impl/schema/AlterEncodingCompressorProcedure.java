@@ -41,6 +41,7 @@ import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -51,7 +52,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -176,8 +176,6 @@ public class AlterEncodingCompressorProcedure
                     .setCompressor(compressor)
                     .setEncoding(encoding))) {
 
-          private final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
-
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
               final TDataNodeLocation dataNodeLocation,
@@ -203,7 +201,7 @@ public class AlterEncodingCompressorProcedure
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
-              failureMap.put(dataNodeLocation, response);
+              failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
             } else {
               failureMap.remove(dataNodeLocation);
             }
@@ -219,7 +217,7 @@ public class AlterEncodingCompressorProcedure
                     new MetadataException(
                         String.format(
                             "Alter encoding compressor %s in schema regions failed. Failures: %s",
-                            requestMessage, failureMap))));
+                            requestMessage, printFailureMap()))));
             interruptTask();
           }
         };

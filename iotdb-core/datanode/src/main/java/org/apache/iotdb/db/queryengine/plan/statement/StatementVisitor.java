@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMul
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -195,6 +197,11 @@ public abstract class StatementVisitor<R, C> {
   // Alter TimeSeries
   public R visitAlterTimeSeries(AlterTimeSeriesStatement alterTimeSeriesStatement, C context) {
     return visitStatement(alterTimeSeriesStatement, context);
+  }
+
+  public R visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, C context) {
+    return visitStatement(alterTimeSeriesDataTypeStatement, context);
   }
 
   public R visitAlterEncodingCompressor(
@@ -504,6 +511,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowAvailableUrls(
+      ShowAvailableUrlsStatement showAvailableUrlsStatement, C context) {
+    return visitStatement(showAvailableUrlsStatement, context);
   }
 
   public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {

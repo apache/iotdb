@@ -91,7 +91,7 @@ public class AuthorityChecker {
   public static final String ONLY_ADMIN_ALLOWED =
       "No permissions for this operation, only root user is allowed";
 
-  private static final String NO_PERMISSION_PROMOTION =
+  public static final String NO_PERMISSION_PROMOTION =
       "No permissions for this operation, please add privilege ";
 
   private static final String NO_GRANT_OPT_PERMISSION_PROMOTION =
@@ -304,9 +304,16 @@ public class AuthorityChecker {
     prompt.append(neededPrivilege);
     prompt.append(" on [");
     prompt.append(pathList.get(noPermissionIndexList.get(0)));
-    for (int i = 1; i < noPermissionIndexList.size(); i++) {
+    final int size =
+        Math.min(
+            noPermissionIndexList.size(),
+            CommonDescriptor.getInstance().getConfig().getPathLogMaxSize());
+    for (int i = 1; i < size; i++) {
       prompt.append(", ");
       prompt.append(pathList.get(noPermissionIndexList.get(i)));
+    }
+    if (size < noPermissionIndexList.size()) {
+      prompt.append(", ...");
     }
     prompt.append("]");
     return new TSStatus(TSStatusCode.NO_PERMISSION.getStatusCode()).setMessage(prompt.toString());

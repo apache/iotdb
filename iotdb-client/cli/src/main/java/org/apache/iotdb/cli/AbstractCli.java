@@ -321,9 +321,7 @@ public abstract class AbstractCli {
       }
     }
     if (index >= 0) {
-      if (index + 1 >= args.length
-          || args[index + 1].startsWith("-")
-          || (keywordSet.contains(args[index + 1]))) {
+      if (index + 1 >= args.length || keywordSet.contains(args[index + 1])) {
         return ArrayUtils.remove(args, index);
       }
     }
@@ -742,6 +740,7 @@ public abstract class AbstractCli {
       case DOUBLE:
       case TEXT:
       case STRING:
+      case OBJECT:
         return resultSet.getString(columnIndex);
       case BLOB:
         byte[] v = resultSet.getBytes(columnIndex);

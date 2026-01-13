@@ -53,6 +53,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   @SuppressWarnings("java:S3077")
   protected volatile Event lastExceptionEvent;
 
+  protected long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
+
   protected PipeAbstractSinkSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
     super(taskID, creationTime);
@@ -246,6 +248,17 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         ((EnrichedEvent) lastExceptionEvent).clearReferenceCount(PipeSubtask.class.getName());
       }
       lastExceptionEvent = null;
+    }
+  }
+
+  public void sleep4NonReportException() {
+    if (sleepInterval < PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalMaxMs()) {
+      sleepInterval <<= 1;
+    }
+    try {
+      Thread.sleep(sleepInterval);
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 }

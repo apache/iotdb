@@ -115,6 +115,11 @@ public class TableIntoOperator extends AbstractIntoOperator {
   }
 
   @Override
+  protected TsBlock tryToReturnPartialResult() {
+    return null;
+  }
+
+  @Override
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)

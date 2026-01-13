@@ -24,6 +24,8 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -37,7 +39,13 @@ import static java.util.Objects.requireNonNull;
 
 public class LoadTsFile extends Statement {
 
-  private final String filePath;
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(LoadTsFile.class);
+
+  private static final long FILE_INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(File.class);
+
+  private String filePath;
 
   private int databaseLevel; // For loading to tree-model only
   private String database; // For loading to table-model only
@@ -50,7 +58,7 @@ public class LoadTsFile extends Statement {
 
   private boolean isGeneratedByPipe = false;
 
-  private final Map<String, String> loadAttributes;
+  private Map<String, String> loadAttributes;
 
   private List<File> tsFiles;
   private List<TsFileResource> resources;
@@ -239,6 +247,63 @@ public class LoadTsFile extends Statement {
   }
 
   @Override
+  public boolean shouldSplit() {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
+  }
+
+  /**
+   * Splits the current LoadTsFile statement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @return the list of sub-statements
+   */
+  @Override
+  public List<LoadTsFile> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFile> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      // Use the first file's path for the sub-statement
+      final String filePath = batchFiles.get(0).getAbsolutePath();
+      final Map<String, String> properties = this.loadAttributes;
+
+      final LoadTsFile subStatement =
+          new LoadTsFile(getLocation().orElse(null), filePath, properties);
+
+      // Copy all configuration properties
+      subStatement.databaseLevel = this.databaseLevel;
+      subStatement.database = this.database;
+      subStatement.verify = this.verify;
+      subStatement.deleteAfterLoad = this.deleteAfterLoad;
+      subStatement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      subStatement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      subStatement.autoCreateDatabase = this.autoCreateDatabase;
+      subStatement.isAsyncLoad = this.isAsyncLoad;
+      subStatement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      // Set all files in the batch
+      subStatement.tsFiles = new ArrayList<>(batchFiles);
+      subStatement.resources = new ArrayList<>(batchFiles.size());
+      subStatement.writePointCountList = new ArrayList<>(batchFiles.size());
+      subStatement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        subStatement.isTableModel.add(true);
+      }
+
+      subStatements.add(subStatement);
+    }
+
+    return subStatements;
+  }
+
+  @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitLoadTsFile(this, context);
   }
@@ -272,5 +337,33 @@ public class LoadTsFile extends Statement {
         .add("filePath", filePath)
         .add("loadAttributes", loadAttributes)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(filePath);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOfMap(loadAttributes);
+    if (tsFiles != null) {
+      size += RamUsageEstimator.shallowSizeOf(tsFiles);
+      for (File file : tsFiles) {
+        if (file != null) {
+          size += FILE_INSTANCE_SIZE;
+        }
+      }
+    }
+    if (resources != null) {
+      size += RamUsageEstimator.shallowSizeOf(resources);
+      for (TsFileResource resource : resources) {
+        if (resource != null) {
+          size += resource.calculateRamSize();
+        }
+      }
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfLongList(writePointCountList);
+    size += RamUsageEstimator.shallowSizeOf(isTableModel);
+    return size;
   }
 }

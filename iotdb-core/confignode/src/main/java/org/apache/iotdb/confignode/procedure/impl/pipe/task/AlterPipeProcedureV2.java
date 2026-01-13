@@ -187,6 +187,7 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
+                    && !Objects.isNull(currentPipeTaskMeta)
                     && !(PipeTaskAgent.isHistoryOnlyPipe(
                             currentPipeStaticMeta.getSourceParameters())
                         && PipeTaskAgent.isHistoryOnlyPipe(

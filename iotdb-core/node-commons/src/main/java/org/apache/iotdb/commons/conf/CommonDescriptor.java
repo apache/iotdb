@@ -276,6 +276,16 @@ public class CommonDescriptor {
                 "cluster_device_limit_threshold",
                 String.valueOf(config.getDeviceLimitThreshold()))));
 
+    config.setPathLogMaxSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "path_log_max_size", String.valueOf(config.getPathLogMaxSize()))));
+
+    config.setRestrictObjectLimit(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "restrict_object_limit", String.valueOf(config.isRestrictObjectLimit()))));
+
     loadRetryProperties(properties);
     loadBinaryAllocatorProps(properties);
   }
@@ -474,6 +484,7 @@ public class CommonDescriptor {
     config.setTagAttributeTotalSize(globalConfig.tagAttributeTotalSize);
     config.setDiskSpaceWarningThreshold(globalConfig.getDiskSpaceWarningThreshold());
     config.setEnableGrantOption(globalConfig.isEnableGrantOption());
+    config.setRestrictObjectLimit(globalConfig.isRestrictObjectLimit());
   }
 
   public void loadAuditConfig(TAuditConfig auditConfig) {

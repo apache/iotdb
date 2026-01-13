@@ -72,6 +72,14 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     this.tagPredicate = tagPredicate;
   }
 
+  public IDPredicate getIdPredicate() {
+    return idPredicate;
+  }
+
+  public IDPredicate.IDPredicateType getIdPredicateType() {
+    return this.idPredicate.type;
+  }
+
   public String getTableName() {
     return tableName;
   }

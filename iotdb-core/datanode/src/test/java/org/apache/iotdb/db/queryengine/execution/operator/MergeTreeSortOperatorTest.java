@@ -1910,5 +1910,10 @@ public class MergeTreeSortOperatorTest {
     public boolean isUserQuery() {
       return false;
     }
+
+    @Override
+    public String getClientHostname() {
+      return SessionConfig.DEFAULT_HOST;
+    }
   }
 }

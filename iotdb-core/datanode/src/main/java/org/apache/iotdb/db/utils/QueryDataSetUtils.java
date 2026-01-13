@@ -51,6 +51,9 @@ public class QueryDataSetUtils {
 
   private static final TSFileConfig TSFLE_CONFIG = TSFileDescriptor.getInstance().getConfig();
 
+  // default return 8 MB each time
+  private static final long MAX_RETURN_SIZE = 8 * 1024 * 1024;
+
   private QueryDataSetUtils() {}
 
   public static Pair<TSQueryDataSet, Boolean> convertTsBlockByFetchSize(
@@ -236,6 +239,7 @@ public class QueryDataSetUtils {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             for (int i = 0; i < currentCount; i++) {
               rowCount++;
               if (column.isNull(i)) {
@@ -379,6 +383,7 @@ public class QueryDataSetUtils {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           doWithTextColumn(
               rowCount,
               column,
@@ -614,8 +619,9 @@ public class QueryDataSetUtils {
       IQueryExecution queryExecution, int fetchSize) throws IoTDBException {
     fetchSize = fetchSize > 0 ? fetchSize : TSFLE_CONFIG.getMaxTsBlockLineNumber();
     int rowCount = 0;
+    long memorySize = 0;
     List<ByteBuffer> res = new ArrayList<>();
-    while (rowCount < fetchSize) {
+    while (rowCount < fetchSize && memorySize < MAX_RETURN_SIZE) {
       Optional<ByteBuffer> optionalByteBuffer = queryExecution.getByteBufferBatchResult();
       if (!optionalByteBuffer.isPresent()) {
         break;
@@ -632,6 +638,7 @@ public class QueryDataSetUtils {
         res.add(byteBuffer);
       }
       rowCount += positionCount;
+      memorySize += byteBuffer.limit();
     }
     return new Pair<>(res, !queryExecution.hasNextResult());
   }
@@ -753,6 +760,7 @@ public class QueryDataSetUtils {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           Binary[] binaryValues = new Binary[size];
           for (int index = 0; index < size; index++) {
             int binarySize = buffer.getInt();
@@ -795,6 +803,7 @@ public class QueryDataSetUtils {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           parseTextColumn(size, stream, values, i);
           break;
         default:

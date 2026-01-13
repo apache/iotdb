@@ -31,12 +31,14 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
@@ -61,8 +63,6 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.CreateModelProcedure;
-import org.apache.iotdb.confignode.procedure.impl.model.DropModelProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
@@ -86,6 +86,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedur
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.AlterTimeSeriesDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeactivateTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteDatabaseProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.DeleteLogicalViewProcedure;
@@ -95,6 +96,7 @@ import org.apache.iotdb.confignode.procedure.impl.schema.SetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.UnsetTemplateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AbstractAlterOrDropTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.AddTableColumnProcedure;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.AlterTableColumnDataTypeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.CreateTableProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DeleteDevicesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.DropTableColumnProcedure;
@@ -150,12 +152,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.ratis.util.AutoCloseableLock;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -465,6 +467,22 @@ public class ProcedureManager {
                 req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe());
         this.executor.submitProcedure(procedure);
       }
+    }
+    return waitingProcedureFinished(procedure);
+  }
+
+  public TSStatus alterTimeSeriesDataType(
+      final String queryId,
+      final MeasurementPath measurementPath,
+      final byte operationType,
+      final TSDataType tsDataType,
+      final boolean isGeneratedByPipe) {
+    AlterTimeSeriesDataTypeProcedure procedure;
+    synchronized (this) {
+      procedure =
+          new AlterTimeSeriesDataTypeProcedure(
+              queryId, measurementPath, operationType, tsDataType, isGeneratedByPipe);
+      this.executor.submitProcedure(procedure);
     }
     return waitingProcedureFinished(procedure);
   }
@@ -1414,24 +1432,6 @@ public class ProcedureManager {
     return waitingProcedureFinished(procedure);
   }
 
-  public TSStatus createModel(String modelName, String uri) {
-    long procedureId = executor.submitProcedure(new CreateModelProcedure(modelName, uri));
-    LOGGER.info("CreateModelProcedure was submitted, procedureId: {}.", procedureId);
-    return RpcUtils.SUCCESS_STATUS;
-  }
-
-  public TSStatus dropModel(String modelId) {
-    DropModelProcedure procedure = new DropModelProcedure(modelId);
-    executor.submitProcedure(procedure);
-    TSStatus status = waitingProcedureFinished(procedure);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
-    } else {
-      return new TSStatus(TSStatusCode.DROP_MODEL_ERROR.getStatusCode())
-          .setMessage(status.getMessage());
-    }
-  }
-
   public TSStatus createPipePlugin(
       PipePluginMeta pipePluginMeta, byte[] jarFile, boolean isSetIfNotExistsCondition) {
     final CreatePipePluginProcedure createPipePluginProcedure =
@@ -2035,6 +2035,22 @@ public class ProcedureManager {
                 false));
   }
 
+  public TSStatus alterTableColumnDataType(TAlterOrDropTableReq req) {
+    return executeWithoutDuplicate(
+        req.database,
+        null,
+        req.tableName,
+        req.queryId,
+        ProcedureType.ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE,
+        new AlterTableColumnDataTypeProcedure(
+            req.database,
+            req.tableName,
+            req.queryId,
+            ReadWriteIOUtils.readVarIntString(req.updateInfo),
+            TSDataType.deserialize(req.updateInfo.get()),
+            false));
+  }
+
   public TSStatus dropTable(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
     return executeWithoutDuplicate(
@@ -2219,6 +2235,7 @@ public class ProcedureManager {
         case DROP_TABLE_PROCEDURE:
         case DROP_VIEW_PROCEDURE:
         case DELETE_DEVICES_PROCEDURE:
+        case ALTER_TABLE_COLUMN_DATATYPE_PROCEDURE:
           final AbstractAlterOrDropTableProcedure<?> alterTableProcedure =
               (AbstractAlterOrDropTableProcedure<?>) procedure;
           if (type == thisType && queryId.equals(alterTableProcedure.getQueryId())) {

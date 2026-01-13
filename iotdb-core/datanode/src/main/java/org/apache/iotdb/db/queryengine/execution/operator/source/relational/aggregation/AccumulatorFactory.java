@@ -391,6 +391,7 @@ public class AccumulatorFactory {
         return new BinaryGroupedApproxMostFrequentAccumulator();
       case BLOB:
         return new BlobGroupedApproxMostFrequentAccumulator();
+      case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));
@@ -416,6 +417,7 @@ public class AccumulatorFactory {
         return new BinaryApproxMostFrequentAccumulator();
       case BLOB:
         return new BlobApproxMostFrequentAccumulator();
+      case OBJECT:
       default:
         throw new UnSupportedDataTypeException(
             String.format("Unsupported data type in APPROX_COUNT_DISTINCT Aggregation: %s", type));

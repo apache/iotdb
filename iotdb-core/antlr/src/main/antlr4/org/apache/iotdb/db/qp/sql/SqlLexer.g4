@@ -233,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -252,6 +256,14 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
     ;
 
 DATASET

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.planner;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -86,7 +88,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -454,7 +455,23 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         alterTimeSeriesStatement.getAlias(),
         alterTimeSeriesStatement.getTagsMap(),
         alterTimeSeriesStatement.getAttributesMap(),
-        alterTimeSeriesStatement.isAlterView());
+        alterTimeSeriesStatement.isAlterView(),
+        alterTimeSeriesStatement.getDataType());
+  }
+
+  @Override
+  public PlanNode visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, MPPQueryContext context) {
+    return new AlterTimeSeriesNode(
+        context.getQueryId().genPlanNodeId(),
+        alterTimeSeriesDataTypeStatement.getPath(),
+        alterTimeSeriesDataTypeStatement.getAlterType(),
+        alterTimeSeriesDataTypeStatement.getAlterMap(),
+        alterTimeSeriesDataTypeStatement.getAlias(),
+        alterTimeSeriesDataTypeStatement.getTagsMap(),
+        alterTimeSeriesDataTypeStatement.getAttributesMap(),
+        alterTimeSeriesDataTypeStatement.isAlterView(),
+        alterTimeSeriesDataTypeStatement.getDataType());
   }
 
   @Override

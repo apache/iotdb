@@ -114,6 +114,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
@@ -121,6 +122,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
@@ -316,13 +318,15 @@ public enum PlanNodeType {
   TABLE_INTO_NODE((short) 1033),
   TABLE_UNION_NODE((short) 1034),
   TABLE_INTERSECT_NODE((short) 1035),
+  TABLE_EXCEPT_NODE((short) 1036),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
-  EVOLVE_SCHEMA((short) 2004),
-  PIPE_ENRICHED_EVOLVE_SCHEMA((short) 2005),
+  OBJECT_FILE_NODE((short) 2004),
+  EVOLVE_SCHEMA((short) 2005),
+  PIPE_ENRICHED_EVOLVE_SCHEMA((short) 2006),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -367,8 +371,10 @@ public enum PlanNodeType {
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
       case 2004:
+        return ObjectNode.deserializeFromWAL(stream);
+      case 2005
         return EvolveSchemaNode.deserializeFromWAL(stream);
-      case 2005:
+      case 2006:
         return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
@@ -397,8 +403,10 @@ public enum PlanNodeType {
       case 2003:
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
-        return EvolveSchemaNode.deserializeFromWAL(buffer);
+        return ObjectNode.deserialize(buffer);
       case 2005:
+        return EvolveSchemaNode.deserializeFromWAL(buffer);
+      case 2006:
         return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
@@ -717,6 +725,8 @@ public enum PlanNodeType {
         return UnionNode.deserialize(buffer);
       case 1035:
         return IntersectNode.deserialize(buffer);
+      case 1036:
+        return ExceptNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
@@ -726,8 +736,10 @@ public enum PlanNodeType {
       case 2003:
         return RelationalDeleteDataNode.deserialize(buffer);
       case 2004:
-        return EvolveSchemaNode.deserialize(buffer);
+        return ObjectNode.deserialize(buffer);
       case 2005:
+        return EvolveSchemaNode.deserialize(buffer);
+      case 2006:
         return PipeEnrichedEvolveSchemaNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

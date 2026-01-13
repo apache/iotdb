@@ -36,6 +36,7 @@ public class ColumnHeaderConstant {
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
   public static final String DEVICE_ID = "DeviceId";
+  public static final String DEVICE_TYPE = "DeviceType";
   public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
@@ -205,11 +206,27 @@ public class ColumnHeaderConstant {
   public static final String ELAPSED_TIME = "ElapsedTime";
   public static final String STATEMENT = "Statement";
 
+  // column names for show idle connection
+  public static final String DATANODE_ID = "datanode_id";
+  public static final String USERID = "user_id";
+  public static final String SESSION_ID = "session_id";
+  public static final String USER_NAME = "user_name";
+  public static final String LAST_ACTIVE_TIME = "last_active_time";
+  public static final String CLIENT_IP = "client_ip";
+
   public static final String QUERY_ID_TABLE_MODEL = "query_id";
-  public static final String QUERY_ID_START_TIME_TABLE_MODEL = "start_time";
   public static final String DATA_NODE_ID_TABLE_MODEL = "datanode_id";
   public static final String START_TIME_TABLE_MODEL = "start_time";
   public static final String ELAPSED_TIME_TABLE_MODEL = "elapsed_time";
+
+  // column names for current_queries and queries_costs_histogram
+  public static final String STATE_TABLE_MODEL = "state";
+  public static final String END_TIME_TABLE_MODEL = "end_time";
+  public static final String COST_TIME = "cost_time";
+  public static final String STATEMENT_TABLE_MODEL = "statement";
+  public static final String USER_TABLE_MODEL = "user";
+  public static final String BIN = "bin";
+  public static final String NUMS = "nums";
 
   public static final String TABLE_NAME_TABLE_MODEL = "table_name";
   public static final String TABLE_TYPE_TABLE_MODEL = "table_type";
@@ -461,6 +478,11 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_REGION_NUM, TSDataType.INT32),
           new ColumnHeader(SCHEMA_REGION_NUM, TSDataType.INT32));
 
+  public static final List<ColumnHeader> showAvailableUrlsColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(RPC_ADDRESS, TSDataType.TEXT),
+          new ColumnHeader(RPC_PORT, TSDataType.INT32));
+
   public static final List<ColumnHeader> showConfigNodesColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(NODE_ID, TSDataType.INT32),
@@ -639,7 +661,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COUNT_INSTANCES, TSDataType.INT32));
 
   public static final List<ColumnHeader> showAIDevicesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(DEVICE_ID, TSDataType.TEXT));
+      ImmutableList.of(
+          new ColumnHeader(DEVICE_ID, TSDataType.TEXT),
+          new ColumnHeader(DEVICE_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

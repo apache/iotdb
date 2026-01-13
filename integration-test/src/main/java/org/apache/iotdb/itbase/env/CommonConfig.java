@@ -211,4 +211,10 @@ public interface CommonConfig {
   CommonConfig setAuditableOperationLevel(String auditableOperationLevel);
 
   CommonConfig setAuditableOperationResult(String auditableOperationResult);
+
+  CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit);
+
+  CommonConfig setCteBufferSize(long cteBufferSize);
+
+  CommonConfig setMaxRowsInCteBuffer(int maxRows);
 }

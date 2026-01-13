@@ -147,6 +147,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.ConstructSchemaBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeactivateTemplateNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.DeleteTimeSeriesNode;
@@ -189,6 +190,7 @@ import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -204,6 +206,7 @@ import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
+import org.apache.iotdb.db.utils.ObjectTypeUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -211,6 +214,7 @@ import org.apache.iotdb.metrics.utils.SystemMetric;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
@@ -283,6 +287,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -361,6 +366,7 @@ import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.client.request.TestConnectionUtils.testConnectionsImpl;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement.AlterType.SET_DATA_TYPE;
 import static org.apache.iotdb.db.service.RegionMigrateService.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
@@ -862,6 +868,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       req.isIfExists(),
                       SerializeUtils.deserializeEncodingNullable(req.getEncoding()),
                       SerializeUtils.deserializeCompressorNullable(req.getCompressor())))
+              .getStatus();
+        });
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req) throws TException {
+    final MeasurementPath measurementPath =
+        (MeasurementPath)
+            PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath()));
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId -> {
+          final String database =
+              schemaEngine
+                  .getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()))
+                  .getDatabaseFullPath();
+          final RegionWriteExecutor executor = new RegionWriteExecutor();
+          return executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new AlterTimeSeriesNode(
+                      new PlanNodeId(""),
+                      measurementPath,
+                      SET_DATA_TYPE,
+                      false,
+                      TSDataType.deserialize(req.updateInfo.get())))
               .getStatus();
         });
   }
@@ -3072,6 +3104,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return onIoTDBException(e, OperationType.WRITE_AUDIT_LOG, e.getErrorCode());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public ByteBuffer readObject(TReadObjectReq req) {
+    return ObjectTypeUtils.readObjectContent(
+        req.getRelativePath(), req.getOffset(), req.getSize(), false);
   }
 
   public void handleClientExit() {

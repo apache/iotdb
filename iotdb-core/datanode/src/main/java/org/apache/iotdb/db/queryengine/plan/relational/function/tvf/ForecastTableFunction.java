@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
+import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClient;
-import org.apache.iotdb.db.protocol.client.ainode.AINodeClientManager;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
@@ -58,6 +58,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -70,20 +71,20 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
 import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ForecastTableFunction implements TableFunction {
 
   public static class ForecastTableFunctionHandle implements TableFunctionHandle {
-    TEndPoint targetAINode;
-    String modelId;
-    int maxInputLength;
-    int outputLength;
-    long outputStartTime;
-    long outputInterval;
-    boolean keepInput;
-    Map<String, String> options;
-    List<Type> types;
+    protected String modelId;
+    protected int maxInputLength;
+    protected int outputLength;
+    protected long outputStartTime;
+    protected long outputInterval;
+    protected boolean keepInput;
+    protected Map<String, String> options;
+    protected List<Type> targetColumntypes;
 
     public ForecastTableFunctionHandle() {}
 
@@ -95,8 +96,7 @@ public class ForecastTableFunction implements TableFunction {
         int outputLength,
         long outputStartTime,
         long outputInterval,
-        TEndPoint targetAINode,
-        List<Type> types) {
+        List<Type> targetColumntypes) {
       this.keepInput = keepInput;
       this.maxInputLength = maxInputLength;
       this.modelId = modelId;
@@ -104,16 +104,13 @@ public class ForecastTableFunction implements TableFunction {
       this.outputLength = outputLength;
       this.outputStartTime = outputStartTime;
       this.outputInterval = outputInterval;
-      this.targetAINode = targetAINode;
-      this.types = types;
+      this.targetColumntypes = targetColumntypes;
     }
 
     @Override
     public byte[] serialize() {
       try (PublicBAOS publicBAOS = new PublicBAOS();
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
-        ReadWriteIOUtils.write(targetAINode.getIp(), outputStream);
-        ReadWriteIOUtils.write(targetAINode.getPort(), outputStream);
         ReadWriteIOUtils.write(modelId, outputStream);
         ReadWriteIOUtils.write(maxInputLength, outputStream);
         ReadWriteIOUtils.write(outputLength, outputStream);
@@ -121,8 +118,8 @@ public class ForecastTableFunction implements TableFunction {
         ReadWriteIOUtils.write(outputInterval, outputStream);
         ReadWriteIOUtils.write(keepInput, outputStream);
         ReadWriteIOUtils.write(options, outputStream);
-        ReadWriteIOUtils.write(types.size(), outputStream);
-        for (Type type : types) {
+        ReadWriteIOUtils.write(targetColumntypes.size(), outputStream);
+        for (Type type : targetColumntypes) {
           ReadWriteIOUtils.write(type.getType(), outputStream);
         }
         outputStream.flush();
@@ -138,8 +135,6 @@ public class ForecastTableFunction implements TableFunction {
     @Override
     public void deserialize(byte[] bytes) {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
-      this.targetAINode =
-          new TEndPoint(ReadWriteIOUtils.readString(buffer), ReadWriteIOUtils.readInt(buffer));
       this.modelId = ReadWriteIOUtils.readString(buffer);
       this.maxInputLength = ReadWriteIOUtils.readInt(buffer);
       this.outputLength = ReadWriteIOUtils.readInt(buffer);
@@ -148,9 +143,9 @@ public class ForecastTableFunction implements TableFunction {
       this.keepInput = ReadWriteIOUtils.readBoolean(buffer);
       this.options = ReadWriteIOUtils.readMap(buffer);
       int size = ReadWriteIOUtils.readInt(buffer);
-      this.types = new ArrayList<>(size);
+      this.targetColumntypes = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
-        types.add(Type.valueOf(ReadWriteIOUtils.readByte(buffer)));
+        targetColumntypes.add(Type.valueOf(ReadWriteIOUtils.readByte(buffer)));
       }
     }
 
@@ -168,16 +163,14 @@ public class ForecastTableFunction implements TableFunction {
           && outputStartTime == that.outputStartTime
           && outputInterval == that.outputInterval
           && keepInput == that.keepInput
-          && Objects.equals(targetAINode, that.targetAINode)
           && Objects.equals(modelId, that.modelId)
           && Objects.equals(options, that.options)
-          && Objects.equals(types, that.types);
+          && Objects.equals(targetColumntypes, that.targetColumntypes);
     }
 
     @Override
     public int hashCode() {
       return Objects.hash(
-          targetAINode,
           modelId,
           maxInputLength,
           outputLength,
@@ -185,28 +178,26 @@ public class ForecastTableFunction implements TableFunction {
           outputInterval,
           keepInput,
           options,
-          types);
+          targetColumntypes);
     }
   }
 
-  private static final String INPUT_PARAMETER_NAME = "INPUT";
-  private static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
-  private static final String OUTPUT_LENGTH_PARAMETER_NAME = "OUTPUT_LENGTH";
-  private static final int DEFAULT_OUTPUT_LENGTH = 96;
-  private static final String PREDICATED_COLUMNS_PARAMETER_NAME = "PREDICATED_COLUMNS";
-  private static final String DEFAULT_PREDICATED_COLUMNS = "";
-  private static final String OUTPUT_START_TIME = "OUTPUT_START_TIME";
+  protected static final String TARGETS_PARAMETER_NAME = "TARGETS";
+  protected static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
+  protected static final String OUTPUT_LENGTH_PARAMETER_NAME = "OUTPUT_LENGTH";
+  protected static final int DEFAULT_OUTPUT_LENGTH = 96;
+  protected static final String OUTPUT_START_TIME = "OUTPUT_START_TIME";
   public static final long DEFAULT_OUTPUT_START_TIME = Long.MIN_VALUE;
-  private static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
+  protected static final String OUTPUT_INTERVAL = "OUTPUT_INTERVAL";
   public static final long DEFAULT_OUTPUT_INTERVAL = 0L;
   public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
-  private static final String DEFAULT_TIME_COL = "time";
-  private static final String KEEP_INPUT_PARAMETER_NAME = "PRESERVE_INPUT";
-  private static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
-  private static final String IS_INPUT_COLUMN_NAME = "is_input";
-  private static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
-  private static final String DEFAULT_OPTIONS = "";
-  private static final int MAX_INPUT_LENGTH = 2880;
+  protected static final String DEFAULT_TIME_COL = "time";
+  protected static final String KEEP_INPUT_PARAMETER_NAME = "PRESERVE_INPUT";
+  protected static final Boolean DEFAULT_KEEP_INPUT = Boolean.FALSE;
+  protected static final String IS_INPUT_COLUMN_NAME = "is_input";
+  protected static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
+  protected static final String DEFAULT_OPTIONS = "";
+  protected static final int MAX_INPUT_LENGTH = 2880;
 
   private static final String INVALID_OPTIONS_FORMAT = "Invalid options: %s";
 
@@ -219,20 +210,10 @@ public class ForecastTableFunction implements TableFunction {
     ALLOWED_INPUT_TYPES.add(Type.DOUBLE);
   }
 
-  // need to set before analyze method is called
-  // should only be used in fe scope, never be used in TableFunctionProcessorProvider
-  // The reason we don't directly set modelFetcher=ModelFetcher.getInstance() is that we need to
-  // mock IModelFetcher in UT
-  private IModelFetcher modelFetcher = null;
-
-  public void setModelFetcher(IModelFetcher modelFetcher) {
-    this.modelFetcher = modelFetcher;
-  }
-
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
     return Arrays.asList(
-        TableParameterSpecification.builder().name(INPUT_PARAMETER_NAME).setSemantics().build(),
+        TableParameterSpecification.builder().name(TARGETS_PARAMETER_NAME).setSemantics().build(),
         ScalarParameterSpecification.builder()
             .name(MODEL_ID_PARAMETER_NAME)
             .type(Type.STRING)
@@ -253,11 +234,6 @@ public class ForecastTableFunction implements TableFunction {
             .defaultValue(DEFAULT_OUTPUT_INTERVAL)
             .build(),
         ScalarParameterSpecification.builder()
-            .name(PREDICATED_COLUMNS_PARAMETER_NAME)
-            .type(Type.STRING)
-            .defaultValue(DEFAULT_PREDICATED_COLUMNS)
-            .build(),
-        ScalarParameterSpecification.builder()
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
             .defaultValue(DEFAULT_TIME_COL)
@@ -276,15 +252,13 @@ public class ForecastTableFunction implements TableFunction {
 
   @Override
   public TableFunctionAnalysis analyze(Map<String, Argument> arguments) {
-    TableArgument input = (TableArgument) arguments.get(INPUT_PARAMETER_NAME);
+    TableArgument targets = (TableArgument) arguments.get(TARGETS_PARAMETER_NAME);
     String modelId = (String) ((ScalarArgument) arguments.get(MODEL_ID_PARAMETER_NAME)).getValue();
     // modelId should never be null or empty
     if (modelId == null || modelId.isEmpty()) {
       throw new SemanticException(
           String.format("%s should never be null or empty", MODEL_ID_PARAMETER_NAME));
     }
-
-    TEndPoint targetAINode = getModelInfo(modelId).getTargetAINode();
 
     int outputLength =
         (int) ((ScalarArgument) arguments.get(OUTPUT_LENGTH_PARAMETER_NAME)).getValue();
@@ -293,82 +267,58 @@ public class ForecastTableFunction implements TableFunction {
           String.format("%s should be greater than 0", OUTPUT_LENGTH_PARAMETER_NAME));
     }
 
-    String predicatedColumns =
-        (String) ((ScalarArgument) arguments.get(PREDICATED_COLUMNS_PARAMETER_NAME)).getValue();
-
     String timeColumn =
         ((String) ((ScalarArgument) arguments.get(TIMECOL_PARAMETER_NAME)).getValue())
             .toLowerCase(Locale.ENGLISH);
-
     if (timeColumn.isEmpty()) {
       throw new SemanticException(
           String.format("%s should never be null or empty.", TIMECOL_PARAMETER_NAME));
     }
 
+    long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
+    if (outputInterval < 0) {
+      throw new SemanticException(String.format("%s should be greater than 0", OUTPUT_INTERVAL));
+    }
+
     // predicated columns should never contain partition by columns and time column
     Set<String> excludedColumns =
-        input.getPartitionBy().stream()
+        targets.getPartitionBy().stream()
             .map(s -> s.toLowerCase(Locale.ENGLISH))
             .collect(Collectors.toSet());
     excludedColumns.add(timeColumn);
-    int timeColumnIndex = findColumnIndex(input, timeColumn, Collections.singleton(Type.TIMESTAMP));
+    int timeColumnIndex =
+        findColumnIndex(targets, timeColumn, Collections.singleton(Type.TIMESTAMP));
 
+    // List of required column indexes
     List<Integer> requiredIndexList = new ArrayList<>();
     requiredIndexList.add(timeColumnIndex);
     DescribedSchema.Builder properColumnSchemaBuilder =
         new DescribedSchema.Builder().addField(timeColumn, Type.TIMESTAMP);
 
-    List<Type> predicatedColumnTypes = new ArrayList<>();
-    List<Optional<String>> allInputColumnsName = input.getFieldNames();
-    List<Type> allInputColumnsType = input.getFieldTypes();
-    if (predicatedColumns.isEmpty()) {
-      // predicated columns by default include all columns from input table except for timecol and
-      // partition by columns
-      for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
-        Optional<String> fieldName = allInputColumnsName.get(i);
-        if (!fieldName.isPresent()
-            || !excludedColumns.contains(fieldName.get().toLowerCase(Locale.ENGLISH))) {
-          Type columnType = allInputColumnsType.get(i);
-          predicatedColumnTypes.add(columnType);
-          checkType(columnType, fieldName.orElse(""));
-          requiredIndexList.add(i);
-          properColumnSchemaBuilder.addField(fieldName, columnType);
-        }
-      }
-    } else {
-      String[] predictedColumnsArray = predicatedColumns.split(";");
-      Map<String, Integer> inputColumnIndexMap = new HashMap<>();
-      for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
-        Optional<String> fieldName = allInputColumnsName.get(i);
-        if (!fieldName.isPresent()) {
-          continue;
-        }
-        inputColumnIndexMap.put(fieldName.get().toLowerCase(Locale.ENGLISH), i);
+    List<Type> targetColumnTypes = new ArrayList<>();
+    List<Optional<String>> allInputColumnsName = targets.getFieldNames();
+    List<Type> allInputColumnsType = targets.getFieldTypes();
+
+    // predicated columns = all input columns except timecol / partition by columns
+    for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
+      Optional<String> fieldName = allInputColumnsName.get(i);
+      if (!fieldName.isPresent()
+          || excludedColumns.contains(fieldName.get().toLowerCase(Locale.ENGLISH))) {
+        continue;
       }
 
-      Set<Integer> requiredIndexSet = new HashSet<>(predictedColumnsArray.length);
-      // columns need to be predicated
-      for (String outputColumn : predictedColumnsArray) {
-        String lowerCaseOutputColumn = outputColumn.toLowerCase(Locale.ENGLISH);
-        if (excludedColumns.contains(lowerCaseOutputColumn)) {
-          throw new SemanticException(
-              String.format("%s is in partition by clause or is time column", outputColumn));
-        }
-        Integer inputColumnIndex = inputColumnIndexMap.get(lowerCaseOutputColumn);
-        if (inputColumnIndex == null) {
-          throw new SemanticException(
-              String.format("Column %s don't exist in input", outputColumn));
-        }
-        if (!requiredIndexSet.add(inputColumnIndex)) {
-          throw new SemanticException(String.format("Duplicate column %s", outputColumn));
-        }
+      Type columnType = allInputColumnsType.get(i);
+      targetColumnTypes.add(columnType);
+      checkType(columnType, fieldName.get());
+      requiredIndexList.add(i);
+      properColumnSchemaBuilder.addField(fieldName.get(), columnType);
+    }
 
-        Type columnType = allInputColumnsType.get(inputColumnIndex);
-        predicatedColumnTypes.add(columnType);
-        checkType(columnType, outputColumn);
-        requiredIndexList.add(inputColumnIndex);
-        properColumnSchemaBuilder.addField(outputColumn, columnType);
-      }
+    if (targetColumnTypes.size() > 1) {
+      throw new SemanticException(
+          String.format(
+              "%s should not contain more than one target column, found [%s] target columns.",
+              TARGETS_PARAMETER_NAME, targetColumnTypes.size()));
     }
 
     boolean keepInput =
@@ -378,7 +328,6 @@ public class ForecastTableFunction implements TableFunction {
     }
 
     long outputStartTime = (long) ((ScalarArgument) arguments.get(OUTPUT_START_TIME)).getValue();
-    long outputInterval = (long) ((ScalarArgument) arguments.get(OUTPUT_INTERVAL)).getValue();
     String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
 
     ForecastTableFunctionHandle functionHandle =
@@ -390,14 +339,13 @@ public class ForecastTableFunction implements TableFunction {
             outputLength,
             outputStartTime,
             outputInterval,
-            targetAINode,
-            predicatedColumnTypes);
+            targetColumnTypes);
 
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchemaBuilder.build())
         .handle(functionHandle)
-        .requiredColumns(INPUT_PARAMETER_NAME, requiredIndexList)
+        .requiredColumns(TARGETS_PARAMETER_NAME, requiredIndexList)
         .build();
   }
 
@@ -417,12 +365,8 @@ public class ForecastTableFunction implements TableFunction {
     };
   }
 
-  private ModelInferenceDescriptor getModelInfo(String modelId) {
-    return modelFetcher.fetchModel(modelId);
-  }
-
   // only allow for INT32, INT64, FLOAT, DOUBLE
-  private void checkType(Type type, String columnName) {
+  public void checkType(Type type, String columnName) {
     if (!ALLOWED_INPUT_TYPES.contains(type)) {
       throw new SemanticException(
           String.format(
@@ -431,7 +375,7 @@ public class ForecastTableFunction implements TableFunction {
     }
   }
 
-  private static Map<String, String> parseOptions(String options) {
+  public static Map<String, String> parseOptions(String options) {
     if (options.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -453,25 +397,24 @@ public class ForecastTableFunction implements TableFunction {
     return optionsMap;
   }
 
-  private static class ForecastDataProcessor implements TableFunctionDataProcessor {
+  protected static class ForecastDataProcessor implements TableFunctionDataProcessor {
 
-    private static final TsBlockSerde SERDE = new TsBlockSerde();
-    private static final AINodeClientManager CLIENT_MANAGER = AINodeClientManager.getInstance();
+    protected static final TsBlockSerde SERDE = new TsBlockSerde();
+    protected static final IClientManager<Integer, AINodeClient> CLIENT_MANAGER =
+        AINodeClientManager.getInstance();
 
-    private final TEndPoint targetAINode;
-    private final String modelId;
+    protected final String modelId;
     private final int maxInputLength;
-    private final int outputLength;
+    protected final int outputLength;
     private final long outputStartTime;
     private final long outputInterval;
     private final boolean keepInput;
-    private final Map<String, String> options;
-    private final LinkedList<Record> inputRecords;
-    private final List<ResultColumnAppender> resultColumnAppenderList;
-    private final TsBlockBuilder inputTsBlockBuilder;
+    protected final Map<String, String> options;
+    protected final LinkedList<Record> inputRecords;
+    protected final List<ResultColumnAppender> resultColumnAppenderList;
+    protected final TsBlockBuilder inputTsBlockBuilder;
 
     public ForecastDataProcessor(ForecastTableFunctionHandle functionHandle) {
-      this.targetAINode = functionHandle.targetAINode;
       this.modelId = functionHandle.modelId;
       this.maxInputLength = functionHandle.maxInputLength;
       this.outputLength = functionHandle.outputLength;
@@ -480,29 +423,14 @@ public class ForecastTableFunction implements TableFunction {
       this.keepInput = functionHandle.keepInput;
       this.options = functionHandle.options;
       this.inputRecords = new LinkedList<>();
-      this.resultColumnAppenderList = new ArrayList<>(functionHandle.types.size());
-      List<TSDataType> tsDataTypeList = new ArrayList<>(functionHandle.types.size());
-      for (Type type : functionHandle.types) {
+      this.resultColumnAppenderList = new ArrayList<>(functionHandle.targetColumntypes.size());
+      List<TSDataType> tsDataTypeList = new ArrayList<>(functionHandle.targetColumntypes.size());
+      for (Type type : functionHandle.targetColumntypes) {
         resultColumnAppenderList.add(createResultColumnAppender(type));
         // ainode currently only accept double input
         tsDataTypeList.add(TSDataType.DOUBLE);
       }
       this.inputTsBlockBuilder = new TsBlockBuilder(tsDataTypeList);
-    }
-
-    private static ResultColumnAppender createResultColumnAppender(Type type) {
-      switch (type) {
-        case INT32:
-          return new Int32Appender();
-        case INT64:
-          return new Int64Appender();
-        case FLOAT:
-          return new FloatAppender();
-        case DOUBLE:
-          return new DoubleAppender();
-        default:
-          throw new IllegalArgumentException("Unsupported column type: " + type);
-      }
     }
 
     @Override
@@ -543,6 +471,9 @@ public class ForecastTableFunction implements TableFunction {
 
       int columnSize = properColumnBuilders.size();
 
+      // sort inputRecords in ascending order by timestamp
+      inputRecords.sort(Comparator.comparingLong(record -> record.getLong(0)));
+
       // time column
       long inputStartTime = inputRecords.getFirst().getLong(0);
       long inputEndTime = inputRecords.getLast().getLong(0);
@@ -561,6 +492,12 @@ public class ForecastTableFunction implements TableFunction {
       }
       long outputTime =
           (outputStartTime == Long.MIN_VALUE) ? (inputEndTime + interval) : outputStartTime;
+      if (outputTime <= inputEndTime) {
+        throw new SemanticException(
+            String.format(
+                "The %s should be greater than the maximum timestamp of target time series. Expected greater than [%s] but found [%s].",
+                OUTPUT_START_TIME, inputEndTime, outputTime));
+      }
       for (int i = 0; i < outputLength; i++) {
         properColumnBuilders.get(0).writeLong(outputTime + interval * i);
       }
@@ -599,7 +536,8 @@ public class ForecastTableFunction implements TableFunction {
       }
     }
 
-    private TsBlock forecast() {
+    protected TsBlock forecast() {
+      // construct inputTSBlock for AINode
       while (!inputRecords.isEmpty()) {
         Record row = inputRecords.removeFirst();
         inputTsBlockBuilder.getTimeColumnBuilder().writeLong(row.getLong(0));
@@ -619,8 +557,12 @@ public class ForecastTableFunction implements TableFunction {
       TsBlock inputData = inputTsBlockBuilder.build();
 
       TForecastResp resp;
-      try (AINodeClient client = CLIENT_MANAGER.borrowClient(targetAINode)) {
-        resp = client.forecast(modelId, inputData, outputLength, options);
+      try (AINodeClient client =
+          CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
+        resp =
+            client.forecast(
+                new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
+                    .setOptions(options));
       } catch (Exception e) {
         throw new IoTDBRuntimeException(e.getMessage(), CAN_NOT_CONNECT_AINODE.getStatusCode());
       }
@@ -641,102 +583,6 @@ public class ForecastTableFunction implements TableFunction {
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
       return res;
-    }
-  }
-
-  private interface ResultColumnAppender {
-    void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder);
-
-    double getDouble(Record row, int columnIndex);
-
-    void writeDouble(double value, ColumnBuilder columnBuilder);
-  }
-
-  private static class Int32Appender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeInt(row.getInt(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getInt(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeInt((int) value);
-    }
-  }
-
-  private static class Int64Appender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeLong(row.getLong(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getLong(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeLong((long) value);
-    }
-  }
-
-  private static class FloatAppender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeFloat(row.getFloat(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getFloat(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeFloat((float) value);
-    }
-  }
-
-  private static class DoubleAppender implements ResultColumnAppender {
-
-    @Override
-    public void append(Record row, int columnIndex, ColumnBuilder properColumnBuilder) {
-      if (row.isNull(columnIndex)) {
-        properColumnBuilder.appendNull();
-      } else {
-        properColumnBuilder.writeDouble(row.getDouble(columnIndex));
-      }
-    }
-
-    @Override
-    public double getDouble(Record row, int columnIndex) {
-      return row.getDouble(columnIndex);
-    }
-
-    @Override
-    public void writeDouble(double value, ColumnBuilder columnBuilder) {
-      columnBuilder.writeDouble(value);
     }
   }
 }

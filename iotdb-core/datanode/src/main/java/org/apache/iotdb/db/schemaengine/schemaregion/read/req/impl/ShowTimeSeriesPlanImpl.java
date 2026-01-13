@@ -23,8 +23,8 @@ package org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.Map;
 import java.util.Objects;

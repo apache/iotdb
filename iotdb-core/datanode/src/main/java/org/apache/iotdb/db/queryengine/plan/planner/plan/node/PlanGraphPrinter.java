@@ -69,8 +69,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -623,6 +626,14 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
 
   // =============== Methods below are used for table model ================
   @Override
+  public List<String> visitCteScan(CteScanNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("CteScan-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitTableScan(TableScanNode node, GraphContext context) {
     DeviceTableScanNode deviceTableScanNode = null;
     if (node instanceof DeviceTableScanNode) {
@@ -990,6 +1001,16 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   }
 
   @Override
+  public List<String> visitCorrelatedJoin(CorrelatedJoinNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("CorrelatedJoin-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("JoinType: %s", node.getJoinType()));
+    boxValue.add(String.format("Correlation: %s", node.getCorrelation()));
+    boxValue.add(String.format("Filter: %s", node.getFilter()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
   public List<String> visitJoin(
       org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode node,
       GraphContext context) {
@@ -1111,6 +1132,15 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitIntersect(IntersectNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
     boxValue.add(String.format("Intersect-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+    boxValue.add(String.format("isDistinct: %s", node.isDistinct()));
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitExcept(ExceptNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("Except-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
     boxValue.add(String.format("isDistinct: %s", node.isDistinct()));
     return render(node, boxValue, context);

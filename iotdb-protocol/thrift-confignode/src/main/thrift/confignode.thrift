@@ -50,6 +50,7 @@ struct TGlobalConfig {
   11: optional i32 tagAttributeTotalSize
   12: optional bool isEnterprise
   13: optional i64 timePartitionOrigin
+  14: optional bool restrictObjectLimit
 }
 
 struct TRatisConfig {
@@ -943,6 +944,13 @@ struct TDeleteTimeSeriesReq {
   4: optional bool mayDeleteAudit
 }
 
+struct TAlterTimeSeriesReq {
+  1: required string queryId
+  2: required binary measurementPath
+  3: required byte operationType
+  4: required binary updateInfo
+}
+
 struct TDeleteLogicalViewReq {
   1: required string queryId
   2: required binary pathPatternTree
@@ -1096,50 +1104,12 @@ struct TUnsetSchemaTemplateReq {
   4: optional bool isGeneratedByPipe
 }
 
-struct TCreateModelReq {
-  1: required string modelName
-  2: required string uri
-}
-
-struct TDropModelReq {
-  1: required string modelId
-}
-
-struct TGetModelInfoReq {
-  1: required string modelId
-}
-
-struct TGetModelInfoResp {
-  1: required common.TSStatus status
-  2: optional binary modelInfo
-  3: optional common.TEndPoint aiNodeAddress
-}
-
-struct TUpdateModelInfoReq {
-    1: required string modelId
-    2: required i32 modelStatus
-    3: optional string attributes
-    4: optional list<i32> aiNodeIds
-    5: optional i32 inputLength
-    6: optional i32 outputLength
-}
-
 struct TDataSchemaForTable{
     1: required string targetSql
 }
 
 struct TDataSchemaForTree{
     1: required list<string> path
-}
-
-struct TCreateTrainingReq {
-    1: required string modelId
-    2: required bool isTableModel
-    3: required string existingModelId
-    4: optional TDataSchemaForTable dataSchemaForTable
-    5: optional TDataSchemaForTree dataSchemaForTree
-    6: optional map<string, string> parameters
-    7: optional list<list<i64>> timeRanges
 }
 
 // ====================================================
@@ -1260,6 +1230,7 @@ struct TDescTableResp {
    1: required common.TSStatus status
    2: optional binary tableInfo
    3: optional set<string> preDeletedColumns
+   4: optional map<string, byte> preAlteredColumns
 }
 
 struct TDescTable4InformationSchemaResp {
@@ -1270,6 +1241,7 @@ struct TDescTable4InformationSchemaResp {
 struct TTableColumnInfo {
    1: required binary tableInfo
    2: optional set<string> preDeletedColumns
+   3: optional map<string, byte> preAlteredColumns
 }
 
 struct TFetchTableResp {
@@ -1879,6 +1851,11 @@ service IConfigNodeRPCService {
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
 
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
+
   common.TSStatus deleteLogicalView(TDeleteLogicalViewReq req)
 
   common.TSStatus alterLogicalView(TAlterLogicalViewReq req)
@@ -2005,31 +1982,6 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
-
-  // ====================================================
-  // AI Model
-  // ====================================================
-
-  /**
-   * Create a model
-   *
-   * @return SUCCESS_STATUS if the model was created successfully
-   */
-  common.TSStatus createModel(TCreateModelReq req)
-
-  /**
-   * Drop a model
-   *
-   * @return SUCCESS_STATUS if the model was removed successfully
-   */
-  common.TSStatus dropModel(TDropModelReq req)
-
-  /**
-  * Return the model info by model_id
-  */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req)
-
-  common.TSStatus updateModelInfo(TUpdateModelInfoReq req)
 
   // ======================================================
   // Quota

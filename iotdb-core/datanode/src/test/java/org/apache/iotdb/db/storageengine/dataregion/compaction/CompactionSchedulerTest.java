@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.buffer.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.CrossCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerSeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.constant.InnerUnseqCompactionPerformer;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionPriority;
@@ -42,7 +43,10 @@ import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -1837,6 +1841,37 @@ public class CompactionSchedulerTest {
           .setInnerCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(originTargetSize);
     }
+  }
+
+  @Test
+  public void testManyDuplicatedDevicesInDifferentResources() throws IOException {
+    String sgName = COMPACTION_TEST_SG + "test18";
+    TsFileResource resource1 = CompactionFileGeneratorUtils.generateTsFileResource(true, 0, sgName);
+    IDeviceID device = new StringArrayDeviceID("root.test.d1");
+    resource1.updateStartTime(device, 1);
+    resource1.updateStartTime(device, 2);
+    File dir = resource1.getTsFile().getParentFile();
+    if (!dir.exists()) {
+      dir.mkdirs();
+    }
+    resource1.serialize();
+    resource1.degradeTimeIndex();
+
+    TsFileResource resource2 = CompactionFileGeneratorUtils.generateTsFileResource(true, 0, sgName);
+    device = new StringArrayDeviceID("root.test.d1");
+    resource2.updateStartTime(device, 1);
+    resource2.updateStartTime(device, 2);
+    resource2.serialize();
+    resource2.degradeTimeIndex();
+
+    CompactionScheduleContext context = new CompactionScheduleContext();
+    IDeviceID.Deserializer deserializer = context.getCachedDeviceIdDeserializer();
+
+    IDeviceID deserializedFromResource1 =
+        resource1.buildDeviceTimeIndex(deserializer).getDevices().iterator().next();
+    IDeviceID deserializedFromResource2 =
+        resource2.buildDeviceTimeIndex(deserializer).getDevices().iterator().next();
+    Assert.assertSame(deserializedFromResource1, deserializedFromResource2);
   }
 
   public void stopCompactionTaskManager() {

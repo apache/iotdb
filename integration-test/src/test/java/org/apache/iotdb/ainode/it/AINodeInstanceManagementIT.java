@@ -35,14 +35,14 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 
 public class AINodeInstanceManagementIT {
 
-  private static final int WAITING_TIME_SEC = 30;
   private static final Set<String> TARGET_DEVICES = new HashSet<>(Arrays.asList("cpu", "0", "1"));
 
   @BeforeClass
@@ -85,52 +85,18 @@ public class AINodeInstanceManagementIT {
     }
 
     // Load sundial to each device
-    statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
-    TimeUnit.SECONDS.sleep(WAITING_TIME_SEC);
-    try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS 0")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-      while (resultSet.next()) {
-        Assert.assertEquals("0", resultSet.getString("DeviceID"));
-        Assert.assertEquals("Timer-Sundial", resultSet.getString("ModelType"));
-        Assert.assertTrue(resultSet.getInt("Count(instances)") > 1);
-      }
-    }
-    try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-      final Set<String> resultDevices = new HashSet<>();
-      while (resultSet.next()) {
-        resultDevices.add(resultSet.getString("DeviceID"));
-      }
-      Assert.assertEquals(TARGET_DEVICES, resultDevices);
-    }
+    statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES));
+    checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
 
     // Load timer_xl to each device
-    statement.execute("LOAD MODEL timer_xl TO DEVICES \"cpu,0,1\"");
-    TimeUnit.SECONDS.sleep(WAITING_TIME_SEC);
-    try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-      final Set<String> resultDevices = new HashSet<>();
-      while (resultSet.next()) {
-        if (resultSet.getString("ModelType").equals("Timer-XL")) {
-          resultDevices.add(resultSet.getString("DeviceID"));
-        }
-        Assert.assertTrue(resultSet.getInt("Count(instances)") > 1);
-      }
-      Assert.assertEquals(TARGET_DEVICES, resultDevices);
-    }
+    statement.execute(String.format("LOAD MODEL timer_xl TO DEVICES '%s'", TARGET_DEVICES));
+    checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
 
     // Clean every device
-    statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
-    statement.execute("UNLOAD MODEL timer_xl FROM DEVICES \"cpu,0,1\"");
-    TimeUnit.SECONDS.sleep(WAITING_TIME_SEC);
-    try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-      checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-      Assert.assertFalse(resultSet.next());
-    }
+    statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES));
+    statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES));
+    checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
+    checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
   }
 
   private static final int LOOP_CNT = 10;
@@ -141,23 +107,9 @@ public class AINodeInstanceManagementIT {
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < LOOP_CNT; i++) {
         statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
-        TimeUnit.SECONDS.sleep(WAITING_TIME_SEC);
-        try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-          final Set<String> resultDevices = new HashSet<>();
-          while (resultSet.next()) {
-            resultDevices.add(resultSet.getString("DeviceID"));
-          }
-          Assert.assertEquals(TARGET_DEVICES, resultDevices);
-        }
+        checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
         statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
-        TimeUnit.SECONDS.sleep(WAITING_TIME_SEC);
-        try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-          Assert.assertFalse(resultSet.next());
-        }
+        checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
       }
     }
   }
@@ -170,12 +122,7 @@ public class AINodeInstanceManagementIT {
         statement.execute("LOAD MODEL sundial TO DEVICES \"cpu,0,1\"");
         statement.execute("UNLOAD MODEL sundial FROM DEVICES \"cpu,0,1\"");
       }
-      TimeUnit.SECONDS.sleep(WAITING_TIME_SEC * LOOP_CNT);
-      try (ResultSet resultSet = statement.executeQuery("SHOW LOADED MODELS")) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        checkHeader(resultSetMetaData, "DeviceID,ModelType,Count(instances)");
-        Assert.assertFalse(resultSet.next());
-      }
+      checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
     }
   }
 

@@ -34,8 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
@@ -263,6 +265,12 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
               node.getPushDownLimit(),
               node.getPushDownOffset()),
           mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitCteScan(CteScanNode node, UnaliasContext context) {
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      return new PlanAndMappings(node, mapping);
     }
 
     @Override
@@ -1038,6 +1046,36 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
 
       return new PlanAndMappings(
           new IntersectNode(
+              node.getPlanNodeId(),
+              rewrittenSources.stream().map(PlanAndMappings::getRoot).collect(toImmutableList()),
+              newOutputToInputs,
+              newOutputs,
+              node.isDistinct()),
+          mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitExcept(ExceptNode node, UnaliasContext context) {
+
+      List<PlanAndMappings> rewrittenSources =
+          node.getChildren().stream()
+              .map(source -> source.accept(this, context))
+              .collect(toImmutableList());
+
+      List<SymbolMapper> inputMappers =
+          rewrittenSources.stream()
+              .map(source -> symbolMapper(new HashMap<>(source.getMappings())))
+              .collect(toImmutableList());
+
+      Map<Symbol, Symbol> mapping = new HashMap<>(context.getCorrelationMapping());
+      SymbolMapper outputMapper = symbolMapper(mapping);
+
+      ListMultimap<Symbol, Symbol> newOutputToInputs =
+          rewriteOutputToInputsMap(node.getSymbolMapping(), outputMapper, inputMappers);
+      List<Symbol> newOutputs = outputMapper.mapAndDistinct(node.getOutputSymbols());
+
+      return new PlanAndMappings(
+          new ExceptNode(
               node.getPlanNodeId(),
               rewrittenSources.stream().map(PlanAndMappings::getRoot).collect(toImmutableList()),
               newOutputToInputs,
