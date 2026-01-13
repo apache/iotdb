@@ -62,6 +62,10 @@ public class ExternalServiceInfoTest {
 
   @Test
   public void testSnapshot() throws TException, IOException, IllegalPathException {
+    // test empty
+    serviceInfoBefore.processTakeSnapshot(snapshotDir);
+    serviceInfo.processLoadSnapshot(snapshotDir);
+
     CreateExternalServicePlan createExternalServicePlan =
         new CreateExternalServicePlan(
             1, new ServiceInfo("TEST1", "testClassName", ServiceInfo.ServiceType.USER_DEFINED));

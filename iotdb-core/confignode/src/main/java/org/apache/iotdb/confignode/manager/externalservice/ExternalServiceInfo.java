@@ -250,6 +250,11 @@ public class ExternalServiceInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    // do nothing if there is no any user-defined ServiceInfo
+    if (datanodeToServiceInfos.isEmpty()) {
+      return true;
+    }
+
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -272,9 +277,15 @@ public class ExternalServiceInfo implements SnapshotProcessor {
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, SNAPSHOT_FILENAME);
-    if (!snapshotFile.exists() || !snapshotFile.isFile()) {
+
+    if (!snapshotFile.exists()) {
+      // do nothing if the snapshot file is not existed
+      return;
+    }
+
+    if (!snapshotFile.isFile()) {
       LOGGER.error(
-          "Failed to load snapshot,snapshot file [{}] is not exist.",
+          "Failed to load snapshot,snapshot file [{}] is not a normal file.",
           snapshotFile.getAbsolutePath());
       return;
     }
