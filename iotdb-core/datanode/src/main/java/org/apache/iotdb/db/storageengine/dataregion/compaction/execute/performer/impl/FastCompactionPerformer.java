@@ -212,8 +212,8 @@ public class FastCompactionPerformer
         long ttl = deviceIterator.getTTLForCurrentDevice();
         sortedSourceFiles.removeIf(
             x -> {
-              EvolvedSchema evolvedSchema = x.getMergedEvolvedSchema(
-                  maxTsFileSetEndVersionAndMinResource.left);
+              EvolvedSchema evolvedSchema =
+                  x.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.left);
               IDeviceID originalDevice = device;
               if (evolvedSchema != null) {
                 originalDevice = evolvedSchema.rewriteToOriginal(device);
@@ -221,10 +221,12 @@ public class FastCompactionPerformer
               return x.definitelyNotContains(originalDevice);
             });
         // checked above
-        sortedSourceFiles.sort(Comparator.comparingLong(x -> {
-          //noinspection OptionalGetWithoutIsPresent
-          return x.getStartTime(device, maxTsFileSetEndVersionAndMinResource.left).get();
-        }));
+        sortedSourceFiles.sort(
+            Comparator.comparingLong(
+                x -> {
+                  //noinspection OptionalGetWithoutIsPresent
+                  return x.getStartTime(device, maxTsFileSetEndVersionAndMinResource.left).get();
+                }));
         ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
           ttlDeletion =
@@ -311,7 +313,7 @@ public class FastCompactionPerformer
             deviceId,
             taskSummary,
             ignoreAllNullRows,
-        maxTsFileSetEndVersionAndMinResource)
+            maxTsFileSetEndVersionAndMinResource)
         .call();
     subTaskSummary.increase(taskSummary);
   }

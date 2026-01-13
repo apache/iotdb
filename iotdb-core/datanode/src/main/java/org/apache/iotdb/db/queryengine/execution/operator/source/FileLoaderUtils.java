@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
-import java.util.stream.Collectors;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
@@ -61,7 +60,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -217,7 +215,12 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows, maxTsFileSetEndVersion);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                maxTsFileSetEndVersion);
         SchemaUtils.changeAlignedMetadataModified(alignedTimeSeriesMetadata, targetDataTypeList);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
@@ -303,9 +306,14 @@ public class FileLoaderUtils {
     EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
     if (evolvedSchema != null) {
       IDeviceID finalDeviceId = deviceId;
-      valueMeasurementList = valueMeasurementList.stream().map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m)).collect(
-          Collectors.toList());
-      allSensors = allSensors.stream().map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m)).collect(Collectors.toSet());
+      valueMeasurementList =
+          valueMeasurementList.stream()
+              .map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m))
+              .collect(Collectors.toList());
+      allSensors =
+          allSensors.stream()
+              .map(m -> evolvedSchema.getOriginalColumnName(finalDeviceId.getTableName(), m))
+              .collect(Collectors.toSet());
       deviceId = evolvedSchema.rewriteToOriginal(deviceId);
     }
 
@@ -387,8 +395,7 @@ public class FileLoaderUtils {
 
     // deal with time column
     List<ModEntry> timeModifications =
-        context.getPathModifications(
-            resource, deviceID, timeColumnMetadata.getMeasurementId());
+        context.getPathModifications(resource, deviceID, timeColumnMetadata.getMeasurementId());
     // all rows are deleted, just return null to skip device data in this file
     if (ModificationUtils.isAllDeletedByMods(
         timeModifications,

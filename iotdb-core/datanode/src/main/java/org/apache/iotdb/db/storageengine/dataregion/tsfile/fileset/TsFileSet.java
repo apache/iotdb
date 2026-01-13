@@ -30,8 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.tsfile.utils.Accountable;
-import org.apache.tsfile.utils.RamUsageEstimator;
 
 /** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
@@ -87,13 +85,16 @@ public class TsFileSet implements Comparable<TsFileSet> {
   public EvolvedSchema readEvolvedSchema() throws IOException {
     readLock();
     try {
-      return EvolvedSchemaCache.getInstance().computeIfAbsent(this, () -> {
-        try {
-          return schemaEvolutionFile.readAsSchema();
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      });
+      return EvolvedSchemaCache.getInstance()
+          .computeIfAbsent(
+              this,
+              () -> {
+                try {
+                  return schemaEvolutionFile.readAsSchema();
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              });
     } finally {
       readUnlock();
     }

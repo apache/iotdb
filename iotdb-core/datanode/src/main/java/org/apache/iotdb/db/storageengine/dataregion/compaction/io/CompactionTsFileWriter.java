@@ -114,7 +114,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
             ? null
             : measurementName ->
                 evolvedSchema.getOriginalColumnName(
-                    evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName()), measurementName));
+                    evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName()),
+                    measurementName));
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(
@@ -130,13 +131,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       isEmptyTargetFile = false;
     }
     if (evolvedSchema != null) {
-      String finalTableName = evolvedSchema.getFinalTableName(
-          currentOriginalDeviceId.getTableName());
+      String finalTableName =
+          evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName());
       chunk
           .getHeader()
           .setMeasurementID(
               evolvedSchema.getOriginalColumnName(
-                 finalTableName, chunk.getHeader().getMeasurementID()));
+                  finalTableName, chunk.getHeader().getMeasurementID()));
     }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
@@ -157,7 +158,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       throws IOException {
     if (evolvedSchema != null) {
       measurementId =
-          evolvedSchema.getOriginalColumnName(currentOriginalDeviceId.getTableName(), measurementId);
+          evolvedSchema.getOriginalColumnName(
+              currentOriginalDeviceId.getTableName(), measurementId);
     }
     long beforeOffset = this.getPos();
     super.writeEmptyValueChunk(

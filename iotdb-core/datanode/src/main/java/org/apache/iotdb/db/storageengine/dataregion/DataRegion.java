@@ -116,11 +116,11 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.TagPredicateType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
@@ -3496,14 +3496,6 @@ public class DataRegion implements IDataRegionForQuery {
       throws IOException {
     Set<Pair<ModificationFile, ModEntry>> involvedModificationFiles = new HashSet<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
-    boolean isDropMeasurementExist = false;
-    IDPredicate.IDPredicateType idPredicateType = null;
-
-    if (deletion instanceof TableDeletionEntry) {
-      TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
-      isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
-      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
-    }
 
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
@@ -3517,45 +3509,46 @@ public class DataRegion implements IDataRegionForQuery {
           && (deletion.getType() == ModType.TABLE_DELETION)) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
 
+        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
+        boolean onlyOneTable = false;
+
         TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
         tableDeletionEntry =
             evolvedSchema != null
                 ? evolvedSchema.rewriteToOriginal(tableDeletionEntry)
                 : tableDeletionEntry;
+        boolean isDropMeasurementExist =
+            !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
+        TagPredicateType tagPredicateType = tableDeletionEntry.getPredicate().getTagPredicateType();
 
-        Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();
-        boolean onlyOneTable = false;
-
-        if (deletion instanceof TableDeletionEntry) {
-          TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
-          String tableName = tableDeletionEntry.getTableName();
-          long matchSize =
-              devicesInFile.stream()
-                  .filter(
-                      device -> {
-                        if (logger.isDebugEnabled()) {
-                          logger.debug(
-                              "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
-                              device,
-                              device.getTableName(),
-                              tableDeletionEntry.getPredicate().matches(device));
-                        }
-                        return tableName.equals(device.getTableName())
-                            && tableDeletionEntry.getPredicate().matches(device);
-                      })
-                  .count();
-          onlyOneTable = matchSize == devicesInFile.size();
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                "tableName is {}, matchSize is {}, onlyOneTable is {}",
-                tableName,
-                matchSize,
-                onlyOneTable);
-          }
+        String tableName = tableDeletionEntry.getTableName();
+        TableDeletionEntry finalTableDeletionEntry = tableDeletionEntry;
+        long matchSize =
+            devicesInFile.stream()
+                .filter(
+                    device -> {
+                      if (logger.isDebugEnabled()) {
+                        logger.debug(
+                            "device is {}, deviceTable is {}, tableDeletionEntry.getPredicate().matches(device) is {}",
+                            device,
+                            device.getTableName(),
+                            finalTableDeletionEntry.getPredicate().matches(device));
+                      }
+                      return tableName.equals(device.getTableName())
+                          && finalTableDeletionEntry.getPredicate().matches(device);
+                    })
+                .count();
+        onlyOneTable = matchSize == devicesInFile.size();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "tableName is {}, matchSize is {}, onlyOneTable is {}",
+              tableName,
+              matchSize,
+              onlyOneTable);
         }
 
         if (onlyOneTable) {
-          int matchSize = 0;
+          matchSize = 0;
           for (IDeviceID device : devicesInFile) {
             Optional<Long> optStart = deviceTimeIndex.getStartTime(device);
             Optional<Long> optEnd = deviceTimeIndex.getEndTime(device);
@@ -3577,11 +3570,12 @@ public class DataRegion implements IDataRegionForQuery {
                   fileEndTime);
             }
             if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
-                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && tagPredicateType.equals(TagPredicateType.NOP)
                 && !isDropMeasurementExist) {
               ++matchSize;
             } else {
-              deletedByMods.add(sealedTsFile);
+              involvedModificationFiles.add(
+                  new Pair<>(sealedTsFile.getModFileForWrite(), tableDeletionEntry));
               break;
             }
           }

@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -49,7 +50,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PriorityQueue;
-import org.apache.tsfile.utils.Pair;
 
 public abstract class SeriesCompactionExecutor {
 
@@ -355,12 +355,14 @@ public abstract class SeriesCompactionExecutor {
    */
   protected List<FileElement> findOverlapFiles(FileElement fileToCheck) {
     List<FileElement> overlappedFiles = new ArrayList<>();
-    Optional<Long> endTimeInCheckingFile = fileToCheck.resource.getEndTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
+    Optional<Long> endTimeInCheckingFile =
+        fileToCheck.resource.getEndTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
     for (FileElement otherFile : fileList) {
       if (!endTimeInCheckingFile.isPresent()) {
         continue;
       }
-      Optional<Long> startTimeInOtherFile = otherFile.resource.getStartTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
+      Optional<Long> startTimeInOtherFile =
+          otherFile.resource.getStartTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
       if (startTimeInOtherFile.isPresent()
           && startTimeInOtherFile.get() <= endTimeInCheckingFile.get()) {
         if (!otherFile.isSelected) {

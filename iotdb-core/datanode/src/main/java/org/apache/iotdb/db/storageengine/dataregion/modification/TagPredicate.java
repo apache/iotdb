@@ -47,7 +47,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
   }
 
   @SuppressWarnings("java:S6548")
-  public enum IDPredicateType {
+  public enum TagPredicateType {
     NOP,
     FULL_EXACT_MATCH,
     SEGMENT_EXACT_MATCH,
@@ -63,18 +63,18 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
       return 1;
     }
 
-    public static IDPredicateType deserialize(InputStream stream) throws IOException {
+    public static TagPredicateType deserialize(InputStream stream) throws IOException {
       return values()[stream.read()];
     }
 
-    public static IDPredicateType deserialize(ByteBuffer buffer) {
+    public static TagPredicateType deserialize(ByteBuffer buffer) {
       return values()[buffer.get()];
     }
   }
 
-  protected final IDPredicateType type;
+  protected final TagPredicateType type;
 
-  protected TagPredicate(IDPredicateType type) {
+  protected TagPredicate(TagPredicateType type) {
     this.type = type;
   }
 
@@ -99,15 +99,15 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
   }
 
   public static TagPredicate createFrom(ByteBuffer buffer) {
-    IDPredicateType type = IDPredicateType.deserialize(buffer);
+    TagPredicateType type = TagPredicateType.deserialize(buffer);
     TagPredicate predicate;
-    if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+    if (Objects.requireNonNull(type) == TagPredicateType.NOP) {
       predicate = new NOP();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.FULL_EXACT_MATCH) {
       predicate = new FullExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_EXACT_MATCH) {
       predicate = new SegmentExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
     } else {
       throw new IllegalArgumentException("Unrecognized predicate type: " + type);
@@ -117,15 +117,15 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
   }
 
   public static TagPredicate createFrom(InputStream stream) throws IOException {
-    IDPredicateType type = IDPredicateType.deserialize(stream);
+    TagPredicateType type = TagPredicateType.deserialize(stream);
     TagPredicate predicate;
-    if (Objects.requireNonNull(type) == IDPredicateType.NOP) {
+    if (Objects.requireNonNull(type) == TagPredicateType.NOP) {
       predicate = new NOP();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.FULL_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.FULL_EXACT_MATCH) {
       predicate = new FullExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.SEGMENT_EXACT_MATCH) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.SEGMENT_EXACT_MATCH) {
       predicate = new SegmentExactMatch();
-    } else if (Objects.requireNonNull(type) == IDPredicateType.AND) {
+    } else if (Objects.requireNonNull(type) == TagPredicateType.AND) {
       predicate = new And();
     } else {
       throw new IllegalArgumentException("Unrecognized predicate type: " + type);
@@ -138,7 +138,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(NOP.class);
 
     public NOP() {
-      super(IDPredicateType.NOP);
+      super(TagPredicateType.NOP);
     }
 
     @Override
@@ -184,12 +184,12 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     private IDeviceID deviceID;
 
     public FullExactMatch(IDeviceID deviceID) {
-      super(IDPredicateType.FULL_EXACT_MATCH);
+      super(TagPredicateType.FULL_EXACT_MATCH);
       this.deviceID = deviceID;
     }
 
     public FullExactMatch() {
-      super(IDPredicateType.FULL_EXACT_MATCH);
+      super(TagPredicateType.FULL_EXACT_MATCH);
     }
 
     @Override
@@ -272,13 +272,13 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     private int segmentIndex;
 
     public SegmentExactMatch(String pattern, int segmentIndex) {
-      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+      super(TagPredicateType.SEGMENT_EXACT_MATCH);
       this.pattern = pattern;
       this.segmentIndex = segmentIndex;
     }
 
     public SegmentExactMatch() {
-      super(IDPredicateType.SEGMENT_EXACT_MATCH);
+      super(TagPredicateType.SEGMENT_EXACT_MATCH);
     }
 
     @Override
@@ -367,7 +367,7 @@ public abstract class TagPredicate implements StreamSerializable, BufferSerializ
     private final List<TagPredicate> predicates = new ArrayList<>();
 
     public And(TagPredicate... predicates) {
-      super(IDPredicateType.AND);
+      super(TagPredicateType.AND);
       Collections.addAll(this.predicates, predicates);
     }
 

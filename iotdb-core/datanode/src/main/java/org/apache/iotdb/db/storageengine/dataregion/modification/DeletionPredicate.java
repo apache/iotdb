@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.TagPredicateType;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -72,12 +73,8 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     this.tagPredicate = tagPredicate;
   }
 
-  public IDPredicate getIdPredicate() {
-    return idPredicate;
-  }
-
-  public IDPredicate.IDPredicateType getIdPredicateType() {
-    return this.idPredicate.type;
+  public TagPredicateType getTagPredicateType() {
+    return this.tagPredicate.type;
   }
 
   public String getTableName() {

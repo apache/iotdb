@@ -78,7 +78,14 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       FragmentInstanceContext context,
       boolean queryAllSensors,
       List<TSDataType> givenDataTypes) {
-    this(seriesPath, scanOrder, scanOptions, context, queryAllSensors, givenDataTypes, Long.MAX_VALUE);
+    this(
+        seriesPath,
+        scanOrder,
+        scanOptions,
+        context,
+        queryAllSensors,
+        givenDataTypes,
+        Long.MAX_VALUE);
   }
 
   public AlignedSeriesScanUtil(
@@ -120,7 +127,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,
-        ignoreAllNullRows, maxTsFileSetEndVersion);
+        ignoreAllNullRows,
+        maxTsFileSetEndVersion);
   }
 
   @Override

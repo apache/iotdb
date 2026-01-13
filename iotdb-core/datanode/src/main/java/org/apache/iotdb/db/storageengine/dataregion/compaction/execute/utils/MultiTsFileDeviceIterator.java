@@ -153,17 +153,18 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
 
-    maxTsFileSetEndVersion = this.tsFileResourcesSortedByDesc.stream()
-        .mapToLong(
-            // max endVersion of all filesets of a TsFile
-            resource ->
-                resource.getTsFileSets().stream()
-                    .mapToLong(TsFileSet::getEndVersion)
-                    .max()
-                    .orElse(Long.MAX_VALUE))
-        // overall max endVersion
-        .max()
-        .orElse(Long.MAX_VALUE);
+    maxTsFileSetEndVersion =
+        this.tsFileResourcesSortedByDesc.stream()
+            .mapToLong(
+                // max endVersion of all filesets of a TsFile
+                resource ->
+                    resource.getTsFileSets().stream()
+                        .mapToLong(TsFileSet::getEndVersion)
+                        .max()
+                        .orElse(Long.MAX_VALUE))
+            // overall max endVersion
+            .max()
+            .orElse(Long.MAX_VALUE);
 
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
@@ -518,8 +519,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         String measurementId = entrySet.getKey();
         EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
         if (evolvedSchema != null) {
-          String originalTableName = evolvedSchema.getOriginalTableName(
-              currentDevice.left.getTableName());
+          String originalTableName =
+              evolvedSchema.getOriginalTableName(currentDevice.left.getTableName());
           measurementId = evolvedSchema.getFinalColumnName(originalTableName, measurementId);
         }
         if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
@@ -596,9 +597,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       if (evolvedSchema != null) {
         // rewrite the measurementId to the final ones so that they can be aligned with other files
         for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
-          for (IChunkMetadata chunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
+          for (IChunkMetadata chunkMetadata :
+              abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
             if (chunkMetadata != null) {
-              chunkMetadata.setMeasurementUid(evolvedSchema.getFinalColumnName(originalDeviceId.getTableName(), chunkMetadata.getMeasurementUid()));
+              chunkMetadata.setMeasurementUid(
+                  evolvedSchema.getFinalColumnName(
+                      originalDeviceId.getTableName(), chunkMetadata.getMeasurementUid()));
             }
           }
         }

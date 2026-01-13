@@ -113,18 +113,26 @@ public class QueryDataSource implements IQueryDataSource {
     return queryDataSource;
   }
 
-  public boolean hasNextSeqResource(int curIndex, boolean ascending, IDeviceID deviceID, long maxTsFileSetEndVersion) {
+  public boolean hasNextSeqResource(
+      int curIndex, boolean ascending, IDeviceID deviceID, long maxTsFileSetEndVersion) {
     boolean res = ascending ? curIndex < seqResources.size() : curIndex >= 0;
     if (res && curIndex != this.curSeqIndex) {
       this.curSeqIndex = curIndex;
-      this.curSeqOrderTime = seqResources.get(curIndex).getOrderTimeForSeq(deviceID, ascending, maxTsFileSetEndVersion);
+      this.curSeqOrderTime =
+          seqResources
+              .get(curIndex)
+              .getOrderTimeForSeq(deviceID, ascending, maxTsFileSetEndVersion);
       this.curSeqSatisfied = null;
     }
     return res;
   }
 
   public boolean isSeqSatisfied(
-      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug, long maxTsFileSetEndVersion) {
+      IDeviceID deviceID,
+      int curIndex,
+      Filter timeFilter,
+      boolean debug,
+      long maxTsFileSetEndVersion) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
           String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
@@ -133,7 +141,9 @@ public class QueryDataSource implements IQueryDataSource {
       TsFileResource tsFileResource = seqResources.get(curSeqIndex);
       curSeqSatisfied =
           tsFileResource != null
-              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, true, debug, maxTsFileSetEndVersion));
+              && (isSingleDevice
+                  || tsFileResource.isSatisfied(
+                      deviceID, timeFilter, true, debug, maxTsFileSetEndVersion));
     }
 
     return curSeqSatisfied;
@@ -154,7 +164,8 @@ public class QueryDataSource implements IQueryDataSource {
     return null;
   }
 
-  public boolean hasNextUnseqResource(int curIndex, boolean ascending, IDeviceID deviceID, long maxTsFileSetEndVersion) {
+  public boolean hasNextUnseqResource(
+      int curIndex, boolean ascending, IDeviceID deviceID, long maxTsFileSetEndVersion) {
     boolean res = curIndex < unseqResources.size();
     if (res && curIndex != this.curUnSeqIndex) {
       this.curUnSeqIndex = curIndex;
@@ -168,7 +179,11 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public boolean isUnSeqSatisfied(
-      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug, long maxTsFileSetEndVersion) {
+      IDeviceID deviceID,
+      int curIndex,
+      Filter timeFilter,
+      boolean debug,
+      long maxTsFileSetEndVersion) {
     if (curIndex != this.curUnSeqIndex) {
       throw new IllegalArgumentException(
           String.format(
@@ -178,7 +193,9 @@ public class QueryDataSource implements IQueryDataSource {
       TsFileResource tsFileResource = unseqResources.get(unSeqFileOrderIndex[curIndex]);
       curUnSeqSatisfied =
           tsFileResource != null
-              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug, maxTsFileSetEndVersion));
+              && (isSingleDevice
+                  || tsFileResource.isSatisfied(
+                      deviceID, timeFilter, false, debug, maxTsFileSetEndVersion));
     }
 
     return curUnSeqSatisfied;
@@ -219,7 +236,8 @@ public class QueryDataSource implements IQueryDataSource {
     for (TsFileResource resource : unseqResources) {
       orderTimeToIndexMap
           .computeIfAbsent(
-              resource.getOrderTimeForUnseq(deviceId, ascending, maxTsFileSetEndVersion), key -> new ArrayList<>())
+              resource.getOrderTimeForUnseq(deviceId, ascending, maxTsFileSetEndVersion),
+              key -> new ArrayList<>())
           .add(index++);
     }
 

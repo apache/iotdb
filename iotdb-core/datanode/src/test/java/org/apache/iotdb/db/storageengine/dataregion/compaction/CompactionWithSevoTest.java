@@ -1,15 +1,5 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ICompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
@@ -23,6 +13,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.NoMeasurementException;
@@ -37,44 +28,86 @@ import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Test;
 
-public class CompactionWithSevoTest extends AbstractCompactionTest{
+import java.io.File;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+public class CompactionWithSevoTest extends AbstractCompactionTest {
 
   @Test
   public void testReadChunkCompactionPerformer() throws Exception {
-    testInner(targets ->new ReadChunkCompactionPerformer(seqResources, targets, EncryptDBUtils.getDefaultFirstEncryptParam()), CompactionTaskSummary::new);
+    testInner(
+        targets ->
+            new ReadChunkCompactionPerformer(
+                seqResources, targets, EncryptDBUtils.getDefaultFirstEncryptParam()),
+        CompactionTaskSummary::new);
   }
 
   @Test
   public void testReadPointCompactionPerformerSeq() throws Exception {
-    testInner(targets ->new ReadPointCompactionPerformer(seqResources, Collections.emptyList(), targets), CompactionTaskSummary::new);
+    testInner(
+        targets -> new ReadPointCompactionPerformer(seqResources, Collections.emptyList(), targets),
+        CompactionTaskSummary::new);
   }
 
   @Test
   public void testReadPointCompactionPerformerUnseq() throws Exception {
-    testInner(targets ->new ReadPointCompactionPerformer(Collections.emptyList(), seqResources, targets), CompactionTaskSummary::new);
+    testInner(
+        targets -> new ReadPointCompactionPerformer(Collections.emptyList(), seqResources, targets),
+        CompactionTaskSummary::new);
   }
 
   @Test
   public void testReadPointCompactionPerformerCross() throws Exception {
-    testCross(targets ->new ReadPointCompactionPerformer(seqResources, unseqResources, targets), CompactionTaskSummary::new);
+    testCross(
+        targets -> new ReadPointCompactionPerformer(seqResources, unseqResources, targets),
+        CompactionTaskSummary::new);
   }
 
   @Test
   public void testFastCompactionPerformerSeq() throws Exception {
-    testInner(targets -> new FastCompactionPerformer(seqResources, Collections.emptyList(), targets, EncryptDBUtils.getDefaultFirstEncryptParam()), FastCompactionTaskSummary::new);
+    testInner(
+        targets ->
+            new FastCompactionPerformer(
+                seqResources,
+                Collections.emptyList(),
+                targets,
+                EncryptDBUtils.getDefaultFirstEncryptParam()),
+        FastCompactionTaskSummary::new);
   }
 
   @Test
   public void testFastCompactionPerformerUnseq() throws Exception {
-    testInner(targets -> new FastCompactionPerformer(Collections.emptyList(), seqResources, targets, EncryptDBUtils.getDefaultFirstEncryptParam()), FastCompactionTaskSummary::new);
+    testInner(
+        targets ->
+            new FastCompactionPerformer(
+                Collections.emptyList(),
+                seqResources,
+                targets,
+                EncryptDBUtils.getDefaultFirstEncryptParam()),
+        FastCompactionTaskSummary::new);
   }
 
   @Test
   public void testFastCompactionPerformerCross() throws Exception {
-    testCross(targets -> new FastCompactionPerformer(seqResources, unseqResources, targets, EncryptDBUtils.getDefaultFirstEncryptParam()), FastCompactionTaskSummary::new);
+    testCross(
+        targets ->
+            new FastCompactionPerformer(
+                seqResources,
+                unseqResources,
+                targets,
+                EncryptDBUtils.getDefaultFirstEncryptParam()),
+        FastCompactionTaskSummary::new);
   }
 
-  private void genSourceFiles() throws Exception{
+  private void genSourceFiles() throws Exception {
     String fileSetDir =
         TestConstant.BASE_OUTPUT_PATH + File.separator + TsFileSet.FILE_SET_DIR_NAME;
     // seq-file1:
@@ -140,10 +173,10 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     }
     TsFileResource resource1 = new TsFileResource(seqf1);
     resource1.setTsFileManager(tsFileManager);
-    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 0);
-    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 0);
-    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 0);
-    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 0);
+    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 0);
+    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 0);
+    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 0);
+    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 0);
     resource1.close();
 
     // rename table1 -> table0
@@ -215,12 +248,11 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     }
     TsFileResource resource2 = new TsFileResource(seqf2);
     resource2.setTsFileManager(tsFileManager);
-    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 1);
-    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 1);
+    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 1);
+    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 1);
     resource2.close();
-
 
     // rename table0.s1 -> table0.s0
     TsFileSet tsFileSet2 = new TsFileSet(2, fileSetDir, false);
@@ -291,10 +323,10 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     }
     TsFileResource resource3 = new TsFileResource(seqf3);
     resource3.setTsFileManager(tsFileManager);
-    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 2);
-    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 2);
-    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 2);
-    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 2);
+    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 2);
+    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 2);
+    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 2);
+    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 2);
     resource3.close();
 
     // rename table2 -> table1
@@ -370,20 +402,24 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     }
     TsFileResource resource4 = new TsFileResource(unseqf4);
     resource4.setTsFileManager(tsFileManager);
-    resource4.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource4.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource4.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 1);
-    resource4.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 1);
+    resource4.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource4.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource4.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 1);
+    resource4.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 1);
     resource4.close();
     unseqResources.add(resource4);
   }
 
-  private void testCross(Function<List<TsFileResource>, ICompactionPerformer> compactionPerformerFunction, Supplier<CompactionTaskSummary> summarySupplier) throws Exception {
+  private void testCross(
+      Function<List<TsFileResource>, ICompactionPerformer> compactionPerformerFunction,
+      Supplier<CompactionTaskSummary> summarySupplier)
+      throws Exception {
     genSourceFiles();
     List<TsFileResource> targetResources;
     ICompactionPerformer performer;
 
-    targetResources = CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     targetResources.forEach(s -> s.setTsFileManager(tsFileManager));
 
     performer = compactionPerformerFunction.apply(targetResources);
@@ -397,7 +433,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {
       // table0 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table0 not found", e.getMessage());
@@ -405,15 +442,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table1.s0 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s0", e.getMessage());
       }
 
       // check data of table1
-      ResultSet resultSet = tsFileReader.query("table1", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table1", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(0, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -421,8 +460,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(0, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -437,7 +477,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(1).getTsFile()).build()) {
       // table1 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table1 not found", e.getMessage());
@@ -445,15 +486,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table0.s0 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s0", e.getMessage());
       }
 
       // check data of table0
-      ResultSet resultSet = tsFileReader.query("table0", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table0", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(1, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -461,8 +504,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(1, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -477,7 +521,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(2).getTsFile()).build()) {
       // table1 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table1 not found", e.getMessage());
@@ -485,15 +530,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table0.s1 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s1"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s1"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s1", e.getMessage());
       }
 
       // check data of table0
-      ResultSet resultSet = tsFileReader.query("table0", Arrays.asList("s0", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table0", Arrays.asList("s0", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(2, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -501,8 +548,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       assertTrue(resultSet.next());
       assertEquals(2, resultSet.getLong(1));
       for (int j = 0; j < 3; j++) {
@@ -511,7 +559,10 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     }
   }
 
-  private void testInner(Function<List<TsFileResource>, ICompactionPerformer> compactionPerformerFunction, Supplier<CompactionTaskSummary> summarySupplier) throws Exception {
+  private void testInner(
+      Function<List<TsFileResource>, ICompactionPerformer> compactionPerformerFunction,
+      Supplier<CompactionTaskSummary> summarySupplier)
+      throws Exception {
     genSourceFiles();
     List<TsFileResource> targetResources;
     ICompactionPerformer performer;
@@ -519,7 +570,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     // target(version=1):
     // table1[s1, s2, s3]
     // table2[s1, s2, s3]
-    targetResources = CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
+    targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     targetResources.forEach(s -> s.setTsFileManager(tsFileManager));
 
     performer = compactionPerformerFunction.apply(targetResources);
@@ -530,7 +582,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {
       // table0 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table0 not found", e.getMessage());
@@ -538,15 +591,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table1.s0 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s0", e.getMessage());
       }
 
       // check data of table1
-      ResultSet resultSet = tsFileReader.query("table1", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table1", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -556,8 +611,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -570,8 +626,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     // target(version=2):
     // table0[s1, s2, s3]
     // table2[s1, s2, s3]
-    targetResources = CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources.subList(1,
-        seqResources.size()), true);
+    targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
+            seqResources.subList(1, seqResources.size()), true);
     targetResources.forEach(s -> s.setTsFileManager(tsFileManager));
 
     performer = compactionPerformerFunction.apply(targetResources);
@@ -582,7 +639,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {
       // table1 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table1 not found", e.getMessage());
@@ -590,15 +648,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table0.s0 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s0", e.getMessage());
       }
 
       // check data of table0
-      ResultSet resultSet = tsFileReader.query("table0", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table0", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -608,8 +668,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -622,8 +683,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
     // target(version=2):
     // table0[s0, s2, s3]
     // table2[s1, s2, s3]
-    targetResources = CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources.subList(2,
-        seqResources.size()), true);
+    targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
+            seqResources.subList(2, seqResources.size()), true);
     targetResources.forEach(s -> s.setTsFileManager(tsFileManager));
 
     performer = compactionPerformerFunction.apply(targetResources);
@@ -634,7 +696,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {
       // table1 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table1 not found", e.getMessage());
@@ -642,15 +705,17 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
 
       // table0.s1 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s1"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s1"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s1", e.getMessage());
       }
 
       // check data of table0
-      ResultSet resultSet = tsFileReader.query("table0", Arrays.asList("s0", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table0", Arrays.asList("s0", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -660,8 +725,9 @@ public class CompactionWithSevoTest extends AbstractCompactionTest{
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));

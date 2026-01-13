@@ -309,7 +309,8 @@ public class ReadPointCompactionPerformer
                         new QueryDataSource(queryDataSource),
                         compactionWriter,
                         schemaMap,
-                        i, maxTsFileSetEndVersionAndMinResource.left)));
+                        i,
+                        maxTsFileSetEndVersionAndMinResource.left)));
       }
       for (Future<Void> future : futures) {
         future.get();
@@ -343,7 +344,12 @@ public class ReadPointCompactionPerformer
     }
 
     return new SeriesDataBlockReader(
-        seriesPath, new HashSet<>(allSensors), fragmentInstanceContext, queryDataSource, true, maxTsFileSetEndVersion);
+        seriesPath,
+        new HashSet<>(allSensors),
+        fragmentInstanceContext,
+        queryDataSource,
+        true,
+        maxTsFileSetEndVersion);
   }
 
   @SuppressWarnings("squid:S1172")

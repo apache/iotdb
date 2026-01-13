@@ -132,7 +132,10 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
     fileWriter.getTsFileResource().setTsFileManager(minVersionResource.getTsFileManager());
     EvolvedSchema evolvedSchema =
         fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);
-    fileWriter.setSchema(evolvedSchema != null ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new) : schema);
+    fileWriter.setSchema(
+        evolvedSchema != null
+            ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new)
+            : schema);
   }
 
   @Override

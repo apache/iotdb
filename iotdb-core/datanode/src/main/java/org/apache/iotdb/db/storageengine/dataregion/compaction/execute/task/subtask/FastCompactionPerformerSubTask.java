@@ -31,8 +31,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
-
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
+
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -119,7 +119,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<String> measurements,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      int subTaskId) {
+      int subTaskId,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.compactionSeriesContextMap = compactionSeriesContextMap;
@@ -132,6 +133,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurements = measurements;
     this.summary = summary;
     this.ignoreAllNullRows = true;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   /** Used for aligned timeseries. */
@@ -139,13 +141,13 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<ModEntry, ModsSerializer>>
-          modificationCacheMap,
+      Map<String, PatternTreeMap<ModEntry, ModsSerializer>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      boolean ignoreAllNullRows, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      boolean ignoreAllNullRows,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;

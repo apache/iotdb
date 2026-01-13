@@ -2401,26 +2401,38 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
+      while (dataSource.hasNextSeqResource(
+          curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isSeqSatisfied(
-            deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
+            deviceID,
+            curSeqFileIndex,
+            scanOptions.getGlobalTimeFilter(),
+            false,
+            maxTsFileSetEndVersion)) {
           break;
         }
         curSeqFileIndex--;
       }
-      return dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion);
+      return dataSource.hasNextSeqResource(
+          curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion);
     }
 
     @Override
     public boolean hasNextUnseqResource() {
-      while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
+      while (dataSource.hasNextUnseqResource(
+          curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isUnSeqSatisfied(
-            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
+            deviceID,
+            curUnseqFileIndex,
+            scanOptions.getGlobalTimeFilter(),
+            false,
+            maxTsFileSetEndVersion)) {
           break;
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion);
+      return dataSource.hasNextUnseqResource(
+          curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion);
     }
 
     @Override
@@ -2530,9 +2542,14 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
+      while (dataSource.hasNextSeqResource(
+          curSeqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isSeqSatisfied(
-            deviceID, curSeqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
+            deviceID,
+            curSeqFileIndex,
+            scanOptions.getGlobalTimeFilter(),
+            false,
+            maxTsFileSetEndVersion)) {
           break;
         }
         curSeqFileIndex++;
@@ -2542,14 +2559,20 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
-      while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
+      while (dataSource.hasNextUnseqResource(
+          curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isUnSeqSatisfied(
-            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
+            deviceID,
+            curUnseqFileIndex,
+            scanOptions.getGlobalTimeFilter(),
+            false,
+            maxTsFileSetEndVersion)) {
           break;
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion);
+      return dataSource.hasNextUnseqResource(
+          curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion);
     }
 
     @Override

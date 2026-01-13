@@ -66,7 +66,8 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
       Map<String, MeasurementSchema> schemaMap,
-      int taskId, long maxTsFileSetEndVersion) {
+      int taskId,
+      long maxTsFileSetEndVersion) {
     this.device = device;
     this.measurementList = measurementList;
     this.fragmentInstanceContext = fragmentInstanceContext;

@@ -7079,10 +7079,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     TsFileResource resource1 = new TsFileResource(f1);
     resource1.setTsFileManager(tsFileManager);
-    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 0);
-    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table1"}), 0);
-    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 0);
-    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 0);
+    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 0);
+    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}), 0);
+    resource1.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 0);
+    resource1.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 0);
     resource1.close();
 
     // rename table1 -> table0
@@ -7154,12 +7154,11 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     TsFileResource resource2 = new TsFileResource(f2);
     resource2.setTsFileManager(tsFileManager);
-    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 1);
-    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 1);
-    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 1);
+    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 1);
+    resource2.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 1);
+    resource2.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 1);
     resource2.close();
-
 
     // rename table0.s1 -> table0.s0
     TsFileSet tsFileSet2 = new TsFileSet(2, fileSetDir, false);
@@ -7230,10 +7229,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     TsFileResource resource3 = new TsFileResource(f3);
     resource3.setTsFileManager(tsFileManager);
-    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 2);
-    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table0"}), 2);
-    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 2);
-    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[]{"table2"}), 2);
+    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 2);
+    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table0"}), 2);
+    resource3.updateStartTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 2);
+    resource3.updateEndTime(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}), 2);
     resource3.close();
 
     // rename table2 -> table1
@@ -7263,7 +7262,8 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {
       // table1 should not exist
       try {
-        tsFileReader.query("table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table0", Collections.singletonList("s2"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table0 should not exist");
       } catch (NoTableException e) {
         assertEquals("Table table0 not found", e.getMessage());
@@ -7271,15 +7271,17 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
       // table1.s0 should not exist
       try {
-        tsFileReader.query("table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
+        tsFileReader.query(
+            "table1", Collections.singletonList("s0"), Long.MIN_VALUE, Long.MAX_VALUE);
         fail("table1.s0 should not exist");
       } catch (NoMeasurementException e) {
         assertEquals("No measurement for s0", e.getMessage());
       }
 
       // check data of table1
-      ResultSet resultSet = tsFileReader.query("table1", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      ResultSet resultSet =
+          tsFileReader.query(
+              "table1", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));
@@ -7289,8 +7291,9 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       }
 
       // check data of table2
-      resultSet = tsFileReader.query("table2", Arrays.asList("s1", "s2", "s3"),
-          Long.MIN_VALUE, Long.MAX_VALUE);
+      resultSet =
+          tsFileReader.query(
+              "table2", Arrays.asList("s1", "s2", "s3"), Long.MIN_VALUE, Long.MAX_VALUE);
       for (int i = 0; i < 3; i++) {
         assertTrue(resultSet.next());
         assertEquals(i, resultSet.getLong(1));

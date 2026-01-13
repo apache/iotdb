@@ -270,8 +270,7 @@ public class EvolvedSchema implements Accountable {
       columnCategories.add(tableSchema.getColumnTypes().get(i));
     }
 
-    TableSchema schema = new TableSchema(originalTableName, measurementSchemas,
-        columnCategories);
+    TableSchema schema = new TableSchema(originalTableName, measurementSchemas, columnCategories);
     schema.setUpdatable(tableSchema.isUpdatable());
     return schema;
   }
@@ -290,12 +289,12 @@ public class EvolvedSchema implements Accountable {
               getFinalColumnName(
                   tableSchema.getTableName(), measurementSchema.getMeasurementName()),
               measurementSchema.getType(),
-              measurementSchema.getEncodingType(), measurementSchema.getCompressor()));
+              measurementSchema.getEncodingType(),
+              measurementSchema.getCompressor()));
       columnCategories.add(tableSchema.getColumnTypes().get(i));
     }
 
-    TableSchema schema = new TableSchema(finalTableName, measurementSchemas,
-        columnCategories);
+    TableSchema schema = new TableSchema(finalTableName, measurementSchemas, columnCategories);
     schema.setUpdatable(tableSchema.isUpdatable());
     return schema;
   }
@@ -389,8 +388,8 @@ public class EvolvedSchema implements Accountable {
     return copySchema;
   }
 
-  public void rewriteToFinal(AbstractAlignedChunkMetadata abstractAlignedChunkMetadata,
-      String originalTableName) {
+  public void rewriteToFinal(
+      AbstractAlignedChunkMetadata abstractAlignedChunkMetadata, String originalTableName) {
     for (IChunkMetadata iChunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
       if (iChunkMetadata != null) {
         iChunkMetadata.setMeasurementUid(
@@ -403,7 +402,7 @@ public class EvolvedSchema implements Accountable {
   public long ramBytesUsed() {
     return RamUsageEstimator.sizeOfMap(this.finalToOriginalTableNames)
         + RamUsageEstimator.sizeOfMap(this.finalToOriginalColumnNames)
-        + RamUsageEstimator.sizeOfMap(this.originalToFinalTableNames) + RamUsageEstimator.sizeOfMap(
-        this.originalToFinalColumnNames);
+        + RamUsageEstimator.sizeOfMap(this.originalToFinalTableNames)
+        + RamUsageEstimator.sizeOfMap(this.originalToFinalColumnNames);
   }
 }

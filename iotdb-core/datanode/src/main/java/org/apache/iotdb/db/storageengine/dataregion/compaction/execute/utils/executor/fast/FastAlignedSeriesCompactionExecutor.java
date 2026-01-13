@@ -93,7 +93,14 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       boolean ignoreAllNullRows,
       Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     super(
-        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary, maxTsFileSetEndVersionAndMinResource);
+        compactionWriter,
+        readerCacheMap,
+        modificationCacheMap,
+        deviceId,
+        true,
+        subTaskId,
+        summary,
+        maxTsFileSetEndVersionAndMinResource);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
@@ -190,8 +197,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     // read time chunk metadatas and value chunk metadatas in the current file
     List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
-    EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(
-        maxTsFileSetEndVersionAndMinResource.getLeft());
+    EvolvedSchema evolvedSchema =
+        resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
 
     for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
         timeseriesMetadataOffsetMap.entrySet()) {
@@ -287,8 +294,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   }
 
   private boolean isValueChunkDataTypeMatchSchema(
-      List<IChunkMetadata> chunkMetadataListOfOneValueColumn,
-      EvolvedSchema evolvedSchema) {
+      List<IChunkMetadata> chunkMetadataListOfOneValueColumn, EvolvedSchema evolvedSchema) {
     boolean isMatch = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
@@ -394,10 +400,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       chunk.getHeader().setMeasurementID(valueChunkMetadata.getMeasurementUid());
 
       if (valueChunkMetadata.getNewType() != null) {
-        Chunk chunk =
-            chunk
-                .rewrite(
-                    ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
+        chunk =
+            chunk.rewrite(
+                ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
         valueChunks.add(chunk);
 
         ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;

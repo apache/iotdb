@@ -372,7 +372,7 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
       case 2004:
         return ObjectNode.deserializeFromWAL(stream);
-      case 2005
+      case 2005:
         return EvolveSchemaNode.deserializeFromWAL(stream);
       case 2006:
         return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(stream);
