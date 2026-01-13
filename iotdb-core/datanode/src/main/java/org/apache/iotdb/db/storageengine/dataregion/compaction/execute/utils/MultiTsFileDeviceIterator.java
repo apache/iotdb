@@ -82,6 +82,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
   private final String databaseName;
+  private final long maxTsFileSetEndVersion;
 
   /**
    * Used for compaction with read chunk performer.
@@ -97,7 +98,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
-    long maxTsFileSetEndVersion =
+    maxTsFileSetEndVersion =
         this.tsFileResourcesSortedByDesc.stream()
             .mapToLong(
                 // max endVersion of all filesets of a TsFile
@@ -151,18 +152,17 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
 
-    long maxTsFileSetEndVersion =
-        this.tsFileResourcesSortedByDesc.stream()
-            .mapToLong(
-                // max endVersion of all filesets of a TsFile
-                resource ->
-                    resource.getTsFileSets().stream()
-                        .mapToLong(TsFileSet::getEndVersion)
-                        .max()
-                        .orElse(Long.MAX_VALUE))
-            // overall max endVersion
-            .max()
-            .orElse(Long.MAX_VALUE);
+    maxTsFileSetEndVersion = this.tsFileResourcesSortedByDesc.stream()
+        .mapToLong(
+            // max endVersion of all filesets of a TsFile
+            resource ->
+                resource.getTsFileSets().stream()
+                    .mapToLong(TsFileSet::getEndVersion)
+                    .max()
+                    .orElse(Long.MAX_VALUE))
+        // overall max endVersion
+        .max()
+        .orElse(Long.MAX_VALUE);
 
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
@@ -200,7 +200,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
 
-    long maxTsFileSetEndVersion =
+    maxTsFileSetEndVersion =
         this.tsFileResourcesSortedByDesc.stream()
             .mapToLong(
                 // max endVersion of all filesets of a TsFile
@@ -445,6 +445,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   true)
               .entrySet()) {
         String measurementId = entrySet.getKey();
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        if (evolvedSchema != null) {
+          String originalTableName = evolvedSchema.getOriginalTableName(
+              currentDevice.left.getTableName());
+          measurementId = evolvedSchema.getFinalColumnName(originalTableName, measurementId);
+        }
         if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
           MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
           timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
@@ -505,10 +511,28 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      IDeviceID originalDeviceId = currentDevice.left;
+      if (evolvedSchema != null) {
+        // rewrite the deviceId to the original one so that we can use it to query the file
+        originalDeviceId = evolvedSchema.rewriteToOriginal(originalDeviceId);
+      }
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
+              originalDeviceId, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
+
+      if (evolvedSchema != null) {
+        // rewrite the measurementId to the final ones so that they can be aligned with other files
+        for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
+          for (IChunkMetadata chunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
+            if (chunkMetadata != null) {
+              chunkMetadata.setMeasurementUid(evolvedSchema.getFinalColumnName(originalDeviceId.getTableName(), chunkMetadata.getMeasurementUid()));
+            }
+          }
+        }
+      }
+
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
 

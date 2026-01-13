@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
@@ -212,14 +214,21 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void useNewWriter() throws IOException {
+    TsFileResource tsFileResource = targetResources.get(currentTargetFileIndex);
     currentWriter =
         new CompactionTsFileWriter(
-            targetResources.get(currentTargetFileIndex),
+            tsFileResource,
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter,
             maxTsFileSetEndVersionAndMinResource.getLeft());
-    currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
+
+    Schema schema = CompactionTableSchemaCollector.copySchema(this.schema);
+    TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+    tsFileResource.setTsFileManager(minVersionResource.getTsFileManager());
+    EvolvedSchema evolvedSchema =
+        tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
+    currentWriter.setSchema(evolvedSchema != null ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new) : schema);
   }
 
   @Override

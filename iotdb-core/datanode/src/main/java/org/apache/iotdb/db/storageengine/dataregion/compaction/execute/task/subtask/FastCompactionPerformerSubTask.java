@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -75,6 +76,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas;
 
+  private final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+
   /** Used for nonAligned timeseries. */
   @SuppressWarnings("squid:S107")
   public FastCompactionPerformerSubTask(
@@ -87,7 +90,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<String> measurements,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      int subTaskId) {
+      int subTaskId,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -99,6 +103,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurements = measurements;
     this.summary = summary;
     this.ignoreAllNullRows = true;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   /** Used for aligned timeseries. */
@@ -106,13 +111,13 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
+      Map<String, PatternTreeMap<ModEntry, ModsSerializer>>
           modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -124,6 +129,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurementSchemas = measurementSchemas;
     this.summary = summary;
     this.ignoreAllNullRows = ignoreAllNullRows;
+    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
   }
 
   @Override

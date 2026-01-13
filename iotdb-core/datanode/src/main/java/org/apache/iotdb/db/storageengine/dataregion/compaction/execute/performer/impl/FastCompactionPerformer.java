@@ -46,6 +46,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimato
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.FastCrossSpaceCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -207,10 +208,26 @@ public class FastCompactionPerformer
         boolean isTreeModel = !isAligned || device.getTableName().startsWith("root.");
         long ttl = deviceIterator.getTTLForCurrentDevice();
         sortedSourceFiles.removeIf(
-            x -> x.definitelyNotContains(device) || !x.isDeviceAlive(device, ttl));
+            x -> {
+              EvolvedSchema evolvedSchema = x.getMergedEvolvedSchema(
+                  maxTsFileSetEndVersionAndMinResource.left);
+              IDeviceID originalDevice = device;
+              if (evolvedSchema != null) {
+                originalDevice = evolvedSchema.rewriteToFinal(device);
+              }
+              return x.definitelyNotContains(originalDevice) || !x.isDeviceAlive(originalDevice, ttl);
+            });
         // checked above
-        //noinspection OptionalGetWithoutIsPresent
-        sortedSourceFiles.sort(Comparator.comparingLong(x -> x.getStartTime(device).get()));
+        sortedSourceFiles.sort(Comparator.comparingLong(x -> {
+          EvolvedSchema evolvedSchema = x.getMergedEvolvedSchema(
+              maxTsFileSetEndVersionAndMinResource.left);
+          IDeviceID originalDevice = device;
+          if (evolvedSchema != null) {
+            originalDevice = evolvedSchema.rewriteToFinal(device);
+          }
+          //noinspection OptionalGetWithoutIsPresent
+          return x.getStartTime(originalDevice).get();
+        }));
         ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
           ttlDeletion =
@@ -289,7 +306,8 @@ public class FastCompactionPerformer
             measurementSchemas,
             deviceId,
             taskSummary,
-            ignoreAllNullRows)
+            ignoreAllNullRows,
+        maxTsFileSetEndVersionAndMinResource)
         .call();
     subTaskSummary.increase(taskSummary);
   }
@@ -338,7 +356,8 @@ public class FastCompactionPerformer
                       measurementsForEachSubTask[i],
                       deviceID,
                       taskSummary,
-                      i)));
+                      i,
+                      maxTsFileSetEndVersionAndMinResource)));
       taskSummaryList.add(taskSummary);
     }
 

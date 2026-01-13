@@ -613,8 +613,21 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
-  public Optional<Long> getStartTime(IDeviceID deviceId) {
+  public IDeviceID toOriginalDeviceID(IDeviceID deviceID) {
+    return toOriginalDeviceID(Long.MAX_VALUE, deviceID);
+  }
+
+  public IDeviceID toOriginalDeviceID(long maxTsFileSetEndVersion, IDeviceID deviceID) {
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    if (evolvedSchema != null) {
+      return evolvedSchema.rewriteToOriginal(deviceID);
+    }
+    return deviceID;
+  }
+
+  public Optional<Long> getStartTime(IDeviceID deviceId, long maxTsFileSetEndVersion) {
     try {
+      deviceId = toOriginalDeviceID(maxTsFileSetEndVersion, deviceId);
       return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -626,9 +639,14 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
+    return getStartTime(deviceId, Long.MAX_VALUE);
+  }
+
   /** open file's end time is Long.MIN_VALUE */
-  public Optional<Long> getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId, long maxTsFileSetEndVersion) {
     try {
+      deviceId = toOriginalDeviceID(maxTsFileSetEndVersion, deviceId);
       return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -638,6 +656,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
       }
       throw e;
     }
+  }
+
+  /** open file's end time is Long.MIN_VALUE */
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
+    return getEndTime(deviceId, Long.MAX_VALUE);
   }
 
   // cannot use FileTimeIndex
@@ -723,6 +746,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
    * Whether this TsFile definitely not contains this device, if ture, it must not contain this
    * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
    * you really understand the meaning!!!!!
+   *
+   * @param device the IDeviceID before schema evolution
    */
   public boolean definitelyNotContains(IDeviceID device) {
     return timeIndex.definitelyNotContains(device);
@@ -1018,6 +1043,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   /**
+   * @param deviceId the IDeviceID after schema evolution
    * @return true if the device is contained in the TsFile
    */
   @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -1072,6 +1098,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /**
    * Check whether the given device may still alive or not. Return false if the device does not
    * exist or out of dated.
+   *
+   * @param device IDeviceID before schema evolution
    */
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
     if (definitelyNotContains(device)) {
