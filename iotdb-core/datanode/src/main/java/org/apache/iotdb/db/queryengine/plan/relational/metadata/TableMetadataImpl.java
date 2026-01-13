@@ -35,9 +35,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -66,6 +64,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -97,8 +96,6 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
-
-  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -266,13 +263,15 @@ public class TableMetadataImpl implements Metadata {
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1
-          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+          && (isCharType(argumentTypes.get(0))
+              || isBlobType(argumentTypes.get(0))
+              || isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text, string, or blob data type.");
+                + " only accepts one argument and it must be text or string or blob or object data type.");
       }
-      return INT32;
+      return INT64;
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -1318,8 +1317,13 @@ public class TableMetadataImpl implements Metadata {
               Collections.emptyMap());
       try {
         ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            scalarFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                scalarFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -1336,8 +1340,13 @@ public class TableMetadataImpl implements Metadata {
       try {
         AggregateFunctionAnalysis aggregateFunctionAnalysis =
             aggregateFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            aggregateFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                aggregateFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -1471,11 +1480,6 @@ public class TableMetadataImpl implements Metadata {
     }
   }
 
-  @Override
-  public IModelFetcher getModelFetcher() {
-    return modelFetcher;
-  }
-
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
@@ -1519,6 +1523,10 @@ public class TableMetadataImpl implements Metadata {
 
   public static boolean isCharType(Type type) {
     return TEXT.equals(type) || StringType.STRING.equals(type);
+  }
+
+  public static boolean isObjectType(Type type) {
+    return ObjectType.OBJECT.equals(type);
   }
 
   public static boolean isBlobType(Type type) {

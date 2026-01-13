@@ -981,6 +981,8 @@ public class IoTDBAuthIT {
     adminStmt.execute("CREATE USER user1 'password123456'");
     adminStmt.execute("CREATE USER user2 'password123456'");
     adminStmt.execute("CREATE USER user3 'password123456'");
+    adminStmt.execute("CREATE USER user4 'password123456'");
+    adminStmt.execute("CREATE USER user5 'password123456'");
     adminStmt.execute("CREATE ROLE testRole");
     adminStmt.execute("GRANT system ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
@@ -1090,6 +1092,18 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.t2.t3 TO USER user1"));
+      } finally {
+        userStmt.close();
+      }
+    }
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user4", "password123456");
+        Statement userStmt = userCon.createStatement()) {
+      adminStmt.execute("GRANT SYSTEM ON root.** TO USER user4");
+      try {
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("GRANT SYSTEM ON root.** TO USER user5"));
+        adminStmt.execute("GRANT SYSTEM ON root.** TO USER user5");
       } finally {
         userStmt.close();
       }

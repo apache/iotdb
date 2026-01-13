@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 public class ZeroOrMoreQuantifier extends PatternQuantifier {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ZeroOrMoreQuantifier.class);
+
   public ZeroOrMoreQuantifier(NodeLocation location, boolean greedy) {
     super(location, greedy);
   }
@@ -27,5 +32,12 @@ public class ZeroOrMoreQuantifier extends PatternQuantifier {
   @Override
   public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
     return visitor.visitZeroOrMoreQuantifier(this, context);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }

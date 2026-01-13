@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import com.google.common.util.concurrent.Futures;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,15 +40,18 @@ import java.util.concurrent.ExecutorService;
 
 public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
   protected List<InsertTabletStatementGenerator> insertTabletStatementGenerators;
+  protected final TsBlockBuilder resultTsBlockBuilder;
 
   protected AbstractTreeIntoOperator(
       OperatorContext operatorContext,
       Operator child,
       List<TSDataType> inputColumnTypes,
       ExecutorService intoOperationExecutor,
-      long statementSizePerLine) {
+      long statementSizePerLine,
+      List<TSDataType> outputDataTypes) {
     super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
     this.maxReturnSize = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
+    this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
   }
 
   protected static List<InsertTabletStatementGenerator> constructInsertTabletStatementGenerators(
@@ -134,7 +138,7 @@ public abstract class AbstractTreeIntoOperator extends AbstractIntoOperator {
             () -> client.insertTablets(insertMultiTabletsStatement), writeOperationExecutor);
   }
 
-  private boolean existFullStatement(
+  protected boolean existFullStatement(
       List<InsertTabletStatementGenerator> insertTabletStatementGenerators) {
     for (InsertTabletStatementGenerator generator : insertTabletStatementGenerators) {
       if (generator.isFull()) {

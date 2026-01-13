@@ -92,6 +92,7 @@ public class PrimitiveArrayManagerTest {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             Assert.assertTrue(o instanceof Binary[]);
             Assert.assertEquals(ARRAY_SIZE, ((Binary[]) o).length);

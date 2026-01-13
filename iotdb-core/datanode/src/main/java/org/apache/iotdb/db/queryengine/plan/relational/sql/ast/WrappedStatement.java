@@ -80,4 +80,9 @@ public abstract class WrappedStatement extends Statement {
   public void setContext(MPPQueryContext context) {
     this.context = context;
   }
+
+  @Override
+  public long ramBytesUsed() {
+    throw new UnsupportedOperationException();
+  }
 }

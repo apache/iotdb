@@ -91,7 +91,8 @@ class PipeAgentLauncher {
         PipeDataNodeAgent.plugin().doRegister(meta);
       }
     } catch (Exception e) {
-      throw new StartupException(e);
+      // Ignore the pipe plugin errors and continue to start
+      LOGGER.warn("Failure when register pipe plugins, will ignore.", e);
     }
   }
 

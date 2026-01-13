@@ -42,7 +42,7 @@ public class ModelTable {
   }
 
   public void addModel(ModelInformation modelInformation) {
-    modelInfoMap.put(modelInformation.getModelName(), modelInformation);
+    modelInfoMap.put(modelInformation.getModelId(), modelInformation);
   }
 
   public void removeModel(String modelId) {
@@ -63,7 +63,7 @@ public class ModelTable {
   public void clearFailedModel() {
     for (ModelInformation modelInformation : modelInfoMap.values()) {
       if (modelInformation.getStatus() == ModelStatus.UNAVAILABLE) {
-        modelInfoMap.remove(modelInformation.getModelName());
+        modelInfoMap.remove(modelInformation.getModelId());
       }
     }
   }

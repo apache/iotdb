@@ -31,7 +31,6 @@ import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
-import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -49,6 +48,8 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
 
   private final List<Pair<String, PartialPath>> sourceTargetPathPairList;
 
+  private int outputIndex = 0;
+
   @SuppressWarnings("squid:S107")
   public TreeIntoOperator(
       OperatorContext operatorContext,
@@ -60,7 +61,15 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
       List<Pair<String, PartialPath>> sourceTargetPathPairList,
       ExecutorService intoOperationExecutor,
       long statementSizePerLine) {
-    super(operatorContext, child, inputColumnTypes, intoOperationExecutor, statementSizePerLine);
+    super(
+        operatorContext,
+        child,
+        inputColumnTypes,
+        intoOperationExecutor,
+        statementSizePerLine,
+        ColumnHeaderConstant.selectIntoColumnHeaders.stream()
+            .map(ColumnHeader::getColumnType)
+            .collect(Collectors.toList()));
     this.sourceTargetPathPairList = sourceTargetPathPairList;
     insertTabletStatementGenerators =
         constructInsertTabletStatementGenerators(
@@ -98,19 +107,23 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
       return null;
     }
 
-    finished = true;
-    return constructResultTsBlock();
+    TsBlock res = constructResultTsBlock();
+    finished = (outputIndex == sourceTargetPathPairList.size());
+    return res;
+  }
+
+  @Override
+  protected TsBlock tryToReturnPartialResult() {
+    return null;
   }
 
   private TsBlock constructResultTsBlock() {
-    List<TSDataType> outputDataTypes =
-        ColumnHeaderConstant.selectIntoColumnHeaders.stream()
-            .map(ColumnHeader::getColumnType)
-            .collect(Collectors.toList());
-    TsBlockBuilder resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
     TimeColumnBuilder timeColumnBuilder = resultTsBlockBuilder.getTimeColumnBuilder();
     ColumnBuilder[] columnBuilders = resultTsBlockBuilder.getValueColumnBuilders();
-    for (Pair<String, PartialPath> sourceTargetPathPair : sourceTargetPathPairList) {
+    for (int size = sourceTargetPathPairList.size();
+        outputIndex < size && !resultTsBlockBuilder.isFull();
+        outputIndex++) {
+      Pair<String, PartialPath> sourceTargetPathPair = sourceTargetPathPairList.get(outputIndex);
       timeColumnBuilder.writeLong(0);
       columnBuilders[0].writeBinary(
           new Binary(sourceTargetPathPair.left, TSFileConfig.STRING_CHARSET));
@@ -122,7 +135,9 @@ public class TreeIntoOperator extends AbstractTreeIntoOperator {
               sourceTargetPathPair.right.getMeasurement()));
       resultTsBlockBuilder.declarePosition();
     }
-    return resultTsBlockBuilder.build();
+    TsBlock res = resultTsBlockBuilder.build();
+    resultTsBlockBuilder.reset();
+    return res;
   }
 
   @Override

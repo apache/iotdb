@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -102,6 +103,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.SettableFuture;
+import org.apache.tsfile.enums.TSDataType;
 
 import javax.annotation.Nullable;
 
@@ -261,6 +263,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context);
 
+  SettableFuture<ConfigTaskResult> alterTimeSeriesDataType(
+      String queryId, AlterTimeSeriesStatement alterTimeSeriesStatement);
+
   TSStatus alterLogicalViewByPipe(
       AlterLogicalViewNode alterLogicalViewNode, boolean shouldMarkAsPipeRequest);
 
@@ -365,6 +370,16 @@ public interface IConfigTaskExecutor {
       final boolean columnIfExists,
       final boolean isView);
 
+  SettableFuture<ConfigTaskResult> alterColumnDataType(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType newType,
+      final String queryId,
+      final boolean tableIfExists,
+      boolean ifColumnExists,
+      final boolean isView);
+
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
       final String tableName,
@@ -450,7 +465,7 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> unloadModel(String existingModelId, List<String> deviceIdList);
 
-  SettableFuture<ConfigTaskResult> createTraining(
+  SettableFuture<ConfigTaskResult> createTuningTask(
       String modelId,
       boolean isTableModel,
       Map<String, String> parameters,

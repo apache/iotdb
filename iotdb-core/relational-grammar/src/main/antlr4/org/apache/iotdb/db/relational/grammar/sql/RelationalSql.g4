@@ -174,6 +174,12 @@ statement
     | loadModelStatement
     | unloadModelStatement
 
+    // Prepared Statement
+    | prepareStatement
+    | executeStatement
+    | executeImmediateStatement
+    | deallocateStatement
+
     // View, Trigger, CQ, Quota are not supported yet
     ;
 
@@ -249,6 +255,7 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
 commentStatement
@@ -857,6 +864,23 @@ unloadModelStatement
     : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
     ;
 
+// ------------------------------------------- Prepared Statement ---------------------------------------------------------
+prepareStatement
+    : PREPARE statementName=identifier FROM sql=statement
+    ;
+
+executeStatement
+    : EXECUTE statementName=identifier (USING literalExpression (',' literalExpression)*)?
+    ;
+
+executeImmediateStatement
+    : EXECUTE IMMEDIATE sql=string (USING literalExpression (',' literalExpression)*)?
+    ;
+
+deallocateStatement
+    : DEALLOCATE PREPARE statementName=identifier
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
@@ -996,7 +1020,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier

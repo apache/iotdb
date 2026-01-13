@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -26,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -189,7 +191,7 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final InsertTabletNode insertTabletNode) {
+  protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -635,6 +637,9 @@ public abstract class TabletInsertionEventParser {
 
   public abstract List<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer);
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 
   public abstract Tablet convertToTablet();
 }

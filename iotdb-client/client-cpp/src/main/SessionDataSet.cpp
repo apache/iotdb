@@ -98,6 +98,7 @@ std::string RowRecord::toString() {
             break;
         case TSDataType::BLOB:
         case TSDataType::STRING:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT:
             if (!fields[i].stringV.is_initialized()) {
                 ret.append("null");
@@ -268,6 +269,7 @@ shared_ptr<RowRecord> SessionDataSet::constructRowRecordFromValueArray() {
             case TSDataType::TEXT:
             case TSDataType::BLOB:
             case TSDataType::STRING:
+            case TSDataType::OBJECT:
                 field.stringV = iotdbRpcDataSet_->getBinary(columnName)->getStringValue();
                 break;
             default:

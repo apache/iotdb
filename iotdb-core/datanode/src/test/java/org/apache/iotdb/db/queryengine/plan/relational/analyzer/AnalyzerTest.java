@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
@@ -80,6 +82,7 @@ import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -143,6 +146,11 @@ public class AnalyzerTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
@@ -1261,7 +1269,8 @@ public class AnalyzerTest {
       final SessionInfo session) {
     try {
       final StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, nopAccessControl, new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
@@ -1285,7 +1294,8 @@ public class AnalyzerTest {
       final SqlParser sqlParser,
       final SessionInfo session) {
     final StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+        new StatementAnalyzerFactory(
+            metadata, sqlParser, nopAccessControl, new InternalTypeManager());
     Analyzer analyzer =
         new Analyzer(
             context,

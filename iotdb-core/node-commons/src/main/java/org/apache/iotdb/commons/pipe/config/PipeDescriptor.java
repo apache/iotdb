@@ -608,6 +608,11 @@ public class PipeDescriptor {
     if (value != null) {
       config.setPipeAllSinksRateLimitBytesPerSecond(Double.parseDouble(value));
     }
+
+    value = parserPipeConfig(properties, "print_log_when_encounter_exception", isHotModify);
+    if (value != null) {
+      config.setPrintLogWhenEncounterException(Boolean.parseBoolean(value));
+    }
   }
 
   private static String parserPipeConfig(

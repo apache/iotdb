@@ -35,18 +35,22 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analyzer;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.StatementAnalyzerFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DataNodeLocationSupplierFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.scheduler.ClusterScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IScheduler;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -56,8 +60,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.DISTRIBUTION_PLANNER;
@@ -87,6 +91,11 @@ public class TableModelPlanner implements IPlanner {
 
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
 
+  // Parameters for prepared statements (optional)
+  private final List<Expression> parameters;
+  private final Map<NodeRef<Parameter>, Expression> parameterLookup;
+  private final TypeManager typeManager;
+
   public TableModelPlanner(
       final Statement statement,
       final SqlParser sqlParser,
@@ -100,7 +109,10 @@ public class TableModelPlanner implements IPlanner {
       final List<PlanOptimizer> logicalPlanOptimizers,
       final List<PlanOptimizer> distributionPlanOptimizers,
       final AccessControl accessControl,
-      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier) {
+      final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier,
+      final List<Expression> parameters,
+      final Map<NodeRef<Parameter>, Expression> parameterLookup,
+      final TypeManager typeManager) {
     this.statement = statement;
     this.sqlParser = sqlParser;
     this.metadata = metadata;
@@ -112,6 +124,9 @@ public class TableModelPlanner implements IPlanner {
     this.distributionPlanOptimizers = distributionPlanOptimizers;
     this.accessControl = accessControl;
     this.dataNodeLocationSupplier = dataNodeLocationSupplier;
+    this.parameters = parameters;
+    this.parameterLookup = parameterLookup;
+    this.typeManager = typeManager;
   }
 
   @Override
@@ -119,9 +134,9 @@ public class TableModelPlanner implements IPlanner {
     return new Analyzer(
             context,
             context.getSession(),
-            new StatementAnalyzerFactory(metadata, sqlParser, accessControl),
-            Collections.emptyList(),
-            Collections.emptyMap(),
+            new StatementAnalyzerFactory(metadata, sqlParser, accessControl, typeManager),
+            parameters,
+            parameterLookup,
             statementRewrite,
             warningCollector)
         .analyze(statement);

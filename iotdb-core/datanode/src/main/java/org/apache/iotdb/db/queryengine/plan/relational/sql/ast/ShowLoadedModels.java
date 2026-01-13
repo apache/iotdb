@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Objects;
 
 public class ShowLoadedModels extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowLoadedModels.class);
 
   private final List<String> deviceIdList;
 
@@ -62,5 +67,13 @@ public class ShowLoadedModels extends Statement {
   @Override
   public String toString() {
     return "ShowLoadedModels{" + "deviceIdList=" + deviceIdList + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(deviceIdList);
+    return size;
   }
 }

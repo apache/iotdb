@@ -280,10 +280,20 @@ public abstract class TopKOperator implements ProcessOperator {
                   new boolean[positionCount]);
           break;
         case INT32:
+          columns[i] =
+              new IntColumn(
+                  positionCount,
+                  Optional.of(new boolean[positionCount]),
+                  new int[positionCount],
+                  TSDataType.INT32);
+          break;
         case DATE:
           columns[i] =
               new IntColumn(
-                  positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
+                  positionCount,
+                  Optional.of(new boolean[positionCount]),
+                  new int[positionCount],
+                  TSDataType.DATE);
           break;
         case INT64:
         case TIMESTAMP:
@@ -306,6 +316,7 @@ public abstract class TopKOperator implements ProcessOperator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           columns[i] =
               new BinaryColumn(
                   positionCount,
@@ -382,6 +393,7 @@ public abstract class TopKOperator implements ProcessOperator {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           memory += 16;
           break;
         default:

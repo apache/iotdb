@@ -110,6 +110,10 @@ public class SubqueryDataSetUtils {
         "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d01',40,40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
         "INSERT INTO table3(time,device_id,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:13:30.000+00:00,'d_null',30,30,30.0,30.0,true,'shanghai_huangpu_red_A_d01_30','shanghai_huangpu_red_A_d01_30',X'cafebabe30',2024-09-24T06:13:00.000+00:00,'2024-09-23')",
         "INSERT INTO table3(time,device_id,s2,s3,s4,s5,s6,s7,s8,s9,s10) values (2024-09-24T06:14:30.000+00:00,'d_null',40,40.0,40.0,false,'shanghai_huangpu_red_A_d01_40','shanghai_huangpu_red_A_d01_40',X'cafebabe40',2024-09-24T06:14:00.000+00:00,'2024-09-24')",
+        // table4
+        "CREATE TABLE IF NOT EXISTS table4(region STRING TAG, remark STRING ATTRIBUTE, name TEXT FIELD)",
+        "INSERT INTO table4 values(1, 'R001', 'good', 'Mary')",
+        "INSERT INTO table4 values(2, 'R002', 'bad', 'Tom')",
         "FLUSH",
         "CLEAR ATTRIBUTE CACHE",
       };

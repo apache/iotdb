@@ -684,4 +684,25 @@ public class MppSharedCommonConfig implements CommonConfig {
     cnConfig.setAuditableOperationResult(auditableOperationResult);
     return this;
   }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    cnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    dnConfig.setCteBufferSize(cteBufferSize);
+    cnConfig.setCteBufferSize(cteBufferSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    dnConfig.setMaxRowsInCteBuffer(maxRows);
+    cnConfig.setMaxRowsInCteBuffer(maxRows);
+    return this;
+  }
 }

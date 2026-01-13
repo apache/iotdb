@@ -22,12 +22,13 @@ package org.apache.iotdb.db.metadata.cache;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.SchemaCacheEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -264,6 +265,11 @@ public class TreeDeviceSchemaCacheManagerTest {
     Assert.assertEquals(
         new TimeValuePair(2, new TsPrimitiveType.TsInt(2)),
         treeDeviceSchemaCacheManager.getLastCache(new MeasurementPath("root.db.d.s3")));
+
+    Assert.assertTrue(TableDeviceSchemaCache.getInstance().getMemoryUsage() > 0);
+
+    treeDeviceSchemaCacheManager.cleanUp();
+    Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
   }
 
   @Test
@@ -317,5 +323,13 @@ public class TreeDeviceSchemaCacheManagerTest {
     Assert.assertEquals(1, measurementPaths.size());
     Assert.assertEquals(TSDataType.FLOAT, measurementPaths.get(0).getMeasurementSchema().getType());
     Assert.assertEquals("root.sg1.d3.s1", measurementPaths.get(0).getFullPath());
+
+    treeDeviceSchemaCacheManager.invalidateLastCache(new MeasurementPath("root.sg1.**"));
+    treeDeviceSchemaCacheManager.invalidateDatabaseLastCache("root.sg1");
+    TableDeviceSchemaCache.getInstance().invalidateTreeSchema();
+    Assert.assertTrue(TableDeviceSchemaCache.getInstance().getMemoryUsage() > 0);
+
+    TableDeviceSchemaCache.getInstance().invalidateAll();
+    Assert.assertEquals(0, TableDeviceSchemaCache.getInstance().getMemoryUsage());
   }
 }

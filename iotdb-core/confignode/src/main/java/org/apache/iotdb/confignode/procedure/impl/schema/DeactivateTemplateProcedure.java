@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -39,7 +40,6 @@ import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeactivateTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TConstructSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -143,7 +143,6 @@ public class DeactivateTemplateProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    List<TSStatus> successResult = new ArrayList<>();
     DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>
         constructBlackListTask =
             new DeactivateTemplateRegionTaskExecutor<TConstructSchemaBlackListWithTemplateReq>(
@@ -156,26 +155,11 @@ public class DeactivateTemplateProcedure
                         consensusGroupIdList, dataNodeRequest))) {
               @Override
               protected List<TConsensusGroupId> processResponseOfOneDataNode(
-                  TDataNodeLocation dataNodeLocation,
-                  List<TConsensusGroupId> consensusGroupIdList,
-                  TSStatus response) {
-                List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-                if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(response);
-                } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                  List<TSStatus> subStatusList = response.getSubStatus();
-                  for (int i = 0; i < subStatusList.size(); i++) {
-                    if (subStatusList.get(i).getCode()
-                        == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                      successResult.add(subStatusList.get(i));
-                    } else {
-                      failedRegionList.add(consensusGroupIdList.get(i));
-                    }
-                  }
-                } else {
-                  failedRegionList.addAll(consensusGroupIdList);
-                }
-                return failedRegionList;
+                  final TDataNodeLocation dataNodeLocation,
+                  final List<TConsensusGroupId> consensusGroupIdList,
+                  final TSStatus response) {
+                return processResponseOfOneDataNodeWithSuccessResult(
+                    dataNodeLocation, consensusGroupIdList, response);
               }
             };
     constructBlackListTask.execute();
@@ -185,7 +169,7 @@ public class DeactivateTemplateProcedure
     }
 
     long preDeletedNum = 0;
-    for (TSStatus resp : successResult) {
+    for (TSStatus resp : constructBlackListTask.getSuccessResult()) {
       preDeletedNum += Long.parseLong(resp.getMessage());
     }
     return preDeletedNum;
@@ -465,12 +449,12 @@ public class DeactivateTemplateProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure nodes: %s",
+                      "Deactivate template of %s failed when [%s] because failed to execute in all replicaset of %s %s. Failure: %s",
                       requestMessage,
                       taskName,
                       consensusGroupId.type,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      printFailureMap()))));
       interruptTask();
     }
   }

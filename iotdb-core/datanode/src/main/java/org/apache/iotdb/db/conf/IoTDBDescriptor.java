@@ -813,6 +813,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "slow_query_threshold", String.valueOf(conf.getSlowQueryThreshold()))));
 
+    conf.setQueryCostStatWindow(
+        Integer.parseInt(
+            properties.getProperty(
+                "query_cost_stat_window", String.valueOf(conf.getQueryCostStatWindow()))));
+
     conf.setDataRegionNum(
         Integer.parseInt(
             properties.getProperty("data_region_num", String.valueOf(conf.getDataRegionNum()))));
@@ -895,10 +900,12 @@ public class IoTDBDescriptor {
     }
 
     conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+
     conf.setPipeTaskThreadCount(
         Integer.parseInt(
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
+
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -1044,6 +1051,24 @@ public class IoTDBDescriptor {
 
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+    // The buffer for cte materialization.
+    long cteBufferSizeInBytes =
+        Long.parseLong(
+            properties.getProperty(
+                "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+    if (cteBufferSizeInBytes > 0) {
+      conf.setCteBufferSize(cteBufferSizeInBytes);
+    }
+
+    // max number of rows for cte materialization
+    int maxRowsInCteBuffer =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+    if (maxRowsInCteBuffer > 0) {
+      conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+    }
 
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -2029,6 +2054,12 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "slow_query_threshold",
                   ConfigurationFileUtils.getConfigurationDefaultValue("slow_query_threshold"))));
+      // update query_cost_stat_window
+      conf.setQueryCostStatWindow(
+          Integer.parseInt(
+              properties.getProperty(
+                  "query_cost_stat_window",
+                  ConfigurationFileUtils.getConfigurationDefaultValue("query_cost_stat_window"))));
       // update select into operation max buffer size
       conf.setIntoOperationBufferSizeInByte(
           Long.parseLong(
@@ -2159,6 +2190,24 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
+
+      // The buffer for cte materialization.
+      long cteBufferSizeInBytes =
+          Long.parseLong(
+              properties.getProperty(
+                  "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+      if (cteBufferSizeInBytes > 0) {
+        conf.setCteBufferSize(cteBufferSizeInBytes);
+      }
+      // max number of rows for cte materialization
+      int maxRowsInCteBuffer =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+      if (maxRowsInCteBuffer > 0) {
+        conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      }
+
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
@@ -2395,6 +2444,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "skip_failed_table_schema_check",
                 String.valueOf(conf.isSkipFailedTableSchemaCheck()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
   }
 
   private void loadLoadTsFileHotModifiedProp(TrimProperties properties) throws IOException {
@@ -2442,6 +2503,18 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "load_tsfile_split_partition_max_size",
                 Integer.toString(conf.getLoadTsFileSpiltPartitionMaxSize()))));
+
+    conf.setLoadTsFileStatementSplitThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_statement_split_threshold",
+                Integer.toString(conf.getLoadTsFileStatementSplitThreshold()))));
+
+    conf.setLoadTsFileSubStatementBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "load_tsfile_sub_statement_batch_size",
+                Integer.toString(conf.getLoadTsFileSubStatementBatchSize()))));
 
     conf.setSkipFailedTableSchemaCheck(
         Boolean.parseBoolean(
@@ -2694,6 +2767,7 @@ public class IoTDBDescriptor {
         return conf.getDefaultDoubleEncoding();
       case STRING:
       case BLOB:
+      case OBJECT:
       case TEXT:
       default:
         return conf.getDefaultTextEncoding();

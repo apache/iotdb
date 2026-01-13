@@ -70,6 +70,7 @@ public class IoTDBTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -1094,6 +1095,12 @@ public class IoTDBTableIT {
       }
       try {
         statement.execute("show create view information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The system view does not support show create.", e.getMessage());
+      }
+      try {
+        statement.execute("show create table information_schema.tables");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: The system view does not support show create.", e.getMessage());

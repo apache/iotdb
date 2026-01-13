@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.commons.audit;
 
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
-import java.util.List;
 import java.util.function.Supplier;
 
 public abstract class AbstractAuditLogger {
-
+  public static final String OBJECT_AUTHENTICATION_AUDIT_STR =
+      "User %s (ID=%d) requests authority on object %s with result %s";
   public static final String AUDIT_LOG_NODE_ID = "node_id";
   public static final String AUDIT_LOG_USER_ID = "user_id";
   public static final String AUDIT_LOG_USERNAME = "username";
@@ -43,83 +42,23 @@ public abstract class AbstractAuditLogger {
 
   private static final CommonConfig CONFIG = CommonDescriptor.getInstance().getConfig();
   protected static final boolean IS_AUDIT_LOG_ENABLED = CONFIG.isEnableAuditLog();
-  private static final List<AuditLogOperation> AUDITABLE_OPERATION_TYPE =
-      CONFIG.getAuditableOperationType();
-  private static final PrivilegeLevel AUDITABLE_OPERATION_LEVEL =
-      CONFIG.getAuditableOperationLevel();
-  private static final String AUDITABLE_OPERATION_RESULT = CONFIG.getAuditableOperationResult();
 
   public abstract void log(IAuditEntity auditLogFields, Supplier<String> log);
 
   public boolean noNeedInsertAuditLog(IAuditEntity auditLogFields) {
-    AuditLogOperation operation = auditLogFields.getAuditLogOperation();
-    boolean result = auditLogFields.getResult();
-
-    // to do: check whether this event should be logged.
-    // if whitelist or blacklist is used, only ip on the whitelist or blacklist can be logged
-
-    if (AUDITABLE_OPERATION_TYPE == null || !AUDITABLE_OPERATION_TYPE.contains(operation)) {
-      return true;
-    }
-    if (auditLogFields.getPrivilegeTypes() != null) {
-      for (PrivilegeType privilegeType : auditLogFields.getPrivilegeTypes()) {
-        PrivilegeLevel privilegeLevel = judgePrivilegeLevel(privilegeType);
-        if (AUDITABLE_OPERATION_LEVEL == PrivilegeLevel.OBJECT
-            && privilegeLevel == PrivilegeLevel.GLOBAL) {
-          return true;
-        }
-      }
-    }
-    if (result && !AUDITABLE_OPERATION_RESULT.contains("SUCCESS")) {
-      return true;
-    }
-    return !result && !AUDITABLE_OPERATION_RESULT.contains("FAIL");
+    return true;
   }
 
-  public static PrivilegeLevel judgePrivilegeLevel(PrivilegeType type) {
-    if (type == null) {
-      return PrivilegeLevel.GLOBAL;
-    }
-    switch (type) {
-      case READ_DATA:
-      case DROP:
-      case ALTER:
-      case CREATE:
-      case DELETE:
-      case INSERT:
-      case SELECT:
-      case MANAGE_DATABASE:
-      case WRITE_DATA:
-      case READ_SCHEMA:
-      case WRITE_SCHEMA:
-        return PrivilegeLevel.OBJECT;
-      case USE_CQ:
-      case USE_UDF:
-      case USE_PIPE:
-      case USE_MODEL:
-      case MAINTAIN:
-      case MANAGE_ROLE:
-      case MANAGE_USER:
-      case USE_TRIGGER:
-      case EXTEND_TEMPLATE:
-      default:
-        return PrivilegeLevel.GLOBAL;
-    }
-  }
-
-  public static Boolean isLoginEvent(AuditEventType type) {
-    switch (type) {
-      case LOGIN:
-      case LOGIN_FINAL:
-      case MODIFY_PASSWD:
-      case LOGIN_EXCEED_LIMIT:
-      case LOGIN_FAILED_TRIES:
-      case LOGIN_REJECT_IP:
-      case LOGIN_FAIL_MAX_TIMES:
-      case LOGIN_RESOURCE_RESTRICT:
-        return true;
-      default:
-        return false;
-    }
+  public void recordObjectAuthenticationAuditLog(
+      final IAuditEntity auditEntity, final Supplier<String> auditObject) {
+    log(
+        auditEntity.setAuditEventType(AuditEventType.OBJECT_AUTHENTICATION),
+        () ->
+            String.format(
+                OBJECT_AUTHENTICATION_AUDIT_STR,
+                auditEntity.getUsername(),
+                auditEntity.getUserId(),
+                auditObject.get(),
+                auditEntity.getResult()));
   }
 }

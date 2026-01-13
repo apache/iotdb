@@ -69,6 +69,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         binaryValues = new BinaryBigArray();
         return;
       case BOOLEAN:
@@ -101,6 +102,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valuesSize += binaryValues.sizeOf();
         break;
       case BOOLEAN:
@@ -135,6 +137,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         binaryValues.ensureCapacity(groupCount);
         return;
       case BOOLEAN:
@@ -167,6 +170,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         addBinaryInput(groupIds, arguments[0], mask);
         return;
       case BOOLEAN:
@@ -203,6 +207,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           updateBinaryValue(groupIds[i], argument.getBinary(i));
           break;
@@ -240,6 +245,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
         case STRING:
         case TEXT:
         case BLOB:
+        case OBJECT:
           columnBuilder.writeBinary(binaryValues.get(groupId));
           break;
         case BOOLEAN:
@@ -274,6 +280,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           columnBuilder.writeBinary(binaryValues.get(groupId));
           break;
@@ -311,6 +318,7 @@ public class GroupedMinAccumulator implements GroupedAccumulator {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         binaryValues.reset();
         return;
       case BOOLEAN:
