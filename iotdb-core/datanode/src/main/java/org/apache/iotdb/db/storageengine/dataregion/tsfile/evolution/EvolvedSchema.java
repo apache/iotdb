@@ -32,6 +32,8 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -47,7 +49,8 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class EvolvedSchema {
+public class EvolvedSchema implements Accountable {
+
   // the evolved table names after applying all schema evolution operations
   private Map<String, String> finalToOriginalTableNames = new LinkedHashMap<>();
 
@@ -285,8 +288,8 @@ public class EvolvedSchema {
       measurementSchemas.add(
           new MeasurementSchema(
               getFinalColumnName(
-                      tableSchema.getTableName(), measurementSchema.getMeasurementName()),
-                  measurementSchema.getType(),
+                  tableSchema.getTableName(), measurementSchema.getMeasurementName()),
+              measurementSchema.getType(),
               measurementSchema.getEncodingType(), measurementSchema.getCompressor()));
       columnCategories.add(tableSchema.getColumnTypes().get(i));
     }
@@ -390,8 +393,17 @@ public class EvolvedSchema {
       String originalTableName) {
     for (IChunkMetadata iChunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
       if (iChunkMetadata != null) {
-        iChunkMetadata.setMeasurementUid(getFinalColumnName(originalTableName, iChunkMetadata.getMeasurementUid()));
+        iChunkMetadata.setMeasurementUid(
+            getFinalColumnName(originalTableName, iChunkMetadata.getMeasurementUid()));
       }
     }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return RamUsageEstimator.sizeOfMap(this.finalToOriginalTableNames)
+        + RamUsageEstimator.sizeOfMap(this.finalToOriginalColumnNames)
+        + RamUsageEstimator.sizeOfMap(this.originalToFinalTableNames) + RamUsageEstimator.sizeOfMap(
+        this.originalToFinalColumnNames);
   }
 }

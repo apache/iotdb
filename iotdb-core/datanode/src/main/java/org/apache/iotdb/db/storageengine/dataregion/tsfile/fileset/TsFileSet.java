@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchemaCache;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 
@@ -29,27 +30,18 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 /** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
-
+  
   public static final String FILE_SET_DIR_NAME = "filesets";
 
   private final long endVersion;
   private final File fileSetDir;
   private final ReentrantReadWriteLock lock;
   private SchemaEvolutionFile schemaEvolutionFile;
-
-  // only As comparator key
-  private TsFileSet(long endVersion) {
-    this.endVersion = endVersion;
-    this.fileSetDir = null;
-    this.lock = null;
-  }
-
-  public static TsFileSet comparatorKey(long endVersion) {
-    return new TsFileSet(endVersion);
-  }
 
   public TsFileSet(long endVersion, String fileSetsDir, boolean recover) {
     this.endVersion = endVersion;
@@ -86,6 +78,7 @@ public class TsFileSet implements Comparable<TsFileSet> {
     writeLock();
     try {
       schemaEvolutionFile.append(schemaEvolutions);
+      EvolvedSchemaCache.getInstance().invalidate(this);
     } finally {
       writeUnlock();
     }
@@ -94,7 +87,13 @@ public class TsFileSet implements Comparable<TsFileSet> {
   public EvolvedSchema readEvolvedSchema() throws IOException {
     readLock();
     try {
-      return schemaEvolutionFile.readAsSchema();
+      return EvolvedSchemaCache.getInstance().computeIfAbsent(this, () -> {
+        try {
+          return schemaEvolutionFile.readAsSchema();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      });
     } finally {
       readUnlock();
     }
