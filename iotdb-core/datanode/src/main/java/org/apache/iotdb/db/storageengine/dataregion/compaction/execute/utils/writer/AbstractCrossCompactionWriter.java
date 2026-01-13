@@ -76,6 +76,8 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   private final EncryptParameter encryptParameter;
 
+  private final long maxTsFileSetEndVersion;
+
   @TestOnly
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -116,6 +118,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     }
     this.seqTsFileResources = seqFileResources;
     this.targetResources = targetResources;
+    this.maxTsFileSetEndVersion = maxTsFileSetEndVersion;
   }
 
   @Override
@@ -236,10 +239,17 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
-      ITimeIndex timeIndex = seqTsFileResources.get(fileIndex).getTimeIndex();
+      TsFileResource tsFileResource = seqTsFileResources.get(fileIndex);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      IDeviceID originalDeviceId = deviceId;
+      if (evolvedSchema != null) {
+        originalDeviceId = evolvedSchema.rewriteToOriginal(deviceId);
+      }
+
+      ITimeIndex timeIndex = tsFileResource.getTimeIndex();
       if (timeIndex.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // the timeIndexType of resource is deviceTimeIndex
-        Optional<Long> endTime = timeIndex.getEndTime(deviceId);
+        Optional<Long> endTime = timeIndex.getEndTime(originalDeviceId);
         currentDeviceEndTime[fileIndex] = endTime.orElse(Long.MIN_VALUE);
         isCurrentDeviceExistedInSourceSeqFiles[fileIndex] = endTime.isPresent();
       } else {
@@ -248,7 +258,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         // Fast compaction get reader from cache map, while read point compaction get reader from
         // FileReaderManager
         Map<String, TimeseriesMetadata> deviceMetadataMap =
-            getFileReader(seqTsFileResources.get(fileIndex)).readDeviceMetadata(deviceId);
+            getFileReader(tsFileResource).readDeviceMetadata(originalDeviceId);
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
@@ -287,7 +297,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         targetResource.setTsFileManager(minVersionResource.getTsFileManager());
         EvolvedSchema evolvedSchema = targetResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
 
-        schema = evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new);
+        if (evolvedSchema != null) {
+          schema = evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new);
+        }
         compactionTsFileWriter.setSchema(schema);
       } else {
         compactionTsFileWriter.setSchema(schema);

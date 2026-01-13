@@ -26,6 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
@@ -382,5 +384,14 @@ public class EvolvedSchema {
       copySchema.registerTableSchema(originalSchema);
     }
     return copySchema;
+  }
+
+  public void rewriteToFinal(AbstractAlignedChunkMetadata abstractAlignedChunkMetadata,
+      String originalTableName) {
+    for (IChunkMetadata iChunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
+      if (iChunkMetadata != null) {
+        iChunkMetadata.setMeasurementUid(getFinalColumnName(originalTableName, iChunkMetadata.getMeasurementUid()));
+      }
+    }
   }
 }

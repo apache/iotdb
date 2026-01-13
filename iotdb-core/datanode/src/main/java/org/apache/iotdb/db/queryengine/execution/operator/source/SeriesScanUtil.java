@@ -1782,7 +1782,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isUnSeqSatisfied(
-            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
+            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1911,7 +1911,7 @@ public class SeriesScanUtil implements Accountable {
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
         if (dataSource.isUnSeqSatisfied(
-            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false)) {
+            deviceID, curUnseqFileIndex, scanOptions.getGlobalTimeFilter(), false, maxTsFileSetEndVersion)) {
           break;
         }
         curUnseqFileIndex++;

@@ -35,7 +35,6 @@ public class ReorderedTsFileDeviceIterator extends TransformedTsFileDeviceIterat
   private void collectAndSort() throws IOException {
     while (super.hasNext()) {
       Pair<IDeviceID, Boolean> next = super.next();
-      next.left = transformer.apply(next.left);
       deviceIDAndFirstMeasurementNodeList.add(
           new Pair<>(next, super.getFirstMeasurementNodeOfCurrentDevice()));
     }

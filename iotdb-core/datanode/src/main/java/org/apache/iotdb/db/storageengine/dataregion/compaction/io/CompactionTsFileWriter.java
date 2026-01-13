@@ -55,7 +55,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
-  private IDeviceID currentDeviceId;
+  private IDeviceID currentOriginalDeviceId;
 
   private final TsFileResource tsFileResource;
   private final EvolvedSchema evolvedSchema;
@@ -114,7 +114,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
             ? null
             : measurementName ->
                 evolvedSchema.getOriginalColumnName(
-                    evolvedSchema.getFinalTableName(currentDeviceId.getTableName()), measurementName));
+                    evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName()), measurementName));
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(
@@ -130,11 +130,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       isEmptyTargetFile = false;
     }
     if (evolvedSchema != null) {
+      String finalTableName = evolvedSchema.getFinalTableName(
+          currentOriginalDeviceId.getTableName());
       chunk
           .getHeader()
           .setMeasurementID(
               evolvedSchema.getOriginalColumnName(
-                  currentDeviceId.getTableName(), chunk.getHeader().getMeasurementID()));
+                 finalTableName, chunk.getHeader().getMeasurementID()));
     }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
@@ -155,7 +157,7 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       throws IOException {
     if (evolvedSchema != null) {
       measurementId =
-          evolvedSchema.getOriginalColumnName(currentDeviceId.getTableName(), measurementId);
+          evolvedSchema.getOriginalColumnName(currentOriginalDeviceId.getTableName(), measurementId);
     }
     long beforeOffset = this.getPos();
     super.writeEmptyValueChunk(
@@ -177,21 +179,21 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     if (evolvedSchema != null) {
       deviceId = evolvedSchema.rewriteToOriginal(deviceId);
     }
-    currentDeviceId = deviceId;
+    currentOriginalDeviceId = deviceId;
     return super.startChunkGroup(deviceId);
   }
 
   @Override
   public void endChunkGroup() throws IOException {
-    if (currentDeviceId == null || chunkMetadataList.isEmpty()) {
+    if (currentOriginalDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
-    String tableName = currentDeviceId.getTableName();
+    String tableName = currentOriginalDeviceId.getTableName();
     TableSchema tableSchema = getSchema().getTableSchemaMap().get(tableName);
     boolean generateTableSchemaForCurrentChunkGroup = tableSchema != null;
     setGenerateTableSchema(generateTableSchemaForCurrentChunkGroup);
     super.endChunkGroup();
-    currentDeviceId = null;
+    currentOriginalDeviceId = null;
   }
 
   @Override

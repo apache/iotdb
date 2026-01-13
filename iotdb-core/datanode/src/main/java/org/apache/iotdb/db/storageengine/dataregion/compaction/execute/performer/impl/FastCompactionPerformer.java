@@ -213,20 +213,14 @@ public class FastCompactionPerformer
                   maxTsFileSetEndVersionAndMinResource.left);
               IDeviceID originalDevice = device;
               if (evolvedSchema != null) {
-                originalDevice = evolvedSchema.rewriteToFinal(device);
+                originalDevice = evolvedSchema.rewriteToOriginal(device);
               }
               return x.definitelyNotContains(originalDevice) || !x.isDeviceAlive(originalDevice, ttl);
             });
         // checked above
         sortedSourceFiles.sort(Comparator.comparingLong(x -> {
-          EvolvedSchema evolvedSchema = x.getMergedEvolvedSchema(
-              maxTsFileSetEndVersionAndMinResource.left);
-          IDeviceID originalDevice = device;
-          if (evolvedSchema != null) {
-            originalDevice = evolvedSchema.rewriteToFinal(device);
-          }
           //noinspection OptionalGetWithoutIsPresent
-          return x.getStartTime(originalDevice).get();
+          return x.getStartTime(device, maxTsFileSetEndVersionAndMinResource.left).get();
         }));
         ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {

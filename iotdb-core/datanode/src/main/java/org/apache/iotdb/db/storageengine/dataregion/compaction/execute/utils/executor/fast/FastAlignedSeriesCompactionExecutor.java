@@ -36,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -87,9 +88,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
     super(
-        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
+        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary, maxTsFileSetEndVersionAndMinResource);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
@@ -185,6 +187,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     // read time chunk metadatas and value chunk metadatas in the current file
     List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
+    EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(
+        maxTsFileSetEndVersionAndMinResource.getLeft());
+
     for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
         timeseriesMetadataOffsetMap.entrySet()) {
       String measurementID = entry.getKey();
@@ -213,7 +218,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                   .get(resource)
                   .getChunkMetadataListByTimeseriesMetadataOffset(
                       timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
-          if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList)) {
+          if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList, evolvedSchema)) {
             valueChunkMetadatas.add(valueColumnChunkMetadataList);
           } else {
             valueChunkMetadatas.add(null);
@@ -267,17 +272,29 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       // modify aligned chunk metadatas
       ModificationUtils.modifyAlignedChunkMetaData(
           alignedChunkMetadataList, timeModifications, valueModifications, ignoreAllNullRows);
+
+      if (evolvedSchema != null) {
+        String originalTableName = evolvedSchema.getOriginalTableName(deviceId.getTableName());
+        for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
+          evolvedSchema.rewriteToFinal(abstractAlignedChunkMetadata, originalTableName);
+        }
+      }
     }
     return alignedChunkMetadataList;
   }
 
   private boolean isValueChunkDataTypeMatchSchema(
-      List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+      List<IChunkMetadata> chunkMetadataListOfOneValueColumn,
+      EvolvedSchema evolvedSchema) {
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
       }
       String measurement = chunkMetadata.getMeasurementUid();
+      if (evolvedSchema != null) {
+        String originalTableName = evolvedSchema.getOriginalTableName(deviceId.getTableName());
+        measurement = evolvedSchema.getFinalColumnName(originalTableName, measurement);
+      }
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
       return schema.getType() == chunkMetadata.getDataType();
     }
@@ -362,7 +379,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      Chunk chunk = readChunk(reader, (ChunkMetadata) valueChunkMetadata);
+      // the column may be renamed, enqueue with the final column name
+      chunk.getHeader().setMeasurementID(valueChunkMetadata.getMeasurementUid());
+      valueChunks.add(chunk);
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);

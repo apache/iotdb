@@ -168,7 +168,7 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public boolean isUnSeqSatisfied(
-      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug) {
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug, long maxTsFileSetEndVersion) {
     if (curIndex != this.curUnSeqIndex) {
       throw new IllegalArgumentException(
           String.format(
@@ -178,7 +178,7 @@ public class QueryDataSource implements IQueryDataSource {
       TsFileResource tsFileResource = unseqResources.get(unSeqFileOrderIndex[curIndex]);
       curUnSeqSatisfied =
           tsFileResource != null
-              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug));
+              && (isSingleDevice || tsFileResource.isSatisfied(deviceID, timeFilter, false, debug, maxTsFileSetEndVersion));
     }
 
     return curUnSeqSatisfied;

@@ -554,7 +554,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
-    Optional<Long> startTime = tsFileResource.getStartTime(device);
+    Optional<Long> startTime = tsFileResource.getStartTime(device, maxTsFileSetEndVersion);
     if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
@@ -780,7 +780,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         ModEntry ttlDeletion = null;
-        Optional<Long> startTime = resource.getStartTime(device);
+        Optional<Long> startTime = resource.getStartTime(device, maxTsFileSetEndVersion);
         if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new TreeDeletionEntry(

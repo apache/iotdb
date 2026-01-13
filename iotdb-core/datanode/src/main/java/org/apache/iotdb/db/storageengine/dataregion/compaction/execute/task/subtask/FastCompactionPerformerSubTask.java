@@ -144,7 +144,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               sortedSourceFiles,
               deviceId,
               subTaskId,
-              summary);
+              summary,
+              maxTsFileSetEndVersionAndMinResource);
       for (String measurement : measurements) {
         seriesCompactionExecutor.setNewMeasurement(timeseriesMetadataOffsetMap.get(measurement));
         seriesCompactionExecutor.execute();
@@ -166,7 +167,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 subTaskId,
                 measurementSchemas,
                 summary,
-                ignoreAllNullRows);
+                ignoreAllNullRows,
+                maxTsFileSetEndVersionAndMinResource);
       } else {
         seriesCompactionExecutor =
             new FastAlignedSeriesCompactionExecutor(
@@ -179,7 +181,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 subTaskId,
                 measurementSchemas,
                 summary,
-                ignoreAllNullRows);
+                ignoreAllNullRows,
+                maxTsFileSetEndVersionAndMinResource);
       }
       seriesCompactionExecutor.execute();
     }

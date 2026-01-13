@@ -1720,7 +1720,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
     for (TsFileResource tsFileResource : tsFileResources) {
       List<TsFileSet> tsFileSets = tsFileResource.getTsFileSets();
       if (tsFileSets.isEmpty()) {
-        continue;
+        // include the newest files that does not belong to any file sets,
+        // should apply all schema evolution
+        maxTsFileSetEndVersion = Long.MAX_VALUE;
+        break;
       }
       TsFileSet lastTsFileSet = tsFileSets.get(tsFileSets.size() - 1);
       if (lastTsFileSet.getEndVersion() > maxTsFileSetEndVersion) {
