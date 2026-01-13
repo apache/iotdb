@@ -9,7 +9,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class EvolvedSchemaCache {
 
-  private Cache<TsFileSet, EvolvedSchema> cache;
+  private final Cache<TsFileSet, EvolvedSchema> cache;
 
   private EvolvedSchemaCache() {
     cache = Caffeine.newBuilder().weigher(
@@ -21,10 +21,6 @@ public class EvolvedSchemaCache {
         // TODO-Sevo configurable
         128 * 1024 * 1024L
     ).build();
-  }
-
-  public void put(TsFileSet tsFileSet, EvolvedSchema schema) {
-    cache.put(tsFileSet, schema);
   }
 
   public @Nullable EvolvedSchema computeIfAbsent(TsFileSet tsFileSet, Supplier<EvolvedSchema> schemaSupplier) {

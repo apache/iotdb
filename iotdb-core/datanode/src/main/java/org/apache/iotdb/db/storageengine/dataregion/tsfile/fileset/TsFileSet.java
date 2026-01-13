@@ -35,7 +35,7 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 /** TsFileSet represents a set of TsFiles in a time partition whose version <= endVersion. */
 public class TsFileSet implements Comparable<TsFileSet> {
-  
+
   public static final String FILE_SET_DIR_NAME = "filesets";
 
   private final long endVersion;
