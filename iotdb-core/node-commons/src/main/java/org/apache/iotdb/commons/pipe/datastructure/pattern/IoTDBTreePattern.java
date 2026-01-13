@@ -31,6 +31,8 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,7 +69,10 @@ public class IoTDBTreePattern extends IoTDBTreePatternOperations {
   //////////////////////////// Tree Pattern Operations ////////////////////////////
 
   public static <T> List<T> applyReversedIndexesOnList(
-      final List<Integer> filteredIndexes, final List<T> originalList) {
+      final List<Integer> filteredIndexes, final @Nullable List<T> originalList) {
+    if (Objects.isNull(originalList)) {
+      return null;
+    }
     // No need to sort, the caller guarantees that the filtered sequence == original sequence
     final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
     int filteredIndexPos = 0;

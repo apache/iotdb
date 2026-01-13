@@ -65,17 +65,17 @@ def measure_model_memory(device: torch.device, model_id: str) -> int:
 
 
 def evaluate_system_resources(device: torch.device) -> dict:
-    if torch.cuda.is_available():
+    if device.type == "cuda":
         free_mem, total_mem = torch.cuda.mem_get_info()
         logger.info(
-            f"[Inference][Device-{device}] CUDA device memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
+            f"[Inference][{device}] CUDA device memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
         )
         return {"device": "cuda", "free_mem": free_mem, "total_mem": total_mem}
     else:
         free_mem = psutil.virtual_memory().available
         total_mem = psutil.virtual_memory().total
         logger.info(
-            f"[Inference][Device-{device}] CPU memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
+            f"[Inference][{device}] CPU memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
         )
         return {"device": "cpu", "free_mem": free_mem, "total_mem": total_mem}
 

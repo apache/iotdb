@@ -162,6 +162,9 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         return Optional.empty();
       }
 
+      Column column = null;
+      TSDataType dataType = null;
+      int rowCount = 0;
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
         final Optional<TsBlock> tsBlock;
         try {
@@ -174,40 +177,46 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
           continue;
         }
         final Column[] columns = tsBlock.get().getValueColumns();
+        // check column count
         checkArgument(columns.length == 1, "Scalar Subquery result should only have one column.");
+        // check row count
+        rowCount += tsBlock.get().getPositionCount();
         checkArgument(
-            tsBlock.get().getPositionCount() == 1 && !tsBlock.get().getColumn(0).isNull(0),
+            rowCount == 1 && !columns[0].isNull(0),
             "Scalar Subquery result should only have one row.");
+        column = columns[0];
 
         // column type
         DatasetHeader datasetHeader = coordinator.getQueryExecution(queryId).getDatasetHeader();
         List<TSDataType> dataTypes = datasetHeader.getRespDataTypes();
         checkArgument(dataTypes.size() == 1, "Scalar Subquery result should only have one column.");
-
-        switch (dataTypes.get(0)) {
-          case INT32:
-          case DATE:
-            return Optional.of(new LongLiteral(Long.toString(columns[0].getInt(0))));
-          case INT64:
-          case TIMESTAMP:
-            return Optional.of(new LongLiteral(Long.toString(columns[0].getLong(0))));
-          case FLOAT:
-            return Optional.of(new DoubleLiteral(Double.toString(columns[0].getFloat(0))));
-          case DOUBLE:
-            return Optional.of(new DoubleLiteral(Double.toString(columns[0].getDouble(0))));
-          case BOOLEAN:
-            return Optional.of(new BooleanLiteral(Boolean.toString(columns[0].getBoolean(0))));
-          case BLOB:
-            return Optional.of(new BinaryLiteral(columns[0].getBinary(0).toString()));
-          case TEXT:
-          case STRING:
-            return Optional.of(new StringLiteral(columns[0].getBinary(0).toString()));
-          default:
-            throw new IllegalArgumentException(
-                String.format(
-                    "Unsupported data type for scalar subquery result: %s",
-                    columns[0].getDataType()));
-        }
+        dataType = dataTypes.get(0);
+      }
+      checkArgument(
+          dataType != null && column != null,
+          "Scalar Subquery result should not get null dataType or null column.");
+      switch (dataType) {
+        case INT32:
+        case DATE:
+          return Optional.of(new LongLiteral(Long.toString(column.getInt(0))));
+        case INT64:
+        case TIMESTAMP:
+          return Optional.of(new LongLiteral(Long.toString(column.getLong(0))));
+        case FLOAT:
+          return Optional.of(new DoubleLiteral(Double.toString(column.getFloat(0))));
+        case DOUBLE:
+          return Optional.of(new DoubleLiteral(Double.toString(column.getDouble(0))));
+        case BOOLEAN:
+          return Optional.of(new BooleanLiteral(Boolean.toString(column.getBoolean(0))));
+        case BLOB:
+          return Optional.of(new BinaryLiteral(column.getBinary(0).toString()));
+        case TEXT:
+        case STRING:
+          return Optional.of(new StringLiteral(column.getBinary(0).toString()));
+        default:
+          throw new IllegalArgumentException(
+              String.format(
+                  "Unsupported data type for scalar subquery result: %s", column.getDataType()));
       }
     } catch (final Throwable throwable) {
       t = throwable;

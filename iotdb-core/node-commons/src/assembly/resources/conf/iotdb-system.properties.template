@@ -1317,16 +1317,6 @@ enable_tsfile_validation=false
 # Unit: ms
 tier_ttl_in_ms=-1
 
-# The maximum size limit for a single object file.
-# effectiveMode: hot_reload
-# Datatype: long
-max_object_file_size_in_byte=4294967296
-
-# There are no special restrictions on table names, column names, and device names of the OBJECT type.
-# effectiveMode: first_start
-# Datatype: boolean
-restrict_object_limit=false
-
 ####################
 ### Compaction Configurations
 ####################
