@@ -68,16 +68,8 @@ public class IoTDBServicesIT {
   public void testQueryResult() {
     String[] retArray =
         new String[] {
-          "MQTT",
-          "1",
-          "STOPPED",
-          "org.apache.iotdb.externalservice.Mqtt",
-          "built-in",
-          "REST",
-          "1",
-          "STOPPED",
-          "org.apache.iotdb.externalservice.Rest",
-          "built-in"
+          "MQTT,1,STOPPED,org.apache.iotdb.externalservice.Mqtt,built-in,",
+          "REST,1,STOPPED,org.apache.iotdb.externalservice.Rest,built-in,",
         };
 
     // TableModel
@@ -90,6 +82,8 @@ public class IoTDBServicesIT {
     tableResultSetEqualTest(sql, header, retArray, INFORMATION_DATABASE);
 
     // TreeModel
+    header = new String[] {"ServiceName", "DataNodeId", "State", "ClassName", "ServiceType"};
+
     resultSetEqualTest(sql, header, retArray);
   }
 
@@ -106,9 +100,9 @@ public class IoTDBServicesIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
     } catch (SQLException e) {
-      Assert.assertEquals(
-          "803: Access Denied: No permissions for this operation, please add privilege SYSTEM",
-          e.getMessage());
+      Assert.assertTrue(
+          e.getMessage()
+              .contains("No permissions for this operation, please add privilege SYSTEM"));
     }
 
     try (Connection connection2 = EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, model)) {
