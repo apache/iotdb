@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import org.apache.iotdb.commons.utils.WindowsOSUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -32,7 +31,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -43,9 +41,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
