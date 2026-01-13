@@ -1523,6 +1523,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
   protected IConfigTask visitCreateExternalService(
       CreateExternalService node, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
+    accessControl.checkUserGlobalSysPrivilege(context);
     return new CreateExternalServiceTask(node);
   }
 

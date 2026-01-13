@@ -95,18 +95,21 @@ public class ExternalServiceManagementService {
 
       // 1. validate
       if (serviceInfos.containsKey(serviceName)) {
-        throw new ExternalServiceManagementException(
+        TSStatus status = new TSStatus(TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode());
+        status.setMessage(
             String.format("Failed to create External Service %s, it already exists!", serviceName));
+        throw new ExternalServiceManagementException(status);
       }
 
       // 2. persist on CN
-      ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
-      TSStatus status =
-          client.createExternalService(
-              new TCreateExternalServiceReq(QueryId.getDataNodeId(), serviceName, className));
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(status.message, status.code);
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TSStatus status =
+            client.createExternalService(
+                new TCreateExternalServiceReq(QueryId.getDataNodeId(), serviceName, className));
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(status.message, status.code);
+        }
       }
 
       // 3. modify memory info
@@ -125,9 +128,11 @@ public class ExternalServiceManagementService {
       // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
-        throw new ExternalServiceManagementException(
+        TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
+        status.setMessage(
             String.format(
                 "Failed to start External Service %s, because it is not existed!", serviceName));
+        throw new ExternalServiceManagementException(status);
       }
 
       // 2. call start method of ServiceInstance, create if Instance was not created
@@ -135,21 +140,21 @@ public class ExternalServiceManagementService {
         return;
       } else {
         // The state is STOPPED
-        if (serviceInfo.getServiceInstance() != null) {
-          serviceInfo.getServiceInstance().start();
-        } else {
+        if (serviceInfo.getServiceInstance() == null) {
           // lazy create Instance
           serviceInfo.setServiceInstance(createExternalServiceInstance(serviceName));
         }
+        serviceInfo.getServiceInstance().start();
       }
 
       // 3. persist on CN, rollback if failed
-      ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
-      TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        serviceInfo.getServiceInstance().stop();
-        throw new IoTDBRuntimeException(status.message, status.code);
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          serviceInfo.getServiceInstance().stop();
+          throw new IoTDBRuntimeException(status.message, status.code);
+        }
       }
 
       // 4. modify memory info
@@ -171,12 +176,14 @@ public class ExternalServiceManagementService {
         | IllegalAccessException
         | ClassNotFoundException
         | ClassCastException e) {
-      String errorMessage =
+      TSStatus status =
+          new TSStatus(TSStatusCode.EXTERNAL_SERVICE_INSTANCE_CREATE_ERROR.getStatusCode());
+      status.setMessage(
           String.format(
               "Failed to start External Service %s, because its instance can not be constructed successfully. Exception: %s",
-              serviceName, e);
-      LOGGER.warn(errorMessage, e);
-      throw new ExternalServiceManagementException(errorMessage);
+              serviceName, e));
+      LOGGER.warn(status.getMessage(), e);
+      throw new ExternalServiceManagementException(status);
     }
   }
 
@@ -187,9 +194,11 @@ public class ExternalServiceManagementService {
       // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
-        throw new ExternalServiceManagementException(
+        TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
+        status.setMessage(
             String.format(
-                "Failed to start External Service %s, because it is not existed!", serviceName));
+                "Failed to stop External Service %s, because it is not existed!", serviceName));
+        throw new ExternalServiceManagementException(status);
       }
 
       // 2. call stop method of ServiceInstance
@@ -201,12 +210,13 @@ public class ExternalServiceManagementService {
       }
 
       // 3. persist on CN, rollback if failed
-      ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
-      TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        serviceInfo.getServiceInstance().start();
-        throw new IoTDBRuntimeException(status.message, status.code);
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+        TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          serviceInfo.getServiceInstance().start();
+          throw new IoTDBRuntimeException(status.message, status.code);
+        }
       }
 
       // 4. modify memory info
@@ -232,14 +242,19 @@ public class ExternalServiceManagementService {
       // 1. validate
       ServiceInfo serviceInfo = serviceInfos.get(serviceName);
       if (serviceInfo == null) {
-        throw new ExternalServiceManagementException(
+        TSStatus status = new TSStatus(TSStatusCode.NO_SUCH_EXTERNAL_SERVICE.getStatusCode());
+        status.setMessage(
             String.format(
                 "Failed to drop External Service %s, because it is not existed!", serviceName));
+        throw new ExternalServiceManagementException(status);
       }
       if (serviceInfo.getServiceType() == ServiceInfo.ServiceType.BUILTIN) {
-        throw new ExternalServiceManagementException(
+        TSStatus status =
+            new TSStatus(TSStatusCode.CANNOT_DROP_BUILTIN_EXTERNAL_SERVICE.getStatusCode());
+        status.setMessage(
             String.format(
                 "Failed to drop External Service %s, because it is BUILT-IN!", serviceName));
+        throw new ExternalServiceManagementException(status);
       }
 
       // 2. stop or fail when service are not stopped
@@ -257,18 +272,22 @@ public class ExternalServiceManagementService {
                 serviceName, e.getMessage());
           }
         } else {
-          throw new ExternalServiceManagementException(
+          TSStatus status =
+              new TSStatus(TSStatusCode.CANNOT_DROP_RUNNING_EXTERNAL_SERVICE.getStatusCode());
+          status.setMessage(
               String.format(
                   "Failed to drop External Service %s, because it is RUNNING!", serviceName));
+          throw new ExternalServiceManagementException(status);
         }
       }
 
       // 3. persist on CN
-      ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
-      TSStatus status = client.dropExternalService(QueryId.getDataNodeId(), serviceName);
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(status.message, status.code);
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TSStatus status = client.dropExternalService(QueryId.getDataNodeId(), serviceName);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(status.message, status.code);
+        }
       }
 
       // 4. modify memory info

@@ -1315,7 +1315,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
     }
-    // registerManager.register(ExternalServiceManagementService.getInstance());
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }

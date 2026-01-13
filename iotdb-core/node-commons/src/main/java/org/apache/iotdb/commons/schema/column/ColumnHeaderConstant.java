@@ -555,11 +555,11 @@ public class ColumnHeaderConstant {
 
   public static final List<ColumnHeader> showExternalServiceColumnHeaders =
       ImmutableList.of(
-          new ColumnHeader(SERVICE_NAME, TSDataType.TEXT),
+          new ColumnHeader(SERVICE_NAME, TSDataType.STRING),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(STATE, TSDataType.TEXT),
-          new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
-          new ColumnHeader(SERVICE_TYPE, TSDataType.TEXT));
+          new ColumnHeader(STATE, TSDataType.STRING),
+          new ColumnHeader(CLASS_NAME, TSDataType.STRING),
+          new ColumnHeader(SERVICE_TYPE, TSDataType.STRING));
 
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(

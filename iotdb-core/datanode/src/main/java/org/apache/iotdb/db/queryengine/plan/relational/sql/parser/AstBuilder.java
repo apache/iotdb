@@ -308,6 +308,7 @@ import static java.lang.Long.parseLong;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
@@ -1126,7 +1127,7 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           Optional.of(
               new ComparisonExpression(
                   ComparisonExpression.Operator.EQUAL,
-                  new Identifier("datanode_id"),
+                  new Identifier(DATA_NODE_ID_TABLE_MODEL),
                   new LongLiteral(ctx.targetDataNodeId.getText())));
     }
     return new ShowExternalService(

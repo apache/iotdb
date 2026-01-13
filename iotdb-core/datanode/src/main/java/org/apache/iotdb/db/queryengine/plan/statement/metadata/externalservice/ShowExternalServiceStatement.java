@@ -29,8 +29,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowStatement;
 import java.util.Collections;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class ShowExternalServiceStatement extends ShowStatement implements IConfigStatement {
 
+  // -1 means show services on all DNs
   private final int dataNodeId;
 
   public ShowExternalServiceStatement(int dataNodeId) {
@@ -56,5 +59,10 @@ public class ShowExternalServiceStatement extends ShowStatement implements IConf
   @Override
   public QueryType getQueryType() {
     return QueryType.READ;
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this).add("dataNodeId", dataNodeId).toString();
   }
 }

@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.service.exernalservice;
 
-public class ExternalServiceManagementException extends RuntimeException {
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 
-  public ExternalServiceManagementException(String message) {
-    super(message);
+public class ExternalServiceManagementException extends IoTDBRuntimeException {
+
+  public ExternalServiceManagementException(TSStatus status) {
+    super(status);
   }
 }

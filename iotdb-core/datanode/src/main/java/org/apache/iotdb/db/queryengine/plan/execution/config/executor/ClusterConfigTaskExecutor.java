@@ -55,6 +55,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
@@ -4857,8 +4858,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       ExternalServiceManagementService.getInstance().createService(serviceName, className);
       future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
     } catch (Exception e) {
-      future.setException(new ExternalServiceManagementException(e.getMessage()));
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
     }
     return future;
   }
@@ -4869,8 +4875,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       ExternalServiceManagementService.getInstance().startService(serviceName);
       future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
     } catch (Exception e) {
-      future.setException(new ExternalServiceManagementException(e.getMessage()));
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
     }
     return future;
   }
@@ -4881,8 +4892,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       ExternalServiceManagementService.getInstance().stopService(serviceName);
       future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
     } catch (Exception e) {
-      future.setException(new ExternalServiceManagementException(e.getMessage()));
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
     }
     return future;
   }
@@ -4894,8 +4910,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       ExternalServiceManagementService.getInstance().dropService(serviceName, forcedly);
       future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
     } catch (Exception e) {
-      future.setException(new ExternalServiceManagementException(e.getMessage()));
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
     }
     return future;
   }
@@ -4922,8 +4943,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.set(
           new ConfigTaskResult(
               TSStatusCode.SUCCESS_STATUS, builder.build(), getShowExternalServiceHeader()));
-    } catch (Exception e) {
+    } catch (IoTDBRuntimeException e) {
       future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
     }
     return future;
   }

@@ -410,6 +410,7 @@ public class IoTDBDatabaseIT {
               "queries,INF,",
               "queries_costs_histogram,INF,",
               "regions,INF,",
+              "services,INF,",
               "subscriptions,INF,",
               "tables,INF,",
               "topics,INF,",
@@ -497,6 +498,16 @@ public class IoTDBDatabaseIT {
                   "topic_name,STRING,TAG,",
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc services"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "service_name,STRING,TAG,",
+                  "datanode_id,INT32,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,",
+                  "class_name,STRING,ATTRIBUTE,",
+                  "service_type,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc views"),
           "ColumnName,DataType,Category,",

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import java.util.Collections;
 import java.util.List;
 
+import static com.google.common.base.MoreObjects.toStringHelper;
+
 public class DropExternalServiceStatement extends Statement implements IConfigStatement {
 
   private final String serviceName;
@@ -62,5 +64,13 @@ public class DropExternalServiceStatement extends Statement implements IConfigSt
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  @Override
+  public String toString() {
+    return toStringHelper(this)
+        .add("serviceName", serviceName)
+        .add("forcedly", forcedly)
+        .toString();
   }
 }
