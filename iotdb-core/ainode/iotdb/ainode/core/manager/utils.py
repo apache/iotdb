@@ -40,30 +40,6 @@ INFERENCE_EXTRA_MEMORY_RATIO = (
 )  # the overhead ratio for inference, used to estimate the pool size
 
 
-def measure_model_memory(device: torch.device, model_id: str) -> int:
-    # TODO: support CPU in the future
-    # TODO: we can estimate the memory usage by running a dummy inference
-    torch.cuda.empty_cache()
-    torch.cuda.synchronize(device)
-    start = torch.cuda.memory_reserved(device)
-
-    model_info = ModelManager().get_model_info(model_id)
-    model = load_model(model_info).to(device)
-    torch.cuda.synchronize(device)
-    end = torch.cuda.memory_reserved(device)
-    usage = end - start
-
-    # delete model to free memory
-    del model
-    torch.cuda.empty_cache()
-    gc.collect()
-
-    # add inference factor and cuda context overhead
-    overhead = 500 * 1024**2  # 500 MiB
-    final = int(max(usage, 1) * INFERENCE_EXTRA_MEMORY_RATIO + overhead)
-    return final
-
-
 def evaluate_system_resources(device: torch.device) -> dict:
     if device.type == "cuda":
         free_mem, total_mem = torch.cuda.mem_get_info()
