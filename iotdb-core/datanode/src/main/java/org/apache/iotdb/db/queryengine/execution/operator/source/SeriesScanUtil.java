@@ -1233,15 +1233,8 @@ public class SeriesScanUtil implements Accountable {
           break;
         case DATE:
           if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
-            newValueColumns[i] =
-                new IntColumn(
-                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
-            for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
-              newValueColumns[i].isNull()[j] = valueColumns[i].isNull()[j];
-              if (!valueColumns[i].isNull()[j]) {
-                newValueColumns[i].getInts()[j] = valueColumns[i].getInts()[j];
-              }
-            }
+            newValueColumns[i] = valueColumns[i];
+            ((IntColumn) newValueColumns[i]).modifyDataType(TSDataType.INT32);
           } else {
             newValueColumns[i] =
                 new IntColumn(
