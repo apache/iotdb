@@ -187,11 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -362,6 +358,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   private boolean useWildcard = false;
 
   private boolean lastLevelUseWildcard = false;
+
+  public static final String SERVICE_MANAGEMENT_NOT_SUPPORTED =
+      "Service management SQLs are not supported now!";
 
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
@@ -1100,24 +1099,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateService(IoTDBSqlParser.CreateServiceContext ctx) {
-    String serviceName = parseIdentifier(ctx.serviceName.getText());
-    String className = parseStringLiteral(ctx.className.getText());
-    return new CreateExternalServiceStatement(serviceName, className);
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
   }
 
   @Override
   public Statement visitStartService(IoTDBSqlParser.StartServiceContext ctx) {
-    return new StartExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
   }
 
   @Override
   public Statement visitStopService(IoTDBSqlParser.StopServiceContext ctx) {
-    return new StopExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()));
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
   }
 
   @Override
   public Statement visitDropService(IoTDBSqlParser.DropServiceContext ctx) {
-    return new DropExternalServiceStatement(parseIdentifier(ctx.serviceName.getText()), false);
+    throw new UnsupportedOperationException(SERVICE_MANAGEMENT_NOT_SUPPORTED);
   }
 
   @Override
