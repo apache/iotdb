@@ -671,7 +671,7 @@ public class IoTDBSimpleQueryTableIT {
       try (ResultSet resultSet = statement.executeQuery("select * from table1")) {
         final ResultSetMetaData metaData = resultSet.getMetaData();
         final int columnCount = metaData.getColumnCount();
-        assertEquals(7, columnCount);
+        assertEquals(6, columnCount);
         HashMap<Integer, TSDataType> columnType = new HashMap<>();
         for (int i = 3; i <= columnCount; i++) {
           if (metaData.getColumnLabel(i).equals("s4")) {
