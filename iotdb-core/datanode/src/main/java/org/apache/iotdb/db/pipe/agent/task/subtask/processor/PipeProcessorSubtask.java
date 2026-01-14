@@ -33,6 +33,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
+import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
@@ -143,7 +144,25 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
       // event can be supplied after the subtask is closed, so we need to check isClosed here
       if (!isClosed.get()) {
         if (event instanceof TabletInsertionEvent) {
-          pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          if (event instanceof PipeInsertNodeTabletInsertionEvent
+              && ((PipeInsertNodeTabletInsertionEvent) event).shouldParse4Privilege()) {
+            final AtomicReference<Exception> ex = new AtomicReference<>();
+            ((PipeInsertNodeTabletInsertionEvent) event)
+                .toRawTabletInsertionEvents()
+                .forEach(
+                    rawTabletInsertionEvent -> {
+                      try {
+                        pipeProcessor.process(rawTabletInsertionEvent, outputEventCollector);
+                      } catch (Exception e) {
+                        ex.set(e);
+                      }
+                    });
+            if (ex.get() != null) {
+              throw ex.get();
+            }
+          } else {
+            pipeProcessor.process((TabletInsertionEvent) event, outputEventCollector);
+          }
           PipeProcessorMetrics.getInstance().markTabletEvent(taskID);
         } else if (event instanceof TsFileInsertionEvent) {
           // We have to parse the privilege first, to avoid passing no-privilege data to processor
