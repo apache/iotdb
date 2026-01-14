@@ -47,6 +47,7 @@ public class SqlParserErrorHandlerTest {
             () -> {
               try {
                 sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
+                fail("Expected ParsingException to be thrown");
               } catch (ParsingException e) {
                 assertTrue(e.getMessage().contains("mismatched input 'limit1'"));
               }
