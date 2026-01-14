@@ -3249,6 +3249,12 @@ public class DataRegion implements IDataRegionForQuery {
         continue;
       }
 
+      // the tsfile may not be closed here, it should not be added in deletedByFiles
+      if (!sealedTsFile.isClosed()) {
+        deletedByMods.add(sealedTsFile);
+        continue;
+      }
+
       ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
 
       if ((timeIndex instanceof ArrayDeviceTimeIndex)
