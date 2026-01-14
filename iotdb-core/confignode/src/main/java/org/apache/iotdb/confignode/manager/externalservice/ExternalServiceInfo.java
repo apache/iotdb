@@ -81,7 +81,10 @@ public class ExternalServiceInfo implements SnapshotProcessor {
     String serviceName = plan.getServiceInfo().getServiceName();
     if (serviceInfos.containsKey(serviceName)) {
       res.code = TSStatusCode.EXTERNAL_SERVICE_ALREADY_EXIST.getStatusCode();
-      res.message = String.format(SERVICE_NOT_EXISTED, serviceName, plan.getDatanodeId());
+      res.message =
+          String.format(
+              "ExternalService %s has already been created on DataNode %s.",
+              serviceName, plan.getDatanodeId());
     } else {
       serviceInfos.put(serviceName, plan.getServiceInfo());
       res.code = TSStatusCode.SUCCESS_STATUS.getStatusCode();

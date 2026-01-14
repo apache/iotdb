@@ -33,7 +33,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -105,9 +104,9 @@ public class IoTDBServicesIT {
               .contains("No permissions for this operation, please add privilege SYSTEM"));
     }
 
-    try (Connection connection2 = EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, model)) {
-      ResultSet resultSet = connection2.createStatement().executeQuery(sql);
-      resultSet.close();
+    try (Connection connection2 = EnvFactory.getEnv().getConnection(ADMIN_NAME, ADMIN_PWD, model);
+        Statement statement2 = connection2.createStatement()) {
+      statement2.executeQuery(sql);
     } catch (Exception e) {
       fail(e.getMessage());
     }

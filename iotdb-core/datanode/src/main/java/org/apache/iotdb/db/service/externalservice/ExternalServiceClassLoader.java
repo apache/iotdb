@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.exernalservice;
+package org.apache.iotdb.db.service.externalservice;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 

@@ -33,7 +33,6 @@ public class StartExternalServiceTask implements IConfigTask {
 
   public StartExternalServiceTask(String serviceName) {
     this.serviceName = serviceName.toUpperCase(Locale.ENGLISH);
-    ;
   }
 
   @Override

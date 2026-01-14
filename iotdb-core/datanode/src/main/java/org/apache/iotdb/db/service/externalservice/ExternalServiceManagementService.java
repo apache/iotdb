@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.service.exernalservice;
+package org.apache.iotdb.db.service.externalservice;
 
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
@@ -142,7 +142,8 @@ public class ExternalServiceManagementService {
         // The state is STOPPED
         if (serviceInfo.getServiceInstance() == null) {
           // lazy create Instance
-          serviceInfo.setServiceInstance(createExternalServiceInstance(serviceName));
+          serviceInfo.setServiceInstance(
+              createExternalServiceInstance(serviceName, serviceInfo.getClassName()));
         }
         serviceInfo.getServiceInstance().start();
       }
@@ -164,11 +165,11 @@ public class ExternalServiceManagementService {
     }
   }
 
-  private IExternalService createExternalServiceInstance(String serviceName) {
+  private IExternalService createExternalServiceInstance(String serviceName, String className) {
     // close ClassLoader automatically to release the file handle
     try (ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot); ) {
       return (IExternalService)
-          Class.forName(serviceName, true, classLoader).getDeclaredConstructor().newInstance();
+          Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
     } catch (IOException
         | InstantiationException
         | InvocationTargetException
@@ -305,7 +306,9 @@ public class ExternalServiceManagementService {
             serviceInfo -> {
               // start services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
-                IExternalService serviceInstance = serviceInfo.getServiceInstance();
+                IExternalService serviceInstance =
+                    createExternalServiceInstance(
+                        serviceInfo.getServiceName(), serviceInfo.getClassName());
                 serviceInfo.setServiceInstance(serviceInstance);
                 serviceInstance.start();
               }

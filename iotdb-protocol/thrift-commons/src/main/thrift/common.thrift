@@ -271,7 +271,7 @@ struct TExternalServiceEntry {
   1: required string serviceName
   2: required string className
   3: required byte state
-  4: required i32 dataNodId
+  4: required i32 dataNodeId
   5: required byte serviceType
 }
 

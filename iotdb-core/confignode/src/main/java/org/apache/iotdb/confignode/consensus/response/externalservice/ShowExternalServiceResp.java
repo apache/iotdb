@@ -44,7 +44,7 @@ public class ShowExternalServiceResp implements DataSet {
 
   public TExternalServiceListResp convertToRpcShowExternalServiceResp() {
     serviceInfoEntryList.sort(
-        Comparator.comparingInt(TExternalServiceEntry::getDataNodId)
+        Comparator.comparingInt(TExternalServiceEntry::getDataNodeId)
             .thenComparing(TExternalServiceEntry::getServiceType)
             .thenComparing(TExternalServiceEntry::getServiceName));
     return new TExternalServiceListResp(

@@ -47,7 +47,7 @@ public class ShowExternalServiceTask implements IConfigTask {
       TExternalServiceEntry externalServiceEntry, ColumnBuilder[] columnBuilders) {
     columnBuilders[0].writeBinary(
         new Binary(externalServiceEntry.getServiceName(), TSFileConfig.STRING_CHARSET));
-    columnBuilders[1].writeInt(externalServiceEntry.getDataNodId());
+    columnBuilders[1].writeInt(externalServiceEntry.getDataNodeId());
     columnBuilders[2].writeBinary(
         new Binary(
             ServiceInfo.State.deserialize(externalServiceEntry.getState()).toString(),
