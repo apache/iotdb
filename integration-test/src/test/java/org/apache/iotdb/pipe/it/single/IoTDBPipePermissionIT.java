@@ -52,6 +52,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setPipeMemoryManagementEnabled(false)
+        .setDataReplicationFactor(1)
+        .setSchemaReplicationFactor(1)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     // 1C1D to directly show the remaining count
