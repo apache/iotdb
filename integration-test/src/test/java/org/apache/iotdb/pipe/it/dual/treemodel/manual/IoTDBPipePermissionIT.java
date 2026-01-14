@@ -67,8 +67,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setTimestampPrecision("ms")
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
@@ -82,15 +80,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment(3, 3);
   }
 
   @Test
