@@ -159,7 +159,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         "field7 TIMESTAMP field,"
         "field8 DATE field,"
         "field9 BLOB field,"
-        "field10 STRING field");
+        "field10 STRING field)");
 
     vector<pair<string, TSDataType::TSDataType>> schemaList;
     schemaList.push_back(make_pair("field1", TSDataType::BOOLEAN));
