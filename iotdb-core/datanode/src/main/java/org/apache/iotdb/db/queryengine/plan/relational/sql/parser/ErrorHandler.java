@@ -84,7 +84,8 @@ public class ErrorHandler extends BaseErrorListener {
 
       Result result = analyze(e, parser);
 
-      // pick the candidate tokens associated largest token index processed (i.e., the path that
+      // pick the candidate tokens associated largest token index processed (i.e., the
+      // path that
       // consumed the most input)
       String expected = result.getExpected().stream().sorted().collect(Collectors.joining(", "));
 
@@ -209,10 +210,13 @@ public class ErrorHandler extends BaseErrorListener {
       RuleStartState startState = atn.ruleToStartState[currentState.ruleIndex];
 
       if (isReachable(currentState, startState)) {
-        // We've been dropped inside a rule in a state that's reachable via epsilon transitions.
+        // We've been dropped inside a rule in a state that's reachable via epsilon
+        // transitions.
         // This is,
-        // effectively, equivalent to starting at the beginning (or immediately outside) the rule.
-        // In that case, backtrack to the beginning to be able to take advantage of logic that
+        // effectively, equivalent to starting at the beginning (or immediately outside)
+        // the rule.
+        // In that case, backtrack to the beginning to be able to take advantage of
+        // logic that
         // remaps
         // some rules to well-known names for reporting purposes
         currentState = startState;
@@ -238,6 +242,8 @@ public class ErrorHandler extends BaseErrorListener {
     private boolean isReachable(ATNState target, RuleStartState from) {
       Deque<ATNState> activeStates = new ArrayDeque<>();
       activeStates.add(from);
+      Set<Integer> visited = new HashSet<>();
+      visited.add(from.stateNumber);
 
       while (!activeStates.isEmpty()) {
         ATNState current = activeStates.pop();
@@ -250,7 +256,10 @@ public class ErrorHandler extends BaseErrorListener {
           Transition transition = current.transition(i);
 
           if (transition.isEpsilon()) {
-            activeStates.push(transition.target);
+            if (!visited.contains(transition.target.stateNumber)) {
+              activeStates.push(transition.target);
+              visited.add(transition.target.stateNumber);
+            }
           }
         }
       }
@@ -336,13 +345,17 @@ public class ErrorHandler extends BaseErrorListener {
                   labels.complement(IntervalSet.of(Token.MIN_USER_TOKEN_TYPE, atn.maxTokenType));
             }
 
-            // Surprisingly, TokenStream (i.e. BufferedTokenStream) may not have loaded all the
+            // Surprisingly, TokenStream (i.e. BufferedTokenStream) may not have loaded all
+            // the
             // tokens from the
-            // underlying stream. TokenStream.get() does not force tokens to be buffered -- it just
+            // underlying stream. TokenStream.get() does not force tokens to be buffered --
+            // it just
             // returns what's
-            // in the current buffer, or fail with an IndexOutOfBoundsError. Since Antlr decided the
+            // in the current buffer, or fail with an IndexOutOfBoundsError. Since Antlr
+            // decided the
             // error occurred
-            // within the current set of buffered tokens, stop when we reach the end of the buffer.
+            // within the current set of buffered tokens, stop when we reach the end of the
+            // buffer.
             if (labels.contains(currentToken) && tokenIndex < stream.size() - 1) {
               activeStates.push(new ParsingState(transition.target, tokenIndex + 1, false, parser));
             } else {
