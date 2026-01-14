@@ -558,9 +558,7 @@ public class ColumnHeaderConstant {
       ImmutableList.of(
           new ColumnHeader(SERVICE_NAME, TSDataType.STRING),
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
-          new ColumnHeader(STATE, TSDataType.STRING),
-          new ColumnHeader(CLASS_NAME, TSDataType.STRING),
-          new ColumnHeader(SERVICE_TYPE, TSDataType.STRING));
+          new ColumnHeader(STATE, TSDataType.STRING));
 
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(

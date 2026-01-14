@@ -403,11 +403,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
     servicesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.STATE_TABLE_MODEL, TSDataType.STRING));
-    servicesTable.addColumnSchema(
-        new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
-    servicesTable.addColumnSchema(
-        new AttributeColumnSchema(
-            ColumnHeaderConstant.SERVICE_TYPE_TABLE_MODEL, TSDataType.STRING));
     servicesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(SERVICES, servicesTable);
   }

@@ -148,13 +148,15 @@ public class ExternalServiceManagementService {
         serviceInfo.getServiceInstance().start();
       }
 
-      // 3. persist on CN, rollback if failed
-      try (ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          serviceInfo.getServiceInstance().stop();
-          throw new IoTDBRuntimeException(status.message, status.code);
+      // 3. persist on CN if service is user-defined, rollback if failed
+      if ((serviceInfo.getServiceType() == ServiceInfo.ServiceType.USER_DEFINED)) {
+        try (ConfigNodeClient client =
+            ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            serviceInfo.getServiceInstance().stop();
+            throw new IoTDBRuntimeException(status.message, status.code);
+          }
         }
       }
 
@@ -210,13 +212,15 @@ public class ExternalServiceManagementService {
         stopService(serviceInfo);
       }
 
-      // 3. persist on CN, rollback if failed
-      try (ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
-        TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          serviceInfo.getServiceInstance().start();
-          throw new IoTDBRuntimeException(status.message, status.code);
+      // 3. persist on CN if service is user-defined, rollback if failed
+      if ((serviceInfo.getServiceType() == ServiceInfo.ServiceType.USER_DEFINED)) {
+        try (ConfigNodeClient client =
+            ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
+          TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            serviceInfo.getServiceInstance().start();
+            throw new IoTDBRuntimeException(status.message, status.code);
+          }
         }
       }
 

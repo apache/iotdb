@@ -52,12 +52,5 @@ public class ShowExternalServiceTask implements IConfigTask {
         new Binary(
             ServiceInfo.State.deserialize(externalServiceEntry.getState()).toString(),
             TSFileConfig.STRING_CHARSET));
-    columnBuilders[3].writeBinary(
-        new Binary(externalServiceEntry.getClassName(), TSFileConfig.STRING_CHARSET));
-    columnBuilders[4].writeBinary(
-        new Binary(
-            ServiceInfo.ServiceType.deserialize(externalServiceEntry.getServiceType())
-                .getDisplayName(),
-            TSFileConfig.STRING_CHARSET));
   }
 }

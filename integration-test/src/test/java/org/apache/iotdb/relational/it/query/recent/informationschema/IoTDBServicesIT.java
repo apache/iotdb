@@ -67,13 +67,14 @@ public class IoTDBServicesIT {
   public void testQueryResult() {
     String[] retArray =
         new String[] {
-          "MQTT,1,STOPPED,org.apache.iotdb.externalservice.Mqtt,built-in,",
-          "REST,1,STOPPED,org.apache.iotdb.externalservice.Rest,built-in,",
+          "MQTT,1,STOPPED,", "REST,1,STOPPED,",
         };
 
     // TableModel
     String[] header =
-        new String[] {"service_name", "datanode_id", "state", "class_name", "service_type"};
+        new String[] {
+          "service_name", "datanode_id", "state",
+        };
 
     String sql = "SELECT * FROM services where datanode_id = 1";
     tableResultSetEqualTest(sql, header, retArray, INFORMATION_DATABASE);
@@ -81,7 +82,10 @@ public class IoTDBServicesIT {
     tableResultSetEqualTest(sql, header, retArray, INFORMATION_DATABASE);
 
     // TreeModel
-    header = new String[] {"ServiceName", "DataNodeId", "State", "ClassName", "ServiceType"};
+    header =
+        new String[] {
+          "ServiceName", "DataNodeId", "State",
+        };
 
     resultSetEqualTest(sql, header, retArray);
   }

@@ -505,9 +505,7 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "service_name,STRING,TAG,",
                   "datanode_id,INT32,ATTRIBUTE,",
-                  "state,STRING,ATTRIBUTE,",
-                  "class_name,STRING,ATTRIBUTE,",
-                  "service_type,STRING,ATTRIBUTE,")));
+                  "state,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc views"),
           "ColumnName,DataType,Category,",
