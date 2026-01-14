@@ -65,6 +65,7 @@ import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -1636,8 +1637,11 @@ public class SeriesScanUtil implements Accountable {
         builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
         break;
       case INT32:
+        builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
+        break;
       case DATE:
         builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
+        ((IntColumnBuilder) builder.getColumnBuilder(0)).modifyDataType(TSDataType.INT32);
         break;
       case INT64:
       case TIMESTAMP:
