@@ -28,7 +28,6 @@ import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
-import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -364,6 +363,27 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "count databases root.test1", "count,", Collections.singleton("1,"));
 
+    // Write some data
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create timeSeries root.vehicle.car.temperature DOUBLE",
+            "insert into root.vehicle.car(temperature) values (36.5)"));
+
+    // Exception, skip
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("0,"));
+
+    // Provide time series
+    TestUtils.executeNonQuery(receiverEnv, "create timeSeries root.vehicle.car.temperature DOUBLE");
+
+    // Exception, skip
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "select count(temperature) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
+        Collections.singleton("0,"));
+
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -377,13 +397,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "create timeSeries root.vehicle.car.temperature DOUBLE",
-            "insert into root.vehicle.car(temperature) values (36.5)"));
+            "create timeSeries root.vehicle.car.pressure DOUBLE",
+            "insert into root.vehicle.car(pressure) values (36.5)"));
 
     // Exception, block here
-    TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
     TestUtils.assertDataAlwaysOnEnv(
-        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("0,"));
+        receiverEnv,
+        "select count(pressure) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
+        Collections.singleton("0,"));
 
     // Grant SELECT privilege
     TestUtils.executeNonQueries(
@@ -392,8 +414,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // Will finally pass
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.vehicle.**",
-        "count(root.vehicle.car.temperature),",
+        "select count(pressure) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
         Collections.singleton("1,"));
 
     // test showing pipe
