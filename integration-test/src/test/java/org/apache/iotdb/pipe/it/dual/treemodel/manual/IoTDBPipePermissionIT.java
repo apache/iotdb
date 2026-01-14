@@ -81,6 +81,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setDnConnectionTimeoutMs(600000)
+        .setSchemaReplicationFactor(3)
+        .setDataReplicationFactor(2)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
