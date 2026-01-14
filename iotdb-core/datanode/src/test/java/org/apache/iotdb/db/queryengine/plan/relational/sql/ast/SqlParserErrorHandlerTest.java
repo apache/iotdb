@@ -62,7 +62,7 @@ public class SqlParserErrorHandlerTest {
       // If parsing exception propagates here (which it shouldn't as it's caught in
       // the task), handle it
       if (e.getCause() instanceof ParsingException) {
-        assertTrue(e.getMessage().contains("mismatched input 'limit1'"));
+        assertTrue(e.getCause().getMessage().contains("mismatched input 'limit1'"));
       } else {
         fail("Unexpected exception: " + e.getCause());
       }
