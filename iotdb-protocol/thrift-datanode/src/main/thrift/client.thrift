@@ -167,6 +167,36 @@ struct TSCloseOperationReq {
   4: optional string preparedStatementName
 }
 
+// PreparedStatement - PREPARE
+// Parses SQL and caches AST in session for later execution
+struct TSPrepareReq {
+  1: required i64 sessionId
+  2: required string sql              // SQL with ? placeholders
+  3: required string statementName    // Name to identify this prepared statement
+}
+
+struct TSPrepareResp {
+  1: required common.TSStatus status
+  2: optional i32 parameterCount      // Number of ? placeholders in SQL
+}
+
+// PreparedStatement - EXECUTE
+// Executes a prepared statement with bound parameters
+struct TSExecutePreparedReq {
+  1: required i64 sessionId
+  2: required string statementName    // Name of the prepared statement
+  3: required list<binary> parameters // Serialized parameter values
+  4: optional i32 fetchSize
+  5: optional i64 timeout
+}
+
+// PreparedStatement - DEALLOCATE
+// Releases a prepared statement and its resources
+struct TSDeallocatePreparedReq {
+  1: required i64 sessionId
+  2: required string statementName    // Name of the prepared statement to release
+}
+
 struct TSFetchResultsReq{
   1: required i64 sessionId
   2: required string statement
@@ -575,6 +605,13 @@ service IClientRPCService {
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
   common.TSStatus closeOperation(1:TSCloseOperationReq req);
+
+  // PreparedStatement operations
+  TSPrepareResp prepareStatement(1:TSPrepareReq req);
+
+  TSExecuteStatementResp executePreparedStatement(1:TSExecutePreparedReq req);
+
+  common.TSStatus deallocatePreparedStatement(1:TSDeallocatePreparedReq req);
 
   TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 

@@ -404,6 +404,47 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       boolean userQuery) {
+    // Delegate to overloaded version with empty parameters
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        clientSession,
+        queryId,
+        session,
+        sql,
+        metadata,
+        timeOut,
+        userQuery,
+        Collections.emptyList());
+  }
+
+  /**
+   * Execute a table model statement with optional pre-bound parameters. Used by JDBC
+   * PreparedStatement to execute cached AST with serialized parameters.
+   *
+   * @param statement The AST to execute
+   * @param sqlParser SQL parser instance
+   * @param clientSession Current client session
+   * @param queryId Query ID
+   * @param session Session info
+   * @param sql SQL string for logging
+   * @param metadata Metadata instance
+   * @param timeOut Query timeout
+   * @param userQuery Whether this is a user query
+   * @param externalParameters List of Literal parameters to bind (empty for normal execution)
+   * @return ExecutionResult containing execution status and query ID
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      long timeOut,
+      boolean userQuery,
+      List<Literal> externalParameters) {
     return execution(
         queryId,
         session,
@@ -417,7 +458,8 @@ public class Coordinator {
                 queryContext,
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime)));
+                startTime,
+                externalParameters)));
   }
 
   public ExecutionResult executeForTableModel(
@@ -481,7 +523,8 @@ public class Coordinator {
       final MPPQueryContext queryContext,
       final Metadata metadata,
       final long timeOut,
-      final long startTime) {
+      final long startTime,
+      final List<Literal> externalParameters) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
@@ -561,7 +604,11 @@ public class Coordinator {
     List<Expression> parameters = Collections.emptyList();
     Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
 
-    if (statement instanceof Execute) {
+    // Handle external parameters from JDBC PreparedStatement (highest priority)
+    if (externalParameters != null && !externalParameters.isEmpty()) {
+      parameterLookup = ParameterExtractor.bindParameters(statement, externalParameters);
+      parameters = new ArrayList<>(externalParameters);
+    } else if (statement instanceof Execute) {
       Execute executeStatement = (Execute) statement;
       String statementName = executeStatement.getStatementName().getValue();
 
