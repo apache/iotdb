@@ -46,14 +46,12 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
@@ -65,7 +63,6 @@ import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
 import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
-import org.apache.tsfile.read.common.block.column.IntColumnBuilder;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.controller.IChunkLoader;
 import org.apache.tsfile.read.filter.basic.Filter;
@@ -917,13 +914,10 @@ public class SeriesScanUtil implements Accountable {
     if (length > 0) {
       for (int i = 0; i < length; i++) {
         TSDataType finalDataType = getTsDataTypeList().get(i);
-        if ((valueColumns[i].getDataType().equals(TSDataType.DATE)
-                && (valueColumns[i].getDataType() != TSDataType.INT32))
-            || ((valueColumns[i].getDataType() != finalDataType)
-                && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
-                    || (valueColumns[i].getDataType().equals(TSDataType.DATE)
-                        && (finalDataType == TSDataType.STRING
-                            || finalDataType == TSDataType.TEXT))))) {
+        if ((valueColumns[i].getDataType() != finalDataType)
+            && (!SchemaUtils.isUsingSameColumn(valueColumns[i].getDataType(), finalDataType)
+                || (valueColumns[i].getDataType().equals(TSDataType.DATE)
+                    && (finalDataType == TSDataType.STRING || finalDataType == TSDataType.TEXT)))) {
           isTypeInconsistent = true;
           break;
         }
@@ -1235,7 +1229,6 @@ public class SeriesScanUtil implements Accountable {
         case DATE:
           if (SchemaUtils.isUsingSameColumn(sourceType, TSDataType.DATE)) {
             newValueColumns[i] = valueColumns[i];
-            ((IntColumn) newValueColumns[i]).modifyDataType(TSDataType.INT32);
           } else {
             newValueColumns[i] =
                 new IntColumn(
@@ -1637,11 +1630,8 @@ public class SeriesScanUtil implements Accountable {
         builder.getColumnBuilder(0).writeBoolean(timeValuePair.getValue().getBoolean());
         break;
       case INT32:
-        builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-        break;
       case DATE:
         builder.getColumnBuilder(0).writeInt(timeValuePair.getValue().getInt());
-        ((IntColumnBuilder) builder.getColumnBuilder(0)).modifyDataType(TSDataType.INT32);
         break;
       case INT64:
       case TIMESTAMP:
@@ -1915,7 +1905,7 @@ public class SeriesScanUtil implements Accountable {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
       return Optional.of(timeseriesMetadata);
@@ -1924,37 +1914,11 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private boolean typeCompatible(ITimeSeriesMetadata timeseriesMetadata) {
-    if (timeseriesMetadata instanceof TimeseriesMetadata) {
-      return getTsDataTypeList()
-          .get(0)
-          .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
-    } else {
-      List<TimeseriesMetadata> valueTimeseriesMetadataList =
-          ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
-      if (getTsDataTypeList().isEmpty()) {
-        return true;
-      }
-      if (valueTimeseriesMetadataList != null) {
-        for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
-          TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
-          if (valueTimeSeriesMetadata != null
-              && !getTsDataTypeList()
-                  .get(i)
-                  .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
-            valueTimeseriesMetadataList.set(i, null);
-          }
-        }
-      }
-      return true;
-    }
-  }
-
   private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       return Optional.of(timeseriesMetadata);
