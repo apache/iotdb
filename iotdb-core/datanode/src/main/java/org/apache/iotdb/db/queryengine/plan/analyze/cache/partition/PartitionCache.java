@@ -65,6 +65,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.thrift.TException;
+import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +99,7 @@ public class PartitionCache {
   private final SeriesPartitionExecutor partitionExecutor;
 
   /** the cache of database */
-  private final Set<String> databaseCache = new HashSet<>();
+  private final Map<String, Boolean> database2NeedLastCacheCache = new HashMap<>();
 
   /** database -> schemaPartitionTable */
   private final Cache<String, SchemaPartitionTable> schemaPartitionCache;
@@ -198,7 +200,7 @@ public class PartitionCache {
    * @return database name, return {@code null} if cache miss
    */
   private String getDatabaseName(final IDeviceID deviceID) {
-    for (final String database : databaseCache) {
+    for (final String database : database2NeedLastCacheCache.keySet()) {
       if (PathUtils.isStartWith(deviceID, database)) {
         return database;
       }
@@ -215,7 +217,7 @@ public class PartitionCache {
   private boolean containsDatabase(final String database) {
     databaseCacheLock.readLock().lock();
     try {
-      return databaseCache.contains(database);
+      return database2NeedLastCacheCache.containsKey(database);
     } finally {
       databaseCacheLock.readLock().unlock();
     }
@@ -244,7 +246,7 @@ public class PartitionCache {
         if (databaseSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           // update all database into cache
-          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+          updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
           getDatabaseMap(result, deviceIDs, true);
         }
       }
@@ -253,19 +255,39 @@ public class PartitionCache {
     }
   }
 
+  @TreeModel
+  public boolean isNeedLastCache(final String database) {
+    Boolean needLastCache = database2NeedLastCacheCache.get(database);
+    if (Objects.nonNull(needLastCache)) {
+      return needLastCache;
+    }
+    try {
+      fetchDatabaseAndUpdateCache(false);
+    } catch (final TException | ClientManagerException e) {
+      logger.warn(
+          "Failed to get need_last_cache info for database {}, will put cache anyway, exception: {}",
+          database,
+          e.getMessage());
+      return true;
+    }
+    needLastCache = database2NeedLastCacheCache.get(database);
+    return Objects.isNull(needLastCache) || needLastCache;
+  }
+
   /** get all database from configNode and update database cache. */
-  private void fetchDatabaseAndUpdateCache() throws ClientManagerException, TException {
+  private void fetchDatabaseAndUpdateCache(final boolean isTableModel)
+      throws ClientManagerException, TException {
     databaseCacheLock.writeLock().lock();
     try (final ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TGetDatabaseReq req =
           new TGetDatabaseReq(ROOT_PATH, SchemaConstant.ALL_MATCH_SCOPE_BINARY)
-              .setIsTableModel(true)
+              .setIsTableModel(isTableModel)
               .setCanSeeAuditDB(true);
       final TDatabaseSchemaResp databaseSchemaResp = client.getMatchedDatabaseSchemas(req);
       if (databaseSchemaResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // update all database into cache
-        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap().keySet());
+        updateDatabaseCache(databaseSchemaResp.getDatabaseSchemaMap());
       }
     } finally {
       databaseCacheLock.writeLock().unlock();
@@ -510,13 +532,14 @@ public class PartitionCache {
     }
   }
 
+  @TableModel
   public void checkAndAutoCreateDatabase(
       final String database, final boolean isAutoCreate, final String userName) {
     boolean isExisted = containsDatabase(database);
     if (!isExisted) {
       try {
         // try to fetch database from config node when miss
-        fetchDatabaseAndUpdateCache();
+        fetchDatabaseAndUpdateCache(true);
         isExisted = containsDatabase(database);
         if (!isExisted && isAutoCreate) {
           // try to auto create database of failed device
@@ -532,12 +555,28 @@ public class PartitionCache {
   /**
    * update database cache
    *
-   * @param databaseNames the database names that need to update
+   * @param databases the database names
    */
-  public void updateDatabaseCache(final Set<String> databaseNames) {
+  public void updateDatabaseCache(final Set<String> databases) {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.addAll(databaseNames);
+      databases.forEach(database -> database2NeedLastCacheCache.put(database, true));
+    } finally {
+      databaseCacheLock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * update database cache
+   *
+   * @param databaseMap the database names and need last cache that need to update
+   */
+  public void updateDatabaseCache(final Map<String, TDatabaseSchema> databaseMap) {
+    databaseCacheLock.writeLock().lock();
+    try {
+      databaseMap.forEach(
+          (database, schema) ->
+              database2NeedLastCacheCache.put(database, schema.isNeedLastCache()));
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -547,7 +586,7 @@ public class PartitionCache {
   public void removeFromDatabaseCache() {
     databaseCacheLock.writeLock().lock();
     try {
-      databaseCache.clear();
+      database2NeedLastCacheCache.clear();
     } finally {
       databaseCacheLock.writeLock().unlock();
     }
@@ -1072,7 +1111,7 @@ public class PartitionCache {
   public String toString() {
     return "PartitionCache{"
         + ", databaseCache="
-        + databaseCache
+        + database2NeedLastCacheCache
         + ", replicaSetCache="
         + groupIdToReplicaSetMap
         + ", schemaPartitionCache="

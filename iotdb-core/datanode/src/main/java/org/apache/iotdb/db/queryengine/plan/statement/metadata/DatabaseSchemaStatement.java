@@ -39,6 +39,7 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
   private Integer schemaRegionGroupNum = null;
   private Integer dataRegionGroupNum = null;
   private boolean enablePrintExceptionLog = true;
+  private boolean needLastCache = true;
 
   // Deprecated
   private Integer schemaReplicationFactor = null;
@@ -118,6 +119,14 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
     this.enablePrintExceptionLog = enablePrintExceptionLog;
   }
 
+  public boolean isNeedLastCache() {
+    return needLastCache;
+  }
+
+  public void setNeedLastCache(final boolean needLastCache) {
+    this.needLastCache = needLastCache;
+  }
+
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, final C context) {
     switch (subType) {
@@ -141,8 +150,8 @@ public class DatabaseSchemaStatement extends Statement implements IConfigStateme
 
   @Override
   public String toString() {
-    return "SetStorageGroupStatement{"
-        + "storageGroupPath="
+    return "DatabaseSchemaStatement{"
+        + "databasePath="
         + databasePath
         + ", ttl="
         + ttl

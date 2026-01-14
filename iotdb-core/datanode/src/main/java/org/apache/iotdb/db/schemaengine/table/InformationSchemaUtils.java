@@ -75,6 +75,7 @@ public class InformationSchemaUtils {
     if (details) {
       builder.getColumnBuilder(5).appendNull();
       builder.getColumnBuilder(6).appendNull();
+      builder.getColumnBuilder(7).writeBoolean(false);
     }
     builder.declarePosition();
   }
@@ -121,6 +122,7 @@ public class InformationSchemaUtils {
         builder
             .getColumnBuilder(4)
             .writeBinary(new Binary(TableType.SYSTEM_VIEW.getName(), TSFileConfig.STRING_CHARSET));
+        builder.getColumnBuilder(5).writeBoolean(false);
       }
       builder.declarePosition();
     }

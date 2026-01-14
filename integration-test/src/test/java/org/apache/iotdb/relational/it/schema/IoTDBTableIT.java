@@ -127,6 +127,7 @@ public class IoTDBTableIT {
       String[] ttls = new String[] {"INF"};
       String[] statuses = new String[] {"USING"};
       String[] comments = new String[] {"test"};
+      String[] needLastCaches = new String[] {"true"};
 
       statement.execute("use test2");
 
@@ -146,6 +147,7 @@ public class IoTDBTableIT {
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(statuses[cnt], resultSet.getString(3));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -190,6 +192,9 @@ public class IoTDBTableIT {
 
       statement.execute("comment on table test1.table1 is 'new_test'");
       comments = new String[] {"new_test"};
+
+      statement.execute("alter table test1.table1 set properties need_last_cache=false");
+      needLastCaches = new String[] {"false"};
       // using SHOW tables from
       try (final ResultSet resultSet = statement.executeQuery("SHOW tables details from test1")) {
         int cnt = 0;
@@ -203,6 +208,7 @@ public class IoTDBTableIT {
           assertEquals(tableNames[cnt], resultSet.getString(1));
           assertEquals(ttls[cnt], resultSet.getString(2));
           assertEquals(comments[cnt], resultSet.getString(4));
+          assertEquals(needLastCaches[cnt], resultSet.getString(6));
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
@@ -306,7 +312,7 @@ public class IoTDBTableIT {
           statement.executeQuery("show create table table2"),
           "Table,Create Table,",
           Collections.singleton(
-              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000),"));
+              "table2,CREATE TABLE \"table2\" (\"region_id\" STRING TAG,\"plant_id\" STRING TAG,\"color\" STRING ATTRIBUTE,\"temperature\" FLOAT FIELD,\"speed\" DOUBLE FIELD COMMENT 'fast') WITH (ttl=6600000, need_last_cache=true),"));
 
       try {
         statement.execute("alter table table2 add column speed DOUBLE FIELD");
@@ -657,7 +663,7 @@ public class IoTDBTableIT {
       Assert.assertThrows(SQLException.class, () -> userStmt.execute("select * from db.test"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.tables where database = 'db'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           Collections.emptySet());
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.columns where database = 'db'"),
@@ -940,8 +946,8 @@ public class IoTDBTableIT {
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show tables details"),
-          "TableName,TTL(ms),Status,Comment,TableType,",
-          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,"));
+          "TableName,TTL(ms),Status,Comment,TableType,NeedLastCache,",
+          Collections.singleton("view_table,100,USING,comment,VIEW FROM TREE,true,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc view_table"),
@@ -1076,14 +1082,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"重庆\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"重庆\".**,"));
 
       statement.execute("create table a ()");
       try {

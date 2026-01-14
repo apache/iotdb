@@ -140,6 +140,7 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.SYSTEM_DATABASE_PATTERN;
 import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATABASE;
 import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
+import static org.apache.iotdb.commons.schema.table.TsTable.NEED_LAST_CACHE_PROPERTY;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 
 /**
@@ -273,6 +274,21 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
             "[SetTTL] The ttl of Database: {} is adjusted to: {}",
             currentSchema.getName(),
             currentSchema.getTTL());
+      }
+
+      if (alterSchema.isSetNeedLastCache()
+          && alterSchema.isNeedLastCache()
+              != (!currentSchema.isSetNeedLastCache() || currentSchema.isNeedLastCache())) {
+        if (!currentSchema.isIsTableModel()) {
+          result.setCode(TSStatusCode.SEMANTIC_ERROR.getStatusCode());
+          result.setMessage("The tree model database does not support alter need last cache now.");
+          return result;
+        }
+        currentSchema.setNeedLastCache(alterSchema.isNeedLastCache());
+        LOGGER.info(
+            "[SetNeedLastCache] The need last cache flag of Database: {} is adjusted to: {}",
+            currentSchema.getName(),
+            currentSchema.isNeedLastCache());
       }
 
       mTree
@@ -1289,6 +1305,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                             TreeViewSchema.isTreeViewTable(pair.getLeft())
                                 ? TableType.VIEW_FROM_TREE.ordinal()
                                 : TableType.BASE_TABLE.ordinal());
+                        info.setNeedLastCache(
+                            pair.getLeft()
+                                .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                .map(Boolean::parseBoolean)
+                                .orElse(true));
                         return info;
                       })
                   .collect(Collectors.toList())
@@ -1337,6 +1358,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
                                         TreeViewSchema.isTreeViewTable(pair.getLeft())
                                             ? TableType.VIEW_FROM_TREE.ordinal()
                                             : TableType.BASE_TABLE.ordinal());
+                                    info.setNeedLastCache(
+                                        pair.getLeft()
+                                            .getPropValue(NEED_LAST_CACHE_PROPERTY)
+                                            .map(Boolean::parseBoolean)
+                                            .orElse(true));
                                     return info;
                                   })
                               .collect(Collectors.toList()))));

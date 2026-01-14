@@ -109,6 +109,7 @@ public class IoTDBDatabaseIT {
 
       statement.execute("alter database if exists test1 set properties ttl='INF'");
       statement.execute("alter database test set properties ttl=default");
+      statement.execute("alter database test set properties need_last_cache=false");
 
       String[] databaseNames = new String[] {"test"};
       String[] TTLs = new String[] {"INF"};
@@ -160,6 +161,7 @@ public class IoTDBDatabaseIT {
           assertEquals(timePartitionInterval[cnt], resultSet.getLong(5));
           assertEquals(schemaRegionGroupNum[cnt], resultSet.getInt(6));
           assertEquals(dataRegionGroupNum[cnt], resultSet.getInt(7));
+          assertFalse(resultSet.getBoolean(8));
           cnt++;
         }
         assertEquals(databaseNames.length, cnt);
@@ -426,7 +428,8 @@ public class IoTDBDatabaseIT {
                   "data_replication_factor,INT32,ATTRIBUTE,",
                   "time_partition_interval,INT64,ATTRIBUTE,",
                   "schema_region_group_num,INT32,ATTRIBUTE,",
-                  "data_region_group_num,INT32,ATTRIBUTE,")));
+                  "data_region_group_num,INT32,ATTRIBUTE,",
+                  "need_last_cache,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc tables"),
           "ColumnName,DataType,Category,",
@@ -437,7 +440,8 @@ public class IoTDBDatabaseIT {
                   "ttl(ms),STRING,ATTRIBUTE,",
                   "status,STRING,ATTRIBUTE,",
                   "comment,STRING,ATTRIBUTE,",
-                  "table_type,STRING,ATTRIBUTE,")));
+                  "table_type,STRING,ATTRIBUTE,",
+                  "need_last_cache,BOOLEAN,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc columns"),
           "ColumnName,DataType,Category,",
@@ -605,41 +609,41 @@ public class IoTDBDatabaseIT {
       statement.execute(
           "create table test.test (a tag, b attribute, c int32 comment 'turbine') comment 'test'");
       statement.execute(
-          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100) AS root.\"a\".**");
+          "CREATE VIEW test.view_table (tag1 STRING TAG,tag2 STRING TAG,s11 INT32 FIELD,s3 INT32 FIELD FROM s2) RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**");
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,need_last_cache,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,INF,null,null,null,null,null,",
-                  "test,INF,1,1,604800000,0,0,")));
+                  "information_schema,INF,null,null,null,null,null,false,",
+                  "test,INF,1,1,604800000,0,0,true,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from tables where status = 'USING'"),
-          "database,table_name,ttl(ms),status,comment,table_type,",
+          "database,table_name,ttl(ms),status,comment,table_type,need_last_cache,",
           new HashSet<>(
               Arrays.asList(
-                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,views,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,databases,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,tables,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,columns,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,queries,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,regions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,topics,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,pipes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,views,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,functions,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,configurations,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,keywords,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,config_nodes,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,data_nodes,INF,USING,null,SYSTEM VIEW,false,",
                   "information_schema,connections,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,",
-                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,",
-                  "test,test,INF,USING,test,BASE TABLE,",
-                  "test,view_table,100,USING,null,VIEW FROM TREE,")));
+                  "information_schema,current_queries,INF,USING,null,SYSTEM VIEW,false,",
+                  "information_schema,queries_costs_histogram,INF,USING,null,SYSTEM VIEW,false,",
+                  "test,test,INF,USING,test,BASE TABLE,true,",
+                  "test,view_table,100,USING,null,VIEW FROM TREE,true,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
@@ -690,7 +694,7 @@ public class IoTDBDatabaseIT {
           statement.executeQuery("select * from views"),
           "database,table_name,view_definition,",
           Collections.singleton(
-              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"a\".**,"));
+              "test,view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" INT32 FIELD FROM \"s2\") RESTRICT WITH (ttl=100, need_last_cache=true) AS root.\"a\".**,"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
@@ -818,8 +822,8 @@ public class IoTDBDatabaseIT {
           Collections.singleton("information_schema,INF,null,null,null,"));
       TestUtils.assertResultSetEqual(
           userStmt.executeQuery("select * from information_schema.databases"),
-          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,",
-          Collections.singleton("information_schema,INF,null,null,null,null,null,"));
+          "database,ttl(ms),schema_replication_factor,data_replication_factor,time_partition_interval,schema_region_group_num,data_region_group_num,need_last_cache,",
+          Collections.singleton("information_schema,INF,null,null,null,null,null,false,"));
     }
 
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
