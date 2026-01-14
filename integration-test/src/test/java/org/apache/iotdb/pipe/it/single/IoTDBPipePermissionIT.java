@@ -185,8 +185,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
     }
 
     // Tree model
-    try (final Connection connection =
-            env.getConnection("thulab", "StrngPsWd@623451", BaseEnv.TABLE_SQL_DIALECT);
+    try (final Connection connection = env.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.test_sink");
       statement.execute(
@@ -213,7 +212,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
       }
       Assert.fail();
     } catch (Exception e) {
-      fail(e.getMessage());
+      e.printStackTrace();
+      fail();
     }
   }
 
