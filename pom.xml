@@ -27,19 +27,6 @@
             <id>jitpack.io</id>
             <url>https://jitpack.io</url>
         </repository>
-        <repository>
-            <id>staging-repo</id>
-            <!-- id 可以任意取，只要唯一 -->
-            <name>TsFile Staging Repository</name>
-            <url>https://repository.apache.org/content/repositories/orgapachetsfile-1018</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-                <!-- staging 通常是 release 版本 -->
-            </snapshots>
-        </repository>
     </repositories>
     <parent>
         <groupId>org.apache</groupId>
