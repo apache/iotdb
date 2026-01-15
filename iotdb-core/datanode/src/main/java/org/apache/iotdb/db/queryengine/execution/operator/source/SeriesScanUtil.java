@@ -46,14 +46,12 @@ import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
-import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
@@ -1234,10 +1232,7 @@ public class SeriesScanUtil implements Accountable {
           } else {
             newValueColumns[i] =
                 new IntColumn(
-                    positionCount,
-                    Optional.of(new boolean[positionCount]),
-                    new int[positionCount],
-                    TSDataType.DATE);
+                    positionCount, Optional.of(new boolean[positionCount]), new int[positionCount]);
             for (int j = 0; j < valueColumns[i].getPositionCount(); j++) {
               newValueColumns[i].isNull()[j] = true;
             }
@@ -1910,7 +1905,7 @@ public class SeriesScanUtil implements Accountable {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextSeqFileResource(true), true);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(true);
       seqTimeSeriesMetadata.add(timeseriesMetadata);
       return Optional.of(timeseriesMetadata);
@@ -1919,40 +1914,11 @@ public class SeriesScanUtil implements Accountable {
     }
   }
 
-  private boolean typeCompatible(ITimeSeriesMetadata timeseriesMetadata) {
-    if (timeseriesMetadata instanceof TimeseriesMetadata) {
-      return getTsDataTypeList()
-          .get(0)
-          .isCompatible(((TimeseriesMetadata) timeseriesMetadata).getTsDataType());
-    } else {
-      List<TimeseriesMetadata> valueTimeseriesMetadataList =
-          ((AbstractAlignedTimeSeriesMetadata) timeseriesMetadata).getValueTimeseriesMetadataList();
-      if (getTsDataTypeList().isEmpty()) {
-        return true;
-      }
-      if (valueTimeseriesMetadataList != null) {
-        int incompactibleCount = 0;
-        for (int i = 0, size = getTsDataTypeList().size(); i < size; i++) {
-          TimeseriesMetadata valueTimeSeriesMetadata = valueTimeseriesMetadataList.get(i);
-          if (valueTimeSeriesMetadata != null
-              && !getTsDataTypeList()
-                  .get(i)
-                  .isCompatible(valueTimeSeriesMetadata.getTsDataType())) {
-            valueTimeseriesMetadataList.set(i, null);
-            incompactibleCount++;
-          }
-        }
-        return incompactibleCount != getTsDataTypeList().size();
-      }
-      return true;
-    }
-  }
-
   private Optional<ITimeSeriesMetadata> unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(orderUtils.getNextUnseqFileResource(true), false);
     // skip if data type is mismatched which may be caused by delete
-    if (timeseriesMetadata != null && typeCompatible(timeseriesMetadata)) {
+    if (timeseriesMetadata != null && timeseriesMetadata.typeMatch(getTsDataTypeList())) {
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       return Optional.of(timeseriesMetadata);

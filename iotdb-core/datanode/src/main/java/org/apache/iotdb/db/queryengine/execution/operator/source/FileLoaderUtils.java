@@ -118,7 +118,8 @@ public class FileLoaderUtils {
           List<ModEntry> pathModifications =
               context.getPathModifications(
                   resource, seriesPath.getDeviceId(), seriesPath.getMeasurement());
-          timeSeriesMetadata.setModified(!pathModifications.isEmpty());
+          timeSeriesMetadata.setModified(
+              timeSeriesMetadata.isModified() || !pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
           int modificationCount = pathModifications.size();
