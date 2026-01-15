@@ -86,7 +86,8 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -106,17 +107,18 @@ import org.apache.tsfile.utils.Pair;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -1156,12 +1158,13 @@ public class InformationSchemaContentSupplierFactory {
     private final OperatorContext operatorContext;
 
     private DataRegion currentDataRegion;
-    private long currentTimePartition;
-    private List<String> currentTablesToScan;
     private boolean currentDatabaseOnlyHasOneTable;
-    private TableDiskUsageStatisticUtil statisticUtil;
 
-    private final StorageEngineTimePartitionIterator timePartitionIterator;
+    private TableDiskUsageCacheReader currentDataRegionCacheReader;
+    private final Map<Long, TimePartitionTableSizeQueryContext> timePartitionsContextMap =
+        new LinkedHashMap<>();
+
+    private final StorageEngineTimePartitionIterator dataRegionIterator;
 
     private TableDiskUsageSupplier(
         final List<TSDataType> dataTypes,
@@ -1179,7 +1182,7 @@ public class InformationSchemaContentSupplierFactory {
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         this.databaseTableInfoMap = client.showTables4InformationSchema().getDatabaseTableInfoMap();
       }
-      this.timePartitionIterator =
+      this.dataRegionIterator =
           new StorageEngineTimePartitionIterator(
               Optional.of(
                   dataRegion -> {
@@ -1188,51 +1191,57 @@ public class InformationSchemaContentSupplierFactory {
                     if (tTableInfos == null || tTableInfos.isEmpty()) {
                       return false;
                     }
+                    timePartitionsContextMap.clear();
                     return PathUtils.isTableModelDatabase(dataRegion.getDatabaseName());
                   }),
-              Optional.of(
-                  (dataRegion, timePartition) -> {
-                    currentTablesToScan = getTablesToScan(dataRegion, timePartition);
-                    return !currentTablesToScan.isEmpty();
-                  }));
+              Optional.empty());
     }
 
     @Override
     public boolean hasNext() {
-      if (statisticUtil != null) {
+      if (currentDataRegionCacheReader != null) {
         return true;
       }
       if (!paginationController.hasCurLimit()) {
         return false;
       }
       try {
-        if (timePartitionIterator.next()) {
-          currentDataRegion = timePartitionIterator.currentDataRegion();
-          currentTimePartition = timePartitionIterator.currentTimePartition();
-          statisticUtil =
-              new TableDiskUsageStatisticUtil(
-                  currentDataRegion.getTsFileManager(),
-                  currentTimePartition,
-                  currentTablesToScan,
+        while (dataRegionIterator.nextDataRegion()) {
+          currentDataRegion = dataRegionIterator.currentDataRegion();
+          for (Long timePartition : currentDataRegion.getTsFileManager().getTimePartitions()) {
+            Map<String, Long> tablesToScan = getTablesToScan(currentDataRegion, timePartition);
+            if (!tablesToScan.isEmpty()) {
+              timePartitionsContextMap.put(
+                  timePartition, new TimePartitionTableSizeQueryContext(tablesToScan));
+            }
+          }
+          if (timePartitionsContextMap.isEmpty()) {
+            continue;
+          }
+          currentDataRegionCacheReader =
+              new TableDiskUsageCacheReader(
+                  currentDataRegion,
+                  timePartitionsContextMap,
                   currentDatabaseOnlyHasOneTable,
                   Optional.ofNullable(operatorContext.getInstanceContext()));
           return true;
         }
-        return false;
       } catch (Exception e) {
-        closeStatisticUtil();
-        throw new RuntimeException(e.getMessage(), e);
+        closeDataRegionReader();
+        throw new IoTDBRuntimeException(
+            e.getMessage(), e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
+      return false;
     }
 
-    private List<String> getTablesToScan(DataRegion dataRegion, long timePartition) {
+    private Map<String, Long> getTablesToScan(DataRegion dataRegion, long timePartition) {
       String databaseName = dataRegion.getDatabaseName();
       List<TTableInfo> tTableInfos = databaseTableInfoMap.get(databaseName);
       if (tTableInfos == null || tTableInfos.isEmpty()) {
-        return Collections.emptyList();
+        return Collections.emptyMap();
       }
 
-      List<String> tablesToScan = new ArrayList<>(tTableInfos.size());
+      Map<String, Long> tablesToScan = new TreeMap<>();
       int totalValidTableCount = 0;
       for (TTableInfo tTableInfo : tTableInfos) {
         if (tTableInfo.getType() != TableType.BASE_TABLE.ordinal()) {
@@ -1258,7 +1267,7 @@ public class InformationSchemaContentSupplierFactory {
           continue;
         }
         paginationController.consumeLimit();
-        tablesToScan.add(tTableInfo.getTableName());
+        tablesToScan.put(tTableInfo.getTableName(), 0L);
       }
       currentDatabaseOnlyHasOneTable = totalValidTableCount == 1;
       return tablesToScan;
@@ -1273,47 +1282,72 @@ public class InformationSchemaContentSupplierFactory {
       long maxRuntime = OperatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
       long start = System.nanoTime();
 
-      if (statisticUtil.hasNextFile()) {
-        do {
-          statisticUtil.calculateNextFile();
-        } while (System.nanoTime() - start < maxRuntime && statisticUtil.hasNextFile());
-        if (statisticUtil.hasNextFile()) {
+      try {
+        if (!currentDataRegionCacheReader.prepareCachedTsFileIDKeys(start, maxRuntime)) {
           return null;
         }
-      }
 
+        boolean finished = false;
+        do {
+          if (!currentDataRegionCacheReader.calculateNextFile()) {
+            finished = true;
+            break;
+          }
+        } while (System.nanoTime() - start < maxRuntime);
+
+        if (!finished) {
+          return null;
+        }
+
+        if (!currentDataRegionCacheReader.readCacheValueFilesAndUpdateResultMap(
+            start, maxRuntime)) {
+          return null;
+        }
+        return buildTsBlock();
+      } catch (Exception e) {
+        throw new IoTDBRuntimeException(
+            e.getMessage(), e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+    }
+
+    private TsBlock buildTsBlock() {
       TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
-      long[] resultArr = statisticUtil.getResult();
+      for (Map.Entry<Long, TimePartitionTableSizeQueryContext> entry :
+          timePartitionsContextMap.entrySet()) {
+        long timePartition = entry.getKey();
+        for (Map.Entry<String, Long> tableSizeEntry :
+            entry.getValue().getTableSizeResultMap().entrySet()) {
+          String tableName = tableSizeEntry.getKey();
+          long size = tableSizeEntry.getValue();
+          builder.getTimeColumnBuilder().writeLong(0);
+          ColumnBuilder[] columns = builder.getValueColumnBuilders();
 
-      for (int i = 0; i < currentTablesToScan.size(); i++) {
-        builder.getTimeColumnBuilder().writeLong(0);
-        ColumnBuilder[] columns = builder.getValueColumnBuilders();
-
-        columns[0].writeBinary(
-            new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
-        columns[1].writeBinary(new Binary(currentTablesToScan.get(i), TSFileConfig.STRING_CHARSET));
-        columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-        columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionIdString()));
-        columns[4].writeLong(currentTimePartition);
-        columns[5].writeLong(resultArr[i]);
-        builder.declarePosition();
+          columns[0].writeBinary(
+              new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
+          columns[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
+          columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+          columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionIdString()));
+          columns[4].writeLong(timePartition);
+          columns[5].writeLong(size);
+          builder.declarePosition();
+        }
       }
-      closeStatisticUtil();
+      closeDataRegionReader();
       return builder.build();
     }
 
     @Override
     public void close() throws IOException {
-      closeStatisticUtil();
+      closeDataRegionReader();
     }
 
-    private void closeStatisticUtil() {
-      if (statisticUtil == null) {
+    private void closeDataRegionReader() {
+      if (currentDataRegionCacheReader == null) {
         return;
       }
       try {
-        statisticUtil.close();
-        statisticUtil = null;
+        currentDataRegionCacheReader.close();
+        currentDataRegionCacheReader = null;
       } catch (IOException ignored) {
       }
     }

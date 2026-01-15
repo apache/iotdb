@@ -135,7 +135,7 @@ public class ShowDiskUsageOperator implements SourceOperator {
         paginationController.consumeLimit();
         statisticUtil.close();
       }
-      if (paginationController.hasCurLimit() && timePartitionIterator.next()) {
+      if (paginationController.hasCurLimit() && timePartitionIterator.nextTimePartition()) {
         DataRegion dataRegion = timePartitionIterator.currentDataRegion();
         long timePartition = timePartitionIterator.currentTimePartition();
         statisticUtil =

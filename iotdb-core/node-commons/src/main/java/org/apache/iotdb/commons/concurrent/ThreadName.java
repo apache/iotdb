@@ -200,6 +200,7 @@ public enum ThreadName {
   REGION_MIGRATE("Region-Migrate-Pool"),
   STORAGE_ENGINE_RECOVER_TRIGGER("StorageEngine-RecoverTrigger"),
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
   BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
 

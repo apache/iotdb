@@ -47,7 +47,7 @@ public class StorageEngineTimePartitionIterator implements Accountable {
     this.timePartitionFilter = timePartitionFilter;
   }
 
-  public boolean next() throws Exception {
+  public boolean nextTimePartition() throws Exception {
     while (true) {
       if (timePartitionIterator != null && timePartitionIterator.hasNext()) {
         currentTimePartition = timePartitionIterator.next();
@@ -62,7 +62,7 @@ public class StorageEngineTimePartitionIterator implements Accountable {
     }
   }
 
-  private boolean nextDataRegion() throws Exception {
+  public boolean nextDataRegion() throws Exception {
     while (dataRegionIterator.hasNext()) {
       currentDataRegion = dataRegionIterator.next();
       if (currentDataRegion == null || currentDataRegion.isDeleted()) {

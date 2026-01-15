@@ -70,7 +70,6 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     this.isMatchedDeviceSequential = true;
   }
 
-  @Override
   public long[] getResult() {
     return new long[] {result};
   }

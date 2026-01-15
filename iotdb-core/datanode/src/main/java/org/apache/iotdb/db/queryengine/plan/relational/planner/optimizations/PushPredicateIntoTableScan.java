@@ -475,6 +475,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         }
         return node;
       }
+      // push down for other information schema tables
       return combineFilterAndScan(node, context.inheritedPredicate);
     }
 

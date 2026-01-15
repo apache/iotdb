@@ -53,6 +53,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
 
   protected static final Logger logger = LoggerFactory.getLogger(DiskUsageStatisticUtil.class);
   protected Queue<TsFileResource> resourcesWithReadLock;
+  protected final long timePartition;
   protected final Iterator<TsFileResource> iterator;
   protected final LongConsumer timeSeriesMetadataIoSizeRecorder;
 
@@ -60,6 +61,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       TsFileManager tsFileManager,
       long timePartition,
       Optional<FragmentInstanceContext> operatorContext) {
+    this.timePartition = timePartition;
     this.timeSeriesMetadataIoSizeRecorder =
         operatorContext
             .<LongConsumer>map(
@@ -74,11 +76,13 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     iterator = resourcesWithReadLock.iterator();
   }
 
+  public long getTimePartition() {
+    return timePartition;
+  }
+
   public boolean hasNextFile() {
     return iterator.hasNext();
   }
-
-  public abstract long[] getResult();
 
   protected void acquireReadLocks(List<TsFileResource> resources) {
     this.resourcesWithReadLock = new LinkedList<>();

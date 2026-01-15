@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
@@ -32,6 +35,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -41,37 +45,49 @@ import java.util.Optional;
 public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   public static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableDiskUsageStatisticUtil.class);
-  private final Map<String, Integer> tableIndexMap;
+  private final String database;
+  private final List<Pair<TsFileID, Long>> tsFilesToQueryInCache;
+  private final TimePartitionTableSizeQueryContext tableSizeQueryContext;
   private final boolean databaseHasOnlyOneTable;
-  private final long[] resultArr;
 
   public TableDiskUsageStatisticUtil(
-      TsFileManager tsFileManager,
+      DataRegion dataRegion,
       long timePartition,
-      List<String> tableNames,
+      TimePartitionTableSizeQueryContext tableSizeQueryContext,
       boolean databaseHasOnlyOneTable,
+      List<Pair<TsFileID, Long>> tsFilesToQueryInCache,
       Optional<FragmentInstanceContext> context) {
-    super(tsFileManager, timePartition, context);
-    this.tableIndexMap = new HashMap<>();
-    for (int i = 0; i < tableNames.size(); i++) {
-      tableIndexMap.put(tableNames.get(i), i);
-    }
+    super(dataRegion.getTsFileManager(), timePartition, context);
+    this.database = dataRegion.getDatabaseName();
+    this.tableSizeQueryContext = tableSizeQueryContext;
+    this.tsFilesToQueryInCache = tsFilesToQueryInCache;
     this.databaseHasOnlyOneTable = databaseHasOnlyOneTable;
-    this.resultArr = new long[tableNames.size()];
-  }
-
-  @Override
-  public long[] getResult() {
-    return resultArr;
   }
 
   @Override
   protected boolean calculateWithoutOpenFile(TsFileResource tsFileResource) {
+    TsFileID tsFileID = tsFileResource.getTsFileID();
+    Long cachedValueOffset = tableSizeQueryContext.getCachedTsFileIdOffset(tsFileID);
+    if (cachedValueOffset != null) {
+      tsFilesToQueryInCache.add(new Pair<>(tsFileID, cachedValueOffset));
+      return true;
+    }
+
     if (!databaseHasOnlyOneTable || tsFileResource.anyModFileExists()) {
       return false;
     }
-    resultArr[0] += tsFileResource.getTsFileSize();
+    String table = tableSizeQueryContext.getTableSizeResultMap().keySet().iterator().next();
+    tableSizeQueryContext.updateResult(table, tsFileResource.getTsFileSize());
+    TableDiskUsageCache.getInstance()
+        .write(
+            database,
+            tsFileResource.getTsFileID(),
+            Collections.singletonMap(table, tsFileResource.getTsFileSize()));
     return true;
+  }
+
+  public List<Pair<TsFileID, Long>> getTsFilesToQueryInCache() {
+    return tsFilesToQueryInCache;
   }
 
   @Override
@@ -81,53 +97,50 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     if (!hasSatisfiedData(tsFileMetadata)) {
       return;
     }
-    Pair<Integer, Boolean> allSatisfiedTableIndexPair = getAllSatisfiedTableIndex(tsFileMetadata);
-    int allSatisfiedTableIndex = allSatisfiedTableIndexPair.getLeft();
-    // the only one table in this tsfile might be deleted by mods, and it is not the table we
-    // queried
-    boolean mayContainSearchedTable = allSatisfiedTableIndexPair.getRight();
-    if (allSatisfiedTableIndex != -1) {
-      resultArr[allSatisfiedTableIndex] +=
-          mayContainSearchedTable ? tsFileResource.getTsFileSize() : 0;
+
+    if (tsFileMetadata.getTableMetadataIndexNodeMap().size() == 1) {
+      String satisfiedTable =
+          tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
+      tableSizeQueryContext.updateResult(satisfiedTable, tsFileResource.getTsFileSize());
+      TableDiskUsageCache.getInstance()
+          .write(
+              database,
+              tsFileResource.getTsFileID(),
+              Collections.singletonMap(
+                  tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next(),
+                  tsFileResource.getTsFileSize()));
       return;
     }
-    calculateDiskUsageInBytesByOffset(reader);
+
+    calculateDiskUsageInBytesByOffset(tsFileResource, reader);
   }
 
   private boolean hasSatisfiedData(TsFileMetadata tsFileMetadata) {
     Map<String, MetadataIndexNode> tableMetadataIndexNodeMap =
         tsFileMetadata.getTableMetadataIndexNodeMap();
-    return tableIndexMap.keySet().stream().anyMatch(tableMetadataIndexNodeMap::containsKey);
+    return tableSizeQueryContext.getTableSizeResultMap().keySet().stream()
+        .anyMatch(tableMetadataIndexNodeMap::containsKey);
   }
 
-  private Pair<Integer, Boolean> getAllSatisfiedTableIndex(TsFileMetadata tsFileMetadata) {
-    if (tsFileMetadata.getTableMetadataIndexNodeMap().size() != 1) {
-      return new Pair<>(-1, true);
-    }
-    String satisfiedTableName =
-        tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
-    String searchedTableName = tableIndexMap.keySet().iterator().next();
-    return new Pair<>(
-        tableIndexMap.get(satisfiedTableName), satisfiedTableName.equals(searchedTableName));
-  }
-
-  private void calculateDiskUsageInBytesByOffset(TsFileSequenceReader reader) throws IOException {
+  private void calculateDiskUsageInBytesByOffset(
+      TsFileResource resource, TsFileSequenceReader reader) throws IOException {
     TsFileMetadata tsFileMetadata = reader.readFileMetadata();
     Map<String, MetadataIndexNode> tableMetadataIndexNodeMap =
         tsFileMetadata.getTableMetadataIndexNodeMap();
-    String nextTable = null;
+    String currentTable = null, nextTable = null;
     Iterator<String> iterator = tableMetadataIndexNodeMap.keySet().iterator();
     Map<String, Offsets> tableOffsetMap = new HashMap<>();
-    while (iterator.hasNext()) {
-      String currentTable = iterator.next();
-      while (currentTable != null && tableIndexMap.containsKey(currentTable)) {
-        nextTable = iterator.hasNext() ? iterator.next() : null;
-        long tableSize =
-            calculateTableSize(tableOffsetMap, tsFileMetadata, reader, currentTable, nextTable);
-        resultArr[tableIndexMap.get(currentTable)] += tableSize;
-        currentTable = nextTable;
-      }
+    Map<String, Long> tsFileTableSizeMap = new HashMap<>();
+    while (currentTable != null || iterator.hasNext()) {
+      currentTable = currentTable == null ? iterator.next() : currentTable;
+      nextTable = iterator.hasNext() ? iterator.next() : null;
+      long tableSize =
+          calculateTableSize(tableOffsetMap, tsFileMetadata, reader, currentTable, nextTable);
+      tableSizeQueryContext.updateResult(currentTable, tableSize);
+      tsFileTableSizeMap.put(currentTable, tableSize);
+      currentTable = nextTable;
     }
+    TableDiskUsageCache.getInstance().write(database, resource.getTsFileID(), tsFileTableSizeMap);
   }
 
   private long calculateTableSize(
