@@ -494,7 +494,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store externalServiceEntryList */
     resourcesInformationHolder.setExternalServiceEntryList(
-        runtimeConfiguration.getAllUserDefinedServiceInfo());
+        runtimeConfiguration.isSetAllUserDefinedServiceInfo()
+            ? runtimeConfiguration.getAllUserDefinedServiceInfo()
+            : Collections.emptyList());
 
     /* Store pipeInformationList */
     getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
@@ -761,7 +763,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   private void prepareResources() throws StartupException {
     prepareUDFResources();
     prepareTriggerResources();
-    prepareExternalServiceResources();
     preparePipeResources();
   }
 
@@ -1315,6 +1316,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
     }
+    prepareExternalServiceResources();
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }
