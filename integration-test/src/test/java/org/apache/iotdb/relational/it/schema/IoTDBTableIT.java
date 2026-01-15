@@ -1346,7 +1346,6 @@ public class IoTDBTableIT {
       statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
       statement.execute("USE testdb");
 
-
       statement.execute("CREATE TABLE IF NOT EXISTS alter_column_name (s1 int32)");
       statement.execute("INSERT INTO alter_column_name (time, s1) VALUES (1, 1)");
       // alter once
@@ -1434,7 +1433,9 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         // error should indicate column does not exist (use code 616 + contains)
         assertTrue(e.getMessage().startsWith("616"));
-        assertTrue(e.getMessage().toLowerCase().contains("does not exist") || e.getMessage().toLowerCase().contains("cannot be resolved"));
+        assertTrue(
+            e.getMessage().toLowerCase().contains("does not exist")
+                || e.getMessage().toLowerCase().contains("cannot be resolved"));
       }
     }
   }
