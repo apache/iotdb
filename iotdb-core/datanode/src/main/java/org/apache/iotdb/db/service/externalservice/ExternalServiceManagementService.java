@@ -76,13 +76,14 @@ public class ExternalServiceManagementService {
     try {
       lock.readLock().lock();
 
-      ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID);
-      TExternalServiceListResp resp = client.showExternalService(dataNodeId);
-      if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new IoTDBRuntimeException(resp.getStatus().message, resp.getStatus().code);
+      try (ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        TExternalServiceListResp resp = client.showExternalService(dataNodeId);
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(resp.getStatus().message, resp.getStatus().code);
+        }
+        return resp.getExternalServiceInfos().iterator();
       }
-      return resp.getExternalServiceInfos().iterator();
     } finally {
       lock.readLock().unlock();
     }
