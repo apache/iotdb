@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.RuleStatsRecorder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.CanonicalizeExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.EvaluateEmptyIntersect;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.GatherAndMergeWindows;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementExceptAll;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementExceptDistinctAsUnion;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ImplementIntersectAll;
@@ -75,6 +76,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Pr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneUnionColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneUnionSourceColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PruneWindowColumns;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushDownFilterIntoWindow;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushDownLimitIntoWindow;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughOffset;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughProject;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushLimitThroughUnion;
@@ -86,9 +89,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Re
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantEnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantExists;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantIdentityProjections;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveRedundantWindow;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveTrivialFilters;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarApplyNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.RemoveUnreferencedScalarSubqueries;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ReplaceWindowWithRowNumber;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyCountOverConstant;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SimplifyExpressions;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.SingleDistinctAggregationToGroupBy;
@@ -243,7 +248,7 @@ public class LogicalOptimizeFactory {
                         //                        new ReplaceRedundantJoinWithProject(),
                         new RemoveRedundantEnforceSingleRowNode(),
                         new RemoveRedundantExists(),
-                        //                        new RemoveRedundantWindow(),
+                        new RemoveRedundantWindow(),
                         new SingleDistinctAggregationToGroupBy(),
                         // Our AggregationPushDown does not support AggregationNode with distinct,
                         // so there is no need to put it after AggregationPushDown,
@@ -364,6 +369,15 @@ public class LogicalOptimizeFactory {
         inlineProjectionLimitFiltersOptimizer,
         new IterativeOptimizer(plannerContext, ruleStats, limitPushdownRules),
         new PushLimitOffsetIntoTableScan(),
+        new IterativeOptimizer(
+            plannerContext,
+            ruleStats,
+            ImmutableSet.<Rule<?>>builder()
+                .add(new PushDownLimitIntoWindow())
+                .add(new PushDownFilterIntoWindow(plannerContext))
+                .add(new ReplaceWindowWithRowNumber(metadata))
+                .addAll(GatherAndMergeWindows.rules())
+                .build()),
         new TransformAggregationToStreamable(),
         new PushAggregationIntoTableScan(),
         new TransformSortToStreamSort(),

@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSort
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -100,7 +101,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
@@ -205,17 +208,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
@@ -4195,5 +4201,128 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .collect(Collectors.toList()));
     }
     return new MappingCollectOperator(operatorContext, children, mappings);
+  }
+
+  @Override
+  public Operator visitValuesNode(ValuesNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    // Currently we only support empty values operator
+    assert node.getRowCount() == 0;
+    return new ValuesOperator(operatorContext, ImmutableList.of());
+  }
+
+  @Override
+  public Operator visitRowNumber(RowNumberNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    // row number function goes in the last channel
+    int channel = inputDataTypes.size();
+    outputMappings.put(node.getRowNumberSymbol(), channel);
+
+    return new RowNumberOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        node.getMaxRowCountPerPartition(),
+        10_000);
+  }
+
+  @Override
+  public Operator visitTopKRanking(TopKRankingNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    List<TSDataType> partitionTypes =
+        partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
+
+    List<Symbol> orderBySymbols = new ArrayList<>();
+    Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+    if (orderingScheme.isPresent()) {
+      orderBySymbols = orderingScheme.get().getOrderBy();
+    }
+
+    List<SortOrder> sortOrder = new ArrayList<>();
+    List<Integer> sortChannels = getChannelsForSymbols(orderBySymbols, childLayout);
+    if (orderingScheme.isPresent()) {
+      sortOrder =
+          orderBySymbols.stream()
+              .map(symbol -> orderingScheme.get().getOrdering(symbol))
+              .collect(toImmutableList());
+    }
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    if (!node.isPartial() || !partitionChannels.isEmpty()) {
+      // ranking function goes in the last channel
+      int channel = inputDataTypes.size();
+      outputMappings.put(node.getRankingSymbol(), channel);
+    }
+
+    return new TopKRankingOperator(
+        operatorContext,
+        child,
+        node.getRankingType(),
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrder,
+        node.getMaxRankingPerPartition(),
+        node.isPartial(),
+        Optional.empty(),
+        1000,
+        Optional.empty());
   }
 }
