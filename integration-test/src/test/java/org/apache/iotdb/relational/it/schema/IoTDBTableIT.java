@@ -1373,4 +1373,91 @@ public class IoTDBTableIT {
       assertFalse(resultSet.next());
     }
   }
+
+  @Test
+  public void testTableRenameConflict() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      statement.execute("CREATE TABLE IF NOT EXISTS table_a ()");
+      statement.execute("CREATE TABLE IF NOT EXISTS table_b ()");
+
+      try {
+        statement.execute("ALTER TABLE table_a RENAME TO table_b");
+        fail();
+      } catch (final SQLException e) {
+        // expect table already exists
+        assertEquals("551: Table 'testdb.table_b' already exists.", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testColumnRenameConflict() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      statement.execute("CREATE TABLE IF NOT EXISTS tconf (c1 int32, c2 int32)");
+
+      try {
+        statement.execute("ALTER TABLE tconf RENAME COLUMN c1 TO c2");
+        fail();
+      } catch (final SQLException e) {
+        // expect column already exist error (552)
+        assertEquals("552: The new column name c2 already exists", e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testRenameNonExistentColumn() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      statement.execute("CREATE TABLE IF NOT EXISTS tnonexist (x int32)");
+
+      try {
+        statement.execute("ALTER TABLE tnonexist RENAME COLUMN y TO z");
+        fail();
+      } catch (final SQLException e) {
+        // error should indicate column does not exist (use code 616 + contains)
+        assertTrue(e.getMessage().startsWith("616"));
+        assertTrue(e.getMessage().toLowerCase().contains("does not exist") || e.getMessage().toLowerCase().contains("cannot be resolved"));
+      }
+    }
+  }
+
+  @Test
+  public void testRenameTimeColumnForbidden() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      // create a table with explicit time column
+      statement.execute("CREATE TABLE IF NOT EXISTS ttime (time TIMESTAMP TIME, a INT32)");
+
+      try {
+        statement.execute("ALTER TABLE ttime RENAME COLUMN time TO newtime");
+        fail();
+      } catch (final SQLException e) {
+        // renaming time column should be forbidden
+        assertEquals("615: The renaming for time column is not supported.", e.getMessage());
+      }
+    }
+  }
 }
