@@ -26,6 +26,7 @@ import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -87,5 +88,12 @@ public interface SchemaEvolution extends StreamSerializable, BufferSerializable 
       list.add(createFrom(buffer));
     }
     return list;
+  }
+
+  static void serializeList(List<SchemaEvolution> list, OutputStream stream) throws IOException {
+    ReadWriteForEncodingUtils.writeVarInt(list.size(), stream);
+    for (SchemaEvolution evolution : list) {
+      evolution.serialize(stream);
+    }
   }
 }

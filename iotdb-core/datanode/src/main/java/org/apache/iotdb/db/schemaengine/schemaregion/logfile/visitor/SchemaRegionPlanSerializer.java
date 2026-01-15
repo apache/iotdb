@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -551,6 +552,12 @@ public class SchemaRegionPlanSerializer implements ISerializer<ISchemaRegionPlan
         final AlterEncodingCompressorNode alterEncodingCompressorNode,
         final DataOutputStream outputStream) {
       return visitPlanNode(alterEncodingCompressorNode, outputStream);
+    }
+
+    @Override
+    public SchemaRegionPlanSerializationResult visitEvolveSchema(
+        EvolveSchemaNode evolveSchemaNode, DataOutputStream outputStream) {
+      return visitPlanNode(evolveSchemaNode, outputStream);
     }
 
     private SchemaRegionPlanSerializationResult visitPlanNode(

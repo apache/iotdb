@@ -27,6 +27,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
+import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntryValue;
@@ -45,13 +48,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class EvolveSchemaNode extends SearchNode implements WALEntryValue {
+public class EvolveSchemaNode extends SearchNode implements WALEntryValue, ISchemaRegionPlan {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EvolveSchemaNode.class);
 
   protected TRegionReplicaSet regionReplicaSet;
   protected ProgressIndex progressIndex;
-  private final List<SchemaEvolution> schemaEvolutions;
+  private List<SchemaEvolution> schemaEvolutions;
+
+  public EvolveSchemaNode() {
+    super(new PlanNodeId(""));
+  }
 
   public EvolveSchemaNode(PlanNodeId id, List<SchemaEvolution> schemaEvolutions) {
     super(id);
@@ -185,5 +192,15 @@ public class EvolveSchemaNode extends SearchNode implements WALEntryValue {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitEvolveSchemaNode(this, context);
+  }
+
+  @Override
+  public SchemaRegionPlanType getPlanType() {
+    return SchemaRegionPlanType.EVOLVE_SCHEMA;
+  }
+
+  @Override
+  public <R, C> R accept(SchemaRegionPlanVisitor<R, C> visitor, C context) {
+    return visitor.visitEvolveSchema(this, context);
   }
 }

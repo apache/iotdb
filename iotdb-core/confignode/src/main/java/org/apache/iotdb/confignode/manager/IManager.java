@@ -32,6 +32,7 @@ import org.apache.iotdb.common.rpc.thrift.TShowAppliedConfigurationsResp;
 import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
@@ -161,6 +162,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -418,6 +421,9 @@ public interface IManager {
    * @return status
    */
   TSStatus deleteDatabases(TDeleteDatabasesReq tDeleteReq);
+
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
+  SeriesPartitionKey getSeriesPartitionKey(IDeviceID deviceID, String databaseName);
 
   /**
    * Get SchemaPartition.

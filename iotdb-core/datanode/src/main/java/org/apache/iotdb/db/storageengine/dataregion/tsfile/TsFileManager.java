@@ -32,6 +32,7 @@ import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -530,7 +531,7 @@ public class TsFileManager {
       long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
     readLock();
     try {
-      List<TsFileSet> tsFileSetList = tsfileSets.get(partitionId);
+      List<TsFileSet> tsFileSetList = tsfileSets.getOrDefault(partitionId, Collections.emptyList());
       return tsFileSetList.stream()
           .filter(
               s ->

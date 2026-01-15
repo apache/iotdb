@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -129,7 +130,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         analysis
             .getDataPartitionInfo()
             .getDataRegionReplicaSetForWriting(
-                getDeviceID(), timePartitionSlot, analysis.getDatabaseName());
+                new FullDeviceIdKey(getDeviceID()), timePartitionSlot, analysis.getDatabaseName());
     // collect redirectInfo
     analysis.setRedirectNodeList(
         Collections.singletonList(

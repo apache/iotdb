@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanType;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionPlanVisitor;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -260,10 +262,10 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
     final List<IDeviceID> partitionKeyList = getPartitionKeyList();
     for (int i = 0; i < partitionKeyList.size(); i++) {
       // Use the string literal of deviceId as the partition key
+      SeriesPartitionKey seriesPartitionKey =
+          CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database);
       final TRegionReplicaSet regionReplicaSet =
-          analysis
-              .getSchemaPartitionInfo()
-              .getSchemaRegionReplicaSet(database, partitionKeyList.get(i));
+          analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(database, seriesPartitionKey);
       splitMap.computeIfAbsent(regionReplicaSet, k -> new ArrayList<>()).add(i);
     }
     final List<WritePlanNode> result = new ArrayList<>(splitMap.size());

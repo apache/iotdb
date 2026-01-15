@@ -156,22 +156,6 @@ public class IoTDBTableIT {
         assertEquals(tableNames.length, cnt);
       }
 
-      // Test unsupported, to be deleted
-      try {
-        statement.execute("alter table test1.table1 rename to tableN");
-      } catch (final SQLException e) {
-        assertEquals("701: The renaming for base table is currently unsupported", e.getMessage());
-      }
-
-      // Test unsupported, to be deleted
-      try {
-        statement.execute(
-            "alter table if exists test_db.table1 rename column if exists model to modelType");
-      } catch (final SQLException e) {
-        assertEquals(
-            "701: The renaming for base table column is currently unsupported", e.getMessage());
-      }
-
       // Alter table properties
       statement.execute("alter table test1.table1 set properties ttl=1000000");
       ttls = new String[] {"1000000"};
@@ -1252,6 +1236,141 @@ public class IoTDBTableIT {
       } catch (final SQLException e) {
         assertEquals("551: Table 'tree_view_db.a' already exists.", e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testAlterTableName() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      try {
+        statement.execute(
+            "CREATE TABLE IF NOT EXISTS alter_table_name_disabled () WITH (allow_alter_name=1)");
+        fail("allow_alter_name must be boolean");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: allow_alter_name value must be a BooleanLiteral, but now is LongLiteral, value: 1",
+            e.getMessage());
+      }
+
+      statement.execute(
+          "CREATE TABLE IF NOT EXISTS alter_table_name_disabled () WITH (allow_alter_name=false)");
+
+      try {
+        statement.execute(
+            "ALTER TABLE alter_table_name_disabled SET PROPERTIES allow_alter_name=true");
+        fail("allow_alter_name cannot be altered");
+      } catch (SQLException e) {
+        assertEquals("701: The property allow_alter_name cannot be altered.", e.getMessage());
+      }
+
+      try {
+        statement.execute("ALTER TABLE alter_table_name_disabled RENAME TO alter_table_named");
+        fail("the table cannot be renamed");
+      } catch (SQLException e) {
+        assertEquals(
+            "701: Table 'testdb.alter_table_name_disabled' is created in a old version and cannot be renamed, please migrate its data to a new table manually",
+            e.getMessage());
+      }
+
+      // alter once
+      statement.execute("CREATE TABLE IF NOT EXISTS alter_table_name (s1 int32)");
+      statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (1, 1)");
+      statement.execute("ALTER TABLE alter_table_name RENAME TO alter_table_named");
+      try {
+        statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (0, 0)");
+        fail();
+      } catch (SQLException e) {
+        assertEquals("550: Table 'testdb.alter_table_name' does not exist.", e.getMessage());
+      }
+      statement.execute("INSERT INTO alter_table_named (time, s1) VALUES (2, 2)");
+
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM alter_table_named");
+      assertTrue(resultSet.next());
+      assertEquals(1, resultSet.getLong(1));
+      assertEquals(1, resultSet.getLong(2));
+      assertTrue(resultSet.next());
+      assertEquals(2, resultSet.getLong(1));
+      assertEquals(2, resultSet.getLong(2));
+      assertFalse(resultSet.next());
+
+      // alter twice
+      statement.execute("ALTER TABLE alter_table_named RENAME TO alter_table_named2");
+      try {
+        statement.execute("INSERT INTO alter_table_named (time, s1) VALUES (0, 0)");
+        fail();
+      } catch (SQLException e) {
+        assertEquals("550: Table 'testdb.alter_table_named' does not exist.", e.getMessage());
+      }
+      statement.execute("INSERT INTO alter_table_named2 (time, s1) VALUES (3, 3)");
+
+      resultSet = statement.executeQuery("SELECT * FROM alter_table_named2");
+      for (int i = 1; i <= 3; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getLong(2));
+      }
+      assertFalse(resultSet.next());
+
+      // alter back
+      statement.execute("ALTER TABLE alter_table_named2 RENAME TO alter_table_name");
+      try {
+        statement.execute("INSERT INTO alter_table_named2 (time, s1) VALUES (0, 0)");
+        fail();
+      } catch (SQLException e) {
+        assertEquals("550: Table 'testdb.alter_table_named2' does not exist.", e.getMessage());
+      }
+      statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (4, 4)");
+
+      resultSet = statement.executeQuery("SELECT * FROM alter_table_name");
+      for (int i = 1; i <= 4; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getLong(2));
+      }
+      assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void testAlterColumnName() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+
+      statement.execute("CREATE TABLE IF NOT EXISTS alter_column_name (s1 int32)");
+      statement.execute("INSERT INTO alter_column_name (time, s1) VALUES (1, 1)");
+      // alter once
+      statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s1 TO s2");
+      try {
+        statement.execute("INSERT INTO alter_column_name (time, s1) VALUES (0, 0)");
+        fail();
+      } catch (SQLException e) {
+        assertEquals(
+            "616: Unknown column category for s1. Cannot auto create column.", e.getMessage());
+      }
+      statement.execute("INSERT INTO alter_column_name (time, s2) VALUES (2, 2)");
+
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM alter_column_name");
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(2, metaData.getColumnCount());
+      assertEquals("s2", metaData.getColumnName(2));
+
+      for (int i = 1; i <= 2; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getInt(2));
+      }
+      assertFalse(resultSet.next());
     }
   }
 }

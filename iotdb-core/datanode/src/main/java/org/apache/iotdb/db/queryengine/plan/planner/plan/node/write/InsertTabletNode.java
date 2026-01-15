@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -288,7 +289,9 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
+                  new FullDeviceIdKey(deviceID),
+                  splitInfo.timePartitionSlots,
+                  analysis.getDatabaseName());
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       analysis.addEndPointToRedirectNodeList(

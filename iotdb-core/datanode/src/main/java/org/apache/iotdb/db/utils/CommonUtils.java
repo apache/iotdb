@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.NoTableNameDeviceIdKey;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
@@ -30,6 +34,7 @@ import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.literal.BinaryLiteral;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -455,5 +460,19 @@ public class CommonUtils {
       tsBlockBuilder.append("] ");
     }
     return tsBlockBuilder.toString();
+  }
+
+  public static SeriesPartitionKey getSeriesPartitionKey(IDeviceID deviceID, String databaseName) {
+    if (databaseName != null && deviceID.isTableModel()) {
+      TsTable table =
+          DataNodeTableCache.getInstance().getTable(databaseName, deviceID.getTableName());
+      boolean canAlterName = table.canAlterName();
+      if (canAlterName) {
+        return new NoTableNameDeviceIdKey(deviceID);
+      } else {
+        return new FullDeviceIdKey(deviceID);
+      }
+    }
+    return new FullDeviceIdKey(deviceID);
   }
 }

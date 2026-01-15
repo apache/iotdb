@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartition;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
@@ -84,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.OrderByParame
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import com.google.common.collect.ImmutableList;
@@ -1442,7 +1444,10 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
 
     Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
         cache.computeIfAbsent(db, k -> new HashMap<>());
-    TSeriesPartitionSlot tSeriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceID);
+
+    SeriesPartitionKey seriesPartitionKey = CommonUtils.getSeriesPartitionKey(deviceID, db);
+    TSeriesPartitionSlot tSeriesPartitionSlot =
+        dataPartition.calculateDeviceGroupId(seriesPartitionKey);
 
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         finalSeriesPartitionMap = seriesPartitionMap;

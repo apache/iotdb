@@ -261,6 +261,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
+    this.tsFileManager = originTsFileResource.tsFileManager;
   }
 
   public synchronized void serialize(String targetFilePath) throws IOException {
@@ -1047,6 +1048,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
+  /**
+   * @param deviceId IDeviceId after schema evolution
+   */
   public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     return isSatisfied(deviceId, timeFilter, isSeq, debug, Long.MAX_VALUE);
   }

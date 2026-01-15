@@ -1486,6 +1486,17 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (!originalTable.canAlterName()) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Table '%s.%s' is created in a old version and cannot be renamed, "
+                      + "please migrate its data to a new table manually",
+                  database, tableName)),
+          null);
+    }
+
     final Optional<Pair<TSStatus, TsTable>> result =
         checkTable4View(database, originalTable, isTableView);
     if (result.isPresent()) {

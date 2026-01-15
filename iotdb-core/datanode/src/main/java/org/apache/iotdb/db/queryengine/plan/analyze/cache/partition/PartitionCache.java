@@ -60,6 +60,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
 import org.apache.iotdb.db.service.metrics.CacheMetrics;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -707,7 +708,8 @@ public class PartitionCache {
         List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(entry.getValue().size());
         for (final IDeviceID device : entry.getValue()) {
           final TSeriesPartitionSlot seriesPartitionSlot =
-              partitionExecutor.getSeriesPartitionSlot(device);
+              partitionExecutor.getSeriesPartitionSlot(
+                  CommonUtils.getSeriesPartitionKey(device, databaseName));
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             if (logger.isDebugEnabled()) {
@@ -874,7 +876,9 @@ public class PartitionCache {
         for (DataPartitionQueryParam param : params) {
           TSeriesPartitionSlot seriesPartitionSlot;
           if (null != param.getDeviceID()) {
-            seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(param.getDeviceID());
+            seriesPartitionSlot =
+                partitionExecutor.getSeriesPartitionSlot(
+                    CommonUtils.getSeriesPartitionKey(param.getDeviceID(), databaseName));
           } else {
             return null;
           }

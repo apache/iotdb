@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -417,6 +418,8 @@ public interface ISchemaRegion {
       throws MetadataException;
 
   void addNodeLocation(final TableNodeLocationAddNode node) throws MetadataException;
+
+  void applySchemaEvolution(EvolveSchemaNode schemaEvolutions) throws MetadataException;
 
   // endregion
 }

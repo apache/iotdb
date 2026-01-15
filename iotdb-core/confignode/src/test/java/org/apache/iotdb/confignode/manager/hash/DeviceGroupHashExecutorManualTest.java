@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.hash;
 
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -74,7 +75,7 @@ public class DeviceGroupHashExecutorManualTest {
       List<IDeviceID> devices = genBatchDevices();
       totalTime -= System.currentTimeMillis();
       for (IDeviceID device : devices) {
-        bucket[manager.getSeriesPartitionSlot(device).getSlotId()] += 1;
+        bucket[manager.getSeriesPartitionSlot(new FullDeviceIdKey(device)).getSlotId()] += 1;
       }
       totalTime += System.currentTimeMillis();
     }

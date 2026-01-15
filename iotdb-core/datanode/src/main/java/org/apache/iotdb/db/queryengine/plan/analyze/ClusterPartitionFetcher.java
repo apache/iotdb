@@ -47,6 +47,7 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.partition.PartitionCache;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -347,6 +348,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         final List<TSeriesPartitionSlot> partitionSlots =
             Objects.nonNull(deviceIDs)
                 ? deviceIDs.stream()
+                    .map(deviceID -> CommonUtils.getSeriesPartitionKey(deviceID, database))
                     .map(partitionExecutor::getSeriesPartitionSlot)
                     .distinct()
                     .collect(Collectors.toList())
@@ -458,6 +460,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
+      String databaseName = entry.getKey();
       // for each sg
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
 
@@ -467,7 +470,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       for (final DataPartitionQueryParam queryParam : entry.getValue()) {
         seriesSlotTimePartitionMap
             .computeIfAbsent(
-                partitionExecutor.getSeriesPartitionSlot(queryParam.getDeviceID()),
+                partitionExecutor.getSeriesPartitionSlot(
+                    CommonUtils.getSeriesPartitionKey(queryParam.getDeviceID(), databaseName)),
                 k ->
                     new ComplexTimeSlotList(
                         queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
@@ -479,7 +483,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   k,
                   new TTimeSlotList(
                       new ArrayList<>(v.timeSlotList), v.needLeftAll, v.needRightAll)));
-      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
+      partitionSlotsMap.put(databaseName, deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
   }
@@ -491,6 +495,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     TTimeSlotList sharedTTimeSlotList = null;
     for (final Map.Entry<String, List<DataPartitionQueryParam>> entry :
         sgNameToQueryParamsMap.entrySet()) {
+      String databaseName = entry.getKey();
       // for each sg
       final Map<TSeriesPartitionSlot, TTimeSlotList> deviceToTimePartitionMap = new HashMap<>();
 
@@ -503,10 +508,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                   queryParam.isNeedRightAll());
         }
         deviceToTimePartitionMap.putIfAbsent(
-            partitionExecutor.getSeriesPartitionSlot(queryParam.getDeviceID()),
+            partitionExecutor.getSeriesPartitionSlot(
+                CommonUtils.getSeriesPartitionKey(queryParam.getDeviceID(), databaseName)),
             sharedTTimeSlotList);
       }
-      partitionSlotsMap.put(entry.getKey(), deviceToTimePartitionMap);
+      partitionSlotsMap.put(databaseName, deviceToTimePartitionMap);
     }
     return new TDataPartitionReq(partitionSlotsMap);
   }

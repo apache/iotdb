@@ -63,6 +63,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -96,6 +97,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
@@ -439,6 +441,16 @@ public class CnToDnInternalServiceAsyncRequestManager
         (req, client, handler) ->
             client.deleteColumnData(
                 (TDeleteColumnDataReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.EVOLVE_DATA_REGION_SCHEMA,
+        (req, client, handler) ->
+            client.evolveSchemaInDataRegion(
+                (TDataRegionEvolveSchemaReq) req, (DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.EVOLVE_SCHEMA_REGION_SCHEMA,
+        (req, client, handler) ->
+            client.evolveSchemaInSchemaRegion(
+                (TSchemaRegionEvolveSchemaReq) req, (DataNodeTSStatusRPCHandler) handler));
     actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
         (req, client, handler) ->

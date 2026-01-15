@@ -141,6 +141,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataTy
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterPipe;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ColumnDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
@@ -268,7 +269,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENG
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
 import static org.apache.iotdb.commons.executable.ExecutableManager.getUnTrustedUriErrorMsg;
 import static org.apache.iotdb.commons.executable.ExecutableManager.isUriTrusted;
-import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
+import static org.apache.iotdb.commons.schema.table.TsTable.ALLOW_ALTER_NAME_PROPERTY;
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.CreateDBTask.DATA_REGION_GROUP_NUM_KEY;
@@ -567,7 +568,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     final TsTable table = new TsTable(tableName);
 
-    table.setProps(convertPropertiesToMap(node.getProperties(), false));
+    Map<String, String> properties = convertPropertiesToMap(node.getProperties(), false);
+    // new tables' names can be altered by default
+    properties.putIfAbsent(ALLOW_ALTER_NAME_PROPERTY, "true");
+    table.setProps(properties);
     if (Objects.nonNull(node.getComment())) {
       table.addProp(TsTable.COMMENT_KEY, node.getComment());
     }
@@ -779,10 +783,15 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkCanAlterTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
+    Map<String, String> properties = convertPropertiesToMap(node.getProperties(), true);
+    if (properties.containsKey(ALLOW_ALTER_NAME_PROPERTY)) {
+      throw new SemanticException(
+          "The property " + ALLOW_ALTER_NAME_PROPERTY + " cannot be altered.");
+    }
     return new AlterTableSetPropertiesTask(
         database,
         tableName,
-        convertPropertiesToMap(node.getProperties(), true),
+        properties,
         context.getQueryId().getId(),
         node.ifExists(),
         node.getType() == SetProperties.Type.TREE_VIEW);
@@ -859,7 +868,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final Map<String, String> map = new HashMap<>();
     for (final Property property : propertyList) {
       final String key = property.getName().getValue().toLowerCase(Locale.ENGLISH);
-      if (TABLE_ALLOWED_PROPERTIES.contains(key)) {
+      if (TTL_PROPERTY.equals(key)) {
         if (!property.isSetToDefault()) {
           final Expression value = property.getNonDefaultValue();
           final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
@@ -875,6 +884,27 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           map.put(key, String.valueOf(parseLongFromLiteral(value, TTL_PROPERTY)));
         } else if (serializeDefault) {
           map.put(key, null);
+        }
+      } else if (ALLOW_ALTER_NAME_PROPERTY.equals(key)) {
+        if (property.isSetToDefault()) {
+          // no such property, the table is from an older version and its table name
+          // cannot be altered
+          map.put(key, "false");
+        } else {
+          Expression value = property.getNonDefaultValue();
+          final Optional<String> strValue = parseStringFromLiteralIfBinary(value);
+          if (strValue.isPresent()) {
+            try {
+              boolean ignored = Boolean.parseBoolean(strValue.get());
+            } catch (Exception e) {
+              throw new SemanticException(
+                  ALLOW_ALTER_NAME_PROPERTY + " value must be a boolean, but now is: " + value);
+            }
+            map.put(key, strValue.get());
+            continue;
+          }
+          // TODO: support validation for other properties
+          map.put(key, String.valueOf(parseBooleanFromLiteral(value, ALLOW_ALTER_NAME_PROPERTY)));
         }
       } else {
         throw new SemanticException("Table property '" + key + "' is currently not allowed.");
@@ -1071,6 +1101,18 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
           name + " value must be equal to or greater than 0, but now is: " + value);
     }
     return parsedValue;
+  }
+
+  private boolean parseBooleanFromLiteral(final Object value, final String name) {
+    if (!(value instanceof BooleanLiteral)) {
+      throw new SemanticException(
+          name
+              + " value must be a BooleanLiteral, but now is "
+              + (Objects.nonNull(value) ? value.getClass().getSimpleName() : null)
+              + ", value: "
+              + value);
+    }
+    return ((BooleanLiteral) value).getParsedValue();
   }
 
   private int parseIntFromLiteral(final Object value, final String name) {

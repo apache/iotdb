@@ -1263,7 +1263,6 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      DataNodeTableCache.getInstance().invalid(databaseName);
 
       syncCloseAllWorkingTsFileProcessors();
 
@@ -2942,14 +2941,7 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema();
-      IDeviceID deviceIdBackThen = singleDeviceId;
-      if (evolvedSchema != null) {
-        deviceIdBackThen = evolvedSchema.rewriteToOriginal(singleDeviceId);
-      }
-
-      if (!tsFileResource.isSatisfied(
-          deviceIdBackThen, globalTimeFilter, isSeq, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       try {

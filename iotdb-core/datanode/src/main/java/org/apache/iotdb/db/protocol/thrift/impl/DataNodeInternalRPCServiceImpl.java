@@ -298,6 +298,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -807,6 +808,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             new RegionWriteExecutor()
                 .execute(
                     new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                        ? new PipeEnrichedEvolveSchemaNode(
+                            new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                        : new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                .getStatus());
+  }
+
+  @Override
+  public TSStatus evolveSchemaInSchemaRegion(final TSchemaRegionEvolveSchemaReq req) {
+    final List<SchemaEvolution> schemaEvolutions =
+        SchemaEvolution.createListFrom(req.schemaEvolutions);
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new SchemaRegionId(consensusGroupId.getId()),
                     // Now the deletion plan may be re-collected here by pipe, resulting multiple
                     // transfer to delete time series plan. Now just ignore.
                     req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
