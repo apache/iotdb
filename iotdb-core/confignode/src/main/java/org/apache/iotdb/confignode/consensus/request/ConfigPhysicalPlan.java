@@ -46,6 +46,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
@@ -587,6 +591,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case setThrottleQuota:
           plan = new SetThrottleQuotaPlan();
+          break;
+        case CreateExternalService:
+          plan = new CreateExternalServicePlan();
+          break;
+        case StartExternalService:
+          plan = new StartExternalServicePlan();
+          break;
+        case StopExternalService:
+          plan = new StopExternalServicePlan();
+          break;
+        case DropExternalService:
+          plan = new DropExternalServicePlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);

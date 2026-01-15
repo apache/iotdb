@@ -33,6 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.read.ainode.GetAINodeConfig
 import org.apache.iotdb.confignode.consensus.request.read.database.CountDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.database.GetDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.read.datanode.GetDataNodeConfigurationPlan;
+import org.apache.iotdb.confignode.consensus.request.read.exernalservice.ShowExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetFunctionTablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.function.GetUDFJarPlan;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -78,6 +79,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
@@ -143,6 +148,7 @@ import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTrigger
 import org.apache.iotdb.confignode.consensus.request.write.trigger.UpdateTriggersOnTransferNodesPlan;
 import org.apache.iotdb.confignode.consensus.response.partition.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -204,6 +210,8 @@ public class ConfigPlanExecutor {
 
   private final CQInfo cqInfo;
 
+  private final ExternalServiceInfo externalServiceInfo;
+
   private final PipeInfo pipeInfo;
 
   private final SubscriptionInfo subscriptionInfo;
@@ -222,6 +230,7 @@ public class ConfigPlanExecutor {
       UDFInfo udfInfo,
       TriggerInfo triggerInfo,
       CQInfo cqInfo,
+      ExternalServiceInfo externalServiceInfo,
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo,
@@ -252,6 +261,9 @@ public class ConfigPlanExecutor {
 
     this.cqInfo = cqInfo;
     this.snapshotProcessorList.add(cqInfo);
+
+    this.externalServiceInfo = externalServiceInfo;
+    this.snapshotProcessorList.add(externalServiceInfo);
 
     this.pipeInfo = pipeInfo;
     this.snapshotProcessorList.add(pipeInfo);
@@ -344,6 +356,8 @@ public class ConfigPlanExecutor {
         return partitionInfo.getSeriesSlotList((GetSeriesSlotListPlan) req);
       case SHOW_CQ:
         return cqInfo.showCQ();
+      case ShowExternalService:
+        return externalServiceInfo.showService(((ShowExternalServicePlan) req).getDataNodeIds());
       case GetFunctionTable:
         return udfInfo.getUDFTable((GetFunctionTablePlan) req);
       case GetFunctionJar:
@@ -635,6 +649,14 @@ public class ConfigPlanExecutor {
         return cqInfo.activeCQ((ActiveCQPlan) physicalPlan);
       case UPDATE_CQ_LAST_EXEC_TIME:
         return cqInfo.updateCQLastExecutionTime((UpdateCQLastExecTimePlan) physicalPlan);
+      case CreateExternalService:
+        return externalServiceInfo.addService((CreateExternalServicePlan) physicalPlan);
+      case StartExternalService:
+        return externalServiceInfo.startService((StartExternalServicePlan) physicalPlan);
+      case StopExternalService:
+        return externalServiceInfo.stopService((StopExternalServicePlan) physicalPlan);
+      case DropExternalService:
+        return externalServiceInfo.dropService((DropExternalServicePlan) physicalPlan);
       case CreatePipePlugin:
         return pipeInfo.getPipePluginInfo().createPipePlugin((CreatePipePluginPlan) physicalPlan);
       case DropPipePlugin:

@@ -1027,6 +1027,11 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
+
   /* Maintenance Tools */
 
   common.TSStatus merge()

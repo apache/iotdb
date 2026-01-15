@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -126,6 +128,7 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask.appendServiceEntry;
 
 public class InformationSchemaContentSupplierFactory {
 
@@ -178,6 +181,8 @@ public class InformationSchemaContentSupplierFactory {
           return new CurrentQueriesSupplier(dataTypes, predicate, userEntity);
         case InformationSchema.QUERIES_COSTS_HISTOGRAM:
           return new QueriesCostsHistogramSupplier(dataTypes, userEntity);
+        case InformationSchema.SERVICES:
+          return new ServicesSupplier(dataTypes, userEntity);
         default:
           throw new UnsupportedOperationException("Unknown table: " + tableName);
       }
@@ -858,6 +863,38 @@ public class InformationSchemaContentSupplierFactory {
         }
       }
       return true;
+    }
+  }
+
+  private static class ServicesSupplier extends TsBlockSupplier {
+
+    private final Iterator<TExternalServiceEntry> serviceEntryIterator;
+
+    private ServicesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // -1 means get all services
+        TExternalServiceListResp resp = client.showExternalService(-1);
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(resp.getStatus());
+        }
+
+        serviceEntryIterator = resp.getExternalServiceInfosIterator();
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      appendServiceEntry(serviceEntryIterator.next(), columnBuilders);
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return serviceEntryIterator.hasNext();
     }
   }
 

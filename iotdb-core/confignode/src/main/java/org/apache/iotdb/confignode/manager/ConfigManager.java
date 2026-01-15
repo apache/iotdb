@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -109,6 +110,8 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
@@ -154,6 +157,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -315,6 +319,9 @@ public class ConfigManager implements IManager {
   /** Manage procedure. */
   private final ProcedureManager procedureManager;
 
+  /** ExternalService. */
+  private final ExternalServiceManager externalServiceManager;
+
   /** UDF. */
   private final UDFManager udfManager;
 
@@ -354,6 +361,7 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
+    ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
@@ -371,6 +379,7 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             cqInfo,
+            externalServiceInfo,
             pipeInfo,
             subscriptionInfo,
             quotaInfo,
@@ -389,6 +398,7 @@ public class ConfigManager implements IManager {
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = createPermissionManager(authorInfo);
     this.procedureManager = createProcedureManager(procedureInfo);
+    this.externalServiceManager = new ExternalServiceManager(this);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
@@ -1286,6 +1296,11 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public ExternalServiceManager getExternalServiceManager() {
+    return externalServiceManager;
+  }
+
+  @Override
   public TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId) {
     Map<TConsensusGroupId, Integer> regionLeaderMap =
         getLoadManager().getLoadCache().getRegionLeaderMap();
@@ -1849,6 +1864,15 @@ public class ConfigManager implements IManager {
                 .map(TDataNodeConfiguration::getLocation)
                 .collect(Collectors.toList()))
         : new TGetDataNodeLocationsResp(status, Collections.emptyList());
+  }
+
+  public Map<Integer, TDataNodeLocation> getReadableDataNodeLocationMap() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.filterDataNodeThroughStatus(NodeStatus::isReadable).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location))
+        : Collections.emptyMap();
   }
 
   @Override
@@ -2598,6 +2622,46 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? cqManager.showCQ()
         : new TShowCQResp(status, Collections.emptyList());
+  }
+
+  @Override
+  public TSStatus createExternalService(TCreateExternalServiceReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.createService(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus startExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.startService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.stopService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.dropService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TExternalServiceListResp showExternalService(int dataNodeId) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.showService(dataNodeId)
+        : new TExternalServiceListResp(status, Collections.emptyList());
   }
 
   /**

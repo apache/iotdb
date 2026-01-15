@@ -382,6 +382,11 @@ FOR
     : F O R
     ;
 
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
+
 FROM
     : F R O M
     ;
@@ -784,6 +789,14 @@ SELECT
 
 SERIESSLOTID
     : S E R I E S S L O T I D
+    ;
+
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
     ;
 
 SESSION
