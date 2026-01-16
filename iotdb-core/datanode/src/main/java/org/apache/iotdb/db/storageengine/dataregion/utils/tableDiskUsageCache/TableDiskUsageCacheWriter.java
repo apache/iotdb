@@ -19,53 +19,54 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.utils.Pair;
-import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 public class TableDiskUsageCacheWriter {
+  private static final Logger logger = LoggerFactory.getLogger(TableDiskUsageCacheWriter.class);
   private static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
   private static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
-  public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES;
-  public static final int KEY_FILE_REDIRECT_RECORD_LENGTH = 7 * Long.BYTES;
+  public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
+  public static final int KEY_FILE_REDIRECT_RECORD_LENGTH = 7 * Long.BYTES + 1;
   private static final String TEMP_CACHE_FILE_SUBFIX = ".tmp";
   public static final byte KEY_FILE_RECORD_TYPE_OFFSET = 1;
   public static final byte KEY_FILE_RECORD_TYPE_REDIRECT = 2;
 
   private final int regionId;
   private int activeReaderNum = 0;
+  private long previousCompactionTimestamp = System.currentTimeMillis();
+  private long lastWriteTimestamp = System.currentTimeMillis();
   private int currentTsFileIndexFileVersion = 0;
   private final File dir;
-  private File currentKeyIndexFile;
-  private File currentValueIndexFile;
-  private FileOutputStream keyFileOutputStream;
-  private FileOutputStream valueFileOutputStream;
-  private BufferedOutputStream keyBufferedOutputStream;
-  private BufferedOutputStream valueBufferedOutputStream;
-  private long keyFileSize;
-  private long valueFileSize;
+  private TsFileTableSizeCacheWriter tsFileTableSizeCacheWriter;
 
   public TableDiskUsageCacheWriter(String database, int regionId) {
     this.regionId = regionId;
     this.dir = StorageEngine.getDataRegionSystemDir(database, regionId + "");
-    recoverTsFileTableSizeIndexFile();
+    recoverTsFileTableSizeIndexFile(true);
   }
 
-  private void recoverTsFileTableSizeIndexFile() {
+  private void recoverTsFileTableSizeIndexFile(boolean needRecover) {
     dir.mkdirs();
     File[] files = dir.listFiles();
     currentTsFileIndexFileVersion = 0;
@@ -124,53 +125,14 @@ public class TableDiskUsageCacheWriter {
             currentTsFileIndexFileVersion, TSFILE_CACHE_VALUE_FILENAME_PREFIX, valueFiles);
       }
     }
-    currentKeyIndexFile =
-        keyFiles.isEmpty()
-            ? new File(
-                dir
-                    + File.separator
-                    + TSFILE_CACHE_KEY_FILENAME_PREFIX
-                    + currentTsFileIndexFileVersion)
-            : keyFiles.get(0);
-    currentValueIndexFile =
-        valueFiles.isEmpty()
-            ? new File(
-                dir
-                    + File.separator
-                    + TSFILE_CACHE_VALUE_FILENAME_PREFIX
-                    + currentTsFileIndexFileVersion)
-            : valueFiles.get(0);
+    File currentKeyIndexFile = generateKeyFile(currentTsFileIndexFileVersion, false);
+    File currentValueIndexFile = generateValueFile(currentTsFileIndexFileVersion, false);
     try {
-      cacheFileSelfCheck();
+      this.tsFileTableSizeCacheWriter =
+          new TsFileTableSizeCacheWriter(
+              regionId, currentKeyIndexFile, currentValueIndexFile, needRecover);
     } catch (IOException ignored) {
     }
-  }
-
-  private void cacheFileSelfCheck() throws IOException {
-    currentKeyIndexFile.createNewFile();
-    currentValueIndexFile.createNewFile();
-    TsFileTableSizeCacheReader cacheFileReader =
-        new TsFileTableSizeCacheReader(
-            currentKeyIndexFile.length(),
-            currentKeyIndexFile,
-            currentValueIndexFile.length(),
-            currentValueIndexFile,
-            regionId);
-    Pair<Long, Long> truncateSize = cacheFileReader.selfCheck();
-    if (truncateSize.left != currentKeyIndexFile.length()) {
-      try (FileChannel channel =
-          FileChannel.open(currentKeyIndexFile.toPath(), StandardOpenOption.WRITE)) {
-        channel.truncate(truncateSize.left);
-      }
-    }
-    if (truncateSize.right != currentValueIndexFile.length()) {
-      try (FileChannel channel =
-          FileChannel.open(currentValueIndexFile.toPath(), StandardOpenOption.WRITE)) {
-        channel.truncate(truncateSize.right);
-      }
-    }
-    this.keyFileSize = truncateSize.left;
-    this.valueFileSize = truncateSize.right;
   }
 
   private void deleteOldVersionFiles(int maxVersion, String prefix, List<File> files) {
@@ -186,80 +148,169 @@ public class TableDiskUsageCacheWriter {
   }
 
   public void write(TsFileID tsFileID, Map<String, Long> tableSizeMap) throws IOException {
-    if (keyFileOutputStream == null) {
-      keyFileOutputStream = new FileOutputStream(currentKeyIndexFile, true);
-      keyFileSize = currentKeyIndexFile.length();
-      keyBufferedOutputStream = new BufferedOutputStream(keyFileOutputStream);
-    }
-    if (valueFileOutputStream == null) {
-      valueFileOutputStream = new FileOutputStream(currentValueIndexFile, true);
-      valueFileSize = currentValueIndexFile.length();
-      valueBufferedOutputStream = new BufferedOutputStream(valueFileOutputStream);
-    }
-
-    long valueOffset = valueFileSize;
-    valueFileSize +=
-        ReadWriteForEncodingUtils.writeVarInt(tableSizeMap.size(), valueBufferedOutputStream);
-    for (Map.Entry<String, Long> entry : tableSizeMap.entrySet()) {
-      valueFileSize += ReadWriteIOUtils.writeVar(entry.getKey(), valueBufferedOutputStream);
-      valueFileSize += ReadWriteIOUtils.write(entry.getValue(), valueBufferedOutputStream);
-    }
-    keyFileSize += ReadWriteIOUtils.write(KEY_FILE_RECORD_TYPE_OFFSET, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(tsFileID.timePartitionId, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(tsFileID.timestamp, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(tsFileID.fileVersion, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(tsFileID.compactionVersion, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(valueOffset, keyBufferedOutputStream);
+    tsFileTableSizeCacheWriter.write(tsFileID, tableSizeMap);
   }
 
   public void write(TsFileID originTsFileID, TsFileID newTsFileID) throws IOException {
-    if (keyFileOutputStream == null) {
-      keyFileOutputStream = new FileOutputStream(currentKeyIndexFile, true);
-      keyFileSize = currentKeyIndexFile.length();
-      keyBufferedOutputStream = new BufferedOutputStream(keyFileOutputStream);
-    }
-    keyFileSize += ReadWriteIOUtils.write(KEY_FILE_RECORD_TYPE_REDIRECT, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(newTsFileID.timePartitionId, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(newTsFileID.timestamp, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(newTsFileID.fileVersion, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(newTsFileID.compactionVersion, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(originTsFileID.timestamp, keyBufferedOutputStream);
-    keyFileSize += ReadWriteIOUtils.write(originTsFileID.fileVersion, keyBufferedOutputStream);
-    keyFileSize +=
-        ReadWriteIOUtils.write(originTsFileID.compactionVersion, keyBufferedOutputStream);
+    tsFileTableSizeCacheWriter.write(originTsFileID, newTsFileID);
   }
 
-  public void compact() {}
+  public void closeIfIdle() {
+    if (System.currentTimeMillis() - lastWriteTimestamp >= TimeUnit.MINUTES.toMillis(1)) {
+      close();
+    }
+  }
+
+  public boolean needCompact() {
+    if (activeReaderNum > 0) {
+      return false;
+    }
+    if (System.currentTimeMillis() - previousCompactionTimestamp <= TimeUnit.MINUTES.toMillis(2)) {
+      return false;
+    }
+    DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId));
+    if (dataRegion == null || dataRegion.isDeleted()) {
+      return false;
+    }
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    int fileNum = tsFileManager.size(true) + tsFileManager.size(false);
+    int estimatedEntryNumInCacheFile = (int) (keyFileLength() / KEY_FILE_OFFSET_RECORD_LENGTH);
+    int delta = estimatedEntryNumInCacheFile - fileNum;
+    return delta > 0.2 * estimatedEntryNumInCacheFile || delta >= 1000;
+  }
+
+  public void compact() {
+    previousCompactionTimestamp = System.currentTimeMillis();
+    this.tsFileTableSizeCacheWriter.close();
+    TsFileTableSizeCacheReader cacheFileReader =
+        new TsFileTableSizeCacheReader(
+            tsFileTableSizeCacheWriter.getKeyFile().length(),
+            tsFileTableSizeCacheWriter.getKeyFile(),
+            tsFileTableSizeCacheWriter.getValueFile().length(),
+            tsFileTableSizeCacheWriter.getValueFile(),
+            regionId);
+    Map<Long, TimePartitionTableSizeQueryContext> contextMap = new HashMap<>();
+    try {
+      cacheFileReader.openKeyFile();
+      while (cacheFileReader.hasNextEntryInKeyFile()) {
+        TsFileTableSizeCacheReader.KeyFileEntry keyFileEntry =
+            cacheFileReader.readOneEntryFromKeyFile();
+        TimePartitionTableSizeQueryContext context =
+            contextMap.computeIfAbsent(
+                keyFileEntry.getTimePartitionId(),
+                k -> new TimePartitionTableSizeQueryContext(Collections.emptyMap()));
+        if (keyFileEntry.originTsFileID == null) {
+          context.addCachedTsFileIDAndOffsetInValueFile(keyFileEntry.tsFileID, keyFileEntry.offset);
+        } else {
+          context.replaceCachedTsFileID(keyFileEntry.originTsFileID, keyFileEntry.tsFileID);
+        }
+      }
+    } catch (IOException e) {
+      return;
+    } finally {
+      cacheFileReader.closeCurrentFile();
+    }
+
+    List<Pair<TsFileID, Long>> validFilesOrderByOffset = new ArrayList<>();
+    DataRegion dataRegion = StorageEngine.getInstance().getDataRegion(new DataRegionId(regionId));
+    if (dataRegion == null || dataRegion.isDeleted()) {
+      return;
+    }
+    TsFileManager tsFileManager = dataRegion.getTsFileManager();
+    for (Long timePartition : tsFileManager.getTimePartitions()) {
+      TimePartitionTableSizeQueryContext context = contextMap.get(timePartition);
+      if (context == null) {
+        continue;
+      }
+      Pair<List<TsFileResource>, List<TsFileResource>> resources =
+          tsFileManager.getTsFileListSnapshot(timePartition);
+      Stream.concat(resources.left.stream(), resources.right.stream())
+          .forEach(
+              resource -> {
+                Long offset = context.getCachedTsFileIdOffset(resource.getTsFileID());
+                if (offset != null) {
+                  validFilesOrderByOffset.add(new Pair<>(resource.getTsFileID(), offset));
+                }
+              });
+    }
+    validFilesOrderByOffset.sort(Comparator.comparingLong(Pair::getRight));
+
+    TsFileTableSizeCacheWriter targetFileWriter = null;
+    try {
+      targetFileWriter =
+          new TsFileTableSizeCacheWriter(
+              regionId,
+              generateKeyFile(currentTsFileIndexFileVersion + 1, true),
+              generateValueFile(currentTsFileIndexFileVersion + 1, true));
+      cacheFileReader.openValueFile();
+      for (Pair<TsFileID, Long> pair : validFilesOrderByOffset) {
+        TsFileID tsFileID = pair.getLeft();
+        long offset = pair.getRight();
+        Map<String, Long> tableSizeMap = cacheFileReader.readOneEntryFromValueFile(offset, true);
+        targetFileWriter.write(tsFileID, tableSizeMap);
+      }
+      targetFileWriter.close();
+
+      // replace
+      File targetKeyFile = generateKeyFile(currentTsFileIndexFileVersion + 1, false);
+      File targetValueFile = generateValueFile(currentTsFileIndexFileVersion + 1, false);
+      targetFileWriter.getKeyFile().renameTo(targetKeyFile);
+      targetFileWriter.getValueFile().renameTo(targetValueFile);
+      this.tsFileTableSizeCacheWriter.close();
+    } catch (Exception e) {
+      logger.error("Failed to execute compaction for tsfile table size cache file", e);
+    } finally {
+      if (tsFileTableSizeCacheWriter != null) {
+        tsFileTableSizeCacheWriter.close();
+      }
+      if (targetFileWriter != null) {
+        targetFileWriter.close();
+      }
+      cacheFileReader.closeCurrentFile();
+      this.recoverTsFileTableSizeIndexFile(false);
+    }
+  }
+
+  private File generateKeyFile(int version, boolean isTempFile) {
+    return new File(
+        dir
+            + File.separator
+            + TSFILE_CACHE_KEY_FILENAME_PREFIX
+            + version
+            + (isTempFile ? TEMP_CACHE_FILE_SUBFIX : ""));
+  }
+
+  private File generateValueFile(int version, boolean isTempFile) {
+    return new File(
+        dir
+            + File.separator
+            + TSFILE_CACHE_VALUE_FILENAME_PREFIX
+            + version
+            + (isTempFile ? TEMP_CACHE_FILE_SUBFIX : ""));
+  }
 
   public void flush() throws IOException {
-    if (valueBufferedOutputStream != null) {
-      valueBufferedOutputStream.flush();
-    }
-    if (keyFileOutputStream != null) {
-      keyBufferedOutputStream.flush();
-    }
+    tsFileTableSizeCacheWriter.flush();
   }
 
   public File getKeyFile() {
-    return currentKeyIndexFile;
+    return tsFileTableSizeCacheWriter.getKeyFile();
   }
 
   public File getValueFile() {
-    return currentValueIndexFile;
+    return tsFileTableSizeCacheWriter.getValueFile();
   }
 
   public long keyFileLength() {
-    return keyFileSize;
+    return tsFileTableSizeCacheWriter.keyFileLength();
   }
 
   public long valueFileLength() {
-    return valueFileSize;
+    return tsFileTableSizeCacheWriter.valueFileLength();
   }
 
-  public void fsync() throws IOException {
-    flush();
-    valueFileOutputStream.getFD().sync();
-    keyFileOutputStream.getFD().sync();
+  public void sync() throws IOException {
+    tsFileTableSizeCacheWriter.sync();
   }
 
   public void increaseActiveReaderNum() {
@@ -274,22 +325,9 @@ public class TableDiskUsageCacheWriter {
     return activeReaderNum;
   }
 
+  public void removeFiles() {}
+
   public void close() {
-    try {
-      fsync();
-    } catch (IOException ignored) {
-    }
-    try {
-      if (valueBufferedOutputStream != null) {
-        valueBufferedOutputStream.close();
-      }
-    } catch (IOException ignored) {
-    }
-    try {
-      if (keyBufferedOutputStream != null) {
-        keyBufferedOutputStream.close();
-      }
-    } catch (IOException ignored) {
-    }
+    this.tsFileTableSizeCacheWriter.close();
   }
 }

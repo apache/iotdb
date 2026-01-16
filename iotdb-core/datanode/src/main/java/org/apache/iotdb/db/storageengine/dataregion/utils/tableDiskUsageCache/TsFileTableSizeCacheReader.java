@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -37,13 +36,13 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 public class TsFileTableSizeCacheReader {
 
-  private long readSize = 0;
   private final File keyFile;
   private final long keyFileLength;
   private final File valueFile;
@@ -73,48 +72,50 @@ public class TsFileTableSizeCacheReader {
   }
 
   public Pair<Long, Long> selfCheck() {
-    List<Pair<Long, Long>> offsetsByReadValueFile = new ArrayList<>();
+    if (keyFileLength == 0 || valueFileLength == 0) {
+      return new Pair<>(0L, 0L);
+    }
+    List<Long> offsetsInKeyFile = new ArrayList<>();
+    long lastCompleteEntryEndOffsetInKeyFile = 0;
     try {
-      openValueFile();
-      while (readSize < valueFileLength) {
-        long offset = inputStream.position();
-        int tableNum = ReadWriteForEncodingUtils.readVarInt(inputStream);
-        if (tableNum <= 0) {
-          break;
+      openKeyFile();
+      while (hasNextEntryInKeyFile()) {
+        KeyFileEntry keyFileEntry = readOneEntryFromKeyFile();
+        lastCompleteEntryEndOffsetInKeyFile = inputStream.position();
+        if (keyFileEntry.originTsFileID != null) {
+          continue;
         }
-        for (int i = 0; i < tableNum; i++) {
-          ReadWriteIOUtils.readVarIntString(inputStream);
-          ReadWriteIOUtils.readLong(inputStream);
-        }
-        offsetsByReadValueFile.add(new Pair<>(offset, inputStream.position()));
+        offsetsInKeyFile.add(keyFileEntry.offset);
       }
     } catch (Exception ignored) {
     } finally {
       closeCurrentFile();
     }
 
-    if (offsetsByReadValueFile.isEmpty()) {
+    if (offsetsInKeyFile.isEmpty()) {
       return new Pair<>(0L, 0L);
     }
-    Iterator<Pair<Long, Long>> valueOffsetIterator = offsetsByReadValueFile.iterator();
+
+    int keyIterIndex = 0;
     long keyFileTruncateSize = 0;
     long valueFileTruncateSize = 0;
+
     try {
-      openKeyFile();
-      while (readSize < keyFileLength) {
-        KeyFileEntry keyFileEntry = readOneEntryFromKeyFile();
-        if (keyFileEntry.originTsFileID != null) {
-          continue;
-        }
-        if (!valueOffsetIterator.hasNext()) {
+      openValueFile();
+      while (inputStream.position() < valueFileLength && keyIterIndex < offsetsInKeyFile.size()) {
+        long startOffsetInKeyFile = offsetsInKeyFile.get(keyIterIndex);
+        long endOffsetInKeyFile =
+            keyIterIndex == offsetsInKeyFile.size() - 1
+                ? lastCompleteEntryEndOffsetInKeyFile
+                : offsetsInKeyFile.get(keyIterIndex + 1);
+        keyIterIndex++;
+        long startOffset = inputStream.position();
+        if (startOffset != startOffsetInKeyFile) {
           break;
         }
-        Pair<Long, Long> startEndOffsetInValueFile = valueOffsetIterator.next();
-        if (startEndOffsetInValueFile.left != keyFileEntry.offset) {
-          break;
-        }
-        keyFileTruncateSize = readSize;
-        valueFileTruncateSize = startEndOffsetInValueFile.right;
+        readOneEntryFromValueFile(startOffset, false);
+        keyFileTruncateSize = endOffsetInKeyFile;
+        valueFileTruncateSize = inputStream.position();
       }
     } catch (Exception ignored) {
     } finally {
@@ -131,7 +132,10 @@ public class TsFileTableSizeCacheReader {
     long previousTimePartition = 0;
     TimePartitionTableSizeQueryContext timePartitionContext = null;
     do {
-      if (readSize >= keyFileLength) {
+      if (keyFileLength == 0) {
+        return true;
+      }
+      if (!hasNextEntryInKeyFile()) {
         closeCurrentFile();
         return true;
       }
@@ -150,7 +154,6 @@ public class TsFileTableSizeCacheReader {
               keyFileEntry.tsFileID, keyFileEntry.originTsFileID);
         }
       } catch (IOException e) {
-        readSize = keyFileLength;
         closeCurrentFile();
         throw e;
       }
@@ -158,7 +161,11 @@ public class TsFileTableSizeCacheReader {
     return false;
   }
 
-  private KeyFileEntry readOneEntryFromKeyFile() throws IOException {
+  public boolean hasNextEntryInKeyFile() {
+    return keyFileLength > 0 && inputStream.position() < keyFileLength;
+  }
+
+  public KeyFileEntry readOneEntryFromKeyFile() throws IOException {
     byte type = ReadWriteIOUtils.readByte(inputStream);
     long timePartition = ReadWriteIOUtils.readLong(inputStream);
     long timestamp = ReadWriteIOUtils.readLong(inputStream);
@@ -170,7 +177,6 @@ public class TsFileTableSizeCacheReader {
     if (type == TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET) {
       long offset = ReadWriteIOUtils.readLong(inputStream);
       keyFileEntry = new KeyFileEntry(tsFileID, offset);
-      readSize += TableDiskUsageCacheWriter.KEY_FILE_OFFSET_RECORD_LENGTH + 1;
     } else if (type == TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT) {
       long originTimestamp = ReadWriteIOUtils.readLong(inputStream);
       long originFileVersion = ReadWriteIOUtils.readLong(inputStream);
@@ -179,7 +185,6 @@ public class TsFileTableSizeCacheReader {
           new TsFileID(
               regionId, timePartition, originTimestamp, originFileVersion, originCompactionVersion);
       keyFileEntry = new KeyFileEntry(tsFileID, originTsFileID);
-      readSize += TableDiskUsageCacheWriter.KEY_FILE_REDIRECT_RECORD_LENGTH + 1;
     } else {
       throw new IoTDBRuntimeException(
           "Unsupported record type in file: " + keyFile.getPath() + ", type: " + type,
@@ -210,7 +215,6 @@ public class TsFileTableSizeCacheReader {
       long offset = pair.right;
       inputStream.seek(offset);
 
-      readSize = offset;
       int tableNum = ReadWriteForEncodingUtils.readVarInt(inputStream);
       for (int i = 0; i < tableNum; i++) {
         String tableName = ReadWriteIOUtils.readVarIntString(inputStream);
@@ -221,6 +225,24 @@ public class TsFileTableSizeCacheReader {
     return false;
   }
 
+  public Map<String, Long> readOneEntryFromValueFile(long offset, boolean needResult)
+      throws IOException {
+    inputStream.seek(offset);
+    int tableNum = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    if (tableNum <= 0) {
+      throw new IllegalArgumentException("tableNum should be greater than 0");
+    }
+    Map<String, Long> tableSizeMap = needResult ? new HashMap<>(tableNum) : null;
+    for (int i = 0; i < tableNum; i++) {
+      String tableName = ReadWriteIOUtils.readVarIntString(inputStream);
+      long size = ReadWriteIOUtils.readLong(inputStream);
+      if (needResult) {
+        tableSizeMap.put(tableName, size);
+      }
+    }
+    return tableSizeMap;
+  }
+
   public void closeCurrentFile() {
     if (inputStream != null) {
       try {
@@ -228,11 +250,10 @@ public class TsFileTableSizeCacheReader {
       } catch (IOException ignored) {
       }
       inputStream = null;
-      readSize = 0;
     }
   }
 
-  private static class KeyFileEntry {
+  public static class KeyFileEntry {
     public TsFileID tsFileID;
     public TsFileID originTsFileID;
     public long offset;
@@ -246,55 +267,61 @@ public class TsFileTableSizeCacheReader {
       this.tsFileID = tsFileID;
       this.originTsFileID = originTsFileID;
     }
+
+    public long getTimePartitionId() {
+      return tsFileID.timePartitionId;
+    }
   }
 
-  private static class DirectBufferedSeekableFileInputStream extends InputStream {
+  public static final class DirectBufferedSeekableFileInputStream extends InputStream {
 
     private final FileChannel channel;
-    private ByteBuffer buffer;
+    private final ByteBuffer buffer;
 
+    // file offset of buffer[0]
     private long bufferStartPos = 0;
-    private long position = 0;
 
-    private final int seekThreshold;
+    // next read position
+    private long position = 0;
 
     public DirectBufferedSeekableFileInputStream(Path path, int bufferSize) throws IOException {
       this.channel = FileChannel.open(path, StandardOpenOption.READ);
       this.buffer = ByteBuffer.allocateDirect(bufferSize);
-      this.buffer.limit(0);
-      this.seekThreshold = bufferSize * 2;
+      this.buffer.limit(0); // mark empty
     }
 
+    /** Only support forward seek: newPos >= position */
     public void seek(long newPos) throws IOException {
+      if (newPos < position) {
+        throw new UnsupportedOperationException("Backward seek is not supported");
+      }
+
+      // Fast path 0: no-op
       if (newPos == position) {
         return;
       }
 
-      if (newPos > position) {
+      long delta = newPos - position;
 
-        long bufferEnd = bufferStartPos + buffer.limit();
-
-        if (newPos < bufferEnd) {
-          buffer.position((int) (newPos - bufferStartPos));
-          position = newPos;
-          return;
-        }
-
-        long gap = newPos - position;
-
-        if (gap <= seekThreshold) {
-          discardBuffer();
-          bufferStartPos = position;
-          refill();
-          if (newPos < bufferStartPos + buffer.limit()) {
-            buffer.position((int) (newPos - bufferStartPos));
-            position = newPos;
-            return;
-          }
-        }
+      // Fast path 1: consume remaining buffer
+      if (delta <= buffer.remaining()) {
+        buffer.position(buffer.position() + (int) delta);
+        position = newPos;
+        return;
       }
 
-      discardBuffer();
+      // Fast path 2: still inside buffer window (rare but safe)
+      long bufferEnd = bufferStartPos + buffer.limit();
+      if (newPos >= bufferStartPos && newPos < bufferEnd) {
+        buffer.position((int) (newPos - bufferStartPos));
+        position = newPos;
+        return;
+      }
+
+      // Slow path: invalidate buffer and jump
+      buffer.clear();
+      buffer.limit(0);
+
       channel.position(newPos);
       bufferStartPos = newPos;
       position = newPos;
@@ -317,44 +344,35 @@ public class TsFileTableSizeCacheReader {
         return 0;
       }
 
-      int totalRead = 0;
-
+      int total = 0;
       while (len > 0) {
         if (!buffer.hasRemaining()) {
           if (!refill()) {
-            return totalRead == 0 ? -1 : totalRead;
+            return total == 0 ? -1 : total;
           }
         }
-
         int n = Math.min(len, buffer.remaining());
         buffer.get(dst, off, n);
-
         off += n;
         len -= n;
-        totalRead += n;
+        total += n;
         position += n;
       }
-
-      return totalRead;
+      return total;
     }
 
     private boolean refill() throws IOException {
       buffer.clear();
-      bufferStartPos = channel.position();
+      channel.position(position);
+      bufferStartPos = position;
 
       int read = channel.read(buffer);
       if (read <= 0) {
         buffer.limit(0);
         return false;
       }
-
       buffer.flip();
       return true;
-    }
-
-    private void discardBuffer() {
-      buffer.clear();
-      buffer.limit(0);
     }
 
     public long position() {
@@ -362,12 +380,21 @@ public class TsFileTableSizeCacheReader {
     }
 
     @Override
-    public void close() throws IOException {
-      if (buffer != null) {
-        MmapUtil.clean(buffer);
-        buffer = null;
+    public int available() throws IOException {
+      long remainingInFile = channel.size() - position;
+      if (remainingInFile <= 0) {
+        return 0;
       }
-      channel.close();
+      return (int) Math.min(Integer.MAX_VALUE, remainingInFile);
+    }
+
+    @Override
+    public void close() throws IOException {
+      try {
+        MmapUtil.clean(buffer);
+      } finally {
+        channel.close();
+      }
     }
   }
 }

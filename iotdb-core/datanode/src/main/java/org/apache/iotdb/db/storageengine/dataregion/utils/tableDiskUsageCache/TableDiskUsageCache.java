@@ -33,6 +33,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class TableDiskUsageCache {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
@@ -51,7 +52,12 @@ public class TableDiskUsageCache {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
-          Operation operation = queue.take();
+          Operation operation = queue.poll(1, TimeUnit.SECONDS);
+          if (operation == null) {
+            checkAndMayCloseIdleWriter();
+            checkAndMayCompact(TimeUnit.SECONDS.toMillis(1));
+            continue;
+          }
           operation.apply(this);
         } catch (InterruptedException e) {
           return;
@@ -61,6 +67,24 @@ public class TableDiskUsageCache {
       }
     } finally {
       writerMap.values().forEach(TableDiskUsageCacheWriter::close);
+    }
+  }
+
+  private void checkAndMayCompact(long maxRunTime) {
+    long startTime = System.currentTimeMillis();
+    for (TableDiskUsageCacheWriter writer : writerMap.values()) {
+      if (System.currentTimeMillis() - startTime > maxRunTime) {
+        break;
+      }
+      if (writer.needCompact()) {
+        writer.compact();
+      }
+    }
+  }
+
+  private void checkAndMayCloseIdleWriter() {
+    for (TableDiskUsageCacheWriter writer : writerMap.values()) {
+      writer.closeIfIdle();
     }
   }
 
@@ -81,6 +105,17 @@ public class TableDiskUsageCache {
   public void endRead(String database, int regionId) {
     EndReadOperation operation = new EndReadOperation(database, regionId);
     queue.add(operation);
+  }
+
+  public void remove(String database, int regionId) {
+    RemoveRegionOperation operation = new RemoveRegionOperation(database, regionId);
+    queue.add(operation);
+    try {
+      operation.future.get(5, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } catch (Exception ignored) {
+    }
   }
 
   public abstract static class Operation {
@@ -173,6 +208,24 @@ public class TableDiskUsageCache {
       if (writer != null) {
         writer.write(originTsFileID, newTsFileID);
       }
+    }
+  }
+
+  private static class RemoveRegionOperation extends Operation {
+
+    private final CompletableFuture<Void> future = new CompletableFuture<>();
+
+    private RemoveRegionOperation(String database, int regionId) {
+      super(database, regionId);
+    }
+
+    @Override
+    public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
+      TableDiskUsageCacheWriter writer = tableDiskUsageCache.writerMap.remove(regionId);
+      if (writer != null) {
+        writer.close();
+      }
+      future.complete(null);
     }
   }
 

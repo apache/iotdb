@@ -137,6 +137,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -1998,8 +1999,9 @@ public class DataRegion implements IDataRegionForQuery {
         "{} will close all files for deleting data folder {}",
         databaseName + "-" + dataRegionIdString,
         systemDir);
-    FileTimeIndexCacheRecorder.getInstance()
-        .removeFileTimeIndexCache(Integer.parseInt(dataRegionIdString));
+    int regionId = Integer.parseInt(dataRegionIdString);
+    TableDiskUsageCache.getInstance().remove(databaseName, regionId);
+    FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");
     try {
       File dataRegionSystemFolder =
