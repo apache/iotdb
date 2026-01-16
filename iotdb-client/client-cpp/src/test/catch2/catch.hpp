@@ -4655,8 +4655,6 @@ public:
     }
 };
 
-// TODO: Ideally this would be also constrained against the various char types,
-//       but I don't expect users to run into that in practice.
 template <typename T>
 typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value,
 GeneratorWrapper<T>>::type
