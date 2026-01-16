@@ -32,7 +32,7 @@
     <modules>
         <module>jdbc</module>
         <module>mqtt</module>
-        <module>mqtt-customize</module>
+        <!-- //TODO -->
         <module>pipe-count-point-processor</module>
         <module>pipe-opc-ua-sink</module>
         <module>rest-java-example</module>

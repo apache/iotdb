@@ -22,14 +22,10 @@ package org.apache.iotdb.db.service.externalservice;
 import java.util.function.Supplier;
 
 public enum BuiltinExternalServices {
-  MQTT(
-      "MQTT",
-      "org.apache.iotdb.externalservice.Mqtt",
-      // IoTDBDescriptor.getInstance().getConfig()::isEnableMQTTService
-      () -> false),
+  MQTT("MQTT", "org.apache.iotdb.mqtt.MQTTService", () -> true),
   REST(
       "REST",
-      "org.apache.iotdb.externalservice.Rest",
+      "org.apache.iotdb.mqtt.RestService",
       // IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService
       () -> false);
 

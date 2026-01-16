@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mqtt;
+package org.apache.iotdb.mqtt;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;

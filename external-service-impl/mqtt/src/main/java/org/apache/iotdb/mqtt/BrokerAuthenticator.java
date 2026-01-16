@@ -15,28 +15,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.iotdb.db.protocol.mqtt;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+package org.apache.iotdb.mqtt;
 
-import org.junit.After;
-import org.junit.Test;
+import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import static org.junit.Assert.assertNotNull;
+import io.moquette.broker.security.IAuthenticator;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class PayloadFormatManagerTest {
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanAllDir();
-  }
+/** The MQTT broker authenticator. */
+public class BrokerAuthenticator implements IAuthenticator {
+  private static final Logger LOG = LoggerFactory.getLogger(BrokerAuthenticator.class);
 
-  @Test(expected = IllegalArgumentException.class)
-  public void getPayloadFormat() {
-    PayloadFormatManager.getPayloadFormat("txt");
-  }
+  @Override
+  public boolean checkValid(String clientId, String username, byte[] password) {
+    if (StringUtils.isBlank(username) || password == null) {
+      return false;
+    }
 
-  @Test
-  public void getDefaultPayloadFormat() {
-    assertNotNull(PayloadFormatManager.getPayloadFormat("json"));
+    return (AuthorityChecker.checkUser(username, new String(password)).getCode()
+        == TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 }

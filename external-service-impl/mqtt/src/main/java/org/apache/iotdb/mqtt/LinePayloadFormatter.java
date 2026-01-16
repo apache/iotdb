@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mqtt;
+package org.apache.iotdb.mqtt;
 
 import io.netty.buffer.ByteBuf;
 import org.apache.tsfile.enums.TSDataType;
