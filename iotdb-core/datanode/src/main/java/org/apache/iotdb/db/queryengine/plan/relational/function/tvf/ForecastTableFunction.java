@@ -574,7 +574,7 @@ public class ForecastTableFunction implements TableFunction {
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
 
-      TsBlock res = SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      TsBlock res = SERDE.deserialize(resp.forecastResult.get(0));
       if (res.getValueColumnCount() != inputData.getValueColumnCount()) {
         throw new IoTDBRuntimeException(
             String.format(

@@ -92,7 +92,7 @@ struct TForecastReq {
 
 struct TForecastResp {
   1: required common.TSStatus status
-  2: optional binary forecastResult
+  2: optional list<binary> forecastResult
 }
 
 struct TShowModelsReq {

@@ -40,7 +40,6 @@ import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TsBlockSerde;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -226,7 +225,7 @@ public class UDTFForecast implements UDTF {
               resp.getStatus().getCode(), resp.getStatus().getMessage()),
           resp.getStatus().getCode());
     }
-    return serde.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+    return serde.deserialize(resp.forecastResult.get(0));
   }
 
   @Override
