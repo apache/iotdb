@@ -625,7 +625,6 @@ public class IoTDBTableIT {
         assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
       }
     } catch (final SQLException e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -1435,7 +1434,8 @@ public class IoTDBTableIT {
         statement.execute("ALTER TABLE rename_same RENAME TO rename_same");
         fail();
       } catch (SQLException e) {
-        assertEquals("701: The table's old name shall not be equal to the new one.", e.getMessage());
+        assertEquals(
+            "701: The table's old name shall not be equal to the new one.", e.getMessage());
       }
     }
   }
@@ -1560,12 +1560,7 @@ public class IoTDBTableIT {
       assertEquals(2, md.getColumnCount());
       String colName = md.getColumnName(2);
       // accept either exact quoted name or normalized variant
-      assertTrue(
-          colName.equals("s-特")
-              || colName.equals("s-\u7279")
-              || colName.equals("s特")
-              || colName.equals("s_特")
-              || colName.length() > 0);
+      assertTrue(colName.equals("s-特") || colName.equals("s特") || colName.equals("s_特"));
     }
   }
 
@@ -1586,12 +1581,12 @@ public class IoTDBTableIT {
 
       statement.execute("ALTER TABLE tmulti RENAME COLUMN b TO c");
       statement.execute("INSERT INTO tmulti (time, c) VALUES (3, 3)");
-//
-//      statement.execute("ALTER TABLE tmulti RENAME COLUMN c TO a");
-//      statement.execute("INSERT INTO tmulti (time, a) VALUES (4, 4)");
+
+      statement.execute("ALTER TABLE tmulti RENAME COLUMN c TO a");
+      statement.execute("INSERT INTO tmulti (time, a) VALUES (4, 4)");
 
       ResultSet rs = statement.executeQuery("SELECT * FROM tmulti");
-      for (int i = 1; i <= 3; i++) {
+      for (int i = 1; i <= 4; i++) {
         assertTrue(rs.next());
         assertEquals(i, rs.getLong(1));
         assertEquals(i, rs.getInt(2));

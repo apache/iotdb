@@ -316,17 +316,17 @@ public class EvolvedSchema implements Accountable {
     EvolvedSchema newEvolvedSchema = new EvolvedSchema();
     newEvolvedSchema.finalToOriginalTableNames =
         new LinkedHashMap<>(evolvedSchema.finalToOriginalTableNames);
-    newEvolvedSchema.finalToOriginalColumnNames =
-        new LinkedHashMap<>();
-    for (Entry<String, Map<String, String>> entry : evolvedSchema.finalToOriginalColumnNames.entrySet()) {
+    newEvolvedSchema.finalToOriginalColumnNames = new LinkedHashMap<>();
+    for (Entry<String, Map<String, String>> entry :
+        evolvedSchema.finalToOriginalColumnNames.entrySet()) {
       newEvolvedSchema.finalToOriginalColumnNames.put(
           entry.getKey(), new LinkedHashMap<>(entry.getValue()));
     }
     newEvolvedSchema.originalToFinalTableNames =
         new LinkedHashMap<>(evolvedSchema.originalToFinalTableNames);
-    newEvolvedSchema.originalToFinalColumnNames =
-        new LinkedHashMap<>();
-    for (Entry<String, Map<String, String>> entry : evolvedSchema.originalToFinalColumnNames.entrySet()) {
+    newEvolvedSchema.originalToFinalColumnNames = new LinkedHashMap<>();
+    for (Entry<String, Map<String, String>> entry :
+        evolvedSchema.originalToFinalColumnNames.entrySet()) {
       newEvolvedSchema.originalToFinalColumnNames.put(
           entry.getKey(), new LinkedHashMap<>(entry.getValue()));
     }
