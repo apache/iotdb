@@ -45,6 +45,19 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
 
+  private static final List<String> BASE_TIMESERIES =
+      Arrays.asList(
+          "root.db1.devA.m1",
+          "root.db1.devA.m2",
+          "root.db1.devB.m1",
+          "root.db1.devB.x",
+          "root.db2.devA.m1",
+          "root.db2.devC.m0",
+          "root.db2.devC.m3",
+          "root.db3.z.m1",
+          "root.db3.z.m10",
+          "root.db3.z.m2");
+
   public IoTDBShowTimeseriesOrderByTimeseriesIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
   }
@@ -66,63 +79,116 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     clearSchema();
   }
 
-  private void prepareSimpleSchema() throws Exception {
+  private void prepareComplexSchema() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE root.ln");
-      statement.execute("CREATE DATABASE root.sg");
-      statement.execute(
-          "create timeseries root.ln.d0.s0 with datatype=INT32, encoding=RLE, compression=SNAPPY");
-      statement.execute(
-          "create timeseries root.sg.d0.s2 with datatype=INT32, encoding=RLE, compression=SNAPPY");
-      statement.execute(
-          "create timeseries root.sg.d0.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("CREATE DATABASE root.db2");
+      statement.execute("CREATE DATABASE root.db3");
+
+      for (String ts : BASE_TIMESERIES) {
+        statement.execute(
+            String.format(
+                "create timeseries %s with datatype=INT32, encoding=RLE, compression=SNAPPY", ts));
+      }
+    }
+  }
+
+  private List<String> queryTimeseries(final String sql) throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      List<String> result = new ArrayList<>();
+      while (resultSet.next()) {
+        result.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
+      }
+      return result;
     }
   }
 
   @Test
-  public void testOrderByTimeseriesAsc() throws Exception {
-    prepareSimpleSchema();
+  public void testOrderAscWithoutLimit() throws Exception {
+    prepareComplexSchema();
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    Collections.sort(expected);
 
-    List<String> expected = new ArrayList<>(Arrays.asList("root.ln.d0.s0", "root.sg.d0.s1"));
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement();
-        ResultSet resultSet =
-            statement.executeQuery("show timeseries order by timeseries offset 2 limit 2")) {
-      List<String> actual = new ArrayList<>();
-      while (resultSet.next()) {
-        actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
-      }
-      assertEquals(expected, actual);
-    }
+    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries");
+    assertEquals(expected, actual);
   }
 
   @Test
-  public void testOrderByTimeseriesDescWithLimit() throws Exception {
-    prepareSimpleSchema();
+  public void testOrderDescWithOffsetLimit() throws Exception {
+    prepareComplexSchema();
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    Collections.sort(expected);
+    Collections.reverse(expected);
+    expected = expected.subList(2, 6); // offset 2 limit 4
 
-    List<String> all =
-        new ArrayList<>(Arrays.asList("root.ln.d0.s0", "root.sg.d0.s1", "root.sg.d0.s2"));
-    Collections.sort(all);
-    Collections.reverse(all);
-    List<String> expectedTop2 = all.subList(0, 2);
+    List<String> actual =
+        queryTimeseries("show timeseries root.db*.** order by timeseries desc offset 2 limit 4");
+    assertEquals(expected, actual);
+  }
 
+  @Test
+  public void testInsertThenQueryOrder() throws Exception {
+    prepareComplexSchema();
     try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement();
-        ResultSet resultSet =
-            statement.executeQuery("show timeseries order by timeseries desc limit 2")) {
-      List<String> actual = new ArrayList<>();
-      while (resultSet.next()) {
-        actual.add(resultSet.getString(ColumnHeaderConstant.TIMESERIES));
-      }
-      assertEquals(expectedTop2, actual);
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.db0.devX.a with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
+
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    expected.add("root.db0.devX.a");
+    Collections.sort(expected);
+
+    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries");
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testDeleteSubtreeThenQueryOrder() throws Exception {
+    prepareComplexSchema();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("delete timeseries root.db2.devC.**");
+    }
+
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    expected.remove("root.db2.devC.m0");
+    expected.remove("root.db2.devC.m3");
+    Collections.sort(expected);
+
+    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries");
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testOffsetLimitAfterDeletesAndAdds() throws Exception {
+    prepareComplexSchema();
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("delete timeseries root.db1.devB.x");
+      statement.execute(
+          "create timeseries root.db1.devC.m0 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.db4.devZ.z with datatype=INT32, encoding=RLE, compression=SNAPPY");
+    }
+
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    expected.remove("root.db1.devB.x");
+    expected.add("root.db1.devC.m0");
+    expected.add("root.db4.devZ.z");
+    Collections.sort(expected);
+    expected = expected.subList(5, 10); // offset 5 limit 5
+
+    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries offset 5 limit 5");
+    assertEquals(expected, actual);
   }
 
   @Test
   public void testConflictWithLatest() throws Exception {
-    prepareSimpleSchema();
+    prepareComplexSchema();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet ignored =
@@ -138,7 +204,7 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
 
   @Test
   public void testConflictWithTimeCondition() throws Exception {
-    prepareSimpleSchema();
+    prepareComplexSchema();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try (ResultSet ignored =
