@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 
 import torch
 
+from iotdb.ainode.core.exception import ModelNotExistException
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.inference.pool_scheduler.abstract_pool_scheduler import (
     AbstractPoolScheduler,
@@ -51,6 +52,14 @@ def _estimate_shared_pool_size_by_total_mem(
     Returns:
         mapping {model_id: pool_num}
     """
+
+    # Check if the model supports concurrent forecasting
+    if new_model_info and new_model_info.model_id not in MODEL_MEM_USAGE_MAP:
+        logger.error(
+            f"[Inference] Cannot estimate inference pool size on device: {device}, because model: {new_model_info.model_id} does not support concurrent forecasting."
+        )
+        raise ModelNotExistException(new_model_info.model_id)
+
     # Extract unique model IDs
     all_models = existing_model_infos + (
         [new_model_info] if new_model_info is not None else []
@@ -60,7 +69,7 @@ def _estimate_shared_pool_size_by_total_mem(
     mem_usages: Dict[str, float] = {}
     for model_info in all_models:
         mem_usages[model_info.model_id] = (
-            MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
+            MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
         )
 
     # Evaluate system resources and get TOTAL memory

@@ -253,7 +253,7 @@ class InferenceManager:
 
             return resp_cls(
                 get_status(TSStatusCode.SUCCESS_STATUS),
-                output_list[0] if single_batch else output_list,
+                [output_list[0]] if single_batch else output_list,
             )
 
         except Exception as e:
