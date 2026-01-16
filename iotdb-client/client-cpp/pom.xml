@@ -55,28 +55,6 @@
                 <artifactId>maven-resources-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>copy-test-resources</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/test</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
                         <id>copy-cpp-files</id>
                         <goals>
                             <goal>copy-resources</goal>
@@ -92,6 +70,22 @@
                                         <include>**/*.cpp</include>
                                         <include>**/*.cc</include>
                                     </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-test-resources</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/test</directory>
+                                    <filtering>true</filtering>
                                 </resource>
                             </resources>
                         </configuration>
@@ -129,7 +123,7 @@
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
                     <!-- Download the Catch2 header file. -->
-                    <execution>
+                    <!-- <execution>
                         <id>get-catch2</id>
                         <goals>
                             <goal>wget</goal>
@@ -141,7 +135,7 @@
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                             <skip>${ctest.skip.tests}</skip>
                         </configuration>
-                    </execution>
+                    </execution> -->
                 </executions>
             </plugin>
             <plugin>

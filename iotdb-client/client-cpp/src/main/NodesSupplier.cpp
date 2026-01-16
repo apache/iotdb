@@ -68,32 +68,57 @@ std::vector<TEndPoint> StaticNodesSupplier::getEndPointList() {
 StaticNodesSupplier::~StaticNodesSupplier() = default;
 
 std::shared_ptr<NodesSupplier> NodesSupplier::create(
-    std::vector<TEndPoint> endpoints,
-    std::string userName, std::string password, std::string zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-    int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-    std::string version, std::chrono::milliseconds refreshInterval,
+    const std::vector<TEndPoint>& endpoints,
+    const std::string& userName,
+    const std::string& password,
+    bool useSSL,
+    const std::string& trustCertFilePath,
+    const std::string& zoneId,
+    int32_t thriftDefaultBufferSize,
+    int32_t thriftMaxFrameSize,
+    int32_t connectionTimeoutInMs,
+    bool enableRPCCompression,
+    const std::string& version,
+    std::chrono::milliseconds refreshInterval,
     NodeSelectionPolicy policy) {
     if (endpoints.empty()) {
         return nullptr;
     }
     auto supplier = std::make_shared<NodesSupplier>(
-        userName, password, zoneId, thriftDefaultBufferSize,
-        thriftMaxFrameSize, connectionTimeoutInMs, useSSL,
-        enableRPCCompression, version, std::move(endpoints), std::move(policy)
+        userName, password, useSSL, trustCertFilePath, zoneId,
+        thriftDefaultBufferSize, thriftMaxFrameSize, connectionTimeoutInMs,
+        enableRPCCompression,
+        version, endpoints, policy
     );
     supplier->startBackgroundRefresh(refreshInterval);
     return supplier;
 }
 
 NodesSupplier::NodesSupplier(
-    std::string userName, std::string password, const std::string& zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-    int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-    std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy) : userName_(std::move(userName)), password_(std::move(password)), zoneId_(zoneId),
-    thriftDefaultBufferSize_(thriftDefaultBufferSize), thriftMaxFrameSize_(thriftMaxFrameSize),
-    connectionTimeoutInMs_(connectionTimeoutInMs), useSSL_(useSSL), enableRPCCompression_(enableRPCCompression), version(version), endpoints_(std::move(endpoints)),
-    selectionPolicy_(std::move(policy)) {
+    const std::string& userName,
+    const std::string& password,
+    bool useSSL,
+    const std::string& trustCertFilePath,
+    const std::string& zoneId,
+    int32_t thriftDefaultBufferSize,
+    int32_t thriftMaxFrameSize,
+    int32_t connectionTimeoutInMs,
+    bool enableRPCCompression,
+    const std::string& version,
+    const std::vector<TEndPoint>& endpoints,
+    NodeSelectionPolicy policy)
+    : userName_(userName)
+      , password_(password)
+      , zoneId_(zoneId)
+      , thriftDefaultBufferSize_(thriftDefaultBufferSize)
+      , thriftMaxFrameSize_(thriftMaxFrameSize)
+      , connectionTimeoutInMs_(connectionTimeoutInMs)
+      , useSSL_(useSSL)
+      , trustCertFilePath_(trustCertFilePath)
+      , enableRPCCompression_(enableRPCCompression)
+      , version_(version)
+      , endpoints_(endpoints)
+      , selectionPolicy_(policy) {
     deduplicateEndpoints();
 }
 
@@ -157,7 +182,7 @@ std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
     try {
       if (client_ == nullptr) {
         client_ = std::make_shared<ThriftConnection>(endpoint);
-        client_->init(userName_, password_, enableRPCCompression_, zoneId_, version);
+        client_->init(userName_, password_, enableRPCCompression_, useSSL_, trustCertFilePath_, zoneId_, version_);
       }
 
       auto sessionDataSet = client_->executeQueryStatement(SHOW_DATA_NODES_COMMAND);

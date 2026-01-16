@@ -56,12 +56,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libboost-all-dev
+          sudo apt-get install openssl libssl-dev
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
+          brew install openssl
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -74,6 +76,11 @@ jobs:
           choco install boost-msvc-14.3
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
+          
+          choco install openssl
+          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          echo "$sslPath\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -89,11 +96,7 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
-          else
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
-          fi
+          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4

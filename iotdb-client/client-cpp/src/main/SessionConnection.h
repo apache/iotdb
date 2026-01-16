@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <thrift/transport/TTransport.h>
+#include <thrift/transport/TSSLSocket.h>
 #include "IClientRPCService.h"
 #include "common_types.h"
 #include "NodesSupplier.h"
@@ -50,7 +51,7 @@ public:
 
     const TEndPoint& getEndPoint();
 
-    void init(const TEndPoint& endpoint);
+    void init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath);
 
     void insertStringRecord(const TSInsertStringRecordReq& request);
 
@@ -179,6 +180,8 @@ private:
 
     TSStatus deleteDataInternal(TSDeleteDataReq request);
 
+    std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
+        std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
     std::shared_ptr<TTransport> transport;
     std::shared_ptr<IClientRPCServiceClient> client;
     Session* session;
