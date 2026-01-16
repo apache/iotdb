@@ -1641,4 +1641,93 @@ public class IoTDBTableIT {
       }
     }
   }
+
+    @Test
+    public void testAlterTableAndColumn_RenameTableThenColumn() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      statement.execute("CREATE TABLE IF NOT EXISTS tboth (s1 int32)");
+      statement.execute("INSERT INTO tboth (time, s1) VALUES (1, 1)");
+
+      // rename table first
+      statement.execute("ALTER TABLE tboth RENAME TO tboth_new");
+
+      // then rename column on the new table
+      statement.execute("ALTER TABLE tboth_new RENAME COLUMN s1 TO s_new");
+
+      // old table name should not exist anymore
+      try {
+        statement.execute("INSERT INTO tboth (time, s1) VALUES (2, 2)");
+        fail();
+      } catch (final SQLException e) {
+        assertTrue(e.getMessage().startsWith("550") || e.getMessage().toLowerCase().contains("does not exist"));
+      }
+
+      // insert into the renamed table using the renamed column
+      statement.execute("INSERT INTO tboth_new (time, s_new) VALUES (2, 2)");
+
+      ResultSet rs = statement.executeQuery("SELECT * FROM tboth_new");
+      // first row from original name should be present and second row inserted after renames
+      assertTrue(rs.next());
+      assertEquals(1, rs.getLong(1));
+      assertEquals(1, rs.getInt(2));
+      assertTrue(rs.next());
+      assertEquals(2, rs.getLong(1));
+      assertEquals(2, rs.getInt(2));
+      assertFalse(rs.next());
+    }
+    }
+
+    @Test
+    public void testAlterTableAndColumn_RenameColumnThenTable() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      statement.execute("CREATE TABLE IF NOT EXISTS tboth2 (c1 int32)");
+      statement.execute("INSERT INTO tboth2 (time, c1) VALUES (1, 1)");
+
+      // rename column first
+      statement.execute("ALTER TABLE tboth2 RENAME COLUMN c1 TO c2");
+
+      // after column rename, old column should not be auto-creatable
+      try {
+        statement.execute("INSERT INTO tboth2 (time, c1) VALUES (2, 2)");
+        fail();
+      } catch (final SQLException e) {
+        assertTrue(e.getMessage().startsWith("616") || e.getMessage().toLowerCase().contains("unknown") || e.getMessage().toLowerCase().contains("cannot"));
+      }
+
+      // then rename the table
+      statement.execute("ALTER TABLE tboth2 RENAME TO tboth2_new");
+
+      // old table name should not exist
+      try {
+        statement.execute("INSERT INTO tboth2 (time, c2) VALUES (3, 3)");
+        fail();
+      } catch (final SQLException e) {
+        assertTrue(e.getMessage().startsWith("550") || e.getMessage().toLowerCase().contains("does not exist"));
+      }
+
+      // insert into the new table using the renamed column
+      statement.execute("INSERT INTO tboth2_new (time, c2) VALUES (2, 2)");
+      statement.execute("INSERT INTO tboth2_new (time, c2) VALUES (3, 3)");
+
+      ResultSet rs = statement.executeQuery("SELECT * FROM tboth2_new ORDER BY time");
+      for (int i = 1; i <= 3; i++) {
+        assertTrue(rs.next());
+        assertEquals(i, rs.getLong(1));
+        assertEquals(i, rs.getInt(2));
+      }
+      assertFalse(rs.next());
+    }
+    }
 }
