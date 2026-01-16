@@ -181,7 +181,7 @@ private:
     TSStatus deleteDataInternal(TSDeleteDataReq request);
 
     std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
-        std::make_shared<apache::thrift::transport::TSSLSocketFactory>();;
+        std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
     std::shared_ptr<TTransport> transport;
     std::shared_ptr<IClientRPCServiceClient> client;
     Session* session;
