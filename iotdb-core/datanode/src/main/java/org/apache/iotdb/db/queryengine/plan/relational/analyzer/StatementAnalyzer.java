@@ -3630,13 +3630,23 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
-      // remember current tables in the scope
-      List<Identifier> tables = new ArrayList<>();
-      scope.ifPresent(s -> tables.addAll(s.getTables()));
+      // Remember original tables before processing left
+      List<Identifier> originalTables = new ArrayList<>();
+      scope.ifPresent(s -> originalTables.addAll(s.getTables()));
 
       Scope left = process(node.getLeft(), scope);
-      scope.ifPresent(s -> s.setTables(tables));
+      // Restore tables for right processing
+      scope.ifPresent(s -> s.setTables(originalTables));
       Scope right = process(node.getRight(), scope);
+
+      // Add back tables added during left processing to preserve them in the scope
+      if (left != null) {
+        List<Identifier> leftAddedTables =
+            left.getTables().stream()
+                .filter(table -> !originalTables.contains(table))
+                .collect(Collectors.toList());
+        scope.ifPresent(s -> s.getTables().addAll(leftAddedTables));
+      }
 
       if (criteria instanceof JoinUsing) {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);

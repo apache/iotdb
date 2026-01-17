@@ -80,8 +80,6 @@ public class CteSubqueryTest {
    */
   @Test
   public void testCteSubquery() throws IoTDBException {
-    mockExecuteForTableModel();
-
     String sql =
         "with cte1 as (select time, s2 from table1) select s1 from table1 "
             + "where s1 = (select s2 from cte1)";
