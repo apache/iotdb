@@ -735,7 +735,7 @@ public class IoTDBUDFWindowQueryIT {
         Statement statement = connection.createStatement()) {
 
       String query =
-          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+          "SELECT accumulator(s1 + 1.0, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
         int value = 500500;
@@ -750,7 +750,7 @@ public class IoTDBUDFWindowQueryIT {
       }
 
       query =
-          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+          "SELECT 1 + accumulator(s1 + 1.0, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
         double value = 500501D;
@@ -775,7 +775,7 @@ public class IoTDBUDFWindowQueryIT {
         Statement statement = connection.createStatement()) {
       String query =
           "SELECT accumulator("
-              + "s1 + 1, "
+              + "s1 + 1.0, "
               + "'access'='time', "
               + "'timeInterval'='1000', "
               + "'slidingStep'='1000', "
@@ -796,7 +796,7 @@ public class IoTDBUDFWindowQueryIT {
 
       query =
           "SELECT 1 + accumulator("
-              + "s1 + 1, "
+              + "s1 + 1.0, "
               + "'access'='time', "
               + "'timeInterval'='1000', "
               + "'slidingStep'='1000', "
