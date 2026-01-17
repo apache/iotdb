@@ -120,6 +120,7 @@ class IoTDBRpcDataSet(object):
         self.data_frame = None
         self.__zone_id = zone_id
         self.__time_precision = time_precision
+        self.__df_buffer = None  # Buffer for streaming DataFrames
 
     def close(self):
         if self.__is_closed:
@@ -243,11 +244,60 @@ class IoTDBRpcDataSet(object):
             return True
         return False
 
+    def next_dataframe(self):
+        """
+        Get the next DataFrame from the result set with exactly fetch_size rows.
+        The last DataFrame may have fewer rows.
+        :return: the next DataFrame with fetch_size rows, or None if no more data
+        """
+        # Accumulate data until we have at least fetch_size rows or no more data
+        while True:
+            buffer_len = 0 if self.__df_buffer is None else len(self.__df_buffer)
+            if buffer_len >= self.__fetch_size:
+                # We have enough rows, return a chunk
+                break
+            if not self._has_next_result_set():
+                # No more data to fetch
+                break
+            # Process and accumulate
+            result = self._process_buffer()
+            new_df = self._build_dataframe(result)
+            if self.__df_buffer is None:
+                self.__df_buffer = new_df
+            else:
+                self.__df_buffer = pd.concat([self.__df_buffer, new_df], ignore_index=True)
+
+        if self.__df_buffer is None or len(self.__df_buffer) == 0:
+            return None
+
+        if len(self.__df_buffer) <= self.__fetch_size:
+            # Return all remaining rows
+            result_df = self.__df_buffer
+            self.__df_buffer = None
+            return result_df
+        else:
+            # Slice off fetch_size rows
+            result_df = self.__df_buffer.iloc[:self.__fetch_size].reset_index(drop=True)
+            self.__df_buffer = self.__df_buffer.iloc[self.__fetch_size:].reset_index(drop=True)
+            return result_df
+
     def result_set_to_pandas(self):
         result = {}
         for i in range(len(self.__column_index_2_tsblock_column_index_list)):
             result[i] = []
         while self._has_next_result_set():
+            batch_result = self._process_buffer()
+            for k, v in batch_result.items():
+                result[k].extend(v)
+
+        return self._build_dataframe(result)
+
+    def _process_buffer(self):
+        result = {}
+        for i in range(len(self.__column_index_2_tsblock_column_index_list)):
+            result[i] = []
+
+        while self.__query_result_index < len(self.__query_result):
             time_array, column_arrays, null_indicators, array_length = deserialize(
                 memoryview(self.__query_result[self.__query_result_index])
             )
@@ -339,6 +389,9 @@ class IoTDBRpcDataSet(object):
 
                 result[i].append(data_array)
 
+        return result
+
+    def _build_dataframe(self, result):
         for k, v in result.items():
             if v is None or len(v) < 1 or v[0] is None:
                 result[k] = []
