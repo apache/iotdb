@@ -410,6 +410,7 @@ public class IoTDBDatabaseIT {
               "queries,INF,",
               "queries_costs_histogram,INF,",
               "regions,INF,",
+              "services,INF,",
               "subscriptions,INF,",
               "tables,INF,",
               "topics,INF,",
@@ -497,6 +498,14 @@ public class IoTDBDatabaseIT {
                   "topic_name,STRING,TAG,",
                   "consumer_group_name,STRING,TAG,",
                   "subscribed_consumers,STRING,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc services"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "service_name,STRING,TAG,",
+                  "datanode_id,INT32,ATTRIBUTE,",
+                  "state,STRING,ATTRIBUTE,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("desc views"),
           "ColumnName,DataType,Category,",
@@ -627,6 +636,7 @@ public class IoTDBDatabaseIT {
                   "information_schema,topics,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,pipe_plugins,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,pipes,INF,USING,null,SYSTEM VIEW,",
+                  "information_schema,services,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,subscriptions,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,views,INF,USING,null,SYSTEM VIEW,",
                   "information_schema,functions,INF,USING,null,SYSTEM VIEW,",
@@ -643,7 +653,7 @@ public class IoTDBDatabaseIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from tables where status = 'USING'"),
           "count(devices),",
-          Collections.singleton("21,"));
+          Collections.singleton("22,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery(
               "select * from columns where table_name = 'queries' or database = 'test'"),

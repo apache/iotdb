@@ -143,5 +143,6 @@ public class IoTDBTreePatternTest {
         System.exit(-1);
       }
     }
+    Assert.assertEquals(null, applyReversedIndexesOnList(filteredIndexes, null));
   }
 }

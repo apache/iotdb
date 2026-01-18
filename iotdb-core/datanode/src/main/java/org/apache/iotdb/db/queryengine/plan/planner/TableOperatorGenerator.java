@@ -119,6 +119,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Abst
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
@@ -183,6 +184,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -1189,6 +1191,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         TableScanOperator.class.getSimpleName(),
         Collections.emptyMap(),
         Long.MAX_VALUE);
+  }
+
+  @Override
+  public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CteScanOperator.class.getSimpleName());
+    return new CteScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getDataStore(),
+        context.getFragmentInstanceId().getQueryId());
   }
 
   @Override
@@ -2269,9 +2287,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
     switch (joinKeyType.getTypeEnum()) {
       case INT32:
+        return (inputColumn, rowIndex) ->
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
       case DATE:
         return (inputColumn, rowIndex) ->
-            new IntColumn(1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)});
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return (inputColumn, rowIndex) ->

@@ -978,7 +978,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
     }
     if (!exist) {
-      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), false);
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
     }
     writeToMLog(node);
   }
@@ -1364,6 +1364,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     // tags, attributes
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
+  }
+
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
+    mTree.alterTimeSeriesDataType(
+        leafMNode.getMeasurementPath(), leafMNode.getPartialPath().getMeasurement(), newDataType);
   }
 
   /** remove the node from the tag inverted index */

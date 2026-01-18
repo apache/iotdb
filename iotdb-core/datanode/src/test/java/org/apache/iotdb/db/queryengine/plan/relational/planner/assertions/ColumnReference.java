@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
@@ -86,6 +87,18 @@ public class ColumnReference implements RvalueMatcher {
     // we don't check the existence of column in AggregationTableScan
     if (isAggregationTableScan && !result.isPresent()) {
       result = Optional.of(Symbol.of(columnName));
+    }
+    return result;
+  }
+
+  @Override
+  public Optional<Symbol> getCteSymbol(TableSchema tableSchema) {
+    Optional<Symbol> result = Optional.empty();
+    for (ColumnSchema columnSchema : tableSchema.getColumns()) {
+      if (columnSchema.getName().equals(columnName)) {
+        result = Optional.of(Symbol.of(columnName));
+        break;
+      }
     }
     return result;
   }

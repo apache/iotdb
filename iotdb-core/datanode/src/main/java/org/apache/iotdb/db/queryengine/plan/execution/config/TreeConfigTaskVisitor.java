@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterEncodingCompressorTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.AlterTimeSeriesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CountTimeSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.CreateContinuousQueryTask;
@@ -75,6 +76,11 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowAID
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowLoadedModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.ShowModelsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ai.UnloadModelTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.CreateExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.DropExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StartExternalServiceTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.StopExternalServiceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ExtendRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.MigrateRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.region.ReconstructRegionTask;
@@ -126,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountTimeSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CreateContinuousQueryStatement;
@@ -157,6 +164,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -458,6 +470,37 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, MPPQueryContext context) {
+    return new CreateExternalServiceTask(createExternalServiceStatement);
+  }
+
+  @Override
+  public IConfigTask visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, MPPQueryContext context) {
+    return new StartExternalServiceTask(startExternalServiceStatement.getServiceName());
+  }
+
+  @Override
+  public IConfigTask visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, MPPQueryContext context) {
+    return new StopExternalServiceTask(stopExternalServiceStatement.getServiceName());
+  }
+
+  @Override
+  public IConfigTask visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, MPPQueryContext context) {
+    return new DropExternalServiceTask(
+        dropExternalServiceStatement.getServiceName(), dropExternalServiceStatement.isForcedly());
+  }
+
+  @Override
+  public IConfigTask visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, MPPQueryContext context) {
+    return new ShowExternalServiceTask(showExternalServiceStatement.getDataNodeId());
+  }
+
+  @Override
   public IConfigTask visitCreatePipePlugin(
       CreatePipePluginStatement createPipePluginStatement, MPPQueryContext context) {
     if (createPipePluginStatement.getUriString() != null
@@ -739,6 +782,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitAlterLogicalView(
       AlterLogicalViewStatement alterLogicalViewStatement, MPPQueryContext context) {
     return new AlterLogicalViewTask(alterLogicalViewStatement, context);
+  }
+
+  @Override
+  public IConfigTask visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, MPPQueryContext context) {
+    return new AlterTimeSeriesTask(context.getQueryId().getId(), alterTimeSeriesDataTypeStatement);
   }
 
   @Override

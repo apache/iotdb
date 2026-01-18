@@ -102,7 +102,7 @@ public class PrivilegeUnion {
 
   public PrivilegeUnion(PrivilegeType type, boolean grantOption, boolean forAny) {
     this.privilegeType = type;
-    this.modelType = PrivilegeModelType.RELATIONAL;
+    this.modelType = forAny ? PrivilegeModelType.RELATIONAL : PrivilegeModelType.SYSTEM;
     this.grantOption = grantOption;
     this.forAny = forAny;
   }

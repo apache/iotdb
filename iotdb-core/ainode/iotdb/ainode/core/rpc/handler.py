@@ -19,10 +19,10 @@
 from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.cluster_manager import ClusterManager
+from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
-from iotdb.ainode.core.util.gpu_mapping import get_available_devices
 from iotdb.thrift.ainode import IAINodeRPCService
 from iotdb.thrift.ainode.ttypes import (
     TAIHeartbeatReq,
@@ -48,25 +48,12 @@ from iotdb.thrift.common.ttypes import TSStatus
 logger = Logger()
 
 
-def _ensure_device_id_is_available(device_id_list: list[str]) -> TSStatus:
-    """
-    Ensure that the device IDs in the provided list are available.
-    """
-    available_devices = get_available_devices()
-    for device_id in device_id_list:
-        if device_id not in available_devices:
-            return TSStatus(
-                code=TSStatusCode.UNAVAILABLE_AI_DEVICE_ERROR.value,
-                message=f"AIDevice ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
-            )
-    return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
-
-
 class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
     def __init__(self, ainode):
         self._ainode = ainode
         self._model_manager = ModelManager()
         self._inference_manager = InferenceManager()
+        self._backend = DeviceManager()
 
     # ==================== Cluster Management ====================
 
@@ -82,9 +69,12 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         return ClusterManager.get_heart_beat(req)
 
     def showAIDevices(self) -> TShowAIDevicesResp:
+        device_id_map = {"cpu": "cpu"}
+        for device_id in self._backend.device_ids():
+            device_id_map[str(device_id)] = self._backend.type.value
         return TShowAIDevicesResp(
             status=TSStatus(code=TSStatusCode.SUCCESS_STATUS.value),
-            deviceIdList=get_available_devices(),
+            deviceIdMap=device_id_map,
         )
 
     # ==================== Model Management ====================
@@ -102,25 +92,33 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_model_is_registered(req.existingModelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        status = _ensure_device_id_is_available(req.deviceIdList)
+        status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        return self._inference_manager.load_model(req)
+        return self._inference_manager.load_model(
+            req.existingModelId,
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList],
+        )
 
     def unloadModel(self, req: TUnloadModelReq) -> TSStatus:
         status = self._ensure_model_is_registered(req.modelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        status = _ensure_device_id_is_available(req.deviceIdList)
+        status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        return self._inference_manager.unload_model(req)
+        return self._inference_manager.unload_model(
+            req.modelId,
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList],
+        )
 
     def showLoadedModels(self, req: TShowLoadedModelsReq) -> TShowLoadedModelsResp:
-        status = _ensure_device_id_is_available(req.deviceIdList)
+        status = self._ensure_device_id_is_available(req.deviceIdList)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TShowLoadedModelsResp(status=status, deviceLoadedModelsMap={})
-        return self._inference_manager.show_loaded_models(req)
+        return self._inference_manager.show_loaded_models(
+            [self._backend.torch_device(device_id) for device_id in req.deviceIdList]
+        )
 
     def _ensure_model_is_registered(self, model_id: str) -> TSStatus:
         if not self._model_manager.is_model_registered(model_id):
@@ -143,6 +141,26 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return TForecastResp(status, [])
         return self._inference_manager.forecast(req)
+
+    # ==================== Internal API ====================
+
+    def _ensure_device_id_is_available(self, device_id_list: list[str]) -> TSStatus:
+        """
+        Ensure that the device IDs in the provided list are available.
+        """
+        available_devices = self._backend.device_ids()
+        for device_id in device_id_list:
+            try:
+                if device_id == "cpu":
+                    continue
+                if int(device_id) not in available_devices:
+                    raise ValueError(f"Invalid device ID [{device_id}]")
+            except (TypeError, ValueError):
+                return TSStatus(
+                    code=TSStatusCode.UNAVAILABLE_AI_DEVICE_ERROR.value,
+                    message=f"AIDevice ID [{device_id}] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.",
+                )
+        return TSStatus(code=TSStatusCode.SUCCESS_STATUS.value)
 
     # ==================== Tuning ====================
 

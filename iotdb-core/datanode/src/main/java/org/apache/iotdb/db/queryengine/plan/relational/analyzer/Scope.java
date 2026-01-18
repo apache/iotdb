@@ -23,12 +23,16 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AllColumns;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableMap;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +55,11 @@ public class Scope {
   private final RelationType relation;
   private final Map<String, WithQuery> namedQueries;
 
+  // Tables to access for the current relation. For CTE materialization and constant folding
+  // subqueries, non-materialized CTEs in tables must be identified, and their definitions
+  // attached to the subquery context.
+  private List<Identifier> tables;
+
   public static Scope create() {
     return builder().build();
   }
@@ -64,16 +73,30 @@ public class Scope {
       boolean queryBoundary,
       RelationId relationId,
       RelationType relation,
-      Map<String, WithQuery> namedQueries) {
+      Map<String, WithQuery> namedQueries,
+      List<Identifier> tables) {
     this.parent = requireNonNull(parent, "parent is null");
     this.relationId = requireNonNull(relationId, "relationId is null");
     this.queryBoundary = queryBoundary;
     this.relation = requireNonNull(relation, "relation is null");
     this.namedQueries = ImmutableMap.copyOf(requireNonNull(namedQueries, "namedQueries is null"));
+    this.tables = new ArrayList<>(requireNonNull(tables, "tables is null"));
+  }
+
+  public void addTable(Table table) {
+    tables.add(new Identifier(table.getName().getSuffix()));
+  }
+
+  public void setTables(List<Identifier> tables) {
+    this.tables = tables;
+  }
+
+  public List<Identifier> getTables() {
+    return Collections.unmodifiableList(tables);
   }
 
   public Scope withRelationType(RelationType relationType) {
-    return new Scope(parent, queryBoundary, relationId, relationType, namedQueries);
+    return new Scope(parent, queryBoundary, relationId, relationType, namedQueries, tables);
   }
 
   public Scope getQueryBoundaryScope() {
@@ -327,6 +350,7 @@ public class Scope {
     private RelationId relationId = RelationId.anonymous();
     private RelationType relationType = new RelationType();
     private final Map<String, WithQuery> namedQueries = new HashMap<>();
+    private final List<Identifier> tables = new ArrayList<>();
     private Optional<Scope> parent = Optional.empty();
     private boolean queryBoundary;
 
@@ -334,6 +358,7 @@ public class Scope {
       relationId = other.relationId;
       relationType = other.relation;
       namedQueries.putAll(other.namedQueries);
+      tables.addAll(other.tables);
       parent = other.parent;
       queryBoundary = other.queryBoundary;
       return this;
@@ -364,12 +389,17 @@ public class Scope {
       return this;
     }
 
+    public Builder withTables(List<Identifier> tables) {
+      this.tables.addAll(tables);
+      return this;
+    }
+
     public boolean containsNamedQuery(String name) {
       return namedQueries.containsKey(name);
     }
 
     public Scope build() {
-      return new Scope(parent, queryBoundary, relationId, relationType, namedQueries);
+      return new Scope(parent, queryBoundary, relationId, relationType, namedQueries, tables);
     }
   }
 

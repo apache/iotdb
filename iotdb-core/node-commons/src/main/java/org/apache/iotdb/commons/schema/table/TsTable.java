@@ -30,7 +30,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
@@ -39,7 +38,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -72,11 +70,12 @@ public class TsTable {
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private static final String OBJECT_STRING_ERROR =
-      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'";
+      "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
 
   private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
+  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -110,6 +109,16 @@ public class TsTable {
     this.tableName = tableName;
     columnSchemas.forEach(
         columnSchema -> columnSchemaMap.put(columnSchema.getColumnName(), columnSchema));
+  }
+
+  public TsTable(TsTable origin) {
+    this.tableName = origin.tableName;
+    origin.columnSchemaMap.forEach((col, schema) -> this.columnSchemaMap.put(col, schema.copy()));
+    this.idColumnIndexMap.putAll(origin.idColumnIndexMap);
+    this.props = origin.props == null ? null : new HashMap<>(origin.props);
+    this.ttlValue = origin.ttlValue;
+    this.tagNums = origin.tagNums;
+    this.fieldNum = origin.fieldNum;
   }
 
   public String getTableName() {
@@ -363,16 +372,6 @@ public class TsTable {
         });
   }
 
-  public byte[] serialize() {
-    ByteArrayOutputStream stream = new ByteArrayOutputStream();
-    try {
-      serialize(stream);
-    } catch (IOException ignored) {
-      // won't happen
-    }
-    return stream.toByteArray();
-  }
-
   public void serialize(final OutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tableName, stream);
     ReadWriteIOUtils.write(columnSchemaMap.size(), stream);
@@ -415,33 +414,7 @@ public class TsTable {
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
-    if (!CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()) {
-      return;
-    }
-    if (isInvalid4ObjectType(tableName)) {
-      throw new MetadataException(
-          getObjectStringError("tableName", tableName),
-          TSStatusCode.SEMANTIC_ERROR.getStatusCode());
-    }
-    for (final TsTableColumnSchema schema : columnSchemaMap.values()) {
-      if (schema.getDataType().equals(TSDataType.OBJECT)
-          && isInvalid4ObjectType(schema.getColumnName())) {
-        throw new MetadataException(
-            getObjectStringError("objectName", schema.getColumnName()),
-            TSStatusCode.SEMANTIC_ERROR.getStatusCode());
-      }
-    }
-  }
-
-  public static boolean isInvalid4ObjectType(final String column) {
-    return column.equals(".")
-        || column.equals("..")
-        || column.contains("./")
-        || column.contains(".\\");
-  }
-
-  public static String getObjectStringError(final String columnType, final String columnName) {
-    return String.format(OBJECT_STRING_ERROR, columnType, columnName);
+    throw new MetadataException("The object type column is not supported.");
   }
 
   @Override

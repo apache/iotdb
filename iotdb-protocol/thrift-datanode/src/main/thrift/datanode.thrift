@@ -473,6 +473,14 @@ struct TAlterEncodingCompressorReq {
   5: optional byte compressor
 }
 
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
+}
+
 struct TConstructSchemaBlackListWithTemplateReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required map<string, list<i32>> templateSetInfo
@@ -741,6 +749,8 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
 }
 
 
@@ -1017,6 +1027,11 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
@@ -1091,6 +1106,11 @@ service IDataNodeRPCService {
    * Alter matched timeseries to specific encoding and compressor in target schemaRegions
    */
   common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1216,7 +1236,6 @@ service IDataNodeRPCService {
    * Delete column data for drop column
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
-
 
   /**
    * Construct table device black list

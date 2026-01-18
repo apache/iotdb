@@ -25,15 +25,48 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
+import org.apache.tsfile.file.metadata.ChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
+import org.apache.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.tsfile.read.common.block.column.IntColumn;
+import org.apache.tsfile.read.common.block.column.LongColumn;
+import org.apache.tsfile.utils.Binary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
+
+  private static final Map<TSDataType, Class> dataTypeColumnClassMap;
+  public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
+  private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
+
+  static {
+    dataTypeColumnClassMap = new HashMap<>();
+    dataTypeColumnClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.DATE, IntColumn.class);
+
+    dataTypeColumnClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
+
+    dataTypeColumnClassMap.put(TSDataType.STRING, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.BLOB, BinaryColumn.class);
+    dataTypeColumnClassMap.put(TSDataType.TEXT, BinaryColumn.class);
+  }
 
   private SchemaUtils() {}
 
@@ -255,5 +288,313 @@ public class SchemaUtils {
         throw new IllegalArgumentException(
             String.format("Invalid Aggregation function: %s", aggregationType));
     }
+  }
+
+  public static boolean isUsingSameColumn(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    return Objects.equals(
+        dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
+  }
+
+  public static void changeMetadataModified(
+      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+      timeseriesMetadata.setModified(true);
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
+      }
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
+      List<TSDataType> targetDataTypeList) {
+    if (alignedTimeSeriesMetadata == null) {
+      return;
+    }
+
+    int i = 0;
+    for (TimeseriesMetadata timeseriesMetadata :
+        alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
+      if ((timeseriesMetadata != null)
+          && !SchemaUtils.isUsingSameColumn(
+              timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+        timeseriesMetadata.setModified(true);
+        alignedTimeSeriesMetadata.setModified(true);
+        List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+        if (chunkMetadataList != null) {
+          for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+            if (chunkMetadata != null) {
+              chunkMetadata.setModified(true);
+            }
+          }
+        }
+      }
+      i++;
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+
+    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+      timeseriesMetadata.setModified(true);
+      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
+      if (chunkMetadataList != null) {
+        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+          if (chunkMetadata != null) {
+            chunkMetadata.setModified(true);
+          }
+        }
+      }
+    }
+  }
+
+  public static void changeMetadataModified(
+      IChunkMetadata chunkMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
+    if (chunkMetadata == null) {
+      return;
+    }
+    if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
+        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+      chunkMetadata.setModified(true);
+    }
+  }
+
+  public static void changeAlignedMetadataModified(
+      AbstractAlignedChunkMetadata chunkMetadata,
+      TSDataType sourceDataType,
+      List<TSDataType> targetDataTypeList) {
+    if (chunkMetadata == null) {
+      return;
+    }
+    int i = 0;
+    for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
+      if ((iChunkMetadata != null)
+          && !SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
+          && ((targetDataTypeList.get(i) == TSDataType.STRING)
+              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+        iChunkMetadata.setModified(true);
+        chunkMetadata.setModified(true);
+      }
+      i++;
+    }
+  }
+
+  public static void rewriteAlignedChunkMetadataStatistics(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, int index, TSDataType targetDataType) {
+    IChunkMetadata valueChunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(index);
+    if (valueChunkMetadata != null
+        && targetDataType.isCompatible(valueChunkMetadata.getDataType())) {
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
+
+      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      newChunkMetadata.setTsDataType(targetDataType);
+      newChunkMetadata.setStatistics(statistics);
+    } else {
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
+    }
+  }
+
+  public static void rewriteNonAlignedChunkMetadataStatistics(
+      List<IChunkMetadata> chunkMetadataList, int index, TSDataType targetDataType) {
+    ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataList.get(index);
+    if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
+      Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
+      statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
+
+      chunkMetadata.setTsDataType(targetDataType);
+      chunkMetadata.setStatistics(statistics);
+    } else {
+      chunkMetadataList.set(index, null);
+    }
+  }
+
+  public static TSEncoding getDataTypeCompatibleEncoding(TSDataType dataType, TSEncoding encoding) {
+    if (!encoding.isSupported(dataType)) {
+      return EncodingInferenceUtils.getDefaultEncoding(dataType);
+    }
+    return encoding;
+  }
+
+  public static Statistics<?> getNewStatistics(
+      IChunkMetadata chunkMetadata, TSDataType targetDataType, Statistics<?> statistics) {
+    switch (chunkMetadata.getDataType()) {
+      case INT32:
+      case INT64:
+      case TIMESTAMP:
+      case FLOAT:
+      case DOUBLE:
+      case BOOLEAN:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(
+                  chunkMetadata.getStatistics().getFirstValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  chunkMetadata.getStatistics().getLastValue().toString(), StandardCharsets.UTF_8);
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+            binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[2] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[3] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[4];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+            binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[0] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(
+                    chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case DATE:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getLastValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[2] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getMinValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[3] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getMaxValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[4];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue(
+                      (Integer) chunkMetadata.getStatistics().getLastValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        }
+        break;
+      case STRING:
+        if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.BLOB) {
+          statistics.update(
+              chunkMetadata.getStatistics().getStartTime(),
+              new Binary(
+                  chunkMetadata.getStatistics().getMinValue().toString(), StandardCharsets.UTF_8));
+          statistics.update(
+              chunkMetadata.getStatistics().getEndTime(),
+              new Binary(
+                  chunkMetadata.getStatistics().getMaxValue().toString(), StandardCharsets.UTF_8));
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case TEXT:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = (Binary) chunkMetadata.getStatistics().getFirstValue();
+          binaryValues[1] = (Binary) chunkMetadata.getStatistics().getLastValue();
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.BLOB) {
+          statistics.update(chunkMetadata.getStatistics().getStartTime(), EMPTY_BINARY);
+          statistics.update(chunkMetadata.getStatistics().getEndTime(), EMPTY_BINARY);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      case BLOB:
+        if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = EMPTY_BINARY;
+          binaryValues[1] = EMPTY_BINARY;
+          long[] longValues = new long[2];
+          longValues[0] = chunkMetadata.getStatistics().getStartTime();
+          longValues[1] = chunkMetadata.getStatistics().getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else {
+          statistics = chunkMetadata.getStatistics();
+        }
+        break;
+      default:
+        break;
+    }
+    return statistics;
   }
 }

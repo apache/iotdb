@@ -46,6 +46,10 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.UpdateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.CreateExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.DropExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StartExternalServicePlan;
+import org.apache.iotdb.confignode.consensus.request.write.externalservice.StopExternalServicePlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTableModelFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.function.DropTreeModelFunctionPlan;
@@ -57,6 +61,7 @@ import org.apache.iotdb.confignode.consensus.request.write.partition.CreateSchem
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterEncodingCompressorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeAlterTimeSeriesPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeactivateTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDeleteDevicesPlan;
@@ -96,6 +101,7 @@ import org.apache.iotdb.confignode.consensus.request.write.sync.PreCreatePipePla
 import org.apache.iotdb.confignode.consensus.request.write.sync.RecordPipeMessagePlan;
 import org.apache.iotdb.confignode.consensus.request.write.sync.SetPipeStatusPlanV1;
 import org.apache.iotdb.confignode.consensus.request.write.table.AddTableColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AlterColumnDataTypePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitCreateTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteTablePlan;
@@ -439,6 +445,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PreDeleteViewColumn:
           plan = new PreDeleteViewColumnPlan();
           break;
+        case AlterColumnDataType:
+          plan = new AlterColumnDataTypePlan();
+          break;
         case CommitDeleteColumn:
           plan = new CommitDeleteColumnPlan(configPhysicalPlanType);
           break;
@@ -550,6 +559,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case PipeAlterEncodingCompressor:
           plan = new PipeAlterEncodingCompressorPlan();
           break;
+        case PipeAlterTimeSeries:
+          plan = new PipeAlterTimeSeriesPlan();
+          break;
         case UpdateTriggersOnTransferNodes:
           plan = new UpdateTriggersOnTransferNodesPlan();
           break;
@@ -579,6 +591,18 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case setThrottleQuota:
           plan = new SetThrottleQuotaPlan();
+          break;
+        case CreateExternalService:
+          plan = new CreateExternalServicePlan();
+          break;
+        case StartExternalService:
+          plan = new StartExternalServicePlan();
+          break;
+        case StopExternalService:
+          plan = new StopExternalServicePlan();
+          break;
+        case DropExternalService:
+          plan = new DropExternalServicePlan();
           break;
         default:
           throw new IOException("unknown PhysicalPlan configPhysicalPlanType: " + planType);

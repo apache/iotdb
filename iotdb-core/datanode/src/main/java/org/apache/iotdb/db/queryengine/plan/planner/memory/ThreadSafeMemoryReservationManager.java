@@ -52,12 +52,12 @@ public class ThreadSafeMemoryReservationManager extends NotThreadSafeMemoryReser
   }
 
   @Override
-  public Pair<Long, Long> releaseMemoryVirtually(final long size) {
+  public synchronized Pair<Long, Long> releaseMemoryVirtually(final long size) {
     return super.releaseMemoryVirtually(size);
   }
 
   @Override
-  public void reserveMemoryVirtually(
+  public synchronized void reserveMemoryVirtually(
       final long bytesToBeReserved, final long bytesAlreadyReserved) {
     super.reserveMemoryVirtually(bytesToBeReserved, bytesAlreadyReserved);
   }

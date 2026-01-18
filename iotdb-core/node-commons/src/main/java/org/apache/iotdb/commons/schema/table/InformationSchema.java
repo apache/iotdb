@@ -52,6 +52,7 @@ public class InformationSchema {
   public static final String CONNECTIONS = "connections";
   public static final String CURRENT_QUERIES = "current_queries";
   public static final String QUERIES_COSTS_HISTOGRAM = "queries_costs_histogram";
+  public static final String SERVICES = "services";
 
   static {
     final TsTable queriesTable = new TsTable(QUERIES);
@@ -394,6 +395,16 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.INT32));
     queriesCostsHistogramTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES_COSTS_HISTOGRAM, queriesCostsHistogramTable);
+
+    final TsTable servicesTable = new TsTable(SERVICES);
+    servicesTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.SERVICE_NAME_TABLE_MODEL, TSDataType.STRING));
+    servicesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL, TSDataType.INT32));
+    servicesTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.STATE_TABLE_MODEL, TSDataType.STRING));
+    servicesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
+    schemaTables.put(SERVICES, servicesTable);
   }
 
   public static Map<String, TsTable> getSchemaTables() {

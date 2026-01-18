@@ -67,6 +67,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -454,7 +455,23 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         alterTimeSeriesStatement.getAlias(),
         alterTimeSeriesStatement.getTagsMap(),
         alterTimeSeriesStatement.getAttributesMap(),
-        alterTimeSeriesStatement.isAlterView());
+        alterTimeSeriesStatement.isAlterView(),
+        alterTimeSeriesStatement.getDataType());
+  }
+
+  @Override
+  public PlanNode visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, MPPQueryContext context) {
+    return new AlterTimeSeriesNode(
+        context.getQueryId().genPlanNodeId(),
+        alterTimeSeriesDataTypeStatement.getPath(),
+        alterTimeSeriesDataTypeStatement.getAlterType(),
+        alterTimeSeriesDataTypeStatement.getAlterMap(),
+        alterTimeSeriesDataTypeStatement.getAlias(),
+        alterTimeSeriesDataTypeStatement.getTagsMap(),
+        alterTimeSeriesDataTypeStatement.getAttributesMap(),
+        alterTimeSeriesDataTypeStatement.isAlterView(),
+        alterTimeSeriesDataTypeStatement.getDataType());
   }
 
   @Override

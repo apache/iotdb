@@ -33,7 +33,11 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDevice
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.file.metadata.IDeviceID;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -53,6 +57,7 @@ public class CompactionScheduleContext {
   // end region
 
   private final Map<TsFileResource, ArrayDeviceTimeIndex> partitionFileDeviceInfoCache;
+  private final Map<IDeviceID, IDeviceID> deviceIdCache;
   private long cachedDeviceInfoSize = 0;
 
   private final Set<Long> timePartitionsDelayInsertionSelection;
@@ -63,12 +68,14 @@ public class CompactionScheduleContext {
   public CompactionScheduleContext() {
     this.partitionFileDeviceInfoCache = new HashMap<>();
     this.timePartitionsDelayInsertionSelection = new HashSet<>();
+    this.deviceIdCache = new HashMap<>();
     this.encryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
   public CompactionScheduleContext(EncryptParameter encryptParameter) {
     this.partitionFileDeviceInfoCache = new HashMap<>();
     this.timePartitionsDelayInsertionSelection = new HashSet<>();
+    this.deviceIdCache = new HashMap<>();
     this.encryptParameter = encryptParameter;
   }
 
@@ -95,6 +102,7 @@ public class CompactionScheduleContext {
 
   public void clearTimePartitionDeviceInfoCache() {
     partitionFileDeviceInfoCache.clear();
+    deviceIdCache.clear();
     CompactionMetrics.getInstance()
         .decreaseSelectionCachedDeviceTimeIndexSize(cachedDeviceInfoSize);
     cachedDeviceInfoSize = 0;
@@ -208,5 +216,24 @@ public class CompactionScheduleContext {
         .getConfig()
         .getCrossCompactionPerformer()
         .createInstance(encryptParameter);
+  }
+
+  public IDeviceID.Deserializer getCachedDeviceIdDeserializer() {
+    return new CachedIDeviceIdDeserializer();
+  }
+
+  private class CachedIDeviceIdDeserializer implements IDeviceID.Deserializer {
+
+    @Override
+    public IDeviceID deserializeFrom(ByteBuffer byteBuffer) {
+      IDeviceID deviceId = IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(byteBuffer);
+      return deviceIdCache.computeIfAbsent(deviceId, k -> deviceId);
+    }
+
+    @Override
+    public IDeviceID deserializeFrom(InputStream inputStream) throws IOException {
+      IDeviceID deviceId = IDeviceID.Deserializer.DEFAULT_DESERIALIZER.deserializeFrom(inputStream);
+      return deviceIdCache.computeIfAbsent(deviceId, k -> deviceId);
+    }
   }
 }

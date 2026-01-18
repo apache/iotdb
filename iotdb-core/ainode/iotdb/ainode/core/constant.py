@@ -53,10 +53,10 @@ AINODE_INFERENCE_MAX_OUTPUT_LENGTH = 2880
 # TODO: Should be optimized
 AINODE_INFERENCE_MODEL_MEM_USAGE_MAP = {
     "sundial": 1036 * 1024**2,  # 1036 MiB
-    "timer": 856 * 1024**2,  # 856 MiB
+    "timer_xl": 856 * 1024**2,  # 856 MiB
 }  # the memory usage of each model in bytes
 
-AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.4  # the device space allocated for inference
+AINODE_INFERENCE_MEMORY_USAGE_RATIO = 0.2  # the device space allocated for inference
 AINODE_INFERENCE_EXTRA_MEMORY_RATIO = (
     1.2  # the overhead ratio for inference, used to estimate the pool size
 )

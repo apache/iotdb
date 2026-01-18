@@ -168,7 +168,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Ob
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrim2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RTrimColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RadiansColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ReadObjectColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLike2ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.RegexpLikeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.Replace2ColumnTransformer;
@@ -1460,29 +1459,6 @@ public class ColumnTransformerBuilder
           this.process(children.get(0), context),
           this.process(children.get(1), context),
           this.process(children.get(2), context));
-    } else if (TableBuiltinScalarFunction.READ_OBJECT
-        .getFunctionName()
-        .equalsIgnoreCase(functionName)) {
-      ColumnTransformer first = this.process(children.get(0), context);
-      if (children.size() == 1) {
-        return new ReadObjectColumnTransformer(BLOB, first, context.fragmentInstanceContext);
-      } else if (children.size() == 2) {
-        return new ReadObjectColumnTransformer(
-            BLOB,
-            ((LongLiteral) children.get(1)).getParsedValue(),
-            first,
-            context.fragmentInstanceContext);
-      } else {
-        long offset = ((LongLiteral) children.get(1)).getParsedValue();
-        long length = ((LongLiteral) children.get(2)).getParsedValue();
-        checkArgument(offset >= 0 && length >= 0);
-        return new ReadObjectColumnTransformer(
-            BLOB,
-            ((LongLiteral) children.get(1)).getParsedValue(),
-            ((LongLiteral) children.get(2)).getParsedValue(),
-            first,
-            context.fragmentInstanceContext);
-      }
     } else {
       // user defined function
       if (TableUDFUtils.isScalarFunction(functionName)) {

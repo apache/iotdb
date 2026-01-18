@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.CountPathsUsingTemp
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeAsyncRequestRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.DataNodeTSStatusRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.FetchSchemaBlackListRPCHandler;
+import org.apache.iotdb.confignode.client.async.handlers.rpc.GetBuiltInExternalServiceRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipeHeartbeatRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.PipePushMetaRPCHandler;
 import org.apache.iotdb.confignode.client.async.handlers.rpc.SchemaUpdateRPCHandler;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.Consum
 import org.apache.iotdb.confignode.client.async.handlers.rpc.subscription.TopicPushMetaRPCHandler;
 import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
+import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
@@ -316,6 +318,11 @@ public class CnToDnInternalServiceAsyncRequestManager
             client.alterEncodingCompressor(
                 (TAlterEncodingCompressorReq) req, (SchemaUpdateRPCHandler) handler));
     actionMapBuilder.put(
+        CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
+        (req, client, handler) ->
+            client.alterTimeSeriesDataType(
+                (TAlterTimeSeriesReq) req, (SchemaUpdateRPCHandler) handler));
+    actionMapBuilder.put(
         CnToDnAsyncRequestType.CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE,
         (req, client, handler) ->
             client.constructSchemaBlackListWithTemplate(
@@ -480,6 +487,10 @@ public class CnToDnInternalServiceAsyncRequestManager
         CnToDnAsyncRequestType.ENABLE_SEPARATION_OF_ADMIN_POWERS,
         (req, client, handler) ->
             client.enableSeparationOfAdminPower((DataNodeTSStatusRPCHandler) handler));
+    actionMapBuilder.put(
+        CnToDnAsyncRequestType.GET_BUILTIN_SERVICE,
+        (req, client, handler) ->
+            client.getBuiltInService((GetBuiltInExternalServiceRPCHandler) handler));
   }
 
   @Override

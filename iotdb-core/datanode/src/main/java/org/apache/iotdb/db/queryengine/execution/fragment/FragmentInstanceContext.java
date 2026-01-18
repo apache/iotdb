@@ -897,11 +897,18 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
+      long tvListRamSize = tvList.calculateRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          if (tvList.getReservedMemoryBytes() != tvListRamSize) {
+            LOGGER.warn(
+                "Release TVList owned by query: allocate size {}, release size {}",
+                tvList.getReservedMemoryBytes(),
+                tvListRamSize);
+          }
           if (queryContextSet.isEmpty()) {
             if (LOGGER.isDebugEnabled()) {
               LOGGER.debug(
@@ -909,14 +916,14 @@ public class FragmentInstanceContext extends QueryContext {
                   tvList,
                   this.getId());
             }
-            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            memoryReservationManager.releaseMemoryCumulatively(tvList.getReservedMemoryBytes());
             tvList.clear();
           } else {
             // Transfer memory to next query. It must be exception-safe as this method is called
             // during FragmentInstanceExecution cleanup. Any exception during this process could
             // prevent proper resource cleanup and cause memory leaks.
             Pair<Long, Long> releasedBytes =
-                memoryReservationManager.releaseMemoryVirtually(tvList.calculateRamSize());
+                memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
             queryContext

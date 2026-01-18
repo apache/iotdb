@@ -52,6 +52,8 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // ExternalService
+    | createService | startService | stopService | dropService | showService
     // Pipe Task
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
@@ -170,6 +172,8 @@ alterTimeseries
 
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
+    // Change into new data type
+    | SET DATA TYPE newType=attributeValue
     | SET attributePair (COMMA attributePair)*
     | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
@@ -435,6 +439,28 @@ stopTrigger
     : STOP TRIGGER triggerName=identifier
     ;
 
+// ExternalService =========================================================================================
+createService
+    : CREATE SERVICE serviceName=identifier
+        AS className=STRING_LITERAL
+    ;
+
+startService
+    : START SERVICE serviceName=identifier
+    ;
+
+stopService
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropService
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+
+    ;
+
+showService
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_LITERAL)?
+    ;
 
 // CQ ==============================================================================================
 // ---- Create Continuous Query

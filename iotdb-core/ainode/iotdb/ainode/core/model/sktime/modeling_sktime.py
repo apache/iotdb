@@ -59,11 +59,11 @@ class ForecastingModel(SktimeModel):
     def generate(self, data, **kwargs):
         """Execute forecasting"""
         try:
-            predict_length = kwargs.get(
-                "predict_length", self._attributes["predict_length"]
+            output_length = kwargs.get(
+                "output_length", self._attributes["output_length"]
             )
             self._model.fit(data)
-            output = self._model.predict(fh=range(predict_length))
+            output = self._model.predict(fh=range(output_length))
             return np.array(output, dtype=np.float64)
         except Exception as e:
             raise InferenceModelInternalException(str(e))
@@ -75,8 +75,8 @@ class DetectionModel(SktimeModel):
     def generate(self, data, **kwargs):
         """Execute detection"""
         try:
-            predict_length = kwargs.get("predict_length", data.size)
-            output = self._model.fit_transform(data[:predict_length])
+            output_length = kwargs.get("output_length", data.size)
+            output = self._model.fit_transform(data[:output_length])
             if isinstance(output, pd.DataFrame):
                 return np.array(output["labels"], dtype=np.int32)
             else:
@@ -91,7 +91,7 @@ class ArimaModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = ARIMA(
-            **{k: v for k, v in attributes.items() if k != "predict_length"}
+            **{k: v for k, v in attributes.items() if k != "output_length"}
         )
 
 
@@ -101,7 +101,7 @@ class ExponentialSmoothingModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = ExponentialSmoothing(
-            **{k: v for k, v in attributes.items() if k != "predict_length"}
+            **{k: v for k, v in attributes.items() if k != "output_length"}
         )
 
 
@@ -111,7 +111,7 @@ class NaiveForecasterModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = NaiveForecaster(
-            **{k: v for k, v in attributes.items() if k != "predict_length"}
+            **{k: v for k, v in attributes.items() if k != "output_length"}
         )
 
 
@@ -121,7 +121,7 @@ class STLForecasterModel(ForecastingModel):
     def __init__(self, attributes: Dict[str, Any]):
         super().__init__(attributes)
         self._model = STLForecaster(
-            **{k: v for k, v in attributes.items() if k != "predict_length"}
+            **{k: v for k, v in attributes.items() if k != "output_length"}
         )
 
 

@@ -906,11 +906,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "pipe_task_thread_count", Integer.toString(conf.getPipeTaskThreadCount()).trim())));
 
-    conf.setMaxObjectSizeInByte(
-        Long.parseLong(
-            properties.getProperty(
-                "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
-
     // At the same time, set TSFileConfig
     List<FSType> fsTypes = new ArrayList<>();
     fsTypes.add(FSType.LOCAL);
@@ -1056,6 +1051,24 @@ public class IoTDBDescriptor {
 
     // The buffer for sort operator to calculate
     loadFixedSizeLimitForQuery(properties, "sort_buffer_size_in_bytes", conf::setSortBufferSize);
+
+    // The buffer for cte materialization.
+    long cteBufferSizeInBytes =
+        Long.parseLong(
+            properties.getProperty(
+                "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+    if (cteBufferSizeInBytes > 0) {
+      conf.setCteBufferSize(cteBufferSizeInBytes);
+    }
+
+    // max number of rows for cte materialization
+    int maxRowsInCteBuffer =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+    if (maxRowsInCteBuffer > 0) {
+      conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+    }
 
     loadFixedSizeLimitForQuery(
         properties, "mods_cache_size_limit_per_fi_in_bytes", conf::setModsCacheSizeLimitPerFI);
@@ -2177,10 +2190,24 @@ public class IoTDBDescriptor {
                   "include_null_value_in_write_throughput_metric",
                   ConfigurationFileUtils.getConfigurationDefaultValue(
                       "include_null_value_in_write_throughput_metric"))));
-      conf.setMaxObjectSizeInByte(
+
+      // The buffer for cte materialization.
+      long cteBufferSizeInBytes =
           Long.parseLong(
               properties.getProperty(
-                  "max_object_file_size_in_byte", String.valueOf(conf.getMaxObjectSizeInByte()))));
+                  "cte_buffer_size_in_bytes", Long.toString(conf.getCteBufferSize())));
+      if (cteBufferSizeInBytes > 0) {
+        conf.setCteBufferSize(cteBufferSizeInBytes);
+      }
+      // max number of rows for cte materialization
+      int maxRowsInCteBuffer =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
+      if (maxRowsInCteBuffer > 0) {
+        conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      }
+
     } catch (Exception e) {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();

@@ -539,7 +539,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                           PrivilegeType.READ_DATA);
               if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                 if (skipIfNoPrivileges) {
-                  continue;
+                  tsFileSequenceReader.position(nextMarkerOffset);
+                  break;
                 }
                 throw new AccessDeniedException(status.getMessage());
               }

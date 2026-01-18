@@ -28,10 +28,9 @@ import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.driver.IDriver;
 import org.apache.iotdb.db.queryengine.execution.exchange.MPPDataExchangeManager;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISink;
+import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
-import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-import org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TOperatorStatistics;
@@ -59,6 +58,11 @@ public class FragmentInstanceExecution {
 
   // It will be set to null while this FI is FINISHED
   private List<IDriver> drivers;
+
+  // Indicates whether this fragment instance should be ignored for statistics collection.
+  // This is true when the fragment instance contains ExplainAnalyzeOperator, which is
+  // a virtual fragment used for EXPLAIN ANALYZE and should not be included in query statistics.
+  boolean shouldIgnoreForStatistics;
 
   // It will be set to null while this FI is FINISHED
   private ISink sink;
@@ -111,6 +115,7 @@ public class FragmentInstanceExecution {
     this.stateMachine = stateMachine;
     this.timeoutInMs = timeoutInMs;
     this.exchangeManager = exchangeManager;
+    this.shouldIgnoreForStatistics = shouldIgnoreForStatistics();
   }
 
   public FragmentInstanceState getInstanceState() {
@@ -141,17 +146,37 @@ public class FragmentInstanceExecution {
     return stateMachine;
   }
 
+  // Check if this fragment instance should be ignored for statistics
+  // (i.e., it contains ExplainAnalyzeOperator)
+  private boolean shouldIgnoreForStatistics() {
+    if (drivers == null || drivers.isEmpty()) {
+      return false;
+    }
+    // Check if any driver contains ExplainAnalyzeOperator
+    return drivers.stream()
+        .anyMatch(
+            driver ->
+                driver.getDriverContext().getOperatorContexts().stream()
+                    .anyMatch(
+                        operatorContext ->
+                            ExplainAnalyzeOperator.class
+                                .getSimpleName()
+                                .equals(operatorContext.getOperatorType())));
+  }
+
   // Fill Fragment-Level info for statistics
   private boolean fillFragmentInstanceStatistics(
       FragmentInstanceContext context, TFetchFragmentInstanceStatisticsResp statistics) {
     statistics.setFragmentInstanceId(context.getId().toThrift());
     statistics.setQueryStatistics(context.getQueryStatistics().toThrift());
     statistics.setState(getInstanceState().toString());
-    IDataRegionForQuery dataRegionForQuery = context.getDataRegion();
-    if (dataRegionForQuery instanceof VirtualDataRegion) {
+    // Previously we ignore statistics when current data region is instance of
+    // VirtualDataRegion. Now data region of a CteScanNode is also virtual.
+    if (shouldIgnoreForStatistics) {
       // We don't need to output the region having ExplainAnalyzeOperator only.
       return false;
     }
+
     statistics.setDataRegion(context.getDataRegion().getDataRegionIdString());
     statistics.setIp(CONFIG.getInternalAddress() + ":" + CONFIG.getInternalPort());
     statistics.setStartTimeInMS(context.getStartTime());

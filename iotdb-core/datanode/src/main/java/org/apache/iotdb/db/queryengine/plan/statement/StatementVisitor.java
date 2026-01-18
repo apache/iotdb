@@ -35,6 +35,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMul
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -79,6 +80,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -198,6 +204,11 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
+  public R visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, C context) {
+    return visitStatement(alterTimeSeriesDataTypeStatement, context);
+  }
+
   public R visitAlterEncodingCompressor(
       AlterEncodingCompressorStatement alterEncodingCompressorStatement, C context) {
     return visitStatement(alterEncodingCompressorStatement, context);
@@ -272,6 +283,32 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTriggers(ShowTriggersStatement showTriggersStatement, C context) {
     return visitStatement(showTriggersStatement, context);
+  }
+
+  // ExternalService
+  public R visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, C context) {
+    return visitStatement(createExternalServiceStatement, context);
+  }
+
+  public R visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, C context) {
+    return visitStatement(startExternalServiceStatement, context);
+  }
+
+  public R visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, C context) {
+    return visitStatement(stopExternalServiceStatement, context);
+  }
+
+  public R visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, C context) {
+    return visitStatement(dropExternalServiceStatement, context);
+  }
+
+  public R visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, C context) {
+    return visitStatement(showExternalServiceStatement, context);
   }
 
   // Pipe Plugin

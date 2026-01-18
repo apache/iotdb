@@ -170,4 +170,8 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
   }
+
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
+  }
 }

@@ -22,14 +22,12 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
-import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
@@ -39,6 +37,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -360,8 +359,30 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQuery(senderEnv, "create database root.test1");
 
     // Shall be transferred
+    // The root.test may or may not be transferred due to delayed start of the config source
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count databases root.tes*", "count,", Collections.singleton("1,"));
+        receiverEnv, "count databases root.test1", "count,", Collections.singleton("1,"));
+
+    // Write some data
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create timeSeries root.vehicle.car.temperature DOUBLE",
+            "insert into root.vehicle.car(temperature) values (36.5)"));
+
+    // Exception, skip
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("0,"));
+
+    // Provide time series
+    TestUtils.executeNonQuery(receiverEnv, "create timeSeries root.vehicle.car.temperature DOUBLE");
+
+    // Exception, skip
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "select count(temperature) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
+        Collections.singleton("0,"));
 
     // Alter pipe, throw exception if no privileges
     try (final Connection connection = senderEnv.getConnection();
@@ -376,13 +397,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "create timeSeries root.vehicle.car.temperature DOUBLE",
-            "insert into root.vehicle.car(temperature) values (36.5)"));
+            "create timeSeries root.vehicle.car.pressure DOUBLE",
+            "insert into root.vehicle.car(pressure) values (36.5)"));
 
     // Exception, block here
-    TableModelUtils.assertCountDataAlwaysOnEnv("test", "test", 0, receiverEnv);
     TestUtils.assertDataAlwaysOnEnv(
-        receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("0,"));
+        receiverEnv,
+        "select count(pressure) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
+        Collections.singleton("0,"));
 
     // Grant SELECT privilege
     TestUtils.executeNonQueries(
@@ -391,8 +414,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     // Will finally pass
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
-        "select count(*) from root.vehicle.**",
-        "count(root.vehicle.car.temperature),",
+        "select count(pressure) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
         Collections.singleton("1,"));
 
     // test showing pipe
@@ -417,10 +440,12 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQuery(senderEnv, "revoke SYSTEM on root.** from user thulab");
 
     // A user shall only see its own pipe
-    try (final SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      Assert.assertEquals(
-          1, client.showPipe(new TShowPipeReq().setUserName("thulab")).pipeInfoList.size());
+    try (final Connection connection = senderEnv.getConnection("thulab", "passwD@123456");
+        final Statement statement = connection.createStatement()) {
+      // Will not throw any exception
+      final ResultSet resultSet = statement.executeQuery("show pipes");
+      Assert.assertTrue(resultSet.next());
+      Assert.assertFalse(resultSet.next());
     } catch (Exception e) {
       fail(e.getMessage());
     }
