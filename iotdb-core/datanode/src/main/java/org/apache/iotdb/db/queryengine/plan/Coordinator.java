@@ -40,6 +40,7 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
@@ -65,9 +66,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Log
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
@@ -77,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
@@ -93,6 +97,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
@@ -127,9 +132,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
@@ -394,6 +402,50 @@ public class Coordinator {
     return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
+  /**
+   * This method is specifically used following subquery:
+   *
+   * <p>1. When uncorrelated scalar subquery is handled
+   * (fetchUncorrelatedSubqueryResultForPredicate), we try to fold it and get constant value. Since
+   * CTE might be referenced, we need to add CTE materialization result into subquery's
+   * MPPQueryContext.
+   *
+   * <p>2. When CTE subquery is handled (fetchCteQueryResult), the main query, however, might be
+   * 'Explain' or 'Explain Analyze' statement. So we need to keep explain/explain analyze results
+   * along with CTE query dataset.
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      ExplainType explainType,
+      long timeOut,
+      boolean userQuery) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        ((queryContext, startTime) -> {
+          queryContext.setInnerTriggeredQuery(true);
+          queryContext.setCteQueries(cteQueries);
+          queryContext.setExplainType(explainType);
+          return createQueryExecutionForTableModel(
+              statement,
+              sqlParser,
+              clientSession,
+              queryContext,
+              metadata,
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+              startTime);
+        }));
+  }
+
   public ExecutionResult executeForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
@@ -404,47 +456,6 @@ public class Coordinator {
       Metadata metadata,
       long timeOut,
       boolean userQuery) {
-    // Delegate to overloaded version with empty parameters
-    return executeForTableModel(
-        statement,
-        sqlParser,
-        clientSession,
-        queryId,
-        session,
-        sql,
-        metadata,
-        timeOut,
-        userQuery,
-        Collections.emptyList());
-  }
-
-  /**
-   * Execute a table model statement with optional pre-bound parameters. Used by JDBC
-   * PreparedStatement to execute cached AST with serialized parameters.
-   *
-   * @param statement The AST to execute
-   * @param sqlParser SQL parser instance
-   * @param clientSession Current client session
-   * @param queryId Query ID
-   * @param session Session info
-   * @param sql SQL string for logging
-   * @param metadata Metadata instance
-   * @param timeOut Query timeout
-   * @param userQuery Whether this is a user query
-   * @param externalParameters List of Literal parameters to bind (empty for normal execution)
-   * @return ExecutionResult containing execution status and query ID
-   */
-  public ExecutionResult executeForTableModel(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
-      SqlParser sqlParser,
-      IClientSession clientSession,
-      long queryId,
-      SessionInfo session,
-      String sql,
-      Metadata metadata,
-      long timeOut,
-      boolean userQuery,
-      List<Literal> externalParameters) {
     return execution(
         queryId,
         session,
@@ -458,8 +469,7 @@ public class Coordinator {
                 queryContext,
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
-                startTime,
-                externalParameters)));
+                startTime)));
   }
 
   public ExecutionResult executeForTableModel(
@@ -523,8 +533,7 @@ public class Coordinator {
       final MPPQueryContext queryContext,
       final Metadata metadata,
       final long timeOut,
-      final long startTime,
-      final List<Literal> externalParameters) {
+      final long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof DropDB
@@ -536,6 +545,7 @@ public class Coordinator {
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
         || statement instanceof AddColumn
+        || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
@@ -575,6 +585,10 @@ public class Coordinator {
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
         || statement instanceof ShowFunctions
+        || statement instanceof CreateExternalService
+        || statement instanceof StartExternalService
+        || statement instanceof StopExternalService
+        || statement instanceof DropExternalService
         || statement instanceof RelationalAuthorStatement
         || statement instanceof MigrateRegion
         || statement instanceof ReconstructRegion
@@ -604,11 +618,7 @@ public class Coordinator {
     List<Expression> parameters = Collections.emptyList();
     Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
 
-    // Handle external parameters from JDBC PreparedStatement (highest priority)
-    if (externalParameters != null && !externalParameters.isEmpty()) {
-      parameterLookup = ParameterExtractor.bindParameters(statement, externalParameters);
-      parameters = new ArrayList<>(externalParameters);
-    } else if (statement instanceof Execute) {
+    if (statement instanceof Execute) {
       Execute executeStatement = (Execute) statement;
       String statementName = executeStatement.getStatementName().getValue();
 
