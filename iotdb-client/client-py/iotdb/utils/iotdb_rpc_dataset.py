@@ -274,7 +274,9 @@ class IoTDBRpcDataSet(object):
             if self.__df_buffer is None:
                 self.__df_buffer = new_df
             else:
-                self.__df_buffer = pd.concat([self.__df_buffer, new_df], ignore_index=True)
+                self.__df_buffer = pd.concat(
+                    [self.__df_buffer, new_df], ignore_index=True
+                )
 
         if self.__df_buffer is None or len(self.__df_buffer) == 0:
             return None
@@ -286,8 +288,12 @@ class IoTDBRpcDataSet(object):
             return result_df
         else:
             # Slice off fetch_size rows
-            result_df = self.__df_buffer.iloc[:self.__fetch_size].reset_index(drop=True)
-            self.__df_buffer = self.__df_buffer.iloc[self.__fetch_size:].reset_index(drop=True)
+            result_df = self.__df_buffer.iloc[: self.__fetch_size].reset_index(
+                drop=True
+            )
+            self.__df_buffer = self.__df_buffer.iloc[self.__fetch_size :].reset_index(
+                drop=True
+            )
             return result_df
 
     def result_set_to_pandas(self):

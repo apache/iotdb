@@ -152,7 +152,7 @@ class SessionDataSet(object):
         rpc_ds = self.iotdb_rpc_data_set
         return rpc_ds._has_buffered_data() or rpc_ds._has_next_result_set()
 
-    def next_df(self) -> "pd.DataFrame | None":
+    def next_df(self) -> Optional[pd.DataFrame]:
         """
         Get the next DataFrame from the result set.
         Each returned DataFrame contains exactly fetch_size rows,
