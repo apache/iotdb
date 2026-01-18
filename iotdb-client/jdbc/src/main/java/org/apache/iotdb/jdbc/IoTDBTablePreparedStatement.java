@@ -71,7 +71,6 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class IoTDBTablePreparedStatement extends IoTDBStatement implements PreparedStatement {
 
@@ -119,9 +118,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       for (int i = 0; i < parameterCount; i++) {
         parameterTypes[i] = Types.NULL;
       }
-    } catch (TException e) {
-      throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
-    } catch (StatementExecutionException e) {
+    } catch (TException | StatementExecutionException e) {
       throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
     }
   }
@@ -134,7 +131,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private String generateStatementName() {
-    return "jdbc_ps_" + UUID.randomUUID().toString().replace("-", "");
+    // StatementId is unique across all sessions in one IoTDB instance
+    return "jdbc_ps_" + getStmtId();
   }
 
   @Override
