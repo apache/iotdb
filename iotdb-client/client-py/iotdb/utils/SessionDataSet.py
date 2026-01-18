@@ -143,17 +143,16 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
-    def has_next_df(self):
+    def has_next_df(self) -> bool:
         """
         Evaluate if there are more DataFrames to be fetched.
         :return: whether there are more DataFrames to be fetched
         """
         # Check if buffer has data or if there are more results to fetch
         rpc_ds = self.iotdb_rpc_data_set
-        has_buffer = rpc_ds._IoTDBRpcDataSet__df_buffer is not None and len(rpc_ds._IoTDBRpcDataSet__df_buffer) > 0
-        return has_buffer or rpc_ds._has_next_result_set()
+        return rpc_ds._has_buffered_data() or rpc_ds._has_next_result_set()
 
-    def next_df(self):
+    def next_df(self) -> "pd.DataFrame | None":
         """
         Get the next DataFrame from the result set.
         Each returned DataFrame contains exactly fetch_size rows,

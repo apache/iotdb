@@ -18,6 +18,7 @@
 
 # for package
 import logging
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -125,6 +126,7 @@ class IoTDBRpcDataSet(object):
     def close(self):
         if self.__is_closed:
             return
+        self.__df_buffer = None  # Clean up streaming DataFrame buffer
         if self.__client is not None:
             try:
                 status = self.__client.closeOperation(
@@ -244,7 +246,14 @@ class IoTDBRpcDataSet(object):
             return True
         return False
 
-    def next_dataframe(self):
+    def _has_buffered_data(self) -> bool:
+        """
+        Check if there is buffered data for streaming DataFrame interface.
+        :return: True if there is buffered data, False otherwise
+        """
+        return self.__df_buffer is not None and len(self.__df_buffer) > 0
+
+    def next_dataframe(self) -> Optional[pd.DataFrame]:
         """
         Get the next DataFrame from the result set with exactly fetch_size rows.
         The last DataFrame may have fewer rows.
