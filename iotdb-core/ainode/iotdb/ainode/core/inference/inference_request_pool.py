@@ -115,7 +115,7 @@ class InferenceRequestPool(mp.Process):
 
         grouped_requests = defaultdict(list)
         for req in all_requests:
-            key = (req.inputs.shape[1], req.output_length)
+            key = (req.target_count, req.input_length, req.output_length)
             grouped_requests[key].append(req)
         grouped_requests = list(grouped_requests.values())
 

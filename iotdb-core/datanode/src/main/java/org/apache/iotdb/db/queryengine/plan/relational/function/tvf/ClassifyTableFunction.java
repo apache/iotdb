@@ -377,7 +377,7 @@ public class ClassifyTableFunction implements TableFunction {
                 "Error occurred while executing classify:[%s]", resp.getStatus().getMessage());
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
-      return SERDE.deserialize(ByteBuffer.wrap(resp.getForecastResult()));
+      return SERDE.deserialize(resp.forecastResult.get(0));
     }
   }
 }
