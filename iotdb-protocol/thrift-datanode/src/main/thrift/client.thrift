@@ -184,17 +184,18 @@ struct TSPrepareResp {
 // Executes a prepared statement with bound parameters
 struct TSExecutePreparedReq {
   1: required i64 sessionId
-  2: required string statementName    // Name of the prepared statement
-  3: required list<binary> parameters // Serialized parameter values
+  2: required string statementName
+  3: required binary parameters
   4: optional i32 fetchSize
   5: optional i64 timeout
+  6: required i64 statementId
 }
 
 // PreparedStatement - DEALLOCATE
 // Releases a prepared statement and its resources
 struct TSDeallocatePreparedReq {
   1: required i64 sessionId
-  2: required string statementName    // Name of the prepared statement to release
+  2: required string statementName
 }
 
 struct TSFetchResultsReq{

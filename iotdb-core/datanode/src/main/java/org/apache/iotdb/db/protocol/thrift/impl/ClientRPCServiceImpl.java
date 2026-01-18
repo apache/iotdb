@@ -139,6 +139,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -1573,7 +1575,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 String.format("Prepared statement '%s' does not exist", statementName)));
       }
 
-      List<Literal> parameters = deserializeParameters(req.getParameters());
+      List<DeserializedParam> rawParams =
+          PreparedParameterSerializer.deserialize(ByteBuffer.wrap(req.getParameters()));
+      List<Literal> parameters = new ArrayList<>(rawParams.size());
+      for (DeserializedParam param : rawParams) {
+        parameters.add(convertToLiteral(param));
+      }
 
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
           preparedInfo.getSql();
@@ -1589,7 +1596,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // Request query ID
-      queryId = SESSION_MANAGER.requestQueryId(clientSession, null);
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.getStatementId());
 
       // Execute using Coordinator with external parameters
       long timeout = req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold();
@@ -1670,45 +1677,31 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private List<Literal> deserializeParameters(List<ByteBuffer> params) {
-    List<Literal> literals = new ArrayList<>();
-    for (ByteBuffer buf : params) {
-      buf.rewind();
-      byte type = buf.get();
-      switch (type) {
-        case 0x00: // Null
-          literals.add(new NullLiteral());
-          break;
-        case 0x01: // Boolean
-          boolean boolVal = buf.get() != 0;
-          literals.add(new BooleanLiteral(boolVal ? "true" : "false"));
-          break;
-        case 0x02: // Long
-          long longVal = buf.getLong();
-          literals.add(new LongLiteral(String.valueOf(longVal)));
-          break;
-        case 0x03: // Double
-          double doubleVal = buf.getDouble();
-          literals.add(new DoubleLiteral(doubleVal));
-          break;
-        case 0x04: // String
-          int strLen = buf.getInt();
-          byte[] strBytes = new byte[strLen];
-          buf.get(strBytes);
-          literals.add(
-              new StringLiteral(new String(strBytes, java.nio.charset.StandardCharsets.UTF_8)));
-          break;
-        case 0x05: // Binary
-          int binLen = buf.getInt();
-          byte[] binBytes = new byte[binLen];
-          buf.get(binBytes);
-          literals.add(new BinaryLiteral(binBytes));
-          break;
-        default:
-          throw new IllegalArgumentException("Unknown parameter type: " + type);
-      }
+  /** Convert a deserialized parameter to the corresponding Literal type for AST. */
+  private Literal convertToLiteral(DeserializedParam param) {
+    if (param.isNull()) {
+      return new NullLiteral();
     }
-    return literals;
+
+    switch (param.type) {
+      case BOOLEAN:
+        return new BooleanLiteral((Boolean) param.value ? "true" : "false");
+      case INT32:
+        return new LongLiteral(String.valueOf((Integer) param.value));
+      case INT64:
+        return new LongLiteral(String.valueOf((Long) param.value));
+      case FLOAT:
+        return new DoubleLiteral((Float) param.value);
+      case DOUBLE:
+        return new DoubleLiteral((Double) param.value);
+      case TEXT:
+      case STRING:
+        return new StringLiteral((String) param.value);
+      case BLOB:
+        return new BinaryLiteral((byte[]) param.value);
+      default:
+        throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+    }
   }
 
   private final SelectResult setResultForPrepared =
