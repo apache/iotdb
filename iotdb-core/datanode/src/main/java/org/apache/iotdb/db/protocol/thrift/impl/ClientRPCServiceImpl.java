@@ -95,6 +95,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
@@ -1567,14 +1569,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       String statementName = req.getStatementName();
 
-      PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
-      if (preparedInfo == null) {
-        return RpcUtils.getTSExecuteStatementResp(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                String.format("Prepared statement '%s' does not exist", statementName)));
-      }
-
+      // Deserialize parameters and convert to Literal list
       List<DeserializedParam> rawParams =
           PreparedParameterSerializer.deserialize(ByteBuffer.wrap(req.getParameters()));
       List<Literal> parameters = new ArrayList<>(rawParams.size());
@@ -1582,27 +1577,17 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         parameters.add(convertToLiteral(param));
       }
 
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
-          preparedInfo.getSql();
-
-      int expectedCount = ParameterExtractor.getParameterCount(statement);
-      if (parameters.size() != expectedCount) {
-        return RpcUtils.getTSExecuteStatementResp(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                String.format(
-                    "Parameter count mismatch: expected %d, got %d",
-                    expectedCount, parameters.size())));
-      }
+      // Construct Execute AST node, reuse Coordinator's existing Execute handling logic
+      Execute executeStatement = new Execute(new Identifier(statementName), parameters);
 
       // Request query ID
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.getStatementId());
 
-      // Execute using Coordinator with external parameters
+      // Execute using Coordinator (Coordinator internally handles Execute statement)
       long timeout = req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold();
       ExecutionResult result =
           COORDINATOR.executeForTableModel(
-              statement,
+              executeStatement,
               relationSqlParser,
               clientSession,
               queryId,
@@ -1610,8 +1595,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "EXECUTE " + statementName,
               metadata,
               timeout,
-              true,
-              parameters);
+              true);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
