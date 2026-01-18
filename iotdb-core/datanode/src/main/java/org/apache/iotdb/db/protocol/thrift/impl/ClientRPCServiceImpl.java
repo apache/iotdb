@@ -53,7 +53,6 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -76,7 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
-import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementMemoryManager;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -1519,13 +1518,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       String sql = req.getSql();
       String statementName = req.getStatementName();
 
-      if (clientSession.getPreparedStatement(statementName) != null) {
-        return new TSPrepareResp(
-            RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                String.format("Prepared statement '%s' already exists", statementName)));
-      }
-
+      // Parse SQL to get Statement AST
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
           relationSqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
@@ -1534,15 +1527,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
       }
 
+      // Get parameter count before registering
       int parameterCount = ParameterExtractor.getParameterCount(statement);
 
-      long memorySizeInBytes = statement.ramBytesUsed();
-
-      PreparedStatementMemoryManager.getInstance().allocate(statementName, memorySizeInBytes);
-
-      PreparedStatementInfo info =
-          new PreparedStatementInfo(statementName, statement, memorySizeInBytes);
-      clientSession.addPreparedStatement(statementName, info);
+      // Register the prepared statement using helper
+      PreparedStatementHelper.register(clientSession, statementName, statement);
 
       TSPrepareResp resp = new TSPrepareResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setParameterCount(parameterCount);
@@ -1643,17 +1632,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     try {
-      String statementName = req.getStatementName();
-
-      PreparedStatementInfo removedInfo = clientSession.removePreparedStatement(statementName);
-      if (removedInfo == null) {
-        return RpcUtils.getStatus(
-            TSStatusCode.EXECUTE_STATEMENT_ERROR,
-            String.format("Prepared statement '%s' does not exist", statementName));
-      }
-
-      PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
-
+      // Unregister the prepared statement using helper
+      PreparedStatementHelper.unregister(clientSession, req.getStatementName());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onQueryException(
