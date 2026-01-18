@@ -16,6 +16,7 @@
 # under the License.
 #
 import logging
+from typing import Optional
 
 from iotdb.utils.Field import Field
 
