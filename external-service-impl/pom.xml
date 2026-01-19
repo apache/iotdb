@@ -27,6 +27,7 @@
         <version>2.0.7-SNAPSHOT</version>
     </parent>
     <artifactId>external-service-impl</artifactId>
+    <name>IoTDB: External-Service-Impl</name>
     <packaging>pom</packaging>
     <modules>
         <module>mqtt</module>
@@ -40,11 +41,7 @@
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>external-service-api</artifactId>
-            <version>2.0.7-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-server</artifactId>
+            <scope>provided</scope>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
         <dependency>
