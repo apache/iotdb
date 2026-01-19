@@ -18,7 +18,6 @@
 
 import numpy as np
 
-
 # Serialized tsBlock:
 #    +-------------+---------------+---------+------------+-----------+----------+
 #    | val col cnt | val col types | pos cnt | encodings  | time col  | val col  |
