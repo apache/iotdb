@@ -93,7 +93,6 @@ public class TableDiskUsageCacheWriter {
         int version;
         try {
           version = Integer.parseInt(fileName.substring(TSFILE_CACHE_KEY_FILENAME_PREFIX.length()));
-          currentTsFileIndexFileVersion = Math.max(currentTsFileIndexFileVersion, version);
         } catch (NumberFormatException ignored) {
           continue;
         }
@@ -114,6 +113,7 @@ public class TableDiskUsageCacheWriter {
             continue;
           }
         }
+        currentTsFileIndexFileVersion = Math.max(currentTsFileIndexFileVersion, version);
         keyFiles.add(file);
       }
       if (keyFiles.size() > 1) {

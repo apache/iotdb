@@ -52,7 +52,7 @@ public class TableDiskUsageCache {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
-          Operation operation = queue.poll(1, TimeUnit.SECONDS);
+          Operation operation = queue.poll(10, TimeUnit.MILLISECONDS);
           if (operation == null) {
             checkAndMayCloseIdleWriter();
             checkAndMayCompact(TimeUnit.SECONDS.toMillis(1));

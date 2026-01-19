@@ -76,6 +76,7 @@ public class TsFileTableSizeCacheReader {
       return new Pair<>(0L, 0L);
     }
     List<Long> offsetsInKeyFile = new ArrayList<>();
+    List<Long> lastCompleteKeyOffsets = new ArrayList<>();
     long lastCompleteEntryEndOffsetInKeyFile = 0;
     try {
       openKeyFile();
@@ -83,9 +84,14 @@ public class TsFileTableSizeCacheReader {
         KeyFileEntry keyFileEntry = readOneEntryFromKeyFile();
         lastCompleteEntryEndOffsetInKeyFile = inputStream.position();
         if (keyFileEntry.originTsFileID != null) {
+          if (!lastCompleteKeyOffsets.isEmpty()) {
+            lastCompleteKeyOffsets.set(
+                lastCompleteKeyOffsets.size() - 1, lastCompleteEntryEndOffsetInKeyFile);
+          }
           continue;
         }
         offsetsInKeyFile.add(keyFileEntry.offset);
+        lastCompleteKeyOffsets.add(lastCompleteEntryEndOffsetInKeyFile);
       }
     } catch (Exception ignored) {
     } finally {
@@ -104,10 +110,7 @@ public class TsFileTableSizeCacheReader {
       openValueFile();
       while (inputStream.position() < valueFileLength && keyIterIndex < offsetsInKeyFile.size()) {
         long startOffsetInKeyFile = offsetsInKeyFile.get(keyIterIndex);
-        long endOffsetInKeyFile =
-            keyIterIndex == offsetsInKeyFile.size() - 1
-                ? lastCompleteEntryEndOffsetInKeyFile
-                : offsetsInKeyFile.get(keyIterIndex + 1);
+        long endOffsetInKeyFile = lastCompleteKeyOffsets.get(keyIterIndex);
         keyIterIndex++;
         long startOffset = inputStream.position();
         if (startOffset != startOffsetInKeyFile) {

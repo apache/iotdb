@@ -77,6 +77,8 @@ public class TableDiskUsageCacheReader implements Closeable {
           if (future.isDone()) {
             this.cacheFileReader = future.get();
             this.cacheFileReader.openKeyFile();
+          } else {
+            Thread.sleep(1);
           }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
