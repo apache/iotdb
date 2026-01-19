@@ -1264,6 +1264,8 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
 
+      DataNodeTableCache.getInstance().invalid(databaseName);
+
       syncCloseAllWorkingTsFileProcessors();
 
       // may update table names in deviceIds
