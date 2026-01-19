@@ -74,7 +74,7 @@ def read_from_buffer(buffer, size):
 def read_column_types(buffer, value_column_count):
     data_types = np.frombuffer(buffer, dtype=np.uint8, count=value_column_count)
     new_buffer = buffer[value_column_count:]
-    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5))):
+    if not np.all(np.isin(data_types, (0, 1, 2, 3, 4, 5, 8, 9, 10, 11))):
         raise Exception("Invalid data type encountered: " + str(data_types))
     return data_types, new_buffer
 
@@ -140,7 +140,7 @@ def read_int32_column(buffer, data_type, position_count):
     else:
         size = np.count_nonzero(~null_indicators)
 
-    if data_type == 1:
+    if (data_type == 1) or (data_type == 9):
         dtype = ">i4"
     elif data_type == 3:
         dtype = ">f4"
