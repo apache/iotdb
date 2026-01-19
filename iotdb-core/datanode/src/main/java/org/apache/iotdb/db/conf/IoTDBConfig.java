@@ -270,6 +270,10 @@ public class IoTDBConfig {
   private String triggerTemporaryLibDir =
       triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
+  /** External lib directory for ExternalService, stores user-uploaded JAR files */
+  private String externalServiceDir =
+      IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.EXTERNAL_SERVICE_FOLDER_NAME;
+
   /** External lib directory for Pipe Plugin, stores user-defined JAR files */
   private String pipeDir =
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.PIPE_FOLDER_NAME;
@@ -1364,6 +1368,7 @@ public class IoTDBConfig {
     udfTemporaryLibDir = addDataHomeDir(udfTemporaryLibDir);
     triggerDir = addDataHomeDir(triggerDir);
     triggerTemporaryLibDir = addDataHomeDir(triggerTemporaryLibDir);
+    externalServiceDir = addDataHomeDir(externalServiceDir);
     pipeDir = addDataHomeDir(pipeDir);
     pipeTemporaryLibDir = addDataHomeDir(pipeTemporaryLibDir);
     for (int i = 0; i < pipeReceiverFileDirs.length; i++) {
@@ -1683,6 +1688,10 @@ public class IoTDBConfig {
 
   public void updateTriggerTemporaryLibDir() {
     this.triggerTemporaryLibDir = triggerDir + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
+  }
+
+  public String getExternalServiceDir() {
+    return externalServiceDir;
   }
 
   public String getPipeLibDir() {

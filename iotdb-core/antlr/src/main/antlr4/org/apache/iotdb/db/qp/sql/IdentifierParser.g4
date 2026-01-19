@@ -116,6 +116,7 @@ keyWords
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION
@@ -215,6 +216,8 @@ keyWords
     | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE

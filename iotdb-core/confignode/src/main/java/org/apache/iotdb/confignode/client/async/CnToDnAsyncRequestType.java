@@ -60,6 +60,9 @@ public enum CnToDnAsyncRequestType {
   INACTIVE_TRIGGER_INSTANCE,
   UPDATE_TRIGGER_LOCATION,
 
+  // ExternalService
+  GET_BUILTIN_SERVICE,
+
   // Pipe Plugin
   CREATE_PIPE_PLUGIN,
   DROP_PIPE_PLUGIN,

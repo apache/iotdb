@@ -267,20 +267,19 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
       TSDataType targetDataType = alignedFullPath.getSchemaList().get(index).getType();
-      if (targetDataType.equals(TSDataType.STRING)
-          && (alignedChunkMetadata.getValueChunkMetadataList().stream()
-                  .filter(iChunkMetadata -> iChunkMetadata.getDataType() != targetDataType)
-                  .count()
-              > 0)) {
+      if ((alignedChunkMetadata.getValueChunkMetadataList().get(index) != null)
+          && (alignedChunkMetadata.getValueChunkMetadataList().get(index).getDataType()
+              != targetDataType)) {
         // create new statistics object via new data type, and merge statistics information
-        alignedChunkMetadata =
-            SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, targetDataType);
+        SchemaUtils.rewriteAlignedChunkMetadataStatistics(
+            alignedChunkMetadata, index, targetDataType);
         alignedChunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          if (!alignedChunkMetadata.getValueChunkMetadataList().isEmpty()
+              && alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
             exist[i] = true;
             valueTimeSeriesMetadataList
                 .get(i)
@@ -540,10 +539,20 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         Statistics.getStatsByType(timeSeriesMetadata.getTsDataType());
     // flush chunkMetadataList one by one
     boolean isModified = false;
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+    for (int index = 0; index < chunkMetadataList.size(); index++) {
+      IChunkMetadata chunkMetadata = chunkMetadataList.get(index);
       isModified = (isModified || chunkMetadata.isModified());
+      TSDataType targetDataType = fullPath.getMeasurementSchema().getType();
+      if (chunkMetadata != null && (chunkMetadata.getDataType() != targetDataType)) {
+        // create new statistics object via new data type, and merge statistics information
+        SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
+            chunkMetadataList, index, targetDataType);
+        chunkMetadata.setModified(true);
+      }
       if (!useFakeStatistics) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
+          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
         continue;
       }
       startTime = Math.min(startTime, chunkMetadata.getStartTime());

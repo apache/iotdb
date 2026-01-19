@@ -80,6 +80,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -279,6 +284,32 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTriggers(ShowTriggersStatement showTriggersStatement, C context) {
     return visitStatement(showTriggersStatement, context);
+  }
+
+  // ExternalService
+  public R visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, C context) {
+    return visitStatement(createExternalServiceStatement, context);
+  }
+
+  public R visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, C context) {
+    return visitStatement(startExternalServiceStatement, context);
+  }
+
+  public R visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, C context) {
+    return visitStatement(stopExternalServiceStatement, context);
+  }
+
+  public R visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, C context) {
+    return visitStatement(dropExternalServiceStatement, context);
+  }
+
+  public R visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, C context) {
+    return visitStatement(showExternalServiceStatement, context);
   }
 
   // Pipe Plugin

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -75,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
@@ -479,6 +482,8 @@ public interface IManager {
    */
   CNAuditLogger getAuditLogger();
 
+  ExternalServiceManager getExternalServiceManager();
+
   TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId);
 
   /**
@@ -861,6 +866,16 @@ public interface IManager {
   TSStatus dropCQ(TDropCQReq req);
 
   TShowCQResp showCQ();
+
+  TSStatus createExternalService(TCreateExternalServiceReq req);
+
+  TSStatus startExternalService(int dataNodeId, String serviceName);
+
+  TSStatus stopExternalService(int dataNodeId, String serviceName);
+
+  TSStatus dropExternalService(int dataNodeId, String serviceName);
+
+  TExternalServiceListResp showExternalService(int dataNodeId);
 
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 

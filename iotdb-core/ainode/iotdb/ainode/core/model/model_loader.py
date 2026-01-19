@@ -34,12 +34,14 @@ from transformers import (
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import ModelNotExistException
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.model.sktime.modeling_sktime import create_sktime_model
 from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_path
 
 logger = Logger()
+BACKEND = DeviceManager()
 
 
 def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
@@ -105,17 +107,13 @@ def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
             model_cls = AutoModelForCausalLM
 
     if train_from_scratch:
-        model = model_cls.from_config(
-            config_cls, trust_remote_code=trust_remote_code, device_map=device_map
-        )
+        model = model_cls.from_config(config_cls, trust_remote_code=trust_remote_code)
     else:
         model = model_cls.from_pretrained(
-            model_path,
-            trust_remote_code=trust_remote_code,
-            device_map=device_map,
+            model_path, trust_remote_code=trust_remote_code
         )
 
-    return model
+    return BACKEND.move_model(model, device_map)
 
 
 def load_model_from_pt(model_info: ModelInfo, **kwargs):
@@ -138,7 +136,7 @@ def load_model_from_pt(model_info: ModelInfo, **kwargs):
         model = torch.compile(model)
     except Exception as e:
         logger.warning(f"acceleration failed, fallback to normal mode: {str(e)}")
-    return model.to(device_map)
+    return BACKEND.move_model(model, device_map)
 
 
 def load_model_for_efficient_inference():

@@ -404,10 +404,6 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     }
   }
 
-  public boolean shouldParse4Privilege() {
-    return shouldParse4Privilege;
-  }
-
   @Override
   public PipeTsFileInsertionEvent shallowCopySelfAndBindPipeTaskMetaForProgressReport(
       final String pipeName,

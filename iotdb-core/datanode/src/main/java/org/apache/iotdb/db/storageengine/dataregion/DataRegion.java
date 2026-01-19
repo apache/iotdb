@@ -116,6 +116,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessorInfo;
+import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
@@ -3237,20 +3238,22 @@ public class DataRegion implements IDataRegionForQuery {
     List<TsFileResource> deletedByMods = new ArrayList<>();
     List<TsFileResource> deletedByFiles = new ArrayList<>();
     boolean isDropMeasurementExist = false;
-    boolean isDropTagExist = false;
+    IDPredicate.IDPredicateType idPredicateType = null;
 
     if (deletion instanceof TableDeletionEntry) {
-      TableDeletionEntry entry = (TableDeletionEntry) deletion;
-      isDropMeasurementExist = !entry.getPredicate().getMeasurementNames().isEmpty();
-    } else {
-      TreeDeletionEntry entry = (TreeDeletionEntry) deletion;
-      if (entry.getPathPattern() instanceof MeasurementPath) {
-        Map<String, String> tagMap = ((MeasurementPath) entry.getPathPattern()).getTagMap();
-        isDropTagExist = (tagMap != null) && !tagMap.isEmpty();
-      }
+      TableDeletionEntry tableDeletionEntry = (TableDeletionEntry) deletion;
+      isDropMeasurementExist = !tableDeletionEntry.getPredicate().getMeasurementNames().isEmpty();
+      idPredicateType = tableDeletionEntry.getPredicate().getIdPredicateType();
     }
+
     for (TsFileResource sealedTsFile : sealedTsFiles) {
       if (canSkipDelete(sealedTsFile, deletion)) {
+        continue;
+      }
+
+      // the tsfile may not be closed here, it should not be added in deletedByFiles
+      if (!sealedTsFile.isClosed()) {
+        deletedByMods.add(sealedTsFile);
         continue;
       }
 
@@ -3312,7 +3315,9 @@ public class DataRegion implements IDataRegionForQuery {
                   fileStartTime,
                   fileEndTime);
             }
-            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)) {
+            if (isFileFullyMatchedByTime(deletion, fileStartTime, fileEndTime)
+                && idPredicateType.equals(IDPredicate.IDPredicateType.NOP)
+                && !isDropMeasurementExist) {
               ++matchSize;
             } else {
               deletedByMods.add(sealedTsFile);
@@ -3345,7 +3350,7 @@ public class DataRegion implements IDataRegionForQuery {
       } // else do nothing
     }
 
-    if (!deletedByFiles.isEmpty() && !isDropMeasurementExist && !isDropTagExist) {
+    if (!deletedByFiles.isEmpty()) {
       deleteTsFileCompletely(deletedByFiles);
       if (logger.isDebugEnabled()) {
         logger.debug(

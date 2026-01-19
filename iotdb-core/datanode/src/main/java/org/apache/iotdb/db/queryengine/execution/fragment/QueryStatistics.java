@@ -92,6 +92,9 @@ public class QueryStatistics {
   // statistics for count and time of page decode
   private final AtomicLong pageReaderMaxUsedMemorySize = new AtomicLong(0);
 
+  // statistics for count of chunk with metadata errors
+  private final AtomicLong chunkWithMetadataErrorsCount = new AtomicLong(0);
+
   public AtomicLong getLoadTimeSeriesMetadataDiskSeqCount() {
     return loadTimeSeriesMetadataDiskSeqCount;
   }
@@ -288,6 +291,10 @@ public class QueryStatistics {
     return loadTimeSeriesMetadataFromDiskTime;
   }
 
+  public AtomicLong getChunkWithMetadataErrorsCount() {
+    return chunkWithMetadataErrorsCount;
+  }
+
   public TQueryStatistics toThrift() {
     return new TQueryStatistics(
         loadTimeSeriesMetadataDiskSeqCount.get(),
@@ -336,6 +343,7 @@ public class QueryStatistics {
         loadTimeSeriesMetadataActualIOSize.get(),
         loadChunkFromCacheCount.get(),
         loadChunkFromDiskCount.get(),
-        loadChunkActualIOSize.get());
+        loadChunkActualIOSize.get(),
+        chunkWithMetadataErrorsCount.get());
   }
 }

@@ -749,6 +749,8 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
 }
 
 
@@ -1024,6 +1026,11 @@ service IDataNodeRPCService {
    * @param function name
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
 
   /* Maintenance Tools */
 

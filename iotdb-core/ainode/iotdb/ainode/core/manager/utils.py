@@ -40,42 +40,18 @@ INFERENCE_EXTRA_MEMORY_RATIO = (
 )  # the overhead ratio for inference, used to estimate the pool size
 
 
-def measure_model_memory(device: torch.device, model_id: str) -> int:
-    # TODO: support CPU in the future
-    # TODO: we can estimate the memory usage by running a dummy inference
-    torch.cuda.empty_cache()
-    torch.cuda.synchronize(device)
-    start = torch.cuda.memory_reserved(device)
-
-    model_info = ModelManager().get_model_info(model_id)
-    model = load_model(model_info).to(device)
-    torch.cuda.synchronize(device)
-    end = torch.cuda.memory_reserved(device)
-    usage = end - start
-
-    # delete model to free memory
-    del model
-    torch.cuda.empty_cache()
-    gc.collect()
-
-    # add inference factor and cuda context overhead
-    overhead = 500 * 1024**2  # 500 MiB
-    final = int(max(usage, 1) * INFERENCE_EXTRA_MEMORY_RATIO + overhead)
-    return final
-
-
 def evaluate_system_resources(device: torch.device) -> dict:
-    if torch.cuda.is_available():
+    if device.type == "cuda":
         free_mem, total_mem = torch.cuda.mem_get_info()
         logger.info(
-            f"[Inference][Device-{device}] CUDA device memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
+            f"[Inference][{device}] CUDA device memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
         )
         return {"device": "cuda", "free_mem": free_mem, "total_mem": total_mem}
     else:
         free_mem = psutil.virtual_memory().available
         total_mem = psutil.virtual_memory().total
         logger.info(
-            f"[Inference][Device-{device}] CPU memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
+            f"[Inference][{device}] CPU memory: free={free_mem/1024**2:.2f} MB, total={total_mem/1024**2:.2f} MB"
         )
         return {"device": "cpu", "free_mem": free_mem, "total_mem": total_mem}
 
@@ -91,9 +67,7 @@ def estimate_pool_size(device: torch.device, model_id: str) -> int:
     system_res = evaluate_system_resources(device)
     free_mem = system_res["free_mem"]
 
-    mem_usage = (
-        MODEL_MEM_USAGE_MAP[model_info.model_type] * INFERENCE_EXTRA_MEMORY_RATIO
-    )
+    mem_usage = MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
     size = int((free_mem * INFERENCE_MEMORY_USAGE_RATIO) // mem_usage)
     if size <= 0:
         logger.error(

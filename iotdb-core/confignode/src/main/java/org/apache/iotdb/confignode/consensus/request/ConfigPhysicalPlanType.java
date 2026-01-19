@@ -335,6 +335,12 @@ public enum ConfigPhysicalPlanType {
 
   EnableSeparationOfAdminPowers((short) 2200),
 
+  CreateExternalService((short) 2301),
+  StartExternalService((short) 2302),
+  StopExternalService((short) 2303),
+  DropExternalService((short) 2304),
+  ShowExternalService((short) 2305),
+
   /** Test Only. */
   TestOnly((short) 30000),
   ;

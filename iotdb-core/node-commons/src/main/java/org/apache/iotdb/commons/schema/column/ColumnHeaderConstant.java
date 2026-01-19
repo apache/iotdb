@@ -36,6 +36,7 @@ public class ColumnHeaderConstant {
   public static final String VALUE = "Value";
   public static final String DEVICE = "Device";
   public static final String DEVICE_ID = "DeviceId";
+  public static final String DEVICE_TYPE = "DeviceType";
   public static final String EXPLAIN_ANALYZE = "Explain Analyze";
 
   // column names for schema statement
@@ -118,6 +119,13 @@ public class ColumnHeaderConstant {
   public static final String CONFIGS = "Configs";
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
+
+  // column names for show services statement
+  public static final String SERVICE_NAME = "ServiceName";
+  public static final String SERVICE_TYPE = "ServiceType";
+
+  public static final String SERVICE_NAME_TABLE_MODEL = "service_name";
+  public static final String SERVICE_TYPE_TABLE_MODEL = "service_type";
 
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
@@ -550,6 +558,12 @@ public class ColumnHeaderConstant {
           new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
           new ColumnHeader(NODE_ID, TSDataType.TEXT));
 
+  public static final List<ColumnHeader> showExternalServiceColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_NAME, TSDataType.STRING),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(STATE, TSDataType.STRING));
+
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(PLUGIN_NAME, TSDataType.TEXT),
@@ -672,7 +686,9 @@ public class ColumnHeaderConstant {
           new ColumnHeader(COUNT_INSTANCES, TSDataType.INT32));
 
   public static final List<ColumnHeader> showAIDevicesColumnHeaders =
-      ImmutableList.of(new ColumnHeader(DEVICE_ID, TSDataType.TEXT));
+      ImmutableList.of(
+          new ColumnHeader(DEVICE_ID, TSDataType.TEXT),
+          new ColumnHeader(DEVICE_TYPE, TSDataType.TEXT));
 
   public static final List<ColumnHeader> showLogicalViewColumnHeaders =
       ImmutableList.of(

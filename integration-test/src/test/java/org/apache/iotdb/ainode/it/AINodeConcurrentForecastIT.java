@@ -83,13 +83,15 @@ public class AINodeConcurrentForecastIT {
   }
 
   @Test
-  public void concurrentGPUForecastTest() throws SQLException, InterruptedException {
+  public void concurrentForecastTest() throws SQLException, InterruptedException {
     for (AINodeTestUtils.FakeModelInfo modelInfo : MODEL_LIST) {
-      concurrentGPUForecastTest(modelInfo);
+      concurrentGPUForecastTest(modelInfo, "0,1");
+      // TODO: Enable cpu test after optimize memory consumption
+      //      concurrentGPUForecastTest(modelInfo, "cpu");
     }
   }
 
-  public void concurrentGPUForecastTest(AINodeTestUtils.FakeModelInfo modelInfo)
+  public void concurrentGPUForecastTest(AINodeTestUtils.FakeModelInfo modelInfo, String devices)
       throws SQLException, InterruptedException {
     final int forecastLength = 512;
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
@@ -100,7 +102,6 @@ public class AINodeConcurrentForecastIT {
               FORECAST_TABLE_FUNCTION_SQL_TEMPLATE, modelInfo.getModelId(), forecastLength);
       final int threadCnt = 10;
       final int loop = 100;
-      final String devices = "0,1";
       statement.execute(
           String.format("LOAD MODEL %s TO DEVICES '%s'", modelInfo.getModelId(), devices));
       checkModelOnSpecifiedDevice(statement, modelInfo.getModelId(), devices);

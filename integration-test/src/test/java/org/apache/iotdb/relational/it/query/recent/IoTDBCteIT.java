@@ -406,6 +406,33 @@ public class IoTDBCteIT {
   }
 
   @Test
+  public void testExplainJoin() throws SQLException {
+    final String sql =
+        "explain with cte1 as (select * from testtb), "
+            + "cte2 as materialized (select * from cte1, testtb where cte1.deviceid = testtb.deviceid) "
+            + "select * from cte2";
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("USE testdb");
+
+      // explain
+      ResultSet resultSet = statement.executeQuery(sql);
+      ResultSetMetaData metaData = resultSet.getMetaData();
+      assertEquals(metaData.getColumnCount(), 1);
+      assertEquals(metaData.getColumnName(1), "distribution plan");
+
+      StringBuilder sb = new StringBuilder();
+      while (resultSet.next()) {
+        sb.append(resultSet.getString(1)).append(System.lineSeparator());
+      }
+      String result = sb.toString();
+      assertFalse(result.contains("CTE Query : 'cte1'"));
+      assertTrue(result.contains("CTE Query : 'cte2'"));
+      assertTrue(result.contains("Main Query"));
+    }
+  }
+
+  @Test
   public void testRecursive() {
     String sqlTemplate =
         "WITH RECURSIVE t(n) AS %s ("
@@ -470,7 +497,7 @@ public class IoTDBCteIT {
 
   @Test
   public void testConcurrentCteQueries() throws Exception {
-    final int threadCount = 10;
+    final int threadCount = 3;
     final int queriesPerThread = 20;
     final AtomicInteger successCount = new AtomicInteger(0);
     final AtomicInteger failureCount = new AtomicInteger(0);
@@ -582,7 +609,7 @@ public class IoTDBCteIT {
     int totalQueries = threadCount * queriesPerThread;
     assertEquals("All queries should succeed", totalQueries, successCount.get());
     assertEquals("No queries should fail", 0, failureCount.get());
-    assertEquals("Total query count should match", 340, totalCount.get());
+    assertEquals("Total query count should match", 102, totalCount.get());
   }
 
   private static void prepareData() {

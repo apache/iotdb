@@ -33,8 +33,11 @@ import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.record.Tablet;
 import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -60,6 +63,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -74,6 +78,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -2287,6 +2292,159 @@ public class IoTDBDeletionTableIT {
               });
     }
     cleanData(testNum);
+  }
+
+  @Test
+  public void testDeleteDataByTag() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS delete_by_tag (deviceId STRING TAG, s1 INT32 FIELD)");
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+      session.executeNonQueryStatement("FLUSH");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      dataSet = session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS delete_by_tag");
+      }
+    }
+  }
+
+  @Test
+  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
+
+      // time=1 and time=2 are INT32 and deleted by drop column
+      Tablet tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 1));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+
+      // time=3 and time=4 are STRING
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 4);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 4));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter ADD COLUMN s1 TEXT");
+
+      // time=5 and time=6 are TEXT
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 5);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 5));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 6);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 6));
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from drop_and_alter order by time");
+      // s1 is dropped but the time should remain
+      RowRecord rec;
+      int cnt = 0;
+      for (int i = 1; i < 7; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        LOGGER.error(
+            "time is {}, value is {}, value type is {}",
+            rec.getFields().get(0).getLongV(),
+            rec.getFields().get(1),
+            rec.getFields().get(1).getDataType());
+        //        assertNull(rec.getFields().get(1).getDataType());
+        //        Assert.assertEquals(TSDataType.TEXT, rec.getFields().get(1).getDataType());
+        cnt++;
+      }
+      Assert.assertEquals(6, cnt);
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS drop_and_alter");
+      }
+    }
   }
 
   private static void prepareDatabase() {

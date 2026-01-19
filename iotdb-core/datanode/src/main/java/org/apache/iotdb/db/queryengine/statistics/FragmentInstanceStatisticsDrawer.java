@@ -439,6 +439,12 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "pageReaderMaxUsedMemorySize",
         queryStatistics.pageReaderMaxUsedMemorySize);
+
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "chunkWithMetadataErrorsCount",
+        queryStatistics.chunkWithMetadataErrorsCount);
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {

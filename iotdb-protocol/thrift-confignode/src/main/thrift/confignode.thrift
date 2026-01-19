@@ -121,6 +121,8 @@ struct TRuntimeConfiguration {
   8: required TAuditConfig auditConfig
   9: required string superUserName
   10: optional bool enableSeparationOfAdminPowers
+  // use 'optional' here to support rolling upgrade
+  11: optional list<common.TExternalServiceEntry> allUserDefinedServiceInfo
 }
 
 struct TDataNodeRegisterReq {
@@ -1089,6 +1091,14 @@ struct TShowCQResp {
   2: required list<TCQEntry> cqList
 }
 
+// ====================================================
+// ExternalService
+// ====================================================
+struct TCreateExternalServiceReq {
+  1: required i32 dataNodeId
+  2: required string serviceName
+  3: required string className
+}
 
 struct TDeactivateSchemaTemplateReq {
   1: required string queryId
@@ -1982,6 +1992,19 @@ service IConfigNodeRPCService {
    * Return the cq table of config leader
    */
   TShowCQResp showCQ()
+
+  // ====================================================
+  // ExternalService
+  // ====================================================
+  common.TSStatus createExternalService(TCreateExternalServiceReq req)
+
+  common.TSStatus startExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus stopExternalService(i32 dataNodeId, string serviceName)
+
+  common.TSStatus dropExternalService(i32 dataNodeId, string serviceName)
+
+  common.TExternalServiceListResp showExternalService(i32 dataNodeId)
 
   // ======================================================
   // Quota
