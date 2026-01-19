@@ -593,7 +593,28 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
   @Override
   public boolean isEmpty() {
-    return rowCount() == 0;
+    if (rowCount() == 0) {
+      return true;
+    }
+    if (measurementIndexMap.isEmpty()) {
+      return true;
+    }
+
+    if (list.rowCount() > 0) {
+      BitMap allValueColDeletedMap = list.getAllValueColDeletedMap();
+      if (allValueColDeletedMap == null || !allValueColDeletedMap.isAllMarked()) {
+        return false;
+      }
+    }
+    for (AlignedTVList alignedTvList : sortedList) {
+      if (alignedTvList.rowCount() > 0) {
+        BitMap allValueColDeletedMap = alignedTvList.getAllValueColDeletedMap();
+        if (allValueColDeletedMap == null || !allValueColDeletedMap.isAllMarked()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   @Override

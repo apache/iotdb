@@ -102,6 +102,11 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
     return Collections.singletonMap("", memChunk);
   }
 
+  @Override
+  public boolean isEmpty() {
+    return memChunk.isEmpty();
+  }
+
   @SuppressWarnings("squid:S3776")
   @Override
   public int delete(
