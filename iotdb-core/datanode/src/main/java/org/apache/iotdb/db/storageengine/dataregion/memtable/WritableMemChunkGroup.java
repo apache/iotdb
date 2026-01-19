@@ -109,6 +109,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     return memChunkMap;
   }
 
+  @Override
+  public boolean isEmpty() {
+    return memChunkMap.isEmpty() || count() == 0;
+  }
+
   @SuppressWarnings("squid:S3776")
   @Override
   public int delete(
