@@ -32,7 +32,7 @@
     </dependencySets>
     <files>
         <file>
-            <source>../external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <source>${project.basedir}/../external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
     </files>
