@@ -22,8 +22,7 @@ package org.apache.iotdb.commons.pipe.receiver;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
-import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -142,7 +141,8 @@ public class PipeReceiverStatusHandler {
               LOGGER::info,
               "Temporary unavailable exception: will retry forever. status: %s",
               status);
-          throw new PipeNonReportException(exceptionMessage);
+          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
+              exceptionMessage, Long.MAX_VALUE);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -184,13 +184,8 @@ public class PipeReceiverStatusHandler {
           throw status.getCode() == 1815
                   && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
               ? new PipeNonReportException(exceptionMessage)
-              : new PipeRuntimeSinkRetryTimesConfigurableException(
-                  exceptionMessage,
-                  (int)
-                      Math.max(
-                          PipeSubtask.MAX_RETRY_TIMES,
-                          Math.min(
-                              CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+              : new PipeRuntimeSinkNonReportTimeConfigurableException(
+                  exceptionMessage, retryMaxMillisWhenConflictOccurs);
         }
 
       case 803: // NO_PERMISSION
@@ -266,12 +261,8 @@ public class PipeReceiverStatusHandler {
     }
 
     exceptionEventHasBeenRetried.set(true);
-    throw new PipeRuntimeSinkRetryTimesConfigurableException(
-        exceptionMessage,
-        (int)
-            Math.max(
-                PipeSubtask.MAX_RETRY_TIMES,
-                Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
+    throw new PipeRuntimeSinkNonReportTimeConfigurableException(
+        exceptionMessage, retryMaxMillisWhenOtherExceptionsOccur);
   }
 
   private static String getNoPermission(final boolean noPermission) {

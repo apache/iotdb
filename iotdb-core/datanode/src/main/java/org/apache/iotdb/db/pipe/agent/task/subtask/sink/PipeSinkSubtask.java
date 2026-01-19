@@ -66,6 +66,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
+  private long lastExceptionTime = Long.MIN_VALUE;
 
   public PipeSinkSubtask(
       final String taskID,
