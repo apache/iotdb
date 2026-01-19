@@ -145,6 +145,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     return workDirFilePath("data/datanode/system/schema", IoTDBStartCheck.PROPERTIES_FILE_NAME);
   }
 
+  public String getDataDir() {
+    return getNodePath() + File.separator + "data";
+  }
+
   @Override
   protected MppJVMConfig initVMConfig() {
     return MppJVMConfig.builder()
