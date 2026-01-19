@@ -30,4 +30,10 @@
             <outputDirectory>lib</outputDirectory>
         </dependencySet>
     </dependencySets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+    </files>
 </assembly>
