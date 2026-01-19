@@ -588,7 +588,12 @@ public class LoadTsFileManager {
             tsFileResource,
             timePartitionProgressIndexMap.getOrDefault(
                 entry.getKey().getTimePartitionSlot(), MinimumProgressIndex.INSTANCE));
-        dataRegion.loadNewTsFile(tsFileResource, true, isGeneratedByPipe, false);
+        dataRegion.loadNewTsFile(
+            tsFileResource,
+            true,
+            isGeneratedByPipe,
+            false,
+            Optional.ofNullable(writer.getTableSizeMap()));
 
         // Metrics
         dataRegion

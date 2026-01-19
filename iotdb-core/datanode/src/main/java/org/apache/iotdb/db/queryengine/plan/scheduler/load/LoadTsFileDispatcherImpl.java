@@ -62,6 +62,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -188,7 +189,8 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
                 cloneTsFileResource,
                 ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
                 isGeneratedByPipe,
-                false);
+                false,
+                Optional.empty());
       } catch (LoadFileException e) {
         LOGGER.warn("Load TsFile Node {} error.", planNode, e);
         TSStatus resultStatus = new TSStatus();

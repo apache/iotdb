@@ -3885,7 +3885,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
       final boolean isGeneratedByPipe,
-      final boolean isFromConsensus)
+      final boolean isFromConsensus,
+      final Optional<Map<String, Long>> tableSizeMap)
       throws LoadFileException {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       final IoTConsensusServerImpl impl =
@@ -3954,6 +3955,11 @@ public class DataRegion implements IDataRegionForQuery {
           newFilePartitionId,
           deleteOriginFile,
           isGeneratedByPipe);
+
+      tableSizeMap.ifPresent(
+          stringLongMap ->
+              TableDiskUsageCache.getInstance()
+                  .write(databaseName, newTsFileResource.getTsFileID(), stringLongMap));
 
       FileMetrics.getInstance()
           .addTsFile(

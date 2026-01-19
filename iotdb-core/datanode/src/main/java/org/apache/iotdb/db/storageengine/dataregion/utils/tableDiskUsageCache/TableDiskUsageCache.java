@@ -89,6 +89,9 @@ public class TableDiskUsageCache {
   }
 
   public void write(String database, TsFileID tsFileID, Map<String, Long> tableSizeMap) {
+    if (tableSizeMap == null || tableSizeMap.isEmpty()) {
+      return;
+    }
     queue.add(new WriteOperation(database, tsFileID, tableSizeMap));
   }
 

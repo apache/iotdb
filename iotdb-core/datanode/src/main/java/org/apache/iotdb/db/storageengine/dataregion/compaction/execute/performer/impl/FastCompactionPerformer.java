@@ -165,6 +165,7 @@ public class FastCompactionPerformer
                 ? new FastCrossCompactionWriter(
                     targetFiles, seqFiles, readerCacheMap, encryptParameter)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
+      compactionWriter.setCompactionTaskSummary(subTaskSummary);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());

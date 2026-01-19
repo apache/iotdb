@@ -77,6 +77,7 @@ public class TableDiskUsageCacheReader implements Closeable {
           if (future.isDone()) {
             this.cacheFileReader = future.get();
             this.cacheFileReader.openKeyFile();
+            break;
           } else {
             Thread.sleep(1);
           }
@@ -84,7 +85,7 @@ public class TableDiskUsageCacheReader implements Closeable {
           Thread.currentThread().interrupt();
           return false;
         }
-      } while (!future.isDone() && System.nanoTime() - startTime < maxRunTime);
+      } while (System.nanoTime() - startTime < maxRunTime);
     }
     if (this.cacheFileReader == null) {
       return false;
