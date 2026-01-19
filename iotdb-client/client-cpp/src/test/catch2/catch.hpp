@@ -6518,7 +6518,6 @@ namespace Catch {
             // thanks @milleniumbug
             *reinterpret_cast<char volatile*>(p) = *reinterpret_cast<char const volatile*>(p);
         }
-        // TODO equivalent keep_memory()
 #pragma optimize("", on)
 
         namespace Detail {
@@ -17437,7 +17436,6 @@ namespace Catch {
 
     void XmlReporter::testGroupEnded( TestGroupStats const& testGroupStats ) {
         StreamingReporterBase::testGroupEnded( testGroupStats );
-        // TODO: Check testGroupStats.aborting and act accordingly.
         m_xml.scopedElement( "OverallResults" )
             .writeAttribute( "successes", testGroupStats.totals.assertions.passed )
             .writeAttribute( "failures", testGroupStats.totals.assertions.failed )
