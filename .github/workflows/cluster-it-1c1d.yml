@@ -79,7 +79,7 @@ jobs:
           -DskipUTs \
           -DintegrationTest.forkCount=2 \
           -pl integration-test \
-          -am
+          -am \
           -X
       - name: Upload Artifact
         if: failure()
