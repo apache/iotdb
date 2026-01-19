@@ -26,13 +26,14 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.junit.Ignore;
+
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-@Ignore("Skipping TreePatternPruningTest for now")
+@Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
 public class TreePatternPruningTest {
 
   @Test

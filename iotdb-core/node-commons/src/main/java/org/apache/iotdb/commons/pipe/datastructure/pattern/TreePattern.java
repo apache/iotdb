@@ -142,16 +142,15 @@ public abstract class TreePattern {
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
   public static TreePattern parsePipePatternFromSourceParameters(
-          final PipeParameters sourceParameters) {
+      final PipeParameters sourceParameters) {
     final TreePattern treePattern = parsePipePatternFromSourceParametersInternal(sourceParameters);
     if (!treePattern.isSingle()) {
       final String msg =
-              String.format(
-                      "Pipe: The provided pattern should be single now. "
-                              + "Inclusion: %s, Exclusion: %s",
-                      sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
-                      sourceParameters.getStringByKeys(
-                              EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+          String.format(
+              "Pipe: The provided pattern should be single now. " + "Inclusion: %s, Exclusion: %s",
+              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
       LOGGER.warn(msg);
       throw new PipeException(msg);
     }
