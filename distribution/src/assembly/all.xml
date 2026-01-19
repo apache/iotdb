@@ -32,7 +32,6 @@
                 <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
                 <include>*:iotdb-confignode:zip:*</include>
-                <include>*:external-service-impl:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -92,6 +91,10 @@
             <source>${project.basedir}/../iotdb-client/cli/src/assembly/resources/conf/logback-backup.xml</source>
             <outputDirectory>conf</outputDirectory>
             <fileMode>0755</fileMode>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
         </file>
     </files>
     <componentDescriptors>

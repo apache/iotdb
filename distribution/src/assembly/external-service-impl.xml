@@ -26,19 +26,6 @@
         <format>zip</format>
     </formats>
     <baseDirectory>apache-iotdb-${project.version}-external-service-impl-bin</baseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <includes>
-                <include>org.apache.iotdb:mqtt</include>
-            </includes>
-            <outputDirectory/>
-            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
-            <unpack>false</unpack>
-            <useProjectArtifact>true</useProjectArtifact>
-            <useTransitiveDependencies>true</useTransitiveDependencies>
-            <scope>runtime</scope>
-        </dependencySet>
-    </dependencySets>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}/../licenses</directory>
@@ -55,6 +42,10 @@
             <source>${project.basedir}/../NOTICE-binary</source>
             <outputDirectory>licenses</outputDirectory>
             <destName>NOTICE</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>/</outputDirectory>
         </file>
     </files>
 </assembly>

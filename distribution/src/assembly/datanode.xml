@@ -72,6 +72,10 @@
                 <exclude>**/*ainode.*</exclude>
             </excludes>
             <fileMode>0755</fileMode>
+            <file>
+                <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+                <outputDirectory>lib</outputDirectory>
+            </file>
         </fileSet>
     </fileSets>
     <componentDescriptors>
