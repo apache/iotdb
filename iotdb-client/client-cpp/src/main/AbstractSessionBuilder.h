@@ -24,20 +24,33 @@
 
 class AbstractSessionBuilder {
 public:
-    std::string host = "localhost";
-    int rpcPort = 6667;
-    std::string username = "root";
-    std::string password = "root";
+    static constexpr const char* DEFAULT_HOST = "localhost";
+    static constexpr int DEFAULT_RPC_PORT = 6667;
+    static constexpr const char* DEFAULT_USERNAME = "root";
+    static constexpr const char* DEFAULT_PASSWORD = "root";
+    static constexpr int DEFAULT_FETCH_SIZE = 10000;
+    static constexpr int DEFAULT_CONNECT_TIMEOUT_MS = 3 * 1000;
+    static constexpr int DEFAULT_MAX_RETRIES = 3;
+    static constexpr int DEFAULT_RETRY_DELAY_MS = 500;
+    static constexpr const char* DEFAULT_SQL_DIALECT = "tree";
+    static constexpr bool DEFAULT_ENABLE_AUTO_FETCH = true;
+    static constexpr bool DEFAULT_ENABLE_REDIRECTIONS = true;
+    static constexpr bool DEFAULT_ENABLE_RPC_COMPRESSION = false;
+
+    std::string host = DEFAULT_HOST;
+    int rpcPort = DEFAULT_RPC_PORT;
+    std::string username = DEFAULT_USERNAME;
+    std::string password = DEFAULT_PASSWORD;
     std::string zoneId = "";
-    int fetchSize = 10000;
-    int connectTimeoutMs = 3 * 1000;
-    int maxRetries = 3;
-    int retryDelayMs = 500;
-    std::string sqlDialect = "tree";
+    int fetchSize = DEFAULT_FETCH_SIZE;
+    int connectTimeoutMs = DEFAULT_CONNECT_TIMEOUT_MS;
+    int maxRetries = DEFAULT_MAX_RETRIES;
+    int retryDelayMs = DEFAULT_RETRY_DELAY_MS;
+    std::string sqlDialect = DEFAULT_SQL_DIALECT;
     std::string database = "";
-    bool enableAutoFetch = true;
-    bool enableRedirections = true;
-    bool enableRPCCompression = false;
+    bool enableAutoFetch = DEFAULT_ENABLE_AUTO_FETCH;
+    bool enableRedirections = DEFAULT_ENABLE_REDIRECTIONS;
+    bool enableRPCCompression = DEFAULT_ENABLE_RPC_COMPRESSION;
     std::vector<std::string> nodeUrls;
 };
 
