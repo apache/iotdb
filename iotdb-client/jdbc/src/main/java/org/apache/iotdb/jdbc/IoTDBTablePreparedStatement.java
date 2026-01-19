@@ -192,9 +192,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       TSExecuteStatementResp resp = client.executePreparedStatement(req);
       RpcUtils.verifySuccess(resp.getStatus());
       return resp;
-    } catch (TException e) {
-      throw new SQLException("Failed to execute prepared statement: " + e.getMessage(), e);
-    } catch (StatementExecutionException e) {
+    } catch (TException | StatementExecutionException e) {
       throw new SQLException("Failed to execute prepared statement: " + e.getMessage(), e);
     }
   }

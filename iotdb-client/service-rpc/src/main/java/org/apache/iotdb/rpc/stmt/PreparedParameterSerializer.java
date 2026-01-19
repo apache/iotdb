@@ -39,7 +39,6 @@ import java.util.List;
  */
 public class PreparedParameterSerializer {
 
-  /** Deserialized parameter holding type and value. */
   public static class DeserializedParam {
     public final TSDataType type;
     public final Object value;
@@ -156,6 +155,10 @@ public class PreparedParameterSerializer {
 
     buffer.rewind();
     int count = buffer.getInt();
+    if (count < 0 || count > buffer.remaining()) {
+      throw new IllegalArgumentException("Invalid parameter count: " + count);
+    }
+
     List<DeserializedParam> result = new ArrayList<>(count);
 
     for (int i = 0; i < count; i++) {

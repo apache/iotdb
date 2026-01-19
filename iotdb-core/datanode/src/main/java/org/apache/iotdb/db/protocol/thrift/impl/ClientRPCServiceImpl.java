@@ -1539,7 +1539,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     } catch (Exception e) {
       return new TSPrepareResp(
           onQueryException(
-              e, OperationType.EXECUTE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR));
+              e, OperationType.PREPARE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR));
     }
   }
 
@@ -1614,7 +1614,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       t = e;
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(
-              e, OperationType.EXECUTE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR));
+              e,
+              OperationType.EXECUTE_PREPARED_STATEMENT.getName(),
+              TSStatusCode.INTERNAL_SERVER_ERROR));
     } finally {
       long currentOperationCost = System.nanoTime() - startTime;
       if (finished) {
@@ -1637,7 +1639,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
       return onQueryException(
-          e, OperationType.EXECUTE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR);
+          e,
+          OperationType.DEALLOCATE_PREPARED_STATEMENT.getName(),
+          TSStatusCode.INTERNAL_SERVER_ERROR);
     }
   }
 
