@@ -22,6 +22,8 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,6 +102,11 @@ public class TableDiskUsageCache {
     queue.add(new ReplaceTsFileOperation(database, originTsFileID, newTsFileID));
   }
 
+  public void write(
+      String database, int regionId, String tableName, long timePartition, long objectFileSize) {
+    throw new UnsupportedOperationException();
+  }
+
   public CompletableFuture<TsFileTableSizeCacheReader> startRead(String database, int regionId) {
     StartReadOperation operation = new StartReadOperation(database, regionId);
     queue.add(operation);
@@ -110,6 +117,13 @@ public class TableDiskUsageCache {
     EndReadOperation operation = new EndReadOperation(database, regionId);
     queue.add(operation);
   }
+
+  public CompletableFuture<IObjectTableSizeCacheReader> startReadObject(
+      String database, int regionId) {
+    return CompletableFuture.completedFuture(new EmptyObjectTableSizeCacheReader());
+  }
+
+  public void endReadObject(String database, int regionId) {}
 
   public void remove(String database, int regionId) {
     RemoveRegionOperation operation = new RemoveRegionOperation(database, regionId);

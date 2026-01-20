@@ -17,16 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object;
 
-public class DefaultTableDiskUsageCacheProvider implements TableDiskUsageCacheProvider {
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
+
+import java.util.Map;
+
+public class EmptyObjectTableSizeCacheReader implements IObjectTableSizeCacheReader {
 
   @Override
-  public TableDiskUsageCache create() {
-    return Holder.INSTANCE;
+  public boolean loadObjectFileTableSize(
+      Map<Long, TimePartitionTableSizeQueryContext> timePartitionContexts,
+      long startTime,
+      long maxRunTime) {
+    return true;
   }
 
-  private static class Holder {
-    private static final TableDiskUsageCache INSTANCE = new TableDiskUsageCache();
-  }
+  @Override
+  public void close() {}
 }

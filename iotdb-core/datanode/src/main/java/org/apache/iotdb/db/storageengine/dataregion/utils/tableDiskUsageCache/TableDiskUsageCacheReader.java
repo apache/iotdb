@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationMana
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -43,8 +44,10 @@ public class TableDiskUsageCacheReader implements Closeable {
   private final DataRegion dataRegion;
   private final int regionId;
   private final Map<Long, TimePartitionTableSizeQueryContext> timePartitionQueryContexts;
-  private CompletableFuture<TsFileTableSizeCacheReader> future;
-  private TsFileTableSizeCacheReader cacheFileReader;
+  private CompletableFuture<TsFileTableSizeCacheReader> tsFileTableSizeCacheReaderFuture;
+  private TsFileTableSizeCacheReader tsFileTableSizeCacheReader;
+  private CompletableFuture<IObjectTableSizeCacheReader> objectTableSizeCacheReaderFuture;
+  private IObjectTableSizeCacheReader objectTableSizeCacheReader;
   private long acquiredMemory;
   private boolean tsFileIdKeysPrepared = false;
 
@@ -75,20 +78,17 @@ public class TableDiskUsageCacheReader implements Closeable {
             RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY));
   }
 
-  public boolean prepareCachedTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
-    if (tsFileIdKeysPrepared) {
-      return true;
-    }
-    if (this.cacheFileReader == null) {
-      this.future =
-          this.future == null
-              ? TableDiskUsageCache.getInstance().startRead(dataRegion.getDatabaseName(), regionId)
-              : future;
+  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) throws Exception {
+    if (this.objectTableSizeCacheReader == null) {
+      this.objectTableSizeCacheReaderFuture =
+          this.objectTableSizeCacheReaderFuture == null
+              ? TableDiskUsageCache.getInstance()
+                  .startReadObject(dataRegion.getDatabaseName(), regionId)
+              : objectTableSizeCacheReaderFuture;
       do {
         try {
-          if (future.isDone()) {
-            this.cacheFileReader = future.get();
-            this.cacheFileReader.openKeyFile();
+          if (objectTableSizeCacheReaderFuture.isDone()) {
+            this.objectTableSizeCacheReader = objectTableSizeCacheReaderFuture.get();
             break;
           } else {
             Thread.sleep(1);
@@ -99,10 +99,46 @@ public class TableDiskUsageCacheReader implements Closeable {
         }
       } while (System.nanoTime() - startTime < maxRunTime);
     }
-    if (this.cacheFileReader == null) {
+    if (this.objectTableSizeCacheReader == null) {
       return false;
     }
-    if (cacheFileReader.readFromKeyFile(timePartitionQueryContexts, startTime, maxRunTime)) {
+    if (objectTableSizeCacheReader.loadObjectFileTableSize(
+        timePartitionQueryContexts, startTime, maxRunTime)) {
+      objectTableSizeCacheReader.close();
+      return true;
+    }
+    return false;
+  }
+
+  public boolean prepareCachedTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
+    if (tsFileIdKeysPrepared) {
+      return true;
+    }
+    if (this.tsFileTableSizeCacheReader == null) {
+      this.tsFileTableSizeCacheReaderFuture =
+          this.tsFileTableSizeCacheReaderFuture == null
+              ? TableDiskUsageCache.getInstance().startRead(dataRegion.getDatabaseName(), regionId)
+              : tsFileTableSizeCacheReaderFuture;
+      do {
+        try {
+          if (tsFileTableSizeCacheReaderFuture.isDone()) {
+            this.tsFileTableSizeCacheReader = tsFileTableSizeCacheReaderFuture.get();
+            this.tsFileTableSizeCacheReader.openKeyFile();
+            break;
+          } else {
+            Thread.sleep(1);
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return false;
+        }
+      } while (System.nanoTime() - startTime < maxRunTime);
+    }
+    if (this.tsFileTableSizeCacheReader == null) {
+      return false;
+    }
+    if (tsFileTableSizeCacheReader.readFromKeyFile(
+        timePartitionQueryContexts, startTime, maxRunTime)) {
       reserveMemory(
           timePartitionQueryContexts.values().stream()
               .mapToLong(TimePartitionTableSizeQueryContext::ramBytesUsedOfTsFileIDOffsetMap)
@@ -142,9 +178,9 @@ public class TableDiskUsageCacheReader implements Closeable {
     if (this.tsFilesToQueryInCacheIterator == null) {
       this.tsFilesToQueryInCache.sort(Comparator.comparingLong(Pair::getRight));
       this.tsFilesToQueryInCacheIterator = tsFilesToQueryInCache.iterator();
-      this.cacheFileReader.openValueFile();
+      this.tsFileTableSizeCacheReader.openValueFile();
     }
-    return cacheFileReader.readFromValueFile(
+    return tsFileTableSizeCacheReader.readFromValueFile(
         tsFilesToQueryInCacheIterator, timePartitionQueryContexts, startTime, maxRunTime);
   }
 
@@ -164,15 +200,23 @@ public class TableDiskUsageCacheReader implements Closeable {
 
   @Override
   public void close() throws IOException {
-    if (future != null) {
+    if (tsFileTableSizeCacheReader != null) {
+      tsFileTableSizeCacheReader.closeCurrentFile();
+      tsFileTableSizeCacheReader = null;
+    }
+    if (objectTableSizeCacheReader != null) {
+      objectTableSizeCacheReader.close();
+      objectTableSizeCacheReader = null;
+    }
+    if (objectTableSizeCacheReaderFuture != null) {
+      TableDiskUsageCache.getInstance().endReadObject(dataRegion.getDatabaseName(), regionId);
+      objectTableSizeCacheReaderFuture = null;
+    }
+    if (tsFileTableSizeCacheReaderFuture != null) {
       TableDiskUsageCache.getInstance().endRead(dataRegion.getDatabaseName(), regionId);
-      future = null;
+      tsFileTableSizeCacheReaderFuture = null;
     }
     releaseMemory();
-    if (cacheFileReader != null) {
-      cacheFileReader.closeCurrentFile();
-      cacheFileReader = null;
-    }
   }
 
   private void releaseMemory() {
