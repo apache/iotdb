@@ -73,10 +73,10 @@ public class ExternalServiceManagementService {
     this.serviceInfos = new HashMap<>();
     restoreBuiltInServices();
     this.libRoot = libRoot;
-    makDir(libRoot);
+    makeDir(libRoot);
   }
 
-  private static void makDir(String dir) {
+  private static void makeDir(String dir) {
     try {
       SystemFileFactory.INSTANCE.makeDirIfNecessary(dir);
     } catch (IOException e) {
