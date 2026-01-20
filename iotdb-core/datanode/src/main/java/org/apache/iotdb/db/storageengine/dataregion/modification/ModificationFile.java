@@ -353,8 +353,11 @@ public class ModificationFile implements AutoCloseable {
     int index = tsFileName.indexOf(IoTDBConstant.PATH_SEPARATOR);
     // replace the temp suffix with the final name
     if (index != -1) {
+      String parent = tsfile.getParent();
       tsFilePath =
-          tsfile.getParent() + File.separator + tsFileName.substring(0, index) + TSFILE_SUFFIX;
+          (parent != null ? (parent + File.separator) : "")
+              + tsFileName.substring(0, index)
+              + TSFILE_SUFFIX;
     }
     return new ModificationFile(tsFilePath + FILE_SUFFIX, true);
   }
