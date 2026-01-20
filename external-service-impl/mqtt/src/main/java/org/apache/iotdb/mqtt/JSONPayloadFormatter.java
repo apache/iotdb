@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.mqtt;
+package org.apache.iotdb.mqtt;
 
 import com.google.common.collect.Lists;
 import com.google.gson.Gson;

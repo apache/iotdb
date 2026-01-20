@@ -17,5 +17,5 @@
 # under the License.
 #
 
-org.apache.iotdb.db.protocol.mqtt.JSONPayloadFormatter
-org.apache.iotdb.db.protocol.mqtt.LinePayloadFormatter
+org.apache.iotdb.mqtt.JSONPayloadFormatter
+org.apache.iotdb.mqtt.LinePayloadFormatter

@@ -16,14 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
+package org.apache.iotdb.mqtt;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.protocol.mqtt.BrokerAuthenticator;
-import org.apache.iotdb.db.protocol.mqtt.MPPPublishHandler;
+import org.apache.iotdb.externalservice.api.IExternalService;
 
 import io.moquette.BrokerConstants;
 import io.moquette.broker.Server;
@@ -40,11 +38,9 @@ import java.util.List;
 import java.util.Properties;
 
 /** The IoTDB MQTT Service. */
-public class MQTTService implements IService {
+public class MQTTService implements IExternalService {
   private static final Logger LOG = LoggerFactory.getLogger(MQTTService.class);
   private final Server server = new Server();
-
-  private MQTTService() {}
 
   @Override
   public void start() {
@@ -105,21 +101,5 @@ public class MQTTService implements IService {
 
   public void shutdown() {
     server.stopServer();
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.MQTT_SERVICE;
-  }
-
-  public static MQTTService getInstance() {
-    return MQTTServiceHolder.INSTANCE;
-  }
-
-  private static class MQTTServiceHolder {
-
-    private static final MQTTService INSTANCE = new MQTTService();
-
-    private MQTTServiceHolder() {}
   }
 }

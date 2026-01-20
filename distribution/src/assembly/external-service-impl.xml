@@ -20,20 +20,32 @@
 
 -->
 <assembly>
-    <id>mpp-share</id>
+    <id>external-service-impl-bin</id>
     <formats>
         <format>dir</format>
+        <format>zip</format>
     </formats>
-    <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>lib</outputDirectory>
-        </dependencySet>
-    </dependencySets>
+    <baseDirectory>apache-iotdb-${project.version}-external-service-impl-bin</baseDirectory>
+    <fileSets>
+        <fileSet>
+            <directory>${project.basedir}/../licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
+        </fileSet>
+    </fileSets>
     <files>
         <file>
-            <source>${project.basedir}/../external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
-            <outputDirectory>lib</outputDirectory>
+            <source>${project.basedir}/../LICENSE-binary</source>
+            <outputDirectory>licenses</outputDirectory>
+            <destName>LICENSE</destName>
+        </file>
+        <file>
+            <source>${project.basedir}/../NOTICE-binary</source>
+            <outputDirectory>licenses</outputDirectory>
+            <destName>NOTICE</destName>
+        </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>/</outputDirectory>
         </file>
     </files>
 </assembly>
