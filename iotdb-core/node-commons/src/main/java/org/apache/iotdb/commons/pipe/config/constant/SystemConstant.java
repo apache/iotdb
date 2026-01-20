@@ -23,7 +23,7 @@ public class SystemConstant {
 
   // This can be arbitrarily changed since it's only a memory key and not stored
   public static final String RESTART_OR_NEWLY_ADDED_KEY = "__system.restart_or_newly_added";
-  public static final boolean RESTART_DEFAULT_VALUE = false;
+  public static final boolean RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE = false;
 
   private SystemConstant() {
     throw new IllegalStateException("Utility class");

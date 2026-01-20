@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
-import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -35,14 +35,12 @@ import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,37 +132,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
-    } catch (final PipeNonReportException e) {
-      sleep4NonReportException();
-    } catch (final PipeException e) {
-      if (!isClosed.get()) {
-        setLastExceptionEvent(event);
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
-            e.getClass().getSimpleName(),
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
     } catch (final Exception e) {
-      if (!isClosed.get()) {
-        setLastExceptionEvent(event);
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                taskID,
-                event instanceof EnrichedEvent
-                    ? ((EnrichedEvent) event).coreReportMessage()
-                    : event,
-                ErrorHandlingUtils.getRootCause(e).getMessage()),
-            e);
-      } else {
-        LOGGER.info(
-            "Exception in pipe transfer, ignored because the sink subtask is dropped.{}",
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      handleException(event, e);
     }
 
     return true;
@@ -216,7 +185,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
           taskID,
-          ErrorHandlingUtils.getRootCause(e).getMessage(),
+          ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       inputPendingQueue.discardAllEvents();
@@ -377,11 +346,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected String getRootCause(final Throwable throwable) {
-    return ErrorHandlingUtils.getRootCause(throwable).getMessage();
+    return ErrorHandlingCommonUtils.getRootCause(throwable).getMessage();
   }
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

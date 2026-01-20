@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -17,11 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.exception.pipe;
+package org.apache.iotdb.commons.utils;
 
-public class PipeNonReportException extends PipeRuntimeNonCriticalException {
+public class ErrorHandlingCommonUtils {
+  public static Throwable getRootCause(Throwable e) {
+    while (e.getCause() != null) {
+      e = e.getCause();
+    }
+    return e;
+  }
 
-  public PipeNonReportException(final String message) {
-    super(message);
+  private ErrorHandlingCommonUtils() {
+    // Utility class
   }
 }
