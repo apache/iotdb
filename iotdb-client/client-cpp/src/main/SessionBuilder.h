@@ -90,6 +90,11 @@ public:
     }
 
    std::shared_ptr<Session> build() {
+        if (!AbstractSessionBuilder::nodeUrls.empty() &&
+            (AbstractSessionBuilder::host != DEFAULT_HOST ||
+                AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
+            throw IoTDBException("Session builder does not support setting node urls and host/rpcPort at the same time.");
+        }
         sqlDialect = "tree";
         auto newSession = std::make_shared<Session>(this);
         newSession->open(false);
