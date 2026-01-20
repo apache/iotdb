@@ -171,13 +171,13 @@ struct TSCloseOperationReq {
 // Parses SQL and caches AST in session for later execution
 struct TSPrepareReq {
   1: required i64 sessionId
-  2: required string sql              // SQL with ? placeholders
-  3: required string statementName    // Name to identify this prepared statement
+  2: required string sql
+  3: required string statementName
 }
 
 struct TSPrepareResp {
   1: required common.TSStatus status
-  2: optional i32 parameterCount      // Number of ? placeholders in SQL
+  2: optional i32 parameterCount
 }
 
 // PreparedStatement - EXECUTE

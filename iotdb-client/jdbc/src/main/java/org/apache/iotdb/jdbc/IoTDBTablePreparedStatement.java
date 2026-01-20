@@ -80,6 +80,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   private final String sql;
   private final String preparedStatementName;
   private final int parameterCount;
+  private final boolean serverSidePrepared;
 
   // Parameter values stored as objects for binary serialization
   private final Object[] parameterValues;
@@ -100,27 +101,79 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     this.sql = sql;
     this.preparedStatementName = generateStatementName();
 
-    // Send PREPARE request to server
-    TSPrepareReq prepareReq = new TSPrepareReq();
-    prepareReq.setSessionId(sessionId);
-    prepareReq.setSql(sql);
-    prepareReq.setStatementName(preparedStatementName);
+    // Check if the SQL is a query statement
+    // For non-query statements (INSERT/UPDATE/DELETE), server-side PREPARE doesn't support
+    // parameter placeholders in VALUES clause, so we use client-side parameter substitution only
+    if (isQueryStatement(sql)) {
+      // Send PREPARE request to server only for query statements
+      this.serverSidePrepared = true;
+      TSPrepareReq prepareReq = new TSPrepareReq();
+      prepareReq.setSessionId(sessionId);
+      prepareReq.setSql(sql);
+      prepareReq.setStatementName(preparedStatementName);
 
-    try {
-      TSPrepareResp resp = client.prepareStatement(prepareReq);
-      RpcUtils.verifySuccess(resp.getStatus());
+      try {
+        TSPrepareResp resp = client.prepareStatement(prepareReq);
+        RpcUtils.verifySuccess(resp.getStatus());
 
-      this.parameterCount = resp.isSetParameterCount() ? resp.getParameterCount() : 0;
+        this.parameterCount = resp.isSetParameterCount() ? resp.getParameterCount() : 0;
+        this.parameterValues = new Object[parameterCount];
+        this.parameterTypes = new int[parameterCount];
+
+        for (int i = 0; i < parameterCount; i++) {
+          parameterTypes[i] = Types.NULL;
+        }
+      } catch (TException | StatementExecutionException e) {
+        throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
+      }
+    } else {
+      // For non-query statements, count parameters on client side
+      this.serverSidePrepared = false;
+      this.parameterCount = countParameters(sql);
       this.parameterValues = new Object[parameterCount];
       this.parameterTypes = new int[parameterCount];
 
-      // Initialize all parameter types to NULL
       for (int i = 0; i < parameterCount; i++) {
         parameterTypes[i] = Types.NULL;
       }
-    } catch (TException | StatementExecutionException e) {
-      throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Count the number of parameter placeholders (?) in the SQL statement.
+   *
+   * @param sql the SQL statement
+   * @return the number of parameter placeholders
+   */
+  private int countParameters(String sql) {
+    int count = 0;
+    int apCount = 0;
+    boolean skip = false;
+
+    for (int i = 0; i < sql.length(); i++) {
+      char c = sql.charAt(i);
+      if (skip) {
+        skip = false;
+        continue;
+      }
+      switch (c) {
+        case '\'':
+          apCount++;
+          break;
+        case '\\':
+          skip = true;
+          break;
+        case '?':
+          // Only count ? outside of string literals
+          if ((apCount & 1) == 0) {
+            count++;
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    return count;
   }
 
   // Only for tests
@@ -151,8 +204,32 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public boolean execute() throws SQLException {
-    TSExecuteStatementResp resp = executeInternal();
-    return resp.isSetQueryDataSet() || resp.isSetQueryResult();
+    // Check if the SQL is a query statement
+    if (isQueryStatement(sql)) {
+      TSExecuteStatementResp resp = executeInternal();
+      return resp.isSetQueryDataSet() || resp.isSetQueryResult();
+    } else {
+      // For non-query statements (INSERT/UPDATE/DELETE), use client-side parameter substitution
+      // because server-side PREPARE doesn't support INSERT statements with parameters
+      return super.execute(createCompleteSql(sql, parameters));
+    }
+  }
+
+  /**
+   * Check if the SQL is a query statement (SELECT).
+   *
+   * @param sql the SQL statement
+   * @return true if it's a query statement
+   */
+  private boolean isQueryStatement(String sql) {
+    if (sql == null) {
+      return false;
+    }
+    String trimmedSql = sql.trim().toUpperCase();
+    return trimmedSql.startsWith("SELECT")
+        || trimmedSql.startsWith("SHOW")
+        || trimmedSql.startsWith("DESCRIBE")
+        || trimmedSql.startsWith("EXPLAIN");
   }
 
   @Override
@@ -163,8 +240,9 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public int executeUpdate() throws SQLException {
-    executeInternal();
-    return 0; // IoTDB doesn't return affected row count
+    // For non-query statements (INSERT/UPDATE/DELETE), use client-side parameter substitution
+    // because server-side PREPARE doesn't support INSERT statements with parameters
+    return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
   private TSExecuteStatementResp executeInternal() throws SQLException {
@@ -223,8 +301,8 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public void close() throws SQLException {
-    if (!isClosed()) {
-      // Deallocate prepared statement on server
+    if (!isClosed() && serverSidePrepared) {
+      // Deallocate prepared statement on server only if it was prepared server-side
       TSDeallocatePreparedReq req = new TSDeallocatePreparedReq();
       req.setSessionId(sessionId);
       req.setStatementName(preparedStatementName);

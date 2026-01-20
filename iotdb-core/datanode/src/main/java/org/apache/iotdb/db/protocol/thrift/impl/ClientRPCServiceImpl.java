@@ -1674,9 +1674,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private final SelectResult setResultForPrepared =
       (resp, queryExecution, fetchSize) -> {
-        Pair<TSQueryDataSet, Boolean> pair =
-            QueryDataSetUtils.convertTsBlockByFetchSize(queryExecution, fetchSize);
-        resp.setQueryDataSet(pair.left);
+        // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
+        Pair<List<ByteBuffer>, Boolean> pair =
+            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+        resp.setQueryResult(pair.left);
         return pair.right;
       };
 
