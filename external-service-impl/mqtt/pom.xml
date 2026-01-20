@@ -78,10 +78,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec-mqtt</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
             <scope>provided</scope>
@@ -171,6 +167,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <configuration>
                     <ignoredDependencies>
+                        <ignoredDependency>io.netty:netty-codec-mqtt</ignoredDependency>
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
