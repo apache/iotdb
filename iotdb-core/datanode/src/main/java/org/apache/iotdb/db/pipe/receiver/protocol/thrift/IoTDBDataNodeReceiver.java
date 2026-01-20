@@ -136,8 +136,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 

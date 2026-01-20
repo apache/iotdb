@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -41,7 +40,6 @@ import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -191,28 +189,8 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
-    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
-      if (lastExceptionTime == Long.MAX_VALUE) {
-        lastExceptionTime = System.currentTimeMillis();
-      }
-      if (System.currentTimeMillis() - lastExceptionTime < e.getInterval()) {
-        sleep4NonReportException();
-        return true;
-      }
-      handlePipeException(event, e);
-    } catch (final PipeException e) {
-      handlePipeException(event, e);
     } catch (final Exception e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s", taskID, lastEvent),
-            e);
-      } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      handleException(event, e);
     }
 
     return true;
