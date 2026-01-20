@@ -33,7 +33,6 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -169,7 +168,10 @@ public class RowNumberNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return ImmutableList.<Symbol>builder().addAll(getChild().getOutputSymbols()).add(rowNumberSymbol).build();
+    return ImmutableList.<Symbol>builder()
+        .addAll(getChild().getOutputSymbols())
+        .add(rowNumberSymbol)
+        .build();
   }
 
   @Override

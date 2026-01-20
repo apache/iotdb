@@ -60,13 +60,13 @@ public class ReplaceWindowWithRowNumber implements Rule<WindowNode> {
 
   @Override
   public Result apply(WindowNode node, Captures captures, Context context) {
-    return Result.ofPlanNode(new RowNumberNode(
-        node.getPlanNodeId(),
-        node.getChild(),
-        node.getSpecification().getPartitionBy(),
-        false,
-        getOnlyElement(node.getWindowFunctions().keySet()),
-        Optional.empty()
-    ));
+    return Result.ofPlanNode(
+        new RowNumberNode(
+            node.getPlanNodeId(),
+            node.getChild(),
+            node.getSpecification().getPartitionBy(),
+            false,
+            getOnlyElement(node.getWindowFunctions().keySet()),
+            Optional.empty()));
   }
 }

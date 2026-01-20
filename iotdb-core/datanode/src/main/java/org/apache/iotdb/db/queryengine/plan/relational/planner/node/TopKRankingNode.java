@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -29,12 +28,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.DataOrganizationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
 import com.google.common.base.Objects;
+import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.List;
 
 public class TopKRankingNode extends SingleChildProcessNode {
@@ -159,7 +158,10 @@ public class TopKRankingNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return ImmutableList.<Symbol>builder().addAll(getChild().getOutputSymbols()).add(rankingSymbol).build();
+    return ImmutableList.<Symbol>builder()
+        .addAll(getChild().getOutputSymbols())
+        .add(rankingSymbol)
+        .build();
   }
 
   @Override
