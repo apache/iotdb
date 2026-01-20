@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
@@ -715,7 +716,7 @@ public enum PlanNodeType {
       case 1036:
         return ExceptNode.deserialize(buffer);
       case 1037:
-        return TopKNode.deserialize(buffer);
+        return TopKRankingNode.deserialize(buffer);
       case 1038:
         return RowNumberNode.deserialize(buffer);
       case 1039:

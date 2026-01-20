@@ -118,7 +118,7 @@ public class RowNumberOperator implements ProcessOperator {
     for (int position = 0; position < tsBlock.getPositionCount(); position++) {
       int partitionId = groupByHash.isPresent() ? partitionIds[position] : 0;
       long rowCount = partitionRowCounts.getOrDefault(partitionId, 0L);
-      processRow(tsBlock, partitionId, rowCount + 1);
+      processRow(tsBlock, position, rowCount + 1);
       partitionRowCounts.put(partitionId, rowCount + 1);
     }
 
@@ -131,7 +131,7 @@ public class RowNumberOperator implements ProcessOperator {
 
   private void processRow(TsBlock tsBlock, int position, long rowNumber) {
     // Check max rows per partition limit
-    if (maxRowsPerPartition.isPresent() && rowNumber >= maxRowsPerPartition.get()) {
+    if (maxRowsPerPartition.isPresent() && rowNumber > maxRowsPerPartition.get()) {
       return; // Skip this row, partition has reached limit
     }
 

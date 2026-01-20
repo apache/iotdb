@@ -99,6 +99,7 @@ public class RowNumberNode extends SingleChildProcessNode {
         getPlanNodeId(), partitionBy, orderSensitive, rowNumberSymbol, maxRowCountPerPartition);
   }
 
+  @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitRowNumber(this, context);
   }
@@ -168,7 +169,7 @@ public class RowNumberNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return Collections.singletonList(rowNumberSymbol);
+    return ImmutableList.<Symbol>builder().addAll(getChild().getOutputSymbols()).add(rowNumberSymbol).build();
   }
 
   @Override

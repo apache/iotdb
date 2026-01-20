@@ -63,7 +63,6 @@ public class TopKRankingOperator implements ProcessOperator {
   private final List<SortOrder> sortOrders;
   private final int maxRowCountPerPartition;
   private final boolean partial;
-  private final boolean generateRanking;
   private final Optional<Integer> hashChannel;
   private final int expectedPositions;
 
@@ -103,7 +102,6 @@ public class TopKRankingOperator implements ProcessOperator {
     this.sortOrders = sortOrders;
     this.maxRowCountPerPartition = maxRowCountPerPartition;
     this.partial = !generateRanking;
-    this.generateRanking = generateRanking;
     this.hashChannel = hashChannel;
     this.expectedPositions = expectedPositions;
     this.maxFlushableBytes = maxPartialMemory.orElse(0L);
@@ -147,7 +145,7 @@ public class TopKRankingOperator implements ProcessOperator {
               inputTypes,
               comparator,
               maxRowCountPerPartition,
-              generateRanking,
+              !partial,
               partitionChannels.stream().mapToInt(Integer::intValue).toArray(),
               groupByHashSupplier.get());
     }

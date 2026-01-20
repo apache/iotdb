@@ -22,9 +22,12 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
+
+import java.util.Optional;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
@@ -57,6 +60,13 @@ public class ReplaceWindowWithRowNumber implements Rule<WindowNode> {
 
   @Override
   public Result apply(WindowNode node, Captures captures, Context context) {
-    return null;
+    return Result.ofPlanNode(new RowNumberNode(
+        node.getPlanNodeId(),
+        node.getChild(),
+        node.getSpecification().getPartitionBy(),
+        false,
+        getOnlyElement(node.getWindowFunctions().keySet()),
+        Optional.empty()
+    ));
   }
 }

@@ -638,9 +638,9 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
       SymbolMapper mapper = symbolMapper(mapping);
 
-      TopKRankingNode rewrittenTopNRanking = mapper.map(node, rewrittenSource.getRoot());
+      TopKRankingNode rewrittenTopKRanking = mapper.map(node, rewrittenSource.getRoot());
 
-      return new PlanAndMappings(rewrittenTopNRanking, mapping);
+      return new PlanAndMappings(rewrittenTopKRanking, mapping);
     }
 
     @Override

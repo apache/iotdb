@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -158,7 +159,7 @@ public class TopKRankingNode extends SingleChildProcessNode {
 
   @Override
   public List<Symbol> getOutputSymbols() {
-    return Collections.singletonList(rankingSymbol);
+    return ImmutableList.<Symbol>builder().addAll(getChild().getOutputSymbols()).add(rankingSymbol).build();
   }
 
   @Override
