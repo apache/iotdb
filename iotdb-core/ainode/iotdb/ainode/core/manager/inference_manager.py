@@ -203,11 +203,11 @@ class InferenceManager:
             ):
                 raise NumericalRangeException(
                     "output_length",
+                    output_length,
                     1,
                     AINodeDescriptor()
                     .get_config()
                     .get_ain_inference_max_output_length(),
-                    output_length,
                 )
 
             if self._pool_controller.has_running_pools(model_id):
