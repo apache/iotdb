@@ -447,6 +447,8 @@ class PoolController:
         """
         Check if there are running pools for the given model_id.
         """
+        if model_id not in self._request_pool_map:
+            return False
         for device_id, pool_group in self._request_pool_map[model_id].items():
             if pool_group.get_running_pool_count():
                 return True
