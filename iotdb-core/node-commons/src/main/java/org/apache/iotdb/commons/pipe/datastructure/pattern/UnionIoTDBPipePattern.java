@@ -58,6 +58,11 @@ public class UnionIoTDBPipePattern extends IoTDBPipePatternOperations {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return patterns.stream().allMatch(PipePattern::isLegal);
   }

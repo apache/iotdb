@@ -57,6 +57,11 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return true;
+  }
+
+  @Override
   public boolean isLegal() {
     if (!pattern.startsWith("root")) {
       return false;
