@@ -20,11 +20,13 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -43,6 +45,8 @@ public class TableDiskUsageCacheReader implements Closeable {
   private final Map<Long, TimePartitionTableSizeQueryContext> timePartitionQueryContexts;
   private CompletableFuture<TsFileTableSizeCacheReader> future;
   private TsFileTableSizeCacheReader cacheFileReader;
+  private long acquiredMemory;
+  private boolean tsFileIdKeysPrepared = false;
 
   private final Iterator<Map.Entry<Long, TimePartitionTableSizeQueryContext>> timePartitionIterator;
 
@@ -64,9 +68,17 @@ public class TableDiskUsageCacheReader implements Closeable {
     this.currentDatabaseOnlyHasOneTable = databaseHasOnlyOneTable;
     this.context = context;
     this.timePartitionIterator = timePartitionQueryContexts.entrySet().iterator();
+    reserveMemory(
+        RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            timePartitionQueryContexts,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY));
   }
 
   public boolean prepareCachedTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
+    if (tsFileIdKeysPrepared) {
+      return true;
+    }
     if (this.cacheFileReader == null) {
       this.future =
           this.future == null
@@ -90,7 +102,15 @@ public class TableDiskUsageCacheReader implements Closeable {
     if (this.cacheFileReader == null) {
       return false;
     }
-    return cacheFileReader.readFromKeyFile(timePartitionQueryContexts, startTime, maxRunTime);
+    if (cacheFileReader.readFromKeyFile(timePartitionQueryContexts, startTime, maxRunTime)) {
+      reserveMemory(
+          timePartitionQueryContexts.values().stream()
+              .mapToLong(TimePartitionTableSizeQueryContext::ramBytesUsedOfTsFileIDOffsetMap)
+              .sum());
+      tsFileIdKeysPrepared = true;
+      return true;
+    }
+    return false;
   }
 
   public boolean calculateNextFile() {
@@ -132,15 +152,34 @@ public class TableDiskUsageCacheReader implements Closeable {
     return dataRegion;
   }
 
+  private void reserveMemory(long size) {
+    if (context.isPresent()) {
+      MemoryReservationManager memoryReservationContext =
+          context.get().getMemoryReservationContext();
+      memoryReservationContext.reserveMemoryCumulatively(size);
+      memoryReservationContext.reserveMemoryImmediately();
+      acquiredMemory += size;
+    }
+  }
+
   @Override
   public void close() throws IOException {
     if (future != null) {
       TableDiskUsageCache.getInstance().endRead(dataRegion.getDatabaseName(), regionId);
       future = null;
     }
+    releaseMemory();
     if (cacheFileReader != null) {
       cacheFileReader.closeCurrentFile();
       cacheFileReader = null;
     }
+  }
+
+  private void releaseMemory() {
+    if (!context.isPresent()) {
+      return;
+    }
+    context.get().getMemoryReservationContext().releaseMemoryCumulatively(acquiredMemory);
+    acquiredMemory = 0;
   }
 }

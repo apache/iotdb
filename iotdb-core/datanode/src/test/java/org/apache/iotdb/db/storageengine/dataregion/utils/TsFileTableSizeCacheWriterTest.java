@@ -27,7 +27,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableSizeCacheReader;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -62,8 +62,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     TsFileManager tsFileManager = new TsFileManager("root.test", "0", "");
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
-    TableDiskUsageCacheWriter writer =
-        new TableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());
@@ -92,8 +92,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     TsFileManager tsFileManager = new TsFileManager("root.test", "0", "");
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
-    TableDiskUsageCacheWriter writer =
-        new TableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());
@@ -140,8 +140,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), dataRegion);
     TsFileManager tsFileManager = new TsFileManager("root.test", "0", "");
     Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
-    TableDiskUsageCacheWriter writer =
-        new TableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(dataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());

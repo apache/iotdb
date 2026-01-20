@@ -177,10 +177,10 @@ public class TsFileTableSizeCacheReader {
     TsFileID tsFileID =
         new TsFileID(regionId, timePartition, timestamp, fileVersion, compactionVersion);
     KeyFileEntry keyFileEntry;
-    if (type == TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET) {
+    if (type == TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET) {
       long offset = ReadWriteIOUtils.readLong(inputStream);
       keyFileEntry = new KeyFileEntry(tsFileID, offset);
-    } else if (type == TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT) {
+    } else if (type == TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT) {
       long originTimestamp = ReadWriteIOUtils.readLong(inputStream);
       long originFileVersion = ReadWriteIOUtils.readLong(inputStream);
       long originCompactionVersion = ReadWriteIOUtils.readLong(inputStream);

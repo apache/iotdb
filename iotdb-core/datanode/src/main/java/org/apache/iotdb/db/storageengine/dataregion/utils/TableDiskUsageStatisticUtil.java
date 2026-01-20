@@ -86,10 +86,6 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     return true;
   }
 
-  public List<Pair<TsFileID, Long>> getTsFilesToQueryInCache() {
-    return tsFilesToQueryInCache;
-  }
-
   @Override
   protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException {

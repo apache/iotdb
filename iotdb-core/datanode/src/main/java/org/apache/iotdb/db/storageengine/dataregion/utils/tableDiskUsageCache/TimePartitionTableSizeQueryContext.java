@@ -21,10 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.HashMap;
 import java.util.Map;
 
-public class TimePartitionTableSizeQueryContext {
+public class TimePartitionTableSizeQueryContext implements Accountable {
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOf(TimePartitionTableSizeQueryContext.class);
   private final Map<String, Long> tableSizeResultMap;
   Map<TsFileID, Long> tsFileIDOffsetInValueFileMap;
 
@@ -64,5 +69,27 @@ public class TimePartitionTableSizeQueryContext {
 
   public Long getCachedTsFileIdOffset(TsFileID tsFileID) {
     return tsFileIDOffsetInValueFileMap == null ? null : tsFileIDOffsetInValueFileMap.get(tsFileID);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+            tableSizeResultMap,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+            RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY)
+        + ramBytesUsedOfTsFileIDOffsetMap();
+  }
+
+  // tsFileIDOffsetInValueFileMap should be null af first
+  public long ramBytesUsedOfTsFileIDOffsetMap() {
+    if (tsFileIDOffsetInValueFileMap == null) {
+      return 0;
+    }
+    return RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP
+        + tsFileIDOffsetInValueFileMap.size()
+            * (RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY
+                + Long.BYTES
+                + TsFileID.SHALLOW_SIZE);
   }
 }

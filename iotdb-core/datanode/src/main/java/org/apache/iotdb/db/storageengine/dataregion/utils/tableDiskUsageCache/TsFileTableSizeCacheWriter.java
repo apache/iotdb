@@ -33,8 +33,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
 
 public class TsFileTableSizeCacheWriter {
   private final int regionId;

@@ -26,6 +26,8 @@ import static org.apache.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
 
+  public static final long SHALLOW_SIZE = TsFileID.SHALLOW_SIZE;
+
   public final int regionId;
   public final long timePartitionId;
   public final long timestamp;

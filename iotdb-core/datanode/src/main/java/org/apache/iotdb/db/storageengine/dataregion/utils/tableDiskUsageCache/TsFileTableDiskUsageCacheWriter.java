@@ -42,8 +42,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-public class TableDiskUsageCacheWriter {
-  private static final Logger logger = LoggerFactory.getLogger(TableDiskUsageCacheWriter.class);
+public class TsFileTableDiskUsageCacheWriter {
+  private static final Logger logger =
+      LoggerFactory.getLogger(TsFileTableDiskUsageCacheWriter.class);
   private static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
   private static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
   public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
@@ -60,7 +61,7 @@ public class TableDiskUsageCacheWriter {
   private final File dir;
   private TsFileTableSizeCacheWriter tsFileTableSizeCacheWriter;
 
-  public TableDiskUsageCacheWriter(String database, int regionId) {
+  public TsFileTableDiskUsageCacheWriter(String database, int regionId) {
     this.regionId = regionId;
     this.dir = StorageEngine.getDataRegionSystemDir(database, regionId + "");
     recoverTsFileTableSizeIndexFile(true);
@@ -176,7 +177,7 @@ public class TableDiskUsageCacheWriter {
     int fileNum = tsFileManager.size(true) + tsFileManager.size(false);
     int estimatedEntryNumInCacheFile = (int) (keyFileLength() / KEY_FILE_OFFSET_RECORD_LENGTH);
     int delta = estimatedEntryNumInCacheFile - fileNum;
-    return delta > 0.2 * estimatedEntryNumInCacheFile || delta >= 1000;
+    return delta >= 1000;
   }
 
   public void compact() {
@@ -318,11 +319,9 @@ public class TableDiskUsageCacheWriter {
   }
 
   public void decreaseActiveReaderNum() {
-    activeReaderNum--;
-  }
-
-  public int getActiveReaderNum() {
-    return activeReaderNum;
+    if (activeReaderNum > 0) {
+      activeReaderNum--;
+    }
   }
 
   public void removeFiles() {}
