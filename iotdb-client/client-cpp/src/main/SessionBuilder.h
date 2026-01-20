@@ -34,6 +34,16 @@ public:
         return this;
     }
 
+    SessionBuilder* useSSL(bool useSSL) {
+        AbstractSessionBuilder::useSSL = useSSL;
+        return this;
+    }
+
+    SessionBuilder* trustCertFilePath(const std::string &trustCertFilePath) {
+        AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
+        return this;
+    }
+
     SessionBuilder* username(const std::string &username) {
         AbstractSessionBuilder::username = username;
         return this;

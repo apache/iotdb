@@ -78,23 +78,36 @@ public:
     static const int CONNECTION_TIMEOUT_IN_MS;
 
     static std::shared_ptr<NodesSupplier> create(
-        std::vector<TEndPoint> endpoints,
-        std::string userName, std::string password, std::string zoneId = "",
+        const std::vector<TEndPoint>& endpoints,
+        const std::string& userName,
+        const std::string& password,
+        bool useSSL = false,
+        const std::string& trustCertFilePath = "",
+        const std::string& zoneId = "",
         int32_t thriftDefaultBufferSize = ThriftConnection::THRIFT_DEFAULT_BUFFER_SIZE,
         int32_t thriftMaxFrameSize = ThriftConnection::THRIFT_MAX_FRAME_SIZE,
         int32_t connectionTimeoutInMs = ThriftConnection::CONNECTION_TIMEOUT_IN_MS,
-        bool useSSL = false, bool enableRPCCompression = false,
-        std::string version = "V_1_0",
+        bool enableRPCCompression = false,
+        const std::string& version = "V_1_0",
         std::chrono::milliseconds refreshInterval = std::chrono::milliseconds(TIMEOUT_IN_MS),
         NodeSelectionPolicy policy = RoundRobinPolicy::select
     );
 
     NodesSupplier(
-        std::string userName, std::string password, const std::string& zoneId,
-        int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-        int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-        std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy
+        const std::string& userName,
+        const std::string& password,
+        bool useSSL,
+        const std::string& trustCertFilePath,
+        const std::string& zoneId,
+        int32_t thriftDefaultBufferSize,
+        int32_t thriftMaxFrameSize,
+        int32_t connectionTimeoutInMs,
+        bool enableRPCCompression,
+        const std::string& version,
+        const std::vector<TEndPoint>& endpoints,
+        NodeSelectionPolicy policy
     );
+
     std::vector<TEndPoint> getEndPointList() override;
 
     boost::optional<TEndPoint> getQueryEndPoint() override;
@@ -108,8 +121,9 @@ private:
     int32_t thriftMaxFrameSize_;
     int32_t connectionTimeoutInMs_;
     bool useSSL_;
+    std::string trustCertFilePath_;
     bool enableRPCCompression_;
-    std::string version;
+    std::string version_;
     std::string zoneId_;
 
     std::mutex mutex_;
