@@ -72,7 +72,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
 
@@ -262,20 +261,17 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
     boolean isTable = false;
-    Map<String, Integer> measurementMap =
-        IntStream.range(0, alignedFullPath.getMeasurementList().size())
-            .boxed()
-            .collect(Collectors.toMap(alignedFullPath.getMeasurementList()::get, i -> i));
-    List<TSDataType> schemaTypes =
+    Map<String, TSDataType> measurementMap =
         alignedFullPath.getSchemaList().stream()
-            .map(IMeasurementSchema::getType)
-            .collect(Collectors.toList());
+            .collect(
+                Collectors.toMap(
+                    IMeasurementSchema::getMeasurementName, IMeasurementSchema::getType));
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AbstractAlignedChunkMetadata alignedChunkMetadata =
           (AbstractAlignedChunkMetadata) chunkMetadata;
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
-      rewriteStatistics(alignedChunkMetadata, measurementMap, schemaTypes);
+      rewriteStatistics(alignedChunkMetadata, measurementMap);
       if (!useFakeStatistics) {
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
@@ -308,7 +304,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         AbstractAlignedChunkMetadata alignedChunkMetadata =
             (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
         isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
-        rewriteStatistics(alignedChunkMetadata, measurementMap, schemaTypes);
+        rewriteStatistics(alignedChunkMetadata, measurementMap);
         if (!useFakeStatistics) {
           timeStatistics.mergeStatistics(
               alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
@@ -352,30 +348,24 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
   }
 
   private static void rewriteStatistics(
-      AbstractAlignedChunkMetadata alignedChunkMetadata,
-      Map<String, Integer> measurementMap,
-      List<TSDataType> schemaTypes) {
-    int index = 0;
-    for (IChunkMetadata valueChunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+      AbstractAlignedChunkMetadata alignedChunkMetadata, Map<String, TSDataType> measurementMap) {
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    for (int i = 0, size = valueChunkMetadataList.size(); i < size; i++) {
+      IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
       if (valueChunkMetadata == null) {
-        index++;
         continue;
       }
 
       String measurement = valueChunkMetadata.getMeasurementUid();
-      int targetIndex = measurementMap.getOrDefault(measurement, -1);
-      if (targetIndex == -1) {
-        index++;
+      if (!measurementMap.containsKey(measurement)) {
         continue;
       }
 
-      TSDataType targetDataType = schemaTypes.get(targetIndex);
+      TSDataType targetDataType = measurementMap.get(measurement);
       if (valueChunkMetadata.getDataType() != targetDataType) {
-        SchemaUtils.rewriteAlignedChunkMetadataStatistics(
-            alignedChunkMetadata, targetIndex, targetDataType);
+        SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, i, targetDataType);
         alignedChunkMetadata.setModified(true);
       }
-      index++;
     }
   }
 
