@@ -259,6 +259,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MIN_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
   }
 

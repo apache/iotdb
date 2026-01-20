@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 
-import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
@@ -66,7 +66,6 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // when no event can be pulled.
   public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
       new PipeHeartbeatEvent("cron", false);
-  private long lastExceptionTime = Long.MIN_VALUE;
 
   public PipeSinkSubtask(
       final String taskID,
@@ -135,19 +134,17 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
-    } catch (final PipeNonReportException e) {
-      sleep4NonReportException();
-    } catch (final PipeException e) {
-      if (!isClosed.get()) {
-        setLastExceptionEvent(event);
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
-            e.getClass().getSimpleName(),
-            e.getMessage() != null ? " Message: " + e.getMessage() : "");
-        clearReferenceCountAndReleaseLastEvent(event);
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      if (lastExceptionTime == Long.MIN_VALUE) {
+        lastExceptionTime = System.currentTimeMillis();
       }
+      if (System.currentTimeMillis() - lastExceptionTime < e.getInterval()) {
+        sleep4NonReportException();
+        return true;
+      }
+      handlePipeException(event, e);
+    } catch (final PipeException e) {
+      handlePipeException(event, e);
     } catch (final Exception e) {
       if (!isClosed.get()) {
         setLastExceptionEvent(event);
@@ -169,6 +166,19 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     return true;
+  }
+
+  private void handlePipeException(final Event event, final PipeException e) {
+    if (!isClosed.get()) {
+      setLastExceptionEvent(event);
+      throw e;
+    } else {
+      LOGGER.info(
+          "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
+          e.getClass().getSimpleName(),
+          e.getMessage() != null ? " Message: " + e.getMessage() : "");
+      clearReferenceCountAndReleaseLastEvent(event);
+    }
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {

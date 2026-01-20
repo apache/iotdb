@@ -342,6 +342,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MIN_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

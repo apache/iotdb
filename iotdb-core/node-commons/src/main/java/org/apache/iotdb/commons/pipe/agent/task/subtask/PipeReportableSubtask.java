@@ -36,6 +36,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
   // To ensure that high-priority tasks can obtain object locks first, a counter is now used to save
   // the number of high-priority tasks.
   protected final AtomicLong highPriorityLockTaskCount = new AtomicLong(0);
+  protected long lastExceptionTime = Long.MIN_VALUE;
 
   protected PipeReportableSubtask(final String taskID, final long creationTime) {
     super(taskID, creationTime);
