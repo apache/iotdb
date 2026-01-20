@@ -53,6 +53,12 @@
             <artifactId>library-udf</artifactId>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>mqtt</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

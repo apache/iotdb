@@ -353,7 +353,7 @@ public class ExternalServiceManagementService {
         .values()
         .forEach(
             serviceInfo -> {
-              // start services with RUNNING state
+              // stop services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
                 IExternalService serviceInstance = serviceInfo.getServiceInstance();
                 checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
