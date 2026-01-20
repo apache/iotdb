@@ -43,9 +43,8 @@ public class TsFileTableSchemaUtil {
 
   /** Column category filter for efficient parsing */
   public enum ColumnCategoryFilter {
-    /** Include TAG and FIELD only (exclude TIME and ATTRIBUTE) - for TsFile writing */
-    NO_ATTRIBUTE(
-        cat -> cat != TsTableColumnCategory.TIME && cat != TsTableColumnCategory.ATTRIBUTE);
+    /** Include TAG, time, and FIELD only (exclude ATTRIBUTE) - for TsFile writing */
+    NO_ATTRIBUTE(cat -> cat != TsTableColumnCategory.ATTRIBUTE);
 
     private final java.util.function.Predicate<TsTableColumnCategory> predicate;
 
@@ -160,8 +159,8 @@ public class TsFileTableSchemaUtil {
     for (final TsTableColumnSchema columnSchema : tsTableColumnSchemas) {
       final TsTableColumnCategory category = columnSchema.getColumnCategory();
 
-      // Skip TIME and ATTRIBUTE columns (only include TAG and FIELD)
-      if (category == TsTableColumnCategory.TIME || category == TsTableColumnCategory.ATTRIBUTE) {
+      // Skip ATTRIBUTE columns (only include TIME, TAG and FIELD)
+      if (category == TsTableColumnCategory.ATTRIBUTE) {
         continue;
       }
 

@@ -32,7 +32,6 @@ import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,16 +63,13 @@ public class TsTable {
 
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
-  private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
-      new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
-
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private static final String OBJECT_STRING_ERROR =
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
 
-  private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  private Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
   private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
@@ -101,7 +97,6 @@ public class TsTable {
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
-    columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
   }
 
   // This interface is used by InformationSchema table, so time column is not necessary
@@ -217,40 +212,58 @@ public class TsTable {
         });
   }
 
+  /**
+   * Renames a column in the table schema while strictly preserving its original ordinal position.
+   */
   public void renameColumnSchema(final String oldName, final String newName) {
     executeWrite(
         () -> {
-          // Ensures idempotency
-          if (columnSchemaMap.containsKey(oldName)) {
-            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
-            final Map<String, String> oldProps = schema.getProps();
-            oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
-            switch (schema.getColumnCategory()) {
-              case TAG:
-                columnSchemaMap.put(
-                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case FIELD:
-                columnSchemaMap.put(
-                    newName,
-                    new FieldColumnSchema(
-                        newName,
-                        schema.getDataType(),
-                        ((FieldColumnSchema) schema).getEncoding(),
-                        ((FieldColumnSchema) schema).getCompressor(),
-                        oldProps));
-                break;
-              case ATTRIBUTE:
-                columnSchemaMap.put(
-                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
-                break;
-              case TIME:
-              default:
-                // Do nothing
-                columnSchemaMap.put(oldName, schema);
+          if (!columnSchemaMap.containsKey(oldName)) {
+            return;
+          }
+
+          // Capture the current strict order of current columns
+          List<Map.Entry<String, TsTableColumnSchema>> snapshotOfColumns =
+              new ArrayList<>(columnSchemaMap.entrySet());
+          columnSchemaMap.clear();
+
+          // Re-insert all entries in their original sequence, substituting the renamed column at
+          // its exact original index
+          for (Map.Entry<String, TsTableColumnSchema> entry : snapshotOfColumns) {
+            String currentKey = entry.getKey();
+            TsTableColumnSchema currentColumnSchema = entry.getValue();
+
+            if (currentKey.equals(oldName)) {
+              TsTableColumnSchema newSchema = createRenamedSchema(currentColumnSchema, newName);
+              columnSchemaMap.put(newName, newSchema);
+            } else {
+              columnSchemaMap.put(currentKey, currentColumnSchema);
             }
           }
         });
+  }
+
+  private TsTableColumnSchema createRenamedSchema(TsTableColumnSchema oldSchema, String newName) {
+    Map<String, String> oldProps = oldSchema.getProps();
+    oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> oldSchema.getColumnName());
+
+    switch (oldSchema.getColumnCategory()) {
+      case TAG:
+        return new TagColumnSchema(newName, oldSchema.getDataType(), oldProps);
+      case FIELD:
+        return new FieldColumnSchema(
+            newName,
+            oldSchema.getDataType(),
+            ((FieldColumnSchema) oldSchema).getEncoding(),
+            ((FieldColumnSchema) oldSchema).getCompressor(),
+            oldProps);
+      case ATTRIBUTE:
+        return new AttributeColumnSchema(newName, oldSchema.getDataType(), oldProps);
+      case TIME:
+        return new TimeColumnSchema(newName, oldSchema.getDataType(), oldProps);
+      default:
+        return oldSchema;
+    }
   }
 
   public void removeColumnSchema(final String columnName) {

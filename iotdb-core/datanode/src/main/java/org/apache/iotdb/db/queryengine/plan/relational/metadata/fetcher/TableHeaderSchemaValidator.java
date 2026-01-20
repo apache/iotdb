@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -718,8 +719,10 @@ public class TableHeaderSchemaValidator {
         schema = new AttributeColumnSchema(columnName, dataType);
         break;
       case TIME:
-        throw new SemanticException(
-            "Create table or add column statement shall not specify column category TIME");
+        // throw new SemanticException("Add column statement shall not specify column category
+        // TIME");
+        schema = new TimeColumnSchema(columnName, dataType);
+        break;
       case FIELD:
         schema =
             dataType != TSDataType.UNKNOWN
