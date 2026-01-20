@@ -266,6 +266,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
     }
   }
 
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected void handleException(final Event event, final Exception e) {
     if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
       if (lastExceptionTime == Long.MAX_VALUE) {
