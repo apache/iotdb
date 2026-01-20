@@ -1747,14 +1747,15 @@ public class IoTDBTableIT {
         final Statement stmt = connection.createStatement();
         final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       final String db = "perfquotedb";
-      final int colPerTable = 1;
-      final int tables = 8;
+      final int colPerTable = 100;
+      final int tables = 3200;
       final int rows = 100;
       final int numFile = 5;
+      final int runs = 30;
       stmt.execute("DROP DATABASE IF EXISTS " + db);
       stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
       stmt.execute("USE " + db);
-      //stmt.execute("set configuration enable_seq_space_compaction='false'");
+      // stmt.execute("set configuration enable_seq_space_compaction='false'");
       session.executeNonQueryStatement("USE " + db);
 
       final String[] names = new String[tables];
@@ -1805,7 +1806,6 @@ public class IoTDBTableIT {
       System.out.println("Data preparation done.");
 
       // baseline measurement: simple average over a few runs
-      final int runs = 100;
       double totalMs = 0.0;
       for (int run = 0; run < runs; run++) {
         final long start = System.nanoTime();

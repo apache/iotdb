@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
@@ -58,7 +60,7 @@ public class TsFileManager {
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
   private final TreeMap<Long, ModFileManagement> modFileManagementMap = new TreeMap<>();
-  private final TreeMap<Long, List<TsFileSet>> tsfileSets = new TreeMap<>();
+  private final Map<Long, List<TsFileSet>> tsfileSets = new ConcurrentSkipListMap<>();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
@@ -517,29 +519,19 @@ public class TsFileManager {
   }
 
   public void addTsFileSet(TsFileSet newSet, long partitionId) {
-    writeLock("addTsFileSet");
-    try {
-      List<TsFileSet> tsFileSetList =
-          tsfileSets.computeIfAbsent(partitionId, p -> new ArrayList<>());
-      tsFileSetList.add(newSet);
-    } finally {
-      writeUnlock();
-    }
+    List<TsFileSet> tsFileSetList =
+        tsfileSets.computeIfAbsent(partitionId, p -> new CopyOnWriteArrayList<>());
+    tsFileSetList.add(newSet);
   }
 
   public List<TsFileSet> getTsFileSet(
       long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
-    readLock();
-    try {
-      List<TsFileSet> tsFileSetList = tsfileSets.getOrDefault(partitionId, Collections.emptyList());
-      return tsFileSetList.stream()
-          .filter(
-              s ->
-                  s.getEndVersion() < maxFileVersionExcluded
-                      && s.getEndVersion() >= minFileVersionIncluded)
-          .collect(Collectors.toList());
-    } finally {
-      readUnlock();
-    }
+    List<TsFileSet> tsFileSetList = tsfileSets.getOrDefault(partitionId, Collections.emptyList());
+    return tsFileSetList.stream()
+        .filter(
+            s ->
+                s.getEndVersion() < maxFileVersionExcluded
+                    && s.getEndVersion() >= minFileVersionIncluded)
+        .collect(Collectors.toList());
   }
 }

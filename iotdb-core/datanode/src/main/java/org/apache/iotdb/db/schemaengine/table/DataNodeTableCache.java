@@ -216,13 +216,7 @@ public class DataNodeTableCache implements ITableCache {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
-      final TsTable newTable = preUpdateTableMap.getOrDefault(database, Collections.emptyMap()).getOrDefault(tableName, new Pair<>(
-          null, 0L)).getLeft();
-      if (newTable == null) {
-        // someone invalidated the table before commit
-        // let the latter operation fetch it
-        return;
-      }
+      final TsTable newTable = preUpdateTableMap.get(database).get(tableName).getLeft();
       // Cannot be committed, consider:
       // 1. Fetched a non-changed CN table
       // 2. CN is changed
