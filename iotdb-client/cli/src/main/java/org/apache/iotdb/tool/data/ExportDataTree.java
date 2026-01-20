@@ -172,7 +172,7 @@ public class ExportDataTree extends AbstractExportData {
       }
       List<String> values = new ArrayList<>();
       for (int index = 2; index < totalColumns; index++) {
-        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index))) {
+        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index)) || "STRING".equalsIgnoreCase(columnTypeList.get(index))) {
           values.add(String.format("\"%s\"", iterator.getString(index + 1)));
         } else {
           values.add(iterator.getString(index + 1));
@@ -240,7 +240,7 @@ public class ExportDataTree extends AbstractExportData {
       }
       List<String> values = new ArrayList<>();
       for (int index = 0; index < totalColumns; index++) {
-        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index + 1))) {
+        if ("TEXT".equalsIgnoreCase(columnTypeList.get(index + 1)) || "STRING".equalsIgnoreCase(columnTypeList.get(index + 1))) {
           values.add(String.format("\"%s\"", iterator.getString(index + 2)));
         } else {
           values.add(iterator.getString(index + 2));
