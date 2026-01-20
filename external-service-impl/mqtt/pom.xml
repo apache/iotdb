@@ -166,6 +166,15 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <configuration>
+                    <ignoredDependencies>
+                        <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
+                    </ignoredDependencies>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
