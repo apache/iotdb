@@ -587,6 +587,8 @@ class Session {
 private:
     std::string host_;
     int rpcPort_;
+    bool useSSL_ = false;
+    std::string trustCertFilePath_;
     std::vector<string> nodeUrls_;
     std::string username_;
     std::string password_;
@@ -776,6 +778,8 @@ public:
         this->enableRedirection_ = builder->enableRedirections;
         this->connectTimeoutMs_ = builder->connectTimeoutMs;
         this->nodeUrls_ = builder->nodeUrls;
+        this->useSSL_ = builder->useSSL;
+        this->trustCertFilePath_ = builder->trustCertFilePath;
         initZoneId();
         initNodesSupplier(this->nodeUrls_);
     }

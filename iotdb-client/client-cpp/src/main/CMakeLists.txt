@@ -26,6 +26,15 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2 ")
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
+# Find OpenSSL Library
+FIND_PACKAGE(OpenSSL REQUIRED)
+IF(OpenSSL_FOUND)
+    MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+    INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
+ELSE()
+    MESSAGE(FATAL_ERROR "OpenSSL not found")
+ENDIF()
+
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
 
@@ -55,4 +64,9 @@ ELSE()
 ENDIF()
 
 # Link with Thrift static library
-TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})
+target_link_libraries(iotdb_session
+    PUBLIC
+        OpenSSL::SSL
+        OpenSSL::Crypto
+        ${THRIFT_STATIC_LIB}
+)

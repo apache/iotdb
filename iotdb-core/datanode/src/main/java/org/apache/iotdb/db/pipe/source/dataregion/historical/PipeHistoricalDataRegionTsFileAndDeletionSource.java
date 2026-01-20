@@ -72,6 +72,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -580,9 +581,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   Collectors.toMap(
                       Function.identity(),
                       resource ->
-                          resource.getDevices().stream()
-                              .map(IDeviceID::getTableName)
-                              .collect(Collectors.toSet())));
+                          isModelDetected && isTableModel
+                              ? resource.getDevices().stream()
+                                  .map(IDeviceID::getTableName)
+                                  .collect(Collectors.toSet())
+                              : Collections.emptySet()));
       filteredTsFileResources2TableNames.putAll(sequenceTsFileResources2TableNames);
 
       final Map<TsFileResource, Set<String>> unSequenceTsFileResources2TableNames =
@@ -611,9 +614,11 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
                   Collectors.toMap(
                       Function.identity(),
                       resource ->
-                          resource.getDevices().stream()
-                              .map(IDeviceID::getTableName)
-                              .collect(Collectors.toSet())));
+                          isModelDetected && isTableModel
+                              ? resource.getDevices().stream()
+                                  .map(IDeviceID::getTableName)
+                                  .collect(Collectors.toSet())
+                              : Collections.emptySet()));
       filteredTsFileResources2TableNames.putAll(unSequenceTsFileResources2TableNames);
 
       filteredTsFileResources2TableNames
@@ -684,6 +689,10 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
+    // Trimming to avoid unnecessary file device getter
+    if (isDbNameCoveredByPattern) {
+      return true;
+    }
     final Set<IDeviceID> deviceSet;
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
