@@ -36,7 +36,7 @@ import java.util.Map;
 import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
 import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
 
-public class TsFileTableSizeCacheWriter {
+public class TsFileTableSizeIndexFileWriter {
   private final int regionId;
   private final File currentKeyIndexFile;
   private final File currentValueIndexFile;
@@ -47,12 +47,12 @@ public class TsFileTableSizeCacheWriter {
   private long keyFileSize;
   private long valueFileSize;
 
-  public TsFileTableSizeCacheWriter(
+  public TsFileTableSizeIndexFileWriter(
       int regionId, File currentKeyIndexFile, File currentValueIndexFile) throws IOException {
     this(regionId, currentKeyIndexFile, currentValueIndexFile, true);
   }
 
-  public TsFileTableSizeCacheWriter(
+  public TsFileTableSizeIndexFileWriter(
       int regionId, File currentKeyIndexFile, File currentValueIndexFile, boolean recover)
       throws IOException {
     this.regionId = regionId;

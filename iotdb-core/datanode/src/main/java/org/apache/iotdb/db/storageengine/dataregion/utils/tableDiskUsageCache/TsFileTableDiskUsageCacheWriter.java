@@ -42,7 +42,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-public class TsFileTableDiskUsageCacheWriter {
+public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWriter {
   private static final Logger logger =
       LoggerFactory.getLogger(TsFileTableDiskUsageCacheWriter.class);
   private static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
@@ -53,24 +53,17 @@ public class TsFileTableDiskUsageCacheWriter {
   public static final byte KEY_FILE_RECORD_TYPE_OFFSET = 1;
   public static final byte KEY_FILE_RECORD_TYPE_REDIRECT = 2;
 
-  private final int regionId;
-  private int activeReaderNum = 0;
-  private long previousCompactionTimestamp = System.currentTimeMillis();
-  private long lastWriteTimestamp = System.currentTimeMillis();
-  private int currentTsFileIndexFileVersion = 0;
-  private final File dir;
-  private TsFileTableSizeCacheWriter tsFileTableSizeCacheWriter;
+  private TsFileTableSizeIndexFileWriter tsFileTableSizeIndexFileWriter;
 
   public TsFileTableDiskUsageCacheWriter(String database, int regionId) {
-    this.regionId = regionId;
-    this.dir = StorageEngine.getDataRegionSystemDir(database, regionId + "");
+    super(database, regionId);
     recoverTsFileTableSizeIndexFile(true);
   }
 
   private void recoverTsFileTableSizeIndexFile(boolean needRecover) {
     dir.mkdirs();
     File[] files = dir.listFiles();
-    currentTsFileIndexFileVersion = 0;
+    currentIndexFileVersion = 0;
     List<File> keyFiles = new ArrayList<>();
     List<File> valueFiles = new ArrayList<>();
     if (files != null) {
@@ -114,54 +107,36 @@ public class TsFileTableDiskUsageCacheWriter {
             continue;
           }
         }
-        currentTsFileIndexFileVersion = Math.max(currentTsFileIndexFileVersion, version);
+        currentIndexFileVersion = Math.max(currentIndexFileVersion, version);
         keyFiles.add(file);
       }
       if (keyFiles.size() > 1) {
-        deleteOldVersionFiles(
-            currentTsFileIndexFileVersion, TSFILE_CACHE_KEY_FILENAME_PREFIX, keyFiles);
+        deleteOldVersionFiles(currentIndexFileVersion, TSFILE_CACHE_KEY_FILENAME_PREFIX, keyFiles);
       }
       if (valueFiles.size() > 1) {
         deleteOldVersionFiles(
-            currentTsFileIndexFileVersion, TSFILE_CACHE_VALUE_FILENAME_PREFIX, valueFiles);
+            currentIndexFileVersion, TSFILE_CACHE_VALUE_FILENAME_PREFIX, valueFiles);
       }
     }
-    File currentKeyIndexFile = generateKeyFile(currentTsFileIndexFileVersion, false);
-    File currentValueIndexFile = generateValueFile(currentTsFileIndexFileVersion, false);
+    File currentKeyIndexFile = generateKeyFile(currentIndexFileVersion, false);
+    File currentValueIndexFile = generateValueFile(currentIndexFileVersion, false);
     try {
-      this.tsFileTableSizeCacheWriter =
-          new TsFileTableSizeCacheWriter(
+      this.tsFileTableSizeIndexFileWriter =
+          new TsFileTableSizeIndexFileWriter(
               regionId, currentKeyIndexFile, currentValueIndexFile, needRecover);
     } catch (IOException ignored) {
     }
   }
 
-  private void deleteOldVersionFiles(int maxVersion, String prefix, List<File> files) {
-    for (File file : files) {
-      try {
-        int version = Integer.parseInt(file.getName().substring(prefix.length()));
-        if (version != maxVersion) {
-          Files.deleteIfExists(file.toPath());
-        }
-      } catch (Exception e) {
-      }
-    }
-  }
-
   public void write(TsFileID tsFileID, Map<String, Long> tableSizeMap) throws IOException {
-    tsFileTableSizeCacheWriter.write(tsFileID, tableSizeMap);
+    tsFileTableSizeIndexFileWriter.write(tsFileID, tableSizeMap);
   }
 
   public void write(TsFileID originTsFileID, TsFileID newTsFileID) throws IOException {
-    tsFileTableSizeCacheWriter.write(originTsFileID, newTsFileID);
+    tsFileTableSizeIndexFileWriter.write(originTsFileID, newTsFileID);
   }
 
-  public void closeIfIdle() {
-    if (System.currentTimeMillis() - lastWriteTimestamp >= TimeUnit.MINUTES.toMillis(1)) {
-      close();
-    }
-  }
-
+  @Override
   public boolean needCompact() {
     if (activeReaderNum > 0) {
       return false;
@@ -180,15 +155,16 @@ public class TsFileTableDiskUsageCacheWriter {
     return delta >= 1000;
   }
 
+  @Override
   public void compact() {
     previousCompactionTimestamp = System.currentTimeMillis();
-    this.tsFileTableSizeCacheWriter.close();
+    this.tsFileTableSizeIndexFileWriter.close();
     TsFileTableSizeCacheReader cacheFileReader =
         new TsFileTableSizeCacheReader(
-            tsFileTableSizeCacheWriter.getKeyFile().length(),
-            tsFileTableSizeCacheWriter.getKeyFile(),
-            tsFileTableSizeCacheWriter.getValueFile().length(),
-            tsFileTableSizeCacheWriter.getValueFile(),
+            tsFileTableSizeIndexFileWriter.getKeyFile().length(),
+            tsFileTableSizeIndexFileWriter.getKeyFile(),
+            tsFileTableSizeIndexFileWriter.getValueFile().length(),
+            tsFileTableSizeIndexFileWriter.getValueFile(),
             regionId);
     Map<Long, TimePartitionTableSizeQueryContext> contextMap = new HashMap<>();
     try {
@@ -236,13 +212,13 @@ public class TsFileTableDiskUsageCacheWriter {
     }
     validFilesOrderByOffset.sort(Comparator.comparingLong(Pair::getRight));
 
-    TsFileTableSizeCacheWriter targetFileWriter = null;
+    TsFileTableSizeIndexFileWriter targetFileWriter = null;
     try {
       targetFileWriter =
-          new TsFileTableSizeCacheWriter(
+          new TsFileTableSizeIndexFileWriter(
               regionId,
-              generateKeyFile(currentTsFileIndexFileVersion + 1, true),
-              generateValueFile(currentTsFileIndexFileVersion + 1, true));
+              generateKeyFile(currentIndexFileVersion + 1, true),
+              generateValueFile(currentIndexFileVersion + 1, true));
       cacheFileReader.openValueFile();
       for (Pair<TsFileID, Long> pair : validFilesOrderByOffset) {
         TsFileID tsFileID = pair.getLeft();
@@ -253,16 +229,16 @@ public class TsFileTableDiskUsageCacheWriter {
       targetFileWriter.close();
 
       // replace
-      File targetKeyFile = generateKeyFile(currentTsFileIndexFileVersion + 1, false);
-      File targetValueFile = generateValueFile(currentTsFileIndexFileVersion + 1, false);
+      File targetKeyFile = generateKeyFile(currentIndexFileVersion + 1, false);
+      File targetValueFile = generateValueFile(currentIndexFileVersion + 1, false);
       targetFileWriter.getKeyFile().renameTo(targetKeyFile);
       targetFileWriter.getValueFile().renameTo(targetValueFile);
-      this.tsFileTableSizeCacheWriter.close();
+      this.tsFileTableSizeIndexFileWriter.close();
     } catch (Exception e) {
       logger.error("Failed to execute compaction for tsfile table size cache file", e);
     } finally {
-      if (tsFileTableSizeCacheWriter != null) {
-        tsFileTableSizeCacheWriter.close();
+      if (tsFileTableSizeIndexFileWriter != null) {
+        tsFileTableSizeIndexFileWriter.close();
       }
       if (targetFileWriter != null) {
         targetFileWriter.close();
@@ -290,43 +266,34 @@ public class TsFileTableDiskUsageCacheWriter {
             + (isTempFile ? TEMP_CACHE_FILE_SUBFIX : ""));
   }
 
+  @Override
   public void flush() throws IOException {
-    tsFileTableSizeCacheWriter.flush();
+    tsFileTableSizeIndexFileWriter.flush();
   }
 
   public File getKeyFile() {
-    return tsFileTableSizeCacheWriter.getKeyFile();
+    return tsFileTableSizeIndexFileWriter.getKeyFile();
   }
 
   public File getValueFile() {
-    return tsFileTableSizeCacheWriter.getValueFile();
+    return tsFileTableSizeIndexFileWriter.getValueFile();
   }
 
   public long keyFileLength() {
-    return tsFileTableSizeCacheWriter.keyFileLength();
+    return tsFileTableSizeIndexFileWriter.keyFileLength();
   }
 
   public long valueFileLength() {
-    return tsFileTableSizeCacheWriter.valueFileLength();
+    return tsFileTableSizeIndexFileWriter.valueFileLength();
   }
 
+  @Override
   public void sync() throws IOException {
-    tsFileTableSizeCacheWriter.sync();
+    tsFileTableSizeIndexFileWriter.sync();
   }
 
-  public void increaseActiveReaderNum() {
-    activeReaderNum++;
-  }
-
-  public void decreaseActiveReaderNum() {
-    if (activeReaderNum > 0) {
-      activeReaderNum--;
-    }
-  }
-
-  public void removeFiles() {}
-
+  @Override
   public void close() {
-    this.tsFileTableSizeCacheWriter.close();
+    this.tsFileTableSizeIndexFileWriter.close();
   }
 }
