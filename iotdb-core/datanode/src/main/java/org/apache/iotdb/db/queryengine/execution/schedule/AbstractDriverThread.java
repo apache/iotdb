@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.schedule;
 
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.queryengine.exception.MemoryNotEnoughException;
 import org.apache.iotdb.db.queryengine.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.queryengine.execution.schedule.task.DriverTask;
@@ -116,7 +117,7 @@ public abstract class AbstractDriverThread extends Thread implements Closeable {
   }
 
   private String getAbortCause(final Exception e) {
-    Throwable rootCause = ErrorHandlingUtils.getRootCause(e);
+    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     if (rootCause instanceof MemoryNotEnoughException) {
       return DriverTaskAbortedException.BY_MEMORY_NOT_ENOUGH;
     }
