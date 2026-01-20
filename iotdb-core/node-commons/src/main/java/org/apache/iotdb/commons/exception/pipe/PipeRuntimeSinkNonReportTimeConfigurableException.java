@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.exception.pipe;
 
+import java.util.Objects;
+
 public class PipeRuntimeSinkNonReportTimeConfigurableException
     extends PipeRuntimeSinkCriticalException {
 
@@ -42,5 +44,23 @@ public class PipeRuntimeSinkNonReportTimeConfigurableException
         + "', interval='"
         + interval
         + "'}";
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final PipeRuntimeSinkNonReportTimeConfigurableException that =
+        (PipeRuntimeSinkNonReportTimeConfigurableException) o;
+    return super.equals(that) && interval == that.interval;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), interval);
   }
 }

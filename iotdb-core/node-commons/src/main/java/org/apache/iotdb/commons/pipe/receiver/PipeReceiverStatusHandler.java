@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -49,8 +48,6 @@ public class PipeReceiverStatusHandler {
   private static final String NO_PERMISSION = "No permission";
   private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
-
-  private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
   private final long retryMaxMillisWhenConflictOccurs;
@@ -97,7 +94,7 @@ public class PipeReceiverStatusHandler {
    * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
    * by a single thread.
    *
-   * @throws PipeException to retry the current {@link Event}
+   * @throws PipeRuntimeSinkNonReportTimeConfigurableException to retry the current {@link Event}
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
    * @param recordMessage The message to record an ignored {@link Event}, the caller should assure

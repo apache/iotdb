@@ -26,4 +26,8 @@ public class ErrorHandlingCommonUtils {
     }
     return e;
   }
+
+  private ErrorHandlingCommonUtils() {
+    // Utility class
+  }
 }
