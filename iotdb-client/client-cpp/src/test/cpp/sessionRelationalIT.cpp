@@ -159,8 +159,7 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         "field7 TIMESTAMP field,"
         "field8 DATE field,"
         "field9 BLOB field,"
-        "field10 STRING field,"
-        "field11 OBJECT field)");
+        "field10 STRING field)");
 
     vector<pair<string, TSDataType::TSDataType>> schemaList;
     schemaList.push_back(make_pair("field1", TSDataType::BOOLEAN));
@@ -173,9 +172,8 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
     schemaList.push_back(make_pair("field8", TSDataType::DATE));
     schemaList.push_back(make_pair("field9", TSDataType::BLOB));
     schemaList.push_back(make_pair("field10", TSDataType::STRING));
-    schemaList.push_back(make_pair("field11", TSDataType::OBJECT));
 
-    vector<ColumnCategory> columnTypes(11, ColumnCategory::FIELD);
+    vector<ColumnCategory> columnTypes(10, ColumnCategory::FIELD);
 
     int64_t timestamp = 0;
     int maxRowNumber = 50000;
@@ -194,9 +192,6 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
         tablet.addValue(7, rowIndex, boost::gregorian::date(2025, 5, 15));
         tablet.addValue(8, rowIndex, "blob_" + to_string(row));
         tablet.addValue(9, rowIndex, "string_" + to_string(row));
-        vector<uint8_t> rawData = {0x01, 0x02, 0x03, 0x04};
-        // always non-null
-        tablet.addValue(10, rowIndex, true, 0, rawData);
 
         if (row % 2 == 0) {
             for (int col = 0; col <= 9; col++) {
@@ -232,7 +227,6 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE_FALSE(dataIter.getDateByIndex(9).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(10).is_initialized());
             REQUIRE_FALSE(dataIter.getStringByIndex(11).is_initialized());
-            REQUIRE_FALSE(!dataIter.getStringByIndex(12).is_initialized());
         } else {
             REQUIRE(dataIter.getLongByIndex(1).value() == timestamp + rowNum);
             REQUIRE(dataIter.getBooleanByIndex(2).value() == (rowNum % 2 == 0));
@@ -245,8 +239,6 @@ TEST_CASE("Test RelationalTabletTsblockRead", "[testRelationalTabletTsblockRead]
             REQUIRE(dataIter.getDateByIndex(9).value() == boost::gregorian::date(2025, 5, 15));
             REQUIRE(dataIter.getStringByIndex(10).value() == "blob_" + to_string(rowNum));
             REQUIRE(dataIter.getStringByIndex(11).value() == "string_" + to_string(rowNum));
-            // [isEOF (1 byte)] + [offset (8 bytes)] + [content (4 bytes)]
-            REQUIRE(dataIter.getStringByIndex(12).value() != "");
         }
         rowNum++;
     }

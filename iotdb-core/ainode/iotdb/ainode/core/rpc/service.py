@@ -49,7 +49,7 @@ class AINodeThreadPoolServer(TServer.TThreadPoolServer):
         self.serverTransport.listen()
         while not self._stop_event.is_set():
             try:
-                client = self.serverTransport.accept()  # TODO: Fix the block problem
+                client = self.serverTransport.accept()
                 if not client:
                     continue
                 self.clients.put(client)

@@ -3499,8 +3499,10 @@ public class DataRegion implements IDataRegionForQuery {
       ITimeIndex timeIndex = sealedTsFile.getTimeIndex();
       EvolvedSchema evolvedSchema = sealedTsFile.getMergedEvolvedSchema();
 
+      // the tsfile may not be closed here, it should not be added in deletedByFiles
       if ((timeIndex instanceof ArrayDeviceTimeIndex)
-          && (deletion.getType() == ModType.TABLE_DELETION)) {
+          && (deletion.getType() == ModType.TABLE_DELETION)
+          && sealedTsFile.isClosed()) {
         ArrayDeviceTimeIndex deviceTimeIndex = (ArrayDeviceTimeIndex) timeIndex;
 
         Set<IDeviceID> devicesInFile = deviceTimeIndex.getDevices();

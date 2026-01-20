@@ -35,6 +35,7 @@ import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
@@ -54,6 +55,7 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.executable.ExecutableResource;
@@ -72,6 +74,8 @@ import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
+import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
@@ -313,6 +317,8 @@ import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.db.service.DataNodeInternalRPCService;
+import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementException;
+import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
@@ -342,6 +348,8 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -363,6 +371,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -377,6 +386,8 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDC
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_RESULT_NODES;
 import static org.apache.iotdb.db.protocol.client.ConfigNodeClient.MSG_RECONNECTION_FAIL;
+import static org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory.getShowExternalServiceHeader;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask.appendServiceEntry;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
 import static org.apache.iotdb.udf.api.type.Type.OBJECT;
 
@@ -4838,5 +4849,108 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     } catch (final Exception e) {
       LOGGER.warn("Failed to handlePipeConfigClientExit.", e);
     }
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createExternalService(
+      String serviceName, String className) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      ExternalServiceManagementService.getInstance().createService(serviceName, className);
+      future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> startExternalService(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      ExternalServiceManagementService.getInstance().startService(serviceName);
+      future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> stopExternalService(String serviceName) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      ExternalServiceManagementService.getInstance().stopService(serviceName);
+      future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> dropExternalService(
+      String serviceName, boolean forcedly) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      ExternalServiceManagementService.getInstance().dropService(serviceName, forcedly);
+      future.set(new ConfigTaskResult(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showExternalService(int dataNodeId) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      Iterator<TExternalServiceEntry> iterator =
+          ExternalServiceManagementService.getInstance().showService(dataNodeId);
+
+      List<TSDataType> outputDataTypes =
+          ColumnHeaderConstant.showExternalServiceColumnHeaders.stream()
+              .map(ColumnHeader::getColumnType)
+              .collect(Collectors.toList());
+      TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
+      TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();
+      while (iterator.hasNext()) {
+        timeColumnBuilder.writeLong(0L);
+        appendServiceEntry(iterator.next(), builder.getValueColumnBuilders());
+        builder.declarePosition();
+      }
+
+      future.set(
+          new ConfigTaskResult(
+              TSStatusCode.SUCCESS_STATUS, builder.build(), getShowExternalServiceHeader()));
+    } catch (IoTDBRuntimeException e) {
+      future.setException(e);
+    } catch (Exception e) {
+      future.setException(
+          new ExternalServiceManagementException(
+              new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                  .setMessage(e.getMessage())));
+    }
+    return future;
   }
 }

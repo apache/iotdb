@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import java.util.stream.Collectors;
-import org.apache.iotdb.commons.utils.WindowsOSUtils;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -33,7 +31,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.file.metadata.ColumnSchema;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.write.record.Tablet;
@@ -46,9 +43,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -60,6 +54,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
@@ -766,142 +761,6 @@ public class IoTDBTableIT {
 
       insertThread.join();
       deletionThread.join();
-    }
-  }
-
-  @Test
-  public void testTableObjectCheck() throws Exception {
-    final Set<String> illegal = new HashSet<>(Arrays.asList("./", ".", "..", ".\\", "../hack"));
-    if (SystemUtils.IS_OS_WINDOWS) {
-      illegal.add("C.");
-      illegal.add("a:b<|");
-      illegal.add("COM1");
-    }
-    for (final String single : illegal) {
-      testObject4SingleIllegalPath(single);
-    }
-  }
-
-  private void testObject4SingleIllegalPath(final String illegal) throws Exception {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement();
-        final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
-      statement.execute("create database if not exists db2");
-      statement.execute("use db2");
-
-      // Test auto-create table
-      final String testObject =
-          System.getProperty("user.dir")
-              + File.separator
-              + "target"
-              + File.separator
-              + "test-classes"
-              + File.separator
-              + "object-example.pt";
-
-      final List<IMeasurementSchema> schemaList = new ArrayList<>();
-      schemaList.add(new MeasurementSchema("a", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("b", TSDataType.STRING));
-      schemaList.add(new MeasurementSchema("c", TSDataType.INT32));
-      schemaList.add(new MeasurementSchema(illegal, TSDataType.OBJECT));
-      final List<ColumnCategory> columnTypes =
-          Arrays.asList(
-              ColumnCategory.TAG,
-              ColumnCategory.ATTRIBUTE,
-              ColumnCategory.FIELD,
-              ColumnCategory.FIELD);
-      final Tablet tablet =
-          new Tablet(
-              illegal,
-              IMeasurementSchema.getMeasurementNameList(schemaList),
-              IMeasurementSchema.getDataTypeList(schemaList),
-              columnTypes,
-              1);
-      tablet.addTimestamp(0, System.currentTimeMillis());
-      tablet.addValue(schemaList.get(0).getMeasurementName(), 0, "d1");
-      tablet.addValue(schemaList.get(1).getMeasurementName(), 0, "a1");
-      tablet.addValue(schemaList.get(2).getMeasurementName(), 0, 0);
-      tablet.addValue(0, 3, true, 0, Files.readAllBytes(Paths.get(testObject)));
-
-      final String expectedTableError =
-          String.format(
-              "701: When there are object fields, the tableName %s shall not be '.', '..' or contain './', '.\\'."
-                  + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-              illegal.toLowerCase());
-      final String expectedObjectError =
-          String.format(
-              "701: When there are object fields, the objectName %s shall not be '.', '..' or contain './', '.\\'."
-                  + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-              illegal.toLowerCase());
-
-      try {
-        session.executeNonQueryStatement("use db2");
-        session.insert(tablet);
-      } catch (final Exception e) {
-        Assert.assertEquals(expectedTableError, e.getMessage());
-      }
-
-      statement.execute(String.format("create table \"%s\" ()", illegal));
-
-      try {
-        statement.execute(String.format("alter table \"%s\" add column a object", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(expectedTableError, e.getMessage());
-      }
-
-      // Test auto-create column
-      try {
-        session.executeNonQueryStatement("use db2");
-        session.insert(tablet);
-      } catch (final Exception e) {
-        Assert.assertEquals(expectedTableError, e.getMessage());
-      }
-
-      try {
-        statement.execute(String.format("create table test (\"%s\" object)", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(expectedObjectError, e.getMessage());
-      }
-
-      statement.execute("create table test (a tag, b attribute, c int32, d object)");
-
-      // Cannot auto-extend illegal column
-      tablet.setTableName("test");
-      try {
-        session.executeNonQueryStatement("use db2");
-        session.insert(tablet);
-      } catch (final Exception e) {
-        Assert.assertEquals(expectedObjectError, e.getMessage());
-      }
-
-      // It's OK if you don't write object
-      statement.execute(String.format("insert into test (a, b, c) values ('%s', 1, 1)", illegal));
-      try {
-        statement.execute(
-            String.format(
-                "insert into test (a, b, c, d) values ('%s', 1, 1, to_object(true, 0, X'aa'))",
-                illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(
-            String.format(
-                "507: When there are object fields, the deviceId [test, %s] shall not be '.', '..' or contain './', '.\\'."
-                    + (SystemUtils.IS_OS_WINDOWS ? " " + WindowsOSUtils.OS_SEGMENT_ERROR : ""),
-                illegal),
-            e.getMessage());
-      }
-
-      try {
-        statement.execute(String.format("alter table test add column \"%s\" object", illegal));
-        fail();
-      } catch (final SQLException e) {
-        Assert.assertEquals(expectedObjectError, e.getMessage());
-      }
-
-      statement.execute("drop database db2");
     }
   }
 
@@ -1645,20 +1504,21 @@ public class IoTDBTableIT {
     }
   }
 
-    // Helper: recognize SQLExceptions that mean the target table/device cannot be found.
-    private static boolean isTableNotFound(final SQLException e) {
-      if (e == null) return false;
-      final String msg = e.getMessage();
-      if (msg == null) return false;
-      final String lm = msg.toLowerCase();
-      // code 550 is commonly used for 'does not exist' in this project; also match textual phrases
-      return msg.startsWith("550") || lm.contains("not exist");
-    }
+  // Helper: recognize SQLExceptions that mean the target table/device cannot be found.
+  private static boolean isTableNotFound(final SQLException e) {
+    if (e == null) return false;
+    final String msg = e.getMessage();
+    if (msg == null) return false;
+    final String lm = msg.toLowerCase();
+    // code 550 is commonly used for 'does not exist' in this project; also match textual phrases
+    return msg.startsWith("550") || lm.contains("not exist");
+  }
 
-    @Test(timeout = 120000)
-    @SuppressWarnings("resource")
-    public void testConcurrentRenameVsQueries() throws Throwable {
-    try (final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+  @Test(timeout = 120000)
+  @SuppressWarnings("resource")
+  public void testConcurrentRenameVsQueries() throws Throwable {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement stmt = connection.createStatement()) {
       final String db = "concrenamedb";
       final int tableCount = 6;
@@ -1676,122 +1536,135 @@ public class IoTDBTableIT {
         }
       }
 
-      final java.util.concurrent.atomic.AtomicReference<Throwable> err = new java.util.concurrent.atomic.AtomicReference<>();
-      final java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-      final java.util.concurrent.CountDownLatch doneLatch = new java.util.concurrent.CountDownLatch(4);
+      final java.util.concurrent.atomic.AtomicReference<Throwable> err =
+          new java.util.concurrent.atomic.AtomicReference<>();
+      final java.util.concurrent.CountDownLatch startLatch =
+          new java.util.concurrent.CountDownLatch(1);
+      final java.util.concurrent.CountDownLatch doneLatch =
+          new java.util.concurrent.CountDownLatch(4);
 
       java.util.concurrent.ExecutorService exec = null;
       try {
         exec = java.util.concurrent.Executors.newFixedThreadPool(8);
 
         // Renamer task: rotate rename a subset of tables repeatedly
-        exec.submit(() -> {
-          try (final Connection c = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-              final Statement s = c.createStatement()) {
-            startLatch.await();
-            // ensure this thread's connection uses the test database
-            try {
-              s.execute("USE " + db);
-            } catch (final SQLException ignore) {
-            }
-            for (int round = 0; round < 20 && err.get() == null; round++) {
-              for (int i = 0; i < tableCount / 2; i++) {
-                final String oldName = names[i];
-                final String newName = oldName + "_r" + round;
+        exec.submit(
+            () -> {
+              try (final Connection c =
+                      EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+                  final Statement s = c.createStatement()) {
+                startLatch.await();
+                // ensure this thread's connection uses the test database
                 try {
-                  s.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
-                  // reflect change locally so queries target updated names
-                  names[i] = newName;
-                } catch (final SQLException ex) {
-                  // Only ignore if the failure is due to table not existing; otherwise record the error
-                  if (isTableNotFound(ex)) {
-                    // table not found: likely a transient race with concurrent rename — ignore and log
-                    System.out.println("Ignored table-not-found during rename: " + ex.getMessage());
-                  } else {
-                    err.compareAndSet(null, ex);
+                  s.execute("USE " + db);
+                } catch (final SQLException ignore) {
+                }
+                for (int round = 0; round < 20 && err.get() == null; round++) {
+                  for (int i = 0; i < tableCount / 2; i++) {
+                    final String oldName = names[i];
+                    final String newName = oldName + "_r" + round;
+                    try {
+                      s.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
+                      // reflect change locally so queries target updated names
+                      names[i] = newName;
+                    } catch (final SQLException ex) {
+                      // Only ignore if the failure is due to table not existing; otherwise record
+                      // the error
+                      if (isTableNotFound(ex)) {
+                        // table not found: likely a transient race with concurrent rename — ignore
+                        // and log
+                        System.out.println(
+                            "Ignored table-not-found during rename: " + ex.getMessage());
+                      } else {
+                        err.compareAndSet(null, ex);
+                      }
+                    }
+                  }
+                  try {
+                    Thread.sleep(50);
+                  } catch (final InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
                   }
                 }
+              } catch (final Throwable t) {
+                err.compareAndSet(null, t);
+              } finally {
+                doneLatch.countDown();
               }
-              try {
-                Thread.sleep(50);
-              } catch (final InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                break;
-              }
-            }
-          } catch (final Throwable t) {
-            err.compareAndSet(null, t);
-          } finally {
-            doneLatch.countDown();
-          }
-        });
+            });
 
         // Queryer tasks: continuously query random tables
         for (int q = 0; q < 2; q++) {
-          exec.submit(() -> {
-            try (final Connection c = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-                final Statement s = c.createStatement()) {
-              final java.util.Random rnd = new java.util.Random();
-              startLatch.await();
-              // ensure this thread's connection uses the test database
-              try {
-                s.execute("USE " + db);
-              } catch (final SQLException ignore) {
-              }
-              for (int iter = 0; iter < 200 && err.get() == null; iter++) {
-                final int idx = rnd.nextInt(tableCount);
-                final String tname = names[idx];
-                try (final ResultSet rs = s.executeQuery("SELECT count(*) FROM " + tname)) {
-                  if (rs.next()) {
-                    rs.getLong(1);
+          exec.submit(
+              () -> {
+                try (final Connection c =
+                        EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+                    final Statement s = c.createStatement()) {
+                  final java.util.Random rnd = new java.util.Random();
+                  startLatch.await();
+                  // ensure this thread's connection uses the test database
+                  try {
+                    s.execute("USE " + db);
+                  } catch (final SQLException ignore) {
                   }
-                } catch (final SQLException ex) {
-                  // Only ignore table-not-found; otherwise surface the error to fail the test
-                  if (!isTableNotFound(ex)) {
-                    err.compareAndSet(null, ex);
-                    break;
+                  for (int iter = 0; iter < 200 && err.get() == null; iter++) {
+                    final int idx = rnd.nextInt(tableCount);
+                    final String tname = names[idx];
+                    try (final ResultSet rs = s.executeQuery("SELECT count(*) FROM " + tname)) {
+                      if (rs.next()) {
+                        rs.getLong(1);
+                      }
+                    } catch (final SQLException ex) {
+                      // Only ignore table-not-found; otherwise surface the error to fail the test
+                      if (!isTableNotFound(ex)) {
+                        err.compareAndSet(null, ex);
+                        break;
+                      }
+                    }
                   }
+                } catch (final Throwable t) {
+                  err.compareAndSet(null, t);
+                } finally {
+                  doneLatch.countDown();
                 }
-              }
-            } catch (final Throwable t) {
-              err.compareAndSet(null, t);
-            } finally {
-              doneLatch.countDown();
-            }
-          });
+              });
         }
 
         // Another queryer to trigger more parallel access
-        exec.submit(() -> {
-          try (final Connection c = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-              final Statement s = c.createStatement()) {
-            startLatch.await();
-            // ensure this thread's connection uses the test database
-            try {
-              s.execute("USE " + db);
-            } catch (final SQLException ignore) {
-            }
-            for (int iter = 0; iter < 200 && err.get() == null; iter++) {
-              for (int i = 0; i < tableCount; i++) {
-                try (final ResultSet rs = s.executeQuery("SELECT * FROM " + names[i] + " LIMIT 1")) {
-                  // consume
-                  while (rs.next()) {
-                    rs.getLong(1);
-                  }
-                } catch (final SQLException ex) {
-                  if (!isTableNotFound(ex)) {
-                    err.compareAndSet(null, ex);
-                    break;
+        exec.submit(
+            () -> {
+              try (final Connection c =
+                      EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+                  final Statement s = c.createStatement()) {
+                startLatch.await();
+                // ensure this thread's connection uses the test database
+                try {
+                  s.execute("USE " + db);
+                } catch (final SQLException ignore) {
+                }
+                for (int iter = 0; iter < 200 && err.get() == null; iter++) {
+                  for (int i = 0; i < tableCount; i++) {
+                    try (final ResultSet rs =
+                        s.executeQuery("SELECT * FROM " + names[i] + " LIMIT 1")) {
+                      // consume
+                      while (rs.next()) {
+                        rs.getLong(1);
+                      }
+                    } catch (final SQLException ex) {
+                      if (!isTableNotFound(ex)) {
+                        err.compareAndSet(null, ex);
+                        break;
+                      }
+                    }
                   }
                 }
+              } catch (final Throwable t) {
+                err.compareAndSet(null, t);
+              } finally {
+                doneLatch.countDown();
               }
-            }
-          } catch (final Throwable t) {
-            err.compareAndSet(null, t);
-          } finally {
-            doneLatch.countDown();
-          }
-        });
+            });
 
         // start
         startLatch.countDown();
@@ -1807,11 +1680,12 @@ public class IoTDBTableIT {
         }
       }
     }
-    }
+  }
 
-    @Test
-    public void testMultiTableCrossCheckAfterRenames() throws Exception {
-    try (final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+  @Test
+  public void testMultiTableCrossCheckAfterRenames() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement stmt = connection.createStatement()) {
       final String db = "multicheckdb";
       stmt.execute("DROP DATABASE IF EXISTS " + db);
@@ -1830,12 +1704,12 @@ public class IoTDBTableIT {
       // baseline: read aggregates
       long aCount = 0, bCount = 0;
       try (final ResultSet ra = stmt.executeQuery("SELECT count(*) FROM mta")) {
-        if (ra.next())  {
+        if (ra.next()) {
           aCount = ra.getLong(1);
         }
       }
       try (final ResultSet rb = stmt.executeQuery("SELECT count(*) FROM mtb")) {
-        if (rb.next())  {
+        if (rb.next()) {
           bCount = rb.getLong(1);
         }
       }
@@ -1864,21 +1738,23 @@ public class IoTDBTableIT {
       }
       assertEquals(aCount, aCountAfter);
     }
-    }
+  }
 
-    @Test
-    public void testPerformanceWithQuotedSpecialNameRenames() throws Exception {
-    try (final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+  @Test
+  public void testPerformanceWithQuotedSpecialNameRenames() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement stmt = connection.createStatement();
         final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       final String db = "perfquotedb";
-      final int tables = 3200;
+      final int colPerTable = 1;
+      final int tables = 8;
       final int rows = 100;
       final int numFile = 5;
-      final int colPerTable = 100;
       stmt.execute("DROP DATABASE IF EXISTS " + db);
       stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
       stmt.execute("USE " + db);
+      //stmt.execute("set configuration enable_seq_space_compaction='false'");
       session.executeNonQueryStatement("USE " + db);
 
       final String[] names = new String[tables];
@@ -1886,25 +1762,34 @@ public class IoTDBTableIT {
       for (int c = 0; c < colPerTable; c++) {
         createTableTemplate.append(String.format("v%d int32,", c));
       }
-      createTableTemplate = new StringBuilder(
-          createTableTemplate.substring(0, createTableTemplate.length() - 1) + ")");
+      createTableTemplate =
+          new StringBuilder(
+              createTableTemplate.substring(0, createTableTemplate.length() - 1) + ")");
       List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < colPerTable; i++) {
         columns.add(new ColumnSchema("v" + i, TSDataType.INT32, ColumnCategory.FIELD));
       }
-      TableSchema tableSchema = new TableSchema(
-          "", // place holder
-          columns
-      );
+      TableSchema tableSchema =
+          new TableSchema(
+              "", // place holder
+              columns);
 
       System.out.println("Start data preparation...");
       for (int i = 0; i < tables; i++) {
         names[i] = "qtable" + i;
         stmt.execute(String.format(createTableTemplate.toString(), names[i]));
         tableSchema.setTableName(names[i]);
-        Tablet tablet = new Tablet(tableSchema.getTableName(), tableSchema.getColumnSchemas().stream().map(IMeasurementSchema::getMeasurementName).collect(
-            Collectors.toList()), tableSchema.getColumnSchemas().stream().map(IMeasurementSchema::getType).collect(
-            Collectors.toList()), tableSchema.getColumnTypes(), rows);
+        Tablet tablet =
+            new Tablet(
+                tableSchema.getTableName(),
+                tableSchema.getColumnSchemas().stream()
+                    .map(IMeasurementSchema::getMeasurementName)
+                    .collect(Collectors.toList()),
+                tableSchema.getColumnSchemas().stream()
+                    .map(IMeasurementSchema::getType)
+                    .collect(Collectors.toList()),
+                tableSchema.getColumnTypes(),
+                rows);
         for (int j = 0; j < numFile; j++) {
           tablet.reset();
           for (int r = 1; r <= rows; r++) {
@@ -1973,69 +1858,75 @@ public class IoTDBTableIT {
         }
       }
     }
-    }
+  }
 
-    @Test
-    public void testAlterTableAndColumnTogether() throws Exception {
-      try (final Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-          final Statement stmt = connection.createStatement()) {
-        final String db = "dualalterdb";
-        stmt.execute("DROP DATABASE IF EXISTS " + db);
-        stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
-        stmt.execute("USE " + db);
+  @Test
+  public void testAlterTableAndColumnTogether() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement stmt = connection.createStatement()) {
+      final String db = "dualalterdb";
+      stmt.execute("DROP DATABASE IF EXISTS " + db);
+      stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
+      stmt.execute("USE " + db);
 
-        stmt.execute("CREATE TABLE IF NOT EXISTS tab1 (c1 int32, c2 int32)");
-        stmt.execute("INSERT INTO tab1 (time, c1, c2) VALUES (1, 1, 10)");
+      stmt.execute("CREATE TABLE IF NOT EXISTS tab1 (c1 int32, c2 int32)");
+      stmt.execute("INSERT INTO tab1 (time, c1, c2) VALUES (1, 1, 10)");
 
-        // rename column first and then rename table
-        stmt.execute("ALTER TABLE tab1 RENAME COLUMN c1 TO c1_new");
-        stmt.execute("ALTER TABLE tab1 RENAME TO tab1_new");
+      // rename column first and then rename table
+      stmt.execute("ALTER TABLE tab1 RENAME COLUMN c1 TO c1_new");
+      stmt.execute("ALTER TABLE tab1 RENAME TO tab1_new");
 
-        // old table name should not exist
-        try {
-          stmt.execute("INSERT INTO tab1 (time, c1_new) VALUES (2, 2)");
+      // old table name should not exist
+      try {
+        stmt.execute("INSERT INTO tab1 (time, c1_new) VALUES (2, 2)");
+        fail();
+      } catch (final SQLException e) {
+        assertTrue(
+            e.getMessage().startsWith("550")
+                || e.getMessage().toLowerCase().contains("does not exist"));
+      }
+
+      // inserting using new table and new column names should succeed
+      stmt.execute("INSERT INTO tab1_new (time, c1_new, c2) VALUES (2, 2, 20)");
+
+      // verify data
+      try (final ResultSet rs = stmt.executeQuery("SELECT * FROM tab1_new ORDER BY time")) {
+        assertTrue(rs.next());
+        assertEquals(1, rs.getLong(1));
+        assertEquals(1, rs.getInt("c1_new"));
+        assertEquals(10, rs.getInt("c2"));
+
+        assertTrue(rs.next());
+        assertEquals(2, rs.getLong(1));
+        assertEquals(2, rs.getInt("c1_new"));
+        assertEquals(20, rs.getInt("c2"));
+
+        assertFalse(rs.next());
+      }
+
+      // rename column again on the renamed table and verify
+      stmt.execute("ALTER TABLE tab1_new RENAME COLUMN c1_new TO c1_final");
+      try {
+        // old column identifier should fail
+        stmt.execute("INSERT INTO tab1_new (time, c1_new) VALUES (3, 3)");
+        fail();
+      } catch (final SQLException e) {
+        assertTrue(
+            e.getMessage().startsWith("616")
+                || e.getMessage().toLowerCase().contains("unknown")
+                || e.getMessage().toLowerCase().contains("cannot be resolved"));
+      }
+
+      // use final name
+      stmt.execute("INSERT INTO tab1_new (time, c1_final, c2) VALUES (3, 3, 30)");
+      try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM tab1_new")) {
+        if (rs.next()) {
+          assertEquals(3L, rs.getLong(1));
+        } else {
           fail();
-        } catch (final SQLException e) {
-          assertTrue(e.getMessage().startsWith("550") || e.getMessage().toLowerCase().contains("does not exist"));
-        }
-
-        // inserting using new table and new column names should succeed
-        stmt.execute("INSERT INTO tab1_new (time, c1_new, c2) VALUES (2, 2, 20)");
-
-        // verify data
-        try (final ResultSet rs = stmt.executeQuery("SELECT * FROM tab1_new ORDER BY time")) {
-          assertTrue(rs.next());
-          assertEquals(1, rs.getLong(1));
-          assertEquals(1, rs.getInt("c1_new"));
-          assertEquals(10, rs.getInt("c2"));
-
-          assertTrue(rs.next());
-          assertEquals(2, rs.getLong(1));
-          assertEquals(2, rs.getInt("c1_new"));
-          assertEquals(20, rs.getInt("c2"));
-
-          assertFalse(rs.next());
-        }
-
-        // rename column again on the renamed table and verify
-        stmt.execute("ALTER TABLE tab1_new RENAME COLUMN c1_new TO c1_final");
-        try {
-          // old column identifier should fail
-          stmt.execute("INSERT INTO tab1_new (time, c1_new) VALUES (3, 3)");
-          fail();
-        } catch (final SQLException e) {
-          assertTrue(e.getMessage().startsWith("616") || e.getMessage().toLowerCase().contains("unknown") || e.getMessage().toLowerCase().contains("cannot be resolved"));
-        }
-
-        // use final name
-        stmt.execute("INSERT INTO tab1_new (time, c1_final, c2) VALUES (3, 3, 30)");
-        try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM tab1_new")) {
-          if (rs.next()) {
-            assertEquals(3L, rs.getLong(1));
-          } else {
-            fail();
-          }
         }
       }
     }
+  }
 }

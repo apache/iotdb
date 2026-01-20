@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Select;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowQueriesStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
@@ -82,6 +83,20 @@ public final class ShowRewrite implements StatementRewrite.Rewrite {
           showStatement.getOrderBy(),
           showStatement.getOffset(),
           showStatement.getLimit());
+    }
+
+    @Override
+    protected Node visitShowExternalService(ShowExternalService node, Void context) {
+      return simpleQuery(
+          selectList(new AllColumns()),
+          from(INFORMATION_DATABASE, node.getTableName()),
+          node.getWhere(),
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty(),
+          Optional.empty());
     }
 
     @Override

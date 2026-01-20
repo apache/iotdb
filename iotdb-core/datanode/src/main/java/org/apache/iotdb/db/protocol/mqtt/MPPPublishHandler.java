@@ -194,8 +194,11 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
         LOG.debug("process result: {}", tsStatus);
       }
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          || tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        LOG.warn("mqtt line insert error , message = {}", tsStatus.message);
+          && tsStatus.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        LOG.warn(
+            "mqtt json insert error, code={}, message={}",
+            tsStatus.getCode(),
+            tsStatus.getMessage());
       }
     } catch (Exception e) {
       LOG.warn(

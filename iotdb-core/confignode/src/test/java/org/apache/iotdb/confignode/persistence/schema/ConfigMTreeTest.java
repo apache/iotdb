@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
+import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
@@ -42,8 +43,14 @@ import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
@@ -55,6 +62,8 @@ import static org.junit.Assert.fail;
 public class ConfigMTreeTest {
 
   private ConfigMTree root;
+  private static final String SCHEMA_FILE = "oldsnapshot/cluster_schema.bin";
+  private static final String TABLE_SCHEMA_FILE = "oldsnapshot/table_cluster_schema.bin";
 
   @Before
   public void setUp() throws Exception {
@@ -431,6 +440,55 @@ public class ConfigMTreeTest {
       Assert.assertTrue(pathList.contains("root.a.b.template0"));
     } catch (MetadataException e) {
       fail();
+    }
+  }
+
+  @Test
+  public void deserializeSchemaFromSnapshot() {
+    String pathStr = this.getClass().getClassLoader().getResource(SCHEMA_FILE).getFile();
+    File schemaFile = new File(pathStr);
+    try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
+      ConfigMTree treeMTree = new ConfigMTree(false);
+      treeMTree.deserialize(inputStream);
+
+      Set<String> databaseSet = new HashSet<>();
+      for (PartialPath path : treeMTree.getAllDatabasePaths(false)) {
+        databaseSet.add(path.getFullPath());
+      }
+      Assert.assertTrue(databaseSet.contains("root.__audit"));
+    } catch (IOException | MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void deserializeTableSchemaFromSnapshot() {
+    String pathStr = this.getClass().getClassLoader().getResource(TABLE_SCHEMA_FILE).getFile();
+    File schemaFile = new File(pathStr);
+    try (InputStream inputStream = Files.newInputStream(schemaFile.getAbsoluteFile().toPath())) {
+      ConfigMTree tableMTree = new ConfigMTree(true);
+      tableMTree.deserialize(inputStream);
+
+      Set<String> databaseSet = new HashSet<>();
+      for (PartialPath path : tableMTree.getAllDatabasePaths(true)) {
+        databaseSet.add(path.getTailNode());
+      }
+      Assert.assertTrue(databaseSet.contains("test_g_0"));
+
+      Set<String> tableSet = new HashSet<>();
+      for (Map.Entry<String, List<Pair<TsTable, TableNodeStatus>>> entry :
+          tableMTree.getAllTables().entrySet()) {
+        List<Pair<TsTable, TableNodeStatus>> tablePairs = entry.getValue();
+        for (Pair<TsTable, TableNodeStatus> pair : tablePairs) {
+          TsTable tsTable = pair.getLeft();
+          if (tsTable != null) {
+            tableSet.add(tsTable.getTableName());
+          }
+        }
+      }
+      Assert.assertTrue(tableSet.contains("table_0"));
+    } catch (IOException | MetadataException e) {
+      throw new RuntimeException(e);
     }
   }
 }

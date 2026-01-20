@@ -17,32 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.relational.it.session;
+package org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice;
 
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.itbase.category.TableClusterIT;
-import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTaskExecutor;
 
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.experimental.categories.Category;
+import com.google.common.util.concurrent.ListenableFuture;
 
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBObjectDeleteIT2 extends IoTDBObjectDeleteIT {
+import java.util.Locale;
 
-  @BeforeClass
-  public static void classSetUp() throws Exception {
-    EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
-    EnvFactory.getEnv().initClusterEnvironment();
-  }
+public class StartExternalServiceTask implements IConfigTask {
 
-  @AfterClass
-  public static void classTearDown() {
-    EnvFactory.getEnv().cleanClusterEnvironment();
+  private final String serviceName;
+
+  public StartExternalServiceTask(String serviceName) {
+    this.serviceName = serviceName.toUpperCase(Locale.ENGLISH);
   }
 
   @Override
-  protected String convertPathString(String path) {
-    return path;
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.startExternalService(serviceName);
   }
 }

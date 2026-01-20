@@ -125,3 +125,6 @@ iotdb-core/tsfile/src/main/antlr4/org/apache/tsfile/parser/gen/
 .mvn/.develocity/
 .run/
 *.sevo
+
+# Relational Grammar ANTLR
+iotdb-core/relational-grammar/src/main/antlr4/org/apache/iotdb/db/relational/grammar/sql/.antlr/

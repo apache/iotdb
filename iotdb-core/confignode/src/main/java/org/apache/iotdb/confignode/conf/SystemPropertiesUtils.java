@@ -213,19 +213,6 @@ public class SystemPropertiesUtils {
         COMMON_CONFIG.setEnableGrantOption(enableGrantOption);
       }
     }
-
-    if (systemProperties.getProperty("restrict_object_limit", null) != null) {
-      boolean restrictObjectLimit =
-          Boolean.parseBoolean(systemProperties.getProperty("restrict_object_limit"));
-      if (restrictObjectLimit != COMMON_CONFIG.isRestrictObjectLimit()) {
-        LOGGER.warn(
-            format,
-            "restrict_object_limit",
-            COMMON_CONFIG.isRestrictObjectLimit(),
-            restrictObjectLimit);
-        COMMON_CONFIG.setRestrictObjectLimit(restrictObjectLimit);
-      }
-    }
   }
 
   /**
@@ -299,8 +286,6 @@ public class SystemPropertiesUtils {
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
     systemProperties.setProperty(
         "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOption()));
-    systemProperties.setProperty(
-        "restrict_object_limit", String.valueOf(COMMON_CONFIG.isRestrictObjectLimit()));
     systemPropertiesHandler.overwrite(systemProperties);
   }
 

@@ -120,6 +120,13 @@ public class ColumnHeaderConstant {
   public static final String PATH_PATTERN = "PathPattern";
   public static final String CLASS_NAME = "ClassName";
 
+  // column names for show services statement
+  public static final String SERVICE_NAME = "ServiceName";
+  public static final String SERVICE_TYPE = "ServiceType";
+
+  public static final String SERVICE_NAME_TABLE_MODEL = "service_name";
+  public static final String SERVICE_TYPE_TABLE_MODEL = "service_type";
+
   // column names for show pipe plugins statement
   public static final String PLUGIN_NAME = "PluginName";
   public static final String PLUGIN_TYPE = "PluginType";
@@ -546,6 +553,12 @@ public class ColumnHeaderConstant {
           new ColumnHeader(PATH_PATTERN, TSDataType.TEXT),
           new ColumnHeader(CLASS_NAME, TSDataType.TEXT),
           new ColumnHeader(NODE_ID, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showExternalServiceColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(SERVICE_NAME, TSDataType.STRING),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(STATE, TSDataType.STRING));
 
   public static final List<ColumnHeader> showPipePluginsColumnHeaders =
       ImmutableList.of(

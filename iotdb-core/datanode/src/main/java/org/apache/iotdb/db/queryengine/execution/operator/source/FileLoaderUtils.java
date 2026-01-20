@@ -125,7 +125,8 @@ public class FileLoaderUtils {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
               context.getPathModifications(resource, deviceId, measurement);
-          timeSeriesMetadata.setModified(!pathModifications.isEmpty());
+          timeSeriesMetadata.setModified(
+              timeSeriesMetadata.isModified() || !pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
           int modificationCount = pathModifications.size();

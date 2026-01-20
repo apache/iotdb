@@ -91,6 +91,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -934,6 +939,43 @@ public class TreeAccessCheckVisitor extends StatementVisitor<TSStatus, TreeAcces
       return SUCCEED;
     }
     return checkGlobalAuth(auditEntity, PrivilegeType.USE_TRIGGER, auditObject);
+  }
+
+  // ======================= externalService related ================================
+  @Override
+  public TSStatus visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement,
+      TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> createExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> startExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> stopExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> dropExternalServiceStatement.toString());
+  }
+
+  @Override
+  public TSStatus visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, TreeAccessCheckContext context) {
+    return checkGlobalAuth(
+        context, PrivilegeType.SYSTEM, () -> showExternalServiceStatement.toString());
   }
 
   // ============================== database related ===========================

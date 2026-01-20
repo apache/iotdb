@@ -267,10 +267,9 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
       TSDataType targetDataType = alignedFullPath.getSchemaList().get(index).getType();
-      if (targetDataType.equals(TSDataType.STRING)
-          && ((alignedChunkMetadata.getValueChunkMetadataList().get(index) != null)
-              && (alignedChunkMetadata.getValueChunkMetadataList().get(index).getDataType()
-                  != targetDataType))) {
+      if ((alignedChunkMetadata.getValueChunkMetadataList().get(index) != null)
+          && (alignedChunkMetadata.getValueChunkMetadataList().get(index).getDataType()
+              != targetDataType)) {
         // create new statistics object via new data type, and merge statistics information
         SchemaUtils.rewriteAlignedChunkMetadataStatistics(
             alignedChunkMetadata, index, targetDataType);
@@ -540,14 +539,14 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         Statistics.getStatsByType(timeSeriesMetadata.getTsDataType());
     // flush chunkMetadataList one by one
     boolean isModified = false;
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+    for (int index = 0; index < chunkMetadataList.size(); index++) {
+      IChunkMetadata chunkMetadata = chunkMetadataList.get(index);
       isModified = (isModified || chunkMetadata.isModified());
       TSDataType targetDataType = fullPath.getMeasurementSchema().getType();
-      if (targetDataType.equals(TSDataType.STRING)
-          && (chunkMetadata.getDataType() != targetDataType)) {
+      if (chunkMetadata != null && (chunkMetadata.getDataType() != targetDataType)) {
         // create new statistics object via new data type, and merge statistics information
         SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
-            (ChunkMetadata) chunkMetadata, targetDataType);
+            chunkMetadataList, index, targetDataType);
         chunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {

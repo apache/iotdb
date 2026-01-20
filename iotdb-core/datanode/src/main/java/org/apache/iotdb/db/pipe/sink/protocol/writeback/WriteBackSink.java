@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.writeback;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -266,7 +267,9 @@ public class WriteBackSink implements PipeConnector {
                 insertBaseStatement, pipeInsertNodeTabletInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !(skipIfNoPrivileges
+            && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
               "Write back PipeInsertNodeTabletInsertionEvent %s error, result status %s",
@@ -353,7 +356,9 @@ public class WriteBackSink implements PipeConnector {
                 pipeStatementInsertionEvent.getUserName());
 
     if (status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        && status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && !(skipIfNoPrivileges
+            && status.getCode() == TSStatusCode.NO_PERMISSION.getStatusCode())) {
       throw new PipeException(
           String.format(
               "Write back PipeStatementInsertionEvent %s error, result status %s",
@@ -509,6 +514,11 @@ public class WriteBackSink implements PipeConnector {
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
               false)
           .status;
+    } catch (final IoTDBRuntimeException e) {
+      if (e.getErrorCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {
+        return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+      }
+      throw e;
     } finally {
       if (useEventUserName) {
         session.setUsername(originalUserName);
