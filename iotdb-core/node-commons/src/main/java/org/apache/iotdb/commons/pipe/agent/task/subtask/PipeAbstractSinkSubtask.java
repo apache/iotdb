@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -54,6 +55,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   protected volatile Event lastExceptionEvent;
 
   protected long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
+  protected long lastExceptionTime = Long.MAX_VALUE;
 
   protected PipeAbstractSinkSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
@@ -259,6 +261,19 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       Thread.sleep(sleepInterval);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  protected void handlePipeException(final Event event, final PipeException e) {
+    if (!isClosed.get()) {
+      setLastExceptionEvent(event);
+      throw e;
+    } else {
+      LOGGER.info(
+          "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
+          e.getClass().getSimpleName(),
+          e.getMessage() != null ? " Message: " + e.getMessage() : "");
+      clearReferenceCountAndReleaseLastEvent(event);
     }
   }
 }

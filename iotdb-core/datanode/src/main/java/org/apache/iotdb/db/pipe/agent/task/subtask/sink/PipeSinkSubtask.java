@@ -135,7 +135,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
     } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
-      if (lastExceptionTime == Long.MIN_VALUE) {
+      if (lastExceptionTime == Long.MAX_VALUE) {
         lastExceptionTime = System.currentTimeMillis();
       }
       if (System.currentTimeMillis() - lastExceptionTime < e.getInterval()) {
@@ -166,19 +166,6 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     return true;
-  }
-
-  private void handlePipeException(final Event event, final PipeException e) {
-    if (!isClosed.get()) {
-      setLastExceptionEvent(event);
-      throw e;
-    } else {
-      LOGGER.info(
-          "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
-          e.getClass().getSimpleName(),
-          e.getMessage() != null ? " Message: " + e.getMessage() : "");
-      clearReferenceCountAndReleaseLastEvent(event);
-    }
   }
 
   private void transferHeartbeatEvent(final PipeHeartbeatEvent event) {
@@ -393,6 +380,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

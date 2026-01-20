@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.confignode.manager.pipe.agent.task;
 
-import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
@@ -191,19 +191,17 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
       sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
-    } catch (final PipeNonReportException e) {
-      sleep4NonReportException();
-    } catch (final PipeException e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because pipe is dropped.",
-            e.getClass().getSimpleName(),
-            e);
-        clearReferenceCountAndReleaseLastEvent(event);
+    } catch (final PipeRuntimeSinkNonReportTimeConfigurableException e) {
+      if (lastExceptionTime == Long.MAX_VALUE) {
+        lastExceptionTime = System.currentTimeMillis();
       }
+      if (System.currentTimeMillis() - lastExceptionTime < e.getInterval()) {
+        sleep4NonReportException();
+        return true;
+      }
+      handlePipeException(event, e);
+    } catch (final PipeException e) {
+      handlePipeException(event, e);
     } catch (final Exception e) {
       setLastExceptionEvent(event);
       if (!isClosed.get()) {
@@ -259,7 +257,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
-    lastExceptionTime = Long.MIN_VALUE;
+    lastExceptionTime = Long.MAX_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
   }
 
