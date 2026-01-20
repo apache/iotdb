@@ -187,6 +187,8 @@ public class ExternalServiceManagementService {
   private IExternalService createExternalServiceInstance(String serviceName, String className) {
     // close ClassLoader automatically to release the file handle
     try {
+      // Remind: this classLoader should be closed when service is dropped after user-defined
+      // service supported
       ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot);
       return (IExternalService)
           Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
@@ -333,15 +335,15 @@ public class ExternalServiceManagementService {
                   IExternalService serviceInstance =
                       createExternalServiceInstance(
                           serviceInfo.getServiceName(), serviceInfo.getClassName());
+                  checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
                   serviceInfo.setServiceInstance(serviceInstance);
+                  serviceInstance.start();
                 } finally {
                   // set STOPPED to avoid the case: service is RUNNING, but its instance is null
                   if (serviceInfo.getServiceInstance() == null) {
                     serviceInfo.setState(STOPPED);
                   }
                 }
-
-                serviceInfo.getServiceInstance().start();
               }
             });
   }
