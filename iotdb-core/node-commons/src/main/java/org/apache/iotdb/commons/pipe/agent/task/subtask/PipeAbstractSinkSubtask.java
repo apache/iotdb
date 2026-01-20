@@ -20,12 +20,15 @@
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -54,6 +57,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
   protected volatile Event lastExceptionEvent;
 
   protected long sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
+  protected long lastExceptionTime = Long.MAX_VALUE;
 
   protected PipeAbstractSinkSubtask(
       final String taskID, final long creationTime, final PipeConnector outputPipeSink) {
@@ -259,6 +263,54 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
       Thread.sleep(sleepInterval);
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  protected void handleException(final Event event, final Exception e) {
+    if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
+      if (lastExceptionTime == Long.MAX_VALUE) {
+        lastExceptionTime = System.currentTimeMillis();
+      }
+      if (System.currentTimeMillis() - lastExceptionTime
+          < ((PipeRuntimeSinkNonReportTimeConfigurableException) e).getInterval()) {
+        sleep4NonReportException();
+        return;
+      }
+      handlePipeException(event, (PipeException) e);
+    } else if (e instanceof PipeException) {
+      handlePipeException(event, (PipeException) e);
+    } else {
+      if (!isClosed.get()) {
+        setLastExceptionEvent(event);
+        throw new PipeException(
+            String.format(
+                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
+                taskID,
+                event instanceof EnrichedEvent
+                    ? ((EnrichedEvent) event).coreReportMessage()
+                    : event,
+                ErrorHandlingCommonUtils.getRootCause(e).getMessage()),
+            e);
+      } else {
+        LOGGER.info(
+            "Exception in pipe transfer, ignored because the sink subtask is dropped.{}",
+            e.getMessage() != null ? " Message: " + e.getMessage() : "");
+        clearReferenceCountAndReleaseLastEvent(event);
+      }
+    }
+  }
+
+  protected void handlePipeException(final Event event, final PipeException e) {
+    if (!isClosed.get()) {
+      setLastExceptionEvent(event);
+      throw e;
+    } else {
+      LOGGER.info(
+          "{} in pipe transfer, ignored because the connector subtask is dropped.{}",
+          e.getClass().getSimpleName(),
+          e.getMessage() != null ? " Message: " + e.getMessage() : "");
+      clearReferenceCountAndReleaseLastEvent(event);
     }
   }
 }
