@@ -20,21 +20,33 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
 public class EquiJoinClauseProvider implements ExpectedValueProvider<JoinNode.EquiJoinClause> {
   private final SymbolAlias left;
   private final SymbolAlias right;
+  private final Set<Identifier> leftTables;
+  private final Set<Identifier> rightTables;
 
-  public EquiJoinClauseProvider(SymbolAlias left, SymbolAlias right) {
+  public EquiJoinClauseProvider(
+      SymbolAlias left,
+      SymbolAlias right,
+      Set<Identifier> leftTables,
+      Set<Identifier> rightTables) {
     this.left = requireNonNull(left, "left is null");
     this.right = requireNonNull(right, "right is null");
+    this.leftTables = requireNonNull(leftTables, "leftTables is null");
+    this.rightTables = requireNonNull(rightTables, "rightTables is null");
   }
 
   @Override
   public JoinNode.EquiJoinClause getExpectedValue(SymbolAliases aliases) {
-    return new JoinNode.EquiJoinClause(left.toSymbol(aliases), right.toSymbol(aliases));
+    return new JoinNode.EquiJoinClause(
+        left.toSymbol(aliases), right.toSymbol(aliases), leftTables, rightTables);
   }
 
   @Override

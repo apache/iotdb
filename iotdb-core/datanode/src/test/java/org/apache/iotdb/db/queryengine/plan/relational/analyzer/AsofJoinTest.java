@@ -154,7 +154,7 @@ public class AsofJoinTest {
                             builder
                                 .asofCriteria(
                                     ComparisonExpression.Operator.GREATER_THAN, "expr", "time_0")
-                                .equiCriteria("tag1", "tag1_1")
+                                .equiCriteria("tag1", "tag1_1", "table1", "table2")
                                 .left(
                                     sort(
                                         ImmutableList.of(
@@ -210,9 +210,9 @@ public class AsofJoinTest {
                         .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .equiCriteria(
                             ImmutableList.of(
-                                equiJoinClause("tag1", "tag1_1"),
-                                equiJoinClause("tag2", "tag2_2"),
-                                equiJoinClause("tag3", "tag3_3")))
+                                equiJoinClause("tag1", "tag1_1", "table1", "table2"),
+                                equiJoinClause("tag2", "tag2_2", "table1", "table2"),
+                                equiJoinClause("tag3", "tag3_3", "table1", "table2")))
                         .left(sort(table1))
                         .right(sort(table2)))));
 
@@ -227,9 +227,9 @@ public class AsofJoinTest {
                         .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .equiCriteria(
                             ImmutableList.of(
-                                equiJoinClause("tag1", "tag1_1"),
-                                equiJoinClause("tag2", "tag2_2"),
-                                equiJoinClause("tag3", "tag3_3")))
+                                equiJoinClause("tag1", "tag1_1", "table1", "table2"),
+                                equiJoinClause("tag2", "tag2_2", "table1", "table2"),
+                                equiJoinClause("tag3", "tag3_3", "table1", "table2")))
                         .left(exchange())
                         .right(exchange()))));
 

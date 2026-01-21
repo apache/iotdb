@@ -53,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -187,7 +188,12 @@ public class JoinTest {
     joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 3);
     List<JoinNode.EquiJoinClause> joinCriteria =
         Collections.singletonList(
-            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
+            new JoinNode.EquiJoinClause(
+                Symbol.of("time"),
+                Symbol.of("time_0"),
+                ImmutableSet.of(new Identifier("t1")),
+                ImmutableSet.of(new Identifier("t2"))));
+
     assertJoinNodeEquals(
         joinNode,
         INNER,
@@ -368,7 +374,11 @@ public class JoinTest {
     joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 4);
     List<JoinNode.EquiJoinClause> joinCriteria =
         Collections.singletonList(
-            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
+            new JoinNode.EquiJoinClause(
+                Symbol.of("time"),
+                Symbol.of("time_0"),
+                ImmutableSet.of(new Identifier("t1")),
+                ImmutableSet.of(new Identifier("t2"))));
     assertJoinNodeEquals(
         joinNode,
         INNER,

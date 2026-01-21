@@ -281,7 +281,7 @@ public class TableFunctionTest {
                     builder
                         .left(sort(tableFunctionProcessor(tableFunctionMatcher1)))
                         .right(sort(tableFunctionProcessor(tableFunctionMatcher2)))
-                        .equiCriteria("output", "output_0"))));
+                        .equiCriteria("output", "output_0", "a", "b"))));
   }
 
   @Test

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import java.util.List;
 import java.util.Optional;
@@ -130,7 +131,11 @@ public class TransformFilteringSemiJoinToInnerJoin implements Rule<FilterNode> {
             filteringSourceDistinct,
             ImmutableList.of(
                 new JoinNode.EquiJoinClause(
-                    semiJoin.getSourceJoinSymbol(), semiJoin.getFilteringSourceJoinSymbol())),
+                    semiJoin.getSourceJoinSymbol(),
+                    semiJoin.getFilteringSourceJoinSymbol(),
+                    // should from SemiJoin
+                    ImmutableSet.of(),
+                    ImmutableSet.of())),
             Optional.empty(),
             semiJoin.getSource().getOutputSymbols(),
             ImmutableList.of(),
