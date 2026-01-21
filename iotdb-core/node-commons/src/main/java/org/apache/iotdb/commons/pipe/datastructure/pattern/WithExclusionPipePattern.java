@@ -60,6 +60,11 @@ public class WithExclusionPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return inclusionPattern.isLegal() && exclusionPattern.isLegal();
   }

@@ -57,6 +57,8 @@ public abstract class PipePattern {
 
   public abstract boolean isRoot();
 
+  public abstract boolean isSingle();
+
   /** Check if this pattern is legal. Different pattern type may have different rules. */
   public abstract boolean isLegal();
 
@@ -123,6 +125,22 @@ public abstract class PipePattern {
    * @return The interpreted {@link PipePattern} which is not {@code null}.
    */
   public static PipePattern parsePipePatternFromSourceParameters(
+      final PipeParameters sourceParameters) {
+    final PipePattern pipePattern = parsePipePatternFromSourceParametersInternal(sourceParameters);
+    if (!pipePattern.isSingle()) {
+      final String msg =
+          String.format(
+              "Pipe: The provided pattern should be single now. Inclusion: %s, Exclusion: %s",
+              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+      LOGGER.warn(msg);
+      throw new PipeException(msg);
+    }
+    return pipePattern;
+  }
+
+  public static PipePattern parsePipePatternFromSourceParametersInternal(
       final PipeParameters sourceParameters) {
     // 1. Define the default inclusion pattern (matches all, "root.**")
     // This is used if no inclusion patterns are specified.
@@ -355,6 +373,10 @@ public abstract class PipePattern {
    * UnionPipePattern.
    */
   private static PipePattern buildUnionPattern(final List<PipePattern> patterns) {
+    if (patterns.size() == 1) {
+      return patterns.get(0);
+    }
+
     // Check if all instances in the list are of type IoTDBPipePattern
     boolean allIoTDB = true;
     for (final PipePattern p : patterns) {
