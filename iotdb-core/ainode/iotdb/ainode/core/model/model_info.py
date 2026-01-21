@@ -145,4 +145,17 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoModelForCausalLM": "model.Chronos2Model",
         },
     ),
+    "moirai2": ModelInfo(
+        model_id="moirai2",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="moirai",
+        pipeline_cls="pipeline_moirai2.Moirai2Pipeline",
+        repo_id="Salesforce/moirai-2.0-R-small",
+        auto_map={
+            "AutoConfig": "configuration_moirai2.Moirai2Config",
+            "AutoModelForCausalLM": "modeling_moirai2.Moirai2ForPrediction",
+        },
+        transformers_registered=True,
+    ),
 }

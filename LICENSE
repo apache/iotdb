@@ -350,3 +350,13 @@ Project page: https://github.com/amazon-science/chronos-forecasting
 License: https://github.com/amazon-science/chronos-forecasting/blob/main/LICENSE
 
 --------------------------------------------------------------------------------
+
+The following files include code modified from uni2ts project.
+
+./iotdb-core/ainode/iotdb/ainode/core/model/moirai2/*
+
+The uni2ts is open source software licensed under the Apache License 2.0
+Project page: https://github.com/SalesforceAIResearch/uni2ts
+License: https://github.com/SalesforceAIResearch/uni2ts/blob/main/LICENSE.txt
+
+--------------------------------------------------------------------------------
