@@ -487,6 +487,11 @@ public class PipeHistoricalDataRegionTsFileSource implements PipeHistoricalDataR
   }
 
   private boolean mayTsFileResourceOverlappedWithPattern(final TsFileResource resource) {
+    // Trimming to avoid unnecessary file device getter
+    if (isDbNameCoveredByPattern) {
+      return true;
+    }
+
     final Set<IDeviceID> deviceSet;
     try {
       final Map<IDeviceID, Boolean> deviceIsAlignedMap =
