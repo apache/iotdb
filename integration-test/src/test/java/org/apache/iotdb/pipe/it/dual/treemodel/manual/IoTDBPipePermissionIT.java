@@ -323,6 +323,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create database root.db", "create timeSeries root.db.device.measurement int32"),
         null);
 
+    // Write some aligned historical data
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)",
+            "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)"));
+
     // Transfer snapshot
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -381,6 +388,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv,
         "select count(temperature) from root.vehicle.car",
+        "count(root.vehicle.car.pressure),",
+        Collections.singleton("0,"));
+
+    // Exception, skip
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "select count(temperature) from root.vehicle.plane",
         "count(root.vehicle.car.pressure),",
         Collections.singleton("0,"));
 
