@@ -234,7 +234,7 @@ public class TableHeaderSchemaValidator {
     final List<ColumnSchema> resultColumnList = new ArrayList<>();
     if (!missingColumnList.isEmpty() && isAutoCreateSchemaEnabled) {
       // TODO table metadata: authority check for table alter
-      // check id or attribute column data type in this method
+      // check tag or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
       table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     } else if (!missingColumnList.isEmpty()
