@@ -39,8 +39,6 @@ public class WithExclusionPipePattern extends PipePattern {
       final PipePattern inclusionPattern, final PipePattern exclusionPattern) {
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
-
-    PipePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   @Override

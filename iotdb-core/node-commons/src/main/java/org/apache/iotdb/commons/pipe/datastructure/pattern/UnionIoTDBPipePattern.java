@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.utils.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,6 +44,11 @@ public class UnionIoTDBPipePattern extends IoTDBPipePatternOperations {
 
   public UnionIoTDBPipePattern(final IoTDBPipePattern pattern) {
     this.patterns = Collections.singletonList(pattern);
+  }
+
+  @TestOnly
+  public List<IoTDBPipePattern> getPatterns() {
+    return patterns;
   }
 
   //////////////////////////// Pipe Pattern Operations ////////////////////////////
