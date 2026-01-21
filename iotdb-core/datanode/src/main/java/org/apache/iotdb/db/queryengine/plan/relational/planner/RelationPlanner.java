@@ -142,6 +142,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -513,7 +514,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightCoercions.put(rightOutput, right.getSymbol(rightField).toSymbolReference());
       rightJoinColumns.put(identifier, rightOutput);
 
-      clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput));
+      Set<Identifier> leftTables = new HashSet<>(left.getScope().getTables());
+      Set<Identifier> rightTables = new HashSet<>(right.getScope().getTables());
+      clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput, leftTables, rightTables));
     }
 
     ProjectNode leftCoercion =
@@ -729,7 +732,30 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
 
-          equiClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+          // Extract tables from expressions
+          Set<QualifiedName> leftDependencies =
+              SymbolsExtractor.extractNames(
+                  leftComparisonExpressions.get(i), analysis.getColumnReferences());
+          Set<QualifiedName> rightDependencies =
+              SymbolsExtractor.extractNames(
+                  rightComparisonExpressions.get(i), analysis.getColumnReferences());
+
+          // Convert QualifiedName to Identifier (table name is the first part)
+          Set<Identifier> leftTables = new HashSet<>();
+          for (QualifiedName name : leftDependencies) {
+            if (name.getPrefix().isPresent()) {
+              leftTables.add(new Identifier(name.getPrefix().get().getSuffix()));
+            }
+          }
+          Set<Identifier> rightTables = new HashSet<>();
+          for (QualifiedName name : rightDependencies) {
+            if (name.getPrefix().isPresent()) {
+              rightTables.add(new Identifier(name.getPrefix().get().getSuffix()));
+            }
+          }
+
+          equiClauses.add(
+              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, leftTables, rightTables));
         } else {
           postInnerJoinConditions.add(
               new ComparisonExpression(

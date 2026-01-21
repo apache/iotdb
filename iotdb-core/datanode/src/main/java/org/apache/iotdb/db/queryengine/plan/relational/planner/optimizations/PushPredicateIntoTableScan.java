@@ -66,9 +66,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -856,7 +858,27 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             rightProjections.put(rightSymbol, rightExpression);
           }
 
-          equiJoinClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+          Set<QualifiedName> leftDependencies =
+              SymbolsExtractor.extractNames(equality.getLeft(), analysis.getColumnReferences());
+          Set<QualifiedName> rightDependencies =
+              SymbolsExtractor.extractNames(equality.getRight(), analysis.getColumnReferences());
+
+          // Convert QualifiedName to Identifier (table name is the first part)
+          Set<Identifier> leftTables = new HashSet<>();
+          for (QualifiedName name : leftDependencies) {
+            if (name.getPrefix().isPresent()) {
+              leftTables.add(new Identifier(name.getPrefix().get().getSuffix()));
+            }
+          }
+          Set<Identifier> rightTables = new HashSet<>();
+          for (QualifiedName name : rightDependencies) {
+            if (name.getPrefix().isPresent()) {
+              rightTables.add(new Identifier(name.getPrefix().get().getSuffix()));
+            }
+          }
+
+          equiJoinClauses.add(
+              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, leftTables, rightTables));
         } else {
           if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
             continue;
