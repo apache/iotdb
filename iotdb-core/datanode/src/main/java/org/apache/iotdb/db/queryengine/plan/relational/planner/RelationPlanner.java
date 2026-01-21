@@ -541,7 +541,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftCoercion.getOutputSymbols(),
             rightCoercion.getOutputSymbols(),
             Optional.empty(),
-            Optional.empty());
+            Optional.empty(),
+            left.getScope().getTables(),
+            right.getScope().getTables());
     // Transform RIGHT JOIN to LEFT
     if (join.getJoinType() == JoinNode.JoinType.RIGHT) {
       join = join.flip();
@@ -781,7 +783,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             leftPlanBuilder.getRoot().getOutputSymbols(),
             rightPlanBuilder.getRoot().getOutputSymbols(),
             Optional.empty(),
-            Optional.empty());
+            Optional.empty(),
+            leftPlan.getScope().getTables(),
+            rightPlan.getScope().getTables());
     if (type == RIGHT && asofCriteria == null) {
       root = ((JoinNode) root).flip();
     }
@@ -836,7 +840,9 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                       complexJoinExpressions.stream()
                           .map(e -> coerceIfNecessary(analysis, e, translationMap.rewrite(e)))
                           .collect(Collectors.toList()))),
-              Optional.empty());
+              Optional.empty(),
+              leftPlan.getScope().getTables(),
+              rightPlan.getScope().getTables());
       if (type == RIGHT && asofCriteria == null) {
         root = ((JoinNode) root).flip();
       }

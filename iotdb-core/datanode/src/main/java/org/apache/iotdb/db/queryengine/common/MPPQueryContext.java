@@ -41,7 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Pair;
 
@@ -152,7 +152,7 @@ public class MPPQueryContext implements IAuditEntity {
   private boolean innerTriggeredQuery = false;
 
   // Tables in the subquery
-  private final Map<NodeRef<Query>, List<Identifier>> subQueryTables = new HashMap<>();
+  private final Map<NodeRef<Query>, Set<Identifier>> subQueryTables = new HashMap<>();
 
   @TestOnly
   public MPPQueryContext(QueryId queryId) {
@@ -554,12 +554,12 @@ public class MPPQueryContext implements IAuditEntity {
     this.cteQueries = cteQueries;
   }
 
-  public void addSubQueryTables(Query query, List<Identifier> tables) {
+  public void addSubQueryTables(Query query, Set<Identifier> tables) {
     subQueryTables.put(NodeRef.of(query), tables);
   }
 
-  public List<Identifier> getTables(Query query) {
-    return subQueryTables.getOrDefault(NodeRef.of(query), ImmutableList.of());
+  public Set<Identifier> getTables(Query query) {
+    return subQueryTables.getOrDefault(NodeRef.of(query), ImmutableSet.of());
   }
 
   public void addCteExplainResult(Table table, Pair<Integer, List<String>> cteExplainResult) {
