@@ -1053,16 +1053,16 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /**
    * @param deviceId IDeviceId after schema evolution
    */
-  public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
-    return isSatisfied(deviceId, timeFilter, isSeq, debug, Long.MAX_VALUE);
+  public boolean isFinalDeviceIdSatisfied(
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
+    return isFinalDeviceIdSatisfied(deviceId, timeFilter, isSeq, debug, Long.MAX_VALUE);
   }
 
   /**
    * @param deviceId the IDeviceID after schema evolution
    * @return true if the device is contained in the TsFile
    */
-  @SuppressWarnings("OptionalGetWithoutIsPresent")
-  public boolean isSatisfied(
+  public boolean isFinalDeviceIdSatisfied(
       IDeviceID deviceId,
       Filter timeFilter,
       boolean isSeq,
@@ -1072,6 +1072,16 @@ public class TsFileResource implements PersistentResource, Cloneable {
     if (evolvedSchema != null) {
       deviceId = evolvedSchema.rewriteToOriginal(deviceId);
     }
+    return isOriginalDeviceIdSatisfied(deviceId, timeFilter, isSeq, debug);
+  }
+
+  /**
+   * @param deviceId the IDeviceID before schema evolution
+   * @return true if the device is contained in the TsFile
+   */
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
+  public boolean isOriginalDeviceIdSatisfied(
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
@@ -1718,7 +1728,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     List<TsFileSet> tsFileSets = getTsFileSets();
     for (TsFileSet fileSet : tsFileSets) {
       if (fileSet.getEndVersion() >= excludedMaxFileVersion) {
-        continue;
+        break;
       }
 
       try {

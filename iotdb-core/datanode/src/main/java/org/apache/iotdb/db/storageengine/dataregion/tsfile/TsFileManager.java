@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
-import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
@@ -41,11 +39,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 
 public class TsFileManager {
   private final String storageGroupName;
@@ -524,14 +523,24 @@ public class TsFileManager {
     tsFileSetList.add(newSet);
   }
 
+  public List<TsFileSet> getTsFileSet(long partitionId) {
+    return getTsFileSet(partitionId, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
   public List<TsFileSet> getTsFileSet(
       long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
     List<TsFileSet> tsFileSetList = tsfileSets.getOrDefault(partitionId, Collections.emptyList());
-    return tsFileSetList.stream()
-        .filter(
-            s ->
-                s.getEndVersion() < maxFileVersionExcluded
-                    && s.getEndVersion() >= minFileVersionIncluded)
-        .collect(Collectors.toList());
+    int start = 0, end = tsFileSetList.size();
+    for (int i = 0, tsFileSetListSize = tsFileSetList.size(); i < tsFileSetListSize; i++) {
+      TsFileSet tsFileSet = tsFileSetList.get(i);
+      if (tsFileSet.getEndVersion() < minFileVersionIncluded) {
+        start = i + 1;
+      }
+      if (tsFileSet.getEndVersion() >= maxFileVersionExcluded) {
+        end = i;
+        break;
+      }
+    }
+    return start < end ? tsFileSetList.subList(start, end) : Collections.emptyList();
   }
 }

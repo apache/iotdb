@@ -2607,7 +2607,8 @@ public class DataRegion implements IDataRegionForQuery {
     for (TsFileResource tsFileResource : seqResources) {
       // only need to acquire flush lock for those unclosed and satisfied tsfile
       if (!tsFileResource.isClosed()
-          && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, true, isDebug)) {
+          && tsFileResource.isFinalDeviceIdSatisfied(
+              singleDeviceId, globalTimeFilter, true, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
           if (tsFileProcessor == null) {
@@ -2654,7 +2655,8 @@ public class DataRegion implements IDataRegionForQuery {
     // deal with unSeq resources
     for (TsFileResource tsFileResource : unSeqResources) {
       if (!tsFileResource.isClosed()
-          && tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, false, isDebug)) {
+          && tsFileResource.isFinalDeviceIdSatisfied(
+              singleDeviceId, globalTimeFilter, false, isDebug)) {
         TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
         try {
           if (tsFileProcessor == null) {
@@ -2769,7 +2771,8 @@ public class DataRegion implements IDataRegionForQuery {
     List<IFileScanHandle> fileScanHandles = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, context.isDebug())) {
+      if (!tsFileResource.isFinalDeviceIdSatisfied(
+          null, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       if (tsFileResource.isClosed()) {
@@ -2847,7 +2850,8 @@ public class DataRegion implements IDataRegionForQuery {
     List<IFileScanHandle> fileScanHandles = new ArrayList<>();
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(null, globalTimeFilter, isSeq, context.isDebug())) {
+      if (!tsFileResource.isFinalDeviceIdSatisfied(
+          null, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       if (tsFileResource.isClosed()) {
@@ -2930,7 +2934,7 @@ public class DataRegion implements IDataRegionForQuery {
    */
   @SuppressWarnings("SuspiciousSystemArraycopy")
   private List<TsFileResource> getFileResourceListForQuery(
-      Collection<TsFileResource> tsFileResources,
+      List<TsFileResource> tsFileResources,
       List<IFullPath> pathList,
       IDeviceID singleDeviceId,
       QueryContext context,
@@ -2940,8 +2944,49 @@ public class DataRegion implements IDataRegionForQuery {
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
+    List<TsFileSet> tsFileSets = Collections.emptyList();
+    int tsFileSetsIndex = 0;
+    Long currentTimePartitionId = null;
+    EvolvedSchema currentEvolvedSchema;
+    IDeviceID originalDeviceId = singleDeviceId;
+
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(singleDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
+      long fileTimePartition = tsFileResource.getTimePartition();
+      // update TsFileSets if time partition changes
+      boolean tsFileSetsChanged = false;
+      if (currentTimePartitionId == null || currentTimePartitionId != fileTimePartition) {
+        currentTimePartitionId = fileTimePartition;
+        tsFileSets = tsFileManager.getTsFileSet(fileTimePartition);
+        tsFileSetsIndex = 0;
+        tsFileSetsChanged = true;
+        originalDeviceId = singleDeviceId;
+      }
+      // find TsFileSets this file belongs to
+      while (tsFileSetsIndex < tsFileSets.size()) {
+        TsFileSet tsFileSet = tsFileSets.get(tsFileSetsIndex);
+        if (tsFileSet.contains(tsFileResource)) {
+          break;
+        } else {
+          tsFileSetsChanged = true;
+          tsFileSetsIndex++;
+        }
+      }
+      // if TsFileSets change, update EvolvedSchema
+      if (tsFileSetsChanged && tsFileSetsIndex < tsFileSets.size()) {
+        currentEvolvedSchema =
+            TsFileSet.getMergedEvolvedSchema(
+                tsFileSets.subList(tsFileSetsIndex, tsFileSets.size()));
+        // use EvolvedSchema to rewrite deviceId to original deviceId
+        if (currentEvolvedSchema != null) {
+          originalDeviceId = currentEvolvedSchema.rewriteToOriginal(singleDeviceId);
+        } else {
+          originalDeviceId = singleDeviceId;
+        }
+      }
+
+      // reuse the deviceId to avoid rewriting again or reading EvolvedSchema unnecessarily
+      if (!tsFileResource.isOriginalDeviceIdSatisfied(
+          originalDeviceId, globalTimeFilter, isSeq, context.isDebug())) {
         continue;
       }
       try {

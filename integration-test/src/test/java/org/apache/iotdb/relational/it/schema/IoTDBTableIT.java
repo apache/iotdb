@@ -1748,14 +1748,14 @@ public class IoTDBTableIT {
         final ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       final String db = "perfquotedb";
       final int colPerTable = 100;
-      final int tables = 3200;
+      final int tables = 1600;
       final int rows = 100;
       final int numFile = 5;
-      final int runs = 30;
+      final int runs = 10;
       stmt.execute("DROP DATABASE IF EXISTS " + db);
       stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
       stmt.execute("USE " + db);
-      // stmt.execute("set configuration enable_seq_space_compaction='false'");
+      stmt.execute("set configuration enable_seq_space_compaction='false'");
       session.executeNonQueryStatement("USE " + db);
 
       final String[] names = new String[tables];
@@ -1811,9 +1811,8 @@ public class IoTDBTableIT {
         final long start = System.nanoTime();
         for (int i = 0; i < tables; i++) {
           try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-            if (rs.next()) {
-              rs.getLong(1);
-            }
+            assertTrue(rs.next());
+            assertEquals(rows * numFile, rs.getLong(1));
           }
         }
         final long end = System.nanoTime();
@@ -1837,9 +1836,8 @@ public class IoTDBTableIT {
         final long start = System.nanoTime();
         for (int i = 0; i < tables; i++) {
           try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-            if (rs.next()) {
-              rs.getLong(1);
-            }
+            assertTrue(rs.next());
+            assertEquals(rows * numFile, rs.getLong(1));
           }
         }
         final long end = System.nanoTime();

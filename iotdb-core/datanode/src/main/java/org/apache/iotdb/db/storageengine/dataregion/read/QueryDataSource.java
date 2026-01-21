@@ -142,7 +142,7 @@ public class QueryDataSource implements IQueryDataSource {
       curSeqSatisfied =
           tsFileResource != null
               && (isSingleDevice
-                  || tsFileResource.isSatisfied(
+                  || tsFileResource.isFinalDeviceIdSatisfied(
                       deviceID, timeFilter, true, debug, maxTsFileSetEndVersion));
     }
 
@@ -194,7 +194,7 @@ public class QueryDataSource implements IQueryDataSource {
       curUnSeqSatisfied =
           tsFileResource != null
               && (isSingleDevice
-                  || tsFileResource.isSatisfied(
+                  || tsFileResource.isFinalDeviceIdSatisfied(
                       deviceID, timeFilter, false, debug, maxTsFileSetEndVersion));
     }
 
