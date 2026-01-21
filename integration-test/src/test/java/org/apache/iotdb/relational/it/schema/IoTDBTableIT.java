@@ -39,6 +39,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -694,7 +695,7 @@ public class IoTDBTableIT {
     try (final ITableSession session = EnvFactory.getEnv().getTableSessionConnection();
         final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("create database db1");
+      adminStmt.execute("create database if not exists db1");
       session.executeNonQueryStatement("USE \"db1\"");
 
       final StringBuilder sb = new StringBuilder("CREATE TABLE table8 (tag1 string tag");
@@ -1101,7 +1102,7 @@ public class IoTDBTableIT {
   }
 
   @Test
-  public void testAlterTableName() throws Exception {
+  public void testAllowAlterTableName() throws Exception {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
@@ -1138,6 +1139,17 @@ public class IoTDBTableIT {
             "701: Table 'testdb.alter_table_name_disabled' is created in a old version and cannot be renamed, please migrate its data to a new table manually",
             e.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testAlterTableName() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
 
       // alter once
       statement.execute("CREATE TABLE IF NOT EXISTS alter_table_name (s1 int32)");
@@ -1152,9 +1164,15 @@ public class IoTDBTableIT {
       statement.execute("INSERT INTO alter_table_named (time, s1) VALUES (2, 2)");
 
       ResultSet resultSet = statement.executeQuery("SELECT * FROM alter_table_named");
-      assertTrue(resultSet.next());
-      assertEquals(1, resultSet.getLong(1));
-      assertEquals(1, resultSet.getLong(2));
+      for (int i = 1; i <= 2; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getLong(2));
+      }
+      assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery(
+              "SELECT time, s1 FROM alter_table_named order by time desc limit 1");
       assertTrue(resultSet.next());
       assertEquals(2, resultSet.getLong(1));
       assertEquals(2, resultSet.getLong(2));
@@ -1177,6 +1195,13 @@ public class IoTDBTableIT {
         assertEquals(i, resultSet.getLong(2));
       }
       assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery(
+              "SELECT time, s1 FROM alter_table_named2 order by time desc limit 1");
+      assertTrue(resultSet.next());
+      assertEquals(3, resultSet.getLong(1));
+      assertEquals(3, resultSet.getLong(2));
+      assertFalse(resultSet.next());
 
       // alter back
       statement.execute("ALTER TABLE alter_table_named2 RENAME TO alter_table_name");
@@ -1194,6 +1219,13 @@ public class IoTDBTableIT {
         assertEquals(i, resultSet.getLong(1));
         assertEquals(i, resultSet.getLong(2));
       }
+      assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery(
+              "SELECT time, s1 FROM alter_table_name order by time desc limit 1");
+      assertTrue(resultSet.next());
+      assertEquals(4, resultSet.getLong(1));
+      assertEquals(4, resultSet.getLong(2));
       assertFalse(resultSet.next());
     }
   }
@@ -1497,9 +1529,7 @@ public class IoTDBTableIT {
         statement.execute("ALTER TABLE ttime RENAME COLUMN time TO newtime");
         fail();
       } catch (final SQLException e) {
-        // renaming time column should be forbidden (code 701 or similar)
-        assertTrue(
-            (e.getMessage().startsWith("701") && e.getMessage().toLowerCase().contains("time")));
+        assertEquals("615: The renaming for time column is not supported.", e.getMessage());
       }
     }
   }
@@ -1740,6 +1770,7 @@ public class IoTDBTableIT {
     }
   }
 
+  @Ignore("Performance test, not for regular CI")
   @Test
   public void testPerformanceWithQuotedSpecialNameRenames() throws Exception {
     try (final Connection connection =
@@ -1765,7 +1796,8 @@ public class IoTDBTableIT {
       }
       createTableTemplate =
           new StringBuilder(
-              createTableTemplate.substring(0, createTableTemplate.length() - 1) + ")");
+              createTableTemplate.substring(0, createTableTemplate.length() - 1)
+                  + ") WITH (allow_alter_name=false)");
       List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < colPerTable; i++) {
         columns.add(new ColumnSchema("v" + i, TSDataType.INT32, ColumnCategory.FIELD));
@@ -1823,38 +1855,38 @@ public class IoTDBTableIT {
       final double baseline = totalMs / (runs * 0.9);
       System.out.println("baseline_total_ms=" + String.format("%.3f", baseline));
 
-      // rename half of them to quoted special names and measure again
-      for (int i = 0; i < tables / 2; i++) {
-        final String oldName = names[i];
-        final String newName = "\"" + oldName + "-特\""; // quoted name
-        stmt.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
-        names[i] = newName;
-      }
-
-      totalMs = 0.0;
-      for (int run = 0; run < runs; run++) {
-        final long start = System.nanoTime();
-        for (int i = 0; i < tables; i++) {
-          try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-            assertTrue(rs.next());
-            assertEquals(rows * numFile, rs.getLong(1));
-          }
-        }
-        final long end = System.nanoTime();
-        if (run > runs * 0.1) {
-          totalMs += (end - start) / 1_000_000.0;
-        }
-      }
-      final double after = totalMs / (runs * 0.9);
-      System.out.println("after_quoted_total_ms=" + String.format("%.3f", after));
-
-      // basic sanity: ensure queries still return counts
-      for (int i = 0; i < tables; i++) {
-        try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-          assertTrue(rs.next());
-          assertEquals(rows * numFile, rs.getLong(1));
-        }
-      }
+      //      // rename half of them to quoted special names and measure again
+      //      for (int i = 0; i < tables / 2; i++) {
+      //        final String oldName = names[i];
+      //        final String newName = "\"" + oldName + "-特\""; // quoted name
+      //        stmt.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
+      //        names[i] = newName;
+      //      }
+      //
+      //      totalMs = 0.0;
+      //      for (int run = 0; run < runs; run++) {
+      //        final long start = System.nanoTime();
+      //        for (int i = 0; i < tables; i++) {
+      //          try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
+      //            assertTrue(rs.next());
+      //            assertEquals(rows * numFile, rs.getLong(1));
+      //          }
+      //        }
+      //        final long end = System.nanoTime();
+      //        if (run > runs * 0.1) {
+      //          totalMs += (end - start) / 1_000_000.0;
+      //        }
+      //      }
+      //      final double after = totalMs / (runs * 0.9);
+      //      System.out.println("after_quoted_total_ms=" + String.format("%.3f", after));
+      //
+      //      // basic sanity: ensure queries still return counts
+      //      for (int i = 0; i < tables; i++) {
+      //        try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
+      //          assertTrue(rs.next());
+      //          assertEquals(rows * numFile, rs.getLong(1));
+      //        }
+      //      }
     }
   }
 

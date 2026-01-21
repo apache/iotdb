@@ -2971,15 +2971,22 @@ public class DataRegion implements IDataRegionForQuery {
           tsFileSetsIndex++;
         }
       }
-      // if TsFileSets change, update EvolvedSchema
-      if (tsFileSetsChanged && tsFileSetsIndex < tsFileSets.size()) {
-        currentEvolvedSchema =
-            TsFileSet.getMergedEvolvedSchema(
-                tsFileSets.subList(tsFileSetsIndex, tsFileSets.size()));
-        // use EvolvedSchema to rewrite deviceId to original deviceId
-        if (currentEvolvedSchema != null) {
-          originalDeviceId = currentEvolvedSchema.rewriteToOriginal(singleDeviceId);
+      // if TsFileSets change
+      if (tsFileSetsChanged) {
+        // and there are remaining TsFileSets, update EvolvedSchema
+        if (tsFileSetsIndex < tsFileSets.size()) {
+          currentEvolvedSchema =
+              TsFileSet.getMergedEvolvedSchema(
+                  tsFileSets.subList(tsFileSetsIndex, tsFileSets.size()));
+          // use EvolvedSchema to rewrite deviceId to original deviceId
+          if (currentEvolvedSchema != null) {
+            originalDeviceId = currentEvolvedSchema.rewriteToOriginal(singleDeviceId);
+          } else {
+            // no schema evolution, use the singleDeviceId as originalDeviceId
+            originalDeviceId = singleDeviceId;
+          }
         } else {
+          // no remaining TsFileSets, no schema evolution
           originalDeviceId = singleDeviceId;
         }
       }
