@@ -604,6 +604,23 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                 }
               }
 
+              if (Objects.nonNull(entity)) {
+                final TSStatus status =
+                    AuthorityChecker.getAccessControl()
+                        .checkSeriesPrivilege4Pipe(
+                            entity,
+                            Collections.singletonList(
+                                new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                            PrivilegeType.READ_DATA);
+                if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  if (skipIfNoPrivileges) {
+                    tsFileSequenceReader.position(nextMarkerOffset);
+                    break;
+                  }
+                  throw new AccessDeniedException(status.getMessage());
+                }
+              }
+
               // Increase value index
               final int valueIndex =
                   measurementIndexMap.compute(
