@@ -395,7 +395,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.assertDataAlwaysOnEnv(
         receiverEnv,
         "select count(temperature) from root.vehicle.plane",
-        "count(root.vehicle.car.pressure),",
+        "count(root.vehicle.plane.temperature),",
         Collections.singleton("0,"));
 
     // Alter pipe, throw exception if no privileges
