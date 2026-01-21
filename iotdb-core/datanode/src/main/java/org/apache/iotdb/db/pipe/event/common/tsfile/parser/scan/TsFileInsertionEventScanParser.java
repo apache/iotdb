@@ -485,9 +485,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Notice that the data in one chunk group is either aligned or non-aligned
             // There is no need to consider non-aligned chunks when there are value chunks
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
+            final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            if (filterChunk(chunkHeader, false, marker)) {
+            if (filterChunk(currentChunkHeaderOffset, chunkHeader, false, marker)) {
               break;
             }
 
@@ -518,9 +519,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
+              final long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              if (filterChunk(chunkHeader, true, marker)) {
+              if (filterChunk(currentChunkHeaderOffset, chunkHeader, true, marker)) {
                 break;
               }
 
@@ -615,9 +617,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   }
 
   private boolean filterChunk(
-      final ChunkHeader chunkHeader, final boolean isAligned, final byte marker)
+      final long currentChunkHeaderOffset,
+      final ChunkHeader chunkHeader,
+      final boolean isAligned,
+      final byte marker)
       throws IOException, IllegalPathException {
-    long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
     final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
 
     if (Objects.isNull(currentDevice)) {
