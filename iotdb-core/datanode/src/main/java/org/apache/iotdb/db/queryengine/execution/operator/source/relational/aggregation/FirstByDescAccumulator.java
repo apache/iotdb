@@ -42,22 +42,25 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addIntInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateIntFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateIntFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: The order time is not null. Attempt to update the xResult.
+        updateIntFirstValue(
+            xColumn.isNull(position), xColumn.getInt(position), timeColumn.getLong(position));
+      } else {
+        // Case B: The order time is null. Attempt to update the xNullTimeValue.
+        updateIntNullTimeValue(xColumn.isNull(position), xColumn.getInt(position));
       }
     }
   }
@@ -65,22 +68,25 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addLongInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateLongFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateLongFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Valid Time
+        updateLongFirstValue(
+            xColumn.isNull(position), xColumn.getLong(position), timeColumn.getLong(position));
+      } else {
+        // Case B: Null Time
+        updateLongNullTimeValue(xColumn.isNull(position), xColumn.getLong(position));
       }
     }
   }
@@ -88,22 +94,25 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addFloatInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateFloatFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateFloatFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Valid Time
+        updateFloatFirstValue(
+            xColumn.isNull(position), xColumn.getFloat(position), timeColumn.getLong(position));
+      } else {
+        // Case B: Null Time
+        updateFloatNullTimeValue(xColumn.isNull(position), xColumn.getFloat(position));
       }
     }
   }
@@ -111,22 +120,23 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addDoubleInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateDoubleFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateDoubleFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateDoubleFirstValue(
+            xColumn.isNull(position), xColumn.getDouble(position), timeColumn.getLong(position));
+      } else {
+        updateDoubleNullTimeValue(xColumn.isNull(position), xColumn.getDouble(position));
       }
     }
   }
@@ -134,22 +144,23 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addBinaryInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBinaryFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBinaryFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateBinaryFirstValue(
+            xColumn.isNull(position), xColumn.getBinary(position), timeColumn.getLong(position));
+      } else {
+        updateBinaryNullTimeValue(xColumn.isNull(position), xColumn.getBinary(position));
       }
     }
   }
@@ -157,22 +168,23 @@ public class FirstByDescAccumulator extends FirstByAccumulator {
   @Override
   protected void addBooleanInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBooleanFirstValue(xColumn, i, timeColumn.getLong(i));
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBooleanFirstValue(xColumn, position, timeColumn.getLong(position));
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateBooleanFirstValue(
+            xColumn.isNull(position), xColumn.getBoolean(position), timeColumn.getLong(position));
+      } else {
+        updateBooleanNullTimeValue(xColumn.isNull(position), xColumn.getBoolean(position));
       }
     }
   }
