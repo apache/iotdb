@@ -487,16 +487,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-                == TsFileConstant.TIME_COLUMN_MASK) {
-              timeChunkList.add(
-                  new Chunk(
-                      chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
-              isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
-              break;
-            }
-
-            if (filterChunk(chunkHeader, false)) {
+            if (filterChunk(chunkHeader, false, marker)) {
               break;
             }
 
@@ -529,7 +520,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              if (filterChunk(chunkHeader, true)) {
+              if (filterChunk(chunkHeader, true, marker)) {
                 break;
               }
 
@@ -623,7 +614,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
-  private boolean filterChunk(final ChunkHeader chunkHeader, final boolean isAligned)
+  private boolean filterChunk(final ChunkHeader chunkHeader, final boolean isAligned, final byte marker)
       throws IOException, IllegalPathException {
     long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
     final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
@@ -631,6 +622,17 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (Objects.isNull(currentDevice)) {
       tsFileSequenceReader.position(nextMarkerOffset);
       return true;
+    }
+
+    if (!isAligned) {
+      if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
+              == TsFileConstant.TIME_COLUMN_MASK) {
+        timeChunkList.add(
+                new Chunk(
+                        chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+        isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
+        return true;
+      }
     }
 
     if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
