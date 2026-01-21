@@ -487,16 +487,16 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            if (filterChunk(chunkHeader, false)) {
-              break;
-            }
-
             if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
                 == TsFileConstant.TIME_COLUMN_MASK) {
               timeChunkList.add(
                   new Chunk(
                       chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
               isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
+              break;
+            }
+
+            if (filterChunk(chunkHeader, false)) {
               break;
             }
 
