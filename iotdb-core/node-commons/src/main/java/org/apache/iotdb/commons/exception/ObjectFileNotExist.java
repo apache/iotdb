@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.exception;
 
+import org.apache.iotdb.rpc.RpcUtils;
+
 import static org.apache.iotdb.rpc.TSStatusCode.OBJECT_NOT_EXISTS;
 
 public class ObjectFileNotExist extends IoTDBRuntimeException {
@@ -26,6 +28,8 @@ public class ObjectFileNotExist extends IoTDBRuntimeException {
   private static final String ERROR_MSG = "Object file %s does not exist";
 
   public ObjectFileNotExist(String relativeObjectPath) {
-    super(String.format(ERROR_MSG, relativeObjectPath), OBJECT_NOT_EXISTS.getStatusCode());
+    super(
+        RpcUtils.getStatus(
+            OBJECT_NOT_EXISTS.getStatusCode(), String.format(ERROR_MSG, relativeObjectPath)));
   }
 }

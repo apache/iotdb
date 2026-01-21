@@ -46,6 +46,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.TsFileTreeWriter;
 import org.apache.tsfile.write.v4.TsFileTreeWriterBuilder;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -2732,5 +2733,20 @@ public class IoTDBAlterTimeSeriesTypeIT {
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.BLOB, TSDataType.STRING));
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.BLOB));
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.TEXT));
+  }
+
+  @Test
+  public void testAlterIllegalDataType() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE TIMESERIES " + database + ".illegal.s1 blob");
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES " + database + ".illegal.s1 SET DATA TYPE text");
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES " + database + ".illegal.s1 SET DATA TYPE star");
+    } catch (StatementExecutionException e) {
+      Assert.assertEquals("701: Unsupported datatype: STAR", e.getMessage());
+    } catch (IoTDBConnectionException e) {
+      throw new RuntimeException(e);
+    }
   }
 }

@@ -63,6 +63,11 @@ public class WithExclusionTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return inclusionPattern.isLegal() && exclusionPattern.isLegal();
   }
