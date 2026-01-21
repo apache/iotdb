@@ -485,14 +485,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             // Notice that the data in one chunk group is either aligned or non-aligned
             // There is no need to consider non-aligned chunks when there are value chunks
             currentIsMultiPage = marker == MetaMarker.CHUNK_HEADER;
-            long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
             chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-            final long nextMarkerOffset =
-                tsFileSequenceReader.position() + chunkHeader.getDataSize();
-
-            if (Objects.isNull(currentDevice)) {
-              tsFileSequenceReader.position(nextMarkerOffset);
+            if (filterChunk(chunkHeader, false)) {
               break;
             }
 
@@ -503,47 +498,6 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                       chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
               isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
               break;
-            }
-
-            if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
-              tsFileSequenceReader.position(nextMarkerOffset);
-              break;
-            }
-
-            // Skip the chunk if it is fully deleted by mods
-            if (!currentModifications.isEmpty()) {
-              final Statistics statistics =
-                  findNonAlignedChunkStatistics(
-                      tsFileSequenceReader.getIChunkMetadataList(
-                          currentDevice, chunkHeader.getMeasurementID()),
-                      currentChunkHeaderOffset);
-              if (statistics != null
-                  && ModsOperationUtil.isAllDeletedByMods(
-                      currentDevice,
-                      chunkHeader.getMeasurementID(),
-                      statistics.getStartTime(),
-                      statistics.getEndTime(),
-                      currentModifications)) {
-                tsFileSequenceReader.position(nextMarkerOffset);
-                break;
-              }
-            }
-
-            if (Objects.nonNull(entity)) {
-              final TSStatus status =
-                  AuthorityChecker.getAccessControl()
-                      .checkSeriesPrivilege4Pipe(
-                          entity,
-                          Collections.singletonList(
-                              new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
-                          PrivilegeType.READ_DATA);
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                if (skipIfNoPrivileges) {
-                  tsFileSequenceReader.position(nextMarkerOffset);
-                  break;
-                }
-                throw new AccessDeniedException(status.getMessage());
-              }
             }
 
             if (chunkHeader.getDataSize() > allocatedMemoryBlockForChunk.getMemoryUsageInBytes()) {
@@ -573,52 +527,10 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
           {
             if (Objects.isNull(firstChunkHeader4NextSequentialValueChunks)) {
-              long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
               chunkHeader = tsFileSequenceReader.readChunkHeader(marker);
 
-              final long nextMarkerOffset =
-                  tsFileSequenceReader.position() + chunkHeader.getDataSize();
-              if (Objects.isNull(currentDevice)
-                  || !treePattern.matchesMeasurement(
-                      currentDevice, chunkHeader.getMeasurementID())) {
-                tsFileSequenceReader.position(nextMarkerOffset);
+              if (filterChunk(chunkHeader, true)) {
                 break;
-              }
-
-              if (!currentModifications.isEmpty()) {
-                // Skip the chunk if it is fully deleted by mods
-                final Statistics statistics =
-                    findAlignedChunkStatistics(
-                        tsFileSequenceReader.getIChunkMetadataList(
-                            currentDevice, chunkHeader.getMeasurementID()),
-                        currentChunkHeaderOffset);
-                if (statistics != null
-                    && ModsOperationUtil.isAllDeletedByMods(
-                        currentDevice,
-                        chunkHeader.getMeasurementID(),
-                        statistics.getStartTime(),
-                        statistics.getEndTime(),
-                        currentModifications)) {
-                  tsFileSequenceReader.position(nextMarkerOffset);
-                  break;
-                }
-              }
-
-              if (Objects.nonNull(entity)) {
-                final TSStatus status =
-                    AuthorityChecker.getAccessControl()
-                        .checkSeriesPrivilege4Pipe(
-                            entity,
-                            Collections.singletonList(
-                                new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
-                            PrivilegeType.READ_DATA);
-                if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  if (skipIfNoPrivileges) {
-                    tsFileSequenceReader.position(nextMarkerOffset);
-                    break;
-                  }
-                  throw new AccessDeniedException(status.getMessage());
-                }
               }
 
               // Increase value index
@@ -709,6 +621,64 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     if (!recordAlignedChunk(valueChunkList, marker)) {
       chunkReader = null;
     }
+  }
+
+  private boolean filterChunk(final ChunkHeader chunkHeader, final boolean isAligned)
+      throws IOException, IllegalPathException {
+    long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
+    final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
+
+    if (Objects.isNull(currentDevice)) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    if (!treePattern.matchesMeasurement(currentDevice, chunkHeader.getMeasurementID())) {
+      tsFileSequenceReader.position(nextMarkerOffset);
+      return true;
+    }
+
+    // Skip the chunk if it is fully deleted by mods
+    if (!currentModifications.isEmpty()) {
+      final Statistics statistics =
+          isAligned
+              ? findAlignedChunkStatistics(
+                  tsFileSequenceReader.getIChunkMetadataList(
+                      currentDevice, chunkHeader.getMeasurementID()),
+                  currentChunkHeaderOffset)
+              : findNonAlignedChunkStatistics(
+                  tsFileSequenceReader.getIChunkMetadataList(
+                      currentDevice, chunkHeader.getMeasurementID()),
+                  currentChunkHeaderOffset);
+      if (statistics != null
+          && ModsOperationUtil.isAllDeletedByMods(
+              currentDevice,
+              chunkHeader.getMeasurementID(),
+              statistics.getStartTime(),
+              statistics.getEndTime(),
+              currentModifications)) {
+        tsFileSequenceReader.position(nextMarkerOffset);
+        return true;
+      }
+    }
+
+    if (Objects.nonNull(entity)) {
+      final TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkSeriesPrivilege4Pipe(
+                  entity,
+                  Collections.singletonList(
+                      new MeasurementPath(currentDevice, chunkHeader.getMeasurementID())),
+                  PrivilegeType.READ_DATA);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (skipIfNoPrivileges) {
+          tsFileSequenceReader.position(nextMarkerOffset);
+          return true;
+        }
+        throw new AccessDeniedException(status.getMessage());
+      }
+    }
+    return false;
   }
 
   private boolean recordAlignedChunk(final List<Chunk> valueChunkList, final byte marker)
