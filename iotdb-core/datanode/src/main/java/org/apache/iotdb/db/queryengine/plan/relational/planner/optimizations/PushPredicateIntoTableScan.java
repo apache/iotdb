@@ -70,7 +70,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
@@ -835,6 +834,15 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getRightChild().getOutputSymbols().stream()
               .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
 
+      // Build a map from (left, right) symbols to their (leftTables, rightTables)
+      // This preserves table info when rebuilding EquiJoinClause
+      Map<Pair<Symbol, Symbol>, Pair<Set<Identifier>, Set<Identifier>>> symbolToTablesMap =
+          node.getCriteria().stream()
+              .collect(
+                  toImmutableMap(
+                      clause -> new Pair<>(clause.getLeft(), clause.getRight()),
+                      clause -> new Pair<>(clause.getLeftTables(), clause.getRightTables())));
+
       // Create new projections for the new join clauses
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
@@ -858,27 +866,14 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             rightProjections.put(rightSymbol, rightExpression);
           }
 
-          Set<QualifiedName> leftDependencies =
-              SymbolsExtractor.extractNames(equality.getLeft(), analysis.getColumnReferences());
-          Set<QualifiedName> rightDependencies =
-              SymbolsExtractor.extractNames(equality.getRight(), analysis.getColumnReferences());
-
-          // Convert QualifiedName to Identifier (table name is the first part)
-          Set<Identifier> leftTables = new HashSet<>();
-          for (QualifiedName name : leftDependencies) {
-            if (name.getPrefix().isPresent()) {
-              leftTables.add(new Identifier(name.getPrefix().get().getSuffix()));
-            }
-          }
-          Set<Identifier> rightTables = new HashSet<>();
-          for (QualifiedName name : rightDependencies) {
-            if (name.getPrefix().isPresent()) {
-              rightTables.add(new Identifier(name.getPrefix().get().getSuffix()));
-            }
-          }
+          // Retrieve leftTables and rightTables from original criteria
+          Pair<Set<Identifier>, Set<Identifier>> tables =
+              symbolToTablesMap.getOrDefault(
+                  new Pair<>(leftSymbol, rightSymbol),
+                  new Pair<>(ImmutableSet.of(), ImmutableSet.of()));
 
           equiJoinClauses.add(
-              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, leftTables, rightTables));
+              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, tables.left, tables.right));
         } else {
           if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
             continue;
