@@ -614,7 +614,8 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     }
   }
 
-  private boolean filterChunk(final ChunkHeader chunkHeader, final boolean isAligned, final byte marker)
+  private boolean filterChunk(
+      final ChunkHeader chunkHeader, final boolean isAligned, final byte marker)
       throws IOException, IllegalPathException {
     long currentChunkHeaderOffset = tsFileSequenceReader.position() - 1;
     final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
@@ -626,10 +627,9 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
 
     if (!isAligned) {
       if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-              == TsFileConstant.TIME_COLUMN_MASK) {
+          == TsFileConstant.TIME_COLUMN_MASK) {
         timeChunkList.add(
-                new Chunk(
-                        chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
+            new Chunk(chunkHeader, tsFileSequenceReader.readChunk(-1, chunkHeader.getDataSize())));
         isMultiPageList.add(marker == MetaMarker.TIME_CHUNK_HEADER);
         return true;
       }
