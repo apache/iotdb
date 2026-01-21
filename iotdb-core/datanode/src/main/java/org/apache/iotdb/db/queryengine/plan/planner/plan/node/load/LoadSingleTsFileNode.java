@@ -89,6 +89,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   public boolean needDecodeTsFile(
       Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
           partitionFetcher) {
+    if (needDecodeTsFile) {
+      return true;
+    }
+
     List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()

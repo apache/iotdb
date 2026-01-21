@@ -342,12 +342,12 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       String database,
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn) {
+      boolean isStrictTagColumn) {
     throw new UnsupportedOperationException();
   }
 

@@ -481,12 +481,12 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictTagColumn) {
     throw new UnsupportedOperationException();
   }
 

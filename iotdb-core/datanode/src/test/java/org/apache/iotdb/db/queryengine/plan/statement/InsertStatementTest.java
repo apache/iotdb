@@ -100,7 +100,7 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
@@ -252,7 +252,7 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
@@ -287,7 +287,7 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),

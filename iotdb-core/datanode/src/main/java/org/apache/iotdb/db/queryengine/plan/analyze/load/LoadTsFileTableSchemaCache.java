@@ -111,6 +111,7 @@ public class LoadTsFileTableSchemaCache {
   private long currentTimeIndexMemoryUsageSizeInBytes = 0;
 
   private int currentBatchDevicesCount = 0;
+  private boolean needDecode4DifferentTimeColumn;
 
   public LoadTsFileTableSchemaCache(
       final Metadata metadata, final MPPQueryContext context, final boolean needToCreateDatabase)
@@ -298,7 +299,9 @@ public class LoadTsFileTableSchemaCache {
         org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
             tableName, schema);
     final TableSchema realSchema =
-        metadata.validateTableHeaderSchema(database, fileSchema, context, true, true).orElse(null);
+        metadata
+            .validateTableHeaderSchema4TsFile(database, fileSchema, context, true, true)
+            .orElse(null);
     if (Objects.isNull(realSchema)) {
       throw new LoadAnalyzeException(
           String.format(
@@ -306,6 +309,10 @@ public class LoadTsFileTableSchemaCache {
               fileSchema.getTableName(), fileSchema));
     }
     verifyTableDataTypeAndGenerateTagColumnMapper(fileSchema, realSchema);
+  }
+
+  public boolean isNeedDecode4DifferentTimeColumn() {
+    return needDecode4DifferentTimeColumn;
   }
 
   private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
@@ -449,6 +456,7 @@ public class LoadTsFileTableSchemaCache {
 
     currentBatchTable2Devices = null;
     tableTagColumnMapper = null;
+    needDecode4DifferentTimeColumn = false;
   }
 
   private void clearDevices() {

@@ -1058,12 +1058,12 @@ public class AnalyzerTest {
     DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
     return new TestMetadata() {
       @Override
-      public Optional<TableSchema> validateTableHeaderSchema(
+      public Optional<TableSchema> validateTableHeaderSchema4TsFile(
           String database,
           TableSchema schema,
           MPPQueryContext context,
           boolean allowCreateTable,
-          boolean isStrictIdColumn) {
+          boolean isStrictTagColumn) {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);

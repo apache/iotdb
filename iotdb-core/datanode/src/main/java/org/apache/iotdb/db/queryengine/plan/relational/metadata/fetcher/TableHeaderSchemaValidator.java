@@ -93,7 +93,7 @@ public class TableHeaderSchemaValidator {
     return TableHeaderSchemaValidatorHolder.INSTANCE;
   }
 
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
@@ -136,8 +136,7 @@ public class TableHeaderSchemaValidator {
     } else {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);
       // If table with this name already exists and isStrictTagColumn is true, make sure the
-      // existing
-      // id columns are the prefix of the incoming tag columns, or vice versa
+      // existing tag columns are a prefix of the incoming tag columns, or vice versa
       if (isStrictTagColumn) {
         final List<TsTableColumnSchema> realTagColumns = table.getTagColumnSchemaList();
         final List<ColumnSchema> incomingTagColumns = tableSchema.getTagColumns();
@@ -572,12 +571,10 @@ public class TableHeaderSchemaValidator {
       final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       final ConfigTaskResult result = future.get();
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                String.format(
-                    "Auto add table column failed: %s.%s",
-                    database, measurementInfo.getTableName()),
-                result.getStatusCode().getStatusCode()));
+        throw new IoTDBRuntimeException(
+            String.format(
+                "Auto add table column failed: %s.%s", database, measurementInfo.getTableName()),
+            result.getStatusCode().getStatusCode());
       }
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
