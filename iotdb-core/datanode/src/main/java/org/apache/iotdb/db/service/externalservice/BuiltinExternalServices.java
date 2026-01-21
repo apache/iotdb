@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.externalservice;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 
 import java.util.function.Supplier;
 
@@ -31,8 +32,7 @@ public enum BuiltinExternalServices {
   REST(
       "REST",
       "org.apache.iotdb.rest.RestService",
-      // IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService
-      () -> false);
+      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService);
 
   private final String serviceName;
   private final String className;
