@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -25,6 +25,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.AbstractTableSizeCacheWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -123,7 +125,8 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
       this.tsFileTableSizeIndexFileWriter =
           new TsFileTableSizeIndexFileWriter(
               regionId, currentKeyIndexFile, currentValueIndexFile, needRecover);
-    } catch (IOException ignored) {
+    } catch (IOException e) {
+      failedToRecover(e);
     }
   }
 
@@ -229,13 +232,9 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
       File targetValueFile = generateValueFile(currentIndexFileVersion + 1, false);
       targetFileWriter.getKeyFile().renameTo(targetKeyFile);
       targetFileWriter.getValueFile().renameTo(targetValueFile);
-      this.tsFileTableSizeIndexFileWriter.close();
     } catch (Exception e) {
       logger.error("Failed to execute compaction for tsfile table size cache file", e);
     } finally {
-      if (tsFileTableSizeIndexFileWriter != null) {
-        tsFileTableSizeIndexFileWriter.close();
-      }
       if (targetFileWriter != null) {
         targetFileWriter.close();
       }

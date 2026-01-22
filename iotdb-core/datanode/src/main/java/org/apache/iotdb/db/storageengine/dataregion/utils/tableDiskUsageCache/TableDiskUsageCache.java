@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -44,6 +46,7 @@ public class TableDiskUsageCache {
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>();
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
+  protected volatile boolean failedToRecover = false;
 
   protected TableDiskUsageCache() {
     scheduledExecutorService =
@@ -75,6 +78,11 @@ public class TableDiskUsageCache {
     }
   }
 
+  protected void failedToRecover(Exception e) {
+    failedToRecover = true;
+    LOGGER.error("Failed to recover TableDiskUsageCache", e);
+  }
+
   protected void checkAndMaySyncObjectDeltaToFile() {}
 
   protected void checkAndMayCompact(long maxRunTime) {
@@ -102,11 +110,11 @@ public class TableDiskUsageCache {
     if (tableSizeMap == null || tableSizeMap.isEmpty()) {
       return;
     }
-    queue.add(new WriteOperation(database, tsFileID, tableSizeMap));
+    addOperationToQueue(new WriteOperation(database, tsFileID, tableSizeMap));
   }
 
   public void write(String database, TsFileID originTsFileID, TsFileID newTsFileID) {
-    queue.add(new ReplaceTsFileOperation(database, originTsFileID, newTsFileID));
+    addOperationToQueue(new ReplaceTsFileOperation(database, originTsFileID, newTsFileID));
   }
 
   public void writeObjectDelta(
@@ -118,29 +126,36 @@ public class TableDiskUsageCache {
       String database, int regionId, boolean readTsFileCache, boolean readObjectFileCache) {
     StartReadOperation operation =
         new StartReadOperation(database, regionId, readTsFileCache, readObjectFileCache);
-    queue.add(operation);
+    addOperationToQueue(operation);
     return operation.future;
   }
 
   public void endRead(String database, int regionId) {
     EndReadOperation operation = new EndReadOperation(database, regionId);
-    queue.add(operation);
+    addOperationToQueue(operation);
   }
 
   public void registerRegion(String database, int regionId) {
     RegisterRegionOperation operation = new RegisterRegionOperation(database, regionId);
-    queue.add(operation);
+    addOperationToQueue(operation);
   }
 
   public void remove(String database, int regionId) {
     RemoveRegionOperation operation = new RemoveRegionOperation(database, regionId);
-    queue.add(operation);
+    addOperationToQueue(operation);
     try {
       operation.future.get(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (Exception ignored) {
     }
+  }
+
+  protected void addOperationToQueue(Operation operation) {
+    if (failedToRecover) {
+      return;
+    }
+    queue.add(operation);
   }
 
   public void close() {

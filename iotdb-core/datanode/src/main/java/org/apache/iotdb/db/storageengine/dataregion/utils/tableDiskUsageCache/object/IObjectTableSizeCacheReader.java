@@ -23,7 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.Da
 
 import java.io.IOException;
 
-public interface IObjectTableSizeCacheReader {
+public interface IObjectTableSizeCacheReader extends AutoCloseable {
   boolean loadObjectFileTableSize(
       DataRegionTableSizeQueryContext dataRegionContext, long startTime, long maxRunTime)
       throws IOException;

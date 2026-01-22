@@ -27,8 +27,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.junit.After;

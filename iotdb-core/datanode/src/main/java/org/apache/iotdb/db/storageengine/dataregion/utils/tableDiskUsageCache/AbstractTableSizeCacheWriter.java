@@ -40,6 +40,10 @@ public abstract class AbstractTableSizeCacheWriter {
     this.dir = StorageEngine.getDataRegionSystemDir(database, regionId + "");
   }
 
+  protected void failedToRecover(Exception e) {
+    TableDiskUsageCache.getInstance().failedToRecover(e);
+  }
+
   protected void deleteOldVersionFiles(int maxVersion, String prefix, List<File> files) {
     for (File file : files) {
       try {

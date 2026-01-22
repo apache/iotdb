@@ -17,10 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 

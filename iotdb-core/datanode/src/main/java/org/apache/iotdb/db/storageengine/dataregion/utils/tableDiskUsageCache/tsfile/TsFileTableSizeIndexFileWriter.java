@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
@@ -33,8 +33,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
 
 public class TsFileTableSizeIndexFileWriter {
   private final int regionId;
