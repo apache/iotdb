@@ -38,7 +38,7 @@ public class IoTDBWindowFunction3IT {
 
   protected static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getTableConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }
@@ -64,12 +64,12 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "a", "b"};
     String[] retArray =
         new String[] {
-            "2021-01-01T09:05:00.000Z,d1,3.0,3.0,4.0,",
-            "2021-01-01T09:07:00.000Z,d1,5.0,5.0,6.0,",
-            "2021-01-01T09:09:00.000Z,d1,3.0,3.0,4.0,",
-            "2021-01-01T09:10:00.000Z,d1,1.0,1.0,2.0,",
-            "2021-01-01T09:08:00.000Z,d2,2.0,2.0,4.0,",
-            "2021-01-01T09:15:00.000Z,d2,4.0,4.0,6.0,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,3.0,4.0,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,5.0,6.0,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,3.0,4.0,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1.0,2.0,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2.0,4.0,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,4.0,6.0,",
         };
     tableResultSetEqualTest(
         "SELECT *, a + min(value) OVER (PARTITION BY device ORDER BY value) as b FROM (SELECT *, max(value) OVER (PARTITION BY device ORDER BY value) as a FROM demo) ORDER BY device, time",
@@ -83,12 +83,12 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "p1", "p2"};
     String[] retArray =
         new String[] {
-            "2021-01-01T09:05:00.000Z,d1,3.0,1.0,6.0,",
-            "2021-01-01T09:07:00.000Z,d1,5.0,1.0,5.0,",
-            "2021-01-01T09:09:00.000Z,d1,3.0,1.0,6.0,",
-            "2021-01-01T09:10:00.000Z,d1,1.0,1.0,1.0,",
-            "2021-01-01T09:08:00.000Z,d2,2.0,2.0,2.0,",
-            "2021-01-01T09:15:00.000Z,d2,4.0,2.0,4.0,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,1.0,6.0,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,1.0,5.0,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,1.0,6.0,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1.0,1.0,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2.0,2.0,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2.0,4.0,",
         };
     tableResultSetEqualTest(
         "SELECT *, min(value) OVER (PARTITION BY device) as p1, sum(value) OVER (PARTITION BY device, value) as p2 FROM demo ORDER BY device, time",
@@ -102,10 +102,10 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-            "2021-01-01T09:10:00.000Z,d1,1.0,1,",
-            "2021-01-01T09:05:00.000Z,d1,3.0,2,",
-            "2021-01-01T09:08:00.000Z,d2,2.0,1,",
-            "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value) as rn FROM demo) WHERE rn <= 2 ORDER BY device, time",
@@ -119,8 +119,7 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-            "2021-01-01T09:05:00.000Z,d1,3.0,2,",
-            "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,", "2021-01-01T09:07:00.000Z,d1,5.0,4,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY value) as rn FROM demo) ORDER BY device, time LIMIT 2 ",
@@ -134,12 +133,12 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-            "2021-01-01T09:05:00.000Z,d1,3.0,1,",
-            "2021-01-01T09:07:00.000Z,d1,5.0,2,",
-            "2021-01-01T09:09:00.000Z,d1,3.0,3,",
-            "2021-01-01T09:10:00.000Z,d1,1.0,4,",
-            "2021-01-01T09:08:00.000Z,d2,2.0,1,",
-            "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,3,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,4,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
     tableResultSetEqualTest(
         "SELECT *, row_number() OVER (PARTITION BY device) AS rn FROM demo ORDER BY device, time",
@@ -151,8 +150,7 @@ public class IoTDBWindowFunction3IT {
   @Test
   public void testRemoveRedundantWindow() {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
-    String[] retArray =
-        new String[] {};
+    String[] retArray = new String[] {};
     tableResultSetEqualTest(
         "SELECT *, row_number() OVER (PARTITION BY device) AS rn FROM demo WHERE 1 = 2",
         expectedHeader,
