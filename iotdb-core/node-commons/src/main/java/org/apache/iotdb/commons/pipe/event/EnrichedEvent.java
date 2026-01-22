@@ -423,6 +423,10 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
+  // If user has privilege: Do nothing
+  // If user doesn't have privilege, and skip if == true: set shouldParse4Privilege = true
+  // (The DeleteDataEvent will be parsed regardless of the flag)
+  // If user doesn't have privilege, and skip if == false: throw exception
   public void throwIfNoPrivilege() throws Exception {
     // Do nothing by default
   }
