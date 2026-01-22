@@ -619,7 +619,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
   private boolean filterChunk(
       final long currentChunkHeaderOffset,
       final ChunkHeader chunkHeader,
-      final boolean isAligned,
+      final boolean isAlignedValueChunk,
       final byte marker)
       throws IOException, IllegalPathException {
     final long nextMarkerOffset = tsFileSequenceReader.position() + chunkHeader.getDataSize();
@@ -629,7 +629,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       return true;
     }
 
-    if (!isAligned) {
+    if (!isAlignedValueChunk) {
       if ((chunkHeader.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
           == TsFileConstant.TIME_COLUMN_MASK) {
         timeChunkList.add(
@@ -647,7 +647,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
     // Skip the chunk if it is fully deleted by mods
     if (!currentModifications.isEmpty()) {
       final Statistics statistics =
-          isAligned
+          isAlignedValueChunk
               ? findAlignedChunkStatistics(
                   tsFileSequenceReader.getIChunkMetadataList(
                       currentDevice, chunkHeader.getMeasurementID()),
