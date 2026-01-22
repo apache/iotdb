@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractTableSizeCacheWriter {
+  protected static final String TEMP_CACHE_FILE_SUBFIX = ".tmp";
   protected final int regionId;
   protected long previousCompactionTimestamp = System.currentTimeMillis();
   protected long lastWriteTimestamp = System.currentTimeMillis();

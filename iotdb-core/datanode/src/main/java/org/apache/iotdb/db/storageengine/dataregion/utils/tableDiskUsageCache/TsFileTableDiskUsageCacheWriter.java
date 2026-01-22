@@ -49,7 +49,6 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   private static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
   public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
   public static final int KEY_FILE_REDIRECT_RECORD_LENGTH = 7 * Long.BYTES + 1;
-  private static final String TEMP_CACHE_FILE_SUBFIX = ".tmp";
   public static final byte KEY_FILE_RECORD_TYPE_OFFSET = 1;
   public static final byte KEY_FILE_RECORD_TYPE_REDIRECT = 2;
 
