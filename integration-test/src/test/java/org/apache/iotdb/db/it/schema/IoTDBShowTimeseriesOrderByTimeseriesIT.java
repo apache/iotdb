@@ -182,7 +182,8 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     Collections.sort(expected);
     expected = expected.subList(5, 10); // offset 5 limit 5
 
-    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries offset 5 limit 5");
+    List<String> actual =
+        queryTimeseries("show timeseries root.db*.** order by timeseries offset 5 limit 5");
     assertEquals(expected, actual);
   }
 
