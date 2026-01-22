@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -375,9 +376,9 @@ public class AlterTimeSeriesDataTypeProcedure
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
-    setMeasurementPath(MeasurementPath.deserialize(byteBuffer));
+    setMeasurementPath((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
     if (getCurrentState() == AlterTimeSeriesDataTypeState.CLEAR_CACHE) {
-      LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+      LOGGER.info("Successfully operate, will clear cache to the data regions anyway");
     }
     if (byteBuffer.hasRemaining()) {
       operationType = ReadWriteIOUtils.readByte(byteBuffer);
