@@ -107,7 +107,7 @@ public class TableDiskUsageCache {
   }
 
   public void writeObjectDelta(
-      String database, int regionId, long timePartition, Map<String, Long> tableObjectDeltaMap) {
+      String database, int regionId, long timePartition, String table, long size, int num) {
     throw new UnsupportedOperationException();
   }
 
@@ -149,6 +149,22 @@ public class TableDiskUsageCache {
 
   protected DataRegionTableSizeCacheWriter createWriter(String database, int regionId) {
     return new DataRegionTableSizeCacheWriter(database, regionId);
+  }
+
+  protected TsFileTableSizeCacheReader createTsFileCacheReader(
+      DataRegionTableSizeCacheWriter dataRegionWriter, int regionId) {
+    TsFileTableDiskUsageCacheWriter tsFileCacheWriter = dataRegionWriter.tsFileCacheWriter;
+    return new TsFileTableSizeCacheReader(
+        tsFileCacheWriter.keyFileLength(),
+        tsFileCacheWriter.getKeyFile(),
+        tsFileCacheWriter.valueFileLength(),
+        tsFileCacheWriter.getValueFile(),
+        regionId);
+  }
+
+  protected IObjectTableSizeCacheReader createObjectFileCacheReader(
+      DataRegionTableSizeCacheWriter dataRegionWriter, int regionId) {
+    return new EmptyObjectTableSizeCacheReader();
   }
 
   protected abstract static class Operation {
@@ -198,33 +214,15 @@ public class TableDiskUsageCache {
         writer.flush();
         writer.increaseActiveReaderNum();
         TsFileTableSizeCacheReader tsFileTableSizeCacheReader =
-            readTsFileCache ? createTsFileCacheReader(writer) : null;
+            readTsFileCache ? tableDiskUsageCache.createTsFileCacheReader(writer, regionId) : null;
         IObjectTableSizeCacheReader objectTableSizeCacheReader =
-            readObjectFileCache ? createObjectFileCacheReader(writer) : null;
+            readObjectFileCache
+                ? tableDiskUsageCache.createObjectFileCacheReader(writer, regionId)
+                : null;
         future.complete(new Pair<>(tsFileTableSizeCacheReader, objectTableSizeCacheReader));
       } catch (Throwable t) {
         future.completeExceptionally(t);
       }
-    }
-
-    protected TsFileTableSizeCacheReader createTsFileCacheReader(
-        DataRegionTableSizeCacheWriter dataRegionWriter) {
-      TsFileTableDiskUsageCacheWriter tsFileCacheWriter = dataRegionWriter.tsFileCacheWriter;
-      if (readTsFileCache) {
-        return new TsFileTableSizeCacheReader(
-            tsFileCacheWriter.keyFileLength(),
-            tsFileCacheWriter.getKeyFile(),
-            tsFileCacheWriter.valueFileLength(),
-            tsFileCacheWriter.getValueFile(),
-            regionId);
-      }
-      return new TsFileTableSizeCacheReader(
-          0, tsFileCacheWriter.getKeyFile(), 0, tsFileCacheWriter.getValueFile(), regionId);
-    }
-
-    protected IObjectTableSizeCacheReader createObjectFileCacheReader(
-        DataRegionTableSizeCacheWriter dataRegionWriter) {
-      return new EmptyObjectTableSizeCacheReader();
     }
   }
 
