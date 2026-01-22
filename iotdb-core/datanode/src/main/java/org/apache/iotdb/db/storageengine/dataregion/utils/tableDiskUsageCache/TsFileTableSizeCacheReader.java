@@ -128,12 +128,8 @@ public class TsFileTableSizeCacheReader {
   }
 
   public boolean readFromKeyFile(
-      Map<Long, TimePartitionTableSizeQueryContext> timePartitionContexts,
-      long startTime,
-      long maxRunTime)
+      DataRegionTableSizeQueryContext dataRegionContext, long startTime, long maxRunTime)
       throws IOException {
-    long previousTimePartition = 0;
-    TimePartitionTableSizeQueryContext timePartitionContext = null;
     do {
       if (keyFileLength == 0) {
         return true;
@@ -144,16 +140,11 @@ public class TsFileTableSizeCacheReader {
       }
       try {
         KeyFileEntry keyFileEntry = readOneEntryFromKeyFile();
-        if (timePartitionContext == null
-            || keyFileEntry.tsFileID.timePartitionId != previousTimePartition) {
-          previousTimePartition = keyFileEntry.tsFileID.timePartitionId;
-          timePartitionContext = timePartitionContexts.get(previousTimePartition);
-        }
         if (keyFileEntry.originTsFileID == null) {
-          timePartitionContext.addCachedTsFileIDAndOffsetInValueFile(
+          dataRegionContext.addCachedTsFileIDAndOffsetInValueFile(
               keyFileEntry.tsFileID, keyFileEntry.offset);
         } else {
-          timePartitionContext.replaceCachedTsFileID(
+          dataRegionContext.replaceCachedTsFileID(
               keyFileEntry.tsFileID, keyFileEntry.originTsFileID);
         }
       } catch (IOException e) {
@@ -198,12 +189,10 @@ public class TsFileTableSizeCacheReader {
 
   public boolean readFromValueFile(
       Iterator<Pair<TsFileID, Long>> tsFilesToQueryInCache,
-      Map<Long, TimePartitionTableSizeQueryContext> resultMap,
+      DataRegionTableSizeQueryContext dataRegionContext,
       long startTime,
       long maxRunTime)
       throws IOException {
-    long previousTimePartition = 0;
-    TimePartitionTableSizeQueryContext currentTimePartition = null;
     do {
       if (!tsFilesToQueryInCache.hasNext()) {
         closeCurrentFile();
@@ -211,10 +200,6 @@ public class TsFileTableSizeCacheReader {
       }
       Pair<TsFileID, Long> pair = tsFilesToQueryInCache.next();
       long timePartition = pair.left.timePartitionId;
-      if (currentTimePartition == null || timePartition != previousTimePartition) {
-        currentTimePartition = resultMap.get(timePartition);
-        previousTimePartition = timePartition;
-      }
       long offset = pair.right;
       inputStream.seek(offset);
 
@@ -222,7 +207,7 @@ public class TsFileTableSizeCacheReader {
       for (int i = 0; i < tableNum; i++) {
         String tableName = ReadWriteIOUtils.readVarIntString(inputStream);
         long size = ReadWriteIOUtils.readLong(inputStream);
-        currentTimePartition.updateResult(tableName, size);
+        dataRegionContext.updateResult(tableName, size, timePartition);
       }
     } while (System.nanoTime() - startTime < maxRunTime);
     return false;

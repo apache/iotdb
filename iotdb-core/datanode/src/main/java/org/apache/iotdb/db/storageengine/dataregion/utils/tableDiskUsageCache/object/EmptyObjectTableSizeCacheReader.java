@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object;
 
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
-
-import java.util.Map;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
 
 public class EmptyObjectTableSizeCacheReader implements IObjectTableSizeCacheReader {
 
   @Override
   public boolean loadObjectFileTableSize(
-      Map<Long, TimePartitionTableSizeQueryContext> timePartitionContexts,
-      long startTime,
-      long maxRunTime) {
+      DataRegionTableSizeQueryContext dataRegionContext, long startTime, long maxRunTime) {
     return true;
   }
 

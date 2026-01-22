@@ -58,6 +58,14 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
     tableSizeResultMap.computeIfPresent(table, (k, v) -> v + size);
   }
 
+  public void updateResult(String table, long size, boolean needAllData) {
+    if (needAllData) {
+      tableSizeResultMap.compute(table, (k, v) -> (v == null ? 0 : v) + size);
+    } else {
+      tableSizeResultMap.computeIfPresent(table, (k, v) -> v + size);
+    }
+  }
+
   public Map<String, Long> getTableSizeResultMap() {
     return tableSizeResultMap;
   }
@@ -69,6 +77,14 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
 
   public Long getCachedTsFileIdOffset(TsFileID tsFileID) {
     return tsFileIDOffsetInValueFileMap == null ? null : tsFileIDOffsetInValueFileMap.get(tsFileID);
+  }
+
+  public long getObjectFileSize() {
+    long size = 0;
+    for (Long value : tableSizeResultMap.values()) {
+      size += value;
+    }
+    return size;
   }
 
   @Override

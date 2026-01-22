@@ -88,6 +88,7 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MathUtils;
@@ -113,7 +114,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -1198,8 +1198,8 @@ public class InformationSchemaContentSupplierFactory {
     private boolean currentDatabaseOnlyHasOneTable;
 
     private TableDiskUsageCacheReader currentDataRegionCacheReader;
-    private final Map<Long, TimePartitionTableSizeQueryContext> timePartitionsContextMap =
-        new LinkedHashMap<>();
+    private DataRegionTableSizeQueryContext currentDataRegionTableSizeQueryContext =
+        new DataRegionTableSizeQueryContext(false);
 
     private final StorageEngineTimePartitionIterator dataRegionIterator;
 
@@ -1228,7 +1228,8 @@ public class InformationSchemaContentSupplierFactory {
                     if (tTableInfos == null || tTableInfos.isEmpty()) {
                       return false;
                     }
-                    timePartitionsContextMap.clear();
+                    currentDataRegionTableSizeQueryContext =
+                        new DataRegionTableSizeQueryContext(false);
                     return PathUtils.isTableModelDatabase(dataRegion.getDatabaseName());
                   }),
               Optional.empty());
@@ -1248,17 +1249,17 @@ public class InformationSchemaContentSupplierFactory {
           for (Long timePartition : currentDataRegion.getTsFileManager().getTimePartitions()) {
             Map<String, Long> tablesToScan = getTablesToScan(currentDataRegion, timePartition);
             if (!tablesToScan.isEmpty()) {
-              timePartitionsContextMap.put(
+              currentDataRegionTableSizeQueryContext.addTimePartition(
                   timePartition, new TimePartitionTableSizeQueryContext(tablesToScan));
             }
           }
-          if (timePartitionsContextMap.isEmpty()) {
+          if (currentDataRegionTableSizeQueryContext.isEmpty()) {
             continue;
           }
           currentDataRegionCacheReader =
               new TableDiskUsageCacheReader(
                   currentDataRegion,
-                  timePartitionsContextMap,
+                  currentDataRegionTableSizeQueryContext,
                   currentDatabaseOnlyHasOneTable,
                   Optional.ofNullable(operatorContext.getInstanceContext()));
           return true;
@@ -1358,7 +1359,9 @@ public class InformationSchemaContentSupplierFactory {
     private TsBlock buildTsBlock() {
       TsBlockBuilder builder = new TsBlockBuilder(dataTypes);
       for (Map.Entry<Long, TimePartitionTableSizeQueryContext> entry :
-          timePartitionsContextMap.entrySet()) {
+          currentDataRegionTableSizeQueryContext
+              .getTimePartitionTableSizeQueryContextMap()
+              .entrySet()) {
         long timePartition = entry.getKey();
         for (Map.Entry<String, Long> tableSizeEntry :
             entry.getValue().getTableSizeResultMap().entrySet()) {
