@@ -74,7 +74,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Times
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1616,7 +1615,7 @@ public class MTreeBelowSGMemoryImpl {
     final ISchemaReader<ITimeSeriesSchemaInfo> reader =
         new TimeseriesReaderWithViewFetch(
             collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
-    if (showTimeSeriesPlan.getLimit() >= 0) {
+    if (showTimeSeriesPlan.getLimit() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(reader, showTimeSeriesPlan.getLimit(), 0);
     } else {
       return reader;

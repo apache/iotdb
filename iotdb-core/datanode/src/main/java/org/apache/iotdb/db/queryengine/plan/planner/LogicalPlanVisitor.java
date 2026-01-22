@@ -97,6 +97,7 @@ import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -584,7 +585,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean canPushDownOffsetLimit = singleSchemaRegion && !showTimeSeriesStatement.isOrderByHeat();
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
-      limit = -1;
+      limit = 0;
       offset = 0;
     } else if (!canPushDownOffsetLimit) {
       limit = showTimeSeriesStatement.getLimitWithOffset();
@@ -613,7 +614,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     if (showTimeSeriesStatement.isOrderByTimeseries() && !singleSchemaRegion) {
       SortItem sortItem =
           new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
-      planBuilder = planBuilder.planOrderBy(java.util.Collections.singletonList(sortItem));
+      planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
     }
 
     // show latest timeseries

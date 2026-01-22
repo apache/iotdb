@@ -45,7 +45,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
     this.schemaReader = schemaReader;
     this.limit = limit;
     this.offset = offset;
-    this.hasLimit = limit >= 0 || offset > 0;
+    this.hasLimit = limit > 0 || offset > 0;
   }
 
   @Override
