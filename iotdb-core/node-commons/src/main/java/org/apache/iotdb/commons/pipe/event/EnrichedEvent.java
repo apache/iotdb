@@ -425,7 +425,8 @@ public abstract class EnrichedEvent implements Event {
 
   // If user has privilege: Do nothing
   // If user doesn't have privilege, and skip if == true: set shouldParse4Privilege = true
-  // (The DeleteDataEvent will be parsed regardless of the flag)
+  // (The DeleteDataEvent will be parsed regardless of the flag, while insert node and tsFile will
+  // be parsed iff this flag == true)
   // If user doesn't have privilege, and skip if == false: throw exception
   public void throwIfNoPrivilege() throws Exception {
     // Do nothing by default
