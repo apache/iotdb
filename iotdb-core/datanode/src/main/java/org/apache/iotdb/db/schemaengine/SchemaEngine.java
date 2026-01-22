@@ -387,7 +387,9 @@ public class SchemaEngine {
                               false);
                   if (Objects.isNull(table)) {
                     logger.warn(
-                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.", PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()), tableEntry.getKey());
+                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                        tableEntry.getKey());
                     return 0L;
                   }
                   return table.getFieldNum() * tableEntry.getValue();
