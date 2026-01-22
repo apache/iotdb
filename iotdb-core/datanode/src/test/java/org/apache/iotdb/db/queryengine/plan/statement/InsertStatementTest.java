@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThrows;
@@ -105,7 +106,8 @@ public class InsertStatementTest {
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     doAnswer(
@@ -257,7 +259,8 @@ public class InsertStatementTest {
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(
@@ -292,7 +295,8 @@ public class InsertStatementTest {
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(

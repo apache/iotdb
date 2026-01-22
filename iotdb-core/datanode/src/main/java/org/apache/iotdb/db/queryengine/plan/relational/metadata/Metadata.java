@@ -43,6 +43,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 // All the input databases shall not contain "root"
 public interface Metadata {
@@ -125,7 +126,8 @@ public interface Metadata {
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictTagColumn)
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException;
 
   void validateInsertNodeMeasurements(

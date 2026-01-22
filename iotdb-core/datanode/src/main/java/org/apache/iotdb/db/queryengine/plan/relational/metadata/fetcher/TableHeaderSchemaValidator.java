@@ -68,6 +68,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
@@ -99,7 +100,8 @@ public class TableHeaderSchemaValidator {
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictTagColumn)
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
@@ -212,7 +214,7 @@ public class TableHeaderSchemaValidator {
           noField = false;
         }
       } else {
-        // leave measurement columns' dataType checking to the caller, then the caller can decide
+        // leave field columns' dataType checking to the caller, then the caller can decide
         // whether to do partial insert
 
         // only check column category

@@ -96,6 +96,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -1063,7 +1064,8 @@ public class AnalyzerTest {
           TableSchema schema,
           MPPQueryContext context,
           boolean allowCreateTable,
-          boolean isStrictTagColumn) {
+          boolean isStrictTagColumn,
+          final AtomicBoolean needDecode4DifferentTimeColumn) {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);
