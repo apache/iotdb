@@ -1882,7 +1882,10 @@ public class TableDistributedPlanGenerator
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (canSplitPushDown) {
-      childrenNodes = childrenNodes.stream().map(child -> child.getChildren().get(0)).collect(Collectors.toList());
+      childrenNodes =
+          childrenNodes.stream()
+              .map(child -> child.getChildren().get(0))
+              .collect(Collectors.toList());
     }
 
     if (childrenNodes.size() == 1) {

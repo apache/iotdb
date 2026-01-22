@@ -40,7 +40,8 @@ public class SimpleTsBlockWithPositionComparator implements TsBlockWithPositionC
     for (Integer sortChannel : sortChannels) {
       sortedTypes.add(types.get(sortChannel));
     }
-    this.comparator = MergeSortComparator.getComparatorForTable(sortOrders, sortChannels, sortedTypes);
+    this.comparator =
+        MergeSortComparator.getComparatorForTable(sortOrders, sortChannels, sortedTypes);
   }
 
   @Override
