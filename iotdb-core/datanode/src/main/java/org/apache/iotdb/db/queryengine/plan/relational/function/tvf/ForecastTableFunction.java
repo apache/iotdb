@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -44,6 +45,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -563,8 +565,10 @@ public class ForecastTableFunction implements TableFunction {
             client.forecast(
                 new TForecastReq(modelId, SERDE.serialize(inputData), outputLength)
                     .setOptions(options));
-      } catch (Exception e) {
-        throw new AINodeConnectionException();
+      } catch (ClientManagerException | TException e) {
+        throw new AINodeConnectionException(e);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

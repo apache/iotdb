@@ -25,10 +25,10 @@ import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class AINodeConnectionException extends IoTDBRuntimeException {
 
-  private static final String MESSAGE =
-      "Failed to connect to AINode, please check the status of your AINode.";
+  private static final String message =
+      "Failed to connect to AINode because [%s], please check the status of your AINode.";
 
-  public AINodeConnectionException() {
-    super(MESSAGE, CAN_NOT_CONNECT_AINODE.getStatusCode());
+  public AINodeConnectionException(Exception e) {
+    super(String.format(message, e.toString()), CAN_NOT_CONNECT_AINODE.getStatusCode());
   }
 }

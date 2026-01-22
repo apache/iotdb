@@ -92,7 +92,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_model_is_registered(req.existingModelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        if set(req.deviceIdList) != req.deviceIdList:
+        if len(set(req.deviceIdList)) != len(req.deviceIdList):
             return TSStatus(
                 code=TSStatusCode.LOAD_MODEL_ERROR.value,
                 message="Device ID list contains duplicate entries.",
@@ -109,7 +109,7 @@ class AINodeRPCServiceHandler(IAINodeRPCService.Iface):
         status = self._ensure_model_is_registered(req.modelId)
         if status.code != TSStatusCode.SUCCESS_STATUS.value:
             return status
-        if set(req.deviceIdList) != req.deviceIdList:
+        if len(set(req.deviceIdList)) != len(req.deviceIdList):
             return TSStatus(
                 code=TSStatusCode.UNLOAD_MODEL_ERROR.value,
                 message="Device ID list contains duplicate entries.",
