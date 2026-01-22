@@ -51,6 +51,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.restrictOutputs;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.transpose;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.groupNode;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.window;
@@ -60,8 +61,6 @@ public class GatherAndMergeWindows {
   private GatherAndMergeWindows() {}
 
   public static Set<Rule<?>> rules() {
-    // TODO convert to a pattern that allows for a sequence of ProjectNode, instead
-    // of a canned number, once the pattern system supports it.
     return IntStream.range(0, 5)
         .boxed()
         .flatMap(
@@ -79,7 +78,7 @@ public class GatherAndMergeWindows {
 
     protected ManipulateAdjacentWindowsOverProjects(int numProjects) {
       PropertyPattern<PlanNode, ?, ?> childPattern =
-          source().matching(window().capturedAs(childCapture));
+          source().matching(window().with(source().matching(groupNode())).capturedAs(childCapture));
       ImmutableList.Builder<Capture<ProjectNode>> projectCapturesBuilder = ImmutableList.builder();
       for (int i = 0; i < numProjects; ++i) {
         Capture<ProjectNode> projectCapture = newCapture();
@@ -87,7 +86,7 @@ public class GatherAndMergeWindows {
         childPattern = source().matching(project().capturedAs(projectCapture).with(childPattern));
       }
       this.projectCaptures = projectCapturesBuilder.build();
-      this.pattern = window().with(childPattern);
+      this.pattern = window().with(source().matching(groupNode().with(childPattern)));
     }
 
     @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
+import com.google.common.collect.Iterables;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -162,6 +163,19 @@ public class TopKRankingNode extends SingleChildProcessNode {
         .addAll(getChild().getOutputSymbols())
         .add(rankingSymbol)
         .build();
+  }
+
+  @Override
+  public PlanNode replaceChildren(List<PlanNode> newChildren) {
+    return new TopKRankingNode(
+        id,
+        Iterables.getOnlyElement(newChildren),
+        specification,
+        rankingType,
+        rankingSymbol,
+        maxRankingPerPartition,
+        partial
+    );
   }
 
   @Override

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
@@ -35,7 +36,11 @@ public class SimpleTsBlockWithPositionComparator implements TsBlockWithPositionC
 
   public SimpleTsBlockWithPositionComparator(
       List<TSDataType> types, List<Integer> sortChannels, List<SortOrder> sortOrders) {
-    this.comparator = MergeSortComparator.getComparatorForTable(sortOrders, sortChannels, types);
+    List<TSDataType> sortedTypes = new ArrayList<>();
+    for (Integer sortChannel : sortChannels) {
+      sortedTypes.add(types.get(sortChannel));
+    }
+    this.comparator = MergeSortComparator.getComparatorForTable(sortOrders, sortChannels, sortedTypes);
   }
 
   @Override

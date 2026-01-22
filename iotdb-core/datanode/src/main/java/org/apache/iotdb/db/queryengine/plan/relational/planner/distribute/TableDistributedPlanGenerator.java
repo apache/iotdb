@@ -1848,7 +1848,24 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitRowNumber(RowNumberNode node, PlanContext context) {
-    return dealWithPlainSingleChildNode(node, context);
+    if (node.getChildren().isEmpty()) {
+      return Collections.singletonList(node);
+    }
+
+    boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    } else if (!canSplitPushDown) {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+      return Collections.singletonList(node);
+    } else {
+      return splitForEachChild(node, childrenNodes);
+    }
   }
 
   @Override
@@ -1862,28 +1879,24 @@ public class TableDistributedPlanGenerator
     // TODO: per partition topk eliminate
     checkArgument(
         node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
+    boolean canSplitPushDown = node.getChild() instanceof GroupNode;
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
+    if (canSplitPushDown) {
+      childrenNodes = childrenNodes.stream().map(child -> child.getChildren().get(0)).collect(Collectors.toList());
+    }
+
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
+    } else if (!canSplitPushDown) {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+      return Collections.singletonList(node);
+    } else {
+      return splitForEachChild(node, childrenNodes);
     }
-
-    TopKRankingNode newTopKNode = (TopKRankingNode) node.clone();
-    for (PlanNode child : childrenNodes) {
-      PlanNode newChild =
-          new TopKRankingNode(
-              queryId.genPlanNodeId(),
-              child,
-              node.getSpecification(),
-              node.getRankingType(),
-              node.getRankingSymbol(),
-              node.getMaxRankingPerPartition(),
-              node.isPartial());
-      newTopKNode.addChild(newChild);
-    }
-    orderingScheme.ifPresent(scheme -> nodeOrderingMap.put(newTopKNode.getPlanNodeId(), scheme));
-
-    return Collections.singletonList(newTopKNode);
   }
 
   @Override

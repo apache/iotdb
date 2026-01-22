@@ -1120,6 +1120,7 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public List<String> visitTopKRanking(TopKRankingNode node, GraphContext context) {
     List<String> boxValue = new ArrayList<>();
 
+    boxValue.add(String.format("TopKRanking-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("RankingType: %s", node.getRankingType()));
     boxValue.add(String.format("RankingSymbol: %s", node.getRankingSymbol()));
     DataOrganizationSpecification specification = node.getSpecification();

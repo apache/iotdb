@@ -88,7 +88,7 @@ public class TopKRankingOperator implements ProcessOperator {
       List<Integer> sortChannels,
       List<SortOrder> sortOrders,
       int maxRowCountPerPartition,
-      boolean generateRanking,
+      boolean partial,
       Optional<Integer> hashChannel,
       int expectedPositions,
       Optional<Long> maxPartialMemory) {
@@ -101,16 +101,16 @@ public class TopKRankingOperator implements ProcessOperator {
     this.sortChannels = sortChannels;
     this.sortOrders = sortOrders;
     this.maxRowCountPerPartition = maxRowCountPerPartition;
-    this.partial = !generateRanking;
+    this.partial = partial;
     this.hashChannel = hashChannel;
     this.expectedPositions = expectedPositions;
-    this.maxFlushableBytes = maxPartialMemory.orElse(0L);
+    this.maxFlushableBytes = maxPartialMemory.orElse(Long.MAX_VALUE);
 
     ImmutableList.Builder<Integer> outputChannelsBuilder = ImmutableList.builder();
     for (int channel : outputChannels) {
       outputChannelsBuilder.add(channel);
     }
-    if (generateRanking) {
+    if (partial) {
       outputChannelsBuilder.add(outputChannels.size());
     }
     this.outputChannels = outputChannelsBuilder.build();
@@ -186,6 +186,9 @@ public class TopKRankingOperator implements ProcessOperator {
         // Feed all input TsBlocks to grouped TopK builder
         if (inputOperator.hasNextWithTimer()) {
           TsBlock tsBlock = inputOperator.nextWithTimer();
+          if (tsBlock == null) {
+            return null;
+          }
           groupedTopNBuilder.addTsBlock(tsBlock);
           return null;
         } else {
