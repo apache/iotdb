@@ -30,13 +30,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Serializer for PreparedStatement parameters.
- *
- * <p>Binary format: [paramCount:4bytes][param1][param2]...
- *
- * <p>Each parameter: [type:1byte][value:variable]
- */
+/** Serializer for PreparedStatement parameters. */
 public class PreparedParameterSerializer {
 
   public static class DeserializedParam {
@@ -55,16 +49,7 @@ public class PreparedParameterSerializer {
 
   private PreparedParameterSerializer() {}
 
-  // ================== Serialize (Client Side) ==================
-
-  /**
-   * Serialize parameters to binary format.
-   *
-   * @param values parameter values
-   * @param jdbcTypes JDBC type codes (java.sql.Types)
-   * @param count number of parameters
-   * @return ByteBuffer containing serialized parameters
-   */
+  /** Serialize parameters to binary format. */
   public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count) {
     try {
       ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -140,14 +125,7 @@ public class PreparedParameterSerializer {
     }
   }
 
-  // ================== Deserialize (Server Side) ==================
-
-  /**
-   * Deserialize parameters from binary format.
-   *
-   * @param buffer ByteBuffer containing serialized parameters
-   * @return list of deserialized parameters with type and value
-   */
+  /** Deserialize parameters from binary format. */
   public static List<DeserializedParam> deserialize(ByteBuffer buffer) {
     if (buffer == null || buffer.remaining() == 0) {
       return new ArrayList<>();

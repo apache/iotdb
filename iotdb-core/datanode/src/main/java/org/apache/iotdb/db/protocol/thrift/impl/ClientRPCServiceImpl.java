@@ -1518,7 +1518,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       String sql = req.getSql();
       String statementName = req.getStatementName();
 
-      // Parse SQL to get Statement AST
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
           relationSqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
 
@@ -1527,10 +1526,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
             RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
       }
 
-      // Get parameter count before registering
       int parameterCount = ParameterExtractor.getParameterCount(statement);
 
-      // Register the prepared statement using helper
       PreparedStatementHelper.register(clientSession, statementName, statement);
 
       TSPrepareResp resp = new TSPrepareResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -1558,7 +1555,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     try {
       String statementName = req.getStatementName();
 
-      // Deserialize parameters and convert to Literal list
       List<DeserializedParam> rawParams =
           PreparedParameterSerializer.deserialize(ByteBuffer.wrap(req.getParameters()));
       List<Literal> parameters = new ArrayList<>(rawParams.size());
@@ -1566,13 +1562,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         parameters.add(convertToLiteral(param));
       }
 
-      // Construct Execute AST node, reuse Coordinator's existing Execute handling logic
       Execute executeStatement = new Execute(new Identifier(statementName), parameters);
 
-      // Request query ID
       queryId = SESSION_MANAGER.requestQueryId(clientSession, req.getStatementId());
 
-      // Execute using Coordinator (Coordinator internally handles Execute statement)
       long timeout = req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold();
       ExecutionResult result =
           COORDINATOR.executeForTableModel(
@@ -1634,7 +1627,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
 
     try {
-      // Unregister the prepared statement using helper
       PreparedStatementHelper.unregister(clientSession, req.getStatementName());
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } catch (Exception e) {
@@ -1645,7 +1637,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  /** Convert a deserialized parameter to the corresponding Literal type for AST. */
   private Literal convertToLiteral(DeserializedParam param) {
     if (param.isNull()) {
       return new NullLiteral();
@@ -1655,9 +1646,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       case BOOLEAN:
         return new BooleanLiteral((Boolean) param.value ? "true" : "false");
       case INT32:
-        return new LongLiteral(String.valueOf((Integer) param.value));
       case INT64:
-        return new LongLiteral(String.valueOf((Long) param.value));
+        return new LongLiteral(String.valueOf(param.value));
       case FLOAT:
         return new DoubleLiteral((Float) param.value);
       case DOUBLE:

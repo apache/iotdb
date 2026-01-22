@@ -167,8 +167,7 @@ struct TSCloseOperationReq {
   4: optional string preparedStatementName
 }
 
-// PreparedStatement - PREPARE
-// Parses SQL and caches AST in session for later execution
+// PREPARE
 struct TSPrepareReq {
   1: required i64 sessionId
   2: required string sql
@@ -180,8 +179,7 @@ struct TSPrepareResp {
   2: optional i32 parameterCount
 }
 
-// PreparedStatement - EXECUTE
-// Executes a prepared statement with bound parameters
+// EXECUTE
 struct TSExecutePreparedReq {
   1: required i64 sessionId
   2: required string statementName
@@ -191,8 +189,7 @@ struct TSExecutePreparedReq {
   6: required i64 statementId
 }
 
-// PreparedStatement - DEALLOCATE
-// Releases a prepared statement and its resources
+// DEALLOCATE
 struct TSDeallocatePreparedReq {
   1: required i64 sessionId
   2: required string statementName

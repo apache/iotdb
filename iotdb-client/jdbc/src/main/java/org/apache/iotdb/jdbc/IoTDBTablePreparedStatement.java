@@ -82,11 +82,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   private final int parameterCount;
   private final boolean serverSidePrepared;
 
-  // Parameter values stored as objects for binary serialization
   private final Object[] parameterValues;
   private final int[] parameterTypes;
 
-  /** save the SQL parameters as (paramLoc,paramValue) pairs for backward compatibility. */
+  // retain parameters for backward compatibility
   private final Map<Integer, String> parameters = new HashMap<>();
 
   IoTDBTablePreparedStatement(
@@ -101,9 +100,6 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     this.sql = sql;
     this.preparedStatementName = generateStatementName();
 
-    // Check if the SQL is a query statement
-    // For non-query statements (INSERT/UPDATE/DELETE), server-side PREPARE doesn't support
-    // parameter placeholders in VALUES clause, so we use client-side parameter substitution only
     if (isQueryStatement(sql)) {
       // Send PREPARE request to server only for query statements
       this.serverSidePrepared = true;
@@ -127,53 +123,12 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
         throw new SQLException("Failed to prepare statement: " + e.getMessage(), e);
       }
     } else {
-      // For non-query statements, count parameters on client side
+      // For non-query statements, only keep text parameters for client-side substitution.
       this.serverSidePrepared = false;
-      this.parameterCount = countParameters(sql);
-      this.parameterValues = new Object[parameterCount];
-      this.parameterTypes = new int[parameterCount];
-
-      for (int i = 0; i < parameterCount; i++) {
-        parameterTypes[i] = Types.NULL;
-      }
+      this.parameterCount = 0;
+      this.parameterValues = null;
+      this.parameterTypes = null;
     }
-  }
-
-  /**
-   * Count the number of parameter placeholders (?) in the SQL statement.
-   *
-   * @param sql the SQL statement
-   * @return the number of parameter placeholders
-   */
-  private int countParameters(String sql) {
-    int count = 0;
-    int apCount = 0;
-    boolean skip = false;
-
-    for (int i = 0; i < sql.length(); i++) {
-      char c = sql.charAt(i);
-      if (skip) {
-        skip = false;
-        continue;
-      }
-      switch (c) {
-        case '\'':
-          apCount++;
-          break;
-        case '\\':
-          skip = true;
-          break;
-        case '?':
-          // Only count ? outside of string literals
-          if ((apCount & 1) == 0) {
-            count++;
-          }
-          break;
-        default:
-          break;
-      }
-    }
-    return count;
   }
 
   // Only for tests
@@ -196,40 +151,30 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void clearParameters() {
     this.parameters.clear();
-    for (int i = 0; i < parameterCount; i++) {
-      parameterValues[i] = null;
-      parameterTypes[i] = Types.NULL;
+    if (serverSidePrepared) {
+      for (int i = 0; i < parameterCount; i++) {
+        parameterValues[i] = null;
+        parameterTypes[i] = Types.NULL;
+      }
     }
   }
 
   @Override
   public boolean execute() throws SQLException {
-    // Check if the SQL is a query statement
     if (isQueryStatement(sql)) {
       TSExecuteStatementResp resp = executeInternal();
       return resp.isSetQueryDataSet() || resp.isSetQueryResult();
     } else {
-      // For non-query statements (INSERT/UPDATE/DELETE), use client-side parameter substitution
-      // because server-side PREPARE doesn't support INSERT statements with parameters
       return super.execute(createCompleteSql(sql, parameters));
     }
   }
 
-  /**
-   * Check if the SQL is a query statement (SELECT).
-   *
-   * @param sql the SQL statement
-   * @return true if it's a query statement
-   */
   private boolean isQueryStatement(String sql) {
     if (sql == null) {
       return false;
     }
     String trimmedSql = sql.trim().toUpperCase();
-    return trimmedSql.startsWith("SELECT")
-        || trimmedSql.startsWith("SHOW")
-        || trimmedSql.startsWith("DESCRIBE")
-        || trimmedSql.startsWith("EXPLAIN");
+    return trimmedSql.startsWith("SELECT");
   }
 
   @Override
@@ -240,8 +185,6 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   @Override
   public int executeUpdate() throws SQLException {
-    // For non-query statements (INSERT/UPDATE/DELETE), use client-side parameter substitution
-    // because server-side PREPARE doesn't support INSERT statements with parameters
     return super.executeUpdate(createCompleteSql(sql, parameters));
   }
 
@@ -261,7 +204,6 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     req.setParameters(
         PreparedParameterSerializer.serialize(parameterValues, parameterTypes, parameterCount));
     req.setStatementId(getStmtId());
-
     if (queryTimeout > 0) {
       req.setTimeout(queryTimeout * 1000L);
     }
@@ -277,7 +219,6 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
   private ResultSet processQueryResult(TSExecuteStatementResp resp) throws SQLException {
     if (resp.isSetQueryDataSet() || resp.isSetQueryResult()) {
-      // Create ResultSet from response
       this.resultSet =
           new IoTDBJDBCResultSet(
               this,
@@ -342,6 +283,9 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
       @Override
       public boolean isSigned(int param) {
+        if (!serverSidePrepared) {
+          return false;
+        }
         int type = parameterTypes[param - 1];
         return type == Types.INTEGER
             || type == Types.BIGINT
@@ -361,6 +305,9 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
 
       @Override
       public int getParameterType(int param) {
+        if (!serverSidePrepared) {
+          return Types.NULL;
+        }
         return parameterTypes[param - 1];
       }
 
@@ -391,13 +338,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     };
   }
 
-  // ================== Parameter Setters ==================
-
   @Override
   public void setNull(int parameterIndex, int sqlType) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = null;
-    parameterTypes[parameterIndex - 1] = Types.NULL;
+    setPreparedParameterValue(parameterIndex, null, Types.NULL);
     this.parameters.put(parameterIndex, "NULL");
   }
 
@@ -409,48 +353,42 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void setBoolean(int parameterIndex, boolean x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.BOOLEAN;
+    setPreparedParameterValue(parameterIndex, x, Types.BOOLEAN);
     this.parameters.put(parameterIndex, Boolean.toString(x));
   }
 
   @Override
   public void setInt(int parameterIndex, int x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.INTEGER;
+    setPreparedParameterValue(parameterIndex, x, Types.INTEGER);
     this.parameters.put(parameterIndex, Integer.toString(x));
   }
 
   @Override
   public void setLong(int parameterIndex, long x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.BIGINT;
+    setPreparedParameterValue(parameterIndex, x, Types.BIGINT);
     this.parameters.put(parameterIndex, Long.toString(x));
   }
 
   @Override
   public void setFloat(int parameterIndex, float x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.FLOAT;
+    setPreparedParameterValue(parameterIndex, x, Types.FLOAT);
     this.parameters.put(parameterIndex, Float.toString(x));
   }
 
   @Override
   public void setDouble(int parameterIndex, double x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.DOUBLE;
+    setPreparedParameterValue(parameterIndex, x, Types.DOUBLE);
     this.parameters.put(parameterIndex, Double.toString(x));
   }
 
   @Override
   public void setString(int parameterIndex, String x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.VARCHAR;
+    setPreparedParameterValue(parameterIndex, x, Types.VARCHAR);
     if (x == null) {
       this.parameters.put(parameterIndex, null);
     } else {
@@ -461,8 +399,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    parameterValues[parameterIndex - 1] = x;
-    parameterTypes[parameterIndex - 1] = Types.BINARY;
+    setPreparedParameterValue(parameterIndex, x, Types.BINARY);
     Binary binary = new Binary(x);
     this.parameters.put(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
   }
@@ -472,8 +409,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     checkParameterIndex(parameterIndex);
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
     String dateStr = dateFormat.format(x);
-    parameterValues[parameterIndex - 1] = dateStr;
-    parameterTypes[parameterIndex - 1] = Types.VARCHAR;
+    setPreparedParameterValue(parameterIndex, dateStr, Types.VARCHAR);
     this.parameters.put(parameterIndex, "'" + dateStr + "'");
   }
 
@@ -500,8 +436,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
         default:
           break;
       }
-      parameterValues[parameterIndex - 1] = time;
-      parameterTypes[parameterIndex - 1] = Types.BIGINT;
+      setPreparedParameterValue(parameterIndex, time, Types.BIGINT);
       this.parameters.put(parameterIndex, Long.toString(time));
     } catch (TException e) {
       throw new SQLException("Failed to get time precision: " + e.getMessage(), e);
@@ -519,8 +454,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     ZonedDateTime zonedDateTime =
         ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
     String tsStr = zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    parameterValues[parameterIndex - 1] = tsStr;
-    parameterTypes[parameterIndex - 1] = Types.VARCHAR;
+    setPreparedParameterValue(parameterIndex, tsStr, Types.VARCHAR);
     this.parameters.put(parameterIndex, tsStr);
   }
 
@@ -573,17 +507,26 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private void checkParameterIndex(int index) throws SQLException {
+    if (!serverSidePrepared) {
+      return;
+    }
     if (index < 1 || index > parameterCount) {
       throw new SQLException(
           "Parameter index out of range: " + index + " (expected 1-" + parameterCount + ")");
     }
   }
 
+  private void setPreparedParameterValue(int parameterIndex, Object value, int sqlType) {
+    if (!serverSidePrepared) {
+      return;
+    }
+    parameterValues[parameterIndex - 1] = value;
+    parameterTypes[parameterIndex - 1] = sqlType;
+  }
+
   private String escapeSingleQuotes(String value) {
     return value.replace("'", "''");
   }
-
-  // ================== Unsupported Methods ==================
 
   @Override
   public void setArray(int parameterIndex, Array x) throws SQLException {

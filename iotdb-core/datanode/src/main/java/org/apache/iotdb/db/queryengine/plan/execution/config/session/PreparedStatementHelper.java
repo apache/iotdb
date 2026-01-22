@@ -24,79 +24,37 @@ import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 
-/**
- * Helper class for managing prepared statement registration and unregistration. Provides common
- * logic shared between RPC methods and ConfigTask implementations.
- */
+/** Helper for prepared statement registration/unregistration. */
 public class PreparedStatementHelper {
 
-  private PreparedStatementHelper() {
-    // Utility class
-  }
+  private PreparedStatementHelper() {}
 
-  /**
-   * Registers a prepared statement in the session.
-   *
-   * <p>This method performs the following operations:
-   *
-   * <ol>
-   *   <li>Checks if a prepared statement with the same name already exists
-   *   <li>Calculates memory size of the AST
-   *   <li>Allocates memory from PreparedStatementMemoryManager
-   *   <li>Creates and stores PreparedStatementInfo in the session
-   * </ol>
-   *
-   * @param session the client session
-   * @param statementName the name of the prepared statement
-   * @param sql the parsed SQL statement (AST)
-   * @return the created PreparedStatementInfo
-   * @throws SemanticException if a prepared statement with the same name already exists
-   */
+  /** Registers a prepared statement in the session. */
   public static PreparedStatementInfo register(
       IClientSession session, String statementName, Statement sql) {
-    // Check if prepared statement with the same name already exists
     if (session.getPreparedStatement(statementName) != null) {
       throw new SemanticException(
           String.format("Prepared statement '%s' already exists", statementName));
     }
 
-    // Calculate memory size of the AST
     long memorySizeInBytes = sql == null ? 0L : sql.ramBytesUsed();
 
-    // Allocate memory from PreparedStatementMemoryManager
     PreparedStatementMemoryManager.getInstance().allocate(statementName, memorySizeInBytes);
 
-    // Create and store PreparedStatementInfo
     PreparedStatementInfo info = new PreparedStatementInfo(statementName, sql, memorySizeInBytes);
     session.addPreparedStatement(statementName, info);
 
     return info;
   }
 
-  /**
-   * Unregisters a prepared statement from the session.
-   *
-   * <p>This method performs the following operations:
-   *
-   * <ol>
-   *   <li>Removes the prepared statement from the session
-   *   <li>Releases the allocated memory
-   * </ol>
-   *
-   * @param session the client session
-   * @param statementName the name of the prepared statement to remove
-   * @return the removed PreparedStatementInfo
-   * @throws SemanticException if the prepared statement does not exist
-   */
+  /** Unregisters a prepared statement from the session. */
   public static PreparedStatementInfo unregister(IClientSession session, String statementName) {
-    // Remove the prepared statement
     PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
     if (removedInfo == null) {
       throw new SemanticException(
           String.format("Prepared statement '%s' does not exist", statementName));
     }
 
-    // Release the allocated memory
     PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
 
     return removedInfo;
