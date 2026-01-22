@@ -284,6 +284,8 @@ public class LogicalOptimizeFactory {
                         new RemoveRedundantIdentityProjections()))
                 .build()),
         simplifyOptimizer,
+        new CollectJoinConstraint(),
+        new LeadingJoinOptimizer(),
         new UnaliasSymbolReferences(plannerContext.getMetadata()),
         new IterativeOptimizer(
             plannerContext,
@@ -388,9 +390,7 @@ public class LogicalOptimizeFactory {
                 new MergeLimitWithSort(),
                 new MergeLimitOverProjectWithSort(),
                 new PushTopKThroughUnion())),
-        new ParallelizeGrouping(),
-        new CollectJoinConstraint());
-    //        new LeadingJoinOptimizer());
+        new ParallelizeGrouping());
 
     this.planOptimizers = optimizerBuilder.build();
   }
