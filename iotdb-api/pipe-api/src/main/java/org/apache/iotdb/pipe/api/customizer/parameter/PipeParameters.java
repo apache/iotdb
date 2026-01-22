@@ -60,7 +60,9 @@ public class PipeParameters {
   }
 
   public boolean hasAttribute(final String key) {
-    return attributes.containsKey(key) || attributes.containsKey(KeyReducer.reduce(key));
+    return attributes.containsKey(key)
+        || attributes.containsKey(KeyReducer.shallowReduce(key))
+        || attributes.containsKey(KeyReducer.reduce(key));
   }
 
   public boolean hasAnyAttributes(final String... keys) {
