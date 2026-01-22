@@ -25,12 +25,22 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
@@ -43,6 +53,11 @@ public class LeadingHint extends JoinOrderHint {
 
   private List<String> addJoinParameters;
   private List<String> normalizedParameters;
+
+  private final List<Pair<Set<Identifier>, Expression>> filters = new ArrayList<>();
+  private final Map<String, PlanNode> relationToScanMap = new HashMap<>();
+
+  private Set<Identifier> innerJoinTables = ImmutableSet.of();
 
   public LeadingHint(List<String> parameters) {
     super(hintName);
@@ -68,6 +83,22 @@ public class LeadingHint extends JoinOrderHint {
     return tables;
   }
 
+  public List<Pair<Set<Identifier>, Expression>> getFilters() {
+    return filters;
+  }
+
+  public Map<String, PlanNode> getRelationToScanMap() {
+    return relationToScanMap;
+  }
+
+  public Set<Identifier> getInnerJoinTables() {
+    return innerJoinTables;
+  }
+
+  public void setInnerJoinTables(Set<Identifier> innerJoinTables) {
+    this.innerJoinTables = innerJoinTables;
+  }
+
   public PlanNode generateLeadingJoinPlan() {
     Stack<PlanNode> stack = new Stack<>();
     for (String item : normalizedParameters) {
@@ -80,9 +111,12 @@ public class LeadingHint extends JoinOrderHint {
         }
         stack.push(joinPlan);
       } else {
-        //        PlanNode logicalPlan = getLogicalPlanByName(item);
-        //        ogicalPlan = makeFilterPlanIfExist(getFilters(), logicalPlan);
-        //        stack.push(logicalPlan);
+        PlanNode logicalPlan = getPlanByName(item);
+        if (logicalPlan == null) {
+          return null;
+        }
+        logicalPlan = makeFilterPlanIfExist(getFilters(), logicalPlan);
+        stack.push(logicalPlan);
       }
     }
 
@@ -166,54 +200,107 @@ public class LeadingHint extends JoinOrderHint {
     return s2;
   }
 
-  private PlanNode makeJoinPlan(PlanNode leftChild, PlanNode rightChild) {
-    //    List<Expression> conditions = getJoinConditions(
-    //            getFilters(), leftChild, rightChild);
-    //    Pair<List<Expression>, List<Expression>> pair = JoinUtils.extractExpressionForHashTable(
-    //            leftChild.getOutput(), rightChild.getOutput(), conditions);
-    //    // leading hint would set status inside if not success
-    //    JoinType joinType = computeJoinType(getBitmap(leftChild),
-    //            getBitmap(rightChild), conditions);
-    //    if (joinType == null) {
-    //      this.setStatus(HintStatus.SYNTAX_ERROR);
-    //      this.setErrorMessage("JoinType can not be null");
-    //    } else if (!isConditionJoinTypeMatched(conditions, joinType)) {
-    //      this.setStatus(HintStatus.UNUSED);
-    //      this.setErrorMessage("condition does not matched joinType");
-    //    }
-    //    if (!this.isSuccess()) {
-    //      return null;
-    //    }
-    // get joinType
-    //    LogicalJoin logicalJoin = new LogicalJoin<>(joinType, pair.first,
-    //            pair.second,
-    //            distributeHint,
-    //            Optional.empty(),
-    //            leftChild,
-    //            rightChild, null);
-    //    logicalJoin.getJoinReorderContext().setLeadingJoin(true);
-    //    logicalJoin.setBitmap(LongBitmap.or(getBitmap(leftChild), getBitmap(rightChild)));
-
-    PlanNode joinNode = planJoin(leftChild, rightChild);
-    return joinNode;
+  public PlanNode getPlanByName(String name) {
+    if (!relationToScanMap.containsKey(name)) {
+      return null;
+    }
+    return relationToScanMap.get(name);
   }
 
-  private PlanNode planJoin(PlanNode leftPlan, PlanNode rightPlan) {
-    List<Symbol> leftOutputSymbols = leftPlan.getOutputSymbols();
-    List<Symbol> rightOutputSymbols = rightPlan.getOutputSymbols();
-    List<JoinNode.EquiJoinClause> criteria = new ArrayList<>();
+  private PlanNode makeJoinPlan(PlanNode leftChild, PlanNode rightChild) {
+    List<Expression> conditions = getJoinConditions(getFilters(), leftChild, rightChild);
+    JoinNode.JoinType joinType = computeJoinType();
+    if (joinType == null) {
+      return null;
+    } else if (!isConditionJoinTypeMatched()) {
+      return null;
+    }
+
+    List<Symbol> leftOutputSymbols = leftChild.getOutputSymbols();
+    List<Symbol> rightOutputSymbols = rightChild.getOutputSymbols();
     Optional<JoinNode.AsofJoinClause> asofCriteria = Optional.empty();
+    List<JoinNode.EquiJoinClause> criteria = new ArrayList<>();
+
+    for (Expression conjunct : conditions) {
+      ComparisonExpression equality = (ComparisonExpression) conjunct;
+      Symbol leftSymbol = Symbol.from(equality.getLeft());
+      Symbol rightSymbol = Symbol.from(equality.getRight());
+
+      if (leftOutputSymbols.contains(leftSymbol) && rightOutputSymbols.contains(rightSymbol)) {
+        criteria.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+      } else if (leftOutputSymbols.contains(rightSymbol)
+          && rightOutputSymbols.contains(leftSymbol)) {
+        criteria.add(new JoinNode.EquiJoinClause(rightSymbol, leftSymbol));
+      } else {
+        throw new IllegalArgumentException("Invalid join condition");
+      }
+    }
 
     return new JoinNode(
         new PlanNodeId("join"),
-        JoinNode.JoinType.INNER,
-        leftPlan,
-        rightPlan,
+        joinType,
+        leftChild,
+        rightChild,
         criteria,
         asofCriteria,
         leftOutputSymbols,
         rightOutputSymbols,
         Optional.empty(),
-        Optional.empty());
+        Optional.empty(),
+        getTables(leftChild),
+        getTables(rightChild));
+  }
+
+  private List<Expression> getJoinConditions(
+      List<Pair<Set<Identifier>, Expression>> filters, PlanNode left, PlanNode right) {
+    List<Expression> joinConditions = new ArrayList<>();
+    for (int i = filters.size() - 1; i >= 0; i--) {
+      Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
+      Set<Identifier> tables = Sets.union(getTables(left), getTables(right));
+      // left one is smaller set
+      if (tables.containsAll(filterPair.left)) {
+        joinConditions.add(filterPair.right);
+        filters.remove(i);
+      }
+    }
+    return joinConditions;
+  }
+
+  private PlanNode makeFilterPlanIfExist(
+      List<Pair<Set<Identifier>, Expression>> filters, PlanNode plan) {
+    if (filters.isEmpty()) {
+      return plan;
+    }
+    for (int i = filters.size() - 1; i >= 0; i--) {
+      Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
+      if (getTables(plan).containsAll(filterPair.left)) {
+        plan = new FilterNode(plan.getPlanNodeId(), plan, filterPair.right);
+        filters.remove(i);
+      }
+    }
+    return plan;
+  }
+
+  private Set<Identifier> getTables(PlanNode root) {
+    if (root instanceof JoinNode) {
+      return Sets.union(((JoinNode) root).getLeftTables(), ((JoinNode) root).getRightTables());
+    } else if (root instanceof DeviceTableScanNode) {
+      return ImmutableSet.of(
+          new Identifier(((DeviceTableScanNode) root).getQualifiedObjectName().getObjectName()));
+    } else if (root instanceof FilterNode) {
+      return getTables(((FilterNode) root).getChild());
+    } else if (root instanceof ProjectNode) {
+      return getTables(((ProjectNode) root).getChild());
+    } else {
+      return null;
+    }
+  }
+
+  public JoinNode.JoinType computeJoinType() {
+    return JoinNode.JoinType.INNER;
+  }
+
+  public boolean isConditionJoinTypeMatched() {
+    return true;
   }
 }

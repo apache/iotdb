@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -498,12 +499,14 @@ public class JoinNode extends TwoChildProcessNode {
     private final Symbol right;
     private final Set<Identifier> leftTables;
     private final Set<Identifier> rightTables;
+    private final Set<Identifier> tables;
 
     public EquiJoinClause(Symbol left, Symbol right) {
       this.left = requireNonNull(left, "left is null");
       this.right = requireNonNull(right, "right is null");
       this.leftTables = ImmutableSet.of();
       this.rightTables = ImmutableSet.of();
+      this.tables = ImmutableSet.of();
     }
 
     public EquiJoinClause(
@@ -512,6 +515,7 @@ public class JoinNode extends TwoChildProcessNode {
       this.right = requireNonNull(right, "right is null");
       this.leftTables = requireNonNull(leftTables, "leftTables is null");
       this.rightTables = requireNonNull(rightTables, "rightTables is null");
+      this.tables = Sets.union(leftTables, rightTables);
     }
 
     public Symbol getLeft() {
@@ -528,6 +532,10 @@ public class JoinNode extends TwoChildProcessNode {
 
     public Set<Identifier> getRightTables() {
       return rightTables;
+    }
+
+    public Set<Identifier> getTables() {
+      return tables;
     }
 
     public ComparisonExpression toExpression() {

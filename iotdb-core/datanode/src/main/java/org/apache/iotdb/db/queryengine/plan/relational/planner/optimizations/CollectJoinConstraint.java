@@ -24,10 +24,20 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.JoinOrderHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeadingHint;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
+import org.apache.tsfile.utils.Pair;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CollectJoinConstraint implements PlanOptimizer {
   @Override
@@ -59,9 +69,40 @@ public class CollectJoinConstraint implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
+      String tableName = node.getQualifiedObjectName().getObjectName();
+      LeadingHint leading = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
+      leading.getRelationToScanMap().put(tableName, node);
+      return node;
+    }
+
+    @Override
     public PlanNode visitJoin(JoinNode node, Context context) {
-      PlanNode leftNode = node.getLeftChild();
-      PlanNode rightNode = node.getRightChild();
+      for (PlanNode child : node.getChildren()) {
+        child.accept(this, context);
+      }
+
+      LeadingHint leading = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
+      Set<Identifier> leadingTables =
+          leading.getTables().stream().map(Identifier::new).collect(Collectors.toSet());
+
+      Set<Identifier> leftTables = node.getLeftTables();
+      Set<Identifier> rightTables = node.getRightTables();
+      Set<Identifier> totalJoinTables = ImmutableSet.of();
+
+      // join conjunctions
+      List<JoinNode.EquiJoinClause> criteria = node.getCriteria();
+      for (JoinNode.EquiJoinClause equiJoin : criteria) {
+        Set<Identifier> equiJoinTables = Sets.intersection(leadingTables, equiJoin.getTables());
+        totalJoinTables = Sets.union(totalJoinTables, equiJoinTables);
+        if (node.getJoinType() == JoinNode.JoinType.LEFT) {
+          // do something
+        }
+        leading.getFilters().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
+        // leading.putConditionJoinType(expression, join.getJoinType());
+      }
+      collectJoinConstraintList(leading, leftTables, rightTables, node, totalJoinTables);
+
       return node;
     }
 
@@ -69,5 +110,22 @@ public class CollectJoinConstraint implements PlanOptimizer {
     //    public PlanNode visitSemiJoin(SemiJoinNode node, Context context) {
     //      return visitTwoChildProcess(node, context);
     //    }
+
+    private void collectJoinConstraintList(
+        LeadingHint leading,
+        Set<Identifier> leftHand,
+        Set<Identifier> rightHand,
+        JoinNode join,
+        Set<Identifier> joinTables) {
+      Set<Identifier> totalTables = Sets.union(leftHand, rightHand);
+      if (join.getJoinType() == JoinNode.JoinType.INNER) {
+        leading.setInnerJoinTables(Sets.union(leading.getInnerJoinTables(), totalTables));
+        return;
+      }
+      if (join.getJoinType() == JoinNode.JoinType.FULL) {
+        // full join
+        return;
+      }
+    }
   }
 }

@@ -24,14 +24,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.JoinOrderHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeadingHint;
 
-import java.util.Set;
+import com.google.common.collect.Sets;
 
-import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class LeadingJoinOptimizer implements PlanOptimizer {
   @Override
@@ -56,13 +58,22 @@ public class LeadingJoinOptimizer implements PlanOptimizer {
       if (!(hint instanceof LeadingHint)) {
         return node;
       }
-      LeadingHint leadingHint = (LeadingHint) hint;
-      Set<String> relationNames =
-          analysis.getRelationNames().values().stream()
-              .map(QualifiedName::getSuffix)
-              .collect(toImmutableSet());
 
-      if (!validateTableNamesMatch(relationNames, leadingHint)) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitJoin(JoinNode node, Context context) {
+      LeadingHint leadingHint = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
+      Set<Identifier> currentTables = Sets.union(node.getLeftTables(), node.getRightTables());
+      Set<Identifier> leadingTables =
+          leadingHint.getTables().stream().map(Identifier::new).collect(Collectors.toSet());
+
+      if (!currentTables.equals(leadingTables)) {
         return node;
       }
 
@@ -73,11 +84,10 @@ public class LeadingJoinOptimizer implements PlanOptimizer {
       return node;
     }
 
-    private boolean validateTableNamesMatch(Set<String> relationNames, LeadingHint leadingHint) {
-      if (relationNames.size() != leadingHint.getTables().size()) {
-        return false;
-      }
-      return relationNames.containsAll(leadingHint.getTables());
-    }
+    //    @Override
+    //    public PlanNode visitSemiJoin(SemiJoinNode node, Context context) {
+    //      return visitTwoChildProcess(node, context);
+    //    }
+
   }
 }
