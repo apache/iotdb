@@ -56,6 +56,7 @@ public class TableDiskUsageCache {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
+          checkAndMaySyncObjectDeltaToFile();
           Operation operation = queue.poll(10, TimeUnit.MILLISECONDS);
           if (operation == null) {
             checkAndMayCloseIdleWriter();
@@ -73,6 +74,8 @@ public class TableDiskUsageCache {
       writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
     }
   }
+
+  protected void checkAndMaySyncObjectDeltaToFile() {}
 
   protected void checkAndMayCompact(long maxRunTime) {
     long startTime = System.currentTimeMillis();
@@ -262,7 +265,8 @@ public class TableDiskUsageCache {
     public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
       tableDiskUsageCache
           .writerMap
-          .computeIfAbsent(regionId, k -> new DataRegionTableSizeCacheWriter(database, regionId))
+          .computeIfAbsent(
+              regionId, k -> tableDiskUsageCache.createWriter(database, tsFileID.regionId))
           .tsFileCacheWriter
           .write(tsFileID, tableSizeMap);
     }

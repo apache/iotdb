@@ -108,7 +108,7 @@ public class TableDiskUsageCacheReader implements Closeable {
     return this.tsFileTableSizeCacheReader != null;
   }
 
-  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) {
+  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) throws Exception {
     if (objectTableSizeCacheReader.loadObjectFileTableSize(
         timePartitionQueryContexts, startTime, maxRunTime)) {
       objectTableSizeCacheReader.close();

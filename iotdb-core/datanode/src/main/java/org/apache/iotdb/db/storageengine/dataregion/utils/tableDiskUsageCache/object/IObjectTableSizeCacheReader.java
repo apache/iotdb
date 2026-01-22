@@ -21,13 +21,15 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.o
 
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 
+import java.io.IOException;
 import java.util.Map;
 
 public interface IObjectTableSizeCacheReader {
   boolean loadObjectFileTableSize(
       Map<Long, TimePartitionTableSizeQueryContext> timePartitionContexts,
       long startTime,
-      long maxRunTime);
+      long maxRunTime)
+      throws IOException;
 
   void close();
 }
