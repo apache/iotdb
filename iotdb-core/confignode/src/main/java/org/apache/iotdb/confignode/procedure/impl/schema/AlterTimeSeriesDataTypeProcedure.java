@@ -124,7 +124,7 @@ public class AlterTimeSeriesDataTypeProcedure
               this::setFailure,
               true);
           collectPayload4Pipe(env);
-          break;
+          return Flow.NO_MORE_STATE;
         default:
           setFailure(
               new ProcedureException(
