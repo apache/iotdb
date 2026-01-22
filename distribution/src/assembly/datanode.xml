@@ -83,6 +83,10 @@
             <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest-openapi/target/rest-openapi-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
     </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>

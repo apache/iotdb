@@ -16,11 +16,9 @@
  */
 package org.apache.iotdb.rest;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.service.IService;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
+import org.apache.iotdb.externalservice.api.IExternalService;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
 
 import org.eclipse.jetty.http.HttpVersion;
@@ -41,7 +39,7 @@ import javax.servlet.DispatcherType;
 
 import java.util.EnumSet;
 
-public class RestService implements IService {
+public class RestService implements IExternalService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RestService.class);
 
@@ -97,7 +95,7 @@ public class RestService implements IService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.protocol.rest");
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.rest.protocol");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
@@ -117,7 +115,7 @@ public class RestService implements IService {
   }
 
   @Override
-  public void start() throws StartupException {
+  public void start() {
     IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableHttps()) {
       startSSL(
@@ -142,21 +140,5 @@ public class RestService implements IService {
     } finally {
       server.destroy();
     }
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.REST_SERVICE;
-  }
-
-  public static RestService getInstance() {
-    return RestServiceHolder.INSTANCE;
-  }
-
-  private static class RestServiceHolder {
-
-    private static final RestService INSTANCE = new RestService();
-
-    private RestServiceHolder() {}
   }
 }

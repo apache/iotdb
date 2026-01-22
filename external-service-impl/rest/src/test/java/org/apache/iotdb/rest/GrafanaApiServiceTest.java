@@ -29,11 +29,11 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.FixMethodOrder;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.runners.MethodSorters;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -47,16 +47,8 @@ import static org.junit.Assert.fail;
 
 // move to integration-test
 @Ignore
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class GrafanaApiServiceTest {
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
 
   private String getAuthorization(String username, String password) {
     return Base64.getEncoder()
@@ -443,6 +435,31 @@ public class GrafanaApiServiceTest {
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void zDeleteTablet() {
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/nonQuery");
+      String sql = "{\"sql\":\"drop database root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(200, response.getStatusLine().getStatusCode());
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
     }
   }
 }

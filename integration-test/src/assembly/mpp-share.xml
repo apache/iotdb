@@ -35,5 +35,13 @@
             <source>${project.basedir}/../external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>lib</outputDirectory>
         </file>
+        <file>
+            <source>${project.basedir}/../external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+        <file>
+            <source>${project.basedir}/../external-service-impl/rest-openapi/target/rest-openapi-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
     </files>
 </assembly>

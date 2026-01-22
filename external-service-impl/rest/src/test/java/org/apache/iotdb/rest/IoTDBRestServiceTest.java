@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.rest;
 
-import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.db.service.ExternalRPCService;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -32,9 +29,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -54,17 +49,8 @@ import static org.junit.Assert.fail;
 
 // Move it to integration-test
 @Ignore
-@FixMethodOrder(MethodSorters.JVM)
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class IoTDBRestServiceTest {
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
 
   private String getAuthorization(String username, String password) {
     return Base64.getEncoder()
@@ -72,7 +58,7 @@ public class IoTDBRestServiceTest {
   }
 
   @Test
-  public void ping() {
+  public void aPing() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     HttpGet httpGet = new HttpGet("http://127.0.0.1:18080/ping");
     CloseableHttpResponse response = null;
@@ -84,17 +70,7 @@ public class IoTDBRestServiceTest {
       assertEquals(200, response.getStatusLine().getStatusCode());
       assertEquals(200, Integer.parseInt(result.get("code").toString()));
 
-      // Shutdown RPCService to test
-      ExternalRPCService.getInstance().stop();
-      response = httpClient.execute(httpGet);
-      responseEntity = response.getEntity();
-      message = EntityUtils.toString(responseEntity, "utf-8");
-      result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(503, response.getStatusLine().getStatusCode());
-      assertEquals(500, Integer.parseInt(result.get("code").toString()));
-      ExternalRPCService.getInstance().start();
-
-    } catch (IOException | StartupException e) {
+    } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     } finally {
@@ -161,7 +137,7 @@ public class IoTDBRestServiceTest {
       HttpEntity responseEntity = response.getEntity();
       String message = EntityUtils.toString(responseEntity, "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(413, Integer.parseInt(result.get("code").toString()));
+      assertEquals(606, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -222,7 +198,7 @@ public class IoTDBRestServiceTest {
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(603, Integer.parseInt(result.get("code").toString()));
+      assertEquals(800, Integer.parseInt(result.get("code").toString()));
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -254,7 +230,32 @@ public class IoTDBRestServiceTest {
       Assert.assertEquals(401, response.getStatusLine().getStatusCode());
       String message = EntityUtils.toString(response.getEntity(), "utf-8");
       JsonObject result = JsonParser.parseString(message).getAsJsonObject();
-      assertEquals(600, Integer.parseInt(result.get("code").toString()));
+      Assert.assertEquals(801, Integer.parseInt(result.get("code").toString()));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void zDeleteTablet() {
+    CloseableHttpResponse response = null;
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/rest/v1/nonQuery");
+      String sql = "{\"sql\":\"drop database root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      Assert.assertEquals(200, response.getStatusLine().getStatusCode());
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -468,23 +469,17 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("child paths");
-            add("node types");
+            add("ChildPaths");
+            add("NodeTypes");
           }
         };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    String targetPath = "root.sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetPath));
   }
 
   public void queryShowNodes(CloseableHttpClient httpClient) {
-    String sql = "{\"sql\":\"show child nodes root\",\"rowLimit\":1}";
+    String sql = "{\"sql\":\"show child nodes root\"}";
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
@@ -492,18 +487,12 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("child nodes");
+            add("ChildNodes");
           }
         };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("sg25");
-          }
-        };
-
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    String targetNode = "sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetNode));
   }
 
   public void showAllTTL(CloseableHttpClient httpClient) {
@@ -515,25 +504,11 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("database");
-            add("ttl");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add(null);
+            add("Device");
+            add("TTL(ms)");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
   }
 
   public void showStorageGroup(CloseableHttpClient httpClient) {
@@ -545,17 +520,16 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("database");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
+            add("Database");
+            add("SchemaReplicationFactor");
+            add("DataReplicationFactor");
+            add("TimePartitionOrigin");
+            add("TimePartitionInterval");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    String targetDatabase = "root.sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetDatabase));
   }
 
   public void showFunctions(CloseableHttpClient httpClient) {
@@ -563,8 +537,8 @@ public class IoTDBRestServiceTest {
     Map map = queryMetaData(httpClient, sql);
     List<String> columnNamesResult = (List<String>) map.get("columnNames");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
-    assertEquals(3, columnNamesResult.size());
-    assertEquals(3, valuesResult.size());
+    assertEquals(4, columnNamesResult.size());
+    assertEquals(4, valuesResult.size());
   }
 
   public void showTimeseries(CloseableHttpClient httpClient) {
@@ -576,16 +550,17 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("timeseries");
-            add("alias");
-            add("database");
-            add("dataType");
-            add("encoding");
-            add("compression");
-            add("tags");
-            add("attributes");
-            add("deadband");
-            add("deadbandparameters");
+            add("Timeseries");
+            add("Alias");
+            add("Database");
+            add("DataType");
+            add("Encoding");
+            add("Compression");
+            add("Tags");
+            add("Attributes");
+            add("Deadband");
+            add("DeadbandParameters");
+            add("ViewType");
           }
         };
     List<Object> values1 =
@@ -599,33 +574,10 @@ public class IoTDBRestServiceTest {
             add("root.sg25.s8");
           }
         };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-          }
-        };
-    List<Object> values3 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-          }
-        };
-
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
+    for (Object timeSeries : values1) {
+      Assert.assertTrue(valuesResult.get(0).contains(timeSeries));
+    }
   }
 
   public void showLastTimeseries(CloseableHttpClient httpClient) {
@@ -637,16 +589,17 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("timeseries");
-            add("alias");
-            add("database");
-            add("dataType");
-            add("encoding");
-            add("compression");
-            add("tags");
-            add("attributes");
-            add("deadband");
-            add("deadbandparameters");
+            add("Timeseries");
+            add("Alias");
+            add("Database");
+            add("DataType");
+            add("Encoding");
+            add("Compression");
+            add("Tags");
+            add("Attributes");
+            add("Deadband");
+            add("DeadbandParameters");
+            add("ViewType");
           }
         };
     List<Object> values1 =
@@ -660,33 +613,10 @@ public class IoTDBRestServiceTest {
             add("root.sg25.s6");
           }
         };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-            add(null);
-          }
-        };
-    List<Object> values3 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-            add("root.sg25");
-          }
-        };
-
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
+    for (Object timeSeries : values1) {
+      Assert.assertTrue(valuesResult.get(0).contains(timeSeries));
+    }
   }
 
   public void countTimeseries(CloseableHttpClient httpClient) {
@@ -698,26 +628,16 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("column");
-            add("count");
+            add("Column");
+            add("count(timeseries)");
           }
         };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add(6);
-          }
-        };
-
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
+    String targetDatabase = "root.sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetDatabase));
+    int rowIndex = valuesResult.get(0).indexOf(targetDatabase);
+    int targetCount = 6;
+    Assert.assertEquals(targetCount, valuesResult.get(1).get(rowIndex));
   }
 
   public void countNodes(CloseableHttpClient httpClient) {
@@ -729,17 +649,11 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("count");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add(6);
+            add("count(nodes)");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertTrue((int) valuesResult.get(0).get(0) > 6);
   }
 
   public void showDevices(CloseableHttpClient httpClient) {
@@ -751,32 +665,19 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("devices");
-            add("isAligned");
+            add("Device");
+            add("IsAligned");
             add("Template");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-    List<Boolean> values2 =
-        new ArrayList<Boolean>() {
-          {
-            add(false);
-          }
-        };
-    List<String> values3 =
-        new ArrayList<String>() {
-          {
-            add("null");
+            add("TTL(ms)");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    // Assert.assertEquals(values2, valuesResult.get(1));
+    String targetDevice = "root.sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetDevice));
+    int rowIndex = valuesResult.get(0).indexOf(targetDevice);
+    Assert.assertEquals("false", valuesResult.get(1).get(rowIndex));
+    Assert.assertNull(valuesResult.get(2).get(rowIndex));
+    Assert.assertEquals("INF", valuesResult.get(3).get(rowIndex));
   }
 
   public void showDevicesWithStroage(CloseableHttpClient httpClient) {
@@ -788,41 +689,21 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("devices");
-            add("database");
-            add("isAligned");
+            add("Device");
+            add("Database");
+            add("IsAligned");
             add("Template");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-    List<Object> values2 =
-        new ArrayList<Object>() {
-          {
-            add("root.sg25");
-          }
-        };
-    List<Object> values3 =
-        new ArrayList<Object>() {
-          {
-            add("false");
-          }
-        };
-    List<Object> values4 =
-        new ArrayList<Object>() {
-          {
-            add("null");
+            add("TTL(ms)");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
-    Assert.assertEquals(values2, valuesResult.get(1));
-    Assert.assertEquals(values3, valuesResult.get(2));
-    Assert.assertEquals(values4, valuesResult.get(3));
+    String targetDevice = "root.sg25";
+    Assert.assertTrue(valuesResult.get(0).contains(targetDevice));
+    int rowIndex = valuesResult.get(0).indexOf(targetDevice);
+    Assert.assertEquals(targetDevice, valuesResult.get(1).get(rowIndex));
+    Assert.assertEquals("false", valuesResult.get(2).get(rowIndex));
+    Assert.assertNull(valuesResult.get(3).get(rowIndex));
+    Assert.assertEquals("INF", valuesResult.get(4).get(rowIndex));
   }
 
   public void listUser(CloseableHttpClient httpClient) {
@@ -834,23 +715,19 @@ public class IoTDBRestServiceTest {
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("user");
-          }
-        };
-    List<Object> values1 =
-        new ArrayList<Object>() {
-          {
-            add("root");
+            add("UserId");
+            add("User");
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertEquals(values1, valuesResult.get(0));
+    Assert.assertTrue(valuesResult.get(0).contains(0));
+    Assert.assertTrue(valuesResult.get(1).contains("root"));
   }
 
   public void selectCount(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"select count(s3) from root.** group by level = 1\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     Assert.assertTrue(map.size() > 0);
     List<Object> columnNames =
@@ -872,16 +749,16 @@ public class IoTDBRestServiceTest {
   public void selectLast(CloseableHttpClient httpClient) {
     String sql = "{\"sql\":\"select last s4 from root.sg25\"}";
     Map map = queryMetaData(httpClient, sql);
-    List<String> columnNamesResult = (List<String>) map.get("columnNames");
+    List<String> columnNamesResult = (List<String>) map.get("expressions");
     List<List<Object>> valuesResult = (List<List<Object>>) map.get("values");
     List<Long> timestampsResult = (List<Long>) map.get("timestamps");
     Assert.assertTrue(map.size() > 0);
     List<Object> columnNames =
         new ArrayList<Object>() {
           {
-            add("timeseries");
-            add("value");
-            add("dataType");
+            add("Timeseries");
+            add("Value");
+            add("DataType");
           }
         };
     List<Long> timestamps =

@@ -239,6 +239,20 @@
             <!--We will integrate mqtt-jar-with-dependencies into lib by assembly plugin-->
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>rest</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <!--We will integrate rest-jar-with-dependencies into lib by assembly plugin-->
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>rest-openapi</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <!--We will integrate rest-openapi-jar-with-dependencies into lib by assembly plugin-->
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
