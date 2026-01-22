@@ -70,6 +70,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
@@ -673,11 +674,15 @@ public class TableHeaderSchemaValidator {
   }
 
   private void addColumnSchema(final List<ColumnSchema> columnSchemas, final TsTable tsTable) {
+    long timeColumnCount = 0;
     for (final ColumnSchema columnSchema : columnSchemas) {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
       if (category == null) {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " category is not provided");
+      }
+      if (category == TsTableColumnCategory.TIME) {
+        ++timeColumnCount;
       }
       final String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
@@ -690,6 +695,13 @@ public class TableHeaderSchemaValidator {
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
+    }
+    if (timeColumnCount > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeColumnCount == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
     }
   }
 
