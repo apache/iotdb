@@ -242,7 +242,9 @@ public class IoTDBOpcUaClient {
   }
 
   public void disconnect() throws Exception {
-    client.disconnect().get();
+    if (Objects.nonNull(client)) {
+      client.disconnect().get();
+    }
   }
 
   /////////////////////////////// Getter ///////////////////////////////

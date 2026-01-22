@@ -94,8 +94,8 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sinkAttributes.put("sink", "opc-ua-sink");
-      sinkAttributes.put("opcua.model", "client-server");
-      sinkAttributes.put("security-policy", "None");
+      sinkAttributes.put("model", "client-server");
+      sinkAttributes.put("opcua.security-policy", "None");
 
       OpcUaClient opcUaClient;
       DataValue value;
@@ -103,7 +103,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
         final int[] ports = EnvUtils.searchAvailablePorts();
         tcpPort = ports[0];
         httpsPort = ports[1];
-        sinkAttributes.put("tcp.port", Integer.toString(tcpPort));
+        sinkAttributes.put("opcua.tcp.port", Integer.toString(tcpPort));
         sinkAttributes.put("https.port", Integer.toString(httpsPort));
 
         Assert.assertEquals(

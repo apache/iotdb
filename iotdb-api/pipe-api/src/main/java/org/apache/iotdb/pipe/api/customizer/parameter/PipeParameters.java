@@ -92,7 +92,11 @@ public class PipeParameters {
   }
 
   public String getString(final String key) {
-    final String value = attributes.get(key);
+    String value = attributes.get(key);
+    if (Objects.nonNull(value)) {
+      return value;
+    }
+    value = attributes.get(KeyReducer.shallowReduce(key));
     return value != null ? value : attributes.get(KeyReducer.reduce(key));
   }
 
@@ -378,6 +382,19 @@ public class PipeParameters {
       FIRST_PREFIXES.add("sink.");
 
       SECOND_PREFIXES.add("opcua.");
+    }
+
+    static String shallowReduce(String key) {
+      if (key == null) {
+        return null;
+      }
+      final String lowerCaseKey = key.toLowerCase();
+      for (final String prefix : FIRST_PREFIXES) {
+        if (lowerCaseKey.startsWith(prefix)) {
+          return key.substring(prefix.length());
+        }
+      }
+      return key;
     }
 
     static String reduce(String key) {
