@@ -155,5 +155,13 @@ public class AINodeInstanceManagementIT {
         statement,
         "UNLOAD MODEL sundial FROM DEVICES \"unknown\"",
         "1507: Device ID [unknown] is not available. You can use 'SHOW AI_DEVICES' to retrieve the available devices.");
+    errorTest(
+        statement,
+        "LOAD MODEL sundial TO DEVICES \"0,0\"",
+        "1509: Device ID list contains duplicate entries.");
+    errorTest(
+        statement,
+        "UNLOAD MODEL sundial FROM DEVICES \"0,0\"",
+        "1510: Device ID list contains duplicate entries.");
   }
 }

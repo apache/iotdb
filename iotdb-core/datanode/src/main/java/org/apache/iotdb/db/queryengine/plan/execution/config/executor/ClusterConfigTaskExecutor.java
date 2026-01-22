@@ -175,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -3706,7 +3707,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final TException | ClientManagerException e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3723,7 +3724,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3744,7 +3745,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       ShowModelsTask.buildTsBlock(resp, future);
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3763,7 +3764,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       ShowLoadedModelsTask.buildTsBlock(resp, future);
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3780,7 +3781,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       ShowAIDevicesTask.buildTsBlock(resp, future);
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3799,7 +3800,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3818,7 +3819,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }
@@ -3851,7 +3852,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final Exception e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException());
     }
     return future;
   }

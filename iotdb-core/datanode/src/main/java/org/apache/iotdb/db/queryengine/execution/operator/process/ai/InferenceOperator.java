@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
@@ -248,7 +249,7 @@ public class InferenceOperator implements ProcessOperator {
                             modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
                         .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
               } catch (Exception e) {
-                throw new ModelInferenceProcessException(e.getMessage());
+                throw new AINodeConnectionException();
               }
             },
             modelInferenceExecutor);
