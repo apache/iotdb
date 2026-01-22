@@ -73,7 +73,7 @@ cn_consensus_port=10720
 # Could set 127.0.0.1(for local test) or ipv4 address
 # effectiveMode: restart
 # Datatype: String
-dn_rpc_address=0.0.0.0
+dn_rpc_address=127.0.0.1
 
 # Used for connection of IoTDB native clients(Session)
 # Bind with dn_rpc_address
