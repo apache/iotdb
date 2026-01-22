@@ -21,6 +21,7 @@ package org.apache.iotdb.relational.it.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 
@@ -31,8 +32,10 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -41,15 +44,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-/**
- * Integration tests for JDBC PreparedStatement API.
- *
- * <p>Note: These tests only run on standalone mode because PreparedStatements are session-scoped
- * and cluster mode may route queries to different nodes where the PreparedStatement doesn't exist.
- */
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class})
-public class IoTDBTablePreparedStatementIT2 {
+@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+public class IoTDBTablePreparedStatementJDBCIT {
 
   private static final String DATABASE_NAME = "test";
 
@@ -61,10 +58,14 @@ public class IoTDBTablePreparedStatementIT2 {
       statement.execute("CREATE DATABASE " + DATABASE_NAME);
       statement.execute("USE " + DATABASE_NAME);
       statement.execute(
-          "CREATE TABLE test_table(id INT32 FIELD, name STRING FIELD, value DOUBLE FIELD)");
-      statement.execute("INSERT INTO test_table VALUES (2025-01-01T00:00:00, 1, 'Alice', 100.5)");
-      statement.execute("INSERT INTO test_table VALUES (2025-01-01T00:01:00, 2, 'Bob', 200.3)");
-      statement.execute("INSERT INTO test_table VALUES (2025-01-01T00:02:00, 3, 'Charlie', 300.7)");
+          "CREATE TABLE test_table(id STRING TAG, name STRING FIELD, value DOUBLE FIELD, "
+              + "int_value INT32 FIELD, long_value INT64 FIELD)");
+      statement.execute(
+          "INSERT INTO test_table VALUES (2025-01-01T00:00:00, '1', 'Alice', 100.5, 10, 1000)");
+      statement.execute(
+          "INSERT INTO test_table VALUES (2025-01-01T00:01:00, '2', 'Bob', 200.3, 20, 2000)");
+      statement.execute(
+          "INSERT INTO test_table VALUES (2025-01-01T00:02:00, '3', 'Charlie', 300.7, 30, 3000)");
     }
   }
 
@@ -73,12 +74,6 @@ public class IoTDBTablePreparedStatementIT2 {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
-  /**
-   * Get the underlying connection that supports PreparedStatement.
-   *
-   * <p>ClusterTestConnection doesn't support prepareStatement(), so we need to get the underlying
-   * real JDBC connection.
-   */
   private Connection getConnection() throws SQLException {
     Connection connection = EnvFactory.getEnv().getTableConnection();
     if (connection instanceof ClusterTestConnection) {
@@ -95,11 +90,11 @@ public class IoTDBTablePreparedStatementIT2 {
       stmt.execute("USE " + DATABASE_NAME);
 
       try (PreparedStatement ps =
-          connection.prepareStatement("SELECT * FROM test_table WHERE id = ?")) {
-        ps.setInt(1, 2);
+          connection.prepareStatement("SELECT * FROM test_table WHERE int_value = ?")) {
+        ps.setInt(1, 20);
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
-          assertEquals(2, rs.getInt("id"));
+          assertEquals(20, rs.getInt("int_value"));
           assertEquals("Bob", rs.getString("name"));
           assertEquals(200.3, rs.getDouble("value"), 0.001);
           assertFalse(rs.next());
@@ -119,7 +114,7 @@ public class IoTDBTablePreparedStatementIT2 {
         ps.setString(1, "Charlie");
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
-          assertEquals(3, rs.getInt("id"));
+          assertEquals("3", rs.getString("id"));
           assertEquals("Charlie", rs.getString("name"));
           assertEquals(300.7, rs.getDouble("value"), 0.001);
           assertFalse(rs.next());
@@ -135,12 +130,12 @@ public class IoTDBTablePreparedStatementIT2 {
       stmt.execute("USE " + DATABASE_NAME);
 
       try (PreparedStatement ps =
-          connection.prepareStatement("SELECT * FROM test_table WHERE id >= ? AND value < ?")) {
-        ps.setInt(1, 2);
+          connection.prepareStatement("SELECT * FROM test_table WHERE id = ? AND value < ?")) {
+        ps.setString(1, "2");
         ps.setDouble(2, 300.0);
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
-          assertEquals(2, rs.getInt("id"));
+          assertEquals("2", rs.getString("id"));
           assertFalse(rs.next());
         }
       }
@@ -156,7 +151,7 @@ public class IoTDBTablePreparedStatementIT2 {
       try (PreparedStatement ps =
           connection.prepareStatement("SELECT * FROM test_table WHERE id = ?")) {
         // First execution
-        ps.setInt(1, 1);
+        ps.setString(1, "1");
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
           assertEquals("Alice", rs.getString("name"));
@@ -164,7 +159,7 @@ public class IoTDBTablePreparedStatementIT2 {
         }
 
         // Second execution with different parameter
-        ps.setInt(1, 3);
+        ps.setString(1, "3");
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
           assertEquals("Charlie", rs.getString("name"));
@@ -203,10 +198,11 @@ public class IoTDBTablePreparedStatementIT2 {
       stmt.execute("USE " + DATABASE_NAME);
 
       try (PreparedStatement ps =
-          connection.prepareStatement("SELECT * FROM test_table WHERE id = ?")) {
-        ps.setLong(1, 1L);
+          connection.prepareStatement("SELECT * FROM test_table WHERE long_value = ?")) {
+        ps.setLong(1, 1000L);
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
+          assertEquals(1000L, rs.getLong("long_value"));
           assertEquals("Alice", rs.getString("name"));
           assertFalse(rs.next());
         }
@@ -276,23 +272,57 @@ public class IoTDBTablePreparedStatementIT2 {
     try (Connection connection = getConnection();
         Statement stmt = connection.createStatement()) {
       stmt.execute("USE " + DATABASE_NAME);
-      // Create table with blob column
       stmt.execute("CREATE TABLE blob_table(data BLOB FIELD)");
 
       byte[] testData = new byte[] {0x01, 0x02, 0x03};
-      // Insert using prepared statement
-      try (PreparedStatement insertPs =
-          connection.prepareStatement("INSERT INTO blob_table VALUES (2025-01-01T00:00:00, ?)")) {
-        insertPs.setBytes(1, testData);
-        insertPs.execute();
-      }
+      stmt.execute("INSERT INTO blob_table VALUES (2025-01-01T00:00:00, X'010203')");
 
-      // Query the data
-      try (PreparedStatement queryPs = connection.prepareStatement("SELECT data FROM blob_table")) {
+      try (PreparedStatement queryPs =
+          connection.prepareStatement("SELECT data FROM blob_table WHERE data = ?")) {
+        queryPs.setBytes(1, testData);
+
         try (ResultSet rs = queryPs.executeQuery()) {
           assertTrue(rs.next());
           assertArrayEquals(testData, rs.getBytes("data"));
         }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementResultSetMetaData() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT id, name, value, int_value, long_value FROM test_table WHERE id = ?")) {
+        ps.setString(1, "1");
+        try (ResultSet rs = ps.executeQuery()) {
+          ResultSetMetaData metaData = rs.getMetaData();
+          assertEquals(5, metaData.getColumnCount());
+          assertEquals("id", metaData.getColumnLabel(1).toLowerCase());
+          assertEquals("name", metaData.getColumnLabel(2).toLowerCase());
+          assertEquals("value", metaData.getColumnLabel(3).toLowerCase());
+          assertEquals("int_value", metaData.getColumnLabel(4).toLowerCase());
+          assertEquals("long_value", metaData.getColumnLabel(5).toLowerCase());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementParameterMetaData() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT id, name, value FROM test_table WHERE id = ? AND value > ?")) {
+        ParameterMetaData metaData = ps.getParameterMetaData();
+        assertEquals(2, metaData.getParameterCount());
       }
     }
   }
@@ -313,7 +343,6 @@ public class IoTDBTablePreparedStatementIT2 {
         assertTrue(affected >= 0);
       }
 
-      // Verify the insert
       try (ResultSet rs = stmt.executeQuery("SELECT * FROM insert_test WHERE id = 100")) {
         assertTrue(rs.next());
         assertEquals("TestName", rs.getString("name"));
@@ -346,10 +375,10 @@ public class IoTDBTablePreparedStatementIT2 {
 
       try (PreparedStatement ps =
           connection.prepareStatement("SELECT * FROM test_table WHERE id = ?")) {
-        ps.setInt(1, 1);
+        ps.setString(1, "1");
         ps.clearParameters();
         // After clear, should be able to set new parameters
-        ps.setInt(1, 2);
+        ps.setString(1, "2");
         try (ResultSet rs = ps.executeQuery()) {
           assertTrue(rs.next());
           assertEquals("Bob", rs.getString("name"));
@@ -370,7 +399,7 @@ public class IoTDBTablePreparedStatementIT2 {
               connection.prepareStatement(
                   "SELECT COUNT(*) as cnt FROM test_table WHERE value > ?")) {
         // Execute first prepared statement
-        ps1.setInt(1, 1);
+        ps1.setString(1, "1");
         try (ResultSet rs = ps1.executeQuery()) {
           assertTrue(rs.next());
           assertEquals("Alice", rs.getString("name"));
