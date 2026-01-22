@@ -44,10 +44,12 @@ public class TableDiskUsageCacheReader implements Closeable {
   private final DataRegion dataRegion;
   private final int regionId;
   private final Map<Long, TimePartitionTableSizeQueryContext> timePartitionQueryContexts;
-  private CompletableFuture<TsFileTableSizeCacheReader> tsFileTableSizeCacheReaderFuture;
+
+  private CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>>
+      prepareReaderFuture;
   private TsFileTableSizeCacheReader tsFileTableSizeCacheReader;
-  private CompletableFuture<IObjectTableSizeCacheReader> objectTableSizeCacheReaderFuture;
   private IObjectTableSizeCacheReader objectTableSizeCacheReader;
+
   private long acquiredMemory;
   private boolean tsFileIdKeysPrepared = false;
 
@@ -78,17 +80,21 @@ public class TableDiskUsageCacheReader implements Closeable {
             RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY));
   }
 
-  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) throws Exception {
-    if (this.objectTableSizeCacheReader == null) {
-      this.objectTableSizeCacheReaderFuture =
-          this.objectTableSizeCacheReaderFuture == null
+  public boolean prepareCacheReader(long startTime, long maxRunTime) throws Exception {
+    if (this.tsFileTableSizeCacheReader == null) {
+      this.prepareReaderFuture =
+          this.prepareReaderFuture == null
               ? TableDiskUsageCache.getInstance()
-                  .startReadObject(dataRegion.getDatabaseName(), regionId)
-              : objectTableSizeCacheReaderFuture;
+                  .startRead(dataRegion.getDatabaseName(), regionId, true, true)
+              : this.prepareReaderFuture;
       do {
         try {
-          if (objectTableSizeCacheReaderFuture.isDone()) {
-            this.objectTableSizeCacheReader = objectTableSizeCacheReaderFuture.get();
+          if (prepareReaderFuture.isDone()) {
+            Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
+                prepareReaderFuture.get();
+            this.tsFileTableSizeCacheReader = readerPair.left;
+            this.tsFileTableSizeCacheReader.openKeyFile();
+            this.objectTableSizeCacheReader = readerPair.right;
             break;
           } else {
             Thread.sleep(1);
@@ -99,9 +105,10 @@ public class TableDiskUsageCacheReader implements Closeable {
         }
       } while (System.nanoTime() - startTime < maxRunTime);
     }
-    if (this.objectTableSizeCacheReader == null) {
-      return false;
-    }
+    return this.tsFileTableSizeCacheReader != null;
+  }
+
+  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) {
     if (objectTableSizeCacheReader.loadObjectFileTableSize(
         timePartitionQueryContexts, startTime, maxRunTime)) {
       objectTableSizeCacheReader.close();
@@ -113,29 +120,6 @@ public class TableDiskUsageCacheReader implements Closeable {
   public boolean prepareCachedTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
     if (tsFileIdKeysPrepared) {
       return true;
-    }
-    if (this.tsFileTableSizeCacheReader == null) {
-      this.tsFileTableSizeCacheReaderFuture =
-          this.tsFileTableSizeCacheReaderFuture == null
-              ? TableDiskUsageCache.getInstance().startRead(dataRegion.getDatabaseName(), regionId)
-              : tsFileTableSizeCacheReaderFuture;
-      do {
-        try {
-          if (tsFileTableSizeCacheReaderFuture.isDone()) {
-            this.tsFileTableSizeCacheReader = tsFileTableSizeCacheReaderFuture.get();
-            this.tsFileTableSizeCacheReader.openKeyFile();
-            break;
-          } else {
-            Thread.sleep(1);
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return false;
-        }
-      } while (System.nanoTime() - startTime < maxRunTime);
-    }
-    if (this.tsFileTableSizeCacheReader == null) {
-      return false;
     }
     if (tsFileTableSizeCacheReader.readFromKeyFile(
         timePartitionQueryContexts, startTime, maxRunTime)) {
@@ -208,13 +192,9 @@ public class TableDiskUsageCacheReader implements Closeable {
       objectTableSizeCacheReader.close();
       objectTableSizeCacheReader = null;
     }
-    if (objectTableSizeCacheReaderFuture != null) {
-      TableDiskUsageCache.getInstance().endReadObject(dataRegion.getDatabaseName(), regionId);
-      objectTableSizeCacheReaderFuture = null;
-    }
-    if (tsFileTableSizeCacheReaderFuture != null) {
+    if (prepareReaderFuture != null) {
       TableDiskUsageCache.getInstance().endRead(dataRegion.getDatabaseName(), regionId);
-      tsFileTableSizeCacheReaderFuture = null;
+      prepareReaderFuture = null;
     }
     releaseMemory();
   }

@@ -1320,6 +1320,10 @@ public class InformationSchemaContentSupplierFactory {
       long start = System.nanoTime();
 
       try {
+        if (!currentDataRegionCacheReader.prepareCacheReader(start, maxRuntime)) {
+          return null;
+        }
+
         if (!currentDataRegionCacheReader.loadObjectFileTableSizeCache(start, maxRuntime)) {
           return null;
         }

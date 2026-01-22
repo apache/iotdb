@@ -138,9 +138,6 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
 
   @Override
   public boolean needCompact() {
-    if (activeReaderNum > 0) {
-      return false;
-    }
     if (System.currentTimeMillis() - previousCompactionTimestamp <= TimeUnit.MINUTES.toMillis(2)) {
       return false;
     }

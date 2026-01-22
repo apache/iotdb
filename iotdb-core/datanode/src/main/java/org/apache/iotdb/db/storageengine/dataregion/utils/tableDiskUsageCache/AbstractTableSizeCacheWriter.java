@@ -25,17 +25,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractTableSizeCacheWriter {
   protected final int regionId;
-  protected int activeReaderNum = 0;
   protected long previousCompactionTimestamp = System.currentTimeMillis();
   protected long lastWriteTimestamp = System.currentTimeMillis();
   protected int currentIndexFileVersion = 0;
   protected final File dir;
-  protected CompletableFuture<Void> removedFuture;
 
   public AbstractTableSizeCacheWriter(String database, int regionId) {
     this.regionId = regionId;
@@ -67,28 +64,6 @@ public abstract class AbstractTableSizeCacheWriter {
   public abstract void flush() throws IOException;
 
   public abstract void sync() throws IOException;
-
-  public void increaseActiveReaderNum() {
-    activeReaderNum++;
-  }
-
-  public void decreaseActiveReaderNum() {
-    if (activeReaderNum > 0) {
-      activeReaderNum--;
-    }
-  }
-
-  public int getActiveReaderNum() {
-    return activeReaderNum;
-  }
-
-  public void setRemovedFuture(CompletableFuture<Void> removedFuture) {
-    this.removedFuture = removedFuture;
-  }
-
-  public CompletableFuture<Void> getRemovedFuture() {
-    return removedFuture;
-  }
 
   public abstract void close();
 }
