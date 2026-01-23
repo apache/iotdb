@@ -1198,8 +1198,7 @@ public class InformationSchemaContentSupplierFactory {
     private boolean currentDatabaseOnlyHasOneTable;
 
     private TableDiskUsageCacheReader currentDataRegionCacheReader;
-    private DataRegionTableSizeQueryContext currentDataRegionTableSizeQueryContext =
-        new DataRegionTableSizeQueryContext(false);
+    private DataRegionTableSizeQueryContext currentDataRegionTableSizeQueryContext;
 
     private final StorageEngineTimePartitionIterator dataRegionIterator;
 
@@ -1229,7 +1228,8 @@ public class InformationSchemaContentSupplierFactory {
                       return false;
                     }
                     currentDataRegionTableSizeQueryContext =
-                        new DataRegionTableSizeQueryContext(false);
+                        new DataRegionTableSizeQueryContext(
+                            false, operatorContext.getInstanceContext());
                     return PathUtils.isTableModelDatabase(dataRegion.getDatabaseName());
                   }),
               Optional.empty());
@@ -1260,8 +1260,7 @@ public class InformationSchemaContentSupplierFactory {
               new TableDiskUsageCacheReader(
                   currentDataRegion,
                   currentDataRegionTableSizeQueryContext,
-                  currentDatabaseOnlyHasOneTable,
-                  Optional.ofNullable(operatorContext.getInstanceContext()));
+                  currentDatabaseOnlyHasOneTable);
           return true;
         }
       } catch (Exception e) {
@@ -1333,15 +1332,7 @@ public class InformationSchemaContentSupplierFactory {
           return null;
         }
 
-        boolean finished = false;
-        do {
-          if (!currentDataRegionCacheReader.calculateNextFile()) {
-            finished = true;
-            break;
-          }
-        } while (System.nanoTime() - start < maxRuntime);
-
-        if (!finished) {
+        if (!currentDataRegionCacheReader.checkAllFilesInTsFileManager(start, maxRuntime)) {
           return null;
         }
 

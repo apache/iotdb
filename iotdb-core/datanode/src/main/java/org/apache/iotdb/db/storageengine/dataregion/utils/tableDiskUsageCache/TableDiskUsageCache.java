@@ -46,6 +46,7 @@ public class TableDiskUsageCache {
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>();
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
+  private int counter = 0;
   protected volatile boolean failedToRecover = false;
 
   protected TableDiskUsageCache() {
@@ -60,13 +61,14 @@ public class TableDiskUsageCache {
       while (!Thread.currentThread().isInterrupted()) {
         try {
           checkAndMaySyncObjectDeltaToFile();
-          Operation operation = queue.poll(10, TimeUnit.MILLISECONDS);
-          if (operation == null) {
-            checkAndMayCloseIdleWriter();
-            checkAndMayCompact(TimeUnit.SECONDS.toMillis(1));
-            continue;
+          Operation operation = queue.poll(1, TimeUnit.SECONDS);
+          if (operation != null) {
+            operation.apply(this);
+            counter++;
           }
-          operation.apply(this);
+          if (operation == null || counter % 1000 == 0) {
+            timedCheck();
+          }
         } catch (InterruptedException e) {
           return;
         } catch (Exception e) {
@@ -76,6 +78,12 @@ public class TableDiskUsageCache {
     } finally {
       writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
     }
+  }
+
+  private void timedCheck() {
+    checkAndMayCloseIdleWriter();
+    checkAndMayCompact(TimeUnit.SECONDS.toMillis(1));
+    counter = 0;
   }
 
   protected void failedToRecover(Exception e) {
@@ -118,9 +126,7 @@ public class TableDiskUsageCache {
   }
 
   public void writeObjectDelta(
-      String database, int regionId, long timePartition, String table, long size, int num) {
-    throw new UnsupportedOperationException();
-  }
+      String database, int regionId, long timePartition, String table, long size, int num) {}
 
   public CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>> startRead(
       String database, int regionId, boolean readTsFileCache, boolean readObjectFileCache) {

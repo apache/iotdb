@@ -207,7 +207,7 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
   }
 
   @Override
-  public void close() throws IOException {
+  public void close() {
     releaseReadLocks();
   }
 
