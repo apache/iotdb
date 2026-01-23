@@ -1853,17 +1853,11 @@ public class TableDistributedPlanGenerator
     }
 
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    if (!canSplitPushDown) {
+      node.setChild(((SortNode) node.getChild()).getChild());
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
     if (childrenNodes.size() == 1) {
-      // We need GroupNode to push down row number
-      // But we do not need sort node in row number
-      if (childrenNodes.get(0) instanceof MergeSortNode) {
-        CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-        childrenNodes.get(0).getChildren().forEach(collectNode::addChild);
-        node.setChild(collectNode);
-        return Collections.singletonList(node);
-      }
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {
@@ -1889,6 +1883,9 @@ public class TableDistributedPlanGenerator
     checkArgument(
         node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    if (!canSplitPushDown) {
+      node.setChild(((SortNode) node.getChild()).getChild());
+    }
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (canSplitPushDown) {
       childrenNodes =
@@ -1898,15 +1895,6 @@ public class TableDistributedPlanGenerator
     }
 
     if (childrenNodes.size() == 1) {
-      // We need GroupNode to push down topk ranking node
-      // But we do not need sort node in topk ranking node
-      if (childrenNodes.get(0) instanceof MergeSortNode) {
-        CollectNode collectNode =
-            new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
-        childrenNodes.get(0).getChildren().forEach(collectNode::addChild);
-        node.setChild(collectNode);
-        return Collections.singletonList(node);
-      }
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
     } else if (!canSplitPushDown) {

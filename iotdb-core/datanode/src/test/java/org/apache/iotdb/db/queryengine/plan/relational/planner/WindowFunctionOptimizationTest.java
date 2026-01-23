@@ -158,21 +158,18 @@ public class WindowFunctionOptimizationTest {
      *     └──TopKRankingNode
      *         └──CollectNode
      *               ├──ExchangeNode
-     *               │    └──SortNode
      *               │        └──TableScan
      *               ├──ExchangeNode
-     *               │    └──SortNode
      *               │        └──TableScan
      *               └──ExchangeNode
-     *                    └──SortNode
      *                        └──TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0),
         output(topKRanking(collect(exchange(), exchange(), exchange()))));
-    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
-    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
   }
 
   @Test
@@ -199,21 +196,18 @@ public class WindowFunctionOptimizationTest {
      *      └──TopKRankingNode
      *          └──MergeSortNode
      *               ├──ExchangeNode
-     *               │    └──SortNode
      *               │        └──TableScan
      *               ├──ExchangeNode
-     *               │    └──SortNode
      *               │        └──TableScan
      *               └──ExchangeNode
-     *                    └──SortNode
      *                        └──TableScan
      */
     assertPlan(
         planTester.getFragmentPlan(0),
         output(limit(2, topKRanking(collect(exchange(), exchange(), exchange())))));
-    assertPlan(planTester.getFragmentPlan(1), sort(tableScan));
-    assertPlan(planTester.getFragmentPlan(2), sort(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
   }
 
   @Test
@@ -228,7 +222,7 @@ public class WindowFunctionOptimizationTest {
     /*
      *   └──OutputNode
      *        └──RowNumberNode
-     *             └──GroupNode
+     *             └──SortNode
      *                  └──TableScanNode
      */
     assertPlan(logicalQueryPlan, output(rowNumber(sort(tableScan))));
