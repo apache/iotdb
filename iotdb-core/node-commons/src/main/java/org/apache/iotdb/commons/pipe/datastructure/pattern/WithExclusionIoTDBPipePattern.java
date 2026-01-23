@@ -42,8 +42,6 @@ public class WithExclusionIoTDBPipePattern extends IoTDBPipePatternOperations {
       final IoTDBPipePatternOperations exclusionPattern) {
     this.inclusionPattern = inclusionPattern;
     this.exclusionPattern = exclusionPattern;
-
-    PipePattern.checkAndLogPatternCoverage(inclusionPattern, exclusionPattern);
   }
 
   //////////////////////////// Pipe Pattern Operations ////////////////////////////

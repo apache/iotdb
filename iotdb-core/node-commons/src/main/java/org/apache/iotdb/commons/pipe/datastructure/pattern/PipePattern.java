@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -29,7 +31,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -142,53 +146,71 @@ public abstract class PipePattern {
 
   public static PipePattern parsePipePatternFromSourceParametersInternal(
       final PipeParameters sourceParameters) {
-    // 1. Define the default inclusion pattern (matches all, "root.**")
-    // This is used if no inclusion patterns are specified.
-    final PipePattern defaultInclusionPattern =
-        buildUnionPattern(Collections.singletonList(new IoTDBPipePattern(null)));
-
-    // 2. Parse INCLUSION patterns using the helper
-    final PipePattern inclusionPattern =
-        parsePatternUnion(
+    // 1. Parse INCLUSION patterns into a list
+    List<PipePattern> inclusionPatterns =
+        parsePatternList(
             sourceParameters,
-            // 'path' keys (IoTDB wildcard)
             EXTRACTOR_PATH_KEY,
             SOURCE_PATH_KEY,
-            // 'pattern' keys (Prefix or IoTDB via format)
             EXTRACTOR_PATTERN_KEY,
-            SOURCE_PATTERN_KEY,
-            // Default pattern if no keys are found
-            defaultInclusionPattern);
+            SOURCE_PATTERN_KEY);
 
-    // 3. Parse EXCLUSION patterns using the helper
-    final PipePattern exclusionPattern =
-        parsePatternUnion(
+    // If no inclusion patterns are specified, use default "root.**"
+    if (inclusionPatterns.isEmpty()) {
+      inclusionPatterns = new ArrayList<>(Collections.singletonList(new IoTDBPipePattern(null)));
+    }
+
+    // 2. Parse EXCLUSION patterns into a list
+    List<PipePattern> exclusionPatterns =
+        parsePatternList(
             sourceParameters,
-            // 'path.exclusion' keys (IoTDB wildcard)
             EXTRACTOR_PATH_EXCLUSION_KEY,
             SOURCE_PATH_EXCLUSION_KEY,
-            // 'pattern.exclusion' keys (Prefix)
             EXTRACTOR_PATTERN_EXCLUSION_KEY,
-            SOURCE_PATTERN_EXCLUSION_KEY,
-            // Default for exclusion is "match nothing" (null)
-            null);
+            SOURCE_PATTERN_EXCLUSION_KEY);
 
-    // 4. Combine inclusion and exclusion
-    if (exclusionPattern == null) {
-      // No exclusion defined, return the inclusion pattern directly
-      return inclusionPattern;
-    } else {
-      // If both inclusion and exclusion patterns support IoTDB operations,
-      // use the specialized ExclusionIoTDBPipePattern
-      if (inclusionPattern instanceof IoTDBPipePatternOperations
-          && exclusionPattern instanceof IoTDBPipePatternOperations) {
-        return new WithExclusionIoTDBPipePattern(
-            (IoTDBPipePatternOperations) inclusionPattern,
-            (IoTDBPipePatternOperations) exclusionPattern);
-      }
-      // Both are defined, wrap them in an ExclusionPipePattern
-      return new WithExclusionPipePattern(inclusionPattern, exclusionPattern);
+    // 3. Optimize the lists: remove redundant patterns
+    inclusionPatterns = optimizePatterns(inclusionPatterns);
+    exclusionPatterns = optimizePatterns(exclusionPatterns);
+
+    // 4. Prune inclusion patterns covered by exclusions
+    inclusionPatterns = pruneInclusionPatterns(inclusionPatterns, exclusionPatterns);
+
+    // 5. Check if the resulting inclusion pattern is empty
+    if (inclusionPatterns.isEmpty()) {
+      final String msg =
+          String.format(
+              "Pipe: The provided exclusion pattern fully covers the inclusion pattern. "
+                  + "This pipe pattern will match nothing. "
+                  + "Inclusion: %s, Exclusion: %s",
+              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+      LOGGER.warn(msg);
+      throw new PipeException(msg);
     }
+
+    // 6. Prune exclusion patterns that do not overlap with any inclusion
+    exclusionPatterns = pruneIrrelevantExclusions(inclusionPatterns, exclusionPatterns);
+
+    // 7. Build final patterns
+    final PipePattern finalInclusionPattern = buildUnionPattern(inclusionPatterns);
+
+    if (exclusionPatterns.isEmpty()) {
+      return finalInclusionPattern;
+    }
+
+    final PipePattern finalExclusionPattern = buildUnionPattern(exclusionPatterns);
+
+    // 8. Combine inclusion and exclusion
+    if (finalInclusionPattern instanceof IoTDBPipePatternOperations
+        && finalExclusionPattern instanceof IoTDBPipePatternOperations) {
+      return new WithExclusionIoTDBPipePattern(
+          (IoTDBPipePatternOperations) finalInclusionPattern,
+          (IoTDBPipePatternOperations) finalExclusionPattern);
+    }
+
+    return new WithExclusionPipePattern(finalInclusionPattern, finalExclusionPattern);
   }
 
   /**
@@ -255,53 +277,164 @@ public abstract class PipePattern {
   }
 
   /**
-   * A private helper method to parse a set of 'path' and 'pattern' keys into a single union
-   * PipePattern. This contains the original logic of parsePipePatternFromSourceParameters.
-   *
-   * @param sourceParameters The source parameters.
-   * @param extractorPathKey Key for extractor path (e.g., "extractor.path").
-   * @param sourcePathKey Key for source path (e.g., "source.path").
-   * @param extractorPatternKey Key for extractor pattern (e.g., "extractor.pattern").
-   * @param sourcePatternKey Key for source pattern (e.g., "source.pattern").
-   * @param defaultPattern The pattern to return if both path and pattern are null. If this
-   *     parameter is null, this method returns null.
-   * @return The parsed PipePattern, or defaultPattern, or null if defaultPattern is null and no
-   *     patterns are specified.
+   * Helper method to parse pattern parameters into a list of patterns without creating the Union
+   * object immediately.
    */
-  private static PipePattern parsePatternUnion(
+  private static List<PipePattern> parsePatternList(
       final PipeParameters sourceParameters,
       final String extractorPathKey,
       final String sourcePathKey,
       final String extractorPatternKey,
-      final String sourcePatternKey,
-      final PipePattern defaultPattern) {
+      final String sourcePatternKey) {
 
     final String path = sourceParameters.getStringByKeys(extractorPathKey, sourcePathKey);
     final String pattern = sourceParameters.getStringByKeys(extractorPatternKey, sourcePatternKey);
 
-    // 1. If both "source.path" and "source.pattern" are specified, their union will be used.
-    if (path != null && pattern != null) {
-      final List<PipePattern> result = new ArrayList<>();
-      // Parse "source.path" as IoTDB-style path.
-      result.addAll(parseMultiplePatterns(path, IoTDBPipePattern::new));
-      // Parse "source.pattern" using the helper method.
-      result.addAll(parsePatternsFromPatternParameter(pattern, sourceParameters));
-      return buildUnionPattern(result);
-    }
+    final List<PipePattern> result = new ArrayList<>();
 
-    // 2. If only "source.path" is specified, it will be interpreted as an IoTDB-style path.
     if (path != null) {
-      return buildUnionPattern(parseMultiplePatterns(path, IoTDBPipePattern::new));
+      result.addAll(parseMultiplePatterns(path, IoTDBPipePattern::new));
     }
 
-    // 3. If only "source.pattern" is specified, parse it using the helper method.
     if (pattern != null) {
-      return buildUnionPattern(parsePatternsFromPatternParameter(pattern, sourceParameters));
+      result.addAll(parsePatternsFromPatternParameter(pattern, sourceParameters));
     }
 
-    // 4. If neither "source.path" nor "source.pattern" is specified,
-    // return the provided default pattern (which may be null).
-    return defaultPattern;
+    return result;
+  }
+
+  /**
+   * Removes patterns from the list that are covered by other patterns in the same list. For
+   * example, if "root.**" and "root.db.**" are present, "root.db.**" is removed.
+   */
+  private static List<PipePattern> optimizePatterns(final List<PipePattern> patterns) {
+    if (patterns == null || patterns.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (patterns.size() == 1) {
+      return patterns;
+    }
+
+    // 1. Sort patterns by "Broadness"
+    final List<PipePattern> sortedPatterns = new ArrayList<>(patterns);
+    sortedPatterns.sort(
+        (o1, o2) -> {
+          final PartialPath p1 = o1.getBaseInclusionPaths().get(0);
+          final PartialPath p2 = o2.getBaseInclusionPaths().get(0);
+
+          final int lenCompare = Integer.compare(p1.getNodeLength(), p2.getNodeLength());
+          if (lenCompare != 0) {
+            return lenCompare;
+          }
+
+          final boolean w1 = p1.hasWildcard();
+          final boolean w2 = p2.hasWildcard();
+          if (w1 && !w2) {
+            return -1;
+          }
+          if (!w1 && w2) {
+            return 1;
+          }
+
+          return p1.compareTo(p2);
+        });
+
+    // 2. Filter using Trie
+    final PatternTrie trie = new PatternTrie();
+    final List<PipePattern> optimized = new ArrayList<>();
+
+    for (final PipePattern pattern : sortedPatterns) {
+      boolean isCovered = true;
+      for (final PartialPath path : pattern.getBaseInclusionPaths()) {
+        if (!trie.isCovered(path)) {
+          isCovered = false;
+          break;
+        }
+      }
+
+      if (!isCovered) {
+        optimized.add(pattern);
+        for (final PartialPath path : pattern.getBaseInclusionPaths()) {
+          trie.add(path);
+        }
+      }
+    }
+
+    return optimized;
+  }
+
+  /**
+   * Prunes patterns from the inclusion list that are fully covered by ANY pattern in the exclusion
+   * list.
+   */
+  private static List<PipePattern> pruneInclusionPatterns(
+      final List<PipePattern> inclusion, final List<PipePattern> exclusion) {
+    if (inclusion == null || inclusion.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (exclusion == null || exclusion.isEmpty()) {
+      return inclusion;
+    }
+
+    final PatternTrie exclusionTrie = new PatternTrie();
+    for (final PipePattern exc : exclusion) {
+      for (final PartialPath path : exc.getBaseInclusionPaths()) {
+        exclusionTrie.add(path);
+      }
+    }
+
+    final List<PipePattern> prunedInclusion = new ArrayList<>();
+    for (final PipePattern inc : inclusion) {
+      boolean isFullyExcluded = true;
+      for (final PartialPath path : inc.getBaseInclusionPaths()) {
+        if (!exclusionTrie.isCovered(path)) {
+          isFullyExcluded = false;
+          break;
+        }
+      }
+
+      if (!isFullyExcluded) {
+        prunedInclusion.add(inc);
+      }
+    }
+    return prunedInclusion;
+  }
+
+  /**
+   * Prunes patterns from the exclusion list that do NOT overlap with any of the remaining inclusion
+   * patterns.
+   */
+  private static List<PipePattern> pruneIrrelevantExclusions(
+      final List<PipePattern> inclusion, final List<PipePattern> exclusion) {
+    if (exclusion == null || exclusion.isEmpty()) {
+      return new ArrayList<>();
+    }
+    if (inclusion == null || inclusion.isEmpty()) {
+      return new ArrayList<>();
+    }
+
+    final PatternTrie inclusionTrie = new PatternTrie();
+    for (final PipePattern inc : inclusion) {
+      for (final PartialPath path : inc.getBaseInclusionPaths()) {
+        inclusionTrie.add(path);
+      }
+    }
+
+    final List<PipePattern> relevantExclusion = new ArrayList<>();
+    for (final PipePattern exc : exclusion) {
+      boolean overlapsWithAnyInclusion = false;
+      for (final PartialPath path : exc.getBaseInclusionPaths()) {
+        if (inclusionTrie.overlaps(path)) {
+          overlapsWithAnyInclusion = true;
+          break;
+        }
+      }
+
+      if (overlapsWithAnyInclusion) {
+        relevantExclusion.add(exc);
+      }
+    }
+    return relevantExclusion;
   }
 
   /**
@@ -439,6 +572,7 @@ public abstract class PipePattern {
    * @return An int array `[coveredCount, totalInclusionPaths]` for testing non-failing scenarios.
    * @throws PipeException If the inclusion pattern is fully covered by the exclusion pattern.
    */
+  @TestOnly
   public static int[] checkAndLogPatternCoverage(
       final PipePattern inclusion, final PipePattern exclusion) throws PipeException {
     if (inclusion == null || exclusion == null) {
@@ -501,5 +635,114 @@ public abstract class PipePattern {
     }
 
     return new int[] {coveredCount, inclusionPaths.size()};
+  }
+
+  /** A specialized Trie to efficiently check path coverage. */
+  private static class PatternTrie {
+    private final TrieNode root = new TrieNode();
+
+    private static class TrieNode {
+      Map<String, TrieNode> children = new HashMap<>();
+      TrieNode wildcardNode = null;
+
+      boolean isLeaf = false;
+      boolean isMultiLevelWildcard = false;
+    }
+
+    public void add(final PartialPath path) {
+      TrieNode node = root;
+      final String[] nodes = path.getNodes();
+
+      for (final String segment : nodes) {
+        if (node.isMultiLevelWildcard) {
+          return;
+        }
+
+        if (segment.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+          node.isMultiLevelWildcard = true;
+          node.children = Collections.emptyMap();
+          node.wildcardNode = null;
+          node.isLeaf = true;
+          return;
+        }
+
+        if (segment.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+          if (node.wildcardNode == null) {
+            node.wildcardNode = new TrieNode();
+          }
+          node = node.wildcardNode;
+        } else {
+          node = node.children.computeIfAbsent(segment, k -> new TrieNode());
+        }
+      }
+      node.isLeaf = true;
+    }
+
+    public boolean isCovered(final PartialPath path) {
+      return checkCoverage(root, path.getNodes(), 0);
+    }
+
+    private boolean checkCoverage(final TrieNode node, final String[] pathNodes, final int index) {
+      if (node.isMultiLevelWildcard) {
+        return true;
+      }
+
+      if (index >= pathNodes.length) {
+        return node.isLeaf;
+      }
+
+      final String currentSegment = pathNodes[index];
+
+      final TrieNode child = node.children.get(currentSegment);
+      if (child != null && checkCoverage(child, pathNodes, index + 1)) {
+        return true;
+      }
+
+      if (node.wildcardNode != null) {
+        return checkCoverage(node.wildcardNode, pathNodes, index + 1);
+      }
+
+      return false;
+    }
+
+    public boolean overlaps(final PartialPath path) {
+      return checkOverlap(root, path.getNodes(), 0);
+    }
+
+    private boolean checkOverlap(final TrieNode node, final String[] pathNodes, final int index) {
+      if (node.isMultiLevelWildcard) {
+        return true;
+      }
+
+      if (index < pathNodes.length
+          && pathNodes[index].equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+        return true;
+      }
+
+      if (index >= pathNodes.length) {
+        return node.isLeaf;
+      }
+
+      final String pNode = pathNodes[index];
+
+      if (pNode.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+        for (final TrieNode child : node.children.values()) {
+          if (checkOverlap(child, pathNodes, index + 1)) {
+            return true;
+          }
+        }
+        if (node.wildcardNode != null) {
+          return checkOverlap(node.wildcardNode, pathNodes, index + 1);
+        }
+        return false;
+      }
+
+      final TrieNode exactChild = node.children.get(pNode);
+      if (exactChild != null && checkOverlap(exactChild, pathNodes, index + 1)) {
+        return true;
+      }
+
+      return node.wildcardNode != null && checkOverlap(node.wildcardNode, pathNodes, index + 1);
+    }
   }
 }
