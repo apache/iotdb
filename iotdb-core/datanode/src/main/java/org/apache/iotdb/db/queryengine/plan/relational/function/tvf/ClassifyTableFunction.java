@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
@@ -44,6 +46,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
@@ -71,7 +74,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
-import static org.apache.iotdb.rpc.TSStatusCode.CAN_NOT_CONNECT_AINODE;
 
 public class ClassifyTableFunction implements TableFunction {
 
@@ -367,8 +369,10 @@ public class ClassifyTableFunction implements TableFunction {
       try (AINodeClient client =
           CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
         resp = client.forecast(new TForecastReq(modelId, SERDE.serialize(inputData), outputLength));
-      } catch (Exception e) {
-        throw new IoTDBRuntimeException(e.getMessage(), CAN_NOT_CONNECT_AINODE.getStatusCode());
+      } catch (ClientManagerException | TException e) {
+        throw new AINodeConnectionException(e);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
       }
 
       if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
