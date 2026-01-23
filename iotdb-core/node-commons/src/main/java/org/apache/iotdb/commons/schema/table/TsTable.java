@@ -185,8 +185,7 @@ public class TsTable {
    * @param columnSchemaMapTransformer transforms columnSchemaMap entries during copy
    * @param writeOperation the write operation to execute on the new map copies
    */
-  private void executeWriteWithTransform(
-      ColumnSchemaMapTransformer columnSchemaMapTransformer, WriteOperation writeOperation) {
+  private void executeWriteWithTransform(ColumnSchemaMapTransformer columnSchemaMapTransformer) {
     readWriteLock.writeLock().lock();
     isNotWrite.set(false);
     try {
@@ -197,9 +196,6 @@ public class TsTable {
       }
       Map<String, Integer> newTagColumnIndexMap = new HashMap<>(tagColumnIndexMap);
       Map<String, Integer> newIdColumnIndexMap = new HashMap<>(idColumnIndexMap);
-
-      // Execute write operation on local copies
-      writeOperation.execute(newColumnSchemaMap, newTagColumnIndexMap, newIdColumnIndexMap);
 
       // After write completes, atomically update the class fields
       columnSchemaMap = newColumnSchemaMap;
@@ -313,9 +309,6 @@ public class TsTable {
           } else {
             targetMap.put(key, schema);
           }
-        },
-        (colMap, tagMap, idMap) -> {
-          // No additional operation needed, transformation already done during copy
         });
   }
 
