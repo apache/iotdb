@@ -73,9 +73,10 @@ public class TsTable {
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
 
-  private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
-  private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
-  private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
+  // Copy-on-Write maps for thread-safe access without read locks
+  private volatile Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  private volatile Map<String, Integer> tagColumnIndexMap = new HashMap<>();
+  private volatile Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
   private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -149,21 +150,80 @@ public class TsTable {
   }
 
   /**
-   * Execute a write operation with optimistic lock support. This method handles the write flag and
-   * version increment automatically.
+   * Execute a write operation with Copy-on-Write support. This method creates new copies of the
+   * maps before modification to ensure thread-safe reads without locks.
    *
-   * @param writeOperation the write operation to execute
+   * @param writeOperation the write operation to execute on the new map copies
    */
-  private void executeWrite(Runnable writeOperation) {
+  private void executeWrite(WriteOperation writeOperation) {
     readWriteLock.writeLock().lock();
     isNotWrite.set(false);
     try {
-      writeOperation.run();
+      // Copy-on-Write: create local copies first
+      Map<String, TsTableColumnSchema> newColumnSchemaMap = new LinkedHashMap<>(columnSchemaMap);
+      Map<String, Integer> newTagColumnIndexMap = new HashMap<>(tagColumnIndexMap);
+      Map<String, Integer> newIdColumnIndexMap = new HashMap<>(idColumnIndexMap);
+
+      // Execute write operation on local copies
+      writeOperation.execute(newColumnSchemaMap, newTagColumnIndexMap, newIdColumnIndexMap);
+
+      // After write completes, atomically update the class fields
+      columnSchemaMap = newColumnSchemaMap;
+      tagColumnIndexMap = newTagColumnIndexMap;
+      idColumnIndexMap = newIdColumnIndexMap;
     } finally {
       instanceVersion.incrementAndGet();
       isNotWrite.set(true);
       readWriteLock.writeLock().unlock();
     }
+  }
+
+  /**
+   * Execute a write operation with a custom columnSchemaMap transformer. This allows transforming
+   * the map during copy (e.g., for rename operations) in a single pass.
+   *
+   * @param columnSchemaMapTransformer transforms columnSchemaMap entries during copy
+   * @param writeOperation the write operation to execute on the new map copies
+   */
+  private void executeWriteWithTransform(
+      ColumnSchemaMapTransformer columnSchemaMapTransformer, WriteOperation writeOperation) {
+    readWriteLock.writeLock().lock();
+    isNotWrite.set(false);
+    try {
+      // Copy-on-Write with transformation: transform columnSchemaMap in single pass
+      Map<String, TsTableColumnSchema> newColumnSchemaMap = new LinkedHashMap<>();
+      for (Map.Entry<String, TsTableColumnSchema> entry : columnSchemaMap.entrySet()) {
+        columnSchemaMapTransformer.transform(entry.getKey(), entry.getValue(), newColumnSchemaMap);
+      }
+      Map<String, Integer> newTagColumnIndexMap = new HashMap<>(tagColumnIndexMap);
+      Map<String, Integer> newIdColumnIndexMap = new HashMap<>(idColumnIndexMap);
+
+      // Execute write operation on local copies
+      writeOperation.execute(newColumnSchemaMap, newTagColumnIndexMap, newIdColumnIndexMap);
+
+      // After write completes, atomically update the class fields
+      columnSchemaMap = newColumnSchemaMap;
+      tagColumnIndexMap = newTagColumnIndexMap;
+      idColumnIndexMap = newIdColumnIndexMap;
+    } finally {
+      instanceVersion.incrementAndGet();
+      isNotWrite.set(true);
+      readWriteLock.writeLock().unlock();
+    }
+  }
+
+  @FunctionalInterface
+  private interface WriteOperation {
+    void execute(
+        Map<String, TsTableColumnSchema> columnSchemaMap,
+        Map<String, Integer> tagColumnIndexMap,
+        Map<String, Integer> idColumnIndexMap);
+  }
+
+  @FunctionalInterface
+  private interface ColumnSchemaMapTransformer {
+    void transform(
+        String key, TsTableColumnSchema value, Map<String, TsTableColumnSchema> targetMap);
   }
 
   public int getTagColumnOrdinal(final String columnName) {
@@ -201,16 +261,16 @@ public class TsTable {
 
   // Currently only supports device view
   public void renameTable(final String newName) {
-    executeWrite(() -> tableName = newName);
+    executeWrite((colMap, tagMap, idMap) -> tableName = newName);
   }
 
   public void addColumnSchema(final TsTableColumnSchema columnSchema) {
     executeWrite(
-        () -> {
-          columnSchemaMap.put(columnSchema.getColumnName(), columnSchema);
+        (colMap, tagMap, idMap) -> {
+          colMap.put(columnSchema.getColumnName(), columnSchema);
           if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
             tagNums++;
-            tagColumnIndexMap.put(columnSchema.getColumnName(), tagNums - 1);
+            tagMap.put(columnSchema.getColumnName(), tagNums - 1);
           } else if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
             fieldNum++;
           }
@@ -218,50 +278,56 @@ public class TsTable {
   }
 
   public void renameColumnSchema(final String oldName, final String newName) {
-    executeWrite(
-        () -> {
-          // Ensures idempotency
-          if (columnSchemaMap.containsKey(oldName)) {
-            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+    // Transform during copy: rename column while preserving insertion order in single pass
+    executeWriteWithTransform(
+        (key, schema, targetMap) -> {
+          if (key.equals(oldName)) {
+            // Rename this column while preserving its position
             final Map<String, String> oldProps = schema.getProps();
             oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+
+            TsTableColumnSchema renamedSchema;
             switch (schema.getColumnCategory()) {
               case TAG:
-                columnSchemaMap.put(
-                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
+                renamedSchema = new TagColumnSchema(newName, schema.getDataType(), oldProps);
                 break;
               case FIELD:
-                columnSchemaMap.put(
-                    newName,
+                renamedSchema =
                     new FieldColumnSchema(
                         newName,
                         schema.getDataType(),
                         ((FieldColumnSchema) schema).getEncoding(),
                         ((FieldColumnSchema) schema).getCompressor(),
-                        oldProps));
+                        oldProps);
                 break;
               case ATTRIBUTE:
-                columnSchemaMap.put(
-                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
+                renamedSchema = new AttributeColumnSchema(newName, schema.getDataType(), oldProps);
                 break;
               case TIME:
               default:
-                // Do nothing
-                columnSchemaMap.put(oldName, schema);
+                // Do nothing for TIME column
+                targetMap.put(key, schema);
+                return;
             }
+            targetMap.put(newName, renamedSchema);
+          } else {
+            targetMap.put(key, schema);
           }
+        },
+        (colMap, tagMap, idMap) -> {
+          // No additional operation needed, transformation already done during copy
         });
   }
 
   public void removeColumnSchema(final String columnName) {
     executeWrite(
-        () -> {
-          final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
+        (colMap, tagMap, idMap) -> {
+          final TsTableColumnSchema columnSchema = colMap.get(columnName);
           if (columnSchema != null
               && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
             throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
           } else if (columnSchema != null) {
-            columnSchemaMap.remove(columnName);
+            colMap.remove(columnName);
             if (columnSchema.getColumnCategory().equals(TsTableColumnCategory.FIELD)) {
               fieldNum--;
             }
@@ -354,7 +420,7 @@ public class TsTable {
 
   public void addProp(final String key, final String value) {
     executeWrite(
-        () -> {
+        (colMap, tagMap, idMap) -> {
           if (props == null) {
             props = new HashMap<>();
           }
@@ -364,7 +430,7 @@ public class TsTable {
 
   public void removeProp(final String key) {
     executeWrite(
-        () -> {
+        (colMap, tagMap, idMap) -> {
           if (props == null) {
             return;
           }
@@ -410,7 +476,7 @@ public class TsTable {
   }
 
   public void setProps(Map<String, String> props) {
-    executeWrite(() -> this.props = props);
+    executeWrite((colMap, tagMap, idMap) -> this.props = props);
   }
 
   public void checkTableNameAndObjectNames4Object() throws MetadataException {
