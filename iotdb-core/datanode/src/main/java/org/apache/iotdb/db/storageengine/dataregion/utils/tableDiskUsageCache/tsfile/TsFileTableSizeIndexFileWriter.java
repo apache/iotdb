@@ -94,17 +94,8 @@ public class TsFileTableSizeIndexFileWriter {
   }
 
   public void write(TsFileID tsFileID, Map<String, Long> tableSizeMap) throws IOException {
-    if (keyFileOutputStream == null) {
-      keyFileOutputStream = new FileOutputStream(currentKeyIndexFile, true);
-      keyFileSize = currentKeyIndexFile.length();
-      keyBufferedOutputStream = new BufferedOutputStream(keyFileOutputStream);
-    }
-    if (valueFileOutputStream == null) {
-      valueFileOutputStream = new FileOutputStream(currentValueIndexFile, true);
-      valueFileSize = currentValueIndexFile.length();
-      valueBufferedOutputStream = new BufferedOutputStream(valueFileOutputStream);
-    }
-
+    ensureKeyFileOpened();
+    ensureValueFileOpened();
     long valueOffset = valueFileSize;
     valueFileSize +=
         ReadWriteForEncodingUtils.writeVarInt(tableSizeMap.size(), valueBufferedOutputStream);
@@ -121,11 +112,7 @@ public class TsFileTableSizeIndexFileWriter {
   }
 
   public void write(TsFileID originTsFileID, TsFileID newTsFileID) throws IOException {
-    if (keyFileOutputStream == null) {
-      keyFileOutputStream = new FileOutputStream(currentKeyIndexFile, true);
-      keyFileSize = currentKeyIndexFile.length();
-      keyBufferedOutputStream = new BufferedOutputStream(keyFileOutputStream);
-    }
+    ensureKeyFileOpened();
     keyFileSize += ReadWriteIOUtils.write(KEY_FILE_RECORD_TYPE_REDIRECT, keyBufferedOutputStream);
     keyFileSize += ReadWriteIOUtils.write(newTsFileID.timePartitionId, keyBufferedOutputStream);
     keyFileSize += ReadWriteIOUtils.write(newTsFileID.timestamp, keyBufferedOutputStream);
@@ -135,6 +122,22 @@ public class TsFileTableSizeIndexFileWriter {
     keyFileSize += ReadWriteIOUtils.write(originTsFileID.fileVersion, keyBufferedOutputStream);
     keyFileSize +=
         ReadWriteIOUtils.write(originTsFileID.compactionVersion, keyBufferedOutputStream);
+  }
+
+  private void ensureKeyFileOpened() throws IOException {
+    if (keyFileOutputStream == null) {
+      keyFileOutputStream = new FileOutputStream(currentKeyIndexFile, true);
+      keyFileSize = currentKeyIndexFile.length();
+      keyBufferedOutputStream = new BufferedOutputStream(keyFileOutputStream);
+    }
+  }
+
+  private void ensureValueFileOpened() throws IOException {
+    if (valueFileOutputStream == null) {
+      valueFileOutputStream = new FileOutputStream(currentValueIndexFile, true);
+      valueFileSize = currentValueIndexFile.length();
+      valueBufferedOutputStream = new BufferedOutputStream(valueFileOutputStream);
+    }
   }
 
   public void flush() throws IOException {

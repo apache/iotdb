@@ -28,6 +28,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 
 public class TsFileTableSizeCacheReader {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileTableSizeCacheReader.class);
 
   private final File keyFile;
   private final long keyFileLength;
@@ -94,7 +98,8 @@ public class TsFileTableSizeCacheReader {
         offsetsInKeyFile.add(keyFileEntry.offset);
         lastCompleteKeyOffsets.add(lastCompleteEntryEndOffsetInKeyFile);
       }
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      logger.warn("Failed to read table tsfile size cache file {}", keyFile, e);
     } finally {
       closeCurrentFile();
     }
@@ -121,7 +126,14 @@ public class TsFileTableSizeCacheReader {
         keyFileTruncateSize = endOffsetInKeyFile;
         valueFileTruncateSize = inputStream.position();
       }
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      logger.warn(
+          "Failed to read table tsfile size cache {} after position: {} and {} after position: {}",
+          keyFile,
+          valueFile,
+          keyFileTruncateSize,
+          valueFileTruncateSize,
+          e);
     } finally {
       closeCurrentFile();
     }

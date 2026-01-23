@@ -72,7 +72,7 @@ public class TableDiskUsageCache {
         } catch (InterruptedException e) {
           return;
         } catch (Exception e) {
-          LOGGER.error("Meet exception when apply TableDiskUsageCache.", e);
+          LOGGER.error("Meet exception when apply TableDiskUsageCache operation.", e);
         }
       }
     } finally {
@@ -86,6 +86,10 @@ public class TableDiskUsageCache {
     counter = 0;
   }
 
+  /**
+   * Any unrecoverable error in a single writer will mark the whole TableDiskUsageCache as failed
+   * and disable further operations.
+   */
   protected void failedToRecover(Exception e) {
     failedToRecover = true;
     LOGGER.error("Failed to recover TableDiskUsageCache", e);
@@ -262,8 +266,8 @@ public class TableDiskUsageCache {
           (k, writer) -> {
             writer.decreaseActiveReaderNum();
             if (writer.getRemovedFuture() != null) {
-              writer.setRemovedFuture(null);
               writer.getRemovedFuture().complete(null);
+              writer.setRemovedFuture(null);
               return null;
             }
             return writer;

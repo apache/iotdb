@@ -4402,6 +4402,10 @@ public class DataRegion implements IDataRegionForQuery {
     return dataRegionIdString;
   }
 
+  public DataRegionId getDataRegionId() {
+    return dataRegionId;
+  }
+
   /**
    * Get the storageGroupPath with dataRegionId.
    *

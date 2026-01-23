@@ -80,20 +80,15 @@ public class TableDiskUsageCacheReader implements Closeable {
                   .startRead(dataRegion.getDatabaseName(), regionId, true, true)
               : this.prepareReaderFuture;
       do {
-        try {
-          if (prepareReaderFuture.isDone()) {
-            Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
-                prepareReaderFuture.get();
-            this.tsFileTableSizeCacheReader = readerPair.left;
-            this.tsFileTableSizeCacheReader.openKeyFile();
-            this.objectTableSizeCacheReader = readerPair.right;
-            break;
-          } else {
-            Thread.sleep(1);
-          }
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return false;
+        if (prepareReaderFuture.isDone()) {
+          Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
+              prepareReaderFuture.get();
+          this.tsFileTableSizeCacheReader = readerPair.left;
+          this.tsFileTableSizeCacheReader.openKeyFile();
+          this.objectTableSizeCacheReader = readerPair.right;
+          break;
+        } else {
+          Thread.sleep(1);
         }
       } while (System.nanoTime() - startTime < maxRunTime);
     }

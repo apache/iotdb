@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
-import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashMap;
@@ -31,7 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class DataRegionTableSizeQueryContext implements Accountable {
+public class DataRegionTableSizeQueryContext {
 
   private final boolean needAllData;
 
@@ -39,8 +38,8 @@ public class DataRegionTableSizeQueryContext implements Accountable {
       timePartitionTableSizeQueryContextMap = new LinkedHashMap<>();
   private int objectFileNum = 0;
 
-  private long previousUsedTimePartition;
-  private TimePartitionTableSizeQueryContext previousUsedTimePartitionContext;
+  private long previousUsedTimePartition = Long.MIN_VALUE;
+  private TimePartitionTableSizeQueryContext previousUsedTimePartitionContext = null;
 
   private final Optional<FragmentInstanceContext> fragmentInstanceContext;
   private long acquiredMemory;
@@ -85,6 +84,10 @@ public class DataRegionTableSizeQueryContext implements Accountable {
     }
   }
 
+  /**
+   * useTimePartition must be called before accessing previousUsedTimePartitionContext. When it
+   * returns false, the caller must skip any operation on the context.
+   */
   private boolean useTimePartition(long currentTimePartition) {
     if (currentTimePartition != previousUsedTimePartition
         || previousUsedTimePartitionContext == null) {
@@ -117,7 +120,7 @@ public class DataRegionTableSizeQueryContext implements Accountable {
     long totalSize = 0;
     for (TimePartitionTableSizeQueryContext timePartitionContext :
         timePartitionTableSizeQueryContextMap.values()) {
-      totalSize += timePartitionContext.getObjectFileSize();
+      totalSize += timePartitionContext.getObjectFileSizeOfCurrentTimePartition();
     }
     return totalSize;
   }
@@ -155,7 +158,7 @@ public class DataRegionTableSizeQueryContext implements Accountable {
   }
 
   public void releaseMemory() {
-    if (!fragmentInstanceContext.isPresent()) {
+    if (!fragmentInstanceContext.isPresent() || acquiredMemory <= 0) {
       return;
     }
     fragmentInstanceContext
@@ -163,10 +166,5 @@ public class DataRegionTableSizeQueryContext implements Accountable {
         .getMemoryReservationContext()
         .releaseMemoryCumulatively(acquiredMemory);
     acquiredMemory = 0;
-  }
-
-  @Override
-  public long ramBytesUsed() {
-    return 0;
   }
 }

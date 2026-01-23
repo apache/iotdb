@@ -1192,7 +1192,6 @@ public class InformationSchemaContentSupplierFactory {
     private final Map<String, List<TTableInfo>> databaseTableInfoMap;
     private final Filter pushDownFilter;
     private final PaginationController paginationController;
-    private final OperatorContext operatorContext;
 
     private DataRegion currentDataRegion;
     private boolean currentDatabaseOnlyHasOneTable;
@@ -1212,7 +1211,6 @@ public class InformationSchemaContentSupplierFactory {
       this.dataTypes = dataTypes;
       this.pushDownFilter = pushDownFilter;
       this.paginationController = paginationController;
-      this.operatorContext = operatorContext;
       AuthorityChecker.getAccessControl().checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -1290,7 +1288,7 @@ public class InformationSchemaContentSupplierFactory {
           row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
           row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
           row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-          row[3] = Integer.parseInt(dataRegion.getDataRegionIdString());
+          row[3] = dataRegion.getDataRegionId().getId();
           row[4] = timePartition;
           if (!pushDownFilter.satisfyRow(0, row)) {
             continue;
@@ -1341,6 +1339,9 @@ public class InformationSchemaContentSupplierFactory {
           return null;
         }
         return buildTsBlock();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return null;
       } catch (Exception e) {
         throw new IoTDBRuntimeException(
             e.getMessage(), e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());

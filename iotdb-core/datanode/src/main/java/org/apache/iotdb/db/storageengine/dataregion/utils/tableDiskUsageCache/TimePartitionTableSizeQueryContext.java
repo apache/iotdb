@@ -30,8 +30,15 @@ import java.util.Map;
 public class TimePartitionTableSizeQueryContext implements Accountable {
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOf(TimePartitionTableSizeQueryContext.class);
+
+  /**
+   * tableSizeResultMap serves as both: 1) result container 2) table filter when needAllData is
+   * false
+   */
   private final Map<String, Long> tableSizeResultMap;
-  Map<TsFileID, Long> tsFileIDOffsetInValueFileMap;
+
+  // tsFileIDOffsetInValueFileMap should be null at first
+  private Map<TsFileID, Long> tsFileIDOffsetInValueFileMap;
 
   public TimePartitionTableSizeQueryContext(Map<String, Long> tableSizeResultMap) {
     this.tableSizeResultMap = tableSizeResultMap;
@@ -54,10 +61,6 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
     }
   }
 
-  public void updateResult(String table, long size) {
-    tableSizeResultMap.computeIfPresent(table, (k, v) -> v + size);
-  }
-
   public void updateResult(String table, long size, boolean needAllData) {
     if (needAllData) {
       tableSizeResultMap.compute(table, (k, v) -> (v == null ? 0 : v) + size);
@@ -70,16 +73,11 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
     return tableSizeResultMap;
   }
 
-  public boolean hasCachedTsFileID(TsFileID tsFileID) {
-    return tsFileIDOffsetInValueFileMap != null
-        && tsFileIDOffsetInValueFileMap.containsKey(tsFileID);
-  }
-
   public Long getCachedTsFileIdOffset(TsFileID tsFileID) {
     return tsFileIDOffsetInValueFileMap == null ? null : tsFileIDOffsetInValueFileMap.get(tsFileID);
   }
 
-  public long getObjectFileSize() {
+  public long getObjectFileSizeOfCurrentTimePartition() {
     long size = 0;
     for (Long value : tableSizeResultMap.values()) {
       size += value;

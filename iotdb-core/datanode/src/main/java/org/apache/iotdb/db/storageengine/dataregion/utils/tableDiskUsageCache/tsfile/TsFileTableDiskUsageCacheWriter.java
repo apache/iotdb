@@ -29,8 +29,6 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.Ab
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,8 +43,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWriter {
-  private static final Logger logger =
-      LoggerFactory.getLogger(TsFileTableDiskUsageCacheWriter.class);
   private static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
   private static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
   public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
@@ -132,10 +128,12 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
 
   public void write(TsFileID tsFileID, Map<String, Long> tableSizeMap) throws IOException {
     tsFileTableSizeIndexFileWriter.write(tsFileID, tableSizeMap);
+    markWritten();
   }
 
   public void write(TsFileID originTsFileID, TsFileID newTsFileID) throws IOException {
     tsFileTableSizeIndexFileWriter.write(originTsFileID, newTsFileID);
+    markWritten();
   }
 
   @Override
@@ -182,6 +180,7 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
         }
       }
     } catch (IOException e) {
+      logger.error("Failed to read key file during compaction", e);
       return;
     } finally {
       cacheFileReader.closeCurrentFile();
@@ -230,8 +229,8 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
       // replace
       File targetKeyFile = generateKeyFile(currentIndexFileVersion + 1, false);
       File targetValueFile = generateValueFile(currentIndexFileVersion + 1, false);
-      targetFileWriter.getKeyFile().renameTo(targetKeyFile);
-      targetFileWriter.getValueFile().renameTo(targetValueFile);
+      Files.move(targetFileWriter.getKeyFile().toPath(), targetKeyFile.toPath());
+      Files.move(targetFileWriter.getValueFile().toPath(), targetValueFile.toPath());
     } catch (Exception e) {
       logger.error("Failed to execute compaction for tsfile table size cache file", e);
     } finally {

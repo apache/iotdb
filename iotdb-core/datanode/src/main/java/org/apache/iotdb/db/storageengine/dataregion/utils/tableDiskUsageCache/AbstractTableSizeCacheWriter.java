@@ -21,6 +21,9 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,6 +31,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractTableSizeCacheWriter {
+  protected static final Logger logger =
+      LoggerFactory.getLogger(AbstractTableSizeCacheWriter.class);
   protected static final String TEMP_CACHE_FILE_SUBFIX = ".tmp";
   protected final int regionId;
   protected long previousCompactionTimestamp = System.currentTimeMillis();
@@ -52,6 +57,8 @@ public abstract class AbstractTableSizeCacheWriter {
           Files.deleteIfExists(file.toPath());
         }
       } catch (Exception e) {
+        logger.warn(
+            "Failed to delete old version table size cache file {}", file.getAbsolutePath());
       }
     }
   }
@@ -60,6 +67,10 @@ public abstract class AbstractTableSizeCacheWriter {
     if (System.currentTimeMillis() - lastWriteTimestamp >= TimeUnit.MINUTES.toMillis(1)) {
       close();
     }
+  }
+
+  public void markWritten() {
+    lastWriteTimestamp = System.currentTimeMillis();
   }
 
   public abstract boolean needCompact();
