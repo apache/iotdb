@@ -54,11 +54,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
@@ -624,6 +626,28 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       WindowNode rewrittenWindow = mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenWindow, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitRowNumber(RowNumberNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      RowNumberNode rewrittenRowNumber = mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenRowNumber, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitTopKRanking(TopKRankingNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      TopKRankingNode rewrittenTopKRanking = mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenTopKRanking, mapping);
     }
 
     @Override
