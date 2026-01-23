@@ -47,6 +47,7 @@ public class TableDiskUsageCache {
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
   private int counter = 0;
+  private long nextWriterId = 0;
   protected volatile boolean failedToRecover = false;
 
   protected TableDiskUsageCache() {
@@ -176,7 +177,7 @@ public class TableDiskUsageCache {
   }
 
   protected DataRegionTableSizeCacheWriter createWriter(String database, int regionId) {
-    return new DataRegionTableSizeCacheWriter(database, regionId);
+    return new DataRegionTableSizeCacheWriter(database, regionId, nextWriterId++);
   }
 
   protected TsFileTableSizeCacheReader createTsFileCacheReader(
@@ -318,6 +319,8 @@ public class TableDiskUsageCache {
 
   private static class RegisterRegionOperation extends Operation {
 
+    private final CompletableFuture<Void> future = new CompletableFuture<>();
+
     private RegisterRegionOperation(String database, int regionId) {
       super(database, regionId);
     }
@@ -326,6 +329,7 @@ public class TableDiskUsageCache {
     public void apply(TableDiskUsageCache tableDiskUsageCache) {
       tableDiskUsageCache.writerMap.computeIfAbsent(
           regionId, regionId -> tableDiskUsageCache.createWriter(database, regionId));
+      future.complete(null);
     }
   }
 
@@ -372,12 +376,14 @@ public class TableDiskUsageCache {
   }
 
   protected static class DataRegionTableSizeCacheWriter {
+    protected final long writerId;
     protected final TsFileTableDiskUsageCacheWriter tsFileCacheWriter;
     protected int activeReaderNum = 0;
     protected CompletableFuture<Void> removedFuture;
 
-    protected DataRegionTableSizeCacheWriter(String database, int regionId) {
-      tsFileCacheWriter = new TsFileTableDiskUsageCacheWriter(database, regionId);
+    protected DataRegionTableSizeCacheWriter(String database, int regionId, long writerId) {
+      this.writerId = writerId;
+      this.tsFileCacheWriter = new TsFileTableDiskUsageCacheWriter(database, regionId);
     }
 
     public void increaseActiveReaderNum() {
