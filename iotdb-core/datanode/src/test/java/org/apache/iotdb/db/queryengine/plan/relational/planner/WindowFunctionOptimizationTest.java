@@ -1,9 +1,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
@@ -11,7 +12,6 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.rowNumber;
@@ -25,7 +25,8 @@ public class WindowFunctionOptimizationTest {
   public void testMergeWindowFunctions() {
     PlanTester planTester = new PlanTester();
 
-    String sql = "SELECT a + min(s1) OVER (PARTITION BY tag1 ORDER BY s1) as b FROM (SELECT *, max(s1) OVER (PARTITION BY tag1 ORDER BY s1) as a FROM table1)";
+    String sql =
+        "SELECT a + min(s1) OVER (PARTITION BY tag1 ORDER BY s1) as b FROM (SELECT *, max(s1) OVER (PARTITION BY tag1 ORDER BY s1) as a FROM table1)";
 
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
 
@@ -49,7 +50,8 @@ public class WindowFunctionOptimizationTest {
   public void testSwapWindowFunctions() {
     PlanTester planTester = new PlanTester();
 
-    String sql = "SELECT min(s1) OVER (PARTITION BY tag1), sum(s1) OVER (PARTITION BY tag1, s1) FROM table1";
+    String sql =
+        "SELECT min(s1) OVER (PARTITION BY tag1), sum(s1) OVER (PARTITION BY tag1, s1) FROM table1";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan =
         tableScan("testdb.table1", ImmutableList.of("tag1", "s1"), ImmutableSet.of("tag1", "s1"));
@@ -63,9 +65,17 @@ public class WindowFunctionOptimizationTest {
      *                         └──SortNode
      *                              └──TableScanNode
      */
-    assertPlan(logicalQueryPlan, output(project(window(ImmutableList.of("tag1", "s1"), ImmutableList.of(), sort(window(sort(tableScan)))))));
+    assertPlan(
+        logicalQueryPlan,
+        output(
+            project(
+                window(
+                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of(),
+                    sort(window(sort(tableScan)))))));
 
-    String sql2 = "SELECT sum(s1) OVER (PARTITION BY tag1, s1), min(s1) OVER (PARTITION BY tag1) FROM table1";
+    String sql2 =
+        "SELECT sum(s1) OVER (PARTITION BY tag1, s1), min(s1) OVER (PARTITION BY tag1) FROM table1";
     LogicalQueryPlan logicalQueryPlan2 = planTester.createPlan(sql2);
 
     // Two window function has swapped, but the query plan remains the same
@@ -78,14 +88,22 @@ public class WindowFunctionOptimizationTest {
      *                         └──SortNode
      *                              └──TableScanNode
      */
-    assertPlan(logicalQueryPlan2, output(project(window(ImmutableList.of("tag1", "s1"), ImmutableList.of(), sort(window(sort(tableScan)))))));
+    assertPlan(
+        logicalQueryPlan2,
+        output(
+            project(
+                window(
+                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of(),
+                    sort(window(sort(tableScan)))))));
   }
 
   @Test
   public void testTopKRankingPushDown() {
     PlanTester planTester = new PlanTester();
 
-    String sql = "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
@@ -113,8 +131,7 @@ public class WindowFunctionOptimizationTest {
      *                            └──TableScan
      */
     assertPlan(
-        planTester.getFragmentPlan(0),
-        output((collect(exchange(), exchange(), exchange()))));
+        planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(1), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(2), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(3), topKRanking(sort(tableScan)));
@@ -124,7 +141,8 @@ public class WindowFunctionOptimizationTest {
   public void testPushDownFilterIntoWindow() {
     PlanTester planTester = new PlanTester();
 
-    String sql = "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn <= 2";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
@@ -161,7 +179,8 @@ public class WindowFunctionOptimizationTest {
   public void testPushDownLimitIntoWindow() {
     PlanTester planTester = new PlanTester();
 
-    String sql = "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) LIMIT 2";
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) LIMIT 2";
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
@@ -261,9 +280,7 @@ public class WindowFunctionOptimizationTest {
      *                    └──RowNumberNode
      *                        └──TableScan
      */
-    assertPlan(
-        planTester.getFragmentPlan(0),
-        output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(1), rowNumber(tableScan));
     assertPlan(planTester.getFragmentPlan(2), rowNumber(tableScan));
   }

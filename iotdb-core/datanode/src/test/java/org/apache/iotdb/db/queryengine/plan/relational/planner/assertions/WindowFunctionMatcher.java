@@ -15,7 +15,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
 
-public class WindowFunctionMatcher implements Matcher{
+public class WindowFunctionMatcher implements Matcher {
   private final PlanMatchPattern.Specification specification;
 
   public WindowFunctionMatcher(PlanMatchPattern.Specification specification) {
@@ -28,7 +28,8 @@ public class WindowFunctionMatcher implements Matcher{
   }
 
   @Override
-  public MatchResult detailMatches(PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
+  public MatchResult detailMatches(
+      PlanNode node, SessionInfo sessionInfo, Metadata metadata, SymbolAliases symbolAliases) {
     checkState(
         shapeMatches(node),
         "Plan testing framework error: shapeMatches returned false in detailMatches in %s",
@@ -37,7 +38,8 @@ public class WindowFunctionMatcher implements Matcher{
 
     Optional<OrderingScheme> orderingScheme = windowNode.getSpecification().getOrderingScheme();
     if (orderingScheme.isPresent()) {
-      if (!orderingSchemeMatches(specification.getOrdering(), orderingScheme.get(), symbolAliases)) {
+      if (!orderingSchemeMatches(
+          specification.getOrdering(), orderingScheme.get(), symbolAliases)) {
         return NO_MATCH;
       }
     } else if (!specification.getOrdering().isEmpty()) {
@@ -49,7 +51,8 @@ public class WindowFunctionMatcher implements Matcher{
       return NO_MATCH;
     } else {
       for (int i = 0; i < specification.getPartitionKeys().size(); i++) {
-        if (!Objects.equals(partitionBy.get(i).toString(), specification.getPartitionKeys().get(i))) {
+        if (!Objects.equals(
+            partitionBy.get(i).toString(), specification.getPartitionKeys().get(i))) {
           return NO_MATCH;
         }
       }

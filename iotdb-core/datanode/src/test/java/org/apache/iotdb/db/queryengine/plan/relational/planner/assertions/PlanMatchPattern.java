@@ -437,7 +437,8 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern window(
       List<String> partitionKeys, List<Ordering> orderings, PlanMatchPattern source) {
-    return node(WindowNode.class, source).with(new WindowFunctionMatcher(new Specification(partitionKeys, orderings)));
+    return node(WindowNode.class, source)
+        .with(new WindowFunctionMatcher(new Specification(partitionKeys, orderings)));
   }
 
   public static PlanMatchPattern topKRanking(PlanMatchPattern source) {
