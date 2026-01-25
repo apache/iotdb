@@ -78,6 +78,7 @@ import java.util.stream.Stream;
 
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.FIRST_BY;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.LAST_BY;
@@ -108,11 +109,14 @@ public class AccumulatorFactory {
         && inputExpressions.size() > 1) {
       boolean xIsTimeColumn = isTimeColumn(inputExpressions.get(0), timeColumnName);
       boolean yIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
-      // When used in AggTableScanOperator, we can finish calculation of
+      boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(2), timeColumnName);
+
+      // When used in AggTableScanOperator and the order column is time column, we can finish
+      // calculation of
       // LastDesc/LastByDesc/First/First_by after the result has been initialized
       if (LAST_BY.getFunctionName().equals(functionName)) {
         result =
-            ascending
+            ascending || !orderKeyIsTimeColumn
                 ? new LastByAccumulator(
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn)
                 : new LastByDescAccumulator(
@@ -125,7 +129,7 @@ public class AccumulatorFactory {
                     isAggTableScan);
       } else {
         result =
-            ascending
+            ascending && orderKeyIsTimeColumn
                 ? new FirstByAccumulator(
                     inputDataTypes.get(0),
                     inputDataTypes.get(1),
@@ -136,13 +140,21 @@ public class AccumulatorFactory {
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
     } else if (LAST.getFunctionName().equals(functionName)) {
-      return ascending
-          ? new LastAccumulator(inputDataTypes.get(0))
-          : new LastDescAccumulator(
-              inputDataTypes.get(0),
-              isTimeColumn(inputExpressions.get(0), timeColumnName),
-              isMeasurementColumn(inputExpressions.get(0), measurementColumnNames),
-              isAggTableScan);
+      boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
+      result =
+          ascending || !orderKeyIsTimeColumn
+              ? new LastAccumulator(inputDataTypes.get(0))
+              : new LastDescAccumulator(
+                  inputDataTypes.get(0),
+                  isTimeColumn(inputExpressions.get(0), timeColumnName),
+                  isMeasurementColumn(inputExpressions.get(0), measurementColumnNames),
+                  isAggTableScan);
+    } else if (FIRST.getFunctionName().equals(functionName)) {
+      boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
+      result =
+          ascending && orderKeyIsTimeColumn
+              ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
+              : new FirstDescAccumulator(inputDataTypes.get(0));
     } else {
       result =
           createBuiltinAccumulator(
@@ -307,34 +319,18 @@ public class AccumulatorFactory {
       case SUM:
         return new SumAccumulator(inputDataTypes.get(0));
       case LAST:
-        return ascending
-            ? new LastAccumulator(inputDataTypes.get(0))
-            : new LastDescAccumulator(inputDataTypes.get(0), false, false, isAggTableScan);
+        return new LastAccumulator(inputDataTypes.get(0));
       case FIRST:
-        return ascending
-            ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
-            : new FirstDescAccumulator(inputDataTypes.get(0));
+        return new FirstDescAccumulator(inputDataTypes.get(0));
       case MAX:
         return new MaxAccumulator(inputDataTypes.get(0));
       case MIN:
         return new MinAccumulator(inputDataTypes.get(0));
       case LAST_BY:
-        return ascending
-            ? new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false)
-            : new LastByDescAccumulator(
-                inputDataTypes.get(0),
-                inputDataTypes.get(1),
-                false,
-                false,
-                false,
-                false,
-                isAggTableScan);
+        return new LastByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       case FIRST_BY:
-        return ascending
-            ? new FirstByAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), false, false, isAggTableScan)
-            : new FirstByDescAccumulator(
-                inputDataTypes.get(0), inputDataTypes.get(1), false, false);
+        return new FirstByDescAccumulator(
+            inputDataTypes.get(0), inputDataTypes.get(1), false, false);
       case MAX_BY:
         return new TableMaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
