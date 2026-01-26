@@ -206,6 +206,14 @@ public class TableDiskUsageCache {
       this.regionId = regionId;
     }
 
+    public int getRegionId() {
+      return regionId;
+    }
+
+    public String getDatabase() {
+      return database;
+    }
+
     public abstract void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException;
   }
 
@@ -336,6 +344,10 @@ public class TableDiskUsageCache {
       tableDiskUsageCache.writerMap.computeIfAbsent(
           regionId, regionId -> tableDiskUsageCache.createWriter(database, regionId));
       future.complete(null);
+    }
+
+    public CompletableFuture<Void> getFuture() {
+      return future;
     }
   }
 
