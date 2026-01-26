@@ -599,7 +599,7 @@ public class ExportData extends AbstractDataTool {
       List<String> names = sessionDataSet.getColumnNames();
       List<String> types = sessionDataSet.getColumnTypes();
       if (EXPORT_SQL_TYPE_NAME.equalsIgnoreCase(exportType)) {
-        writeSqlFile(sessionDataSet, path, names, linesPerFile);
+        writeSqlFile(sessionDataSet, path, names);
       } else {
         if (Boolean.TRUE.equals(needDataTypePrinted)) {
           for (int i = 0; i < names.size(); i++) {
@@ -709,16 +709,21 @@ public class ExportData extends AbstractDataTool {
       SessionDataSet sessionDataSet, String filePath, List<String> measurementNames)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
 
-    if (CollectionUtils.isEmpty(measurementNames) || measurementNames.size() <= 1) {
+    List<String> localMeasurementNames = new ArrayList<>(measurementNames);
+    if (CollectionUtils.isEmpty(localMeasurementNames) || localMeasurementNames.size() <= 1) {
       return;
     } else {
-      measurementNames.remove("Time");
-      measurementNames.remove("Device");
+      localMeasurementNames.remove("Time");
+      localMeasurementNames.remove("Device");
     }
+    if (CollectionUtils.isEmpty(localMeasurementNames)) {
+      return;
+    }
+
     String sqlPrefix =
         String.format(
             "INSERT INTO %s(TIMESTAMP,%s) ALIGNED VALUES (%s);\n",
-            "%s", String.join(",", measurementNames), "%d,%s");
+            "%s", String.join(",", localMeasurementNames), "%d,%s");
 
     SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
     List<String> columnTypeList = iterator.getColumnTypeList();
@@ -728,47 +733,54 @@ public class ExportData extends AbstractDataTool {
     int currentLines = 0;
     String filePathTemplate = filePath + "_%d" + ".sql";
     FileWriter writer = null;
-    while (iterator.next()) {
-      if (writer == null) {
-        writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-      }
-      deviceName = iterator.getString(2);
-      if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
-        continue;
-      }
-      List<String> values = new ArrayList<>();
-      for (int index = 2; index < totalColumns; index++) {
-        String dataType = columnTypeList.get(index);
-        String value = iterator.getString(index + 1);
-        if (value == null) {
-          values.add("null");
+    try {
+      while (iterator.next()) {
+        if (writer == null) {
+          writer = new FileWriter(String.format(filePathTemplate, fileIndex));
+        }
+        deviceName = iterator.getString(2);
+        if (deviceName.startsWith(SYSTEM_DATABASE + ".")) {
           continue;
         }
-        if ("TEXT".equalsIgnoreCase(dataType)
-            || "STRING".equalsIgnoreCase(dataType)
-            || "DATE".equalsIgnoreCase(dataType)) {
-          values.add(String.format("\"%s\"", value));
-        } else if ("BLOB".equalsIgnoreCase(dataType)) {
-          values.add(String.format("X'%s'", value.substring(2)));
-        } else {
-          values.add(value);
+        List<String> values = new ArrayList<>();
+        for (int index = 2; index < totalColumns; index++) {
+          String dataType = columnTypeList.get(index);
+          String value = iterator.getString(index + 1);
+          if (value == null) {
+            values.add("null");
+            continue;
+          }
+          if ("TEXT".equalsIgnoreCase(dataType)
+              || "STRING".equalsIgnoreCase(dataType)
+              || "DATE".equalsIgnoreCase(dataType)) {
+            values.add(String.format("\"%s\"", value));
+          } else if ("BLOB".equalsIgnoreCase(dataType)) {
+            if (value.length() >= 2 && (value.startsWith("0x") || value.startsWith("0X"))) {
+              values.add(String.format("X'%s'", value.substring(2)));
+            } else {
+              values.add(String.format("X'%s'", value));
+            }
+          } else {
+            values.add(value);
+          }
+        }
+        long timestamp = iterator.getLong(1);
+        writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
+        currentLines += 1;
+
+        if (currentLines >= linesPerFile) {
+          writer.flush();
+          writer.close();
+          fileIndex += 1;
+          writer = null;
+          currentLines = 0;
         }
       }
-      long timestamp = iterator.getLong(1);
-      writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
-      currentLines += 1;
-
-      if (currentLines >= linesPerFile) {
+    } finally {
+      if (writer != null) {
         writer.flush();
         writer.close();
-        fileIndex += 1;
-        writer = null;
-        currentLines = 0;
       }
-    }
-    if (writer != null) {
-      writer.flush();
-      writer.close();
     }
     ioTPrinter.print("\n");
   }
@@ -782,10 +794,14 @@ public class ExportData extends AbstractDataTool {
     if (CollectionUtils.isEmpty(headers) || headers.size() <= 1) {
       return;
     } else {
-      headers.remove("Time");
-      Path path = new Path(headers.get(0), true);
+      List<String> localHeaders = new ArrayList<>(headers);
+      localHeaders.remove("Time");
+      if (CollectionUtils.isEmpty(localHeaders)) {
+        return;
+      }
+      Path path = new Path(localHeaders.get(0), true);
       deviceName = path.getDevice();
-      for (String header : headers) {
+      for (String header : localHeaders) {
         path = new Path(header, true);
         String meas = path.getMeasurement();
         if (path.getDevice().equals(deviceName)) {
@@ -808,49 +824,56 @@ public class ExportData extends AbstractDataTool {
     int currentLines = 0;
     String filePathTemplate = filePath + "_%d" + ".sql";
     FileWriter writer = null;
-    while (iterator.next()) {
-      if (writer == null) {
-        writer = new FileWriter(String.format(filePathTemplate, fileIndex));
-      }
-      List<String> values = new ArrayList<>();
-      for (int index = 0; index < totalColumns; index++) {
-        String dataType = columnTypeList.get(index + 1);
-        String value = iterator.getString(index + 2);
-        if (value == null) {
-          values.add("null");
-          continue;
+    try {
+      while (iterator.next()) {
+        if (writer == null) {
+          writer = new FileWriter(String.format(filePathTemplate, fileIndex));
         }
-        if ("TEXT".equalsIgnoreCase(dataType)
-            || "STRING".equalsIgnoreCase(dataType)
-            || "DATE".equalsIgnoreCase(dataType)) {
-          values.add(String.format("\"%s\"", value));
-        } else if ("BLOB".equalsIgnoreCase(dataType)) {
-          values.add(String.format("X'%s'", value.substring(2)));
-        } else {
-          values.add(value);
+        List<String> values = new ArrayList<>();
+        for (int index = 0; index < totalColumns; index++) {
+          String dataType = columnTypeList.get(index + 1);
+          String value = iterator.getString(index + 2);
+          if (value == null) {
+            values.add("null");
+            continue;
+          }
+          if ("TEXT".equalsIgnoreCase(dataType)
+              || "STRING".equalsIgnoreCase(dataType)
+              || "DATE".equalsIgnoreCase(dataType)) {
+            values.add(String.format("\"%s\"", value));
+          } else if ("BLOB".equalsIgnoreCase(dataType)) {
+            if (value.length() >= 2 && (value.startsWith("0x") || value.startsWith("0X"))) {
+              values.add(String.format("X'%s'", value.substring(2)));
+            } else {
+              values.add(String.format("X'%s'", value));
+            }
+          } else {
+            values.add(value);
+          }
         }
-      }
-      long timestamp = iterator.getLong(1);
-      writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
-      currentLines += 1;
+        long timestamp = iterator.getLong(1);
+        writer.write(String.format(sqlPrefix, deviceName, timestamp, String.join(",", values)));
+        currentLines += 1;
 
-      if (currentLines >= linesPerFile) {
+        if (currentLines >= linesPerFile) {
+          writer.flush();
+          writer.close();
+          fileIndex += 1;
+          writer = null;
+          currentLines = 0;
+        }
+      }
+    } finally {
+      if (writer != null) {
         writer.flush();
         writer.close();
-        fileIndex += 1;
-        writer = null;
-        currentLines = 0;
       }
-    }
-    if (writer != null) {
-      writer.flush();
-      writer.close();
     }
     ioTPrinter.print("\n");
   }
 
   public static void writeSqlFile(
-      SessionDataSet sessionDataSet, String filePath, List<String> headers, int linesPerFile)
+      SessionDataSet sessionDataSet, String filePath, List<String> headers)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
     if (headers.contains("Device")) {
       exportToSqlFileWithAlignDevice(sessionDataSet, filePath, headers);
