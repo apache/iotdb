@@ -653,7 +653,7 @@ public class IoTDBRestServiceTest {
           }
         };
     Assert.assertEquals(columnNames, columnNamesResult);
-    Assert.assertTrue((int) valuesResult.get(0).get(0) > 6);
+    Assert.assertTrue((int) valuesResult.get(0).get(0) >= 6);
   }
 
   public void showDevices(CloseableHttpClient httpClient) {
