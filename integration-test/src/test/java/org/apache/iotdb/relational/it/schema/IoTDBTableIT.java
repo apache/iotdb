@@ -1171,8 +1171,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s1,time) FROM alter_table_named");
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_table_named");
       assertTrue(resultSet.next());
       assertEquals(2, resultSet.getLong(1));
       assertEquals(2, resultSet.getLong(2));
@@ -1196,8 +1195,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s1,time) FROM alter_table_named2");
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_table_named2");
       assertTrue(resultSet.next());
       assertEquals(3, resultSet.getLong(1));
       assertEquals(3, resultSet.getLong(2));
@@ -1221,8 +1219,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s1,time) FROM alter_table_name");
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_table_name");
       assertTrue(resultSet.next());
       assertEquals(4, resultSet.getLong(1));
       assertEquals(4, resultSet.getLong(2));
@@ -1263,8 +1260,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s2,time) FROM alter_column_name");
+          statement.executeQuery("SELECT last(time), last_by(s2,time) FROM alter_column_name");
       assertTrue(resultSet.next());
       assertEquals(2, resultSet.getLong(1));
       assertEquals(2, resultSet.getLong(2));
@@ -1291,8 +1287,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s3,time) FROM alter_column_name");
+          statement.executeQuery("SELECT last(time), last_by(s3,time) FROM alter_column_name");
       assertTrue(resultSet.next());
       assertEquals(3, resultSet.getLong(1));
       assertEquals(3, resultSet.getLong(2));
@@ -1319,8 +1314,7 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery(
-              "SELECT last(time), last_by(s1,time) FROM alter_column_name");
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_column_name");
       assertTrue(resultSet.next());
       assertEquals(4, resultSet.getLong(1));
       assertEquals(4, resultSet.getLong(2));
@@ -1859,8 +1853,7 @@ public class IoTDBTableIT {
       }
       createTableTemplate =
           new StringBuilder(
-              createTableTemplate.substring(0, createTableTemplate.length() - 1)
-                  + ")");
+              createTableTemplate.substring(0, createTableTemplate.length() - 1) + ")");
       List<ColumnSchema> columns = new ArrayList<>();
       for (int i = 0; i < numColsPerTable; i++) {
         columns.add(new ColumnSchema("v" + i, TSDataType.INT32, ColumnCategory.FIELD));
@@ -1918,38 +1911,38 @@ public class IoTDBTableIT {
       final double baseline = totalMs / (runs * 0.9);
       System.out.println("baseline_total_ms=" + String.format("%.3f", baseline));
 
-            // rename some of them to quoted special names and measure again
-            for (int i = 0; i < numTables * ratioAlteredTables; i++) {
-              final String oldName = names[i];
-              final String newName = "\"" + oldName + "-特\""; // quoted name
-              stmt.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
-              names[i] = newName;
-            }
+      // rename some of them to quoted special names and measure again
+      for (int i = 0; i < numTables * ratioAlteredTables; i++) {
+        final String oldName = names[i];
+        final String newName = "\"" + oldName + "-特\""; // quoted name
+        stmt.execute(String.format("ALTER TABLE %s RENAME TO %s", oldName, newName));
+        names[i] = newName;
+      }
 
-            totalMs = 0.0;
-            for (int run = 0; run < runs; run++) {
-              final long start = System.nanoTime();
-              for (int i = 0; i < numTables; i++) {
-                try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-                  assertTrue(rs.next());
-                  assertEquals(numRowsPerFile * numFilesPerTable, rs.getLong(1));
-                }
-              }
-              final long end = System.nanoTime();
-              if (run > runs * 0.1) {
-                totalMs += (end - start) / 1_000_000.0;
-              }
-            }
-            final double after = totalMs / (runs * 0.9);
-            System.out.println("after_quoted_total_ms=" + String.format("%.3f", after));
+      totalMs = 0.0;
+      for (int run = 0; run < runs; run++) {
+        final long start = System.nanoTime();
+        for (int i = 0; i < numTables; i++) {
+          try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
+            assertTrue(rs.next());
+            assertEquals(numRowsPerFile * numFilesPerTable, rs.getLong(1));
+          }
+        }
+        final long end = System.nanoTime();
+        if (run > runs * 0.1) {
+          totalMs += (end - start) / 1_000_000.0;
+        }
+      }
+      final double after = totalMs / (runs * 0.9);
+      System.out.println("after_quoted_total_ms=" + String.format("%.3f", after));
 
-            // basic sanity: ensure queries still return counts
-            for (int i = 0; i < numTables; i++) {
-              try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
-                assertTrue(rs.next());
-                assertEquals(numRowsPerFile * numFilesPerTable, rs.getLong(1));
-              }
-            }
+      // basic sanity: ensure queries still return counts
+      for (int i = 0; i < numTables; i++) {
+        try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + names[i])) {
+          assertTrue(rs.next());
+          assertEquals(numRowsPerFile * numFilesPerTable, rs.getLong(1));
+        }
+      }
     }
   }
 
