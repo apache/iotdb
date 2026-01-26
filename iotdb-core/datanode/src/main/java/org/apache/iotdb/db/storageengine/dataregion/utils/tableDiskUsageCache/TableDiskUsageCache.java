@@ -335,7 +335,7 @@ public class TableDiskUsageCache {
 
     protected final CompletableFuture<Void> future = new CompletableFuture<>();
 
-    protected RegisterRegionOperation(String database, int regionId) {
+    public RegisterRegionOperation(String database, int regionId) {
       super(database, regionId);
     }
 
