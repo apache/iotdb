@@ -114,7 +114,9 @@ public class BinaryAllocatorTest {
     PooledBinary binary = binaryAllocator.allocateBinary(4096, false);
     binaryAllocator.deallocateBinary(binary);
     assertEquals(4096, binaryAllocator.getTotalUsedMemory());
-    Awaitility.await().atMost(20, TimeUnit.SECONDS).until(() -> binaryAllocator.getTotalUsedMemory() == 0);
+    Awaitility.await()
+        .atMost(20, TimeUnit.SECONDS)
+        .until(() -> binaryAllocator.getTotalUsedMemory() == 0);
   }
 
   @Test
