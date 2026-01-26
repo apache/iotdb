@@ -51,6 +51,7 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   public static final byte KEY_FILE_RECORD_TYPE_REDIRECT = 2;
 
   private TsFileTableSizeIndexFileWriter tsFileTableSizeIndexFileWriter;
+  private long lastSyncTimestamp = System.currentTimeMillis();
 
   public TsFileTableDiskUsageCacheWriter(String database, int regionId) {
     super(database, regionId);
@@ -281,9 +282,17 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
     return tsFileTableSizeIndexFileWriter.valueFileLength();
   }
 
+  public void syncIfNecessary() throws IOException {
+    if (System.currentTimeMillis() - Math.max(lastWriteTimestamp, lastSyncTimestamp)
+        >= TimeUnit.MINUTES.toMillis(10)) {
+      sync();
+    }
+  }
+
   @Override
   public void sync() throws IOException {
     tsFileTableSizeIndexFileWriter.sync();
+    lastSyncTimestamp = System.currentTimeMillis();
   }
 
   @Override

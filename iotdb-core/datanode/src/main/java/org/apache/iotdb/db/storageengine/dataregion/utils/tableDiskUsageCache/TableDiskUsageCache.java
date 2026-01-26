@@ -47,7 +47,7 @@ public class TableDiskUsageCache {
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>();
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
-  private int counter = 0;
+  private int processedOperationCount = 0;
   protected volatile boolean failedToRecover = false;
 
   protected TableDiskUsageCache() {
@@ -61,14 +61,17 @@ public class TableDiskUsageCache {
     try {
       while (!Thread.currentThread().isInterrupted()) {
         try {
-          checkAndMaySyncObjectDeltaToFile();
+          for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
+            syncTsFileTableSizeCacheIfNecessary(writer);
+            persistPendingObjectDeltasIfNecessary(writer);
+          }
           Operation operation = queue.poll(1, TimeUnit.SECONDS);
           if (operation != null) {
             operation.apply(this);
-            counter++;
+            processedOperationCount++;
           }
-          if (operation == null || counter % 1000 == 0) {
-            timedCheck();
+          if (operation == null || processedOperationCount % 1000 == 0) {
+            performPeriodicMaintenance();
           }
         } catch (InterruptedException e) {
           return;
@@ -81,10 +84,10 @@ public class TableDiskUsageCache {
     }
   }
 
-  private void timedCheck() {
+  private void performPeriodicMaintenance() {
     checkAndMayCloseIdleWriter();
-    checkAndMayCompact(TimeUnit.SECONDS.toMillis(1));
-    counter = 0;
+    compactIfNecessary(TimeUnit.SECONDS.toMillis(1));
+    processedOperationCount = 0;
   }
 
   /**
@@ -96,9 +99,18 @@ public class TableDiskUsageCache {
     LOGGER.error("Failed to recover TableDiskUsageCache", e);
   }
 
-  protected void checkAndMaySyncObjectDeltaToFile() {}
+  protected void syncTsFileTableSizeCacheIfNecessary(DataRegionTableSizeCacheWriter writer) {
+    try {
+      writer.tsFileCacheWriter.syncIfNecessary();
+    } catch (IOException e) {
+      LOGGER.warn("Failed to sync tsfile table size cache.", e);
+    }
+  }
 
-  protected void checkAndMayCompact(long maxRunTime) {
+  // Hook for subclasses to persist pending object table size deltas. No-op by default.
+  protected void persistPendingObjectDeltasIfNecessary(DataRegionTableSizeCacheWriter writer) {}
+
+  protected void compactIfNecessary(long maxRunTime) {
     long startTime = System.currentTimeMillis();
     for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
       if (System.currentTimeMillis() - startTime > maxRunTime) {
@@ -239,7 +251,7 @@ public class TableDiskUsageCache {
       DataRegionTableSizeCacheWriter writer = tableDiskUsageCache.writerMap.get(regionId);
       try {
         if (writer == null || writer.getRemovedFuture() != null) {
-          // region is removed
+          // region is removing or removed
           future.complete(
               new Pair<>(
                   new TsFileTableSizeCacheReader(0, null, 0, null, regionId),
@@ -279,6 +291,7 @@ public class TableDiskUsageCache {
             }
             writer.decreaseActiveReaderNum();
             if (writer.getRemovedFuture() != null) {
+              writer.close();
               writer.getRemovedFuture().complete(null);
               writer.setRemovedFuture(null);
               return null;
@@ -363,11 +376,11 @@ public class TableDiskUsageCache {
       tableDiskUsageCache.writerMap.computeIfPresent(
           regionId,
           (k, writer) -> {
-            writer.close();
             if (writer.getActiveReaderNum() > 0) {
               writer.setRemovedFuture(future);
               return writer;
             }
+            writer.close();
             return null;
           });
     }
