@@ -345,7 +345,7 @@ public class IoTDBPipeOPCUAIT extends AbstractPipeSingleIT {
             + UUID.nameUUIDFromBytes(nodeUrl.getBytes(TSFileConfig.STRING_CHARSET));
 
     client = new IoTDBOpcUaClient(nodeUrl, policy, provider, false);
-    new ClientRunner(client, securityDir, password).run();
+    new ClientRunner(client, securityDir, password, userName, 10).run();
     return client.getClient();
   }
 }
