@@ -29,10 +29,10 @@ public class PipeParametersTest {
   @Test
   public void keyReducerTest() {
     final PipeParameters parameters = new PipeParameters(new HashMap<>());
-    parameters.addAttribute("sink.opcua.with-quality", "false");
+    parameters.addAttribute("sink.opcua.with-quality", "true");
 
-    Assert.assertEquals(false, parameters.getBoolean("with-quality"));
-    Assert.assertEquals(false, parameters.getBoolean("opcua.with-quality"));
+    Assert.assertEquals(true, parameters.getBoolean("with-quality"));
+    Assert.assertEquals(true, parameters.getBoolean("opcua.with-quality"));
 
     // Invalid
     parameters.addAttribute("sink.source.opcua.value-name", "false");

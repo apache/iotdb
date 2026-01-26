@@ -227,6 +227,18 @@
             <artifactId>httpcore</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>external-service-api</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>mqtt</artifactId>
+            <version>2.0.7-SNAPSHOT</version>
+            <!--We will integrate mqtt-jar-with-dependencies into lib by assembly plugin-->
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

@@ -74,6 +74,12 @@
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
+    <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>lib</outputDirectory>
+        </file>
+    </files>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
     </componentDescriptors>

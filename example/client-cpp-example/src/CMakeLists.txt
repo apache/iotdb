@@ -28,6 +28,14 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/thrift/include)
 # Add cpp-client include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/client/include)
 
+FIND_PACKAGE(OpenSSL REQUIRED)
+IF(OpenSSL_FOUND)
+    MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+    INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
+ELSE()
+    MESSAGE(FATAL_ERROR "OpenSSL not found")
+ENDIF()
+
 FIND_PACKAGE(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
     INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -42,13 +50,53 @@ ADD_EXECUTABLE(TableModelSessionExample TableModelSessionExample.cpp)
 ADD_EXECUTABLE(MultiSvrNodeClient MultiSvrNodeClient.cpp)
 
 IF(MSVC)
-    TARGET_LINK_LIBRARIES(SessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
-    TARGET_LINK_LIBRARIES(TableModelSessionExample iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
-    TARGET_LINK_LIBRARIES(MultiSvrNodeClient iotdb_session "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib")
+    TARGET_LINK_LIBRARIES(SessionExample
+        iotdb_session
+        "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
+        iotdb_session
+        "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(TableModelSessionExample
+        iotdb_session
+        "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(MultiSvrNodeClient
+        iotdb_session
+        "${CMAKE_SOURCE_DIR}/thrift/lib/Release/thriftmd.lib"
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
 ELSE()
-    TARGET_LINK_LIBRARIES(SessionExample iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(TableModelSessionExample iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(MultiSvrNodeClient iotdb_session pthread)
+    TARGET_LINK_LIBRARIES(SessionExample
+        iotdb_session
+        pthread
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(AlignedTimeseriesSessionExample
+        iotdb_session
+        pthread
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(TableModelSessionExample
+        iotdb_session
+        pthread
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
+    TARGET_LINK_LIBRARIES(MultiSvrNodeClient
+        iotdb_session
+        pthread
+        OpenSSL::SSL
+        OpenSSL::Crypto
+    )
 ENDIF()

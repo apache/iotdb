@@ -50,7 +50,7 @@ SessionConnection::SessionConnection(Session* session_ptr, const TEndPoint& endp
       database(std::move(db)) {
     this->zoneId = zoneId.empty() ? getSystemDefaultZoneId() : zoneId;
     endPointList.push_back(endpoint);
-    init(endPoint);
+    init(endPoint, session->useSSL_, session->trustCertFilePath_);
 }
 
 void SessionConnection::close() {
@@ -98,10 +98,18 @@ SessionConnection::~SessionConnection() {
     }
 }
 
-void SessionConnection::init(const TEndPoint& endpoint) {
-    shared_ptr<TSocket> socket(new TSocket(endpoint.ip, endpoint.port));
-    transport = std::make_shared<TFramedTransport>(socket);
-    socket->setConnTimeout(connectionTimeoutInMs);
+void SessionConnection::init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath) {
+    if (useSSL) {
+        socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
+        socketFactory_->authenticate(false);
+        auto sslSocket = socketFactory_->createSocket(endPoint.ip, endPoint.port);
+        sslSocket->setConnTimeout(connectionTimeoutInMs);
+        transport = std::make_shared<TFramedTransport>(sslSocket);
+    } else {
+        auto socket = std::make_shared<TSocket>(endPoint.ip, endPoint.port);
+        socket->setConnTimeout(connectionTimeoutInMs);
+        transport = std::make_shared<TFramedTransport>(socket);
+    }
     if (!transport->isOpen()) {
         try {
             transport->open();
@@ -341,7 +349,7 @@ bool SessionConnection::reconnect() {
                 }
                 tryHostNum++;
                 try {
-                    init(this->endPoint);
+                    init(this->endPoint, this->session->useSSL_, this->session->trustCertFilePath_);
                     reconnect = true;
                 }
                 catch (const IoTDBConnectionException& e) {

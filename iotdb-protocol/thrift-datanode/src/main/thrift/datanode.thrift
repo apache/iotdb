@@ -795,12 +795,6 @@ struct TKillQueryInstanceReq {
   2: optional string allowedUsername
 }
 
-struct TReadObjectReq {
-  1: string relativePath
-  2: i64 offset
-  3: i32 size
-}
-
 /**
 * END: Used for EXPLAIN ANALYZE
 **/
@@ -1298,8 +1292,6 @@ service IDataNodeRPCService {
    * Write an audit log entry to the DataNode's AuditEventLogger
    */
   common.TSStatus writeAuditLog(TAuditLogReq req);
-
-  binary readObject(TReadObjectReq req);
 }
 
 service MPPDataExchangeService {

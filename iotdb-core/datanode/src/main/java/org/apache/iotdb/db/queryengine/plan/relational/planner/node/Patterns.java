@@ -221,11 +221,6 @@ public final class Patterns {
   {
       return typeOf(UnnestNode.class);
   }
-
-  public static Pattern<WindowNode> window()
-  {
-      return typeOf(WindowNode.class);
-  }
   */
 
   public static Pattern<TableFunctionNode> tableFunction() {
@@ -240,18 +235,19 @@ public final class Patterns {
     return typeOf(WindowNode.class);
   }
 
+  public static Pattern<GroupNode> groupNode() {
+    return typeOf(GroupNode.class);
+  }
+
+  public static Pattern<RowNumberNode> rowNumber() {
+    return typeOf(RowNumberNode.class);
+  }
+
+  public static Pattern<TopKRankingNode> topNRanking() {
+    return typeOf(TopKRankingNode.class);
+  }
+
   /*
-
-  public static Pattern<RowNumberNode> rowNumber()
-  {
-      return typeOf(RowNumberNode.class);
-  }
-
-  public static Pattern<TopNRankingNode> topNRanking()
-  {
-      return typeOf(TopNRankingNode.class);
-  }
-
   public static Pattern<DistinctLimitNode> distinctLimit()
   {
       return typeOf(DistinctLimitNode.class);

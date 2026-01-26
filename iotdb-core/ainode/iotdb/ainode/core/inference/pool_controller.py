@@ -443,6 +443,17 @@ class PoolController:
             return device_id in self._request_pool_map[model_id]
         return True
 
+    def has_running_pools(self, model_id: str) -> bool:
+        """
+        Check if there are running pools for the given model_id.
+        """
+        if model_id not in self._request_pool_map:
+            return False
+        for device_id, pool_group in self._request_pool_map[model_id].items():
+            if pool_group.get_running_pool_count():
+                return True
+        return False
+
     def get_request_pools_group(
         self, model_id: str, device_id: torch.device
     ) -> Optional[PoolGroup]:
