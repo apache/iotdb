@@ -76,8 +76,7 @@ public class TableDiskUsageCacheReader implements Closeable {
     if (this.tsFileTableSizeCacheReader == null) {
       this.prepareReaderFuture =
           this.prepareReaderFuture == null
-              ? TableDiskUsageCache.getInstance()
-                  .startRead(dataRegion.getDatabaseName(), regionId, true, true)
+              ? TableDiskUsageCache.getInstance().startRead(dataRegion, true, true)
               : this.prepareReaderFuture;
       do {
         if (prepareReaderFuture.isDone()) {
@@ -180,7 +179,7 @@ public class TableDiskUsageCacheReader implements Closeable {
     closeTsFileTableSizeCacheReader();
     closeObjectFileTableSizeCacheReader();
     if (prepareReaderFuture != null) {
-      TableDiskUsageCache.getInstance().endRead(dataRegion.getDatabaseName(), regionId);
+      TableDiskUsageCache.getInstance().endRead(dataRegion);
       prepareReaderFuture = null;
     }
     dataRegionContext.releaseMemory();

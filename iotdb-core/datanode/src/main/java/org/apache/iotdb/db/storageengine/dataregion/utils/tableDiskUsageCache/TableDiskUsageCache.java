@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
@@ -135,20 +136,20 @@ public class TableDiskUsageCache {
   }
 
   public CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>> startRead(
-      String database, int regionId, boolean readTsFileCache, boolean readObjectFileCache) {
+      DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
     StartReadOperation operation =
-        new StartReadOperation(database, regionId, readTsFileCache, readObjectFileCache);
+        new StartReadOperation(dataRegion, readTsFileCache, readObjectFileCache);
     addOperationToQueue(operation);
     return operation.future;
   }
 
-  public void endRead(String database, int regionId) {
-    EndReadOperation operation = new EndReadOperation(database, regionId);
+  public void endRead(DataRegion dataRegion) {
+    EndReadOperation operation = new EndReadOperation(dataRegion);
     addOperationToQueue(operation);
   }
 
-  public void registerRegion(String database, int regionId) {
-    RegisterRegionOperation operation = new RegisterRegionOperation(database, regionId);
+  public void registerRegion(DataRegion region) {
+    RegisterRegionOperation operation = new RegisterRegionOperation(region);
     addOperationToQueue(operation);
   }
 
@@ -177,8 +178,9 @@ public class TableDiskUsageCache {
     writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
   }
 
-  protected DataRegionTableSizeCacheWriter createWriter(String database, int regionId) {
-    return new DataRegionTableSizeCacheWriter(database, regionId);
+  protected DataRegionTableSizeCacheWriter createWriter(
+      String database, int regionId, DataRegion region) {
+    return new DataRegionTableSizeCacheWriter(database, regionId, region);
   }
 
   protected TsFileTableSizeCacheReader createTsFileCacheReader(
@@ -218,43 +220,33 @@ public class TableDiskUsageCache {
   }
 
   protected static class StartReadOperation extends Operation {
+    protected final DataRegion region;
     protected final boolean readTsFileCache;
     protected final boolean readObjectFileCache;
     public CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>> future =
         new CompletableFuture<>();
 
     public StartReadOperation(
-        String database, int regionId, boolean readTsFileCache, boolean readObjectFileCache) {
-      super(database, regionId);
+        DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      this.region = dataRegion;
       this.readTsFileCache = readTsFileCache;
       this.readObjectFileCache = readObjectFileCache;
     }
 
     @Override
     public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
+      DataRegionTableSizeCacheWriter writer = tableDiskUsageCache.writerMap.get(regionId);
       try {
-        DataRegionTableSizeCacheWriter writer =
-            tableDiskUsageCache.writerMap.computeIfAbsent(
-                regionId, k -> tableDiskUsageCache.createWriter(database, regionId));
-        // It is safe to always increase activeReaderNum here. Before a DataRegion is removed, it is
-        // first marked as deleted, and all table size queries will skip DataRegions that are
-        // already marked deleted.
-        // Under this guarantee, waiting for activeReaderNum to reach zero will not be blocked by
-        // newly created readers, and the region can be safely removed.
-        writer.increaseActiveReaderNum();
-        if (writer.getRemovedFuture() != null) {
+        if (writer == null || writer.getRemovedFuture() != null) {
           // region is removed
           future.complete(
               new Pair<>(
-                  new TsFileTableSizeCacheReader(
-                      0,
-                      writer.tsFileCacheWriter.getKeyFile(),
-                      0,
-                      writer.tsFileCacheWriter.getValueFile(),
-                      regionId),
+                  new TsFileTableSizeCacheReader(0, null, 0, null, regionId),
                   new EmptyObjectTableSizeCacheReader()));
           return;
         }
+        writer.increaseActiveReaderNum();
         writer.flush();
         TsFileTableSizeCacheReader tsFileTableSizeCacheReader =
             readTsFileCache ? tableDiskUsageCache.createTsFileCacheReader(writer, regionId) : null;
@@ -270,8 +262,11 @@ public class TableDiskUsageCache {
   }
 
   private static class EndReadOperation extends Operation {
-    public EndReadOperation(String database, int regionId) {
-      super(database, regionId);
+    protected final DataRegion region;
+
+    public EndReadOperation(DataRegion dataRegion) {
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      this.region = dataRegion;
     }
 
     @Override
@@ -279,6 +274,9 @@ public class TableDiskUsageCache {
       tableDiskUsageCache.writerMap.computeIfPresent(
           regionId,
           (k, writer) -> {
+            if (writer.dataRegion != region) {
+              return writer;
+            }
             writer.decreaseActiveReaderNum();
             if (writer.getRemovedFuture() != null) {
               writer.getRemovedFuture().complete(null);
@@ -303,12 +301,11 @@ public class TableDiskUsageCache {
 
     @Override
     public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
-      tableDiskUsageCache
-          .writerMap
-          .computeIfAbsent(
-              regionId, k -> tableDiskUsageCache.createWriter(database, tsFileID.regionId))
-          .tsFileCacheWriter
-          .write(tsFileID, tableSizeMap);
+      DataRegionTableSizeCacheWriter dataRegionTableSizeCacheWriter =
+          tableDiskUsageCache.writerMap.get(regionId);
+      if (dataRegionTableSizeCacheWriter != null) {
+        dataRegionTableSizeCacheWriter.tsFileCacheWriter.write(tsFileID, tableSizeMap);
+      }
     }
   }
 
@@ -333,16 +330,18 @@ public class TableDiskUsageCache {
 
   protected static class RegisterRegionOperation extends Operation {
 
+    protected final DataRegion dataRegion;
     protected final CompletableFuture<Void> future = new CompletableFuture<>();
 
-    public RegisterRegionOperation(String database, int regionId) {
-      super(database, regionId);
+    public RegisterRegionOperation(DataRegion dataRegion) {
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      this.dataRegion = dataRegion;
     }
 
     @Override
     public void apply(TableDiskUsageCache tableDiskUsageCache) {
       tableDiskUsageCache.writerMap.computeIfAbsent(
-          regionId, regionId -> tableDiskUsageCache.createWriter(database, regionId));
+          regionId, regionId -> tableDiskUsageCache.createWriter(database, regionId, dataRegion));
       future.complete(null);
     }
 
@@ -394,11 +393,13 @@ public class TableDiskUsageCache {
   }
 
   protected static class DataRegionTableSizeCacheWriter {
+    protected final DataRegion dataRegion;
     protected final TsFileTableDiskUsageCacheWriter tsFileCacheWriter;
     protected int activeReaderNum = 0;
     protected CompletableFuture<Void> removedFuture;
 
-    protected DataRegionTableSizeCacheWriter(String database, int regionId) {
+    protected DataRegionTableSizeCacheWriter(String database, int regionId, DataRegion dataRegion) {
+      this.dataRegion = dataRegion;
       this.tsFileCacheWriter = new TsFileTableDiskUsageCacheWriter(database, regionId);
     }
 

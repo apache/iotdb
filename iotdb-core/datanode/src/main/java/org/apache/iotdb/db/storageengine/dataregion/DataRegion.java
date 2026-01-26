@@ -417,8 +417,7 @@ public class DataRegion implements IDataRegionForQuery {
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             databaseName + "-" + dataRegionIdString + "-UpgradeMod");
 
-    TableDiskUsageCache.getInstance()
-        .registerRegion(databaseName, Integer.parseInt(dataRegionIdString));
+    TableDiskUsageCache.getInstance().registerRegion(this);
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
