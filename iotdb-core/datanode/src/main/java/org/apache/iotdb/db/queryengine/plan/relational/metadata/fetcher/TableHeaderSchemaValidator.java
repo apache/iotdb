@@ -177,24 +177,29 @@ public class TableHeaderSchemaValidator {
         }
       }
       long realTimeIndex = 0;
+      boolean realWithoutTimeColumn = true;
+
       for (final TsTableColumnSchema schema : table.getColumnList()) {
         if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          realWithoutTimeColumn = false;
           break;
         }
         if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
           ++realTimeIndex;
         }
       }
+
       long inputTimeIndex = 0;
+      boolean inputWithoutTimeColumn = true;
       for (final ColumnSchema schema : tableSchema.getColumns()) {
         if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          inputWithoutTimeColumn = false;
           break;
         }
-        if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
-          ++inputTimeIndex;
-        }
+        ++inputTimeIndex;
       }
-      if (inputTimeIndex != realTimeIndex) {
+      if (inputWithoutTimeColumn != realWithoutTimeColumn
+          || !inputWithoutTimeColumn && inputTimeIndex != realTimeIndex) {
         needDecode4DifferentTimeColumn.set(true);
       }
     }
