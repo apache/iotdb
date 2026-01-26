@@ -5,7 +5,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Weigher;
-import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.function.Supplier;
 
@@ -28,7 +27,7 @@ public class EvolvedSchemaCache {
             .build();
   }
 
-  public @Nullable EvolvedSchema computeIfAbsent(
+  public EvolvedSchema computeIfAbsent(
       TsFileSet tsFileSet, Supplier<EvolvedSchema> schemaSupplier) {
     return cache.get(tsFileSet, k -> schemaSupplier.get());
   }
