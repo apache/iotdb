@@ -46,7 +46,9 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
