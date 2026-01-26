@@ -2760,9 +2760,10 @@ public class IoTDBAlterTimeSeriesTypeIT {
           "CREATE TIMESERIES root.cross_partition.device1.sensor1 WITH DATATYPE=INT32,ENCODING=RLE");
 
       // Insert data into two partitions
-      Tablet tablet = new Tablet("root.cross_partition.device1", Arrays.asList(
-          new MeasurementSchema("sensor1", TSDataType.INT32, TSEncoding.RLE))
-      );
+      Tablet tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT32, TSEncoding.RLE)));
       tablet.addTimestamp(0, 0);
       tablet.addValue("sensor1", 0, 0);
       tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
@@ -2773,15 +2774,15 @@ public class IoTDBAlterTimeSeriesTypeIT {
           "ALTER TIMESERIES root.cross_partition.device1.sensor1 SET DATA TYPE INT64");
 
       // Insert data with altered type
-       tablet = new Tablet("root.cross_partition.device1", Arrays.asList(
-          new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.RLE))
-      );
+      tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.RLE)));
       tablet.addTimestamp(0, 0);
       tablet.addValue("sensor1", 0, 0L);
       tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
       tablet.addValue("sensor1", 1, 1L);
       session.insertTablet(tablet);
     }
-
   }
 }
