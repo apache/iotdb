@@ -676,15 +676,26 @@ public class TableHeaderSchemaValidator {
   }
 
   private void addColumnSchema(final List<ColumnSchema> columnSchemas, final TsTable tsTable) {
-    long timeColumnCount = 0;
+    // check if the time column has been specified
+    long timeColumnCount =
+        columnSchemas.stream()
+            .filter(
+                columnDefinition ->
+                    columnDefinition.getColumnCategory() == TsTableColumnCategory.TIME)
+            .count();
+    if (timeColumnCount > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeColumnCount == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    }
+
     for (final ColumnSchema columnSchema : columnSchemas) {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
       if (category == null) {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnSchema.getName() + " category is not provided");
-      }
-      if (category == TsTableColumnCategory.TIME) {
-        ++timeColumnCount;
       }
       final String columnName = columnSchema.getName();
       if (tsTable.getColumnSchema(columnName) != null) {
@@ -697,13 +708,6 @@ public class TableHeaderSchemaValidator {
             "Cannot create column " + columnSchema.getName() + " datatype is not provided");
       }
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
-    }
-    if (timeColumnCount > 1) {
-      throw new SemanticException("A table cannot have more than one time column");
-    }
-    if (timeColumnCount == 0) {
-      // append the time column with default name "time" if user do not specify the time column
-      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
     }
   }
 
