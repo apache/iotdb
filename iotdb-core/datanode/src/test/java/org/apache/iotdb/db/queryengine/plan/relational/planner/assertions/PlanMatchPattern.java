@@ -46,11 +46,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
@@ -463,6 +465,20 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern window(PlanMatchPattern source) {
     return node(WindowNode.class, source);
+  }
+
+  public static PlanMatchPattern window(
+      List<String> partitionKeys, List<Ordering> orderings, PlanMatchPattern source) {
+    return node(WindowNode.class, source)
+        .with(new WindowFunctionMatcher(new Specification(partitionKeys, orderings)));
+  }
+
+  public static PlanMatchPattern topKRanking(PlanMatchPattern source) {
+    return node(TopKRankingNode.class, source);
+  }
+
+  public static PlanMatchPattern rowNumber(PlanMatchPattern source) {
+    return node(RowNumberNode.class, source);
   }
 
   public static PlanMatchPattern markDistinct(
@@ -1140,6 +1156,28 @@ public final class PlanMatchPattern {
       }
 
       return result;
+    }
+  }
+
+  public static class Specification {
+    private final List<String> partitionKeys;
+    private final List<Ordering> ordering;
+
+    private Specification(List<String> partitionKeys, List<Ordering> ordering) {
+      this.partitionKeys = partitionKeys;
+      this.ordering = ordering;
+    }
+
+    public List<String> getPartitionKeys() {
+      return partitionKeys;
+    }
+
+    public List<Ordering> getOrdering() {
+      return ordering;
+    }
+
+    public String toString() {
+      return partitionKeys.toString() + " " + ordering.toString();
     }
   }
 }
