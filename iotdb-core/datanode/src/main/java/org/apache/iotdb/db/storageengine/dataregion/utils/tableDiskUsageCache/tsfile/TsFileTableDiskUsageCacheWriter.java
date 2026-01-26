@@ -283,8 +283,8 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   }
 
   public void syncIfNecessary() throws IOException {
-    if (System.currentTimeMillis() - Math.max(lastWriteTimestamp, lastSyncTimestamp)
-        >= TimeUnit.MINUTES.toMillis(10)) {
+    if (lastWriteTimestamp > lastSyncTimestamp
+        && System.currentTimeMillis() - lastSyncTimestamp >= TimeUnit.MINUTES.toMillis(10)) {
       sync();
     }
   }

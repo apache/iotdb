@@ -45,9 +45,10 @@ import java.util.concurrent.TimeUnit;
 public class TableDiskUsageCache {
   protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>();
+  // regionId -> writer mapping
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
-  private int processedOperationCount = 0;
+  private int processedOperationCountSinceLastPeriodicCheck = 0;
   protected volatile boolean failedToRecover = false;
 
   protected TableDiskUsageCache() {
@@ -68,9 +69,9 @@ public class TableDiskUsageCache {
           Operation operation = queue.poll(1, TimeUnit.SECONDS);
           if (operation != null) {
             operation.apply(this);
-            processedOperationCount++;
+            processedOperationCountSinceLastPeriodicCheck++;
           }
-          if (operation == null || processedOperationCount % 1000 == 0) {
+          if (operation == null || processedOperationCountSinceLastPeriodicCheck % 1000 == 0) {
             performPeriodicMaintenance();
           }
         } catch (InterruptedException e) {
@@ -87,7 +88,7 @@ public class TableDiskUsageCache {
   private void performPeriodicMaintenance() {
     checkAndMayCloseIdleWriter();
     compactIfNecessary(TimeUnit.SECONDS.toMillis(1));
-    processedOperationCount = 0;
+    processedOperationCountSinceLastPeriodicCheck = 0;
   }
 
   /**
@@ -259,6 +260,7 @@ public class TableDiskUsageCache {
           return;
         }
         writer.increaseActiveReaderNum();
+        // Flush buffered writes to ensure readers observe a consistent snapshot
         writer.flush();
         TsFileTableSizeCacheReader tsFileTableSizeCacheReader =
             readTsFileCache ? tableDiskUsageCache.createTsFileCacheReader(writer, regionId) : null;
@@ -290,6 +292,7 @@ public class TableDiskUsageCache {
               return writer;
             }
             writer.decreaseActiveReaderNum();
+            // Complete pending remove when the last reader exits
             if (writer.getRemovedFuture() != null) {
               writer.close();
               writer.getRemovedFuture().complete(null);
@@ -377,6 +380,7 @@ public class TableDiskUsageCache {
           regionId,
           (k, writer) -> {
             if (writer.getActiveReaderNum() > 0) {
+              // If there are active readers, defer removal until all readers finish
               writer.setRemovedFuture(future);
               return writer;
             }
