@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -100,6 +101,7 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.GeneralRegionAttributeSecurityService;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.DataNodeMetricsHelper;
 import org.apache.iotdb.db.service.metrics.IoTDBInternalLocalReporter;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -110,6 +112,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALMode;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
@@ -244,6 +247,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         sendRegisterRequestToConfigNode(false);
         saveSecretKey();
         saveHardwareCode();
+        // Clean up active load listening directories on first startup
+        ActiveLoadAgent.cleanupListeningDirectories();
       } else {
         /* Check encrypt magic string */
         try {
@@ -270,6 +275,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();
+      ConfigurationFileUtils.updateAppliedProperties(
+          IoTDBStartCheck.getInstance().getProperties(), false);
 
       logger.info("IoTDB configuration: {}", config.getConfigMessage());
       logger.info("Congratulations, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
@@ -439,6 +446,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       throw new StartupException(e.getMessage());
     }
 
+    ConfigurationFileUtils.updateAppliedPropertiesFromCN(configurationResp);
     // init
     initTimestampPrecision();
     long endTime = System.currentTimeMillis();
@@ -461,6 +469,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    * <p>5. All Pipe information
    *
    * <p>6. All TTL information
+   *
+   * <p>7. All ExternalService information
    */
   protected void storeRuntimeConfigurations(
       List<TConfigNodeLocation> configNodeLocations, TRuntimeConfiguration runtimeConfiguration)
@@ -481,6 +491,12 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     /* Store triggerInformationList */
     getTriggerInformationList(runtimeConfiguration.getAllTriggerInformation());
+
+    /* Store externalServiceEntryList */
+    resourcesInformationHolder.setExternalServiceEntryList(
+        runtimeConfiguration.isSetAllUserDefinedServiceInfo()
+            ? runtimeConfiguration.getAllUserDefinedServiceInfo()
+            : Collections.emptyList());
 
     /* Store pipeInformationList */
     getPipeInformationList(runtimeConfiguration.getAllPipeInformation());
@@ -1172,6 +1188,26 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
+  private void prepareExternalServiceResources() throws StartupException {
+    long startTime = System.currentTimeMillis();
+
+    try {
+      if (resourcesInformationHolder.getExternalServiceEntryList() != null
+          && !resourcesInformationHolder.getExternalServiceEntryList().isEmpty()) {
+        ExternalServiceManagementService.getInstance()
+            .restoreUserDefinedServices(resourcesInformationHolder.getExternalServiceEntryList());
+      }
+
+      ExternalServiceManagementService.getInstance().restoreRunningServiceInstance();
+    } catch (Exception e) {
+      throw new StartupException(e);
+    }
+
+    logger.info(
+        "Prepare external-service resources successfully, which takes {} ms.",
+        System.currentTimeMillis() - startTime);
+  }
+
   private void preparePipeResources() throws StartupException {
     long startTime = System.currentTimeMillis();
     PipeDataNodeAgent.runtime().preparePipeResources(resourcesInformationHolder);
@@ -1254,6 +1290,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public void stop() {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
+    ExternalServiceManagementService.getInstance().stopRunningServices();
     JMXService.deregisterMBean(mbeanName);
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
@@ -1274,12 +1311,10 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (config.isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
       registerManager.register(RestService.getInstance());
     }
+    prepareExternalServiceResources();
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());
     }

@@ -29,14 +29,14 @@ import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 import org.apache.iotdb.tool.tsfile.ImportTsFileScanTool;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.collections4.MapUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -66,7 +66,7 @@ public class ImportDataTable extends AbstractImportData {
   private static Map<String, ColumnCategory> columnCategory = new HashMap<>();
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
@@ -75,8 +75,12 @@ public class ImportDataTable extends AbstractImportData {
             .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder =
+          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     final File file = new File(targetPath);
     if (!file.isFile() && !file.isDirectory()) {
       ioTPrinter.println(String.format("Source file or directory %s does not exist", targetPath));

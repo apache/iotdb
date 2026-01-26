@@ -233,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -252,6 +256,14 @@ DATANODEID
 DATANODES
 
     : D A T A N O D E S
+    ;
+
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
     ;
 
 DATASET
@@ -369,6 +381,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -610,6 +627,10 @@ PATHS
     : P A T H S
     ;
 
+PERMITTED
+    : P E R M I T T E D
+    ;
+
 PIPE
     : P I P E
     ;
@@ -770,6 +791,14 @@ SERIESSLOTID
     : S E R I E S S L O T I D
     ;
 
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
+    ;
+
 SESSION
     : S E S S I O N
     ;
@@ -840,6 +869,10 @@ STATEMENT
 
 STOP
     : S T O P
+    ;
+
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
     ;
 
 SUBSCRIPTION

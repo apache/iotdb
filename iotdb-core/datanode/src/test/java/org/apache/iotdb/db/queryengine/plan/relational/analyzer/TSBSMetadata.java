@@ -24,11 +24,10 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
@@ -40,12 +39,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
@@ -351,6 +352,17 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
     throw new UnsupportedOperationException();
@@ -386,11 +398,6 @@ public class TSBSMetadata implements Metadata {
 
   @Override
   public TableFunction getTableFunction(String functionName) {
-    return null;
-  }
-
-  @Override
-  public IModelFetcher getModelFetcher() {
     return null;
   }
 

@@ -77,14 +77,19 @@ public abstract class TVList implements WALEntryValue {
   // Index relation: arrayIndex -> elementIndex
   protected List<BitMap> bitMap;
 
-  // lock to provide synchronization for query list
+  // Guards queryContextSet, ownerQuery, and reservedMemoryBytes.
+  // Always acquire this lock before accessing/modifying these fields.
   private final ReentrantLock queryListLock = new ReentrantLock();
+
   // set of query that this TVList is used
   protected final Set<QueryContext> queryContextSet;
 
   // the owner query which is obligated to release the TVList.
   // When it is null, the TVList is owned by insert thread and released after flush.
   protected QueryContext ownerQuery;
+
+  // Reserved memory by the query. Ensure to acquire queryListLock before update.
+  protected long reservedMemoryBytes = 0L;
 
   protected boolean sorted = true;
   protected long maxTime;
@@ -98,6 +103,8 @@ public abstract class TVList implements WALEntryValue {
 
   protected static int defaultArrayNum = 0;
   protected static volatile long defaultArrayNumLastUpdatedTimeMs = 0;
+
+  protected TSDataType dataType;
 
   protected TVList() {
     timestamps = new ArrayList<>(getDefaultArrayNum());
@@ -114,12 +121,14 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.newList();
       case FLOAT:
         return FloatTVList.newList();
       case INT32:
+        return IntTVList.newList(TSDataType.INT32);
       case DATE:
-        return IntTVList.newList();
+        return IntTVList.newList(TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.newList();
@@ -156,12 +165,24 @@ public abstract class TVList implements WALEntryValue {
     return size;
   }
 
-  public long calculateRamSize() {
+  public synchronized long calculateRamSize() {
     return timestamps.size() * tvListArrayMemCost();
   }
 
   public synchronized boolean isSorted() {
     return sorted;
+  }
+
+  public void setReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes = bytes;
+  }
+
+  public void addReservedMemoryBytes(long bytes) {
+    this.reservedMemoryBytes += bytes;
+  }
+
+  public long getReservedMemoryBytes() {
+    return reservedMemoryBytes;
   }
 
   public abstract void sort();
@@ -676,13 +697,15 @@ public abstract class TVList implements WALEntryValue {
     switch (dataType) {
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         return BinaryTVList.deserialize(stream);
       case FLOAT:
         return FloatTVList.deserialize(stream);
       case INT32:
+        return IntTVList.deserialize(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserialize(stream);
+        return IntTVList.deserialize(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserialize(stream);
@@ -702,12 +725,14 @@ public abstract class TVList implements WALEntryValue {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return BinaryTVList.deserializeWithoutBitMap(stream);
       case FLOAT:
         return FloatTVList.deserializeWithoutBitMap(stream);
       case INT32:
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.INT32);
       case DATE:
-        return IntTVList.deserializeWithoutBitMap(stream);
+        return IntTVList.deserializeWithoutBitMap(stream, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return LongTVList.deserializeWithoutBitMap(stream);
@@ -723,6 +748,10 @@ public abstract class TVList implements WALEntryValue {
 
   public List<long[]> getTimestamps() {
     return timestamps;
+  }
+
+  public List<int[]> getIndices() {
+    return indices;
   }
 
   public void setOwnerQuery(QueryContext queryCtx) {
@@ -970,7 +999,7 @@ public abstract class TVList implements WALEntryValue {
       TSDataType dataType = getDataType();
       int maxRowCountOfCurrentBatch =
           Math.min(
-              paginationController.hasLimit()
+              paginationController.hasSetLimit()
                   ? (int) paginationController.getCurLimit()
                   : Integer.MAX_VALUE,
               Math.min(maxNumberOfPointsInPage, rows - index));
@@ -1126,6 +1155,7 @@ public abstract class TVList implements WALEntryValue {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           while (index < rows
               && builder.getPositionCount() < maxNumberOfPointsInPage
               && paginationController.hasCurLimit()) {
@@ -1226,6 +1256,7 @@ public abstract class TVList implements WALEntryValue {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             Binary value = getBinary(index);
             chunkWriterImpl.write(time, value);
             encodeInfo.dataSizeInChunk += 8L + getBinarySize(value);

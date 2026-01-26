@@ -34,8 +34,9 @@ public class SystemConstant {
   public static final String AUDIT_DATABASE = "root.__audit";
   public static final String AUDIT_PREFIX_KEY = "__audit";
 
-  public static final String RESTART_KEY = "__system.restart";
-  public static final boolean RESTART_DEFAULT_VALUE = false;
+  // This can be arbitrarily changed since it's only a memory key and not stored
+  public static final String RESTART_OR_NEWLY_ADDED_KEY = "__system.restart_or_newly_added";
+  public static final boolean RESTART_OR_NEWLY_ADDED_DEFAULT_VALUE = false;
 
   public static final String SQL_DIALECT_KEY = "__system.sql-dialect";
   public static final String SQL_DIALECT_TREE_VALUE = "tree";
@@ -46,7 +47,7 @@ public class SystemConstant {
   public static final Set<String> SYSTEM_KEYS = new HashSet<>();
 
   static {
-    SYSTEM_KEYS.add(RESTART_KEY);
+    SYSTEM_KEYS.add(RESTART_OR_NEWLY_ADDED_KEY);
     SYSTEM_KEYS.add(SQL_DIALECT_KEY);
   }
 

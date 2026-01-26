@@ -92,6 +92,12 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.UnsetTemplate, ConfigPhysicalPlanType.PipeUnsetTemplate)));
 
       OPTION_PLAN_MAP.put(
+          new PartialPath("schema.timeseries.ordinary.alter"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.PipeAlterEncodingCompressor,
+                  ConfigPhysicalPlanType.PipeAlterTimeSeries)));
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteTimeSeries));
       OPTION_PLAN_MAP.put(
@@ -122,7 +128,8 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RenameTable,
                   ConfigPhysicalPlanType.RenameView,
                   ConfigPhysicalPlanType.RenameTableColumn,
-                  ConfigPhysicalPlanType.RenameViewColumn)));
+                  ConfigPhysicalPlanType.RenameViewColumn,
+                  ConfigPhysicalPlanType.CommitAlterColumnDataType)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(

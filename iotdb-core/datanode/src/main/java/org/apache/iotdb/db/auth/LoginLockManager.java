@@ -41,7 +41,7 @@ public class LoginLockManager {
 
   // Configuration parameters
   private final int failedLoginAttempts;
-  private final int failedLoginAttemptsPerUser;
+  private int failedLoginAttemptsPerUser;
   private final int passwordLockTimeMinutes;
 
   // Lock records storage (in-memory only)
@@ -79,6 +79,14 @@ public class LoginLockManager {
     if (failedLoginAttemptsPerUser <= 0) {
       this.failedLoginAttemptsPerUser = -1; // Disable user-level restrictions
       LOGGER.info("User-level login attempts disabled (set to {})", failedLoginAttemptsPerUser);
+
+      // Additional check: if IP-level is enabled (>1), enable user-level with default 1000
+      if (this.failedLoginAttempts > 1) {
+        this.failedLoginAttemptsPerUser = 1000;
+        LOGGER.warn(
+            "User-level attempts auto-enabled with default 1000 because IP-level is enabled (set to {})",
+            this.failedLoginAttempts);
+      }
     } else {
       this.failedLoginAttemptsPerUser = failedLoginAttemptsPerUser;
     }

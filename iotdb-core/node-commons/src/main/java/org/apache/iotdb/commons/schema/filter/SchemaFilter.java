@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -41,7 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class SchemaFilter {
+public abstract class SchemaFilter implements Accountable {
 
   public static void serialize(final SchemaFilter schemaFilter, final ByteBuffer byteBuffer) {
     if (schemaFilter == null) {

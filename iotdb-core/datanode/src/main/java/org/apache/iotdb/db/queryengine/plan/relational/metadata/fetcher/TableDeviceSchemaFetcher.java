@@ -144,7 +144,7 @@ public class TableDeviceSchemaFetcher {
 
       final List<ColumnHeader> columnHeaderList =
           coordinator.getQueryExecution(queryId).getDatasetHeader().getColumnHeaders();
-      final int idLength = DataNodeTableCache.getInstance().getTable(database, table).getTagNum();
+      final int tagLength = DataNodeTableCache.getInstance().getTable(database, table).getTagNum();
       final Map<IDeviceID, Map<String, Binary>> fetchedDeviceSchema = new HashMap<>();
 
       while (coordinator.getQueryExecution(queryId).hasNextResult()) {
@@ -166,7 +166,7 @@ public class TableDeviceSchemaFetcher {
         }
         final Column[] columns = tsBlock.get().getValueColumns();
         for (int i = 0; i < tsBlock.get().getPositionCount(); i++) {
-          final String[] nodes = new String[idLength + 1];
+          final String[] nodes = new String[tagLength + 1];
           final Map<String, Binary> attributeMap = new HashMap<>();
           constructNodsArrayAndAttributeMap(
               attributeMap, nodes, table, columnHeaderList, columns, tableInstance, i);
@@ -459,11 +459,11 @@ public class TableDeviceSchemaFetcher {
   }
 
   public static IDeviceID convertTagValuesToDeviceID(
-      final String tableName, final String[] idValues) {
+      final String tableName, final String[] tagValues) {
     // Convert to IDeviceID
-    final String[] deviceIdNodes = new String[idValues.length + 1];
+    final String[] deviceIdNodes = new String[tagValues.length + 1];
     deviceIdNodes[0] = tableName;
-    System.arraycopy(idValues, 0, deviceIdNodes, 1, idValues.length);
+    System.arraycopy(tagValues, 0, deviceIdNodes, 1, tagValues.length);
     return IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdNodes);
   }
 

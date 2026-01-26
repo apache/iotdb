@@ -70,6 +70,7 @@ import org.apache.iotdb.confignode.manager.TTLManager;
 import org.apache.iotdb.confignode.manager.TriggerManager;
 import org.apache.iotdb.confignode.manager.UDFManager;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -179,6 +180,7 @@ public class NodeManager {
     globalConfig.setSchemaEngineMode(commonConfig.getSchemaEngineMode());
     globalConfig.setTagAttributeTotalSize(commonConfig.getTagAttributeTotalSize());
     globalConfig.setEnableGrantOption(commonConfig.getEnableGrantOption());
+    globalConfig.setRestrictObjectLimit(commonConfig.isRestrictObjectLimit());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -266,7 +268,7 @@ public class NodeManager {
     return auditConfig;
   }
 
-  private TRuntimeConfiguration getRuntimeConfiguration() {
+  private TRuntimeConfiguration getRuntimeConfiguration(int dataNodeId) {
     getPipeManager().getPipePluginCoordinator().lock();
     try {
       getTriggerManager().getTriggerInfo().acquireTriggerTableLock();
@@ -279,6 +281,8 @@ public class NodeManager {
               getTriggerManager().getTriggerTable(false).getAllTriggerInformation());
           runtimeConfiguration.setAllUDFInformation(
               getUDFManager().getAllUDFTable().getAllUDFInformation());
+          runtimeConfiguration.setAllUserDefinedServiceInfo(
+              getServiceManager().getUserDefinedService(dataNodeId));
           runtimeConfiguration.setAllPipeInformation(
               getPipeManager()
                   .getPipePluginCoordinator()
@@ -351,7 +355,7 @@ public class NodeManager {
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_REGISTRATION);
     resp.setDataNodeId(
         registerDataNodePlan.getDataNodeConfiguration().getLocation().getDataNodeId());
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration(dataNodeId));
     return resp;
   }
 
@@ -395,7 +399,7 @@ public class NodeManager {
     }
 
     resp.setStatus(ClusterNodeStartUtils.ACCEPT_NODE_RESTART);
-    resp.setRuntimeConfiguration(getRuntimeConfiguration());
+    resp.setRuntimeConfiguration(getRuntimeConfiguration(nodeId));
 
     resp.setCorrectConsensusGroups(getPartitionManager().getAllReplicaSets(nodeId));
     return resp;
@@ -1337,5 +1341,9 @@ public class NodeManager {
 
   private TTLManager getTTLManager() {
     return configManager.getTTLManager();
+  }
+
+  private ExternalServiceManager getServiceManager() {
+    return configManager.getExternalServiceManager();
   }
 }

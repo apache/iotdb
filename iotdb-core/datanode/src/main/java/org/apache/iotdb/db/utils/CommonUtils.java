@@ -48,10 +48,13 @@ import io.airlift.airline.ParseCommandUnrecognizedException;
 import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
@@ -160,6 +163,9 @@ public class CommonUtils {
             }
           }
           return new Binary(parseBlobStringToByteArray(value));
+        case OBJECT:
+          throw new NumberFormatException(
+              "data type is not consistent, input " + value + ", registered " + dataType);
         default:
           throw new QueryProcessException("Unsupported data type:" + dataType);
       }
@@ -380,6 +386,7 @@ public class CommonUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         valueColumn = new Binary[rowNum];
         break;
       case DATE:
@@ -432,5 +439,21 @@ public class CommonUtils {
             OperationType.QUERY_LATENCY.toString(),
             Tag.TYPE.toString(),
             statementType.name());
+  }
+
+  public static String toString(TsBlock tsBlock) {
+    StringBuilder tsBlockBuilder = new StringBuilder();
+    for (Column column : tsBlock.getAllColumns()) {
+      tsBlockBuilder.append("[");
+      for (int i = 0; i < column.getPositionCount(); i++) {
+        if (column instanceof TimeColumn) {
+          tsBlockBuilder.append(column.getLong(i)).append(",");
+        } else {
+          tsBlockBuilder.append(column.getTsPrimitiveType(i)).append(",");
+        }
+      }
+      tsBlockBuilder.append("] ");
+    }
+    return tsBlockBuilder.toString();
   }
 }

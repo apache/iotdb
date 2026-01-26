@@ -20,6 +20,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
@@ -31,6 +32,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +41,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RelationalAuthorStatement extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalAuthorStatement.class);
 
   private final AuthorRType authorType;
 
@@ -423,6 +427,11 @@ public class RelationalAuthorStatement extends Statement {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant or revoke any privileges to information_schema");
         }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+        }
         break;
       case GRANT_USER_TB:
       case GRANT_ROLE_TB:
@@ -436,6 +445,11 @@ public class RelationalAuthorStatement extends Statement {
           return AuthorityChecker.getTSStatus(
               false, "Cannot grant or revoke any privileges to information_schema");
         }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+        }
         break;
       default:
         break;
@@ -445,5 +459,21 @@ public class RelationalAuthorStatement extends Statement {
 
   public long getAssociatedUserId() {
     return associatedUserId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(userName);
+    size += RamUsageEstimator.sizeOf(roleName);
+    size += RamUsageEstimator.sizeOf(password);
+    size += RamUsageEstimator.sizeOf(oldPassword);
+    size += RamUsageEstimator.sizeOf(newUsername);
+    size += RamUsageEstimator.sizeOf(loginAddr);
+    size += RamUsageEstimator.sizeOfCollection(privilegeType);
+    return size;
   }
 }

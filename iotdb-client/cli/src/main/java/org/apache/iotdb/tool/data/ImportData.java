@@ -38,9 +38,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.File;

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckV
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -224,7 +225,8 @@ public class AuthTest {
         new StatementAnalyzerFactory(
             TEST_MATADATA,
             sqlParser,
-            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()));
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager());
     MPPQueryContext context = new MPPQueryContext(sql, QUERY_ID, 0, session, null, null);
     Analyzer analyzer =
         new Analyzer(
@@ -251,7 +253,8 @@ public class AuthTest {
         new TableConfigTaskVisitor(
             Mockito.mock(IClientSession.class),
             TEST_MATADATA,
-            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor())),
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager()),
         context);
   }
 
@@ -266,7 +269,8 @@ public class AuthTest {
         new TableConfigTaskVisitor(
             clientSession,
             TEST_MATADATA,
-            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor())),
+            new AccessControlImpl(authChecker, new TreeAccessCheckVisitor()),
+            new InternalTypeManager()),
         context);
   }
 }

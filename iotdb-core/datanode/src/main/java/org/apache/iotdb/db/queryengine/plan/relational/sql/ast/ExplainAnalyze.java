@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -28,6 +29,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class ExplainAnalyze extends Statement {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ExplainAnalyze.class);
 
   private final Statement statement;
   private final boolean verbose;
@@ -82,5 +86,13 @@ public class ExplainAnalyze extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("statement", statement).add("verbose", verbose).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(statement);
+    return size;
   }
 }

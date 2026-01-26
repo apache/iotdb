@@ -46,9 +46,7 @@ import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.util.Objects.requireNonNull;
 
 public abstract class SetOperationNode extends MultiChildProcessNode {
-  // Corresponding is not supported in UNION now, this field can be used for future expansion.
-  // We don't need to serialize this field now, consider it when support Corresponding.
-  private final transient ListMultimap<Symbol, Symbol> outputToInputs;
+  private final ListMultimap<Symbol, Symbol> outputToInputs;
   private final List<Symbol> outputs;
 
   protected SetOperationNode(

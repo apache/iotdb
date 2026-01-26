@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.commons.file;
 
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.FileUtils;
 
 import org.apache.ratis.util.AutoCloseableLock;
-import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,7 @@ public abstract class SystemPropertiesHandler {
   }
 
   public void overwrite(Properties properties) throws IOException {
+    ConfigurationFileUtils.updateAppliedProperties(properties, false);
     try (AutoCloseableLock ignore = AutoCloseableLock.acquire(lock.writeLock())) {
       if (!formalFile.exists()) {
         writeWithoutLock(properties, formalFile);
@@ -182,15 +184,8 @@ public abstract class SystemPropertiesHandler {
               "Delete formal system properties file fail: %s", formalFile.getAbsoluteFile());
       throw new IOException(msg);
     }
-    try {
-      FileUtils.move(tmpFile.toPath(), formalFile.toPath());
-    } catch (IOException e) {
-      String msg =
-          String.format(
-              "Failed to replace formal system properties file, you may manually rename it: %s -> %s",
-              tmpFile.getAbsolutePath(), formalFile.getAbsolutePath());
-      throw new IOException(msg, e);
-    }
+
+    FileUtils.moveFileSafe(tmpFile, formalFile);
   }
 
   public void resetFilePath(String filePath) {

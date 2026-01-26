@@ -235,6 +235,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
     } catch (Exception e) {
+      if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
+          && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
+        throw (LoadAnalyzeTypeMismatchException) e.getCause();
+      }
       handleException(e, loadTsFileAnalyzer.getStatementString());
     }
   }
@@ -299,6 +303,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
           schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
+          databasesNeededToBeSet.removeIf(
+              database ->
+                  database.startsWith(databaseName)
+                      || databaseName.startsWith(database.getFullPath()));
         }
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);

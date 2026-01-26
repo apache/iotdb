@@ -76,4 +76,27 @@ public class MqttClientSession extends IClientSession {
   public void removeQueryId(Long statementId, Long queryId) {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public void addPreparedStatement(String statementName, PreparedStatementInfo info) {
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
+  }
+
+  @Override
+  public PreparedStatementInfo removePreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
+  }
+
+  @Override
+  public PreparedStatementInfo getPreparedStatement(String statementName) {
+    throw new UnsupportedOperationException(
+        "MQTT client session does not support PREPARE statement.");
+  }
+
+  @Override
+  public Set<String> getPreparedStatementNames() {
+    return Collections.emptySet();
+  }
 }

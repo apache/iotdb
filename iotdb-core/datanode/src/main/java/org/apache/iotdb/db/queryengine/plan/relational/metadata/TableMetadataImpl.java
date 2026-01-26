@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.table.TableNotExistsException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
@@ -34,9 +35,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
-import org.apache.iotdb.db.queryengine.plan.analyze.ModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.AdditionResolver;
@@ -65,7 +64,7 @@ import org.apache.iotdb.udf.api.relational.ScalarFunction;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.read.common.type.BlobType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
@@ -79,6 +78,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
 import static org.apache.tsfile.read.common.type.BinaryType.TEXT;
+import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DateType.DATE;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
@@ -96,8 +96,6 @@ public class TableMetadataImpl implements Metadata {
   private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
 
   private final DataNodeTableCache tableCache = DataNodeTableCache.getInstance();
-
-  private final IModelFetcher modelFetcher = ModelFetcher.getInstance();
 
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
@@ -264,13 +262,16 @@ public class TableMetadataImpl implements Metadata {
       }
       return STRING;
     } else if (TableBuiltinScalarFunction.LENGTH.getFunctionName().equalsIgnoreCase(functionName)) {
-      if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0))
+              || isBlobType(argumentTypes.get(0))
+              || isObjectType(argumentTypes.get(0))))) {
         throw new SemanticException(
             "Scalar function "
                 + functionName.toLowerCase(Locale.ENGLISH)
-                + " only accepts one argument and it must be text or string data type.");
+                + " only accepts one argument and it must be text or string or blob or object data type.");
       }
-      return INT32;
+      return INT64;
     } else if (TableBuiltinScalarFunction.UPPER.getFunctionName().equalsIgnoreCase(functionName)) {
       if (!(argumentTypes.size() == 1 && isCharType(argumentTypes.get(0)))) {
         throw new SemanticException(
@@ -611,6 +612,471 @@ public class TableMetadataImpl implements Metadata {
                 functionName));
       }
       return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.TO_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return STRING;
+    } else if (TableBuiltinScalarFunction.FROM_BASE64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.TO_BASE64URL
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return STRING;
+    } else if (TableBuiltinScalarFunction.FROM_BASE64URL
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.TO_BASE32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return STRING;
+    } else if (TableBuiltinScalarFunction.FROM_BASE32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.SHA256.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.SHA512.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.SHA1.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.MD5.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.XXHASH64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.MURMUR3
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.TO_HEX.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (!(argumentTypes.size() == 1
+          && (isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0))))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return STRING;
+    } else if (TableBuiltinScalarFunction.FROM_HEX
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isCharType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT or STRING data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.REVERSE
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1
+          || !(isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BlOB data type.",
+                functionName));
+      }
+      return argumentTypes.get(0);
+    } else if (TableBuiltinScalarFunction.HMAC_MD5.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.HMAC_SHA1.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.HMAC_SHA256.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.HMAC_SHA512
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 2
+          || !(isCharType(argumentTypes.get(0)) || isBlobType(argumentTypes.get(0)))
+          || !isCharType(argumentTypes.get(1))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts two arguments, first argument must be TEXT, STRING, or BlOB type, second argument must be STRING OR TEXT type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT32;
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT32;
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !FLOAT.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Float data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return FLOAT;
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !DOUBLE.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Double data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return DOUBLE;
+    } else if (TableBuiltinScalarFunction.CRC32.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1
+          || !(isBlobType(argumentTypes.get(0)) || isCharType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_32
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.SPOOKY_HASH_V2_64
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1
+          || !(isBlobType(argumentTypes.get(0)) || isCharType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT32;
+    } else if (TableBuiltinScalarFunction.TO_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_BIG_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT32.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int32 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT32;
+    } else if (TableBuiltinScalarFunction.TO_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !INT64.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Int64 data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_LITTLE_ENDIAN_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !FLOAT.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Float data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_32
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return FLOAT;
+    } else if (TableBuiltinScalarFunction.TO_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !DOUBLE.equals(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be Double data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.FROM_IEEE754_64
+        .getFunctionName()
+        .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1 || !isBlobType(argumentTypes.get(0))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be BLOB data type.",
+                functionName));
+      }
+      return DOUBLE;
+    } else if (TableBuiltinScalarFunction.CRC32.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1
+          || !(isBlobType(argumentTypes.get(0)) || isCharType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return INT64;
+    } else if (TableBuiltinScalarFunction.SPOOKY_HASH_V2_32
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.SPOOKY_HASH_V2_64
+            .getFunctionName()
+            .equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 1
+          || !(isBlobType(argumentTypes.get(0)) || isCharType(argumentTypes.get(0)))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts one argument and it must be TEXT, STRING, or BLOB data type.",
+                functionName));
+      }
+      return BLOB;
+    } else if (TableBuiltinScalarFunction.LPAD.getFunctionName().equalsIgnoreCase(functionName)
+        || TableBuiltinScalarFunction.RPAD.getFunctionName().equalsIgnoreCase(functionName)) {
+      if (argumentTypes.size() != 3
+          || !isBlobType(argumentTypes.get(0))
+          || !isIntegerNumber(argumentTypes.get(1))
+          || !isBlobType(argumentTypes.get(2))) {
+        throw new SemanticException(
+            String.format(
+                "Scalar function %s only accepts three arguments, first argument must be BlOB type, "
+                    + "second argument must be int32 or int64 type, third argument must be BLOB type.",
+                functionName));
+      }
+      return BLOB;
     }
 
     // builtin aggregation function
@@ -851,8 +1317,13 @@ public class TableMetadataImpl implements Metadata {
               Collections.emptyMap());
       try {
         ScalarFunctionAnalysis scalarFunctionAnalysis = scalarFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            scalarFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                scalarFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -869,8 +1340,13 @@ public class TableMetadataImpl implements Metadata {
       try {
         AggregateFunctionAnalysis aggregateFunctionAnalysis =
             aggregateFunction.analyze(functionArguments);
-        return UDFDataTypeTransformer.transformUDFDataTypeToReadType(
-            aggregateFunctionAnalysis.getOutputDataType());
+        Type returnType =
+            UDFDataTypeTransformer.transformUDFDataTypeToReadType(
+                aggregateFunctionAnalysis.getOutputDataType());
+        if (returnType == ObjectType.OBJECT) {
+          throw new SemanticException("OBJECT type is not supported as return type");
+        }
+        return returnType;
       } catch (Exception e) {
         throw new SemanticException("Invalid function parameters: " + e.getMessage());
       } finally {
@@ -933,6 +1409,24 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+    TableHeaderSchemaValidator.getInstance()
+        .validateInsertNodeMeasurements(
+            database,
+            measurementInfo,
+            context,
+            allowCreateTable,
+            measurementValidator,
+            tagColumnHandler);
+  }
+
+  @Override
   public void validateDeviceSchema(
       ITableDeviceSchemaValidation schemaValidation, MPPQueryContext context) {
     TableDeviceSchemaValidator.getInstance().validateDeviceSchema(schemaValidation, context);
@@ -986,11 +1480,6 @@ public class TableMetadataImpl implements Metadata {
     }
   }
 
-  @Override
-  public IModelFetcher getModelFetcher() {
-    return modelFetcher;
-  }
-
   public static boolean isTwoNumericType(List<? extends Type> argumentTypes) {
     return argumentTypes.size() == 2
         && isNumericType(argumentTypes.get(0))
@@ -1036,8 +1525,12 @@ public class TableMetadataImpl implements Metadata {
     return TEXT.equals(type) || StringType.STRING.equals(type);
   }
 
+  public static boolean isObjectType(Type type) {
+    return ObjectType.OBJECT.equals(type);
+  }
+
   public static boolean isBlobType(Type type) {
-    return BlobType.BLOB.equals(type);
+    return BLOB.equals(type);
   }
 
   public static boolean isBool(Type type) {

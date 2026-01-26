@@ -25,9 +25,9 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.NotCompatibleTsFileException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;

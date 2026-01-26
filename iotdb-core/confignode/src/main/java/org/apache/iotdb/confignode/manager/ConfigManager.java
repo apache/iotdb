@@ -19,15 +19,13 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.ainode.rpc.thrift.IDataSchema;
-import org.apache.iotdb.ainode.rpc.thrift.TTrainingReq;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -42,8 +40,6 @@ import org.apache.iotdb.common.rpc.thrift.TShowConfigurationResp;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.NodeType;
 import org.apache.iotdb.commons.conf.CommonConfig;
@@ -53,8 +49,9 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.model.ModelStatus;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -63,11 +60,14 @@ import org.apache.iotdb.commons.schema.table.AlterOrDropTableOperationType;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.schema.tree.AlterTimeSeriesOperationType;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.audit.CNAuditLogger;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -92,7 +92,6 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetSchemaRep
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
-import org.apache.iotdb.confignode.consensus.request.write.model.CreateModelPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.response.ainode.AINodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
@@ -111,6 +110,8 @@ import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
@@ -124,7 +125,6 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
-import org.apache.iotdb.confignode.persistence.ModelInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -139,14 +139,15 @@ import org.apache.iotdb.confignode.persistence.quota.QuotaInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TAINodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterParameters;
@@ -156,14 +157,13 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTableViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateTrainingReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTriggerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRestartReq;
@@ -180,7 +180,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
@@ -197,8 +196,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -212,7 +209,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -225,7 +221,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -234,10 +229,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -255,13 +246,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
-import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUpdateModelInfoReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateAlterOperationUtil;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -269,6 +257,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -322,13 +311,16 @@ public class ConfigManager implements IManager {
   private final PartitionManager partitionManager;
 
   /** Manage cluster authorization. */
-  private final PermissionManager permissionManager;
+  private PermissionManager permissionManager;
 
   /** Manage load balancing. */
   protected LoadManager loadManager;
 
   /** Manage procedure. */
   private final ProcedureManager procedureManager;
+
+  /** ExternalService. */
+  private final ExternalServiceManager externalServiceManager;
 
   /** UDF. */
   private final UDFManager udfManager;
@@ -338,9 +330,6 @@ public class ConfigManager implements IManager {
 
   /** CQ. */
   private final CQManager cqManager;
-
-  /** AI Model. */
-  private final ModelManager modelManager;
 
   /** Pipe */
   private final PipeManager pipeManager;
@@ -361,8 +350,6 @@ public class ConfigManager implements IManager {
 
   private static final String DATABASE = "\tDatabase=";
 
-  private static final String DOT = ".";
-
   public ConfigManager() throws IOException {
     // Build the persistence module
     ClusterInfo clusterInfo = new ClusterInfo();
@@ -374,7 +361,7 @@ public class ConfigManager implements IManager {
     UDFInfo udfInfo = new UDFInfo();
     TriggerInfo triggerInfo = new TriggerInfo();
     CQInfo cqInfo = new CQInfo();
-    ModelInfo modelInfo = new ModelInfo();
+    ExternalServiceInfo externalServiceInfo = new ExternalServiceInfo();
     PipeInfo pipeInfo = new PipeInfo();
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
@@ -392,7 +379,7 @@ public class ConfigManager implements IManager {
             udfInfo,
             triggerInfo,
             cqInfo,
-            modelInfo,
+            externalServiceInfo,
             pipeInfo,
             subscriptionInfo,
             quotaInfo,
@@ -411,10 +398,10 @@ public class ConfigManager implements IManager {
     this.partitionManager = new PartitionManager(this, partitionInfo);
     this.permissionManager = createPermissionManager(authorInfo);
     this.procedureManager = createProcedureManager(procedureInfo);
+    this.externalServiceManager = new ExternalServiceManager(this);
     this.udfManager = new UDFManager(this, udfInfo);
     this.triggerManager = new TriggerManager(this, triggerInfo);
     this.cqManager = new CQManager(this);
-    this.modelManager = new ModelManager(this, modelInfo);
     this.pipeManager = new PipeManager(this, pipeInfo);
     this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
     this.auditLogger = new CNAuditLogger(this);
@@ -1289,11 +1276,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public ModelManager getModelManager() {
-    return modelManager;
-  }
-
-  @Override
   public PipeManager getPipeManager() {
     return pipeManager;
   }
@@ -1311,6 +1293,11 @@ public class ConfigManager implements IManager {
   @Override
   public CNAuditLogger getAuditLogger() {
     return auditLogger;
+  }
+
+  @Override
+  public ExternalServiceManager getExternalServiceManager() {
+    return externalServiceManager;
   }
 
   @Override
@@ -1384,23 +1371,6 @@ public class ConfigManager implements IManager {
       resp.setStatus(status);
       return resp;
     }
-  }
-
-  public TPermissionInfoResp checkUserPrivilegeGrantOpt(String username, PrivilegeUnion union) {
-    TSStatus status = confirmLeader();
-    TPermissionInfoResp resp = new TPermissionInfoResp();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      try {
-        resp = permissionManager.checkUserPrivilegeGrantOpt(username, union);
-      } catch (AuthException e) {
-        status.setCode(e.getCode().getStatusCode()).setMessage(e.getMessage());
-        resp.setStatus(status);
-        return resp;
-      }
-    } else {
-      resp.setStatus(status);
-    }
-    return resp;
   }
 
   public TPermissionInfoResp checkRoleOfUser(String username, String rolename) {
@@ -1896,6 +1866,15 @@ public class ConfigManager implements IManager {
         : new TGetDataNodeLocationsResp(status, Collections.emptyList());
   }
 
+  public Map<Integer, TDataNodeLocation> getReadableDataNodeLocationMap() {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? nodeManager.filterDataNodeThroughStatus(NodeStatus::isReadable).stream()
+            .map(TDataNodeConfiguration::getLocation)
+            .collect(Collectors.toMap(TDataNodeLocation::getDataNodeId, location -> location))
+        : Collections.emptyMap();
+  }
+
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() {
     final long retryIntervalInMS = 100;
@@ -2236,6 +2215,23 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus alterEncodingCompressor(final TAlterEncodingCompressorReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return procedureManager.alterEncodingCompressor(
+          req.getQueryId(),
+          PathPatternTree.deserialize(req.pathPatternTree),
+          req.getEncoding(),
+          req.getCompressor(),
+          req.isIfExists(),
+          req.isIsGeneratedByPipe(),
+          req.isMayAlterAudit());
+    } else {
+      return status;
+    }
+  }
+
+  @Override
   public TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -2340,6 +2336,28 @@ public class ConfigManager implements IManager {
     final TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return procedureManager.alterLogicalView(req);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TSStatus alterTimeSeriesDataType(final TAlterTimeSeriesReq req) {
+    final TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      switch (AlterTimeSeriesOperationType.getType(req.operationType)) {
+        case ALTER_DATA_TYPE:
+          return procedureManager.alterTimeSeriesDataType(
+              req.getQueryId(),
+              (MeasurementPath)
+                  PathDeserializeUtil.deserialize(ByteBuffer.wrap(req.getMeasurementPath())),
+              req.getOperationType(),
+              TSDataType.deserialize(req.updateInfo.get()),
+              false);
+        default:
+          throw new IllegalArgumentException(
+              AlterOrDropTableOperationType.getType(req.operationType).toString());
+      }
     } else {
       return status;
     }
@@ -2606,6 +2624,46 @@ public class ConfigManager implements IManager {
         : new TShowCQResp(status, Collections.emptyList());
   }
 
+  @Override
+  public TSStatus createExternalService(TCreateExternalServiceReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.createService(req)
+        : status;
+  }
+
+  @Override
+  public TSStatus startExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.startService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus stopExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.stopService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TSStatus dropExternalService(int dataNodeId, String serviceName) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.dropService(dataNodeId, serviceName)
+        : status;
+  }
+
+  @Override
+  public TExternalServiceListResp showExternalService(int dataNodeId) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? externalServiceManager.showService(dataNodeId)
+        : new TExternalServiceListResp(status, Collections.emptyList());
+  }
+
   /**
    * Get all related schemaRegion which may contains the timeseries matched by given patternTree.
    */
@@ -2740,150 +2798,6 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus createModel(TCreateModelReq req) {
-    TSStatus status = confirmLeader();
-    if (nodeManager.getRegisteredAINodes().isEmpty()) {
-      return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
-          .setMessage("There is no available AINode! Try to start one.");
-    }
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.createModel(req)
-        : status;
-  }
-
-  private List<IDataSchema> fetchSchemaForTreeModel(TCreateTrainingReq req) {
-    List<IDataSchema> dataSchemaList = new ArrayList<>();
-    for (int i = 0; i < req.getDataSchemaForTree().getPathSize(); i++) {
-      IDataSchema dataSchema = new IDataSchema(req.getDataSchemaForTree().getPath().get(i));
-      dataSchema.setTimeRange(req.getTimeRanges().get(i));
-      dataSchemaList.add(dataSchema);
-    }
-    return dataSchemaList;
-  }
-
-  private List<IDataSchema> fetchSchemaForTableModel(TCreateTrainingReq req) {
-    return Collections.singletonList(new IDataSchema(req.getDataSchemaForTable().getTargetSql()));
-  }
-
-  public TSStatus createTraining(TCreateTrainingReq req) {
-    TSStatus status = confirmLeader();
-    if (nodeManager.getRegisteredAINodes().isEmpty()) {
-      return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
-          .setMessage("There is no available AINode! Try to start one.");
-    }
-
-    TTrainingReq trainingReq = new TTrainingReq();
-    trainingReq.setModelId(req.getModelId());
-    if (req.isSetExistingModelId()) {
-      trainingReq.setExistingModelId(req.getExistingModelId());
-    }
-    if (req.isSetParameters() && !req.getParameters().isEmpty()) {
-      trainingReq.setParameters(req.getParameters());
-    }
-
-    try {
-      status = getConsensusManager().write(new CreateModelPlan(req.getModelId()));
-      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new MetadataException("Can't init model " + req.getModelId());
-      }
-
-      List<IDataSchema> dataSchema;
-      if (req.isTableModel) {
-        dataSchema = fetchSchemaForTableModel(req);
-        trainingReq.setDbType("iotdb.table");
-      } else {
-        dataSchema = fetchSchemaForTreeModel(req);
-        trainingReq.setDbType("iotdb.tree");
-      }
-      updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.TRAINING.ordinal()));
-      trainingReq.setTargetDataSchema(dataSchema);
-
-      TAINodeInfo registeredAINode = getNodeManager().getRegisteredAINodeInfoList().get(0);
-      TEndPoint targetAINodeEndPoint =
-          new TEndPoint(registeredAINode.getInternalAddress(), registeredAINode.getInternalPort());
-      try (AINodeClient client =
-          AINodeClientManager.getInstance().borrowClient(targetAINodeEndPoint)) {
-        status = client.createTrainingTask(trainingReq);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IllegalArgumentException(status.message);
-        }
-      }
-    } catch (final Exception e) {
-      status.setCode(TSStatusCode.CAN_NOT_CONNECT_CONFIGNODE.getStatusCode());
-      status.setMessage(e.getMessage());
-      try {
-        updateModelInfo(new TUpdateModelInfoReq(req.modelId, ModelStatus.UNAVAILABLE.ordinal()));
-      } catch (Exception e2) {
-        LOGGER.error(e2.getMessage());
-      }
-    }
-    return status;
-  }
-
-  @Override
-  public TSStatus dropModel(TDropModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.dropModel(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus loadModel(TLoadModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.loadModel(req)
-        : status;
-  }
-
-  @Override
-  public TSStatus unloadModel(TUnloadModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.unloadModel(req)
-        : status;
-  }
-
-  @Override
-  public TShowModelResp showModel(TShowModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showModel(req)
-        : new TShowModelResp(status);
-  }
-
-  @Override
-  public TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showLoadedModel(req)
-        : new TShowLoadedModelResp(status, Collections.emptyMap());
-  }
-
-  @Override
-  public TShowAIDevicesResp showAIDevices() {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.showAIDevices()
-        : new TShowAIDevicesResp(status, Collections.emptyList());
-  }
-
-  @Override
-  public TGetModelInfoResp getModelInfo(TGetModelInfoReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.getModelInfo(req)
-        : new TGetModelInfoResp(status);
-  }
-
-  public TSStatus updateModelInfo(TUpdateModelInfoReq req) {
-    TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? modelManager.updateModelInfo(req)
-        : status;
-  }
-
-  @Override
   public TSStatus setSpaceQuota(TSetSpaceQuotaReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -2976,6 +2890,8 @@ public class ConfigManager implements IManager {
           return procedureManager.alterTableDropColumn(req);
         case DROP_TABLE:
           return procedureManager.dropTable(req);
+        case ALTER_COLUMN_DATA_TYPE:
+          return procedureManager.alterTableColumnDataType(req);
         case COMMENT_TABLE:
           return clusterSchemaManager.setTableComment(
               req.getDatabase(),
@@ -2993,7 +2909,8 @@ public class ConfigManager implements IManager {
         case RENAME_TABLE:
           return procedureManager.renameTable(req);
         default:
-          throw new IllegalArgumentException();
+          throw new IllegalArgumentException(
+              AlterOrDropTableOperationType.getType(req.operationType).toString());
       }
     } else {
       return status;
@@ -3044,23 +2961,17 @@ public class ConfigManager implements IManager {
   @Override
   public TFetchTableResp fetchTables(final Map<String, Set<String>> fetchTableMap) {
     final TSStatus status = confirmLeader();
-    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        ? clusterSchemaManager.fetchTables(
-            fetchTableMap.entrySet().stream()
-                .filter(
-                    entry -> {
-                      entry
-                          .getValue()
-                          .removeIf(
-                              table ->
-                                  procedureManager
-                                      .checkDuplicateTableTask(
-                                          entry.getKey(), null, table, null, null, null)
-                                      .getRight());
-                      return true;
-                    })
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
-        : new TFetchTableResp(status);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TFetchTableResp(status);
+    }
+    fetchTableMap.forEach(
+        (key, value) ->
+            value.removeIf(
+                table ->
+                    procedureManager
+                        .checkDuplicateTableTask(key, null, table, null, null, null)
+                        .getRight()));
+    return clusterSchemaManager.fetchTables(fetchTableMap);
   }
 
   @Override
@@ -3093,5 +3004,10 @@ public class ConfigManager implements IManager {
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
     return resp;
+  }
+
+  @TestOnly
+  public void setPermissionManager(final PermissionManager permissionManager) {
+    this.permissionManager = permissionManager;
   }
 }

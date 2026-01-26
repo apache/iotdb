@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
@@ -63,6 +64,11 @@ public class DataRegionConsensusImpl {
 
   private DataRegionConsensusImpl() {
     // do nothing
+  }
+
+  @TestOnly
+  public static void setInstance(final IConsensus instance) {
+    DataRegionConsensusImplHolder.INSTANCE = instance;
   }
 
   public static IConsensus getInstance() {

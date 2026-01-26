@@ -105,6 +105,7 @@ public class LagFunction extends ValueWindowFunction {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         builder.writeBinary(partition.getBinary(defaultValChannel, index));
         return;
       default:

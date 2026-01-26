@@ -292,7 +292,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
-    final String database = preDeleteDatabasePlan.getStorageGroup();
+    final String database = preDeleteDatabasePlan.getDatabase();
     final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

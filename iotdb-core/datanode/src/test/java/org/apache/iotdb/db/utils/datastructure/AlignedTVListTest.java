@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.junit.Assert;
@@ -228,24 +228,24 @@ public class AlignedTVListTest {
 
     tvList.deleteColumn(0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 2);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
 
     tvList.extendColumn(TSDataType.INT32);
     Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 3);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
 
     tvList.extendColumn(TSDataType.TEXT);
     Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 4);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
 
     tvList.delete(4, 6);
     Assert.assertEquals(tvList.memoryBinaryChunkSize.length, 4);
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 720);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
 
     tvList.clear();
+    Assert.assertEquals(tvList.memoryBinaryChunkSize[0], 0);
     Assert.assertEquals(tvList.memoryBinaryChunkSize[1], 0);
-    Assert.assertEquals(tvList.memoryBinaryChunkSize[2], 0);
   }
 }

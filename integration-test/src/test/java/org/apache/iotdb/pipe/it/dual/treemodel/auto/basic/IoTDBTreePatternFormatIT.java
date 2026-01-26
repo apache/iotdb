@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,6 +39,7 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -70,22 +72,23 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1.s");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.db.d1.s");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -104,7 +107,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testIotdbPattern() throws Exception {
+  public void testIoTDBPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -122,24 +125,23 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.path", "root.**.d1.s*");
-      // When path is set, pattern should be ignored
-      extractorAttributes.put("extractor.pattern", "root");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.path", "root.**.d1.s*");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -158,7 +160,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testIotdbPatternWithLegacySyntax() throws Exception {
+  public void testIoTDBPatternWithLegacySyntax() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -176,23 +178,24 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           null);
       awaitUntilFlush(senderEnv);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.**.d1.s*");
-      extractorAttributes.put("extractor.pattern.format", "iotdb");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.**.d1.s*");
+      sourceAttributes.put("source.pattern.format", "iotdb");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -208,5 +211,424 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
           expectedResSet);
     }
+  }
+
+  //////////////////////////// Multiple & Exclusion ////////////////////////////
+
+  private void testPipeWithMultiplePatterns(
+      final Map<String, String> sourceAttributes,
+      final List<String> insertQueries,
+      final boolean isHistorical,
+      final String validationSelectQuery,
+      final String validationSelectHeader,
+      final Set<String> expectedResultSet)
+      throws Exception {
+
+    // 1. Get receiver connection details
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+
+      // 2. Define standard processor and connector attributes
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> connectorAttributes = new HashMap<>();
+      connectorAttributes.put("connector", "iotdb-thrift-connector");
+      connectorAttributes.put("connector.batch.enable", "false");
+      connectorAttributes.put("connector.ip", receiverIp);
+      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      // 3. Handle historical data insertion (if applicable)
+      if (isHistorical) {
+        TestUtils.executeNonQueries(senderEnv, insertQueries, null);
+        awaitUntilFlush(senderEnv);
+      }
+
+      // 4. Create the pipe
+      final TSStatus createStatus =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), createStatus.getCode());
+
+      // 5. Start the pipe
+      final TSStatus startStatus = client.startPipe("p1");
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), startStatus.getCode());
+
+      // 6. Handle realtime data insertion (if applicable)
+      if (!isHistorical) {
+        TestUtils.executeNonQueries(senderEnv, insertQueries, null);
+        awaitUntilFlush(senderEnv);
+      }
+
+      // 7. Validate data eventually arrives on the receiver
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv, validationSelectQuery, validationSelectHeader, expectedResultSet);
+    }
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultiplePrefixPatternHistoricalData() throws Exception {
+    // Define source attributes
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    // Define data to be inserted
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db2.d1(time, s) values (3, 3)");
+
+    // Define expected results on receiver
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,1.0,1.0,");
+    expectedResSet.add("3,3.0,null,null,");
+
+    // Execute the common test logic
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db2.**,root.db.**",
+        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultiplePrefixPatternRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db2.d1(time, s) values (3, 3)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,1.0,1.0,");
+    expectedResSet.add("3,3.0,null,null,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db2.**,root.db.**",
+        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultipleIoTDBPatternHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
+            "insert into root.db3.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,null,1.0,1.0,null,");
+    expectedResSet.add("2,null,null,null,null,2.0,");
+    expectedResSet.add("3,3.0,3.0,null,null,null,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db2.**,root.db.**",
+        "Time,root.db2.d1.s,root.db2.d1.t,root.db.d1.s,root.db.d1.s1,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultipleIoTDBPatternRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
+            "insert into root.db3.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,null,1.0,1.0,null,");
+    expectedResSet.add("2,null,null,null,null,2.0,");
+    expectedResSet.add("3,3.0,3.0,null,null,null,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db2.**,root.db.**",
+        "Time,root.db2.d1.s,root.db2.d1.t,root.db.d1.s,root.db.d1.s1,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultipleHybridPatternHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.d1.*");
+    sourceAttributes.put("source.pattern", "root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db2.d1(time, s) values (2, 2)",
+            "insert into root.db3.d1(time, s) values (3, 3)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db.**,root.db2.**",
+        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testMultipleHybridPatternRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.d1.*");
+    sourceAttributes.put("source.pattern", "root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db2.d1(time, s) values (2, 2)",
+            "insert into root.db3.d1(time, s) values (3, 3)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db.**,root.db2.**",
+        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    // Inclusion: Match everything under root.db.d1 and root.db.d2
+    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
+    // Exclusion: Exclude anything with the prefix root.db.d1.s1
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            // s matches, s1 is excluded
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            // s matches
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db1.d1(time, s) values (3, 3)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db.**",
+        "Time,root.db.d1.s,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testPrefixPatternWithExclusionRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db1.d1(time, s) values (3, 3)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db.**",
+        "Time,root.db.d1.s,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    // Inclusion: Match everything under root.db
+    sourceAttributes.put("source.path", "root.db.**");
+    // Exclusion: Exclude root.db.d1.s* and root.db.d3.*
+    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            // s, s1 excluded, t matches
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
+            // s matches
+            "insert into root.db.d2(time, s) values (2, 2)",
+            // s excluded
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db.**",
+        "Time,root.db.d1.t,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testIoTDBPatternWithExclusionRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.**");
+    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db.**",
+        "Time,root.db.d1.t,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testHybridPatternWithHybridExclusionHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
+    sourceAttributes.put("source.path", "root.db.**");
+    sourceAttributes.put("source.pattern", "root.db2.d1");
+    // Exclusion: Exclude root.db.d1.* (IoTDB) AND root.db2.d1.s (Prefix)
+    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
+    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            // s, s1 excluded by path.exclusion
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            // s matches
+            "insert into root.db.d2(time, s) values (2, 2)",
+            // s excluded by pattern.exclusion, t matches
+            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
+            "insert into root.db3.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("2,2.0,null,");
+    expectedResSet.add("3,null,3.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db.**,root.db2.**",
+        "Time,root.db.d2.s,root.db2.d1.t,",
+        expectedResSet);
+  }
+
+  @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
+  public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.path", "root.db.**");
+    sourceAttributes.put("source.pattern", "root.db2.d1");
+    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
+    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
+            "insert into root.db3.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("2,2.0,null,");
+    expectedResSet.add("3,null,3.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db.**,root.db2.**",
+        "Time,root.db.d2.s,root.db2.d1.t,",
+        expectedResSet);
   }
 }

@@ -31,8 +31,8 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -344,6 +344,10 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
   public void setGlobalMeasurementSchemaList(List<IMeasurementSchema> globalMeasurementSchemaList) {
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
+  }
+
+  public List<IMeasurementSchema> getGlobalMeasurementSchemaList() {
+    return globalMeasurementSchemaList;
   }
 
   public IMeasurementSchema getMeasurementSchema(int idx) {

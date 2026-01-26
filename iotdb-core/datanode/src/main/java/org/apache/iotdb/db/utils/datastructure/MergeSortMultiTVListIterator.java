@@ -165,6 +165,7 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
           break;
         case TEXT:
         case BLOB:
+        case OBJECT:
         case STRING:
           Binary value = currIterator.getTVList().getBinary(row);
           chunkWriterImpl.write(time, value);

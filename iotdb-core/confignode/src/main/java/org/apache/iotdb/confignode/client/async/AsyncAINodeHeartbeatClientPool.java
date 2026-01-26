@@ -23,20 +23,26 @@ import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.ainode.AsyncAINodeServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncAINodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.heartbeat.AINodeHeartbeatHandler;
 
+/** Asynchronously send RPC requests to AINodes. */
 public class AsyncAINodeHeartbeatClientPool {
 
-  private final IClientManager<TEndPoint, AsyncAINodeServiceClient> clientManager;
+  private final IClientManager<TEndPoint, AsyncAINodeInternalServiceClient> clientManager;
 
   private AsyncAINodeHeartbeatClientPool() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncAINodeServiceClient>()
+        new IClientManager.Factory<TEndPoint, AsyncAINodeInternalServiceClient>()
             .createClientManager(
                 new ClientPoolFactory.AsyncAINodeHeartbeatServiceClientPoolFactory());
   }
 
+  /**
+   * Only used in LoadManager.
+   *
+   * @param endPoint The specific DataNode
+   */
   public void getAINodeHeartBeat(
       TEndPoint endPoint, TAIHeartbeatReq req, AINodeHeartbeatHandler handler) {
     try {
@@ -57,6 +63,6 @@ public class AsyncAINodeHeartbeatClientPool {
   }
 
   public static AsyncAINodeHeartbeatClientPool getInstance() {
-    return AsyncAINodeHeartbeatClientPool.AsyncAINodeHeartbeatClientPoolHolder.INSTANCE;
+    return AsyncAINodeHeartbeatClientPoolHolder.INSTANCE;
   }
 }

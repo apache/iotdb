@@ -193,6 +193,12 @@ public class InsertRowsStatement extends InsertBaseStatement {
     insertRowStatementList.forEach(InsertRowStatement::toLowerCase);
   }
 
+  @TableModel
+  @Override
+  public void toLowerCaseForDevicePath() {
+    insertRowStatementList.forEach(InsertRowStatement::toLowerCaseForDevicePath);
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
@@ -236,5 +242,10 @@ public class InsertRowsStatement extends InsertBaseStatement {
   @Override
   protected void subRemoveAttributeColumns(List<Integer> columnsToKeep) {
     insertRowStatementList.forEach(InsertBaseStatement::removeAttributeColumns);
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowsStatement{" + "insertRowStatementList=" + insertRowStatementList + '}';
   }
 }

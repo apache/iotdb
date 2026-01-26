@@ -1086,13 +1086,14 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
                 if (child instanceof LastQueryScanNode) {
                   // sort the measurements for LastQueryMergeOperator
                   LastQueryScanNode node = (LastQueryScanNode) child;
-                  ((LastQueryScanNode) child)
-                      .getIdxOfMeasurementSchemas()
+                  node.getIdxOfMeasurementSchemas()
                       .sort(
                           Comparator.comparing(
                               idx ->
                                   new Binary(
-                                      node.getMeasurementSchema(idx).getMeasurementName(),
+                                      node.getGlobalMeasurementSchemaList()
+                                          .get(idx)
+                                          .getMeasurementName(),
                                       TSFileConfig.STRING_CHARSET),
                               Comparator.naturalOrder()));
                 }

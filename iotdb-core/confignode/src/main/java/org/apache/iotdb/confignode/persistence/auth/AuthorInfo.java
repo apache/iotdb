@@ -24,9 +24,11 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.ModelType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -150,34 +152,79 @@ public class AuthorInfo implements SnapshotProcessor {
     return authorPlanExecutor.executeRelationalAuthorNonQuery(authorPlan);
   }
 
-  public PermissionInfoResp executeListUsers(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUsers(plan);
+  public PermissionInfoResp executeListUsers(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUsers(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRoles(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRoles(plan);
+  public PermissionInfoResp executeListRoles(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRoles(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListRolePrivileges(plan);
+  public PermissionInfoResp executeListRolePrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListRolePrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) throws AuthException {
-    return authorPlanExecutor.executeListUserPrivileges(plan);
+  public PermissionInfoResp executeListUserPrivileges(final AuthorPlan plan) {
+    try {
+      return authorPlanExecutor.executeListUserPrivileges(plan);
+    } catch (AuthException e) {
+      PermissionInfoResp resp = new PermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
+  public TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission) {
+    try {
+      return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+    } catch (AuthException e) {
+      TAuthizedPatternTreeResp resp = new TAuthizedPatternTreeResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
+  }
+
+  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
       throws AuthException {
-    return authorPlanExecutor.generateAuthorizedPTree(username, permission);
+    return authorPlanExecutor.generateRawAuthorizedPTree(username, type);
   }
 
-  public TPermissionInfoResp checkRoleOfUser(String username, String roleName)
-      throws AuthException {
-    return authorPlanExecutor.checkRoleOfUser(username, roleName);
+  public TPermissionInfoResp checkRoleOfUser(String username, String roleName) {
+    try {
+      return authorPlanExecutor.checkRoleOfUser(username, roleName);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
-  public TPermissionInfoResp getUser(String username) throws AuthException {
-    return authorPlanExecutor.getUser(username);
+  public TPermissionInfoResp getUser(String username) {
+    try {
+      return authorPlanExecutor.getUser(username);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public String getUserName(long userId) throws AuthException {
@@ -199,9 +246,14 @@ public class AuthorInfo implements SnapshotProcessor {
    *
    * @param username The username of the user that needs to be cached
    */
-  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type)
-      throws AuthException {
-    return authorPlanExecutor.getUserPermissionInfo(username, type);
+  public TPermissionInfoResp getUserPermissionInfo(String username, ModelType type) {
+    try {
+      return authorPlanExecutor.getUserPermissionInfo(username, type);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
   }
 
   public TSStatus enableSeparationOfAdminPowers(

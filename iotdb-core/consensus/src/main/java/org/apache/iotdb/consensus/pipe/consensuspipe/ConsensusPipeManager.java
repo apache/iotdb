@@ -26,8 +26,8 @@ import org.apache.iotdb.consensus.config.PipeConsensusConfig;
 import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
-import org.apache.commons.lang3.tuple.Triple;
+import org.apache.tsfile.external.commons.lang3.tuple.ImmutableTriple;
+import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 
 import java.util.Map;
 

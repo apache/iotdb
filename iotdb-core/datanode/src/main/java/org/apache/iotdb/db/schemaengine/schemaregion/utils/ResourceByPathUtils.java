@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -70,6 +71,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.path.AlignedPath.VECTOR_PLACEHOLDER;
 
@@ -153,6 +155,7 @@ public abstract class ResourceByPathUtils {
     // mutable tvlist
     TVList list = memChunk.getWorkingTVList();
     TVList cloneList = null;
+    long tvListRamSize = list.calculateRamSize();
     list.lockQueryList();
     try {
       if (copyTimeFilter != null
@@ -193,7 +196,8 @@ public abstract class ResourceByPathUtils {
           if (firstQuery instanceof FragmentInstanceContext) {
             MemoryReservationManager memoryReservationManager =
                 ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-            memoryReservationManager.reserveMemoryCumulatively(list.calculateRamSize());
+            memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
+            list.setReservedMemoryBytes(tvListRamSize);
           }
           list.setOwnerQuery(firstQuery);
 
@@ -257,15 +261,22 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     boolean[] exist = new boolean[alignedFullPath.getSchemaList().size()];
     boolean modified = false;
     boolean isTable = false;
+    Map<String, TSDataType> measurementMap =
+        alignedFullPath.getSchemaList().stream()
+            .collect(
+                Collectors.toMap(
+                    IMeasurementSchema::getMeasurementName, IMeasurementSchema::getType));
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AbstractAlignedChunkMetadata alignedChunkMetadata =
           (AbstractAlignedChunkMetadata) chunkMetadata;
       isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
       modified = (modified || alignedChunkMetadata.isModified());
+      rewriteStatistics(alignedChunkMetadata, measurementMap);
       if (!useFakeStatistics) {
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          if (!alignedChunkMetadata.getValueChunkMetadataList().isEmpty()
+              && alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
             exist[i] = true;
             valueTimeSeriesMetadataList
                 .get(i)
@@ -293,6 +304,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
         AbstractAlignedChunkMetadata alignedChunkMetadata =
             (AbstractAlignedChunkMetadata) memChunk.getChunkMetaData();
         isTable = isTable || (alignedChunkMetadata instanceof TableDeviceChunkMetadata);
+        rewriteStatistics(alignedChunkMetadata, measurementMap);
         if (!useFakeStatistics) {
           timeStatistics.mergeStatistics(
               alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
@@ -333,6 +345,28 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
     return isTable
         ? new TableDeviceTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList)
         : new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
+  }
+
+  private static void rewriteStatistics(
+      AbstractAlignedChunkMetadata alignedChunkMetadata, Map<String, TSDataType> measurementMap) {
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    for (int i = 0, size = valueChunkMetadataList.size(); i < size; i++) {
+      IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
+      if (valueChunkMetadata == null) {
+        continue;
+      }
+
+      String measurement = valueChunkMetadata.getMeasurementUid();
+      if (!measurementMap.containsKey(measurement)) {
+        continue;
+      }
+
+      TSDataType targetDataType = measurementMap.get(measurement);
+      if (valueChunkMetadata.getDataType() != targetDataType) {
+        SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, i, targetDataType);
+        alignedChunkMetadata.setModified(true);
+      }
+    }
   }
 
   @Override
@@ -523,19 +557,37 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         Statistics.getStatsByType(timeSeriesMetadata.getTsDataType());
     // flush chunkMetadataList one by one
     boolean isModified = false;
-    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+    TSDataType targetDataType = fullPath.getMeasurementSchema().getType();
+    for (int index = 0; index < chunkMetadataList.size(); index++) {
+      IChunkMetadata chunkMetadata = chunkMetadataList.get(index);
       isModified = (isModified || chunkMetadata.isModified());
+      if (chunkMetadata != null && (chunkMetadata.getDataType() != targetDataType)) {
+        // create new statistics object via new data type, and merge statistics information
+        SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
+            chunkMetadataList, index, targetDataType);
+        chunkMetadata.setModified(true);
+      }
       if (!useFakeStatistics) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
+          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
         continue;
       }
       startTime = Math.min(startTime, chunkMetadata.getStartTime());
       endTime = Math.max(endTime, chunkMetadata.getEndTime());
     }
 
-    for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
+    for (int index = 0; index < readOnlyMemChunk.size(); index++) {
+      ReadOnlyMemChunk memChunk = readOnlyMemChunk.get(index);
       if (!memChunk.isEmpty()) {
         memChunk.sortTvLists();
+        if (memChunk.getChunkMetaData() != null
+            && (memChunk.getChunkMetaData().getDataType() != targetDataType)) {
+          // create new statistics object via new data type, and merge statistics information
+          SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
+              chunkMetadataList, index, targetDataType);
+          memChunk.getChunkMetaData().setModified(true);
+        }
         if (useFakeStatistics) {
           memChunk.initChunkMetaFromTVListsWithFakeStatistics();
           startTime = Math.min(startTime, memChunk.getChunkMetaData().getStartTime());
@@ -573,7 +625,11 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     IWritableMemChunk memChunk =
         memTableMap.get(deviceID).getMemChunkMap().get(fullPath.getMeasurement());
     // check If data type matches
-    if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()) {
+    if (memChunk.getSchema().getType() != fullPath.getMeasurementSchema().getType()
+        && !fullPath
+            .getMeasurementSchema()
+            .getType()
+            .isCompatible(memChunk.getSchema().getType())) {
       return null;
     }
     // prepare TVList for query. It should clone TVList if necessary.

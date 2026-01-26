@@ -56,6 +56,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   protected String treeModelDatabaseName; // lazy initialization
   protected String tableModelDatabaseName; // lazy initialization
+  protected boolean shouldParse4Privilege = false;
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -168,5 +169,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
+  }
+
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
   }
 }

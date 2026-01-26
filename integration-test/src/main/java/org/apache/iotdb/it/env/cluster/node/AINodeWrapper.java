@@ -22,12 +22,12 @@ package org.apache.iotdb.it.env.cluster.node;
 import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
-import org.apache.commons.io.file.PathUtils;
+import org.apache.tsfile.external.commons.io.file.PathUtils;
 import org.slf4j.Logger;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.stream.Stream;
 
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.AI_NODE_NAME;
@@ -58,19 +59,23 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   private static final String PROPERTIES_FILE = "iotdb-ainode.properties";
   public static final String CONFIG_PATH = "conf";
   public static final String SCRIPT_PATH = "sbin";
-  public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/weights";
-  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models/weights";
+  public static final String BUILT_IN_MODEL_PATH = "data/ainode/models/builtin";
+  public static final String CACHE_BUILT_IN_MODEL_PATH = "/data/ainode/models";
 
   private void replaceAttribute(String[] keys, String[] values, String filePath) {
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
-      for (int i = 0; i < keys.length; i++) {
-        String line = keys[i] + "=" + values[i];
-        writer.newLine();
-        writer.write(line);
-      }
+    Properties props = new Properties();
+    try (FileInputStream in = new FileInputStream(filePath)) {
+      props.load(in);
     } catch (IOException e) {
-      logger.error(
-          "Failed to set attribute for AINode in file: {} because {}", filePath, e.getMessage());
+      logger.warn("Failed to load existing AINode properties from {}, because: ", filePath, e);
+    }
+    for (int i = 0; i < keys.length; i++) {
+      props.setProperty(keys[i], values[i]);
+    }
+    try (FileOutputStream out = new FileOutputStream(filePath)) {
+      props.store(out, "Updated by AINode integration-test env");
+    } catch (IOException e) {
+      logger.error("Failed to save properties to {}, because:", filePath, e);
     }
   }
 

@@ -39,7 +39,7 @@ ddlStatement
     // Database
     : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
     // Timeseries & Path
-    | createTimeseries | dropTimeseries | alterTimeseries
+    | createTimeseries | dropTimeseries | alterTimeseries | alterEncodingCompressor
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
     // Device Template
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
@@ -52,6 +52,8 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // ExternalService
+    | createService | startService | stopService | dropService | showService
     // Pipe Task
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
@@ -61,7 +63,7 @@ ddlStatement
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
     | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
@@ -170,11 +172,17 @@ alterTimeseries
 
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
+    // Change into new data type
+    | SET DATA TYPE newType=attributeValue
     | SET attributePair (COMMA attributePair)*
     | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
+    ;
+
+alterEncodingCompressor
+    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET STORAGE_PROPERTIES attributePair (COMMA attributePair)*
     ;
 
 aliasClause
@@ -431,6 +439,28 @@ stopTrigger
     : STOP TRIGGER triggerName=identifier
     ;
 
+// ExternalService =========================================================================================
+createService
+    : CREATE SERVICE serviceName=identifier
+        AS className=STRING_LITERAL
+    ;
+
+startService
+    : START SERVICE serviceName=identifier
+    ;
+
+stopService
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropService
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+
+    ;
+
+showService
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_LITERAL)?
+    ;
 
 // CQ ==============================================================================================
 // ---- Create Continuous Query
@@ -485,6 +515,11 @@ showRegions
 // ---- Show Data Nodes
 showDataNodes
     : SHOW DATANODES
+    ;
+
+// ---- Show Available Urls
+showAvailableUrls
+    : SHOW AVAILABLE URLS
     ;
 
 // ---- Show Config Nodes
@@ -571,21 +606,21 @@ removeAINode
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        ((extractorAttributesClause?
+        ((sourceAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause)
-        |connectorAttributesWithoutWithSinkClause)
+        sinkAttributesClause)
+        |sinkAttributesWithoutWithSinkClause)
     ;
 
-extractorAttributesClause
+sourceAttributesClause
     : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
-extractorAttributeClause
-    : extractorKey=STRING_LITERAL OPERATOR_SEQ extractorValue=STRING_LITERAL
+sourceAttributeClause
+    : sourceKey=STRING_LITERAL OPERATOR_SEQ sourceValue=STRING_LITERAL
     ;
 
 processorAttributesClause
@@ -599,32 +634,32 @@ processorAttributeClause
     : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
     ;
 
-connectorAttributesClause
+sinkAttributesClause
     : WITH (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 
-connectorAttributesWithoutWithSinkClause
-    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+sinkAttributesWithoutWithSinkClause
+    : LR_BRACKET (sinkAttributeClause COMMA)* sinkAttributeClause? RR_BRACKET
     ;
 
-connectorAttributeClause
-    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+sinkAttributeClause
+    : sinkKey=STRING_LITERAL OPERATOR_SEQ sinkValue=STRING_LITERAL
     ;
 
 alterPipe
     : ALTER PIPE (IF EXISTS)? pipeName=identifier
-        alterExtractorAttributesClause?
+        alterSourceAttributesClause?
         alterProcessorAttributesClause?
-        alterConnectorAttributesClause?
+        alterSinkAttributesClause?
     ;
 
-alterExtractorAttributesClause
+alterSourceAttributesClause
     : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
@@ -635,10 +670,10 @@ alterProcessorAttributesClause
         RR_BRACKET
     ;
 
-alterConnectorAttributesClause
+alterSinkAttributesClause
     : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 

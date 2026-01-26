@@ -367,12 +367,12 @@ public class LocalFileRoleAccessor implements IEntityAccessor {
     File roleSnapshotDir = systemFileFactory.getFile(snapshotDir, getEntitySnapshotFileName());
     if (roleSnapshotDir.exists()) {
       try {
-        org.apache.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
+        org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(roleFolder, roleTmpFolder);
         if (!FileUtils.copyDir(roleSnapshotDir, roleFolder)) {
           LOGGER.error("Failed to load role folder snapshot and rollback.");
           // rollback if failed to copy
           FileUtils.deleteFileOrDirectory(roleFolder);
-          org.apache.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
+          org.apache.tsfile.external.commons.io.FileUtils.moveDirectory(roleTmpFolder, roleFolder);
         }
       } finally {
         FileUtils.deleteFileOrDirectory(roleTmpFolder);

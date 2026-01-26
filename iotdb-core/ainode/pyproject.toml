@@ -21,7 +21,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "apache-iotdb-ainode"
-version = "2.0.6.dev"
+version = "2.0.7.dev"
 description = "Apache IoTDB AINode"
 readme = "README.md"
 authors = ["Apache Software Foundation <dev@iotdb.apache.org>"]
@@ -76,33 +76,27 @@ exclude = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.11,<=3.13.5"
-
-# Core scientific stack
-numpy = [
-    { version = "^2.3.2", python = ">=3.10" },
-    { version = "^1.26.4", python = ">=3.9,<3.10" }
-]
-scipy = [
-    { version = "^1.12.0", python = ">=3.10" },
-    { version = "^1.11.4", python = ">=3.9,<3.10" }
-]
-pandas = "^2.3.2"
-scikit-learn = [
-    { version = "^1.7.1", python = ">=3.10" },
-    { version = "^1.5.2", python = ">=3.9,<3.10" }
-]
-statsmodels = "^0.14.5"
-sktime = "0.38.5"
+python = ">=3.11.0,<3.12.0"
 
 # ---- DL / HF stack ----
-torch = ">=2.7.0"
+torch = "^2.8.0,<2.9.0"
 torchmetrics = "^1.8.0"
 transformers = "==4.56.2"
 tokenizers = ">=0.22.0,<=0.23.0"
 huggingface_hub = "^0.34.4"
 safetensors = "^0.6.2"
 einops = "^0.8.1"
+
+# ---- Core scientific stack ----
+numpy = ">=2.0,<2.4.0"
+pandas = ">=2.0,<2.4.0"
+scipy = "^1.12.0"
+scikit-learn = "^1.7.1"
+statsmodels = "^0.14.5"
+sktime = "0.40.1"
+pmdarima = "2.1.1"
+hmmlearn = "0.3.3"
+accelerate = "^1.10.1"
 
 # ---- Optimizers / utils ----
 optuna = "^4.4.0"
@@ -116,14 +110,16 @@ tzlocal = "^5.3.1"
 hf_xet = ">=1.1.9"
 
 # ---- Tooling ----
+pyinstaller = "6.16.0"
 black = "25.1.0"
 isort = "6.0.1"
 setuptools = ">=75.3.0"
 joblib = ">=1.4.2"
-urllib3 = ">=2.2.3"
+urllib3 = "2.6.3"
 
 [tool.poetry.scripts]
 ainode = "iotdb.ainode.core.script:main"
 
 [tool.isort]
 profile = "black"
+skip = ["build", "dist", "target"]

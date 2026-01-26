@@ -184,11 +184,11 @@ public class IoTDBPipePermissionIT extends AbstractPipeTableModelDualManualIT {
 
     // Grant some privilege
     TestUtils.executeNonQuery(
-        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab", null);
+        "test", BaseEnv.TABLE_SQL_DIALECT, senderEnv, "grant INSERT on any to user thulab");
 
     TableModelUtils.createDataBaseAndTable(senderEnv, "test1", "test1");
 
-    // Shall not be transferred
+    // Shall be transferred
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "show tables from test1",

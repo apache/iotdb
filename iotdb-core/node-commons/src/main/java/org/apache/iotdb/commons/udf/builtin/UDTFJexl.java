@@ -98,6 +98,7 @@ public class UDTFJexl implements UDTF {
         case TIMESTAMP:
         case DATE:
         case BLOB:
+        case OBJECT:
         default:
           throw new UDFInputSeriesDataTypeNotValidException(
               0,
@@ -170,6 +171,7 @@ public class UDTFJexl implements UDTF {
       case DATE:
       case STRING:
       case BLOB:
+      case OBJECT:
       case INT64:
       case INT32:
       case FLOAT:
@@ -346,6 +348,7 @@ public class UDTFJexl implements UDTF {
             break;
           case STRING:
           case BLOB:
+          case OBJECT:
           case DATE:
           case TIMESTAMP:
           default:

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -53,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTimeParti
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
+import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
@@ -62,10 +64,12 @@ import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRestartResp;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterLogicalViewReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterOrDropTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAlterSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -73,8 +77,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -95,7 +99,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TDescTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDescTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropCQReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDropModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
@@ -112,8 +115,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetLocationForTriggerResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetModelInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPipePluginTableResp;
@@ -127,7 +128,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
-import org.apache.iotdb.confignode.rpc.thrift.TLoadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
@@ -139,7 +139,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowAIDevicesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowAINodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowCQResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
@@ -148,10 +147,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowLoadedModelResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -165,7 +160,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowVariablesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStartPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
-import org.apache.iotdb.confignode.rpc.thrift.TUnloadModelReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -253,13 +247,6 @@ public interface IManager {
    * @return {@link CQManager} instance
    */
   CQManager getCQManager();
-
-  /**
-   * Get {@link ModelManager}.
-   *
-   * @return {@link ModelManager} instance
-   */
-  ModelManager getModelManager();
 
   /**
    * Get {@link PipeManager}.
@@ -400,18 +387,18 @@ public interface IManager {
   TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
 
   /**
-   * Count StorageGroups.
+   * Count Databases.
    *
-   * @return The number of matched StorageGroups
+   * @return The number of matched Databases
    */
   DataSet countMatchedDatabases(CountDatabasePlan countDatabasePlan);
 
   /**
-   * Get StorageGroupSchemas.
+   * Get DatabaseSchemas.
    *
-   * @return StorageGroupSchemaDataSet
+   * @return DatabaseSchemaDataSet
    */
-  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountStorageGroupPlan);
+  DataSet getMatchedDatabaseSchemas(GetDatabasePlan getOrCountDatabasePlan);
 
   /**
    * Set Database.
@@ -428,7 +415,7 @@ public interface IManager {
   TSStatus alterDatabase(DatabaseSchemaPlan databaseSchemaPlan);
 
   /**
-   * Delete StorageGroups.
+   * Delete Databases.
    *
    * @param tDeleteReq TDeleteDatabaseReq
    * @return status
@@ -494,6 +481,8 @@ public interface IManager {
    * @return CNAuditLogger
    */
   CNAuditLogger getAuditLogger();
+
+  ExternalServiceManager getExternalServiceManager();
 
   TDataNodeLocation getRegionLeaderLocation(TConsensusGroupId regionId);
 
@@ -659,10 +648,10 @@ public interface IManager {
   TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema();
 
   /**
-   * Show StorageGroup.
+   * Show Database.
    *
    * @param req TShowDatabaseReq
-   * @return TShowStorageGroupResp
+   * @return TShowDatabaseResp
    */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req);
 
@@ -716,12 +705,17 @@ public interface IManager {
 
   TSStatus alterSchemaTemplate(TAlterSchemaTemplateReq req);
 
+  TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req);
+
   /** Delete timeseries. */
   TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req);
 
   TSStatus deleteLogicalView(TDeleteLogicalViewReq req);
 
   TSStatus alterLogicalView(TAlterLogicalViewReq req);
+
+  /** Alter timeseries data type. */
+  TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req);
 
   /**
    * Create Pipe.
@@ -873,33 +867,19 @@ public interface IManager {
 
   TShowCQResp showCQ();
 
+  TSStatus createExternalService(TCreateExternalServiceReq req);
+
+  TSStatus startExternalService(int dataNodeId, String serviceName);
+
+  TSStatus stopExternalService(int dataNodeId, String serviceName);
+
+  TSStatus dropExternalService(int dataNodeId, String serviceName);
+
+  TExternalServiceListResp showExternalService(int dataNodeId);
+
   TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req);
 
   TSStatus transfer(List<TDataNodeLocation> newUnknownDataList);
-
-  /** Create a model. */
-  TSStatus createModel(TCreateModelReq req);
-
-  /** Drop a model. */
-  TSStatus dropModel(TDropModelReq req);
-
-  /** Load the specific model to the specific devices. */
-  TSStatus loadModel(TLoadModelReq req);
-
-  /** Unload the specific model from the specific devices. */
-  TSStatus unloadModel(TUnloadModelReq req);
-
-  /** Return the model table. */
-  TShowModelResp showModel(TShowModelReq req);
-
-  /** Return the loaded model instances. */
-  TShowLoadedModelResp showLoadedModel(TShowLoadedModelReq req);
-
-  /** Return all available AI devices. */
-  TShowAIDevicesResp showAIDevices();
-
-  /** Update the model state */
-  TGetModelInfoResp getModelInfo(TGetModelInfoReq req);
 
   /** Set space quota. */
   TSStatus setSpaceQuota(TSetSpaceQuotaReq req);

@@ -42,8 +42,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -431,12 +431,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     client.setShouldReturnSelf(true);
-    try {
-      client.returnSelf();
-    } catch (final IllegalStateException e) {
-      LOGGER.info(
-          "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
-    }
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            LOGGER.info(
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
     client = null;
   }
 

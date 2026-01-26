@@ -32,7 +32,7 @@ public class CountDatabaseStatement extends CountStatement implements IConfigSta
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitCountStorageGroup(this, context);
+    return visitor.visitCountDatabase(this, context);
   }
 
   @Override

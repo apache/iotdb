@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, List
 
+import torch
+
 from iotdb.ainode.core.inference.pool_group import PoolGroup
 from iotdb.ainode.core.model.model_info import ModelInfo
 
@@ -35,7 +37,7 @@ class ScaleAction:
     action: ScaleActionType
     amount: int
     model_id: str
-    device_id: str
+    device_id: torch.device
 
 
 class AbstractPoolScheduler(ABC):
@@ -43,10 +45,10 @@ class AbstractPoolScheduler(ABC):
     Abstract base class for pool scheduling strategies.
     """
 
-    def __init__(self, request_pool_map: Dict[str, Dict[str, PoolGroup]]):
+    def __init__(self, request_pool_map: Dict[str, Dict[torch.device, PoolGroup]]):
         """
         Args:
-            request_pool_map: Dict["model_id", Dict["device_id", PoolGroup]].
+            request_pool_map: Dict["model_id", Dict[device_id, PoolGroup]].
         """
         self._request_pool_map = request_pool_map
 
@@ -59,7 +61,7 @@ class AbstractPoolScheduler(ABC):
 
     @abstractmethod
     def schedule_load_model_to_device(
-        self, model_info: ModelInfo, device_id: str
+        self, model_info: ModelInfo, device_id: torch.device
     ) -> List[ScaleAction]:
         """
         Schedule a series of actions to load the model to the device.
@@ -73,7 +75,7 @@ class AbstractPoolScheduler(ABC):
 
     @abstractmethod
     def schedule_unload_model_from_device(
-        self, model_info: ModelInfo, device_id: str
+        self, model_info: ModelInfo, device_id: torch.device
     ) -> List[ScaleAction]:
         """
         Schedule a series of actions to unload the model from the device.

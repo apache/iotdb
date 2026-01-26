@@ -29,10 +29,10 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.consensus.pipe.thrift.PipeConsensusIService;
 import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

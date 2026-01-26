@@ -70,6 +70,7 @@ public class IoTDBTableIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -148,6 +149,22 @@ public class IoTDBTableIT {
           cnt++;
         }
         assertEquals(tableNames.length, cnt);
+      }
+
+      // Test unsupported, to be deleted
+      try {
+        statement.execute("alter table test1.table1 rename to tableN");
+      } catch (final SQLException e) {
+        assertEquals("701: The renaming for base table is currently unsupported", e.getMessage());
+      }
+
+      // Test unsupported, to be deleted
+      try {
+        statement.execute(
+            "alter table if exists test_db.table1 rename column if exists model to modelType");
+      } catch (final SQLException e) {
+        assertEquals(
+            "701: The renaming for base table column is currently unsupported", e.getMessage());
       }
 
       // Alter table properties
@@ -1078,6 +1095,12 @@ public class IoTDBTableIT {
       }
       try {
         statement.execute("show create view information_schema.tables");
+        fail();
+      } catch (final SQLException e) {
+        assertEquals("701: The system view does not support show create.", e.getMessage());
+      }
+      try {
+        statement.execute("show create table information_schema.tables");
         fail();
       } catch (final SQLException e) {
         assertEquals("701: The system view does not support show create.", e.getMessage());

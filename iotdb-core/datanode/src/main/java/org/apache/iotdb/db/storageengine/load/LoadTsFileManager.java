@@ -26,11 +26,13 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,14 +40,13 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -92,9 +93,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
-
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
  * LoadCommand}. This class turn the content of a piece of loading TsFile into a new TsFile. When
@@ -114,14 +112,6 @@ public class LoadTsFileManager {
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
-
-  private static final Cache<String, org.apache.tsfile.file.metadata.TableSchema> SCHEMA_CACHE =
-      Caffeine.newBuilder()
-          .maximumWeight(CONFIG.getLoadTableSchemaCacheSizeInBytes())
-          .weigher(
-              (String k, org.apache.tsfile.file.metadata.TableSchema v) ->
-                  (int) PipeMemoryWeightUtil.calculateTableSchemaBytesUsed(v))
-          .build();
 
   public static final Cache<String, String> MEASUREMENT_ID_CACHE =
       Caffeine.newBuilder()
@@ -358,7 +348,7 @@ public class LoadTsFileManager {
       final long writePointCount,
       final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
-        writePointCount, databaseName, dataRegion.getDataRegionId());
+        writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
         .count(
             writePointCount,
@@ -369,7 +359,7 @@ public class LoadTsFileManager {
             Tag.DATABASE.toString(),
             databaseName,
             Tag.REGION.toString(),
-            dataRegion.getDataRegionId(),
+            dataRegion.getDataRegionIdString(),
             Tag.TYPE.toString(),
             Metric.LOAD_POINT_COUNT.toString());
     // Because we cannot accurately judge who is the leader here,
@@ -380,7 +370,7 @@ public class LoadTsFileManager {
             .getReplicationNum(
                 ConsensusGroupId.Factory.create(
                     TConsensusGroupType.DataRegion.getValue(),
-                    Integer.parseInt(dataRegion.getDataRegionId())));
+                    Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
     if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
@@ -394,9 +384,22 @@ public class LoadTsFileManager {
               Tag.DATABASE.toString(),
               databaseName,
               Tag.REGION.toString(),
-              dataRegion.getDataRegionId(),
+              dataRegion.getDataRegionIdString(),
               Tag.TYPE.toString(),
               Metric.LOAD_POINT_COUNT.toString());
+    }
+  }
+
+  public static void cleanTsFile(final File tsFile) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    } catch (final IOException e) {
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 
@@ -484,7 +487,7 @@ public class LoadTsFileManager {
       final String tableName =
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
-          && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
+          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
         // If the table does not exist, it means that the table is all deleted by mods
         final TsTable table =
             DataNodeTableCache.getInstance()
@@ -494,10 +497,7 @@ public class LoadTsFileManager {
               .getSchema()
               .getTableSchemaMap()
               .computeIfAbsent(
-                  tableName,
-                  t ->
-                      SCHEMA_CACHE.get(
-                          t, tab -> TableSchema.of(table).toTsFileTableSchemaNoAttribute()));
+                  tableName, t -> TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
         }
       }
 
@@ -830,7 +830,7 @@ public class LoadTsFileManager {
       return String.join(
           IoTDBConstant.FILE_NAME_SEPARATOR,
           dataRegion.getDatabaseName(),
-          dataRegion.getDataRegionId(),
+          dataRegion.getDataRegionIdString(),
           Long.toString(timePartitionSlot.getStartTime()));
     }
 

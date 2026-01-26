@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 
 import static java.util.Objects.requireNonNull;
 
 public class ShowDB extends Statement {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(ShowDB.class);
 
   private final boolean isDetails;
 
@@ -64,5 +67,12 @@ public class ShowDB extends Statement {
   @Override
   public String toString() {
     return "SHOW DATABASES";
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    return size;
   }
 }
