@@ -60,6 +60,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
@@ -101,7 +102,7 @@ public class TableHeaderSchemaValidator {
       final MPPQueryContext context,
       final boolean allowCreateTable,
       final boolean isStrictTagColumn,
-      final AtomicBoolean needDecode4DifferentTimeColumn)
+      final @Nonnull AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
@@ -174,6 +175,27 @@ public class TableHeaderSchemaValidator {
             }
           }
         }
+      }
+      long realTimeIndex = 0;
+      for (final TsTableColumnSchema schema : table.getColumnList()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          break;
+        }
+        if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+          ++realTimeIndex;
+        }
+      }
+      long inputTimeIndex = 0;
+      for (final ColumnSchema schema : tableSchema.getColumns()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          break;
+        }
+        if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+          ++inputTimeIndex;
+        }
+      }
+      if (inputTimeIndex != realTimeIndex) {
+        needDecode4DifferentTimeColumn.set(true);
       }
     }
 
