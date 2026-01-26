@@ -69,11 +69,17 @@ void ThriftConnection::init(const std::string& username,
                             const std::string& zoneId,
                             const std::string& version) {
     if (useSSL) {
+#if WITH_SSL
         socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
         socketFactory_->authenticate(false);
         auto sslSocket = socketFactory_->createSocket(endPoint_.ip, endPoint_.port);
         sslSocket->setConnTimeout(connectionTimeoutInMs_);
         transport_ = std::make_shared<TFramedTransport>(sslSocket);
+#else
+        throw IoTDBException("SSL/TLS support is not enabled in this build. "
+                    "Please rebuild with -DWITH_SSL=ON flag "
+                    "or use non-SSL connection.");
+#endif
     } else {
         auto socket = std::make_shared<TSocket>(endPoint_.ip, endPoint_.port);
         socket->setConnTimeout(connectionTimeoutInMs_);
