@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -45,18 +47,13 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
 
-  private static final List<String> BASE_TIMESERIES =
-      Arrays.asList(
-          "root.db1.devA.m1",
-          "root.db1.devA.m2",
-          "root.db1.devB.m1",
-          "root.db1.devB.x",
-          "root.db2.devA.m1",
-          "root.db2.devC.m0",
-          "root.db2.devC.m3",
-          "root.db3.z.m1",
-          "root.db3.z.m10",
-          "root.db3.z.m2");
+  private static final List<String> BASE_TIMESERIES_DB1 =
+      Arrays.asList("root.db1.devA.m1", "root.db1.devB.m1", "root.db1.devA.m2", "root.db1.devB.x");
+  private static final List<String> BASE_TIMESERIES_DB2 =
+      Arrays.asList("root.db2.devA.m1", "root.db2.devC.m3", "root.db2.devC.m0");
+  private static final List<String> BASE_TIMESERIES = // combine db1 and db2
+      Stream.concat(BASE_TIMESERIES_DB1.stream(), BASE_TIMESERIES_DB2.stream())
+          .collect(Collectors.toList());
 
   public IoTDBShowTimeseriesOrderByTimeseriesIT(SchemaTestMode schemaTestMode) {
     super(schemaTestMode);
@@ -84,7 +81,6 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.db1");
       statement.execute("CREATE DATABASE root.db2");
-      statement.execute("CREATE DATABASE root.db3");
 
       for (String ts : BASE_TIMESERIES) {
         statement.execute(
@@ -119,13 +115,13 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
   @Test
   public void testOrderDescWithOffsetLimit() throws Exception {
     prepareComplexSchema();
-    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES_DB1);
     Collections.sort(expected);
     Collections.reverse(expected);
-    expected = expected.subList(2, 6); // offset 2 limit 4
+    expected = expected.subList(1, 3); // offset 1 limit 2
 
     List<String> actual =
-        queryTimeseries("show timeseries root.db*.** order by timeseries desc offset 2 limit 4");
+        queryTimeseries("show timeseries root.db1.** order by timeseries desc offset 1 limit 2");
     assertEquals(expected, actual);
   }
 
@@ -135,14 +131,14 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create timeseries root.db0.devX.a with datatype=INT32, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.devX.a with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
 
-    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
-    expected.add("root.db0.devX.a");
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES_DB1);
+    expected.add("root.db1.devX.a");
     Collections.sort(expected);
 
-    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries");
+    List<String> actual = queryTimeseries("show timeseries root.db1.** order by timeseries");
     assertEquals(expected, actual);
   }
 
@@ -154,12 +150,12 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
       statement.execute("delete timeseries root.db2.devC.**");
     }
 
-    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES_DB2);
     expected.remove("root.db2.devC.m0");
     expected.remove("root.db2.devC.m3");
     Collections.sort(expected);
 
-    List<String> actual = queryTimeseries("show timeseries root.db*.** order by timeseries");
+    List<String> actual = queryTimeseries("show timeseries root.db2.** order by timeseries");
     assertEquals(expected, actual);
   }
 
@@ -172,18 +168,18 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
       statement.execute(
           "create timeseries root.db1.devC.m0 with datatype=INT32, encoding=RLE, compression=SNAPPY");
       statement.execute(
-          "create timeseries root.db4.devZ.z with datatype=INT32, encoding=RLE, compression=SNAPPY");
+          "create timeseries root.db1.devZ.z with datatype=INT32, encoding=RLE, compression=SNAPPY");
     }
 
-    List<String> expected = new ArrayList<>(BASE_TIMESERIES);
+    List<String> expected = new ArrayList<>(BASE_TIMESERIES_DB1);
     expected.remove("root.db1.devB.x");
     expected.add("root.db1.devC.m0");
-    expected.add("root.db4.devZ.z");
+    expected.add("root.db1.devZ.z");
     Collections.sort(expected);
-    expected = expected.subList(5, 10); // offset 5 limit 5
+    expected = expected.subList(2, 4); // offset 2 limit 2
 
     List<String> actual =
-        queryTimeseries("show timeseries root.db*.** order by timeseries offset 5 limit 5");
+        queryTimeseries("show timeseries root.db1.** order by timeseries offset 2 limit 2");
     assertEquals(expected, actual);
   }
 
@@ -217,5 +213,50 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
                 && e.getMessage().toLowerCase().contains("order by timeseries"));
       }
     }
+  }
+
+  @Test
+  public void testWhereClauseOffsetAppliedAfterFilter() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.ln");
+      statement.execute(
+          "create timeseries root.ln.wf01.wt01.status with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.ln.wf02.wt01.status with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.ln.wf02.wt02.status with datatype=INT32, encoding=RLE, compression=SNAPPY");
+    }
+
+    List<String> actual =
+        queryTimeseries(
+            "show timeseries root.ln.** where timeseries contains 'wf02.wt' order by timeseries offset 1 limit 1");
+    assertEquals(Collections.singletonList("root.ln.wf02.wt02.status"), actual);
+  }
+
+  @Test
+  public void testAlterTemplateUpdatesOffsetOrder() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.sg1");
+      statement.execute("create device template t1 (s1 INT32)");
+      statement.execute("set device template t1 to root.sg1.d1");
+      statement.execute("create timeseries using device template on root.sg1.d1");
+      statement.execute("set device template t1 to root.sg1.d2");
+      statement.execute("create timeseries using device template on root.sg1.d2");
+    }
+
+    List<String> before =
+        queryTimeseries("show timeseries root.sg1.** order by timeseries desc offset 1 limit 1");
+    assertEquals(Arrays.asList("root.sg1.d1.s1"), before);
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("alter device template t1 add (s2 INT32)");
+    }
+
+    List<String> after =
+        queryTimeseries("show timeseries root.sg1.** order by timeseries desc offset 2 limit 2");
+    assertEquals(Arrays.asList("root.sg1.d1.s2", "root.sg1.d1.s1"), after);
   }
 }

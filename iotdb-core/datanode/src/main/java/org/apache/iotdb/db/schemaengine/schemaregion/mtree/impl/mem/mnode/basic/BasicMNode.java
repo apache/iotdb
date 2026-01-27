@@ -46,7 +46,7 @@ public class BasicMNode implements IMemMNode {
   private IMemMNode parent;
   private final BasicMNodeInfo basicMNodeInfo;
 
-  /** Cached count of measurements in this node's subtree, restored on restart. */
+  /** Cached count of measurements in this node's subtree, rebuilt on restart. */
   private long subtreeMeasurementCount = 0L;
 
   /** from root to this node, only be set when used once for InternalMNode */

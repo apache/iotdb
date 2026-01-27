@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -90,6 +91,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.ShowLogicalV
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
+import org.apache.iotdb.db.schemaengine.SchemaEngineMode;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -582,17 +584,27 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean singleSchemaRegion =
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+    boolean isMemorySchemaEngine =
+        CommonDescriptor.getInstance()
+            .getConfig()
+            .getSchemaEngineMode()
+            .equals(SchemaEngineMode.Memory.toString());
+    boolean isNeedSortDescInPBTree =
+        !isMemorySchemaEngine && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
     boolean canPushDownOffsetLimit =
         singleSchemaRegion
+            && !isNeedSortDescInPBTree
             && !showTimeSeriesStatement.isOrderByHeat()
             && showTimeSeriesStatement.getSchemaFilter() == null;
 
-    if (showTimeSeriesStatement.isOrderByHeat()) {
-      limit = 0;
-      offset = 0;
-    } else if (!canPushDownOffsetLimit) {
-      limit = showTimeSeriesStatement.getLimitWithOffset();
-      offset = 0;
+    if (!canPushDownOffsetLimit) {
+      if (showTimeSeriesStatement.isOrderByHeat() || isNeedSortDescInPBTree) {
+        limit = 0;
+        offset = 0;
+      } else {
+        limit = showTimeSeriesStatement.getLimitWithOffset();
+        offset = 0;
+      }
     }
     boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries();
     boolean orderByTimeseriesDesc =
@@ -613,8 +625,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 orderByTimeseriesDesc)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
-    // order by timeseries name in multi-region case: still need global SortNode
-    if (showTimeSeriesStatement.isOrderByTimeseries() && !singleSchemaRegion) {
+    // order by timeseries name in multi-region or PBTree-DESC case: still need global SortNode
+    if (showTimeSeriesStatement.isOrderByTimeseries()
+        && (!singleSchemaRegion || isNeedSortDescInPBTree)) {
       SortItem sortItem =
           new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
       planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
