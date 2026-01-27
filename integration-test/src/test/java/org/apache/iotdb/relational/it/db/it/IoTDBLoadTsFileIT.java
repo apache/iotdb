@@ -118,7 +118,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemasWithTime(
-      final int tagNum, final int timeColumnIndex) {
+      final int timeColumnIndex) {
     List<TSDataType> dataTypes =
         new ArrayList<>(
             Arrays.asList(
@@ -140,19 +140,13 @@ public class IoTDBLoadTsFileIT {
       }
     }
 
-    for (int i = 0; i < tagNum; ++i) {
+    if (timeColumnIndex >= 0) {
       pairs.add(
-          0,
+          timeColumnIndex,
           new Pair<>(
-              new MeasurementSchema("tag" + i, TSDataType.STRING),
-              new MeasurementSchema("tag" + i, TSDataType.STRING)));
+              new MeasurementSchema("time", TSDataType.TIMESTAMP),
+              new MeasurementSchema("time", TSDataType.TIMESTAMP)));
     }
-
-    pairs.add(
-        timeColumnIndex,
-        new Pair<>(
-            new MeasurementSchema("time", TSDataType.TIMESTAMP),
-            new MeasurementSchema("time", TSDataType.TIMESTAMP)));
 
     return pairs;
   }
@@ -304,11 +298,11 @@ public class IoTDBLoadTsFileIT {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
-        generateMeasurementSchemasWithTime(0, 1);
+        generateMeasurementSchemasWithTime(1);
     List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size(), 1);
 
-    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+    File file = new File(tmpDir, "1-0-0-0.tsfile");
 
     List<MeasurementSchema> schemaList1 =
         measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
@@ -320,14 +314,25 @@ public class IoTDBLoadTsFileIT {
 
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
-    measurementSchemas = generateMeasurementSchemas();
-    columnCategories = generateTabletColumnCategory(measurementSchemas.size());
+    measurementSchemas = generateMeasurementSchemasWithTime(2);
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    measurementSchemas = generateMeasurementSchemasWithTime(-1);
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
 
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
-    measurementSchemas = generateMeasurementSchemasWithTime(1, 2);
-    columnCategories = generateTabletColumnCategory(1, measurementSchemas.size(), 2);
+    file = new File(tmpDir, "2-0-0-0.tsfile");
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    measurementSchemas = generateMeasurementSchemasWithTime(2);
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
   }
