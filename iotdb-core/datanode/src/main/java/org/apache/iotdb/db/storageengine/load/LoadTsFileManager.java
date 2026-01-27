@@ -32,6 +32,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -91,9 +92,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -489,7 +487,7 @@ public class LoadTsFileManager {
       final String tableName =
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
-          && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
+          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
         // If the table does not exist, it means that the table is all deleted by mods
         final TsTable table =
             DataNodeTableCache.getInstance()

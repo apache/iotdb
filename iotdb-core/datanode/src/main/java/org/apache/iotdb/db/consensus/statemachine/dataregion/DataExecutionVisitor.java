@@ -296,13 +296,6 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
 
   @Override
   public TSStatus visitWriteObjectFile(ObjectNode node, DataRegion dataRegion) {
-    try {
-      dataRegion.writeObject(node);
-      dataRegion.insertSeparatorToWAL();
-      return StatusUtils.OK;
-    } catch (final Exception e) {
-      LOGGER.error("Error in executing plan node: {}", node, e);
-      return RpcUtils.getStatus(TSStatusCode.OBJECT_INSERT_ERROR.getStatusCode(), e.getMessage());
-    }
+    throw new UnsupportedOperationException();
   }
 }

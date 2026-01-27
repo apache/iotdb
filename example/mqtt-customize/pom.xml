@@ -29,7 +29,11 @@
     <artifactId>customize-mqtt-example</artifactId>
     <name>IoTDB: Example: Customized MQTT</name>
     <dependencies>
-        <!-- used by the server-->
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>mqtt</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>

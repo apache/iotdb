@@ -18,7 +18,6 @@
 
 import threading
 import time
-from typing import Dict
 
 import torch
 import torch.multiprocessing as mp
@@ -69,9 +68,6 @@ class InferenceManager:
     def __init__(self):
         self._model_manager = ModelManager()
         self._backend = DeviceManager()
-        self._model_mem_usage_map: Dict[str, int] = (
-            {}
-        )  # store model memory usage for each model
         self._result_queue = mp.Queue()
         self._result_wrapper_map = {}
         self._result_wrapper_lock = threading.RLock()
@@ -207,14 +203,14 @@ class InferenceManager:
             ):
                 raise NumericalRangeException(
                     "output_length",
+                    output_length,
                     1,
                     AINodeDescriptor()
                     .get_config()
                     .get_ain_inference_max_output_length(),
-                    output_length,
                 )
 
-            if self._pool_controller.has_request_pools(model_id=model_id):
+            if self._pool_controller.has_running_pools(model_id):
                 infer_req = InferenceRequest(
                     req_id=generate_req_id(),
                     model_id=model_id,

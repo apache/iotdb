@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -209,9 +210,12 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
 
   @Override
   public String toString() {
+    final int size = CommonDescriptor.getInstance().getConfig().getPathLogMaxSize();
     return "InsertMultiTabletsStatement{"
         + "insertTabletStatementList="
-        + insertTabletStatementList
+        + (Objects.nonNull(insertTabletStatementList) && insertTabletStatementList.size() > size
+            ? "(Partial) " + insertTabletStatementList.subList(0, size)
+            : insertTabletStatementList)
         + '}';
   }
 }

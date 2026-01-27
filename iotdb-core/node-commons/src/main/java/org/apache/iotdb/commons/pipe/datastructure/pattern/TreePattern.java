@@ -74,6 +74,8 @@ public abstract class TreePattern {
 
   public abstract boolean isRoot();
 
+  public abstract boolean isSingle();
+
   /** Check if this pattern is legal. Different pattern type may have different rules. */
   public abstract boolean isLegal();
 
@@ -140,6 +142,22 @@ public abstract class TreePattern {
    * @return The interpreted {@link TreePattern} which is not {@code null}.
    */
   public static TreePattern parsePipePatternFromSourceParameters(
+      final PipeParameters sourceParameters) {
+    final TreePattern treePattern = parsePipePatternFromSourceParametersInternal(sourceParameters);
+    if (!treePattern.isSingle()) {
+      final String msg =
+          String.format(
+              "Pipe: The provided pattern should be single now. " + "Inclusion: %s, Exclusion: %s",
+              sourceParameters.getStringByKeys(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY),
+              sourceParameters.getStringByKeys(
+                  EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY));
+      LOGGER.warn(msg);
+      throw new PipeException(msg);
+    }
+    return treePattern;
+  }
+
+  public static TreePattern parsePipePatternFromSourceParametersInternal(
       final PipeParameters sourceParameters) {
     final boolean isTreeModelDataAllowedToBeCaptured =
         isTreeModelDataAllowToBeCaptured(sourceParameters);

@@ -345,6 +345,7 @@ public class SnapshotLoader {
                 try {
                   Files.createLink(targetFile.toPath(), file.toPath());
                   LOGGER.debug("Created hard link from {} to {}", file, targetFile);
+                  fileTarget.put(fileKey, effectiveDir);
                   return targetFile;
                 } catch (IOException e) {
                   LOGGER.info(

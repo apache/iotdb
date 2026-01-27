@@ -29,6 +29,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -113,6 +114,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPureSchemaInclusionWithMultiplePattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -185,6 +187,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPureSchemaInclusionWithExclusionPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
