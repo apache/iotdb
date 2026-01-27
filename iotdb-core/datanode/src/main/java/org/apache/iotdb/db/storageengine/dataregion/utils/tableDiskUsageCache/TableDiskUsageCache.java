@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
@@ -44,12 +45,13 @@ import java.util.concurrent.TimeUnit;
 
 public class TableDiskUsageCache {
   protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
-  protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>();
+  protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>(1000);
   // regionId -> writer mapping
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
   protected final ScheduledExecutorService scheduledExecutorService;
   private int processedOperationCountSinceLastPeriodicCheck = 0;
   protected volatile boolean failedToRecover = false;
+  private volatile boolean stop = false;
 
   protected TableDiskUsageCache() {
     scheduledExecutorService =
@@ -60,7 +62,7 @@ public class TableDiskUsageCache {
 
   protected void run() {
     try {
-      while (!Thread.currentThread().isInterrupted()) {
+      while (!stop) {
         try {
           for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
             syncTsFileTableSizeCacheIfNecessary(writer);
@@ -75,6 +77,7 @@ public class TableDiskUsageCache {
             performPeriodicMaintenance();
           }
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           return;
         } catch (Exception e) {
           LOGGER.error("Meet exception when apply TableDiskUsageCache operation.", e);
@@ -163,6 +166,9 @@ public class TableDiskUsageCache {
 
   public void registerRegion(DataRegion region) {
     RegisterRegionOperation operation = new RegisterRegionOperation(region);
+    if (!PathUtils.isTableModelDatabase(region.getDatabaseName())) {
+      return;
+    }
     addOperationToQueue(operation);
   }
 
@@ -173,22 +179,38 @@ public class TableDiskUsageCache {
       operation.future.get(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      LOGGER.error("Meet exception when remove TableDiskUsageCache.", e);
     }
   }
 
   protected void addOperationToQueue(Operation operation) {
-    if (failedToRecover) {
+    if (failedToRecover || stop) {
       return;
     }
-    queue.add(operation);
+    try {
+      queue.put(operation);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
+  }
+
+  public int getQueueSize() {
+    return queue.size();
   }
 
   public void close() {
-    if (scheduledExecutorService != null) {
-      scheduledExecutorService.shutdownNow();
+    if (scheduledExecutorService == null) {
+      return;
     }
-    writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
+    try {
+      stop = true;
+      scheduledExecutorService.shutdown();
+      scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS);
+      writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    }
   }
 
   protected DataRegionTableSizeCacheWriter createWriter(
@@ -385,6 +407,7 @@ public class TableDiskUsageCache {
               return writer;
             }
             writer.close();
+            future.complete(null);
             return null;
           });
     }
