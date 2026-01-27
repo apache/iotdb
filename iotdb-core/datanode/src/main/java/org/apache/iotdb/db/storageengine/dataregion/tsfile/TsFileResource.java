@@ -1710,13 +1710,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public List<TsFileSet> getTsFileSets() {
+    if (tsFileManager == null) {
+      // loading TsFile, no TsFileSets
+      return Collections.emptyList();
+    }
     return tsFileManager.getTsFileSet(
         tsFileID.timePartitionId, tsFileID.fileVersion, Long.MAX_VALUE);
-  }
-
-  public List<TsFileSet> getTsFileSets(long maxEndVersionExcluded) {
-    return tsFileManager.getTsFileSet(
-        tsFileID.timePartitionId, tsFileID.fileVersion, maxEndVersionExcluded);
   }
 
   public EvolvedSchema getMergedEvolvedSchema() {

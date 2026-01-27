@@ -66,8 +66,8 @@ public class GrafanaApiServiceIT {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
     baseEnv.initClusterEnvironment();
-    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-    port = portConflictDataNodeWrapper.getRestServicePort();
+//    DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+//    port = portConflictDataNodeWrapper.getRestServicePort();
   }
 
   @After

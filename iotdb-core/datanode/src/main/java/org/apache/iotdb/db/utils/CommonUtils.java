@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
@@ -464,7 +465,7 @@ public class CommonUtils {
 
   public static SeriesPartitionKey getSeriesPartitionKey(
       IDeviceID deviceID, String databaseName, boolean tableMustExist) {
-    if (databaseName != null && deviceID.isTableModel()) {
+    if (databaseName != null && PathUtils.isTableModelDatabase(databaseName)) {
       TsTable table =
           DataNodeTableCache.getInstance()
               .getTable(databaseName, deviceID.getTableName(), tableMustExist);
