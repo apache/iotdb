@@ -1487,15 +1487,10 @@ public class DataRegion implements IDataRegionForQuery {
       registerToTsFile(insertTabletNode, tsFileProcessor);
       tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
-      // flush both MemTables so that the new type can be inserted into a new MemTable
-      TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
-      if (workSequenceProcessor != null) {
-        fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
-      }
-      TsFileProcessor workUnsequenceProcessor = workUnsequenceTsFileProcessors.get(timePartitionId);
-      if (workUnsequenceProcessor != null) {
-        fileFlushPolicy.apply(this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
-      }
+      // flush all MemTables so that the new type can be inserted into a new MemTable
+      // cannot just flush the current TsFileProcessor, because the new type may be inserted into
+      // other TsFileProcessors of this region
+      asyncCloseAllWorkingTsFileProcessors();
       throw e;
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
