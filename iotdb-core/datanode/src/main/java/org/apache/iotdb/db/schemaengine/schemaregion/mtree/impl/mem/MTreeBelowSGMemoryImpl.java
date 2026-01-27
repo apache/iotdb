@@ -1142,6 +1142,34 @@ public class MTreeBelowSGMemoryImpl {
     applySubtreeMeasurementDelta(entityMNode.getAsMNode(), getTemplateMeasurementCount(templateId));
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta)
+      throws MetadataException {
+    if (delta == 0) {
+      return;
+    }
+    final PartialPath pattern =
+        new PartialPath(
+            databaseMNode.getFullPath()
+                + IoTDBConstant.PATH_SEPARATOR
+                + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    try (final EntityUpdater<IMemMNode> updater =
+        new EntityUpdater<IMemMNode>(
+            rootNode, pattern, store, false, SchemaConstant.ALL_MATCH_SCOPE) {
+          @Override
+          protected void updateEntity(final IDeviceMNode<IMemMNode> node) {
+            if (!node.isUseTemplate() || node.getSchemaTemplateId() != templateId) {
+              return;
+            }
+            synchronized (MTreeBelowSGMemoryImpl.this) {
+              applySubtreeMeasurementDelta(node.getAsMNode(), delta);
+            }
+          }
+        }) {
+      updater.setSchemaTemplateFilter(templateId);
+      updater.update();
+    }
+  }
+
   public long countPathsUsingTemplate(final PartialPath pathPattern, final int templateId)
       throws MetadataException {
     try (final EntityCounter<IMemMNode> counter =
