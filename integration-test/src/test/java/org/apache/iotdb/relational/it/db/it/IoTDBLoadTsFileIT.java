@@ -348,6 +348,29 @@ public class IoTDBLoadTsFileIT {
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
     testWithTimeColumn(lineCount, null, null, file);
+
+    measurementSchemas = generateMeasurementSchemasWithTime(-1, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    file = new File(tmpDir, "3-0-0-0.tsfile");
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    measurementSchemas = generateMeasurementSchemasWithTime(1, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    testWithTimeColumn(lineCount, null, null, file);
   }
 
   private void testWithTimeColumn(
