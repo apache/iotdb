@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,27 +82,29 @@ public class TsFileTableGenerator implements AutoCloseable {
   public void generateData(final String tableName, final int number, final long timeGap)
       throws IOException, WriteProcessException {
     final List<IMeasurementSchema> schemas = table2MeasurementSchema.get(tableName);
-    final List<IMeasurementSchema> schemaWithoutTime =
-        schemas.stream()
-            .filter(schema -> !schema.getMeasurementName().equals("time"))
-            .collect(Collectors.toList());
+    final List<ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
+    int timeIndex = -1;
+    for (int i = 0; i < columnCategoryList.size(); ++i) {
+      if (columnCategoryList.get(i) == ColumnCategory.TIME) {
+        timeIndex = i;
+        break;
+      }
+    }
+    final List<IMeasurementSchema> schemaWithoutTime = new ArrayList<>(schemas);
+    final List<ColumnCategory> columnCategoriesWithoutTime = new ArrayList<>(columnCategoryList);
+    if (timeIndex > -1) {
+      schemaWithoutTime.remove(timeIndex);
+      columnCategoriesWithoutTime.remove(timeIndex);
+    }
     final List<String> columnNameList =
         schemaWithoutTime.stream()
             .map(IMeasurementSchema::getMeasurementName)
             .collect(Collectors.toList());
     final List<TSDataType> dataTypeList =
         schemaWithoutTime.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
-    final List<ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
     final TreeSet<Long> timeSet = table2TimeSet.get(tableName);
     final Tablet tablet =
-        new Tablet(
-            tableName,
-            columnNameList,
-            dataTypeList,
-            columnCategoryList.stream()
-                .filter(columnCategory -> columnCategory != ColumnCategory.TIME)
-                .collect(Collectors.toList()));
-    final Object[] values = tablet.getValues();
+        new Tablet(tableName, columnNameList, dataTypeList, columnCategoriesWithoutTime);
     final long sensorNum = schemaWithoutTime.size();
     long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
