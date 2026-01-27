@@ -49,6 +49,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -118,7 +119,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemasWithTime(
-      final int timeColumnIndex) {
+      final int timeColumnIndex, final String timeColumnName) {
     List<TSDataType> dataTypes =
         new ArrayList<>(
             Arrays.asList(
@@ -144,8 +145,8 @@ public class IoTDBLoadTsFileIT {
       pairs.add(
           timeColumnIndex,
           new Pair<>(
-              new MeasurementSchema("time", TSDataType.TIMESTAMP),
-              new MeasurementSchema("time", TSDataType.TIMESTAMP)));
+              new MeasurementSchema(timeColumnName, TSDataType.TIMESTAMP),
+              new MeasurementSchema(timeColumnName, TSDataType.TIMESTAMP)));
     }
 
     return pairs;
@@ -298,7 +299,7 @@ public class IoTDBLoadTsFileIT {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
-        generateMeasurementSchemasWithTime(1);
+        generateMeasurementSchemasWithTime(1, "time");
     List<ColumnCategory> columnCategories =
         generateTabletColumnCategory(0, measurementSchemas.size(), 1);
 
@@ -313,16 +314,21 @@ public class IoTDBLoadTsFileIT {
     }
 
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+    testWithTimeColumn(lineCount, null, null, file);
 
-    measurementSchemas = generateMeasurementSchemasWithTime(2);
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
     columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
-    measurementSchemas = generateMeasurementSchemasWithTime(-1);
+    measurementSchemas = generateMeasurementSchemasWithTime(-1, "time");
     columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
     file = new File(tmpDir, "2-0-0-0.tsfile");
@@ -331,10 +337,17 @@ public class IoTDBLoadTsFileIT {
       generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
     }
 
-    measurementSchemas = generateMeasurementSchemasWithTime(2);
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
     columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    measurementSchemas = generateMeasurementSchemasWithTime(1, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    testWithTimeColumn(lineCount, null, null, file);
   }
 
   private void testWithTimeColumn(
@@ -348,7 +361,9 @@ public class IoTDBLoadTsFileIT {
         final Statement statement = connection.createStatement()) {
       statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
-      statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
+      if (Objects.nonNull(schemaList1)) {
+        statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
+      }
       statement.execute(
           String.format(
               "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));

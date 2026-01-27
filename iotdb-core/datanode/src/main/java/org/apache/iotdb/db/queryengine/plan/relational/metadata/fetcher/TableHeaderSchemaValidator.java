@@ -855,10 +855,8 @@ public class TableHeaderSchemaValidator {
                   TSFileDescriptor.getInstance().getConfig().getCompressor(dataType)));
           break;
         case TIME:
-          throw new SemanticException(
-              "Adding column for column category "
-                  + inputColumn.getColumnCategory()
-                  + " is not supported");
+          columnSchemaList.add(new TimeColumnSchema(inputColumn.getName(), TSDataType.TIMESTAMP));
+          break;
         default:
           throw new IllegalStateException(
               "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());
