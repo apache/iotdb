@@ -42,6 +42,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameG
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.utils.constant.TestConstant;
+import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -143,6 +144,8 @@ public class PipeTsFileInsertionEventTest {
       // Shall not throw any exceptions for historical files
       treeEvent.throwIfNoPrivilege();
       Assert.assertTrue(treeEvent.shouldParse4Privilege());
+
+      Assert.assertThrows(PipeException.class, treeEvent::toTabletInsertionEvents);
 
       treeEvent.setTreeSchemaMap(Collections.singletonMap(deviceID, new String[] {"s0", "s1"}));
       Assert.assertThrows(AccessDeniedException.class, treeEvent::throwIfNoPrivilege);

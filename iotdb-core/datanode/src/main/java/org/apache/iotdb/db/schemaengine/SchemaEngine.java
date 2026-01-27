@@ -383,8 +383,16 @@ public class SchemaEngine {
                       DataNodeTableCache.getInstance()
                           .getTable(
                               PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
-                              tableEntry.getKey());
-                  return Objects.nonNull(table) ? table.getFieldNum() * tableEntry.getValue() : 0;
+                              tableEntry.getKey(),
+                              false);
+                  if (Objects.isNull(table)) {
+                    logger.warn(
+                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                        tableEntry.getKey());
+                    return 0L;
+                  }
+                  return table.getFieldNum() * tableEntry.getValue();
                 })
             .reduce(0L, Long::sum);
   }

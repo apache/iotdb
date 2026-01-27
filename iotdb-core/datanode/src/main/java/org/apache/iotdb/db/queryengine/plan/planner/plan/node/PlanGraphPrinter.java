@@ -83,12 +83,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 import com.google.common.base.Joiner;
@@ -1101,6 +1104,45 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("WindowFunction-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
 
+    DataOrganizationSpecification specification = node.getSpecification();
+    if (!specification.getPartitionBy().isEmpty()) {
+      boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+    }
+    specification
+        .getOrderingScheme()
+        .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitValuesNode(ValuesNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("ValuesNode-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("RowCount: %s", node.getRowCount()));
+    boxValue.add(String.format("OutputSymbols: %s", node.getOutputSymbols()));
+
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitRowNumber(RowNumberNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+    boxValue.add(String.format("RowNumber-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("RowNumberSymbol: %s", node.getRowNumberSymbol()));
+    boxValue.add(String.format("isOrderingSensitive: %s", node.isOrderSensitive()));
+    boxValue.add("Partition by: [" + Joiner.on(", ").join(node.getPartitionBy()) + "]");
+
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitTopKRanking(TopKRankingNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+
+    boxValue.add(String.format("TopKRanking-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("RankingType: %s", node.getRankingType()));
+    boxValue.add(String.format("RankingSymbol: %s", node.getRankingSymbol()));
     DataOrganizationSpecification specification = node.getSpecification();
     if (!specification.getPartitionBy().isEmpty()) {
       boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");

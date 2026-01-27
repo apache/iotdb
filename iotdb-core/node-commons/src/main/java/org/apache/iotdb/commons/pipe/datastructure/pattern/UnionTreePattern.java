@@ -52,6 +52,11 @@ public class UnionTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean isSingle() {
+    return false;
+  }
+
+  @Override
   public boolean isLegal() {
     return patterns.stream().allMatch(TreePattern::isLegal);
   }

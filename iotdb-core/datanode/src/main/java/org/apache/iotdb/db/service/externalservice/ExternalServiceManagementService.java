@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.externalservice.ServiceInfo;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateExternalServiceReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
@@ -65,10 +66,25 @@ public class ExternalServiceManagementService {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ExternalServiceManagementService.class);
 
+  public static final String INSTANCE_NULL_ERROR_MSG =
+      "External Service instance is null when state is RUNNING!";
+
   private ExternalServiceManagementService(String libRoot) {
     this.serviceInfos = new HashMap<>();
     restoreBuiltInServices();
     this.libRoot = libRoot;
+    makeDir(libRoot);
+  }
+
+  private static void makeDir(String dir) {
+    try {
+      SystemFileFactory.INSTANCE.makeDirIfNecessary(dir);
+    } catch (IOException e) {
+      LOGGER.error("Failed to make external service dir", e);
+      throw new ExternalServiceManagementException(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+              .setMessage(e.getMessage()));
+    }
   }
 
   public Iterator<TExternalServiceEntry> showService(int dataNodeId)
@@ -170,7 +186,10 @@ public class ExternalServiceManagementService {
 
   private IExternalService createExternalServiceInstance(String serviceName, String className) {
     // close ClassLoader automatically to release the file handle
-    try (ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot); ) {
+    try {
+      // Remind: this classLoader should be closed when service is dropped after user-defined
+      // service supported
+      ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot);
       return (IExternalService)
           Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
     } catch (IOException
@@ -235,7 +254,7 @@ public class ExternalServiceManagementService {
   private void stopService(ServiceInfo serviceInfo) {
     checkState(
         serviceInfo.getServiceInstance() != null,
-        "External Service instance is null when state is RUNNING!",
+        INSTANCE_NULL_ERROR_MSG,
         serviceInfo.getServiceName());
     serviceInfo.getServiceInstance().stop();
   }
@@ -311,11 +330,34 @@ public class ExternalServiceManagementService {
             serviceInfo -> {
               // start services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
-                IExternalService serviceInstance =
-                    createExternalServiceInstance(
-                        serviceInfo.getServiceName(), serviceInfo.getClassName());
-                serviceInfo.setServiceInstance(serviceInstance);
-                serviceInstance.start();
+
+                try {
+                  IExternalService serviceInstance =
+                      createExternalServiceInstance(
+                          serviceInfo.getServiceName(), serviceInfo.getClassName());
+                  checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
+                  serviceInfo.setServiceInstance(serviceInstance);
+                  serviceInstance.start();
+                } finally {
+                  // set STOPPED to avoid the case: service is RUNNING, but its instance is null
+                  if (serviceInfo.getServiceInstance() == null) {
+                    serviceInfo.setState(STOPPED);
+                  }
+                }
+              }
+            });
+  }
+
+  public void stopRunningServices() {
+    serviceInfos
+        .values()
+        .forEach(
+            serviceInfo -> {
+              // stop services with RUNNING state
+              if (serviceInfo.getState() == RUNNING) {
+                IExternalService serviceInstance = serviceInfo.getServiceInstance();
+                checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
+                serviceInstance.stop();
               }
             });
   }

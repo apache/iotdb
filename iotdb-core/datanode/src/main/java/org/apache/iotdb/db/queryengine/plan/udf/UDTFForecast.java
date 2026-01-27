@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan.udf;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -34,6 +36,7 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
@@ -213,9 +216,8 @@ public class UDTFForecast implements UDTF {
           client.forecast(
               new TForecastReq(model_id, serde.serialize(inputData), outputLength)
                   .setOptions(options));
-    } catch (Exception e) {
-      throw new IoTDBRuntimeException(
-          e.getMessage(), TSStatusCode.CAN_NOT_CONNECT_AINODE.getStatusCode());
+    } catch (ClientManagerException | TException e) {
+      throw new AINodeConnectionException(e);
     }
 
     if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

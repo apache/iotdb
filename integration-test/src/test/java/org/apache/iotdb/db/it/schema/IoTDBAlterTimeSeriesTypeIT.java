@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
@@ -46,6 +47,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.v4.TsFileTreeWriter;
 import org.apache.tsfile.write.v4.TsFileTreeWriterBuilder;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -2732,5 +2734,55 @@ public class IoTDBAlterTimeSeriesTypeIT {
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.BLOB, TSDataType.STRING));
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.BLOB));
     assertEquals(true, SchemaUtils.isUsingSameColumn(TSDataType.STRING, TSDataType.TEXT));
+  }
+
+  @Test
+  public void testAlterIllegalDataType() {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE TIMESERIES " + database + ".illegal.s1 blob");
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES " + database + ".illegal.s1 SET DATA TYPE text");
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES " + database + ".illegal.s1 SET DATA TYPE star");
+    } catch (StatementExecutionException e) {
+      Assert.assertEquals("701: Unsupported datatype: STAR", e.getMessage());
+    } catch (IoTDBConnectionException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void testCrossPartitionWrite()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE root.cross_partition");
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES root.cross_partition.device1.sensor1 WITH DATATYPE=INT32,ENCODING=RLE");
+
+      // Insert data into two partitions
+      Tablet tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT32, TSEncoding.RLE)));
+      tablet.addTimestamp(0, 0);
+      tablet.addValue("sensor1", 0, 0);
+      tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
+      tablet.addValue("sensor1", 1, 1);
+      session.insertTablet(tablet);
+
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES root.cross_partition.device1.sensor1 SET DATA TYPE INT64");
+
+      // Insert data with altered type
+      tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.RLE)));
+      tablet.addTimestamp(0, 0);
+      tablet.addValue("sensor1", 0, 0L);
+      tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
+      tablet.addValue("sensor1", 1, 1L);
+      session.insertTablet(tablet);
+    }
   }
 }

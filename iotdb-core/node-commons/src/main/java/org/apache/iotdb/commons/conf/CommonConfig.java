@@ -55,6 +55,7 @@ public class CommonConfig {
   public static final String SYSTEM_CONFIG_NAME = "iotdb-system.properties";
   public static final String SYSTEM_CONFIG_TEMPLATE_NAME = "iotdb-system.properties.template";
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
+  public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
 
   // Open ID Secret
   private String openIdProviderUrl = "";
@@ -184,7 +185,7 @@ public class CommonConfig {
   private long timePartitionOrigin = 0;
 
   /** Time partition interval in milliseconds. */
-  private long timePartitionInterval = 604_800_000;
+  private long timePartitionInterval = DEFAULT_TIME_PARTITION_INTERVAL;
 
   /** This variable set timestamp precision as millisecond, microsecond or nanosecond. */
   private String timestampPrecision = "ms";

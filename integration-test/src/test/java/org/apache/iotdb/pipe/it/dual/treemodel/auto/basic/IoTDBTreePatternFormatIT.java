@@ -31,6 +31,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -270,6 +271,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultiplePrefixPatternHistoricalData() throws Exception {
     // Define source attributes
     final Map<String, String> sourceAttributes = new HashMap<>();
@@ -300,6 +302,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultiplePrefixPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
@@ -326,6 +329,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
@@ -354,6 +358,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
@@ -382,6 +387,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleHybridPatternHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.d1.*");
@@ -409,6 +415,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleHybridPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.d1.*");
@@ -436,6 +443,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db.d1 and root.db.d2
@@ -467,6 +475,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPrefixPatternWithExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
@@ -494,6 +503,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db
@@ -527,6 +537,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.**");
@@ -555,6 +566,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testHybridPatternWithHybridExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
@@ -590,6 +602,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     sourceAttributes.put("source.path", "root.db.**");

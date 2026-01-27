@@ -112,12 +112,10 @@ public class LastQueryOperator implements ProcessOperator {
         && !tsBlockBuilder.isFull()) {
       if (children.get(currentIndex).hasNextWithTimer()) {
         TsBlock tsBlock = children.get(currentIndex).nextWithTimer();
-        if (tsBlock == null) {
-          return null;
-        } else if (!tsBlock.isEmpty()) {
+        if (tsBlock != null && !tsBlock.isEmpty()) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, tsBlock);
-          return null;
         }
+        return null;
       } else {
         children.get(currentIndex).close();
         children.set(currentIndex, null);

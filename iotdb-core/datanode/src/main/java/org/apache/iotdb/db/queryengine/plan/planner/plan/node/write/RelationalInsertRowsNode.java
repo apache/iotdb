@@ -28,14 +28,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
-import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -44,8 +40,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.apache.iotdb.db.utils.ObjectTypeUtils.generateObjectBinary;
 
 public class RelationalInsertRowsNode extends InsertRowsNode {
   // deviceId cache for Table-view insertion
@@ -181,8 +175,6 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
-      // handle object type
-      handleObjectValue(insertRowNode, dataRegionReplicaSet, writePlanNodeList);
 
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
@@ -200,41 +192,6 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     writePlanNodeList.addAll(splitMap.values());
 
     return writePlanNodeList;
-  }
-
-  private void handleObjectValue(
-      InsertRowNode insertRowNode,
-      TRegionReplicaSet dataRegionReplicaSet,
-      List<WritePlanNode> writePlanNodeList) {
-    for (int j = 0; j < insertRowNode.getDataTypes().length; j++) {
-      if (insertRowNode.getDataTypes()[j] == TSDataType.OBJECT) {
-        Object[] values = insertRowNode.getValues();
-        if (values[j] == null) {
-          continue;
-        }
-        byte[] binary = ((Binary) values[j]).getValues();
-        ByteBuffer buffer = ByteBuffer.wrap(binary);
-        boolean isEoF = buffer.get() == 1;
-        long offset = buffer.getLong();
-        byte[] content = ReadWriteIOUtils.readBytes(buffer, buffer.remaining());
-        IObjectPath relativePath =
-            IObjectPath.Factory.FACTORY.create(
-                dataRegionReplicaSet.getRegionId().getId(),
-                insertRowNode.getTime(),
-                insertRowNode.getDeviceID(),
-                insertRowNode.getMeasurements()[j]);
-        ObjectNode objectNode = new ObjectNode(isEoF, offset, content, relativePath);
-        objectNode.setDataRegionReplicaSet(dataRegionReplicaSet);
-        writePlanNodeList.add(objectNode);
-        if (isEoF) {
-          ((Binary) values[j])
-              .setValues(generateObjectBinary(offset + content.length, relativePath).getValues());
-          insertRowNode.setValues(values);
-        } else {
-          values[j] = null;
-        }
-      }
-    }
   }
 
   public RelationalInsertRowsNode emptyClone() {
