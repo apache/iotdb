@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -54,7 +53,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testPrefixPattern() throws Exception {
+  public void testSinglePatternInclusion() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -76,7 +75,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.pattern", "root.db.d1.s");
+      sourceAttributes.put("source.pattern.inclusion", "root.db.d1.s*");
       sourceAttributes.put("source.inclusion", "data.insert");
       sourceAttributes.put("user", "root");
 
@@ -129,7 +128,7 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("source.path", "root.**.d1.s*");
+      sourceAttributes.put("source.pattern.inclusion", "root.**.d1.s*");
       sourceAttributes.put("source.inclusion", "data.insert");
       sourceAttributes.put("user", "root");
 
@@ -271,11 +270,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultiplePrefixPatternHistoricalData() throws Exception {
     // Define source attributes
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.s*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -302,10 +300,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultiplePrefixPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.s*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -329,10 +326,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -358,10 +354,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -387,11 +382,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleHybridPatternHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.d1.*");
-    sourceAttributes.put("source.pattern", "root.db2.d1.s");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -415,11 +408,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleHybridPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.d1.*");
-    sourceAttributes.put("source.pattern", "root.db2.d1.s");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -443,11 +434,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db.d1 and root.db.d2
-    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.**, root.db.d2.**");
     // Exclusion: Exclude anything with the prefix root.db.d1.s1
     sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
     sourceAttributes.put("source.inclusion", "data.insert");
@@ -475,10 +465,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPrefixPatternWithExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.d1.**, root.db.d2.**");
     sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
@@ -503,13 +492,12 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db
-    sourceAttributes.put("source.path", "root.db.**");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
     // Exclusion: Exclude root.db.d1.s* and root.db.d3.*
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -537,11 +525,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -566,15 +553,12 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testHybridPatternWithHybridExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.pattern", "root.db2.d1");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.**");
     // Exclusion: Exclude root.db.d1.* (IoTDB) AND root.db2.d1.s (Prefix)
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
-    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -602,13 +586,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.pattern", "root.db2.d1");
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
-    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.**");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.*, root.db2.d1.s");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
