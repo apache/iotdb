@@ -81,15 +81,28 @@ public class TsFileTableGenerator implements AutoCloseable {
   public void generateData(final String tableName, final int number, final long timeGap)
       throws IOException, WriteProcessException {
     final List<IMeasurementSchema> schemas = table2MeasurementSchema.get(tableName);
+    final List<IMeasurementSchema> schemaWithoutTime =
+        schemas.stream()
+            .filter(schema -> !schema.getMeasurementName().equals("time"))
+            .collect(Collectors.toList());
     final List<String> columnNameList =
-        schemas.stream().map(IMeasurementSchema::getMeasurementName).collect(Collectors.toList());
+        schemaWithoutTime.stream()
+            .map(IMeasurementSchema::getMeasurementName)
+            .collect(Collectors.toList());
     final List<TSDataType> dataTypeList =
-        schemas.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+        schemaWithoutTime.stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
     final List<ColumnCategory> columnCategoryList = table2ColumnCategory.get(tableName);
     final TreeSet<Long> timeSet = table2TimeSet.get(tableName);
-    final Tablet tablet = new Tablet(tableName, columnNameList, dataTypeList, columnCategoryList);
+    final Tablet tablet =
+        new Tablet(
+            tableName,
+            columnNameList,
+            dataTypeList,
+            columnCategoryList.stream()
+                .filter(columnCategory -> columnCategory != ColumnCategory.TIME)
+                .collect(Collectors.toList()));
     final Object[] values = tablet.getValues();
-    final long sensorNum = schemas.size();
+    final long sensorNum = schemaWithoutTime.size();
     long startTime = timeSet.isEmpty() ? 0L : timeSet.last();
 
     for (long r = 0; r < number; r++) {
@@ -98,7 +111,7 @@ public class TsFileTableGenerator implements AutoCloseable {
       tablet.addTimestamp(row, startTime);
       timeSet.add(startTime);
       for (int i = 0; i < sensorNum; i++) {
-        generateDataPoint(tablet, i, row, schemas.get(i));
+        generateDataPoint(tablet, i, row, schemaWithoutTime.get(i));
       }
       // write
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {
