@@ -582,7 +582,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean singleSchemaRegion =
         analysis.getSchemaPartitionInfo() != null
             && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
-    boolean canPushDownOffsetLimit = singleSchemaRegion && !showTimeSeriesStatement.isOrderByHeat();
+    boolean canPushDownOffsetLimit =
+        singleSchemaRegion
+            && !showTimeSeriesStatement.isOrderByHeat()
+            && showTimeSeriesStatement.getSchemaFilter() == null;
 
     if (showTimeSeriesStatement.isOrderByHeat()) {
       limit = 0;

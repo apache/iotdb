@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
@@ -1480,9 +1481,38 @@ public class MTreeBelowSGMemoryImpl {
             showTimeSeriesPlan.getScope()) {
 
           private long remainingOffset = Math.max(0, showTimeSeriesPlan.getOffset());
+          private final String[] prunePrefixNodes =
+              getSafePrunePrefixNodes(showTimeSeriesPlan.getPath());
+
+          private String[] getSafePrunePrefixNodes(final PartialPath pattern) {
+            if (pattern == null || !pattern.endWithMultiLevelWildcard()) {
+              return null;
+            }
+            final String[] nodes = pattern.getNodes();
+            return Arrays.copyOf(nodes, nodes.length - 1);
+          }
+
+          private boolean isUnderPrunePrefix(final IMemMNode node) {
+            if (prunePrefixNodes == null) {
+              return false;
+            }
+            final String[] nodePath = getPartialPathFromRootToNode(node).getNodes();
+            if (nodePath.length < prunePrefixNodes.length) {
+              return false;
+            }
+            for (int i = 0; i < prunePrefixNodes.length; i++) {
+              if (!PathPatternUtil.isNodeMatch(prunePrefixNodes[i], nodePath[i])) {
+                return false;
+              }
+            }
+            return true;
+          }
 
           private boolean shouldPruneSubtree(final IMemMNode node) {
             if (remainingOffset <= 0) {
+              return false;
+            }
+            if (!isUnderPrunePrefix(node)) {
               return false;
             }
             final long subtreeCount = node.getSubtreeMeasurementCount();
