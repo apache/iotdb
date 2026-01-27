@@ -348,7 +348,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         final List<TSeriesPartitionSlot> partitionSlots =
             Objects.nonNull(deviceIDs)
                 ? deviceIDs.stream()
-                    .map(deviceID -> CommonUtils.getSeriesPartitionKey(deviceID, database))
+                    .map(deviceID -> CommonUtils.getSeriesPartitionKey(deviceID, database, false))
                     .map(partitionExecutor::getSeriesPartitionSlot)
                     .distinct()
                     .collect(Collectors.toList())
@@ -471,7 +471,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         seriesSlotTimePartitionMap
             .computeIfAbsent(
                 partitionExecutor.getSeriesPartitionSlot(
-                    CommonUtils.getSeriesPartitionKey(queryParam.getDeviceID(), databaseName)),
+                    CommonUtils.getSeriesPartitionKey(
+                        queryParam.getDeviceID(), databaseName, false)),
                 k ->
                     new ComplexTimeSlotList(
                         queryParam.isNeedLeftAll(), queryParam.isNeedRightAll()))
@@ -509,7 +510,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         }
         deviceToTimePartitionMap.putIfAbsent(
             partitionExecutor.getSeriesPartitionSlot(
-                CommonUtils.getSeriesPartitionKey(queryParam.getDeviceID(), databaseName)),
+                CommonUtils.getSeriesPartitionKey(queryParam.getDeviceID(), databaseName, false)),
             sharedTTimeSlotList);
       }
       partitionSlotsMap.put(databaseName, deviceToTimePartitionMap);

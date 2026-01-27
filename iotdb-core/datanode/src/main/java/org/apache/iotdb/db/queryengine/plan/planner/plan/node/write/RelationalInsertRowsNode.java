@@ -172,7 +172,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       // each row may belong to different database, pass null for auto-detection
       SeriesPartitionKey seriesPartitionKey =
           CommonUtils.getSeriesPartitionKey(
-              insertRowNode.getDeviceID(), analysis.getDatabaseName());
+              insertRowNode.getDeviceID(), analysis.getDatabaseName(), true);
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()

@@ -851,7 +851,7 @@ public class LoadTsFileScheduler implements IScheduler {
                     // (database != null) means this file will be loaded into table-model
                     {
                       SeriesPartitionKey seriesPartitionKey =
-                          CommonUtils.getSeriesPartitionKey(pair.left, database);
+                          CommonUtils.getSeriesPartitionKey(pair.left, database, false);
                       return database != null
                           ? dataPartition.getDataRegionReplicaSetForWriting(
                               seriesPartitionKey, pair.right, database)

@@ -263,7 +263,7 @@ public class CreateOrUpdateTableDeviceNode extends WritePlanNode implements ISch
     for (int i = 0; i < partitionKeyList.size(); i++) {
       // Use the string literal of deviceId as the partition key
       SeriesPartitionKey seriesPartitionKey =
-          CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database);
+          CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database, true);
       final TRegionReplicaSet regionReplicaSet =
           analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(database, seriesPartitionKey);
       splitMap.computeIfAbsent(regionReplicaSet, k -> new ArrayList<>()).add(i);

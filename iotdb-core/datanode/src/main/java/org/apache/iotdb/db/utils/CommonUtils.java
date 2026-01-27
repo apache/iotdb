@@ -462,12 +462,20 @@ public class CommonUtils {
     return tsBlockBuilder.toString();
   }
 
-  public static SeriesPartitionKey getSeriesPartitionKey(IDeviceID deviceID, String databaseName) {
+  public static SeriesPartitionKey getSeriesPartitionKey(
+      IDeviceID deviceID, String databaseName, boolean tableMustExist) {
     if (databaseName != null && deviceID.isTableModel()) {
       TsTable table =
-          DataNodeTableCache.getInstance().getTable(databaseName, deviceID.getTableName());
-      boolean canAlterName = table.canAlterName();
-      if (canAlterName) {
+          DataNodeTableCache.getInstance()
+              .getTable(databaseName, deviceID.getTableName(), tableMustExist);
+      if (table == null) {
+        // if table does not exist, then we are creating a new table
+        // use the default setting
+        return TsTable.ALLOW_ALTER_NAME_DEFAULT
+            ? new NoTableNameDeviceIdKey(deviceID)
+            : new FullDeviceIdKey(deviceID);
+      }
+      if (table.canAlterName()) {
         return new NoTableNameDeviceIdKey(deviceID);
       } else {
         return new FullDeviceIdKey(deviceID);

@@ -1309,7 +1309,7 @@ public class TableDistributedPlanGenerator
 
     // given seriesPartitionSlot has already been calculated
     SeriesPartitionKey seriesPartitionKey =
-        CommonUtils.getSeriesPartitionKey(deviceId, databaseName);
+        CommonUtils.getSeriesPartitionKey(deviceId, databaseName, true);
     final TSeriesPartitionSlot seriesPartitionSlot =
         dataPartition.calculateDeviceGroupId(seriesPartitionKey);
     List<TRegionReplicaSet> regionReplicaSets =
@@ -1791,7 +1791,7 @@ public class TableDistributedPlanGenerator
       final List<Object[]> deviceIDArray = node.getDeviceIdList();
       for (int i = 0; i < node.getPartitionKeyList().size(); ++i) {
         SeriesPartitionKey seriesPartitionKey =
-            CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database);
+            CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database, true);
         final TRegionReplicaSet regionReplicaSet =
             databaseMap.get(schemaPartition.calculateDeviceGroupId(seriesPartitionKey));
         if (Objects.nonNull(regionReplicaSet)) {

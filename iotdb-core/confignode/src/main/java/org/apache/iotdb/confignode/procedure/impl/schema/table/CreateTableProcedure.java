@@ -129,6 +129,9 @@ public class CreateTableProcedure
             && schema.getTTL() != Long.MAX_VALUE) {
           table.addProp(TsTable.TTL_PROPERTY, String.valueOf(schema.getTTL()));
         }
+        if (!table.getPropValue(TsTable.ALLOW_ALTER_NAME_PROPERTY).isPresent()) {
+          table.addProp(TsTable.ALLOW_ALTER_NAME_PROPERTY, String.valueOf(TsTable.ALLOW_ALTER_NAME_DEFAULT));
+        }
         setNextState(CreateTableState.PRE_CREATE);
       }
     } catch (final MetadataException | DatabaseNotExistsException e) {

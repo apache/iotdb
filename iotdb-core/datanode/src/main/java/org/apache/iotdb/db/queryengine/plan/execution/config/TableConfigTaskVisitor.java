@@ -578,7 +578,8 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
     Map<String, String> properties = convertPropertiesToMap(node.getProperties(), false);
     // new tables' names can be altered by default
-    properties.putIfAbsent(ALLOW_ALTER_NAME_PROPERTY, "true");
+    properties.putIfAbsent(
+        ALLOW_ALTER_NAME_PROPERTY, String.valueOf(TsTable.ALLOW_ALTER_NAME_DEFAULT));
     table.setProps(properties);
     if (Objects.nonNull(node.getComment())) {
       table.addProp(TsTable.COMMENT_KEY, node.getComment());

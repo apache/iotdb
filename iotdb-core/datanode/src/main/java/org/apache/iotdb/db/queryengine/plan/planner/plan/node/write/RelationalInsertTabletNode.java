@@ -210,7 +210,7 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
       final IDeviceID deviceID = entry.getKey();
       final PartitionSplitInfo splitInfo = entry.getValue();
       SeriesPartitionKey seriesPartitionKey =
-          CommonUtils.getSeriesPartitionKey(deviceID, analysis.getDatabaseName());
+          CommonUtils.getSeriesPartitionKey(deviceID, analysis.getDatabaseName(), true);
       final List<TRegionReplicaSet> replicaSets =
           analysis
               .getDataPartitionInfo()

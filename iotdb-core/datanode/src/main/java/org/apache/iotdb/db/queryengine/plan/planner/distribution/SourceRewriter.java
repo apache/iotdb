@@ -1445,7 +1445,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     Map<Integer, List<TRegionReplicaSet>> slot2ReplicasMap =
         cache.computeIfAbsent(db, k -> new HashMap<>());
 
-    SeriesPartitionKey seriesPartitionKey = CommonUtils.getSeriesPartitionKey(deviceID, db);
+    SeriesPartitionKey seriesPartitionKey = CommonUtils.getSeriesPartitionKey(deviceID, db, true);
     TSeriesPartitionSlot tSeriesPartitionSlot =
         dataPartition.calculateDeviceGroupId(seriesPartitionKey);
 

@@ -709,7 +709,7 @@ public class PartitionCache {
         for (final IDeviceID device : entry.getValue()) {
           final TSeriesPartitionSlot seriesPartitionSlot =
               partitionExecutor.getSeriesPartitionSlot(
-                  CommonUtils.getSeriesPartitionKey(device, databaseName));
+                  CommonUtils.getSeriesPartitionKey(device, databaseName, true));
           if (!map.containsKey(seriesPartitionSlot)) {
             // if one device not find, then return cache miss.
             if (logger.isDebugEnabled()) {
@@ -878,7 +878,7 @@ public class PartitionCache {
           if (null != param.getDeviceID()) {
             seriesPartitionSlot =
                 partitionExecutor.getSeriesPartitionSlot(
-                    CommonUtils.getSeriesPartitionKey(param.getDeviceID(), databaseName));
+                    CommonUtils.getSeriesPartitionKey(param.getDeviceID(), databaseName, true));
           } else {
             return null;
           }
