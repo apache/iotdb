@@ -243,11 +243,6 @@
             <artifactId>gson</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.glassfish.jersey.inject</groupId>
-            <artifactId>jersey-hk2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
@@ -494,8 +489,6 @@
                         <!-- These are used at runtime in tests -->
                         <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
                         <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
-                        <!-- This dependency is required at runtime, when enabling the rest service -->
-                        <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>
                 </configuration>
             </plugin>
