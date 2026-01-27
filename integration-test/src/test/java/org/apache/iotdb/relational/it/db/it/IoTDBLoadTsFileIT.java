@@ -343,7 +343,7 @@ public class IoTDBLoadTsFileIT {
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
     measurementSchemas = generateMeasurementSchemasWithTime(1, "time1");
-    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 1);
     schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
     testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
 
