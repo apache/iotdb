@@ -226,7 +226,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
 
     Schema schema = CompactionTableSchemaCollector.copySchema(this.schema);
     TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
-    tsFileResource.setTsFileManager(minVersionResource.getTsFileManager());
+    // only null during test
+    tsFileResource.setTsFileManager(
+        minVersionResource != null ? minVersionResource.getTsFileManager() : null);
     EvolvedSchema evolvedSchema =
         tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
     currentWriter.setSchema(
