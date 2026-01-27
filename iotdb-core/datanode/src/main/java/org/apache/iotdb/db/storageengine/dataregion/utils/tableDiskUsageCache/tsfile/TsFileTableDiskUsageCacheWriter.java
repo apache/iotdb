@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
@@ -43,8 +44,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWriter {
-  private static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
-  private static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
+  public static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
+  public static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
   public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
   public static final int KEY_FILE_REDIRECT_RECORD_LENGTH = 7 * Long.BYTES + 1;
   public static final byte KEY_FILE_RECORD_TYPE_OFFSET = 1;
@@ -76,16 +77,15 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
           }
           continue;
         }
-        if (isTempFile) {
-          try {
-            Files.delete(file.toPath());
-          } catch (IOException ignored) {
-          }
-        }
         int version;
         try {
-          version = Integer.parseInt(fileName.substring(TSFILE_CACHE_KEY_FILENAME_PREFIX.length()));
+          version = getVersion(fileName);
         } catch (NumberFormatException ignored) {
+          continue;
+        }
+        if (isTempFile) {
+          FileUtils.deleteFileIfExist(file);
+          FileUtils.deleteFileIfExist(generateValueFile(version, true));
           continue;
         }
         File valueFile =
@@ -94,14 +94,16 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
         if (!valueFile.exists()) {
           File tempValueFile = new File(valueFile.getPath() + TEMP_CACHE_FILE_SUBFIX);
           if (tempValueFile.exists()) {
-            tempValueFile.renameTo(valueFile);
+            try {
+              Files.move(tempValueFile.toPath(), valueFile.toPath());
+            } catch (IOException e) {
+              logger.warn("Failed to move {} to {}", tempValueFile, valueFile, e);
+              continue;
+            }
             valueFiles.add(valueFile);
           } else {
             // lost value file
-            try {
-              Files.delete(file.toPath());
-            } catch (IOException ignored) {
-            }
+            FileUtils.deleteFileIfExist(file);
             continue;
           }
         }
@@ -125,6 +127,14 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
     } catch (IOException e) {
       failedToRecover(e);
     }
+  }
+
+  private int getVersion(String fileName) throws NumberFormatException {
+    int version = 0;
+    String removePrefixStr = fileName.substring(TSFILE_CACHE_KEY_FILENAME_PREFIX.length());
+    int suffixIdx = removePrefixStr.indexOf('.');
+    return Integer.parseInt(
+        suffixIdx > 0 ? removePrefixStr.substring(0, suffixIdx) : removePrefixStr);
   }
 
   public void write(TsFileID tsFileID, Map<String, Long> tableSizeMap) throws IOException {

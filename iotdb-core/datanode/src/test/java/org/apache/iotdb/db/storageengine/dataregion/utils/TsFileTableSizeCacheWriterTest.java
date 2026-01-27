@@ -28,6 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.AbstractTableSizeCacheWriter;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
@@ -35,6 +36,8 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.ts
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -43,9 +46,11 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -240,7 +245,7 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testRecoverWriter() throws IOException {
+  public void testRecoverWriter1() throws IOException {
     TsFileTableDiskUsageCacheWriter writer =
         new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
     for (int i = 1; i <= 10; i++) {
@@ -264,6 +269,189 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     writer.close();
     Assert.assertEquals(keyFileValidLength, keyFile.length());
     Assert.assertEquals(valueFileValidLength, valueFile.length());
+
+    Files.write(keyFile.toPath(), new byte[] {0, 0, 0, 0}, StandardOpenOption.APPEND);
+    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertEquals(keyFileValidLength, keyFile.length());
+    Assert.assertEquals(valueFileValidLength, valueFile.length());
+
+    ByteBuffer buffer =
+        ByteBuffer.allocate(TsFileTableDiskUsageCacheWriter.KEY_FILE_OFFSET_RECORD_LENGTH);
+    TsFileID tsFileID = new TsFileID(0, 1, 2, 3, 4);
+    ReadWriteIOUtils.write(TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET, buffer);
+    ReadWriteIOUtils.write(tsFileID.timePartitionId, buffer);
+    ReadWriteIOUtils.write(tsFileID.timestamp, buffer);
+    ReadWriteIOUtils.write(tsFileID.fileVersion, buffer);
+    ReadWriteIOUtils.write(tsFileID.compactionVersion, buffer);
+    ReadWriteIOUtils.write(valueFileValidLength, buffer);
+    Files.write(
+        keyFile.toPath(),
+        Arrays.copyOf(buffer.array(), buffer.position()),
+        StandardOpenOption.APPEND);
+    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertEquals(keyFileValidLength, keyFile.length());
+    Assert.assertEquals(valueFileValidLength, valueFile.length());
+
+    buffer.clear();
+    ReadWriteForEncodingUtils.writeVarInt(1, buffer);
+    ReadWriteIOUtils.writeVar("table1", buffer);
+    ReadWriteIOUtils.write(10L, buffer);
+    Files.write(
+        valueFile.toPath(),
+        Arrays.copyOf(buffer.array(), buffer.position()),
+        StandardOpenOption.APPEND);
+    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertEquals(keyFileValidLength, keyFile.length());
+    Assert.assertEquals(valueFileValidLength, valueFile.length());
+  }
+
+  @Test
+  public void testRecoverWriter2() throws IOException {
+    File dir =
+        StorageEngine.getDataRegionSystemDir(
+            mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
+    dir.mkdirs();
+    File keyFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+    File valueFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+    File tempKeyFile2 =
+        new File(
+            dir,
+            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX
+                + "1"
+                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+    File tempValueFile2 =
+        new File(
+            dir,
+            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+                + "1"
+                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+
+    keyFile1.createNewFile();
+    valueFile1.createNewFile();
+    tempKeyFile2.createNewFile();
+    tempValueFile2.createNewFile();
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertTrue(keyFile1.exists());
+    Assert.assertTrue(valueFile1.exists());
+    Assert.assertFalse(tempKeyFile2.exists());
+    Assert.assertFalse(tempValueFile2.exists());
+    Assert.assertEquals(keyFile1, writer.getKeyFile());
+    Assert.assertEquals(valueFile1, writer.getValueFile());
+  }
+
+  @Test
+  public void testRecoverWriter3() throws IOException {
+    File dir =
+        StorageEngine.getDataRegionSystemDir(
+            mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
+    dir.mkdirs();
+    File keyFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+    File valueFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+    File keyFile2 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+    File valueFile2 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+
+    keyFile1.createNewFile();
+    valueFile1.createNewFile();
+    keyFile2.createNewFile();
+    valueFile2.createNewFile();
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertFalse(keyFile1.exists());
+    Assert.assertFalse(valueFile1.exists());
+    Assert.assertTrue(keyFile2.exists());
+    Assert.assertTrue(valueFile2.exists());
+    Assert.assertEquals(keyFile2, writer.getKeyFile());
+    Assert.assertEquals(valueFile2, writer.getValueFile());
+  }
+
+  @Test
+  public void testRecoverWriter4() throws IOException {
+    File dir =
+        StorageEngine.getDataRegionSystemDir(
+            mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
+    dir.mkdirs();
+    File keyFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+    File valueFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+    File keyFile2 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+    File tempValueFile2 =
+        new File(
+            dir,
+            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+                + "1"
+                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+    File valueFile2 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+
+    keyFile1.createNewFile();
+    valueFile1.createNewFile();
+    keyFile2.createNewFile();
+    tempValueFile2.createNewFile();
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertFalse(keyFile1.exists());
+    Assert.assertFalse(valueFile1.exists());
+    Assert.assertFalse(tempValueFile2.exists());
+    Assert.assertTrue(keyFile2.exists());
+    Assert.assertTrue(valueFile2.exists());
+    Assert.assertEquals(keyFile2, writer.getKeyFile());
+    Assert.assertEquals(valueFile2, writer.getValueFile());
+  }
+
+  @Test
+  public void testRecoverWriter5() throws IOException {
+    File dir =
+        StorageEngine.getDataRegionSystemDir(
+            mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
+    dir.mkdirs();
+    File keyFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+    File valueFile1 =
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+    File tempKeyFile2 =
+        new File(
+            dir,
+            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX
+                + "2"
+                + TsFileTableDiskUsageCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+    File tempValueFile2 =
+        new File(
+            dir,
+            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+                + "2"
+                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+
+    keyFile1.createNewFile();
+    tempKeyFile2.createNewFile();
+    tempValueFile2.createNewFile();
+    TsFileTableDiskUsageCacheWriter writer =
+        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer.close();
+    Assert.assertFalse(keyFile1.exists());
+    Assert.assertFalse(valueFile1.exists());
+    Assert.assertFalse(tempValueFile2.exists());
+    Assert.assertFalse(tempKeyFile2.exists());
+    Assert.assertEquals(
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0"),
+        writer.getKeyFile());
+    Assert.assertEquals(
+        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0"),
+        writer.getValueFile());
   }
 
   private Map<String, Long> generateTableSizeMap(int tableNum) {
