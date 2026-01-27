@@ -34,6 +34,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
+
 /** Utility class for converting between TsTable and TSFile TableSchema */
 public class TsFileTableSchemaUtil {
 
@@ -156,8 +158,17 @@ public class TsFileTableSchemaUtil {
 
     // Directly iterate through columns and filter out TIME and ATTRIBUTE columns
     int columnIndex = 0;
-    for (final TsTableColumnSchema columnSchema : tsTableColumnSchemas) {
+
+    for (int i = 0; i < tsTableColumnSchemas.size(); i++) {
+      TsTableColumnSchema columnSchema = tsTableColumnSchemas.get(i);
       final TsTableColumnCategory category = columnSchema.getColumnCategory();
+
+      // if the time columns is named as "time" and in first position, drop it
+      if (i == 0
+          && category == TsTableColumnCategory.TIME
+          && columnSchema.getColumnName().equalsIgnoreCase(TIME_COLUMN_NAME)) {
+        continue;
+      }
 
       // Skip ATTRIBUTE columns (only include TIME, TAG and FIELD)
       if (category == TsTableColumnCategory.ATTRIBUTE) {
