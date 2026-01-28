@@ -151,6 +151,7 @@ public class AccumulatorFactory {
                   isAggTableScan);
     } else if (FIRST.getFunctionName().equals(functionName)) {
       boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
+
       result =
           ascending && orderKeyIsTimeColumn
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)

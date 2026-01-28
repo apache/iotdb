@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
+import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.concurrent.ExecutorService;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.protocol.session.IClientSession;
@@ -51,7 +56,6 @@ import java.time.ZonedDateTime;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-
 public class AggregationTableScanTest {
 
   @Test
