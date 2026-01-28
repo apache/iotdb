@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
+import org.apache.iotdb.consensus.exception.ConsensusException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,7 +197,7 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
       byteBuffer.get(resultArr);
     }
     //  has lock
-    if (byteBuffer.get() == 1) {
+    if (byteBuffer.get() == 1 && this.state != ProcedureState.ROLLEDBACK) {
       this.lockedWhenLoading();
     }
   }
@@ -300,8 +301,15 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
     }
     ProcedureLockState state = acquireLock(env);
     if (state == ProcedureLockState.LOCK_ACQUIRED) {
-      locked = true;
-      store.update(this);
+      try {
+        locked = true;
+        store.update(this);
+      } catch (Exception e) {
+        // Do not need to do anything else. New leader which restore this procedure from a wrong
+        // state will reexecute it and converge to the correct state since procedures are
+        // idempotent.
+        LOG.warn("pid={} Failed to persist lock state to store.", this.procId, e);
+      }
     }
     return state;
   }
@@ -312,12 +320,19 @@ public abstract class Procedure<Env> implements Comparable<Procedure<Env>> {
    * @param env environment
    * @param store ProcedureStore
    */
-  public final void doReleaseLock(Env env, IProcedureStore store) {
+  public final void doReleaseLock(Env env, IProcedureStore store) throws Exception {
     locked = false;
-    if (getState() != ProcedureState.ROLLEDBACK) {
-      store.update(this);
+    if (getState() == ProcedureState.ROLLEDBACK) {
+      LOG.info("Force write unlock state to raft for pid={}", this.procId);
     }
-    releaseLock(env);
+    try {
+      store.update(this);
+      // do not release lock when consensus layer is not working
+      releaseLock(env);
+    } catch (ConsensusException e) {
+      LOG.error("pid={} Failed to persist unlock state to store.", this.procId, e);
+      throw e;
+    }
   }
 
   public final void restoreLock(Env env) {
