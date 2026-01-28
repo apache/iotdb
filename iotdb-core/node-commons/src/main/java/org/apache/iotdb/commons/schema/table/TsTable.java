@@ -69,7 +69,7 @@ public class TsTable {
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
 
-  private Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
+  private final Map<String, TsTableColumnSchema> columnSchemaMap = new LinkedHashMap<>();
   private final Map<String, Integer> tagColumnIndexMap = new HashMap<>();
   private final Map<String, Integer> idColumnIndexMap = new HashMap<>();
 
