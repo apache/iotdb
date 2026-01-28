@@ -2501,11 +2501,11 @@ public class IoTDBTableAggregationIT {
     expectedHeader = new String[] {"device_id", "_col1"};
     retArray = new String[] {"d01,0xcafebabe55,", "d02,0xcafebabe50,"};
     repeatTest(
-            "select device_id, last(s8) from table1 where device_id = 'd01' or device_id = 'd02' group by device_id order by device_id",
-            expectedHeader,
-            retArray,
-            DATABASE_NAME,
-            2);
+        "select device_id, last(s8) from table1 where device_id = 'd01' or device_id = 'd02' group by device_id order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        2);
 
     expectedHeader =
         new String[] {
