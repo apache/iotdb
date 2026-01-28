@@ -1259,6 +1259,10 @@ public abstract class AlignedTVList extends TVList {
   }
 
   public BitMap getAllValueColDeletedMap() {
+    return getAllValueColDeletedMap(rowCount);
+  }
+
+  public BitMap getAllValueColDeletedMap(int rowCount) {
     // row exists when any column value exists
     if (bitMaps == null) {
       return null;
@@ -1415,7 +1419,7 @@ public abstract class AlignedTVList extends TVList {
           (columnIndexList == null)
               ? IntStream.range(0, dataTypes.size()).boxed().collect(Collectors.toList())
               : columnIndexList;
-      this.allValueColDeletedMap = getAllValueColDeletedMap();
+      this.allValueColDeletedMap = getAllValueColDeletedMap(this.rows);
       this.valueColumnsDeletionList = valueColumnsDeletionList;
       this.floatPrecision = floatPrecision != null ? floatPrecision : 0;
       this.encodingList = encodingList;

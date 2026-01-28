@@ -176,7 +176,7 @@ public abstract class TVList implements WALEntryValue {
     return reservedMemoryBytes;
   }
 
-  public abstract void sort();
+  public abstract int sort();
 
   public void increaseReferenceCount() {
     referenceCount.incrementAndGet();
