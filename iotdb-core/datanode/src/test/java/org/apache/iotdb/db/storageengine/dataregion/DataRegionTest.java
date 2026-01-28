@@ -1886,7 +1886,7 @@ public class DataRegionTest {
             null,
             Collections.singletonList(0L),
             Long.MAX_VALUE);
-    assertEquals(1, dataSource.getUnseqResources().size());
+    assertEquals(1, dataSource.getSeqResources().size());
 
     // can query with table2
     fullPaths =
