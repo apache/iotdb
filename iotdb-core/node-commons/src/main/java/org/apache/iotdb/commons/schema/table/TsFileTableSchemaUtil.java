@@ -90,6 +90,14 @@ public class TsFileTableSchemaUtil {
       final String columnName = ReadWriteIOUtils.readString(tsTableBuffer);
       final TSDataType dataType = ReadWriteIOUtils.readDataType(tsTableBuffer);
 
+      // if the time column position in first column and named as "time", skip it
+      if (i == 0
+          && category == TsTableColumnCategory.TIME
+          && columnName.equalsIgnoreCase(TIME_COLUMN_NAME)) {
+        skipMap(tsTableBuffer);
+        continue;
+      }
+
       if (category == TsTableColumnCategory.FIELD) {
         ReadWriteIOUtils.readEncoding(tsTableBuffer);
         ReadWriteIOUtils.readCompressionType(tsTableBuffer);
