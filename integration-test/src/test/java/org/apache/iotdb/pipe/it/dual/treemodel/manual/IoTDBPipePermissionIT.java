@@ -234,6 +234,48 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
+  public void testSourcePermissionRestart() throws SQLException {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", connection);
+      TestUtils.executeNonQueries(
+          senderEnv, Collections.singletonList("grant READ on root.** to user thulab"));
+
+      statement.execute(
+          String.format(
+              "create pipe a2b"
+                  + " with source ("
+                  + "'user'='thulab'"
+                  + ", 'password'='passwD@123456')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)"));
+      TestUtils.executeNonQueries(
+          receiverEnv,
+          Arrays.asList(
+              "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)"));
+
+      TestUtils.executeNonQueries(senderEnv, Collections.singletonList("start pipe a2b"));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)"));
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(pressure) from root.vehicle.plane",
+          "count(root.vehicle.plane.pressure),",
+          Collections.singleton("1,"));
+    }
+  }
+
+  @Test
   public void testSourcePermission() {
     TestUtils.executeNonQuery(senderEnv, "create user `thulab` 'passwD@123456'", null);
 

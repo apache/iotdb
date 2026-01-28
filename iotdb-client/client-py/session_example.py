@@ -411,6 +411,12 @@ with session.execute_query_statement(
     df = dataset.todf()
     print(df.to_string())
 
+with session.execute_query_statement(
+    "select s_01,s_02,s_03,s_04 from root.sg_test_01.d_04"
+) as dataset:
+    while dataset.has_next_df():
+        print(dataset.next_df())
+
 # delete database
 session.delete_storage_group("root.sg_test_01")
 
