@@ -34,6 +34,7 @@ import org.eclipse.milo.opcua.sdk.core.AccessLevel;
 import org.eclipse.milo.opcua.sdk.core.ValueRanks;
 import org.eclipse.milo.opcua.stack.core.Identifiers;
 import org.eclipse.milo.opcua.stack.core.StatusCodes;
+import org.eclipse.milo.opcua.stack.core.UaException;
 import org.eclipse.milo.opcua.stack.core.security.SecurityPolicy;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
 import org.eclipse.milo.opcua.stack.core.types.builtin.DateTime;
@@ -55,14 +56,17 @@ import org.eclipse.milo.opcua.stack.core.types.structured.VariableAttributes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Predicate;
 
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.convertToOpcDataType;
 import static org.apache.iotdb.db.pipe.sink.protocol.opcua.server.OpcUaNameSpace.timestampToUtc;
+import static org.eclipse.milo.opcua.stack.core.StatusCodes.Bad_Timeout;
 
 public class IoTDBOpcUaClient {
   private static final Logger LOGGER = LoggerFactory.getLogger(OpcUaNameSpace.class);
@@ -78,6 +82,7 @@ public class IoTDBOpcUaClient {
   private final IdentityProvider identityProvider;
   private OpcUaClient client;
   private final boolean historizing;
+  private ClientRunner runner;
 
   public IoTDBOpcUaClient(
       final String nodeUrl,
@@ -93,7 +98,20 @@ public class IoTDBOpcUaClient {
   public void run(final OpcUaClient client) throws Exception {
     // synchronous connect
     this.client = client;
-    client.connect().get();
+    long startTime = System.currentTimeMillis();
+    while (System.currentTimeMillis() - startTime < runner.getTimeoutSeconds() * 1000L) {
+      try {
+        client.connect().get();
+      } catch (final ExecutionException e) {
+        if (e.getCause() instanceof UaException
+            && ((UaException) e.getCause()).getStatusCode().getValue() == Bad_Timeout) {
+          Thread.sleep(1000L);
+          continue;
+        }
+        throw e;
+      }
+      break;
+    }
   }
 
   // Only support tree model & client-server
@@ -299,5 +317,19 @@ public class IoTDBOpcUaClient {
         Unsigned.uint(0), // userWriteMask
         null // notifier
         );
+  }
+
+  /////////////////////////////// Conflict detection ///////////////////////////////
+
+  public void setRunner(ClientRunner runner) {
+    this.runner = runner;
+  }
+
+  public void checkEquals(
+      final String user,
+      final String password,
+      final String securityDir,
+      final SecurityPolicy securityPolicy) {
+    runner.checkEquals(user, password, Paths.get(securityDir), securityPolicy);
   }
 }

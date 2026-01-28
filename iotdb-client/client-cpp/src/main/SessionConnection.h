@@ -23,7 +23,10 @@
 #include <vector>
 #include <string>
 #include <thrift/transport/TTransport.h>
+#if WITH_SSL
 #include <thrift/transport/TSSLSocket.h>
+#endif
+
 #include "IClientRPCService.h"
 #include "common_types.h"
 #include "NodesSupplier.h"
@@ -179,9 +182,10 @@ private:
     TSStatus insertTabletsInternal(TSInsertTabletsReq request);
 
     TSStatus deleteDataInternal(TSDeleteDataReq request);
-
+#if WITH_SSL
     std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
         std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
+#endif
     std::shared_ptr<TTransport> transport;
     std::shared_ptr<IClientRPCServiceClient> client;
     Session* session;

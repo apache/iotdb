@@ -235,11 +235,8 @@ public class AlterTimeSeriesDataTypeProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter timeseries %s data type from %s to %s in schema regions failed. Failures: %s",
-                            measurementPath.getFullPath(),
-                            measurementPath.getSeriesType(),
-                            dataType,
-                            printFailureMap()))));
+                            "Alter timeseries %s data type to %s in schema regions failed. Failures: %s",
+                            measurementPath.getFullPath(), dataType, printFailureMap()))));
             interruptTask();
           }
         };
