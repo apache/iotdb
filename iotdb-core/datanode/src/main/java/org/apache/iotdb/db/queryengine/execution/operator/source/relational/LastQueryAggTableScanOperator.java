@@ -51,7 +51,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_TIME_VALUE_PAIR;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
@@ -196,7 +196,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -204,9 +205,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsBinary(
                               new Binary(id, TSFileConfig.STRING_CHARSET)))));
@@ -223,7 +225,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -231,9 +234,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsBinary(attribute))));
             } else {
@@ -247,9 +251,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           new TsPrimitiveType.TsLong(lastTime))));
             } else {
               columnBuilder.writeTsPrimitiveType(new TsPrimitiveType.TsLong(lastTime));
@@ -259,9 +264,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
+                      serializeTimeValueWithNull(
                           getTSDataType(schema.getType()),
                           lastTime,
+                          false,
                           false,
                           new TsPrimitiveType.TsLong(lastTime))));
             } else {
@@ -279,7 +285,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(getTSDataType(schema.getType()), lastByTime, true, null)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastByTime, true, false, null)));
             } else {
               columnBuilder.appendNull();
             }
@@ -287,8 +294,12 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
-                          getTSDataType(schema.getType()), lastByTime, false, tsPrimitiveType)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()),
+                          lastByTime,
+                          false,
+                          false,
+                          tsPrimitiveType)));
             } else {
               columnBuilder.writeTsPrimitiveType(tsPrimitiveType);
             }
@@ -342,9 +353,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsBinary(
                                 new Binary(id, TSFileConfig.STRING_CHARSET)))));
               } else {
@@ -361,7 +373,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                        serializeTimeValueWithNull(
+                            getTSDataType(schema.getType()), lastTime, true, false, null)));
               } else {
                 columnBuilder.appendNull();
               }
@@ -369,9 +382,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsBinary(
                                 new Binary(id, TSFileConfig.STRING_CHARSET)))));
@@ -392,9 +406,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsBinary(attribute))));
               } else {
                 columnBuilder.writeBinary(attribute);
@@ -410,7 +425,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                        serializeTimeValueWithNull(
+                            getTSDataType(schema.getType()), lastTime, true, false, null)));
               } else {
                 columnBuilder.appendNull();
               }
@@ -418,9 +434,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsBinary(attribute))));
               } else {
@@ -438,9 +455,10 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastRowTime,
+                            false,
                             new TsPrimitiveType.TsLong(lastRowTime))));
               } else {
                 columnBuilder.writeTsPrimitiveType(new TsPrimitiveType.TsLong(lastRowTime));
@@ -459,18 +477,20 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
               if (aggregator.getStep().isOutputPartial()) {
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(getTSDataType(schema.getType()), lastTime, true, null)));
+                        serializeTimeValueWithNull(
+                            getTSDataType(schema.getType()), lastTime, true, false, null)));
               } else {
                 columnBuilder.appendNull();
               }
             } else {
               if (aggregator.getStep().isOutputPartial()) {
-                // output: xDataType, yLastTime, xIsNull, xResult
+                // output: xDataType, yLastTime, xIsNull, isOrderTimeNull, xResult
                 columnBuilder.writeBinary(
                     new Binary(
-                        serializeTimeValue(
+                        serializeTimeValueWithNull(
                             getTSDataType(schema.getType()),
                             lastTime,
+                            false,
                             false,
                             new TsPrimitiveType.TsLong(lastTime))));
               } else {
@@ -497,8 +517,8 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
             if (aggregator.getStep().isOutputPartial()) {
               columnBuilder.writeBinary(
                   new Binary(
-                      serializeTimeValue(
-                          getTSDataType(schema.getType()), lastTime, tsPrimitiveType)));
+                      serializeTimeValueWithNull(
+                          getTSDataType(schema.getType()), lastTime, false, tsPrimitiveType)));
             } else {
               columnBuilder.writeTsPrimitiveType(tsPrimitiveType);
             }

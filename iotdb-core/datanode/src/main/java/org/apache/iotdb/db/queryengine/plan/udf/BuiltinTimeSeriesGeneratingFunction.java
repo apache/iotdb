@@ -51,7 +51,6 @@ import org.apache.iotdb.commons.udf.builtin.UDTFEqualSizeBucketRandomSample;
 import org.apache.iotdb.commons.udf.builtin.UDTFExp;
 import org.apache.iotdb.commons.udf.builtin.UDTFFloor;
 import org.apache.iotdb.commons.udf.builtin.UDTFInRange;
-import org.apache.iotdb.commons.udf.builtin.UDTFJexl;
 import org.apache.iotdb.commons.udf.builtin.UDTFLog;
 import org.apache.iotdb.commons.udf.builtin.UDTFLog10;
 import org.apache.iotdb.commons.udf.builtin.UDTFM4;
@@ -136,7 +135,6 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   EQUAL_SIZE_BUCKET_M4_SAMPLE("EQUAL_SIZE_BUCKET_M4_SAMPLE", UDTFEqualSizeBucketM4Sample.class),
   EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE(
       "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
-  JEXL("JEXL", UDTFJexl.class),
   MASTER_REPAIR("MASTER_REPAIR", UDTFMasterRepair.class),
   M4("M4", UDTFM4.class),
   FORECAST("FORECAST", UDTFForecast.class),
