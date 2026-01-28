@@ -179,22 +179,13 @@ public class AlterTimeSeriesDataTypeProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false),
             false,
             CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
-            ((dataNodeLocation, consensusGroupIdList) -> {
-              ByteBuffer measurementPathBuffer = null;
-              try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                measurementPath.serialize(baos);
-                measurementPathBuffer = ByteBuffer.wrap(baos.toByteArray());
-              } catch (IOException ignored) {
-                // ByteArrayOutputStream won't throw IOException
-              }
-
-              return new TAlterTimeSeriesReq(
-                  consensusGroupIdList,
-                  queryId,
-                  measurementPathBuffer,
-                  operationType,
-                  ByteBuffer.wrap(stream.toByteArray()));
-            })) {
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TAlterTimeSeriesReq(
+                    consensusGroupIdList,
+                    queryId,
+                    measurementPathBytes,
+                    operationType,
+                    prepareDataTypeBytesData()))) {
 
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
@@ -210,13 +201,11 @@ public class AlterTimeSeriesDataTypeProcedure
             if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               final List<TSStatus> subStatus = response.getSubStatus();
               for (int i = 0; i < subStatus.size(); i++) {
-                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    && !(subStatus.get(i).getCode()
-                        == TSStatusCode.PATH_NOT_EXIST.getStatusCode())) {
+                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   failedRegionList.add(consensusGroupIdList.get(i));
                 }
               }
-            } else if (!(response.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode())) {
+            } else {
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
@@ -331,7 +320,7 @@ public class AlterTimeSeriesDataTypeProcedure
 
   public void setMeasurementPath(final MeasurementPath measurementPath) {
     this.measurementPath = measurementPath;
-    measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
+    this.measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
   }
 
   public static ByteBuffer prepareMeasurementPathBytesData(final MeasurementPath measurementPath) {
@@ -354,6 +343,16 @@ public class AlterTimeSeriesDataTypeProcedure
       // ByteArrayOutputStream won't throw IOException
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public ByteBuffer prepareDataTypeBytesData() {
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
+    try {
+      ReadWriteIOUtils.write(dataType, stream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return ByteBuffer.wrap(stream.toByteArray());
   }
 
   @Override
