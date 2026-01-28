@@ -3247,7 +3247,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  needInitTime && !node.getGroupingKeys().isEmpty()
+                  needInitTime || node.getGroupingKeys().isEmpty()
                       ? targetColumns
                       : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
                   false);
