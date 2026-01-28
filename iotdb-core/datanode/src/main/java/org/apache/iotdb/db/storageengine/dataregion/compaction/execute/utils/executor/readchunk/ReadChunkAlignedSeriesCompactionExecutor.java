@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -277,7 +278,12 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       chunkMetadata.setTsDataType(chunkMetadata.getNewType());
 
       Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
-      statistics.mergeStatistics(chunk.getChunkStatistic());
+      if (statistics.getType() != chunk.getChunkStatistic().getType()) {
+        statistics.mergeStatistics(
+            SchemaUtils.getNewStatistics(chunkMetadata.getNewType(), chunk.getChunkStatistic()));
+      } else {
+        statistics.mergeStatistics(chunk.getChunkStatistic());
+      }
       chunkMetadata.setStatistics(statistics);
     }
     return new InstantChunkLoader(reader.getFileName(), chunkMetadata, chunk);

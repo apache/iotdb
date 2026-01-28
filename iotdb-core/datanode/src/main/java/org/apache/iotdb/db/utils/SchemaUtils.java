@@ -597,4 +597,140 @@ public class SchemaUtils {
     }
     return statistics;
   }
+
+  public static Statistics<?> getNewStatistics(TSDataType targetDataType, Statistics statistics) {
+    switch (statistics.getType()) {
+      case INT32:
+      case INT64:
+      case TIMESTAMP:
+      case FLOAT:
+      case DOUBLE:
+      case BOOLEAN:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(statistics.getFirstValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(statistics.getLastValue().toString(), StandardCharsets.UTF_8);
+          if (statistics.getType() == TSDataType.BOOLEAN) {
+            binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[2] =
+                new Binary(statistics.getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[3] =
+                new Binary(statistics.getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[4];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          if (statistics.getType() == TSDataType.BOOLEAN) {
+            binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
+            binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
+          } else {
+            binaryValues[0] =
+                new Binary(statistics.getMinValue().toString(), StandardCharsets.UTF_8);
+            binaryValues[1] =
+                new Binary(statistics.getMaxValue().toString(), StandardCharsets.UTF_8);
+          }
+          long[] longValues = new long[2];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        }
+        break;
+      case DATE:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[4];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getLastValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[2] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getMinValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[3] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getMaxValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[4];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          longValues[2] = longValues[1];
+          longValues[3] = longValues[1];
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getFirstValue()),
+                  StandardCharsets.UTF_8);
+          binaryValues[1] =
+              new Binary(
+                  TSDataType.getDateStringValue((Integer) statistics.getLastValue()),
+                  StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        }
+        break;
+      case STRING:
+        if (targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = new Binary(statistics.getMinValue().toString(), StandardCharsets.UTF_8);
+          binaryValues[1] = new Binary(statistics.getMaxValue().toString(), StandardCharsets.UTF_8);
+          long[] longValues = new long[2];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.BLOB) {
+          statistics.update(
+              statistics.getStartTime(),
+              new Binary(statistics.getMinValue().toString(), StandardCharsets.UTF_8));
+          statistics.update(
+              statistics.getEndTime(),
+              new Binary(statistics.getMaxValue().toString(), StandardCharsets.UTF_8));
+        }
+        break;
+      case TEXT:
+        if (targetDataType == TSDataType.STRING) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = (Binary) statistics.getFirstValue();
+          binaryValues[1] = (Binary) statistics.getLastValue();
+          long[] longValues = new long[2];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        } else if (targetDataType == TSDataType.BLOB) {
+          statistics.update(statistics.getStartTime(), EMPTY_BINARY);
+          statistics.update(statistics.getEndTime(), EMPTY_BINARY);
+        }
+        break;
+      case BLOB:
+        if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
+          Binary[] binaryValues = new Binary[2];
+          binaryValues[0] = EMPTY_BINARY;
+          binaryValues[1] = EMPTY_BINARY;
+          long[] longValues = new long[2];
+          longValues[0] = statistics.getStartTime();
+          longValues[1] = statistics.getEndTime();
+          statistics.update(longValues, binaryValues, binaryValues.length);
+        }
+        break;
+      default:
+        break;
+    }
+    return statistics;
+  }
 }
