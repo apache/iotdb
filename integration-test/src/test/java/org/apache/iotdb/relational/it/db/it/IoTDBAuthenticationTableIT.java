@@ -1135,14 +1135,7 @@ public class IoTDBAuthenticationTableIT {
               e.getMessage());
         }
 
-        try {
-          sessionB.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
-        } catch (StatementExecutionException e) {
-          assertEquals(
-              "803: Access Denied: No permissions for this operation, please add privilege ALTER ON test3.t1",
-              e.getMessage());
-          fail("Should not run here");
-        }
+        sessionB.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
       }
     }
   }
