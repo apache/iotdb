@@ -442,7 +442,27 @@ public class IoTDBAlterTimeSeriesTypeIT {
             "ALTER TIMESERIES " + database + ".non_exist.s1 SET DATA TYPE INT64");
         fail("Should throw exception");
       } catch (StatementExecutionException e) {
-        assertEquals("508: Path [" + database + ".non_exist.s1] does not exist", e.getMessage());
+        assertEquals(
+            "508: Timeseries ["
+                + database
+                + ".non_exist.s1] does not exist or is represented by device template",
+            e.getMessage());
+      }
+
+      // Make the "non_exist" device exist, test the  "nonexist" measurement if it can be altered
+      // data type.
+      try {
+        session.executeNonQueryStatement(
+            "CREATE TIMESERIES " + database + ".d1.int32 WITH DATATYPE=INT32");
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES " + database + ".d1.nonexistent SET DATA TYPE STRING");
+        fail("Should throw exception");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Alter timeseries data type in schema regions failed. Failures: {DataNodeId: 1=[TSStatus(code:508, message:Path ["
+                + database
+                + ".d1.nonexistent] does not exist)]}",
+            e.getMessage());
       }
     }
   }

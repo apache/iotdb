@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
@@ -61,6 +62,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 public class AlterTimeSeriesDataTypeProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterTimeSeriesDataTypeState> {
@@ -103,7 +105,7 @@ public class AlterTimeSeriesDataTypeProcedure
           LOGGER.info(
               "Check and invalidate series {} when altering time series data type",
               measurementPath.getFullPath());
-          checkAndPreAlterTimeSeries();
+          checkAndPreAlterTimeSeries(env);
           break;
         case ALTER_TIME_SERIES_DATA_TYPE:
           LOGGER.info("altering time series {} data type", measurementPath.getFullPath());
@@ -142,7 +144,81 @@ public class AlterTimeSeriesDataTypeProcedure
     }
   }
 
-  private void checkAndPreAlterTimeSeries() {
+  private void checkAndPreAlterTimeSeries(final ConfigNodeProcedureEnv env) {
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(measurementPath);
+    patternTree.constructTree();
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedSchemaRegionGroup =
+        env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false);
+    if (relatedSchemaRegionGroup.isEmpty()) {
+      setFailure(
+          new ProcedureException(
+              new PathNotExistException(
+                  patternTree.getAllPathPatterns().stream()
+                      .map(PartialPath::getFullPath)
+                      .collect(Collectors.toList()),
+                  false)));
+    }
+
+    final DataNodeTSStatusTaskExecutor<TAlterTimeSeriesReq> alterTimeSeriesDataTypeTask =
+        new DataNodeTSStatusTaskExecutor<TAlterTimeSeriesReq>(
+            env,
+            env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false),
+            false,
+            CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TAlterTimeSeriesReq(
+                    consensusGroupIdList,
+                    queryId,
+                    measurementPathBytes,
+                    operationType,
+                    prepareDataTypeBytesData()))) {
+
+          @Override
+          protected List<TConsensusGroupId> processResponseOfOneDataNode(
+              final TDataNodeLocation dataNodeLocation,
+              final List<TConsensusGroupId> consensusGroupIdList,
+              final TSStatus response) {
+            final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
+            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              failureMap.remove(dataNodeLocation);
+              return failedRegionList;
+            }
+
+            if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+              final List<TSStatus> subStatus = response.getSubStatus();
+              for (int i = 0; i < subStatus.size(); i++) {
+                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                    && subStatus.get(i).getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+                  failedRegionList.add(consensusGroupIdList.get(i));
+                }
+              }
+            } else if (response.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+              failedRegionList.addAll(consensusGroupIdList);
+            }
+            if (!failedRegionList.isEmpty()) {
+              failureMap.put(dataNodeLocation, RpcUtils.extractFailureStatues(response));
+            } else {
+              failureMap.remove(dataNodeLocation);
+            }
+            return failedRegionList;
+          }
+
+          @Override
+          protected void onAllReplicasetFailure(
+              final TConsensusGroupId consensusGroupId,
+              final Set<TDataNodeLocation> dataNodeLocationSet) {
+            setFailure(
+                new ProcedureException(
+                    new MetadataException(
+                        String.format(
+                            "Alter timeseries data type in schema regions failed. Failures: %s",
+                            printFailureMap()))));
+            interruptTask();
+          }
+        };
+    alterTimeSeriesDataTypeTask.execute();
+
     if (dataType != null) {
       setNextState(AlterTimeSeriesDataTypeState.ALTER_TIME_SERIES_DATA_TYPE);
     } else {
@@ -334,7 +410,7 @@ public class AlterTimeSeriesDataTypeProcedure
 
   public void setMeasurementPath(final MeasurementPath measurementPath) {
     this.measurementPath = measurementPath;
-    measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
+    this.measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
   }
 
   public static ByteBuffer prepareMeasurementPathBytesData(final MeasurementPath measurementPath) {
@@ -357,6 +433,16 @@ public class AlterTimeSeriesDataTypeProcedure
       // ByteArrayOutputStream won't throw IOException
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public ByteBuffer prepareDataTypeBytesData() {
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
+    try {
+      ReadWriteIOUtils.write(dataType, stream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return ByteBuffer.wrap(stream.toByteArray());
   }
 
   @Override
