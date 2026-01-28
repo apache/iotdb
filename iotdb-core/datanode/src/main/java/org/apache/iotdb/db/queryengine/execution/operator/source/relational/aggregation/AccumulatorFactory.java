@@ -156,14 +156,7 @@ public class AccumulatorFactory {
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
               : new FirstDescAccumulator(inputDataTypes.get(0));
     } else {
-      result =
-          createBuiltinAccumulator(
-              aggregationType,
-              inputDataTypes,
-              inputExpressions,
-              inputAttributes,
-              ascending,
-              isAggTableScan);
+      result = createBuiltinAccumulator(aggregationType, inputDataTypes);
     }
 
     if (distinct) {
@@ -301,12 +294,7 @@ public class AccumulatorFactory {
   }
 
   public static TableAccumulator createBuiltinAccumulator(
-      TAggregationType aggregationType,
-      List<TSDataType> inputDataTypes,
-      List<Expression> inputExpressions,
-      Map<String, String> inputAttributes,
-      boolean ascending,
-      boolean isAggTableScan) {
+      TAggregationType aggregationType, List<TSDataType> inputDataTypes) {
     switch (aggregationType) {
       case COUNT:
         return new CountAccumulator();

@@ -3463,13 +3463,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(Collectors.toList());
 
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            arguments.stream().map(Map.Entry::getKey).collect(Collectors.toList()),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -4219,13 +4213,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            function.getArguments(),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     // Create aggregator by accumulator
     return new WindowAggregator(

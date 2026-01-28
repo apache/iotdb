@@ -47,7 +47,6 @@ public class IoTDBTableWithDefinedTimeIT {
 
   private static final String TABLE_DATABASE = "user_defined_time";
   private static final String VIEW_DATABASE = "user_defined_time_for_view";
-  private static final String SELECT_DATABASE = "select_agg_function";
   private static final String[] SQLS =
       new String[] {"CREATE DATABASE " + TABLE_DATABASE, "CREATE DATABASE " + VIEW_DATABASE};
   private final String header = "ColumnName,DataType,Category,";
