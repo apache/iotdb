@@ -201,12 +201,11 @@ public class AlterTimeSeriesDataTypeProcedure
             if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               final List<TSStatus> subStatus = response.getSubStatus();
               for (int i = 0; i < subStatus.size(); i++) {
-                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    && subStatus.get(i).getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   failedRegionList.add(consensusGroupIdList.get(i));
                 }
               }
-            } else if (response.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode()) {
+            } else {
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
