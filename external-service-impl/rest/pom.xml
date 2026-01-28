@@ -159,6 +159,7 @@
             <artifactId>caffeine</artifactId>
             <scope>provided</scope>
             <exclusions>
+                <!-- version conflicts with checker-qual in guava -->
                 <exclusion>
                     <groupId>org.checkerframework</groupId>
                     <artifactId>checker-qual</artifactId>
