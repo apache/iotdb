@@ -125,6 +125,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showRegionColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowMigrationsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showMigrationsColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowAINodesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showAINodesColumnHeaders, true);
   }
