@@ -118,7 +118,15 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryRowCount = entry.getValue();
       if (!alignedTvList.isSorted() && queryRowCount > alignedTvList.seqRowCount()) {
-        alignedTvList.sort();
+        // sort() returns the current row count
+        // TVList may grow between prepareTvListMapForQuery and actual query execution(now).
+        // The queryRowCount recorded here is only a snapshot taken during prepareTvListMapForQuery
+        // phase.
+        // Additional written rows that are not covered by the original queryRowCount can be
+        // involved in current sort operation.
+        // We must update queryRowCount here, otherwise, it may be used later to build
+        // BitMaps, causing bitmap array size mismatch and possible out of bound.
+        entry.setValue(alignedTvList.sort());
         long alignedTvListRamSize = alignedTvList.calculateRamSize();
         alignedTvList.lockQueryList();
         try {
@@ -375,7 +383,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       AlignedTVList alignedTvList = (AlignedTVList) entry.getKey();
       int queryLength = entry.getValue();
       if (!alignedTvList.isSorted() && queryLength > alignedTvList.seqRowCount()) {
-        alignedTvList.sort();
+        entry.setValue(alignedTvList.sort());
         long alignedTvListRamSize = alignedTvList.calculateRamSize();
         alignedTvList.lockQueryList();
         try {
