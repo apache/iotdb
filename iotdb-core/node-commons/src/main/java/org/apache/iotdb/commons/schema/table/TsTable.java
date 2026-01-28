@@ -183,7 +183,6 @@ public class TsTable {
    * the map during copy (e.g., for rename operations) in a single pass.
    *
    * @param columnSchemaMapTransformer transforms columnSchemaMap entries during copy
-   * @param writeOperation the write operation to execute on the new map copies
    */
   private void executeWriteWithTransform(ColumnSchemaMapTransformer columnSchemaMapTransformer) {
     readWriteLock.writeLock().lock();
