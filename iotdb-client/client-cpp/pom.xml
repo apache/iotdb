@@ -38,6 +38,7 @@
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
+        <with.ssl>false</with.ssl>
     </properties>
     <dependencies>
         <dependency>
@@ -217,6 +218,7 @@
                             <targetPath>${project.build.directory}/build/main</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -233,6 +235,7 @@
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>

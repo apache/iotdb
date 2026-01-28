@@ -42,6 +42,56 @@ def test_simple_query():
     assert_array_equal(df.values, [[123.0, 15.0]])
 
 
+def test_stream_query():
+    with IoTDBContainer("iotdb:dev") as db:
+        db: IoTDBContainer
+        session = Session(
+            db.get_container_host_ip(), db.get_exposed_port(6667), fetch_size=1
+        )
+        session.open(False)
+        session.execute_non_query_statement("CREATE DATABASE root.device0")
+
+        # Write data
+        session.insert_str_record("root.device0", 123, "pressure", "15.0")
+        session.insert_str_record("root.device0", 124, "pressure", "15.0")
+        session.insert_str_record("root.device0", 125, "pressure", "15.0")
+
+        # Read
+        session_data_set = session.execute_query_statement("SELECT * FROM root.device0")
+        index = 0
+        while session_data_set.has_next_df():
+            df = session_data_set.next_df()
+            assert list(df.columns) == ["Time", "root.device0.pressure"]
+            assert_array_equal(df.values, [[123.0 + index, 15.0]])
+            index += 1
+        session.close()
+        assert index == 3
+
+
+def test_stream_query_with_illegal_fetch_size():
+    with IoTDBContainer("iotdb:dev") as db:
+        db: IoTDBContainer
+        session = Session(
+            db.get_container_host_ip(), db.get_exposed_port(6667), fetch_size=-1
+        )
+        session.open(False)
+        session.execute_non_query_statement("CREATE DATABASE root.device0")
+
+        # Write data
+        session.insert_str_record("root.device0", 123, "pressure", "15.0")
+        session.insert_str_record("root.device0", 124, "pressure", "15.0")
+        session.insert_str_record("root.device0", 125, "pressure", "15.0")
+
+        # Read
+        session_data_set = session.execute_query_statement("SELECT * FROM root.device0")
+
+        while session_data_set.has_next_df():
+            df = session_data_set.next_df()
+            assert list(df.columns) == ["Time", "root.device0.pressure"]
+            assert_array_equal(df.values, [[123.0, 15.0], [124.0, 15.0], [125.0, 15.0]])
+        session.close()
+
+
 def test_non_time_query():
     with IoTDBContainer("iotdb:dev") as db:
         db: IoTDBContainer

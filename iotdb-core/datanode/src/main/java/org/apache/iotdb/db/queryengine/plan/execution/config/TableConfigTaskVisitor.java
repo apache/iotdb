@@ -641,6 +641,10 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     final DataType dataType = node.getDataType();
     final boolean ifTableExists = node.isIfTableExists();
     final boolean ifColumnExists = node.isIfColumnExists();
+    accessControl.checkCanAlterTable(
+        context.getSession().getUserName(),
+        new QualifiedObjectName(databaseTablePair.getLeft(), databaseTablePair.getRight()),
+        context);
     return new AlterColumnDataTypeTask(
         databaseTablePair.getLeft(),
         databaseTablePair.getRight(),

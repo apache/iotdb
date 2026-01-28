@@ -20,7 +20,9 @@
 #define IOTDB_THRIFTCONNECTION_H
 
 #include <memory>
+#if WITH_SSL
 #include <thrift/transport/TSSLSocket.h>
+#endif
 #include "IClientRPCService.h"
 
 class SessionDataSet;
@@ -60,8 +62,10 @@ private:
     int connectionTimeoutInMs_;
     int fetchSize_;
 
+#if WITH_SSL
     std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
         std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
+#endif
     std::shared_ptr<apache::thrift::transport::TTransport> transport_;
     std::shared_ptr<IClientRPCServiceClient> client_;
     int64_t sessionId_{};

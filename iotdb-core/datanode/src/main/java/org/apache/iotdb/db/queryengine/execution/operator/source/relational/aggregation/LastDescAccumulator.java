@@ -59,144 +59,138 @@ public class LastDescAccumulator extends LastAccumulator {
 
   @Override
   protected void addIntInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateIntLastValue(valueColumn.getInt(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateIntLastValue(valueColumn.getInt(position), timeColumn.getLong(position));
-          return;
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Time is not null. Attempt to update the value with the minimum time.
+        updateIntLastValue(valueColumn.getInt(position), timeColumn.getLong(position));
+        return;
+      } else {
+        // Case B: Time is NULL, the nullTimeValue should only be assigned once
+        updateIntNullTimeValue(valueColumn.getInt(position));
       }
     }
   }
 
   @Override
   protected void addLongInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateLongLastValue(valueColumn.getLong(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateLongLastValue(valueColumn.getLong(position), timeColumn.getLong(position));
-          return;
-        }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Time is not null. Attempt to update the value with the minimum time.
+        updateLongLastValue(valueColumn.getLong(position), timeColumn.getLong(position));
+        return;
+      } else {
+        // Case B: Time is NULL, the nullTimeValue should only be assigned once
+        updateLongNullTimeValue(valueColumn.getLong(position));
       }
     }
   }
 
   @Override
   protected void addFloatInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateFloatLastValue(valueColumn.getFloat(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateFloatLastValue(valueColumn.getFloat(position), timeColumn.getLong(position));
-          return;
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateFloatLastValue(valueColumn.getFloat(position), timeColumn.getLong(position));
+        return;
+      } else {
+        updateFloatNullTimeValue(valueColumn.getFloat(position));
       }
     }
   }
 
   @Override
   protected void addDoubleInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateDoubleLastValue(valueColumn.getDouble(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateDoubleLastValue(valueColumn.getDouble(position), timeColumn.getLong(position));
-          return;
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateDoubleLastValue(valueColumn.getDouble(position), timeColumn.getLong(position));
+        return;
+      } else {
+        updateDoubleNullTimeValue(valueColumn.getDouble(position));
       }
     }
   }
 
   @Override
   protected void addBinaryInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateBinaryLastValue(valueColumn.getBinary(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateBinaryLastValue(valueColumn.getBinary(position), timeColumn.getLong(position));
-          return;
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateBinaryLastValue(valueColumn.getBinary(position), timeColumn.getLong(position));
+        return;
+      } else {
+        updateBinaryNullTimeValue(valueColumn.getBinary(position));
       }
     }
   }
 
   @Override
   protected void addBooleanInput(Column valueColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!valueColumn.isNull(i)) {
-          updateBooleanLastValue(valueColumn.getBoolean(i), timeColumn.getLong(i));
-          return;
-        }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (valueColumn.isNull(position)) {
+        continue;
       }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!valueColumn.isNull(position)) {
-          updateBooleanLastValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
-          return;
-        }
+
+      if (!timeColumn.isNull(position)) {
+        updateBooleanLastValue(valueColumn.getBoolean(position), timeColumn.getLong(position));
+        return;
+      } else {
+        updateBooleanNullTimeValue(valueColumn.getBoolean(position));
       }
     }
   }

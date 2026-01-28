@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.schema;
 
+import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.isession.ISession;
@@ -443,6 +444,24 @@ public class IoTDBAlterTimeSeriesTypeIT {
         fail("Should throw exception");
       } catch (StatementExecutionException e) {
         assertEquals("508: Path [" + database + ".non_exist.s1] does not exist", e.getMessage());
+      }
+
+      // Make the "non_exist" device exist, test the  "nonexist" measurement if it can be altered
+      // data type.
+      try {
+        session.executeNonQueryStatement(
+            "CREATE TIMESERIES " + database + ".d1.int32 WITH DATATYPE=INT32");
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES " + database + ".d1.nonexistent SET DATA TYPE STRING");
+        fail("Should throw exception");
+      } catch (StatementExecutionException e) {
+        assertEquals(
+            "507: Alter timeseries "
+                + database
+                + ".d1.nonexistent data type to STRING in schema regions failed. Failures: {DataNodeId: 1=[TSStatus(code:508, message:Path ["
+                + database
+                + ".d1.nonexistent] does not exist)]}",
+            e.getMessage());
       }
     }
   }
@@ -2747,6 +2766,41 @@ public class IoTDBAlterTimeSeriesTypeIT {
       Assert.assertEquals("701: Unsupported datatype: STAR", e.getMessage());
     } catch (IoTDBConnectionException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void testCrossPartitionWrite()
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement("CREATE DATABASE root.cross_partition");
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES root.cross_partition.device1.sensor1 WITH DATATYPE=INT32,ENCODING=RLE");
+
+      // Insert data into two partitions
+      Tablet tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT32, TSEncoding.RLE)));
+      tablet.addTimestamp(0, 0);
+      tablet.addValue("sensor1", 0, 0);
+      tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
+      tablet.addValue("sensor1", 1, 1);
+      session.insertTablet(tablet);
+
+      session.executeNonQueryStatement(
+          "ALTER TIMESERIES root.cross_partition.device1.sensor1 SET DATA TYPE INT64");
+
+      // Insert data with altered type
+      tablet =
+          new Tablet(
+              "root.cross_partition.device1",
+              Arrays.asList(new MeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.RLE)));
+      tablet.addTimestamp(0, 0);
+      tablet.addValue("sensor1", 0, 0L);
+      tablet.addTimestamp(1, CommonConfig.DEFAULT_TIME_PARTITION_INTERVAL);
+      tablet.addValue("sensor1", 1, 1L);
+      session.insertTablet(tablet);
     }
   }
 }
