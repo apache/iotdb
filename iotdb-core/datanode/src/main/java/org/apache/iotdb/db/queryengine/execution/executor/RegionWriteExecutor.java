@@ -92,7 +92,6 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class RegionWriteExecutor {
@@ -164,7 +163,7 @@ public class RegionWriteExecutor {
       return planNode.accept(executionVisitor, new WritePlanNodeExecutionContext(groupId, lock));
     } catch (final Throwable e) {
       // Detect problems caused by removed region
-      if (Objects.isNull(regionManager.getRegionLock(groupId))) {
+      if (!regionManager.isRegionExists(groupId)) {
         final String errorMsg =
             "Exception "
                 + e.getClass().getSimpleName()
