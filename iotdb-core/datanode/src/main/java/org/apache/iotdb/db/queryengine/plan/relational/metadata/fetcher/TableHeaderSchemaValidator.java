@@ -64,6 +64,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
@@ -659,6 +660,18 @@ public class TableHeaderSchemaValidator {
       return tsTable;
     }
 
+    long timeCandidateNums =
+        Arrays.stream(measurementInfo.getColumnCategories())
+            .filter(columnDefinition -> TsTableColumnCategory.TIME == columnDefinition)
+            .count();
+    if (timeCandidateNums > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeCandidateNums == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    }
+
     boolean hasObject = false;
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] == null) {
@@ -682,12 +695,16 @@ public class TableHeaderSchemaValidator {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-
       TSDataType dataType = measurementInfo.getType(i);
       if (dataType == null && (dataType = measurementInfo.getTypeForFirstValue(i)) == null) {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnName + " datatype is not provided");
       }
+
+      if (category == TsTableColumnCategory.TIME && dataType != TSDataType.TIMESTAMP) {
+        throw new SemanticException("The time column's type shall be 'timestamp'.");
+      }
+
       hasObject |= dataType == TSDataType.OBJECT;
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
     }
