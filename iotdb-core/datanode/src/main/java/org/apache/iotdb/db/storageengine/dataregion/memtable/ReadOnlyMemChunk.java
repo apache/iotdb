@@ -135,7 +135,7 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
         long tvListRamSize = tvList.calculateRamSize();
         tvList.lockQueryList();
         try {
@@ -287,7 +287,7 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
         long tvListRamSize = tvList.calculateRamSize();
         tvList.lockQueryList();
         try {
