@@ -57,9 +57,9 @@
         <!-- This was the last version to support Java 8 -->
         <antlr4.version>4.9.3</antlr4.version>
         <!-- By default, the argLine is empty-->
-        <argLine />
+        <argLine/>
         <awaitility.version>4.2.0</awaitility.version>
-        <boost.include.dir />
+        <boost.include.dir/>
         <!-- This was the last version to support Java 8 -->
         <caffeine.version>2.9.3</caffeine.version>
         <cglib.version>3.3.0</cglib.version>
@@ -69,7 +69,6 @@
         <commons-codec.version>1.16.1</commons-codec.version>
         <commons-csv.version>1.10.0</commons-csv.version>
         <commons-io.version>2.14.0</commons-io.version>
-        <commons-jexl3.version>3.3</commons-jexl3.version>
         <commons-lang3.version>3.18.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
         <commons-pool2.version>2.11.1</commons-pool2.version>
@@ -165,7 +164,7 @@
         <!-- This was the last version to support Java 8 -->
         <swagger.version>1.6.14</swagger.version>
         <thrift.exec-cmd.executable>chmod</thrift.exec-cmd.executable>
-        <thrift.exec.absolute.path />
+        <thrift.exec.absolute.path/>
         <!--
       Thrift 0.17.0 was the last version that could be used in Java 8 applications,
       However Thrift 0.17.0 has an invalid entry in the META-INF/MANIFEST.mf file.
@@ -509,11 +508,6 @@
                 <groupId>cglib</groupId>
                 <artifactId>cglib</artifactId>
                 <version>${cglib.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-jexl3</artifactId>
-                <version>${commons-jexl3.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.github.luben</groupId>
@@ -888,7 +882,7 @@
                             <importOrder>
                                 <order>org.apache.iotdb,,javax,java,\#</order>
                             </importOrder>
-                            <removeUnusedImports />
+                            <removeUnusedImports/>
                         </java>
                         <lineEndings>UNIX</lineEndings>
                     </configuration>
@@ -1126,7 +1120,7 @@
                         <phase>validate</phase>
                         <configuration>
                             <rules>
-                                <dependencyConvergence />
+                                <dependencyConvergence/>
                             </rules>
                         </configuration>
                     </execution>
