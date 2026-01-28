@@ -114,7 +114,6 @@
     "org.bouncycastle:bcprov-jdk18on",
     "org.bouncycastle:bcutil-jdk18on",
     "org.checkerframework:checker-qual",
-    "org.checkerframework:checker-qual",
     "org.eclipse.collections:eclipse-collections",
     "org.eclipse.collections:eclipse-collections-api",
     "org.eclipse.jetty:jetty-http",
