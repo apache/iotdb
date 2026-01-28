@@ -596,7 +596,7 @@ class ChronosBoltPipeline(BaseChronosPipeline):
             context_tensor = torch.cat([context_tensor, prediction], dim=-1)[
                 ..., -self.model_context_length :
             ]
-            (batch_size, n_quantiles, context_length) = context_tensor.shape
+            batch_size, n_quantiles, context_length = context_tensor.shape
 
             with torch.no_grad():
                 # Reshape (batch, n_quantiles, context_length) -> (batch * n_quantiles, context_length)
