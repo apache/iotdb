@@ -101,6 +101,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     } finally {
       reader.close();
     }
+    int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
       TimePartitionTableSizeQueryContext timePartitionContext = timePartitionEntry.getValue();
@@ -111,8 +112,10 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
         Assert.assertNotEquals("table3", tableName);
         Assert.assertNotEquals("table4", tableName);
         Assert.assertTrue(size > 0);
+        entryNum++;
       }
     }
+    Assert.assertEquals(2, entryNum);
   }
 
   @Test
@@ -150,6 +153,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     } finally {
       reader.close();
     }
+    int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
       TimePartitionTableSizeQueryContext timePartitionContext = timePartitionEntry.getValue();
@@ -160,8 +164,10 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
         Assert.assertNotEquals("table3", tableName);
         Assert.assertNotEquals("table4", tableName);
         Assert.assertTrue(size > 10000000L);
+        entryNum++;
       }
     }
+    Assert.assertEquals(2, entryNum);
   }
 
   @Test
@@ -198,6 +204,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     } finally {
       reader.close();
     }
+    int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
       TimePartitionTableSizeQueryContext timePartitionContext = timePartitionEntry.getValue();
@@ -208,8 +215,63 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
         Assert.assertNotEquals("table3", tableName);
         Assert.assertNotEquals("table4", tableName);
         Assert.assertTrue(size < 10000000L && size > 0);
+        entryNum++;
       }
     }
+    Assert.assertEquals(2, entryNum);
+  }
+
+  @Test
+  public void test4() throws Exception {
+    TsFileResource resource1 = prepareFile(4);
+    Map<String, Long> tableSizeMap = new HashMap<>();
+    tableSizeMap.put("table1", 10000000L);
+    tableSizeMap.put("table2", 10000000L);
+    TableDiskUsageCache.getInstance()
+        .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), tableSizeMap);
+
+    TsFileResource resource2 = prepareFile(4);
+    mockTsFileManager.add(resource2, true);
+    // resource1 renamed to resource2 and recorded in cache
+    TableDiskUsageCache.getInstance()
+        .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), resource2.getTsFileID());
+
+    DataRegionTableSizeQueryContext context = new DataRegionTableSizeQueryContext(false);
+    // only query table1 and table2
+    Map<String, Long> timePartitionTableSizeMap = new HashMap<>();
+    timePartitionTableSizeMap.put("table1", 0L);
+    timePartitionTableSizeMap.put("table2", 0L);
+    context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
+    TableDiskUsageCacheReader reader =
+        new TableDiskUsageCacheReader(mockDataRegion, context, false);
+    try {
+      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
+    } finally {
+      reader.close();
+    }
+    int entryNum = 0;
+    for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
+        context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
+      TimePartitionTableSizeQueryContext timePartitionContext = timePartitionEntry.getValue();
+      for (Map.Entry<String, Long> entry :
+          timePartitionContext.getTableSizeResultMap().entrySet()) {
+        String tableName = entry.getKey();
+        long size = entry.getValue();
+        Assert.assertNotEquals("table3", tableName);
+        Assert.assertNotEquals("table4", tableName);
+        Assert.assertEquals(10000000L, size);
+        entryNum++;
+      }
+    }
+    Assert.assertEquals(2, entryNum);
   }
 
   private TsFileResource prepareFile(int tableNum) throws IOException {

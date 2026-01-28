@@ -158,7 +158,7 @@ public class TsFileTableSizeCacheReader {
               keyFileEntry.tsFileID, keyFileEntry.offset);
         } else {
           dataRegionContext.replaceCachedTsFileID(
-              keyFileEntry.tsFileID, keyFileEntry.originTsFileID);
+              keyFileEntry.originTsFileID, keyFileEntry.tsFileID);
         }
       } catch (IOException e) {
         closeCurrentFile();
