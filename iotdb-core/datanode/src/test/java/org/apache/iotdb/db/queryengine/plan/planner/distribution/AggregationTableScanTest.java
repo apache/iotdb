@@ -19,89 +19,159 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.distribution;
 
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import org.apache.iotdb.common.rpc.thrift.TAggregationType;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.FirstDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.TableAccumulator;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.concurrent.ExecutorService;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
-import org.apache.iotdb.db.queryengine.common.QueryId;
-import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.execution.fragment.DataNodeQueryContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
-import org.apache.iotdb.db.queryengine.plan.analyze.Analyzer;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakePartitionFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.analyze.FakeSchemaFetcherImpl;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
-import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.LogicalPlanner;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
-import org.apache.iotdb.db.queryengine.plan.statement.Statement;
-import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
-import org.apache.iotdb.db.storageengine.dataregion.IDataRegionForQuery;
-
+import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
-import org.mockito.Mockito;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.concurrent.ExecutorService;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.junit.Assert.assertTrue;
+
 public class AggregationTableScanTest {
 
+  private static final String TIME_COL = "time";
+  private static final String S1_COL = "s1";
+  private static final String S2_COL = "s2";
+
   @Test
-  public void lastAggTest() {
-    final String sql = null;
-    DataNodeQueryContext dataNodeQueryContext = new DataNodeQueryContext(1);
+  public void testFirstAccumulator() {
+    // Case 1: Ascending scan ordered by time -> Use optimized FirstAccumulator
+    verifyAccumulator("first", TAggregationType.FIRST, true, true, FirstAccumulator.class);
 
-    SessionInfo sessionInfo =
-        new SessionInfo(
-            0, "root", ZoneId.systemDefault(), "last_agg_db", IClientSession.SqlDialect.TABLE);
-    QueryId queryId = new QueryId("test");
-    MPPQueryContext context =
-        new MPPQueryContext(
-            sql,
-            queryId,
-            sessionInfo,
-            new TEndPoint("127.0.0.1", 6667),
-            new TEndPoint("127.0.0.1", 6667));
-    Analyzer analyzer =
-        new Analyzer(context, new FakePartitionFetcherImpl(), new FakeSchemaFetcherImpl());
-    Statement statement = StatementGenerator.createStatement(sql, ZonedDateTime.now().getOffset());
-    Analysis analysis = analyzer.analyze(statement);
-    LogicalPlanner logicalPlanner = new LogicalPlanner(context);
-    LogicalQueryPlan logicalPlan = logicalPlanner.plan(analysis);
-    DistributionPlanner distributionPlanner = new DistributionPlanner(analysis, logicalPlan);
-    FragmentInstance instance = distributionPlanner.planFragments().getInstances().get(0);
+    // Case 2: Descending scan ordered by time -> Use FirstDescAccumulator
+    verifyAccumulator("first", TAggregationType.FIRST, false, true, FirstDescAccumulator.class);
 
-    LocalExecutionPlanner localExecutionPlanner = LocalExecutionPlanner.getInstance();
-    localExecutionPlanner.plan(
-        instance.getFragment().getPlanNodeTree(),
-        instance.getFragment().getTypeProvider(),
-        mockFIContext(queryId),
-        dataNodeQueryContext);
+    // Case 3: Ordered by non-time column -> Fallback to FirstDescAccumulator
+    verifyAccumulator("first", TAggregationType.FIRST, true, false, FirstDescAccumulator.class);
   }
 
-  private FragmentInstanceContext mockFIContext(QueryId queryId) {
-    ExecutorService instanceNotificationExecutor =
-        IoTDBThreadPoolFactory.newFixedThreadPool(1, "last_agg-instance-notification");
-    FragmentInstanceId instanceId =
-        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-    FragmentInstanceStateMachine stateMachine =
-        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-    FragmentInstanceContext instanceContext =
-        createFragmentInstanceContext(instanceId, stateMachine);
-    IDataRegionForQuery dataRegionForQuery = Mockito.mock(DataRegion.class);
-    instanceContext.setDataRegion(dataRegionForQuery);
-    return instanceContext;
+  @Test
+  public void testLastAccumulator() {
+    // Case 1: Ascending scan ordered by time -> Use LastAccumulator
+    verifyAccumulator("last", TAggregationType.LAST, true, true, LastAccumulator.class);
+
+    // Case 2: Descending scan ordered by time -> Use LastDescAccumulator
+    verifyAccumulator("last", TAggregationType.LAST, false, true, LastDescAccumulator.class);
+
+    // Case 3: Ordered by non-time column -> Use LastAccumulator
+    verifyAccumulator("last", TAggregationType.LAST, false, false, LastAccumulator.class);
+  }
+
+  @Test
+  public void testFirstByAccumulator() {
+    // Case 1: Ascending scan ordered by time -> Use optimized FirstByAccumulator
+    verifyByAccumulator(
+        "first_by", TAggregationType.FIRST_BY, true, true, FirstByAccumulator.class);
+
+    // Case 2: Descending scan ordered by time -> Use FirstByDescAccumulator
+    verifyByAccumulator(
+        "first_by", TAggregationType.FIRST_BY, false, true, FirstByDescAccumulator.class);
+
+    // Case 3: Ordered by non-time column -> Fallback to FirstByDescAccumulator
+    verifyByAccumulator(
+        "first_by", TAggregationType.FIRST_BY, true, false, FirstByDescAccumulator.class);
+  }
+
+  @Test
+  public void testLastByAccumulator() {
+    // Case 1: Ascending scan ordered by time -> Use LastByAccumulator
+    verifyByAccumulator("last_by", TAggregationType.LAST_BY, true, true, LastByAccumulator.class);
+
+    // Case 2: Descending scan ordered by time -> Use LastByDescAccumulator
+    verifyByAccumulator(
+        "last_by", TAggregationType.LAST_BY, false, true, LastByDescAccumulator.class);
+
+    // Case 3: Ordered by non-time column -> Use LastByAccumulator
+    verifyByAccumulator("last_by", TAggregationType.LAST_BY, false, false, LastByAccumulator.class);
+  }
+
+  private void verifyAccumulator(
+      String funcName,
+      TAggregationType aggType,
+      boolean ascending,
+      boolean isTimeOrder,
+      Class<?> expectedClass) {
+    List<Expression> inputExpressions =
+        Arrays.asList(
+            new SymbolReference(S1_COL), new SymbolReference(isTimeOrder ? TIME_COL : S2_COL));
+    List<TSDataType> inputDataTypes = Collections.singletonList(TSDataType.INT32);
+
+    doCreateAndAssert(
+        funcName, aggType, inputDataTypes, inputExpressions, ascending, expectedClass);
+  }
+
+  private void verifyByAccumulator(
+      String funcName,
+      TAggregationType aggType,
+      boolean ascending,
+      boolean isTimeOrder,
+      Class<?> expectedClass) {
+
+    List<Expression> inputExpressions =
+        Arrays.asList(
+            new SymbolReference(S1_COL),
+            new SymbolReference(S2_COL),
+            new SymbolReference(isTimeOrder ? TIME_COL : S1_COL));
+    List<TSDataType> inputDataTypes = Arrays.asList(TSDataType.INT32, TSDataType.INT64);
+
+    doCreateAndAssert(
+        funcName, aggType, inputDataTypes, inputExpressions, ascending, expectedClass);
+  }
+
+  private void doCreateAndAssert(
+      String funcName,
+      TAggregationType aggType,
+      List<TSDataType> types,
+      List<Expression> expressions,
+      boolean ascending,
+      Class<?> expectedClass) {
+
+    Map<String, String> inputAttribute = new HashMap<>();
+    boolean isAggTableScan = true;
+    Set<String> measurementColumnNames = new HashSet<>(Collections.singletonList(S1_COL));
+    boolean distinct = false;
+
+    TableAccumulator accumulator =
+        AccumulatorFactory.createAccumulator(
+            funcName,
+            aggType,
+            types,
+            expressions,
+            inputAttribute,
+            ascending,
+            isAggTableScan,
+            TIME_COL,
+            measurementColumnNames,
+            distinct);
+
+    String msg =
+        String.format(
+            "Func: %s, Asc: %s, Expressions: %s. Expected: %s, Actual: %s",
+            funcName,
+            ascending,
+            expressions,
+            expectedClass.getSimpleName(),
+            accumulator.getClass().getSimpleName());
+
+    assertTrue(msg, expectedClass.isInstance(accumulator));
   }
 }
