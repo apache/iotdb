@@ -456,7 +456,9 @@ public class IoTDBAlterTimeSeriesTypeIT {
         fail("Should throw exception");
       } catch (StatementExecutionException e) {
         assertEquals(
-            "507: Alter timeseries " + database + ".d1.nonexistent data type to STRING in schema regions failed. Failures: {DataNodeId: 1=[TSStatus(code:508, message:Path ["
+            "507: Alter timeseries "
+                + database
+                + ".d1.nonexistent data type to STRING in schema regions failed. Failures: {DataNodeId: 1=[TSStatus(code:508, message:Path ["
                 + database
                 + ".d1.nonexistent] does not exist)]}",
             e.getMessage());
