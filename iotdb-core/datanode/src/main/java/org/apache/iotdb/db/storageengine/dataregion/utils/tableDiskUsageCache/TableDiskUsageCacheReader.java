@@ -39,7 +39,6 @@ import java.util.concurrent.CompletableFuture;
 public class TableDiskUsageCacheReader implements Closeable {
 
   private final DataRegion dataRegion;
-  private final int regionId;
   private final DataRegionTableSizeQueryContext dataRegionContext;
 
   private CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>>
@@ -64,7 +63,6 @@ public class TableDiskUsageCacheReader implements Closeable {
       DataRegionTableSizeQueryContext dataRegionContext,
       boolean databaseHasOnlyOneTable) {
     this.dataRegion = dataRegion;
-    this.regionId = Integer.parseInt(dataRegion.getDataRegionIdString());
     this.dataRegionContext = dataRegionContext;
     this.currentDatabaseOnlyHasOneTable = databaseHasOnlyOneTable;
     this.timePartitionIterator =

@@ -130,7 +130,6 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   }
 
   private int getVersion(String fileName) throws NumberFormatException {
-    int version = 0;
     String removePrefixStr = fileName.substring(TSFILE_CACHE_KEY_FILENAME_PREFIX.length());
     int suffixIdx = removePrefixStr.indexOf('.');
     return Integer.parseInt(

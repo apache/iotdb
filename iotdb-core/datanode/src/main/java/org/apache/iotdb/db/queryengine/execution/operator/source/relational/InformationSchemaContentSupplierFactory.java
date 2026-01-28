@@ -1214,6 +1214,9 @@ public class InformationSchemaContentSupplierFactory {
       AuthorityChecker.getAccessControl().checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // It is better to use an async ConfigNode client here.
+        // Using a synchronous client may block the calling thread when the ConfigNode response is
+        // slow or temporarily unavailable, which can cause the operator to exceed its maxRunTime
         this.databaseTableInfoMap = client.showTables4InformationSchema().getDatabaseTableInfoMap();
       }
       this.dataRegionIterator =

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
@@ -48,7 +49,7 @@ public class TableDiskUsageCache {
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>(1000);
   // regionId -> writer mapping
   protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
-  protected final ScheduledExecutorService scheduledExecutorService;
+  protected ScheduledExecutorService scheduledExecutorService;
   private int processedOperationCountSinceLastPeriodicCheck = 0;
   protected volatile boolean failedToRecover = false;
   private volatile boolean stop = false;
@@ -155,7 +156,13 @@ public class TableDiskUsageCache {
       DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
     StartReadOperation operation =
         new StartReadOperation(dataRegion, readTsFileCache, readObjectFileCache);
-    addOperationToQueue(operation);
+    if (!addOperationToQueue(operation)) {
+      operation.future.complete(
+          new Pair<>(
+              new TsFileTableSizeCacheReader(
+                  0, null, 0, null, dataRegion.getDataRegionId().getId()),
+              new EmptyObjectTableSizeCacheReader()));
+    }
     return operation.future;
   }
 
@@ -174,7 +181,9 @@ public class TableDiskUsageCache {
 
   public void remove(String database, int regionId) {
     RemoveRegionOperation operation = new RemoveRegionOperation(database, regionId);
-    addOperationToQueue(operation);
+    if (!addOperationToQueue(operation)) {
+      return;
+    }
     try {
       operation.future.get(5, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
@@ -184,15 +193,17 @@ public class TableDiskUsageCache {
     }
   }
 
-  protected void addOperationToQueue(Operation operation) {
+  protected boolean addOperationToQueue(Operation operation) {
     if (failedToRecover || stop) {
-      return;
+      return false;
     }
     try {
       queue.put(operation);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      return false;
     }
+    return true;
   }
 
   public int getQueueSize() {
@@ -208,8 +219,21 @@ public class TableDiskUsageCache {
       scheduledExecutorService.shutdown();
       scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS);
       writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
+      writerMap.clear();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+    }
+  }
+
+  @TestOnly
+  public void ensureRunning() {
+    stop = false;
+    failedToRecover = false;
+    if (scheduledExecutorService.isTerminated()) {
+      scheduledExecutorService =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+              ThreadName.FILE_TIME_INDEX_RECORD.getName());
+      scheduledExecutorService.submit(this::run);
     }
   }
 
