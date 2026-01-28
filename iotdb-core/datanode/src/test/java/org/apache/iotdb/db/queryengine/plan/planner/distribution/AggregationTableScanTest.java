@@ -51,7 +51,6 @@ import java.time.ZonedDateTime;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
-
 public class AggregationTableScanTest {
 
   @Test
