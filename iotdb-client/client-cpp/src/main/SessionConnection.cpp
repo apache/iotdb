@@ -100,11 +100,17 @@ SessionConnection::~SessionConnection() {
 
 void SessionConnection::init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath) {
     if (useSSL) {
+#if WITH_SSL
         socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
         socketFactory_->authenticate(false);
         auto sslSocket = socketFactory_->createSocket(endPoint.ip, endPoint.port);
         sslSocket->setConnTimeout(connectionTimeoutInMs);
         transport = std::make_shared<TFramedTransport>(sslSocket);
+#else
+        throw IoTDBException("SSL/TLS support is not enabled in this build. "
+                    "Please rebuild with -DWITH_SSL=ON flag "
+                    "or use non-SSL connection.");
+#endif
     } else {
         auto socket = std::make_shared<TSocket>(endPoint.ip, endPoint.port);
         socket->setConnTimeout(connectionTimeoutInMs);
