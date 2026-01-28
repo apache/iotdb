@@ -827,6 +827,8 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             || sourceParameters.hasAnyAttributes(
                 EXTRACTOR_PATH_KEY,
                 SOURCE_PATH_KEY,
+                EXTRACTOR_PATTERN_INCLUSION_KEY,
+                SOURCE_PATTERN_INCLUSION_KEY,
                 EXTRACTOR_PATH_EXCLUSION_KEY,
                 SOURCE_PATH_EXCLUSION_KEY);
 
