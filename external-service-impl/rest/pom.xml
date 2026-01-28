@@ -111,12 +111,6 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>external-service-api</artifactId>
-            <scope>provided</scope>
-            <version>2.0.7-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
             <artifactId>node-commons</artifactId>
             <version>2.0.7-SNAPSHOT</version>
             <scope>provided</scope>
@@ -219,11 +213,6 @@
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
