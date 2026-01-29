@@ -283,6 +283,10 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
+  public void setChunkMetadata(IChunkMetadata cachedMetaData) {
+    this.cachedMetaData = cachedMetaData;
+  }
+
   @TestOnly
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {

@@ -563,8 +563,14 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       isModified = (isModified || chunkMetadata.isModified());
       if (chunkMetadata != null && (chunkMetadata.getDataType() != targetDataType)) {
         // create new statistics object via new data type, and merge statistics information
-        SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
-            chunkMetadataList, index, targetDataType);
+        chunkMetadata =
+            SchemaUtils.rewriteChunkMetadata((ChunkMetadata) chunkMetadata, targetDataType);
+        if (chunkMetadata == null) {
+          // data type not match and cannot convert
+          // ignore current file
+          return null;
+        }
+        chunkMetadataList.set(index, chunkMetadata);
         chunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
@@ -584,8 +590,13 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
         if (memChunk.getChunkMetaData() != null
             && (memChunk.getChunkMetaData().getDataType() != targetDataType)) {
           // create new statistics object via new data type, and merge statistics information
-          SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
-              chunkMetadataList, index, targetDataType);
+          ChunkMetadata rewritedChunkMetadata =
+              SchemaUtils.rewriteChunkMetadata(
+                  (ChunkMetadata) memChunk.getChunkMetaData(), targetDataType);
+          if (rewritedChunkMetadata == null) {
+            return null;
+          }
+          memChunk.setChunkMetadata(rewritedChunkMetadata);
           memChunk.getChunkMetaData().setModified(true);
         }
         if (useFakeStatistics) {
