@@ -367,7 +367,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       }
     }
     boolean isOutputPathForView = ReadWriteIOUtils.readBool(byteBuffer);
-    TSDataType dataType = isOutputPathForView ? null : ReadWriteIOUtils.readDataType(byteBuffer);
+    TSDataType dataType = isOutputPathForView ? ReadWriteIOUtils.readDataType(byteBuffer) : null;
     boolean deviceInMultiRegion = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryScanNode(
