@@ -45,8 +45,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static org.glassfish.jersey.internal.guava.Preconditions.checkState;
-
 public class LastQueryScanNode extends LastSeriesSourceNode {
 
   private static final long INSTANCE_SIZE =
@@ -193,12 +191,12 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   }
 
   public String getOutputSymbolForSort() {
-    if (isOutputPathForView) {
-      checkState(
-          outputPaths != null && outputPaths.size() == 1,
-          "LastQueryScanNode outputPaths size should be 1 when it's a viewPath");
+    if (outputPaths != null && outputPaths.size() == 1) {
       return outputPaths.get(0);
     }
+    // If outputPaths is null or size > 1, it means there is no view and no alias, just return the
+    // device name is ok,
+    // because the measurements have been sorted in AnalyzeVisitor if needed.
     return devicePath.toString();
   }
 

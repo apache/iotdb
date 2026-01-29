@@ -253,11 +253,16 @@ public class LogicalPlanBuilder {
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-          String outputPath =
-              sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath().getFullPath()
-                  : null;
-          TSDataType outputViewPathType = outputPath == null ? null : selectedPath.getSeriesType();
+          String outputPath;
+          TSDataType outputViewPathType = null;
+          // the path is view, use the view path as the output path
+          if (sourceExpression.isViewExpression()) {
+            outputPath = sourceExpression.getViewPath().getFullPath();
+            outputViewPathType = selectedPath.getSeriesType();
+          } else {
+            outputPath = selectedPath.getFullPath();
+          }
+          // the path has alias, use alias as the output path
           if (selectedPath.isMeasurementAliasExists()) {
             outputPath =
                 selectedPath
