@@ -3037,12 +3037,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     if (node.isAligned()) {
       AlignedPath unCachedPath = new AlignedPath(node.getDevicePath());
+      // select output paths for uncached measurements
+      List<String> newOutputPaths = hasOutputPath ? new ArrayList<>() : null;
       for (int i : unCachedMeasurementIndexes) {
         IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
         unCachedPath.addMeasurement(measurementSchema.getMeasurementName(), measurementSchema);
+        if (hasOutputPath) {
+          newOutputPaths.add(node.getOutputPaths().get(i));
+        }
       }
       return createAlignedUpdateLastCacheOperator(
-          node.getOutputPaths(),
+          newOutputPaths,
           node.getPlanNodeId(),
           unCachedPath,
           context,

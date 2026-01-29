@@ -33,7 +33,8 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCacheOperator {
-
+  // Now not only a view path will be set here, but also the measurement path with alias will be set
+  // .e.g last query path: root.test.d1(s1(alias1), s2), outputPaths: [alias1, null]
   private final List<String> outputPaths;
   private int outputPathIndex = 0;
 
