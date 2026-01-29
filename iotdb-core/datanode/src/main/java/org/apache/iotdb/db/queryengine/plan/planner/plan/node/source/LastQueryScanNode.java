@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
@@ -45,6 +44,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+
+import static org.glassfish.jersey.internal.guava.Preconditions.checkState;
 
 public class LastQueryScanNode extends LastSeriesSourceNode {
 
@@ -64,7 +65,10 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
   // It will be set when the current Node is added to the child by the upper LastQueryNode.
   private List<IMeasurementSchema> globalMeasurementSchemaList;
 
-  private final String outputViewPath;
+  // Store alias of paths or viewPath in this field.
+  private final List<String> outputPaths;
+  // Indicate if there is viewPath stored in outputPaths.
+  private final boolean isOutputPathForView;
   private final TSDataType outputViewPathType;
 
   // The id of DataRegion where the node will run
@@ -76,16 +80,18 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       PartialPath devicePath,
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, new AtomicInteger(1));
     this.aligned = aligned;
     this.devicePath = devicePath;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
-    this.outputViewPath = outputViewPath;
+    this.outputPaths = outputPaths;
     this.outputViewPathType = outputViewPathType;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
+    this.isOutputPathForView = isOutputPathForView;
   }
 
   public LastQueryScanNode(
@@ -94,7 +100,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType) {
     this(
         id,
@@ -102,7 +109,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         aligned,
         indexOfMeasurementSchemas,
         dataNodeSeriesScanNum,
-        outputViewPath,
+        outputPaths,
+        isOutputPathForView,
         outputViewPathType,
         null);
   }
@@ -113,14 +121,16 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType,
       List<IMeasurementSchema> globalMeasurementSchemaList) {
     super(id, dataNodeSeriesScanNum);
     this.aligned = aligned;
     this.devicePath = devicePath;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
-    this.outputViewPath = outputViewPath;
+    this.outputPaths = outputPaths;
+    this.isOutputPathForView = isOutputPathForView;
     this.outputViewPathType = outputViewPathType;
     this.globalMeasurementSchemaList = globalMeasurementSchemaList;
   }
@@ -131,7 +141,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       boolean aligned,
       List<Integer> indexOfMeasurementSchemas,
       AtomicInteger dataNodeSeriesScanNum,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType,
       TRegionReplicaSet regionReplicaSet,
       boolean deviceInMultiRegion,
@@ -140,7 +151,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     this.devicePath = devicePath;
     this.aligned = aligned;
     this.indexOfMeasurementSchemas = indexOfMeasurementSchemas;
-    this.outputViewPath = outputViewPath;
+    this.outputPaths = outputPaths;
+    this.isOutputPathForView = isOutputPathForView;
     this.outputViewPathType = outputViewPathType;
     this.regionReplicaSet = regionReplicaSet;
     this.deviceInMultiRegion = deviceInMultiRegion;
@@ -168,17 +180,24 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     return this.aligned;
   }
 
-  public String getOutputViewPath() {
-    return outputViewPath;
+  public List<String> getOutputPaths() {
+    return outputPaths;
   }
 
   public TSDataType getOutputViewPathType() {
     return outputViewPathType;
   }
 
+  public boolean isOutputPathForView() {
+    return isOutputPathForView;
+  }
+
   public String getOutputSymbolForSort() {
-    if (outputViewPath != null) {
-      return outputViewPath;
+    if (isOutputPathForView) {
+      checkState(
+          outputPaths != null && outputPaths.size() == 1,
+          "LastQueryScanNode outputPaths size should be 1 when it's a viewPath");
+      return outputPaths.get(0);
     }
     return devicePath.toString();
   }
@@ -209,7 +228,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         aligned,
         indexOfMeasurementSchemas,
         getDataNodeSeriesScanNum(),
-        outputViewPath,
+        outputPaths,
+        isOutputPathForView,
         outputViewPathType,
         regionReplicaSet,
         deviceInMultiRegion,
@@ -240,7 +260,7 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
     return Objects.equals(devicePath, that.devicePath)
         && Objects.equals(aligned, that.aligned)
         && Objects.equals(indexOfMeasurementSchemas, that.indexOfMeasurementSchemas)
-        && Objects.equals(outputViewPath, that.outputViewPath)
+        && Objects.equals(outputPaths, that.outputPaths)
         && Objects.equals(outputViewPathType, that.outputViewPathType)
         && Objects.equals(regionReplicaSet, that.regionReplicaSet);
   }
@@ -252,20 +272,20 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         devicePath,
         aligned,
         indexOfMeasurementSchemas,
-        outputViewPath,
+        outputPaths,
         regionReplicaSet);
   }
 
   @Override
   public String toString() {
-    if (StringUtils.isNotBlank(outputViewPath)) {
+    if (outputPaths != null) {
       return String.format(
-          "LastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, ViewPath: %s, DataRegion: %s]",
+          "LastQueryScanNode-%s:[Device: %s, Aligned: %s, Measurements: %s, OutputPaths: %s, DataRegion: %s]",
           this.getPlanNodeId(),
           this.getDevicePath(),
           this.aligned,
           this.getMeasurementSchemas(),
-          this.getOutputViewPath(),
+          this.getOutputPaths(),
           PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
     } else {
       return String.format(
@@ -288,9 +308,16 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       ReadWriteIOUtils.write(measurementSchema, byteBuffer);
     }
     ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), byteBuffer);
-    ReadWriteIOUtils.write(outputViewPath == null, byteBuffer);
-    if (outputViewPath != null) {
-      ReadWriteIOUtils.write(outputViewPath, byteBuffer);
+    ReadWriteIOUtils.write(outputPaths == null, byteBuffer);
+    if (outputPaths != null) {
+      int size = outputPaths.size();
+      ReadWriteIOUtils.write(size, byteBuffer);
+      for (int i = 0; i < size; i++) {
+        ReadWriteIOUtils.write(outputPaths.get(i), byteBuffer);
+      }
+    }
+    ReadWriteIOUtils.write(isOutputPathForView, byteBuffer);
+    if (isOutputPathForView) {
       ReadWriteIOUtils.write(outputViewPathType, byteBuffer);
     }
     ReadWriteIOUtils.write(deviceInMultiRegion, byteBuffer);
@@ -306,9 +333,16 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
       ReadWriteIOUtils.write(measurementSchema, stream);
     }
     ReadWriteIOUtils.write(getDataNodeSeriesScanNum().get(), stream);
-    ReadWriteIOUtils.write(outputViewPath == null, stream);
-    if (outputViewPath != null) {
-      ReadWriteIOUtils.write(outputViewPath, stream);
+    ReadWriteIOUtils.write(outputPaths == null, stream);
+    if (outputPaths != null) {
+      int size = outputPaths.size();
+      ReadWriteIOUtils.write(size, stream);
+      for (int i = 0; i < size; i++) {
+        ReadWriteIOUtils.write(outputPaths.get(i), stream);
+      }
+    }
+    ReadWriteIOUtils.write(isOutputPathForView, stream);
+    if (isOutputPathForView) {
       ReadWriteIOUtils.write(outputViewPathType, stream);
     }
     ReadWriteIOUtils.write(deviceInMultiRegion, stream);
@@ -325,8 +359,17 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
 
     int dataNodeSeriesScanNum = ReadWriteIOUtils.readInt(byteBuffer);
     boolean isNull = ReadWriteIOUtils.readBool(byteBuffer);
-    String outputPathSymbol = isNull ? null : ReadWriteIOUtils.readString(byteBuffer);
-    TSDataType dataType = isNull ? null : ReadWriteIOUtils.readDataType(byteBuffer);
+    List<String> outputPaths = null;
+    if (!isNull) {
+      int size = ReadWriteIOUtils.readInt(byteBuffer);
+      outputPaths = new ArrayList<>(size);
+      while (size > 0) {
+        outputPaths.add(ReadWriteIOUtils.readString(byteBuffer));
+        size--;
+      }
+    }
+    boolean isOutputPathForView = ReadWriteIOUtils.readBool(byteBuffer);
+    TSDataType dataType = isOutputPathForView ? null : ReadWriteIOUtils.readDataType(byteBuffer);
     boolean deviceInMultiRegion = ReadWriteIOUtils.readBool(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new LastQueryScanNode(
@@ -335,7 +378,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         aligned,
         measurementSchemas,
         new AtomicInteger(dataNodeSeriesScanNum),
-        outputPathSymbol,
+        outputPaths,
+        isOutputPathForView,
         dataType,
         null,
         deviceInMultiRegion,
@@ -389,6 +433,8 @@ public class LastQueryScanNode extends LastSeriesSourceNode {
         // The memory of each String has been calculated before
         + MemoryEstimationHelper.getEstimatedSizeOfCopiedPartialPath(devicePath)
         + MemoryEstimationHelper.getEstimatedSizeOfIntegerArrayList(indexOfMeasurementSchemas)
-        + RamUsageEstimator.sizeOf(outputViewPath);
+        + (outputPaths == null
+            ? 0L
+            : outputPaths.stream().mapToLong(path -> RamUsageEstimator.sizeOf(path)).sum());
   }
 }
