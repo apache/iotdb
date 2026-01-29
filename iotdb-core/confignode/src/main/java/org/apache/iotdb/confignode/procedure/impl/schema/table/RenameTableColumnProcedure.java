@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -30,9 +33,13 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.impl.schema.table.view.RenameViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.RenameTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionEvolveSchemaReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +47,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class RenameTableColumnProcedure
@@ -83,6 +94,10 @@ public class RenameTableColumnProcedure
         case RENAME_COLUMN:
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
+          break;
+        case EXECUTE_ON_REGION:
+          LOGGER.info("Rename column to table {}.{} on data regions", database, tableName);
+          executeOnRegions(env);
           break;
         case COMMIT_RELEASE:
           LOGGER.info(
@@ -141,8 +156,35 @@ public class RenameTableColumnProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
-      setNextState(RenameTableColumnState.COMMIT_RELEASE);
+      setNextState(RenameTableColumnState.EXECUTE_ON_REGION);
     }
+  }
+
+  private void executeOnRegions(final ConfigNodeProcedureEnv env) {
+    final Map<TConsensusGroupId, TRegionReplicaSet> relatedRegionGroup =
+        env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
+
+    if (!relatedRegionGroup.isEmpty()) {
+      List<SchemaEvolution> schemaEvolutions =
+          Collections.singletonList(new ColumnRename(tableName, oldName, newName));
+      PublicBAOS publicBAOS = new PublicBAOS();
+      try {
+        SchemaEvolution.serializeList(schemaEvolutions, publicBAOS);
+      } catch (IOException ignored) {
+      }
+      ByteBuffer byteBuffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+      new TableRegionTaskExecutor<>(
+              "evolve data region schema",
+              env,
+              relatedRegionGroup,
+              CnToDnAsyncRequestType.EVOLVE_DATA_REGION_SCHEMA,
+              ((dataNodeLocation, consensusGroupIdList) ->
+                  new TDataRegionEvolveSchemaReq(
+                      new ArrayList<>(consensusGroupIdList), byteBuffer)))
+          .execute();
+    }
+
+    setNextState(RenameTableColumnState.COMMIT_RELEASE);
   }
 
   @Override

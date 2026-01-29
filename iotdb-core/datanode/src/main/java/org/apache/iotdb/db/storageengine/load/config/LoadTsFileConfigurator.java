@@ -26,6 +26,7 @@ import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import javax.annotation.Nullable;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -60,8 +61,18 @@ public class LoadTsFileConfigurator {
       case ASYNC_LOAD_KEY:
         validateAsyncLoadParam(value);
         break;
+      case SEVO_FILE_PATH_KEY:
+        validateSevoFilePathParam(value);
+        break;
       default:
         throw new SemanticException("Invalid parameter '" + key + "' for LOAD TSFILE command.");
+    }
+  }
+
+  private static void validateSevoFilePathParam(String value) {
+    File file = new File(value);
+    if (!file.exists()) {
+      throw new SemanticException("The sevo file " + value + " does not exist.");
     }
   }
 
@@ -113,6 +124,13 @@ public class LoadTsFileConfigurator {
       databaseName = loadAttributes.get(DATABASE_KEY);
     }
     return Objects.nonNull(databaseName) ? databaseName.toLowerCase(Locale.ENGLISH) : null;
+  }
+
+  public static final String SEVO_FILE_PATH_KEY = "sevo-file-path";
+
+  public static @Nullable File parseSevoFile(final Map<String, String> loadAttributes) {
+    String sevoFilePath = loadAttributes.get(SEVO_FILE_PATH_KEY);
+    return sevoFilePath != null ? new File(sevoFilePath) : null;
   }
 
   public static final String ON_SUCCESS_KEY = "on-success";

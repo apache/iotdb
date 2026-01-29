@@ -53,7 +53,8 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       Set<String> allSensors,
       FragmentInstanceContext context,
       QueryDataSource dataSource,
-      boolean ascending) {
+      boolean ascending,
+      long maxTsFileSetEndVersion) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(allSensors);
 
@@ -63,14 +64,16 @@ public class SeriesDataBlockReader implements IDataBlockReader {
               (AlignedFullPath) seriesPath,
               ascending ? Ordering.ASC : Ordering.DESC,
               scanOptionsBuilder.build(),
-              context);
+              context,
+              maxTsFileSetEndVersion);
     } else if (seriesPath instanceof NonAlignedFullPath) {
       this.seriesScanUtil =
           new SeriesScanUtil(
               seriesPath,
               ascending ? Ordering.ASC : Ordering.DESC,
               scanOptionsBuilder.build(),
-              context);
+              context,
+              maxTsFileSetEndVersion);
     } else {
       throw new IllegalArgumentException("Should call exact sub class!");
     }

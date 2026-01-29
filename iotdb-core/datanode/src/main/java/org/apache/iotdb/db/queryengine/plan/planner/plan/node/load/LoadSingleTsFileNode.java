@@ -62,6 +62,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private final boolean deleteAfterLoad;
   private final long writePointCount;
   private boolean needDecodeTsFile;
+  private final File schemaEvolutionFile;
 
   private TRegionReplicaSet localRegionReplicaSet;
 
@@ -71,7 +72,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       boolean isTableModel,
       String database,
       boolean deleteAfterLoad,
-      long writePointCount) {
+      long writePointCount,
+      File schemaEvolutionFile) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -79,6 +81,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.schemaEvolutionFile = schemaEvolutionFile;
   }
 
   public boolean isTsFileEmpty() {
@@ -89,6 +92,12 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   public boolean needDecodeTsFile(
       Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
           partitionFetcher) {
+    if (schemaEvolutionFile != null) {
+      // with schema evolution, must split
+      needDecodeTsFile = true;
+      return needDecodeTsFile;
+    }
+
     List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()
@@ -150,6 +159,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   public long getWritePointCount() {
     return writePointCount;
+  }
+
+  public File getSchemaEvolutionFile() {
+    return schemaEvolutionFile;
   }
 
   /**

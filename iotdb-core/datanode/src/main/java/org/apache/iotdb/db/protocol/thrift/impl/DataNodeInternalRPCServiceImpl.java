@@ -161,8 +161,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedEvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -197,8 +199,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.settle.SettleRequestHandler;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -238,6 +241,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
@@ -294,6 +298,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackViewSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionEvolveSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -790,6 +795,44 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                 new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
                         : new DeleteDataNode(
                             new PlanNodeId(""), pathList, Long.MIN_VALUE, Long.MAX_VALUE))
+                .getStatus());
+  }
+
+  @Override
+  public TSStatus evolveSchemaInDataRegion(final TDataRegionEvolveSchemaReq req) {
+    final List<SchemaEvolution> schemaEvolutions =
+        SchemaEvolution.createListFrom(req.schemaEvolutions);
+    return executeInternalSchemaTask(
+        req.getDataRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new DataRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                        ? new PipeEnrichedEvolveSchemaNode(
+                            new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                        : new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                .getStatus());
+  }
+
+  @Override
+  public TSStatus evolveSchemaInSchemaRegion(final TSchemaRegionEvolveSchemaReq req) {
+    final List<SchemaEvolution> schemaEvolutions =
+        SchemaEvolution.createListFrom(req.schemaEvolutions);
+    return executeInternalSchemaTask(
+        req.getSchemaRegionIdList(),
+        consensusGroupId ->
+            new RegionWriteExecutor()
+                .execute(
+                    new SchemaRegionId(consensusGroupId.getId()),
+                    // Now the deletion plan may be re-collected here by pipe, resulting multiple
+                    // transfer to delete time series plan. Now just ignore.
+                    req.isSetIsGeneratedByPipe() && req.isIsGeneratedByPipe()
+                        ? new PipeEnrichedEvolveSchemaNode(
+                            new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
+                        : new EvolveSchemaNode(new PlanNodeId(""), schemaEvolutions))
                 .getStatus());
   }
 
@@ -1998,7 +2041,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             new TableDeletionEntry(
                                 new DeletionPredicate(
                                     req.getTableName(),
-                                    new IDPredicate.NOP(),
+                                    new TagPredicate.NOP(),
                                     Collections.singletonList(req.getColumnName())),
                                 new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE)),
                             // the request is only sent to associated region

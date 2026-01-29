@@ -47,15 +47,20 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
   public ReadPointCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    super(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+    super(
+        targetResources,
+        seqFileResources,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
   }
 
   public ReadPointCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileResources,
-      EncryptParameter encryptParameter)
+      EncryptParameter encryptParameter,
+      long maxTsFileSetEndVersion)
       throws IOException {
-    super(targetResources, seqFileResources, encryptParameter);
+    super(targetResources, seqFileResources, encryptParameter, maxTsFileSetEndVersion);
   }
 
   @Override
