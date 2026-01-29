@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -271,68 +270,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testMultiplePrefixPatternHistoricalData() throws Exception {
-    // Define source attributes
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    // Define data to be inserted
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s) values (3, 3)");
-
-    // Define expected results on receiver
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,null,1.0,1.0,");
-    expectedResSet.add("3,3.0,null,null,");
-
-    // Execute the common test logic
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db2.**,root.db.**",
-        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testMultiplePrefixPatternRealtimeData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1.s, root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,null,1.0,1.0,");
-    expectedResSet.add("3,3.0,null,null,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db2.**,root.db.**",
-        "Time,root.db2.d1.s,root.db.d1.s,root.db.d1.s1,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -358,10 +298,9 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testMultipleIoTDBPatternRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**, root.db2.d1.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**, root.db2.d1.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -387,129 +326,12 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testMultipleHybridPatternHistoricalData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.d1.*");
-    sourceAttributes.put("source.pattern", "root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db2.d1(time, s) values (2, 2)",
-            "insert into root.db3.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,1.0,null,");
-    expectedResSet.add("2,null,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testMultipleHybridPatternRealtimeData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.d1.*");
-    sourceAttributes.put("source.pattern", "root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db2.d1(time, s) values (2, 2)",
-            "insert into root.db3.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,1.0,null,");
-    expectedResSet.add("2,null,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d1.s,root.db.d1.s1,root.db2.d1.s,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testPrefixPatternWithExclusionHistoricalData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    // Inclusion: Match everything under root.db.d1 and root.db.d2
-    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
-    // Exclusion: Exclude anything with the prefix root.db.d1.s1
-    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            // s matches, s1 is excluded
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            // s matches
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db1.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,null,");
-    expectedResSet.add("2,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db.**",
-        "Time,root.db.d1.s,root.db.d2.s,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testPrefixPatternWithExclusionRealtimeData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.pattern", "root.db.d1, root.db.d2");
-    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s1");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db1.d1(time, s) values (3, 3)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("1,1.0,null,");
-    expectedResSet.add("2,null,2.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db.**",
-        "Time,root.db.d1.s,root.db.d2.s,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionHistoricalData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
     // Inclusion: Match everything under root.db
-    sourceAttributes.put("source.path", "root.db.**");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
     // Exclusion: Exclude root.db.d1.s* and root.db.d3.*
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -537,11 +359,10 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBPatternWithExclusionRealtimeData() throws Exception {
     final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.pattern.inclusion", "root.db.**");
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
     sourceAttributes.put("source.inclusion", "data.insert");
     sourceAttributes.put("user", "root");
 
@@ -562,73 +383,6 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
         false, // isHistorical = false
         "select * from root.db.**",
         "Time,root.db.d1.t,root.db.d2.s,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testHybridPatternWithHybridExclusionHistoricalData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    // Inclusion: Match root.db.** (IoTDB) AND root.db2.d1 (Prefix)
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.pattern", "root.db2.d1");
-    // Exclusion: Exclude root.db.d1.* (IoTDB) AND root.db2.d1.s (Prefix)
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
-    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            // s, s1 excluded by path.exclusion
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            // s matches
-            "insert into root.db.d2(time, s) values (2, 2)",
-            // s excluded by pattern.exclusion, t matches
-            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
-            "insert into root.db3.d1(time, s) values (4, 4)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("2,2.0,null,");
-    expectedResSet.add("3,null,3.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        true, // isHistorical = true
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d2.s,root.db2.d1.t,",
-        expectedResSet);
-  }
-
-  @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
-  public void testHybridPatternWithHybridExclusionRealtimeData() throws Exception {
-    final Map<String, String> sourceAttributes = new HashMap<>();
-    sourceAttributes.put("source.path", "root.db.**");
-    sourceAttributes.put("source.pattern", "root.db2.d1");
-    sourceAttributes.put("source.path.exclusion", "root.db.d1.*");
-    sourceAttributes.put("source.pattern.exclusion", "root.db2.d1.s");
-    sourceAttributes.put("source.inclusion", "data.insert");
-    sourceAttributes.put("user", "root");
-
-    final List<String> insertQueries =
-        Arrays.asList(
-            "insert into root.db.d1(time, s, s1) values (1, 1, 1)",
-            "insert into root.db.d2(time, s) values (2, 2)",
-            "insert into root.db2.d1(time, s, t) values (3, 3, 3)",
-            "insert into root.db3.d1(time, s) values (4, 4)");
-
-    final Set<String> expectedResSet = new HashSet<>();
-    expectedResSet.add("2,2.0,null,");
-    expectedResSet.add("3,null,3.0,");
-
-    testPipeWithMultiplePatterns(
-        sourceAttributes,
-        insertQueries,
-        false, // isHistorical = false
-        "select * from root.db.**,root.db2.**",
-        "Time,root.db.d2.s,root.db2.d1.t,",
         expectedResSet);
   }
 }

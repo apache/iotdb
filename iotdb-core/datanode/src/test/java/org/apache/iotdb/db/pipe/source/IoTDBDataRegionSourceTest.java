@@ -25,7 +25,6 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -54,7 +53,6 @@ public class IoTDBDataRegionSourceTest {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testIoTDBDataRegionExtractorWithPattern() {
     Assert.assertEquals(
         IllegalArgumentException.class,
@@ -84,8 +82,6 @@ public class IoTDBDataRegionSourceTest {
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.`a-b`"));
     Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.1"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a,root.b"));
-    Assert.assertNull(testIoTDBDataRegionExtractorWithPattern("root.a,root.b,root.db1.`a,b`.**"));
   }
 
   public Exception testIoTDBDataRegionExtractorWithPattern(final String pattern) {

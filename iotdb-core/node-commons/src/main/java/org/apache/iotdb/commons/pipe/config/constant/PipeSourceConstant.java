@@ -52,6 +52,8 @@ public class PipeSourceConstant {
 
   public static final String EXTRACTOR_PATTERN_KEY = "extractor.pattern";
   public static final String SOURCE_PATTERN_KEY = "source.pattern";
+  public static final String EXTRACTOR_PATTERN_INCLUSION_KEY = "extractor.pattern.inclusion";
+  public static final String SOURCE_PATTERN_INCLUSION_KEY = "source.pattern.inclusion";
   public static final String EXTRACTOR_PATH_KEY = "extractor.path";
   public static final String SOURCE_PATH_KEY = "source.path";
   public static final String EXTRACTOR_PATTERN_FORMAT_KEY = "extractor.pattern.format";

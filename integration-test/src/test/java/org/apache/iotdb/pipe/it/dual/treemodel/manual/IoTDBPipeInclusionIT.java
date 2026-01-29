@@ -29,7 +29,6 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -114,7 +113,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPureSchemaInclusionWithMultiplePattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -127,7 +125,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("path", "root.ln.wf01.wt01.status,root.ln.wf02.**");
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.wf01.wt01.status,root.ln.wf02.**");
       sourceAttributes.put("source.inclusion", "schema");
       sourceAttributes.put("user", "root");
 
@@ -187,7 +185,6 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  @Ignore("Disabled: multi/exclusion tree patterns are blocked in this branch")
   public void testPureSchemaInclusionWithExclusionPattern() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
@@ -200,13 +197,13 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      sourceAttributes.put("extractor.inclusion", "schema");
+      sourceAttributes.put("source.inclusion", "schema");
       sourceAttributes.put("user", "root");
 
       // Include root.ln.**
-      sourceAttributes.put("path", "root.ln.**");
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.**");
       // Exclude root.ln.wf02.* and root.ln.wf03.wt01.status
-      sourceAttributes.put("path.exclusion", "root.ln.wf02.**, root.ln.wf03.wt01.status");
+      sourceAttributes.put("source.pattern.exclusion", "root.ln.wf02.**, root.ln.wf03.wt01.status");
 
       sinkAttributes.put("connector", "iotdb-thrift-connector");
       sinkAttributes.put("connector.ip", receiverIp);
@@ -314,7 +311,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "auth");
-      sourceAttributes.put("path", "root.ln.**");
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.**");
       sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
