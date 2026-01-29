@@ -175,7 +175,16 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, templateMap, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern,
+                templateMap,
+                0,
+                0,
+                isPrefixMatch,
+                null,
+                false,
+                ALL_MATCH_SCOPE,
+                false,
+                false))) {
       long count = 0;
       while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
@@ -200,7 +209,16 @@ public class SchemaRegionTestUtil {
     try (final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern,
+                Collections.emptyMap(),
+                0,
+                0,
+                false,
+                null,
+                false,
+                ALL_MATCH_SCOPE,
+                false,
+                false))) {
       Assert.assertTrue(timeSeriesReader.hasNext());
       final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
       Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
@@ -237,7 +255,16 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, null, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern,
+                null,
+                0,
+                0,
+                isPrefixMatch,
+                null,
+                false,
+                ALL_MATCH_SCOPE,
+                false,
+                false))) {
       Map<PartialPath, Long> countMap = new HashMap<>();
       while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
@@ -356,7 +383,9 @@ public class SchemaRegionTestUtil {
                 isPrefixMatch,
                 schemaFilter,
                 needViewDetail,
-                ALL_MATCH_SCOPE))) {
+                ALL_MATCH_SCOPE,
+                false,
+                false))) {
       while (reader.hasNext()) {
         timeSeriesSchemaInfo = reader.next();
         result.add(

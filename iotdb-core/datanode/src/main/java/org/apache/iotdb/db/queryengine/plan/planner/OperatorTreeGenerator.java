@@ -913,7 +913,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.getOffset(),
             node.getSchemaFilter(),
             node.getTemplateMap(),
-            node.getScope()));
+            node.getScope(),
+            node.isOrderByTimeseries(),
+            node.isOrderByTimeseriesDesc()));
   }
 
   @Override

@@ -54,6 +54,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
+  private final boolean orderByTimeseries;
+  private final boolean orderByTimeseriesDesc;
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -63,7 +65,9 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
       boolean needViewDetail,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      boolean orderByTimeseries,
+      boolean orderByTimeseriesDesc) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
     this.limit = limit;
@@ -72,6 +76,8 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
     this.scope = scope;
+    this.orderByTimeseries = orderByTimeseries;
+    this.orderByTimeseriesDesc = orderByTimeseriesDesc;
   }
 
   @Override
@@ -86,7 +92,9 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
               isPrefixMatch,
               schemaFilter,
               needViewDetail,
-              scope));
+              scope,
+              orderByTimeseries,
+              orderByTimeseriesDesc));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }

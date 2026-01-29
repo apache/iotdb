@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
@@ -251,6 +252,26 @@ public class SchemaEngine {
 
   public List<SchemaRegionId> getAllSchemaRegionIds() {
     return new ArrayList<>(schemaRegionMap.keySet());
+  }
+
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta) {
+    if (delta == 0) {
+      return;
+    }
+    for (final ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      if (schemaRegion instanceof SchemaRegionMemoryImpl) {
+        try {
+          ((SchemaRegionMemoryImpl) schemaRegion)
+              .updateSubtreeMeasurementCountForTemplate(templateId, delta);
+        } catch (MetadataException e) {
+          logger.warn(
+              "Failed to update subtree measurement count for template {} in schemaRegion {}",
+              templateId,
+              schemaRegion.getSchemaRegionId(),
+              e);
+        }
+      }
+    }
   }
 
   public synchronized void createSchemaRegion(
