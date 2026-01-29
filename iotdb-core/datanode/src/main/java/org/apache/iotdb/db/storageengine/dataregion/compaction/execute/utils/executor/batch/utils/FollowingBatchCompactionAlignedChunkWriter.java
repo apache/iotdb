@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
   private int currentPage = 0;
@@ -125,6 +126,21 @@ public class FollowingBatchCompactionAlignedChunkWriter extends AlignedChunkWrit
     }
     for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
       valueChunkWriter.writeToFileWriter(tsfileWriter);
+    }
+    if (afterChunkWriterFlushCallback != null) {
+      afterChunkWriterFlushCallback.call(this);
+    }
+  }
+
+  @Override
+  public void writeToFileWriter(
+      TsFileIOWriter tsfileWriter, Function<String, String> measurementNameRemapper)
+      throws IOException {
+    if (isEmpty()) {
+      return;
+    }
+    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
+      valueChunkWriter.writeToFileWriter(tsfileWriter, measurementNameRemapper);
     }
     if (afterChunkWriterFlushCallback != null) {
       afterChunkWriterFlushCallback.call(this);
