@@ -78,7 +78,14 @@ public class IoTDBLastQueryAliasIT {
   public void nonAlignedTest() {
     String[] expectedHeader =
         new String[] {TIMESTAMP_STR, TIMESERIES_STR, VALUE_STR, DATA_TYPE_STR};
+
     String[] retArray =
+        new String[] {
+          "1,root.test.d1.alias3,1,INT32,",
+        };
+    resultSetEqualTest("select last alias3 from root.test.d1", expectedHeader, retArray);
+
+    retArray =
         new String[] {
           "1,root.test.d1.alias3,1,INT32,",
           "1,root.test.d1.alias2,2,INT32,",
