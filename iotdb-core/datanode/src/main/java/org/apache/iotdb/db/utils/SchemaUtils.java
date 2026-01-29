@@ -406,9 +406,10 @@ public class SchemaUtils {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
-      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      ChunkMetadata newChunkMetadata = new ChunkMetadata((ChunkMetadata) valueChunkMetadata);
       newChunkMetadata.setTsDataType(targetDataType);
       newChunkMetadata.setStatistics(statistics);
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, newChunkMetadata);
     } else {
       alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
     }
@@ -421,8 +422,10 @@ public class SchemaUtils {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
 
+      chunkMetadata = new ChunkMetadata(chunkMetadata);
       chunkMetadata.setTsDataType(targetDataType);
       chunkMetadata.setStatistics(statistics);
+      chunkMetadataList.set(index, chunkMetadata);
     } else {
       chunkMetadataList.set(index, null);
     }

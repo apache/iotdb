@@ -69,6 +69,7 @@ public class IoTDBMQTTServiceIT {
     mqtt.setPassword(PASSWORD);
     mqtt.setConnectAttemptsMax(3);
     mqtt.setReconnectDelay(10);
+    mqtt.setClientId("clientId01");
 
     connection = mqtt.blockingConnection();
     connection.connect();
