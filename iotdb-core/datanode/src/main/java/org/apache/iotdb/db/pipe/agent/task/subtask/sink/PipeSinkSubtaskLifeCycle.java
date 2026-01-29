@@ -39,9 +39,9 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
   protected int registeredTaskCount;
 
   public PipeSinkSubtaskLifeCycle(
-      PipeSinkSubtaskExecutor executor,
-      PipeSinkSubtask subtask,
-      UnboundedBlockingPendingQueue<Event> pendingQueue) {
+      final PipeSinkSubtaskExecutor executor,
+      final PipeSinkSubtask subtask,
+      final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;

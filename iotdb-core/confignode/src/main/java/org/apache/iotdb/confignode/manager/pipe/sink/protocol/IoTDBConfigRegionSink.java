@@ -192,9 +192,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
           true);
     }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
-    }
+    LOGGER.info("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)

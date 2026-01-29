@@ -63,18 +63,18 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   @Override
   public void validate(
       String pipeName,
-      Map<String, String> extractorAttributes,
+      Map<String, String> sourceAttributes,
       Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      Map<String, String> sinkAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateExtractor(extractorAttributes);
+    PipeExtractor temporaryExtractor = validateSource(sourceAttributes);
     PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateConnector(pipeName, connectorAttributes);
+    PipeConnector temporaryConnector = validateSink(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
     Visibility pipeVisibility =
-        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(extractorAttributes));
+        VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
     Visibility extractorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
     Visibility processorVisibility =
@@ -88,13 +88,13 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
               "The visibility of the pipe (%s, %s) is not compatible with the visibility of the extractor (%s, %s, %s), processor (%s, %s, %s), and connector (%s, %s, %s).",
               pipeName,
               pipeVisibility,
-              extractorAttributes,
+              sourceAttributes,
               temporaryExtractor.getClass().getName(),
               extractorVisibility,
               processorAttributes,
               temporaryProcessor.getClass().getName(),
               processorVisibility,
-              connectorAttributes,
+              sinkAttributes,
               temporaryConnector.getClass().getName(),
               connectorVisibility));
     }

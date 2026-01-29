@@ -53,7 +53,7 @@ public abstract class PipePluginAgent {
   private final PipeProcessorConstructor pipeProcessorConstructor;
   private final PipeSinkConstructor pipeSinkConstructor;
 
-  protected PipePluginAgent(PipePluginMetaKeeper pipePluginMetaKeeper) {
+  protected PipePluginAgent(final PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
     pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
@@ -61,48 +61,48 @@ public abstract class PipePluginAgent {
   }
 
   protected abstract PipeSourceConstructor createPipeExtractorConstructor(
-      PipePluginMetaKeeper pipePluginMetaKeeper);
+      final PipePluginMetaKeeper pipePluginMetaKeeper);
 
   protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
-      PipePluginMetaKeeper pipePluginMetaKeeper);
+      final PipePluginMetaKeeper pipePluginMetaKeeper);
 
   protected abstract PipeSinkConstructor createPipeConnectorConstructor(
-      PipePluginMetaKeeper pipePluginMetaKeeper);
+      final PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  public final PipeExtractor reflectSource(PipeParameters extractorParameters) {
-    return pipeExtractorConstructor.reflectPlugin(extractorParameters);
+  public final PipeExtractor reflectSource(final PipeParameters sourceParameters) {
+    return pipeExtractorConstructor.reflectPlugin(sourceParameters);
   }
 
-  public final PipeProcessor reflectProcessor(PipeParameters processorParameters) {
+  public final PipeProcessor reflectProcessor(final PipeParameters processorParameters) {
     return pipeProcessorConstructor.reflectPlugin(processorParameters);
   }
 
-  public final PipeConnector reflectSink(PipeParameters connectorParameters) {
-    return pipeSinkConstructor.reflectPlugin(connectorParameters);
+  public final PipeConnector reflectSink(final PipeParameters sinkParameters) {
+    return pipeSinkConstructor.reflectPlugin(sinkParameters);
   }
 
   public void validate(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
       throws Exception {
-    validateExtractor(extractorAttributes);
+    validateSource(sourceAttributes);
     validateProcessor(processorAttributes);
-    validateConnector(pipeName, connectorAttributes);
+    validateSink(pipeName, sinkAttributes);
   }
 
-  protected PipeExtractor validateExtractor(Map<String, String> extractorAttributes)
+  protected PipeExtractor validateSource(final Map<String, String> sourceAttributes)
       throws Exception {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
-    final PipeExtractor temporaryExtractor = reflectSource(extractorParameters);
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
+    final PipeExtractor temporaryExtractor = reflectSource(sourceParameters);
     try {
-      temporaryExtractor.validate(new PipeParameterValidator(extractorParameters));
+      temporaryExtractor.validate(new PipeParameterValidator(sourceParameters));
     } finally {
       try {
         temporaryExtractor.close();
       } catch (Exception e) {
-        LOGGER.warn("Failed to close temporary extractor: {}", e.getMessage(), e);
+        LOGGER.warn("Failed to close temporary source: {}", e.getMessage(), e);
       }
     }
     return temporaryExtractor;
@@ -124,8 +124,8 @@ public abstract class PipePluginAgent {
     return temporaryProcessor;
   }
 
-  protected PipeConnector validateConnector(
-      String pipeName, Map<String, String> connectorAttributes) throws Exception {
+  protected PipeConnector validateSink(String pipeName, Map<String, String> connectorAttributes)
+      throws Exception {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
     final PipeConnector temporaryConnector = reflectSink(connectorParameters);
     try {

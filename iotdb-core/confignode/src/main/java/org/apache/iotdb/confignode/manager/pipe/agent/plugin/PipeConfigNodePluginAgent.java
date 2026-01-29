@@ -32,7 +32,7 @@ public class PipeConfigNodePluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSourceConstructor createPipeExtractorConstructor(
+  protected PipeSourceConstructor createPipeSourceConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeConfigRegionSourceConstructor();
   }

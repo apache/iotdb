@@ -64,10 +64,10 @@ public class SubscriptionSinkSubtaskManager {
 
   public synchronized String register(
       final PipeSinkSubtaskExecutor executor,
-      final PipeParameters pipeConnectorParameters,
+      final PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
     final String connectorKey =
-        pipeConnectorParameters
+        pipeSinkParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
@@ -86,13 +86,13 @@ public class SubscriptionSinkSubtaskManager {
             environment.getRegionId(),
             connectorKey);
 
-    boolean realTimeFirst =
-        pipeConnectorParameters.getBooleanOrDefault(
+    final boolean realTimeFirst =
+        pipeSinkParameters.getBooleanOrDefault(
             Arrays.asList(
                 PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                 PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
             PipeSinkConstant.CONNECTOR_REALTIME_FIRST_DEFAULT_VALUE);
-    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
+    String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
     attributeSortedString = "__subscription_" + attributeSortedString;
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
@@ -101,36 +101,33 @@ public class SubscriptionSinkSubtaskManager {
               ? new PipeRealtimePriorityBlockingQueue()
               : new UnboundedBlockingPendingQueue<>(new PipeDataRegionEventCounter());
 
-      final PipeConnector pipeConnector =
-          PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters);
+      final PipeConnector pipeSink =
+          PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters);
       // 1. Construct, validate and customize PipeConnector, and then handshake (create connection)
       // with the target
       try {
-        pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
-        pipeConnector.customize(
-            pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
-        pipeConnector.handshake();
+        pipeSink.validate(new PipeParameterValidator(pipeSinkParameters));
+        pipeSink.customize(pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
+        pipeSink.handshake();
       } catch (final Exception e) {
         try {
-          pipeConnector.close();
+          pipeSink.close();
         } catch (final Exception closeException) {
           LOGGER.warn(
-              "Failed to close connector after failed to initialize connector. "
-                  + "Ignore this exception.",
+              "Failed to close sink after failed to initialize sink. " + "Ignore this exception.",
               closeException);
         }
-        throw new PipeException(
-            "Failed to construct PipeConnector, because of " + e.getMessage(), e);
+        throw new PipeException("Failed to construct PipeSink, because of " + e.getMessage(), e);
       }
 
       // 2. Fetch topic and consumer group id from connector parameters
-      final String topicName = pipeConnectorParameters.getString(PipeSinkConstant.SINK_TOPIC_KEY);
+      final String topicName = pipeSinkParameters.getString(PipeSinkConstant.SINK_TOPIC_KEY);
       final String consumerGroupId =
-          pipeConnectorParameters.getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
+          pipeSinkParameters.getString(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY);
       if (Objects.isNull(topicName) || Objects.isNull(consumerGroupId)) {
         throw new SubscriptionException(
             String.format(
-                "Failed to construct subscription connector, because of %s or %s does not exist in pipe connector parameters",
+                "Failed to construct subscription sink, because of %s or %s does not exist in pipe connector parameters",
                 PipeSinkConstant.SINK_TOPIC_KEY, PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
       }
 
@@ -142,7 +139,7 @@ public class SubscriptionSinkSubtaskManager {
               attributeSortedString,
               0,
               pendingQueue,
-              pipeConnector,
+              pipeSink,
               topicName,
               consumerGroupId);
       final PipeSinkSubtaskLifeCycle pipeSinkSubtaskLifeCycle =
