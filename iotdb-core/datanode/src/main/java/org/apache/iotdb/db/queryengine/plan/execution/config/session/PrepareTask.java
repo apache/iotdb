@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.execution.config.session;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
-import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.execution.config.IConfigTask;
@@ -58,27 +56,12 @@ public class PrepareTask implements IConfigTask {
       return future;
     }
 
-    // Check if prepared statement with the same name already exists
-    PreparedStatementInfo existingInfo = session.getPreparedStatement(statementName);
-    if (existingInfo != null) {
-      future.setException(
-          new SemanticException(
-              String.format("Prepared statement '%s' already exists.", statementName)));
-      return future;
+    try {
+      PreparedStatementHelper.register(session, statementName, sql);
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      future.setException(e);
     }
-
-    // Estimate memory size of the AST
-    long memorySizeInBytes = sql == null ? 0L : sql.ramBytesUsed();
-
-    // Allocate memory from CoordinatorMemoryManager
-    // This memory is shared across all sessions using a single MemoryBlock
-    PreparedStatementMemoryManager.getInstance().allocate(statementName, memorySizeInBytes);
-
-    // Create and store the prepared statement info (AST is cached)
-    PreparedStatementInfo info = new PreparedStatementInfo(statementName, sql, memorySizeInBytes);
-    session.addPreparedStatement(statementName, info);
-
-    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 }

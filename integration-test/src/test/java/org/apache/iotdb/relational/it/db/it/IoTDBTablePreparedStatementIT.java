@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
-public class IoTDBPreparedStatementIT {
+public class IoTDBTablePreparedStatementIT {
   private static final String DATABASE_NAME = "test";
   private static final String[] sqls =
       new String[] {

@@ -433,7 +433,11 @@ public class IoTDBConnection implements Connection {
 
   @Override
   public PreparedStatement prepareStatement(String sql) throws SQLException {
-    return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    if (getSqlDialect().equals(Constant.TABLE_DIALECT)) {
+      return new IoTDBTablePreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    } else {
+      return new IoTDBPreparedStatement(this, getClient(), sessionId, sql, zoneId, charset);
+    }
   }
 
   @Override

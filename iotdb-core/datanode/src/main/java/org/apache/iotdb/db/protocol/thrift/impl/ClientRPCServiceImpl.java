@@ -75,6 +75,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
 import org.apache.iotdb.db.queryengine.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.queryengine.plan.execution.config.session.PreparedStatementHelper;
 import org.apache.iotdb.db.queryengine.plan.parser.ASTVisitor;
 import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
@@ -89,7 +90,17 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckContext;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.ParsingException;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
@@ -129,6 +140,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -146,9 +159,11 @@ import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeallocatePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFastLastDataQueryForOneDeviceReq;
@@ -169,6 +184,8 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareReq;
+import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -1487,6 +1504,174 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         req.isSetPreparedStatementName() ? req.getPreparedStatementName() : null,
         COORDINATOR::cleanupQueryExecution);
   }
+
+  // ========================= PreparedStatement RPC Methods =========================
+
+  @Override
+  public TSPrepareResp prepareStatement(TSPrepareReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return new TSPrepareResp(getNotLoggedInStatus());
+    }
+
+    try {
+      String sql = req.getSql();
+      String statementName = req.getStatementName();
+
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement =
+          relationSqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+
+      if (statement == null) {
+        return new TSPrepareResp(
+            RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR, "Failed to parse SQL: " + sql));
+      }
+
+      int parameterCount = ParameterExtractor.getParameterCount(statement);
+
+      PreparedStatementHelper.register(clientSession, statementName, statement);
+
+      TSPrepareResp resp = new TSPrepareResp(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setParameterCount(parameterCount);
+      return resp;
+    } catch (Exception e) {
+      return new TSPrepareResp(
+          onQueryException(
+              e, OperationType.PREPARE_STATEMENT.getName(), TSStatusCode.INTERNAL_SERVER_ERROR));
+    }
+  }
+
+  @Override
+  public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
+    boolean finished = false;
+    long queryId = Long.MIN_VALUE;
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+
+    long startTime = System.nanoTime();
+    Throwable t = null;
+    try {
+      String statementName = req.getStatementName();
+
+      List<DeserializedParam> rawParams =
+          PreparedParameterSerializer.deserialize(ByteBuffer.wrap(req.getParameters()));
+      List<Literal> parameters = new ArrayList<>(rawParams.size());
+      for (DeserializedParam param : rawParams) {
+        parameters.add(convertToLiteral(param));
+      }
+
+      Execute executeStatement = new Execute(new Identifier(statementName), parameters);
+
+      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.getStatementId());
+
+      long timeout = req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold();
+      ExecutionResult result =
+          COORDINATOR.executeForTableModel(
+              executeStatement,
+              relationSqlParser,
+              clientSession,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(clientSession),
+              "EXECUTE " + statementName,
+              metadata,
+              timeout,
+              true);
+
+      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+        finished = true;
+        return RpcUtils.getTSExecuteStatementResp(result.status);
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
+        TSExecuteStatementResp resp;
+        if (queryExecution != null && queryExecution.isQuery()) {
+          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
+          resp.setStatus(result.status);
+          int fetchSize =
+              req.isSetFetchSize() ? req.getFetchSize() : config.getThriftMaxFrameSize();
+          finished = setResultForPrepared.apply(resp, queryExecution, fetchSize);
+          resp.setMoreData(!finished);
+        } else {
+          finished = true;
+          resp = RpcUtils.getTSExecuteStatementResp(result.status);
+        }
+        return resp;
+      }
+    } catch (Exception e) {
+      finished = true;
+      t = e;
+      return RpcUtils.getTSExecuteStatementResp(
+          onQueryException(
+              e,
+              OperationType.EXECUTE_PREPARED_STATEMENT.getName(),
+              TSStatusCode.INTERNAL_SERVER_ERROR));
+    } finally {
+      long currentOperationCost = System.nanoTime() - startTime;
+      if (finished) {
+        COORDINATOR.cleanupQueryExecution(queryId, null, t);
+      }
+      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
+    }
+  }
+
+  @Override
+  public TSStatus deallocatePreparedStatement(TSDeallocatePreparedReq req) {
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return getNotLoggedInStatus();
+    }
+
+    try {
+      PreparedStatementHelper.unregister(clientSession, req.getStatementName());
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (Exception e) {
+      return onQueryException(
+          e,
+          OperationType.DEALLOCATE_PREPARED_STATEMENT.getName(),
+          TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  private Literal convertToLiteral(DeserializedParam param) {
+    if (param.isNull()) {
+      return new NullLiteral();
+    }
+
+    switch (param.type) {
+      case BOOLEAN:
+        return new BooleanLiteral((Boolean) param.value ? "true" : "false");
+      case INT32:
+      case INT64:
+        return new LongLiteral(String.valueOf(param.value));
+      case FLOAT:
+        return new DoubleLiteral((Float) param.value);
+      case DOUBLE:
+        return new DoubleLiteral((Double) param.value);
+      case TEXT:
+      case STRING:
+        return new StringLiteral((String) param.value);
+      case BLOB:
+        return new BinaryLiteral((byte[]) param.value);
+      default:
+        throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+    }
+  }
+
+  private final SelectResult setResultForPrepared =
+      (resp, queryExecution, fetchSize) -> {
+        // Use V2 format (queryResult) to match IoTDBTablePreparedStatement client
+        Pair<List<ByteBuffer>, Boolean> pair =
+            QueryDataSetUtils.convertQueryResultByFetchSize(queryExecution, fetchSize);
+        resp.setQueryResult(pair.left);
+        return pair.right;
+      };
+
+  // ========================= End PreparedStatement RPC Methods =========================
 
   @Override
   public TSGetTimeZoneResp getTimeZone(long sessionId) {
