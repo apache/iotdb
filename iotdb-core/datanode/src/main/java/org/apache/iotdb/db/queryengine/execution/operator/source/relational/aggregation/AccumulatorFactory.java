@@ -101,6 +101,8 @@ public class AccumulatorFactory {
       boolean distinct) {
     TableAccumulator result;
 
+    // Input expression size of 1 indicates aggregation split has occurred and this is a final
+    // aggregation
     if (aggregationType == TAggregationType.UDAF) {
       // If UDAF accumulator receives raw input, it needs to check input's attribute
       result = createUDAFAccumulator(functionName, inputDataTypes, inputAttributes);
@@ -139,7 +141,7 @@ public class AccumulatorFactory {
                 : new FirstByDescAccumulator(
                     inputDataTypes.get(0), inputDataTypes.get(1), xIsTimeColumn, yIsTimeColumn);
       }
-    } else if (LAST.getFunctionName().equals(functionName)) {
+    } else if (LAST.getFunctionName().equals(functionName) && inputExpressions.size() > 1) {
       boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
       result =
           ascending || !orderKeyIsTimeColumn
@@ -149,9 +151,8 @@ public class AccumulatorFactory {
                   isTimeColumn(inputExpressions.get(0), timeColumnName),
                   isMeasurementColumn(inputExpressions.get(0), measurementColumnNames),
                   isAggTableScan);
-    } else if (FIRST.getFunctionName().equals(functionName)) {
+    } else if (FIRST.getFunctionName().equals(functionName) && inputExpressions.size() > 1) {
       boolean orderKeyIsTimeColumn = isTimeColumn(inputExpressions.get(1), timeColumnName);
-
       result =
           ascending && orderKeyIsTimeColumn
               ? new FirstAccumulator(inputDataTypes.get(0), isAggTableScan)
