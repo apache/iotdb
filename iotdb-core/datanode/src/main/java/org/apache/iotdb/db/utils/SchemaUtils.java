@@ -415,14 +415,6 @@ public class SchemaUtils {
     }
   }
 
-  public static ChunkMetadata rewriteNonAlignedChunkMetadataStatistics(
-      List<IChunkMetadata> chunkMetadataList, int index, TSDataType targetDataType) {
-    ChunkMetadata newChunkMetadata =
-        rewriteChunkMetadata((ChunkMetadata) chunkMetadataList.get(index), targetDataType);
-    chunkMetadataList.set(index, newChunkMetadata);
-    return newChunkMetadata;
-  }
-
   public static ChunkMetadata rewriteChunkMetadata(
       ChunkMetadata origin, TSDataType targetDataType) {
     if (origin != null && targetDataType.isCompatible(origin.getDataType())) {

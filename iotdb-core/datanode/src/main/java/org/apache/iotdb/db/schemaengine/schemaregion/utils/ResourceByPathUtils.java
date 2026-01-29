@@ -564,13 +564,13 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
       if (chunkMetadata != null && (chunkMetadata.getDataType() != targetDataType)) {
         // create new statistics object via new data type, and merge statistics information
         chunkMetadata =
-            SchemaUtils.rewriteNonAlignedChunkMetadataStatistics(
-                chunkMetadataList, index, targetDataType);
+            SchemaUtils.rewriteChunkMetadata((ChunkMetadata) chunkMetadata, targetDataType);
         if (chunkMetadata == null) {
           // data type not match and cannot convert
           // ignore current file
           return null;
         }
+        chunkMetadataList.set(index, chunkMetadata);
         chunkMetadata.setModified(true);
       }
       if (!useFakeStatistics) {
