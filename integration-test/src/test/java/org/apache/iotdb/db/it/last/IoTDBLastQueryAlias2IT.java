@@ -42,7 +42,7 @@ public class IoTDBLastQueryAlias2IT extends IoTDBLastQueryAliasIT {
   @BeforeClass
   public static void setUp() throws Exception {
     // with lastCache
-    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(false);
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnableLastCache(true);
     EnvFactory.getEnv().initClusterEnvironment();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
