@@ -578,7 +578,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       limit = 0;
       offset = 0;
     } else if (!canPushDownOffsetLimit) {
-      limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
+      limit =
+          showTimeSeriesStatement.getLimit() != 0
+              ? showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset()
+              : 0;
       offset = 0;
     }
     planBuilder =

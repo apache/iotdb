@@ -101,7 +101,7 @@ public class SchemaReaderLimitOffsetWrapper<T extends ISchemaInfo> implements IS
   public boolean hasNext() {
     try {
       isBlocked().get();
-      return schemaReader.hasNext() && count < limit;
+      return schemaReader.hasNext() && (limit == 0 || count < limit);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
