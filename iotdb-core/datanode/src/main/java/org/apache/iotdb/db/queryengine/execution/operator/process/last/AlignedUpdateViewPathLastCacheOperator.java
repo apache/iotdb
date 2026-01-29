@@ -28,11 +28,15 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Tr
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
+import java.util.List;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
 public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCacheOperator {
-
-  private final String outputViewPath;
+  // Now not only a view path will be set here, but also the measurement path with alias will be set
+  // .e.g last query path: root.test.d1(s1(alias1), s2), outputPaths: [root.test.d1.alias1, null]
+  private final List<String> outputPaths;
+  private int outputPathIndex = 0;
 
   public AlignedUpdateViewPathLastCacheOperator(
       OperatorContext operatorContext,
@@ -41,7 +45,7 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry,
-      String outputViewPath,
+      List<String> outputPaths,
       boolean deviceInMultiRegion) {
     super(
         operatorContext,
@@ -51,19 +55,26 @@ public class AlignedUpdateViewPathLastCacheOperator extends AlignedUpdateLastCac
         needUpdateCache,
         needUpdateNullEntry,
         deviceInMultiRegion);
-    checkArgument(seriesPath.getMeasurementList().size() == 1);
-    this.outputViewPath = outputViewPath;
+    checkArgument(outputPaths != null, "outputPaths shouldn't be null");
+    this.outputPaths = outputPaths;
   }
 
   @Override
   protected void appendLastValueToTsBlockBuilder(
       long lastTime, TsPrimitiveType lastValue, MeasurementPath measurementPath, String type) {
+    String outputPath = outputPaths.get(outputPathIndex);
     LastQueryUtil.appendLastValueRespectBlob(
-        tsBlockBuilder, lastTime, outputViewPath, lastValue, type);
+        tsBlockBuilder,
+        lastTime,
+        outputPath == null ? measurementPath.getFullPath() : outputPath,
+        lastValue,
+        type);
+    outputPathIndex++;
   }
 
   @Override
   public long ramBytesUsed() {
-    return super.ramBytesUsed() + RamUsageEstimator.sizeOf(outputViewPath);
+    return super.ramBytesUsed()
+        + outputPaths.stream().mapToLong(path -> RamUsageEstimator.sizeOf(path)).sum();
   }
 }
