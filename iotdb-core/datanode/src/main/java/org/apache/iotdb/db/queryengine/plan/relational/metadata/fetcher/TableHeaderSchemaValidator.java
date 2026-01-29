@@ -855,7 +855,7 @@ public class TableHeaderSchemaValidator {
                   TSFileDescriptor.getInstance().getConfig().getCompressor(dataType)));
           break;
         case TIME:
-          columnSchemaList.add(new TimeColumnSchema(inputColumn.getName(), TSDataType.TIMESTAMP));
+          // Do nothing, cause the time column shall never be appended to the existing table
           break;
         default:
           throw new IllegalStateException(
