@@ -45,17 +45,21 @@ import org.apache.iotdb.db.queryengine.execution.schedule.IDriverScheduler;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALByteBufferForTest;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
@@ -146,6 +150,59 @@ public class PrimitiveMemTableTest {
       i++;
     }
     Assert.assertEquals(count, i);
+  }
+
+  /**
+   * Regression test for concurrent writes between prepare and query execution. The test ensures
+   * that when new rows are written after the prepare phase but before TVList sorting, the query
+   * refreshes the rowCount after sort and avoids using a stale queryRowCount for bitmap
+   * construction, which would otherwise cause ArrayIndexOutOfBoundsException.
+   */
+  @Test
+  public void testWriteDuringPrepareTVListAndActualQueryExecution()
+      throws QueryProcessException, IOException, IllegalPathException {
+
+    PrimitiveMemTable memTable = new PrimitiveMemTable("root.test", "0");
+    List<IMeasurementSchema> measurementSchemas =
+        Arrays.asList(
+            new MeasurementSchema("s1", TSDataType.INT32),
+            new MeasurementSchema("s2", TSDataType.INT32),
+            new MeasurementSchema("s3", TSDataType.INT32));
+    for (int i = 1000; i < 2000; i++) {
+      memTable.writeAlignedRow(
+          new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+    for (int i = 100; i < 200; i++) {
+      memTable.writeAlignedRow(
+          new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s1", TSDataType.INT32), 150, 160));
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s2", TSDataType.INT32), 150, 160));
+    memTable.delete(
+        new TreeDeletionEntry(new MeasurementPath("root.test.d1.s3", TSDataType.INT32), 150, 160));
+    ResourceByPathUtils resourcesByPathUtils =
+        ResourceByPathUtils.getResourceInstance(
+            new AlignedFullPath(
+                new StringArrayDeviceID("root.test.d1"),
+                Arrays.asList("s1", "s2", "s3"),
+                measurementSchemas));
+    ReadOnlyMemChunk readOnlyMemChunk =
+        resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
+            new QueryContext(1), memTable, null, Long.MAX_VALUE, null);
+
+    for (int i = 1; i <= 50; i++) {
+      memTable.writeAlignedRow(
+          new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
+    }
+
+    readOnlyMemChunk.sortTvLists();
+
+    MemPointIterator memPointIterator = readOnlyMemChunk.createMemPointIterator(Ordering.ASC, null);
+    while (memPointIterator.hasNextBatch()) {
+      memPointIterator.nextBatch();
+    }
   }
 
   @Test

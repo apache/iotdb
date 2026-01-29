@@ -607,7 +607,7 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
 
       if (table.getColumnSchema(columnName) != null) {
         throw new SemanticException(
-            String.format("Columns in table shall not share the same name %s.", columnName));
+            String.format("Columns in table shall not share the same name: '%s'.", columnName));
       }
 
       //  allow the user create time column

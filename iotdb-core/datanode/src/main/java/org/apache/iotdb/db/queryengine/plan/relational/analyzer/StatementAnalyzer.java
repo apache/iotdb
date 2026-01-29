@@ -1877,12 +1877,12 @@ public class StatementAnalyzer {
               (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
         }
         for (int i = 0; i < maxSize; i++) {
-          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          List<Expression> operandListBuilder = new ArrayList<>(childrenIndexes.length);
           for (int j = 0; j < childrenIndexes.length; j++) {
             int operandIndexInResult = childrenIndexes[j].get();
             operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
           }
-          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder.build()));
+          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder));
           baseIndex.getAndIncrement();
         }
         return resultBuilder.build();

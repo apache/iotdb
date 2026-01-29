@@ -369,10 +369,13 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "create database information_schema",
                   "drop database information_schema",
-                  "create table information_schema.tableA ()",
+                  // table in information_schema do not have the time column, add time column just
+                  // for simulate the base table
+                  "create table information_schema.tableA (time timestamp time)",
                   "alter table information_schema.tableA add column a id",
                   "alter table information_schema.tableA set properties ttl=default",
-                  "insert into information_schema.tables (database) values('db')",
+                  // given that create table in information_schema is not allowed, skip insert
+                  // "insert into information_schema.tables (database) values('db')",
                   "update information_schema.tables set status='RUNNING'"));
 
       for (final String writeSQL : writeSQLs) {

@@ -129,7 +129,8 @@ public class IoTDBTableWithDefinedTimeIT {
             "create table shared_time_name(device string tag, time int64 field,  s1 int32 field)");
         fail("Columns in table shall not share the same name time when creating table");
       } catch (SQLException e) {
-        assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
+        assertEquals(
+            "701: Columns in table shall not share the same name: 'time'.", e.getMessage());
       }
 
     } catch (SQLException e) {
@@ -217,7 +218,8 @@ public class IoTDBTableWithDefinedTimeIT {
             "create view shared_time_time(device string tag, time int64 field,  s1 int32 field) as root.tt.**");
         fail("Columns in view shall not share the same name time when creating table");
       } catch (SQLException e) {
-        assertEquals("701: Columns in table shall not share the same name time.", e.getMessage());
+        assertEquals(
+            "701: Columns in table shall not share the same name: 'time'.", e.getMessage());
       }
 
     } catch (SQLException e) {

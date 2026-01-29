@@ -535,6 +535,7 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       try {
         st1.execute("use \"test\"");
+        st1.execute("CREATE TABLE wf16 (tag1 string tag, status boolean field)");
         st1.execute(
             "insert into wf16(tag1, time, status) values('wt01', 1618283005586000, true), ('wt01', 1618283005586001, false)");
         fail();
