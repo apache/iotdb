@@ -308,7 +308,7 @@ public class LogicalPlanBuilder {
                   new ArrayList<>(
                       Collections.nCopies(measurementToExpressionsOfDevice.size(), null));
             }
-            outputPaths.add(
+            outputPaths.set(
                 i,
                 selectedPath
                     .getDevicePath()
