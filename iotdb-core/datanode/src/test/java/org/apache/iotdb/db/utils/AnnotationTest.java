@@ -101,12 +101,12 @@ public class AnnotationTest {
         for (Entry<JavaClass, List<JavaMethod>> entry : classAndMethodsMustOverride.entrySet()) {
           JavaClass classWithTargetMethod = entry.getKey();
           if (productionClass.isAssignableTo(classWithTargetMethod.getName())) {
-            List<JavaMethod> classesWithMustOverride = entry.getValue();
-            for (JavaMethod javaMethod : classesWithMustOverride) {
+            List<JavaMethod> methodsThatMustOverride = entry.getValue();
+            for (JavaMethod toBeOverride : methodsThatMustOverride) {
               boolean methodImplemented = false;
               for (JavaMethod method : productionClass.getMethods()) {
-                if (method.getName().equals(javaMethod.getName())
-                    && method.getParameters().equals(javaMethod.getParameters())) {
+                if (method.getName().equals(toBeOverride.getName())
+                    && method.getParameters().equals(toBeOverride.getParameters())) {
                   methodImplemented = true;
                   break;
                 }
@@ -116,7 +116,7 @@ public class AnnotationTest {
                     String.format(
                         "Class %s does not implement method %s annotated with @MustOverride from class %s",
                         productionClass.getName(),
-                        javaMethod.getName(),
+                        toBeOverride.getName(),
                         classWithTargetMethod.getName()));
               }
             }
