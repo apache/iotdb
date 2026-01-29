@@ -451,7 +451,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   private List<ColumnCategory> generateTabletColumnCategory(
-      int tagNum, int fieldNum, final int timeIndex) {
+      final int tagNum, final int fieldNum, final int timeIndex) {
     List<ColumnCategory> columnTypes =
         new ArrayList<>(tagNum + fieldNum + (timeIndex >= 0 ? 1 : 0));
     for (int i = 0; i < tagNum; i++) {
