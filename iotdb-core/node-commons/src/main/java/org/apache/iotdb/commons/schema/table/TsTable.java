@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
@@ -212,58 +211,40 @@ public class TsTable {
         });
   }
 
-  /**
-   * Renames a column in the table schema while strictly preserving its original ordinal position.
-   */
   public void renameColumnSchema(final String oldName, final String newName) {
     executeWrite(
         () -> {
-          if (!columnSchemaMap.containsKey(oldName)) {
-            return;
-          }
-
-          // Capture the current strict order of current columns
-          List<Map.Entry<String, TsTableColumnSchema>> snapshotOfColumns =
-              new ArrayList<>(columnSchemaMap.entrySet());
-          columnSchemaMap.clear();
-
-          // Re-insert all entries in their original sequence, substituting the renamed column at
-          // its exact original index
-          for (Map.Entry<String, TsTableColumnSchema> entry : snapshotOfColumns) {
-            String currentKey = entry.getKey();
-            TsTableColumnSchema currentColumnSchema = entry.getValue();
-
-            if (currentKey.equals(oldName)) {
-              TsTableColumnSchema newSchema = createRenamedSchema(currentColumnSchema, newName);
-              columnSchemaMap.put(newName, newSchema);
-            } else {
-              columnSchemaMap.put(currentKey, currentColumnSchema);
+          // Ensures idempotency
+          if (columnSchemaMap.containsKey(oldName)) {
+            final TsTableColumnSchema schema = columnSchemaMap.remove(oldName);
+            final Map<String, String> oldProps = schema.getProps();
+            oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> schema.getColumnName());
+            switch (schema.getColumnCategory()) {
+              case TAG:
+                columnSchemaMap.put(
+                    newName, new TagColumnSchema(newName, schema.getDataType(), oldProps));
+                break;
+              case FIELD:
+                columnSchemaMap.put(
+                    newName,
+                    new FieldColumnSchema(
+                        newName,
+                        schema.getDataType(),
+                        ((FieldColumnSchema) schema).getEncoding(),
+                        ((FieldColumnSchema) schema).getCompressor(),
+                        oldProps));
+                break;
+              case ATTRIBUTE:
+                columnSchemaMap.put(
+                    newName, new AttributeColumnSchema(newName, schema.getDataType(), oldProps));
+                break;
+              case TIME:
+              default:
+                // Do nothing
+                columnSchemaMap.put(oldName, schema);
             }
           }
         });
-  }
-
-  private TsTableColumnSchema createRenamedSchema(TsTableColumnSchema oldSchema, String newName) {
-    Map<String, String> oldProps = oldSchema.getProps();
-    oldProps.computeIfAbsent(TreeViewSchema.ORIGINAL_NAME, k -> oldSchema.getColumnName());
-
-    switch (oldSchema.getColumnCategory()) {
-      case TAG:
-        return new TagColumnSchema(newName, oldSchema.getDataType(), oldProps);
-      case FIELD:
-        return new FieldColumnSchema(
-            newName,
-            oldSchema.getDataType(),
-            ((FieldColumnSchema) oldSchema).getEncoding(),
-            ((FieldColumnSchema) oldSchema).getCompressor(),
-            oldProps);
-      case ATTRIBUTE:
-        return new AttributeColumnSchema(newName, oldSchema.getDataType(), oldProps);
-      case TIME:
-        return new TimeColumnSchema(newName, oldSchema.getDataType(), oldProps);
-      default:
-        return oldSchema;
-    }
   }
 
   public void removeColumnSchema(final String columnName) {

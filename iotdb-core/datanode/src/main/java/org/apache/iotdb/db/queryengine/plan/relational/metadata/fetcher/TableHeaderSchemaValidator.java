@@ -778,8 +778,6 @@ public class TableHeaderSchemaValidator {
         schema = new AttributeColumnSchema(columnName, dataType);
         break;
       case TIME:
-        // throw new SemanticException("Add column statement shall not specify column category
-        // TIME");
         schema = new TimeColumnSchema(columnName, dataType);
         break;
       case FIELD:

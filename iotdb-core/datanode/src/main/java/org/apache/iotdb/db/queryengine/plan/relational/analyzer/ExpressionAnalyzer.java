@@ -1188,20 +1188,20 @@ public class ExpressionAnalyzer {
           (argument instanceof DereferenceExpression)
               ? ((DereferenceExpression) argument)
                   .getField()
-                  .orElseThrow(() -> new SemanticException("the input field do not exists"))
+                  .orElseThrow(() -> new SemanticException("the input field does not exist"))
                   .toString()
               : argument.toString();
 
       for (Field field : visibleFields) {
         if (field
             .getName()
-            .orElseThrow(() -> new SemanticException("the field in table do not hava the name"))
+            .orElseThrow(() -> new SemanticException("the field in table does not have a name"))
             .equalsIgnoreCase(argumentName)) {
           return field.getType() == TIMESTAMP;
         }
       }
       // should never reach here
-      throw new SemanticException("the input argument do not exists");
+      throw new SemanticException("the input argument does not exist");
     }
 
     /** Retrieves the effective time column name from the relation's visible fields. */
