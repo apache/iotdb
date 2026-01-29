@@ -80,6 +80,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -481,12 +482,13 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn) {
     throw new UnsupportedOperationException();
   }
 

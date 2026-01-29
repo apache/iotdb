@@ -130,5 +130,43 @@ public class IoTDBAggregationFirstInGroupIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "first(s_int), "
+            + "first(s_long), "
+            + "first(s_float), "
+            + "first(s_double), "
+            + "first(s_bool), "
+            + "first(s_string) "
+            + "from "
+            + "(select "
+            + "  time_type, "
+            + "  partition, "
+            + "  s_int, s_long, s_float, s_double, s_bool, s_string "
+            + "from table_a "
+            + "left join table_b on table_a.time=table_b.time) "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "first(s_int, time_type), "
+            + "first(s_long, time_type), "
+            + "first(s_float, time_type), "
+            + "first(s_double, time_type), "
+            + "first(s_bool, time_type), "
+            + "first(s_string, time_type) "
+            + "from table_a "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }

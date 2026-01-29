@@ -117,6 +117,7 @@ public class IoTDBAggregationFirstByInGroupIT {
       "p5,50,50,50.0,50.0,false,50s,"
     };
 
+    // 1. eliminate the identity of time column
     tableResultSetEqualTest(
         "select "
             + "partition, "
@@ -130,6 +131,43 @@ public class IoTDBAggregationFirstByInGroupIT {
             // SubQuery: Rename time_type to 'ts' to avoid ambiguity with physical 'time'
             + "(select time_type as time, s_int, s_long, s_float, s_double, s_bool, s_string, y_criteria, partition "
             + "from table_a left join table_b on table_a.time=table_b.time) "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // 2. lack of the third argument, supply with timestamp column
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "first_by(s_int, y_criteria), "
+            + "first_by(s_long, y_criteria), "
+            + "first_by(s_float, y_criteria), "
+            + "first_by(s_double, y_criteria), "
+            + "first_by(s_bool, y_criteria), "
+            + "first_by(s_string, y_criteria) "
+            + "from "
+            // SubQuery: Rename time_type to 'ts' to avoid ambiguity with physical 'time'
+            + "(select s_int, s_long, s_float, s_double, s_bool, s_string, y_criteria, partition, time_type "
+            + "from table_a left join table_b on table_a.time=table_b.time) "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // 3. base table query with column that with timestamp datatype
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "first_by(s_int, y_criteria, time_type), "
+            + "first_by(s_long, y_criteria, time_type), "
+            + "first_by(s_float, y_criteria, time_type), "
+            + "first_by(s_double, y_criteria, time_type), "
+            + "first_by(s_bool, y_criteria, time_type), "
+            + "first_by(s_string, y_criteria, time_type) "
+            + "from table_a  "
             + "group by partition "
             + "order by partition",
         expectedHeader,

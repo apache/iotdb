@@ -46,13 +46,19 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<TsFileResource> resources;
   private final List<Boolean> isTableModel;
   private final String database;
+  private final boolean needDecode4TimeColumn;
 
   public LoadTsFileNode(
-      PlanNodeId id, List<TsFileResource> resources, List<Boolean> isTableModel, String database) {
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database,
+      final boolean needDecode4TimeColumn) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
+    this.needDecode4TimeColumn = needDecode4TimeColumn;
   }
 
   @Override
@@ -121,7 +127,8 @@ public class LoadTsFileNode extends WritePlanNode {
               isTableModel.get(i),
               database,
               statement.isDeleteAfterLoad(),
-              statement.getWritePointCount(i)));
+              statement.getWritePointCount(i),
+              false));
     }
     return res;
   }
@@ -143,7 +150,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 isTableModel.get(i),
                 database,
                 statement.isDeleteAfterLoad(),
-                statement.getWritePointCount(i)));
+                statement.getWritePointCount(i),
+                needDecode4TimeColumn));
       }
     }
     return res;

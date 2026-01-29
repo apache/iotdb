@@ -132,5 +132,39 @@ public class IoTDBAggregationLastByInGroupIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "last_by(s_int, y_criteria), "
+            + "last_by(s_long, y_criteria), "
+            + "last_by(s_float, y_criteria), "
+            + "last_by(s_double, y_criteria), "
+            + "last_by(s_bool, y_criteria), "
+            + "last_by(s_string, y_criteria) "
+            + "from "
+            + "(select time_type, s_int, s_long, s_float, s_double, s_bool, s_string, y_criteria, partition "
+            + "from table_a left join table_b on table_a.time=table_b.time) "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "partition, "
+            + "last_by(s_int, y_criteria, time_type), "
+            + "last_by(s_long, y_criteria, time_type), "
+            + "last_by(s_float, y_criteria, time_type), "
+            + "last_by(s_double, y_criteria, time_type), "
+            + "last_by(s_bool, y_criteria, time_type), "
+            + "last_by(s_string, y_criteria, time_type) "
+            + "from table_a "
+            + "group by partition "
+            + "order by partition",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 }

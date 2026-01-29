@@ -74,6 +74,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.transformation.dag.column.FailFunctionColumnTransformer.FAIL_FUNCTION_NAME;
@@ -1396,16 +1397,22 @@ public class TableMetadataImpl implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
-      String database,
-      TableSchema tableSchema,
-      MPPQueryContext context,
-      boolean allowCreateTable,
-      boolean isStrictTagColumn)
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
+      final String database,
+      final TableSchema tableSchema,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     return TableHeaderSchemaValidator.getInstance()
-        .validateTableHeaderSchema(
-            database, tableSchema, context, allowCreateTable, isStrictTagColumn);
+        .validateTableHeaderSchema4TsFile(
+            database,
+            tableSchema,
+            context,
+            allowCreateTable,
+            isStrictTagColumn,
+            needDecode4DifferentTimeColumn);
   }
 
   @Override

@@ -240,6 +240,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -3462,13 +3463,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(Collectors.toList());
 
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            arguments.stream().map(Map.Entry::getKey).collect(Collectors.toList()),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -3809,13 +3804,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       int index = map.get(originInputColumnNames.get(i));
       inputColumns.set(index, originColumns.get(i));
     }
-
+    ColumnSchema timeColumnOfTargetTable = null;
     for (int i = 0; i < inputColumns.size(); i++) {
       String columnName = inputColumns.get(i).getName();
       inputLocationMap.put(columnName, new InputLocation(0, i));
 
       TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
       if (columnCategory == TIME) {
+        if (timeColumnOfTargetTable == null) {
+          timeColumnOfTargetTable = inputColumns.get(i);
+        } else {
+          throw new SemanticException("Multiple columns with TIME category found");
+        }
         continue;
       }
 
@@ -3823,6 +3823,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       tsDataTypeMap.put(columnName, columnType);
       inputColumnTypes.add(columnType);
       inputColumnCategories.add(columnCategory);
+    }
+    if (timeColumnOfTargetTable == null) {
+      throw new SemanticException("Missing TIME category column");
     }
 
     long statementSizePerLine =
@@ -3839,7 +3842,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         tsDataTypeMap,
         true,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
-        statementSizePerLine);
+        statementSizePerLine,
+        timeColumnOfTargetTable);
   }
 
   private boolean[] checkStatisticAndScanOrder(
@@ -3882,6 +3886,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           if (BlobType.BLOB.equals(argumentType) || ObjectType.OBJECT.equals(argumentType)) {
             canUseStatistic = false;
             break;
+          }
+
+          // first and last, the second argument has to be the time column
+          if (FIRST_AGGREGATION.equals(funcName) || LAST_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(1), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
+          }
+
+          // first_by and last_by, the second argument has to be the time column
+          if (FIRST_BY_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(2), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
           }
 
           // only last_by(time, x) or last_by(x,time) can use statistic
@@ -3929,6 +3949,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return OptimizeType.NOOP;
     }
 
+    // if the timeColumnName is null, the param of function is just a timestamp column other than
+    // the time column
+    if (timeColumnName == null || !checkOrderColumnIsTime(node.getAggregations(), timeColumnName)) {
+      return OptimizeType.NOOP;
+    }
+
     if (canUseLastRowOptimize(aggregators)) {
       return OptimizeType.LAST_ROW;
     }
@@ -3938,6 +3964,33 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     return OptimizeType.NOOP;
+  }
+
+  /**
+   * Checks if the ordering column in aggregations matches the time column. only check for
+   * FIRST/LAST/FIRST_BY/LAST_BY
+   */
+  private boolean checkOrderColumnIsTime(
+      Map<Symbol, AggregationNode.Aggregation> aggregations, String timeColumnName) {
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
+      String functionName =
+          entry.getValue().getResolvedFunction().getSignature().getName().toLowerCase();
+      List<Expression> arguments = entry.getValue().getArguments();
+      Expression lastParam = entry.getValue().getArguments().get(arguments.size() - 1);
+
+      switch (functionName) {
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+        case FIRST_BY_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+          if (!((SymbolReference) lastParam).getName().equalsIgnoreCase(timeColumnName)) {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
   }
 
   private boolean canUseLastRowOptimize(List<TableAggregator> aggregators) {
@@ -4160,13 +4213,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            function.getArguments(),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     // Create aggregator by accumulator
     return new WindowAggregator(

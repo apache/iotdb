@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertThrows;
@@ -100,12 +101,13 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     doAnswer(
@@ -252,12 +254,13 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(
@@ -287,12 +290,13 @@ public class InsertStatementTest {
     DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
-    when(metadata.validateTableHeaderSchema(
+    when(metadata.validateTableHeaderSchema4TsFile(
             any(String.class),
             any(TableSchema.class),
             any(MPPQueryContext.class),
             any(Boolean.class),
-            any(Boolean.class)))
+            any(Boolean.class),
+            any(AtomicBoolean.class)))
         .thenReturn(Optional.of(tableSchema));
 
     assertThrows(

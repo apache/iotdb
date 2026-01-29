@@ -32,7 +32,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 public class FunctionTestUtils {
@@ -101,12 +100,7 @@ public class FunctionTestUtils {
     // inputExpressions and inputAttributes are not used in this method
     TableAccumulator accumulator =
         AccumulatorFactory.createBuiltinAccumulator(
-            aggregationType,
-            Collections.singletonList(inputDataType),
-            new ArrayList<>(),
-            new HashMap<>(),
-            ascending,
-            false);
+            aggregationType, Collections.singletonList(inputDataType));
     WindowAggregator aggregator =
         new WindowAggregator(accumulator, outputDataType, Collections.singletonList(0));
     return new AggregationWindowFunction(aggregator);

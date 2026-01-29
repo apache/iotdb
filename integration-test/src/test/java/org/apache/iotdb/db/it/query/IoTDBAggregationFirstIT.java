@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,8 +32,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -90,6 +98,59 @@ public class IoTDBAggregationFirstIT {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 
+  // time column prior to field column with timestamp column
+  @Test
+  public void testPriority() {
+
+    String[] expectedHeader = {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    String[] retArray = {"-50,-50,-50.0,-50.0,false,-50s,"};
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int), "
+            + "first(s_long), "
+            + "first(s_float), "
+            + "first(s_double), "
+            + "first(s_bool), "
+            + "first(s_string) "
+            + "from table_a "
+            + "where table_a.device='d1' ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNoTimeStamp() {
+
+    String sql =
+        "select "
+            + "first(s_int)"
+            + "  from ("
+            + "   select "
+            + "    s_int,"
+            + "    s_long,"
+            + "    s_float"
+            + "  from table_a"
+            + ") AS t";
+    try (Connection connection =
+        EnvFactory.getEnv()
+            .getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + DATABASE_NAME);
+        statement.executeQuery(sql);
+      }
+      fail("Missing valid time column, the query should fail");
+    } catch (SQLException e) {
+      assertEquals(
+          "701: Missing valid time column. The table must contain either a column with the TIME category or at least one TIMESTAMP column.",
+          e.getMessage());
+    }
+  }
+
   @Test
   public void testAggregation() {
 
@@ -102,6 +163,7 @@ public class IoTDBAggregationFirstIT {
     // Corresponding values at time_type=5: s_int=5, s_long=5, ..., s_bool=false, s_string='5s'
     String[] retArray = {"5,5,5.0,5.0,false,5s,"};
 
+    // 1. through join, eliminate the identity of time column
     tableResultSetEqualTest(
         "select "
             + "first(s_int, time), "
@@ -118,6 +180,41 @@ public class IoTDBAggregationFirstIT {
             + "from table_a "
             + "left join table_b on table_a.time=table_b.time "
             + "where table_a.device='d1') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // 2. lack of the second the argument
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int), "
+            + "first(s_long), "
+            + "first(s_float), "
+            + "first(s_double), "
+            + "first(s_bool), "
+            + "first(s_string) "
+            + "from "
+            + "(select "
+            + "  time_type, "
+            + "  s_int, s_long, s_float, s_double, s_bool, s_string "
+            + "from table_a "
+            + "left join table_b on table_a.time=table_b.time "
+            + "where table_a.device='d1') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    // 3. through field column that with timestamp datatype
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int, time_type), "
+            + "first(s_long, time_type), "
+            + "first(s_float, time_type), "
+            + "first(s_double, time_type), "
+            + "first(s_bool, time_type), "
+            + "first(s_string, time_type) "
+            + "from table_a "
+            + "where table_a.device='d1' ",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -154,6 +251,40 @@ public class IoTDBAggregationFirstIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int), "
+            + "first(s_long), "
+            + "first(s_float), "
+            + "first(s_double), "
+            + "first(s_bool), "
+            + "first(s_string) "
+            + "from "
+            // subQuery: project all the column needed and rename the time_type to the time
+            + "(select "
+            + "  time_type, "
+            + "  s_int, s_long, s_float, s_double, s_bool, s_string "
+            + "from table_a "
+            + "left join table_b on table_a.time=table_b.time "
+            + "where table_a.device='d2') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int, time_type), "
+            + "first(s_long, time_type), "
+            + "first(s_float, time_type), "
+            + "first(s_double, time_type), "
+            + "first(s_bool, time_type), "
+            + "first(s_string, time_type) "
+            + "from table_a "
+            + "where table_a.device='d2'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -178,6 +309,39 @@ public class IoTDBAggregationFirstIT {
             + "from table_a "
             + "left join table_b on table_a.time=table_b.time "
             + "where table_a.device='d3') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int), "
+            + "first(s_long), "
+            + "first(s_float), "
+            + "first(s_double), "
+            + "first(s_bool), "
+            + "first(s_string) "
+            + "from "
+            + "(select "
+            + "  time_type, "
+            + "  s_int, s_long, s_float, s_double, s_bool, s_string "
+            + "from table_a "
+            + "left join table_b on table_a.time=table_b.time "
+            + "where table_a.device='d3') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+
+    tableResultSetEqualTest(
+        "select "
+            + "first(s_int, time_type), "
+            + "first(s_long, time_type), "
+            + "first(s_float, time_type), "
+            + "first(s_double, time_type), "
+            + "first(s_bool, time_type), "
+            + "first(s_string, time_type) "
+            + "from table_a "
+            + "where table_a.device='d3'",
         expectedHeader,
         retArray,
         DATABASE_NAME);

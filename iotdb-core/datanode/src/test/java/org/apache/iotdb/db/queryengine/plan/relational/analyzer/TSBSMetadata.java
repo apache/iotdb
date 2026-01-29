@@ -64,6 +64,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_1;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.MockTSBSDataPartition.T1_DEVICE_2;
@@ -342,12 +343,13 @@ public class TSBSMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       String database,
       TableSchema tableSchema,
       MPPQueryContext context,
       boolean allowCreateTable,
-      boolean isStrictIdColumn) {
+      boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn) {
     throw new UnsupportedOperationException();
   }
 

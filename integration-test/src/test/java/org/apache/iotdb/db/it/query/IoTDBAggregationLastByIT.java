@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.it.query;
 
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -30,8 +32,14 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
@@ -106,10 +114,64 @@ public class IoTDBAggregationLastByIT {
   }
 
   @Test
+  public void TestPriority() {
+    String[] expectedHeader = {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
+    String[] retArray = {"99,99,99.0,99.0,true,99s,"};
+    tableResultSetEqualTest(
+        "select "
+            + "last_by(s_int, y_criteria), "
+            + "last_by(s_long, y_criteria), "
+            + "last_by(s_float, y_criteria), "
+            + "last_by(s_double, y_criteria), "
+            + "last_by(s_bool, y_criteria), "
+            + "last_by(s_string, y_criteria) "
+            + "from table_a "
+            + "where table_a.device='d1'",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testNoTimeStamp() {
+
+    String sql =
+        "select "
+            + "last_by(s_int,  y_criteria)"
+            + "  from ("
+            + "   select "
+            + "    s_int,"
+            + "    s_long,"
+            + "    s_float,"
+            + "    y_criteria"
+            + "  from table_a"
+            + ") AS t";
+    try (Connection connection =
+        EnvFactory.getEnv()
+            .getConnection(
+                SessionConfig.DEFAULT_USER,
+                SessionConfig.DEFAULT_PASSWORD,
+                BaseEnv.TABLE_SQL_DIALECT)) {
+      connection.setClientInfo("time_zone", "+00:00");
+      try (Statement statement = connection.createStatement()) {
+        statement.execute("use " + DATABASE_NAME);
+        statement.executeQuery(sql);
+      }
+      fail("Missing valid time column, the query should fail");
+    } catch (SQLException e) {
+      assertEquals(
+          "701: Missing valid time column. The table must contain either a column with the TIME category or at least one TIMESTAMP column.",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testLastBy_d1_NoNulls() {
     String[] expectedHeader = {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
     String[] retArray = {"-5,-5,-5.0,-5.0,false,-5s,"};
     runTest("d1", expectedHeader, retArray);
+    runTest2("d1", expectedHeader, retArray);
+    runTest3("d1", expectedHeader, retArray);
   }
 
   @Test
@@ -117,6 +179,8 @@ public class IoTDBAggregationLastByIT {
     String[] expectedHeader = {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
     String[] retArray = {"-10,-10,-10.0,-10.0,true,-10s,"};
     runTest("d2", expectedHeader, retArray);
+    runTest2("d2", expectedHeader, retArray);
+    runTest3("d2", expectedHeader, retArray);
   }
 
   @Test
@@ -124,6 +188,8 @@ public class IoTDBAggregationLastByIT {
     String[] expectedHeader = {"_col0", "_col1", "_col2", "_col3", "_col4", "_col5"};
     String[] retArray = {"-5,-5,null,null,null,null,"};
     runTest("d3", expectedHeader, retArray);
+    runTest2("d3", expectedHeader, retArray);
+    runTest3("d3", expectedHeader, retArray);
   }
 
   @Test
@@ -132,6 +198,8 @@ public class IoTDBAggregationLastByIT {
     // Expected: No valid s2 found.
     String[] retArray = {"null,null,null,null,null,null,"};
     runTest("d4", expectedHeader, retArray);
+    runTest2("d4", expectedHeader, retArray);
+    runTest3("d4", expectedHeader, retArray);
   }
 
   @Test
@@ -140,6 +208,8 @@ public class IoTDBAggregationLastByIT {
     // Expected: The row with y_criteria=NULL is skipped. The row with y_criteria=50 is picked.
     String[] retArray = {"50,50,50.0,50.0,false,50s,"};
     runTest("d5", expectedHeader, retArray);
+    runTest2("d5", expectedHeader, retArray);
+    runTest3("d5", expectedHeader, retArray);
   }
 
   private void runTest(String deviceId, String[] expectedHeader, String[] retArray) {
@@ -157,6 +227,44 @@ public class IoTDBAggregationLastByIT {
             + "where table_a.device='"
             + deviceId
             + "') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  private void runTest2(String deviceId, String[] expectedHeader, String[] retArray) {
+    tableResultSetEqualTest(
+        "select "
+            + "last_by(s_int, y_criteria), "
+            + "last_by(s_long, y_criteria), "
+            + "last_by(s_float, y_criteria), "
+            + "last_by(s_double, y_criteria), "
+            + "last_by(s_bool, y_criteria), "
+            + "last_by(s_string, y_criteria) "
+            + "from "
+            + "(select s_int, s_long, s_float, s_double, s_bool, s_string, y_criteria, time_type "
+            + "from table_a left join table_b on table_a.time=table_b.time "
+            + "where table_a.device='"
+            + deviceId
+            + "') ",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  private void runTest3(String deviceId, String[] expectedHeader, String[] retArray) {
+    tableResultSetEqualTest(
+        "select "
+            + "last_by(s_int, y_criteria, time_type), "
+            + "last_by(s_long, y_criteria, time_type), "
+            + "last_by(s_float, y_criteria, time_type), "
+            + "last_by(s_double, y_criteria, time_type), "
+            + "last_by(s_bool, y_criteria, time_type), "
+            + "last_by(s_string, y_criteria, time_type) "
+            + "from table_a  "
+            + "where table_a.device='"
+            + deviceId
+            + "'",
         expectedHeader,
         retArray,
         DATABASE_NAME);
