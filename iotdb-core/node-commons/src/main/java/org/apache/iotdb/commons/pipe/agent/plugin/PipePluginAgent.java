@@ -55,18 +55,18 @@ public abstract class PipePluginAgent {
 
   protected PipePluginAgent(final PipePluginMetaKeeper pipePluginMetaKeeper) {
     this.pipePluginMetaKeeper = pipePluginMetaKeeper;
-    pipeExtractorConstructor = createPipeExtractorConstructor(pipePluginMetaKeeper);
+    pipeExtractorConstructor = createPipeSourceConstructor(pipePluginMetaKeeper);
     pipeProcessorConstructor = createPipeProcessorConstructor(pipePluginMetaKeeper);
-    pipeSinkConstructor = createPipeConnectorConstructor(pipePluginMetaKeeper);
+    pipeSinkConstructor = createPipeSinkConstructor(pipePluginMetaKeeper);
   }
 
-  protected abstract PipeSourceConstructor createPipeExtractorConstructor(
+  protected abstract PipeSourceConstructor createPipeSourceConstructor(
       final PipePluginMetaKeeper pipePluginMetaKeeper);
 
   protected abstract PipeProcessorConstructor createPipeProcessorConstructor(
       final PipePluginMetaKeeper pipePluginMetaKeeper);
 
-  protected abstract PipeSinkConstructor createPipeConnectorConstructor(
+  protected abstract PipeSinkConstructor createPipeSinkConstructor(
       final PipePluginMetaKeeper pipePluginMetaKeeper);
 
   public final PipeExtractor reflectSource(final PipeParameters sourceParameters) {
@@ -124,24 +124,24 @@ public abstract class PipePluginAgent {
     return temporaryProcessor;
   }
 
-  protected PipeConnector validateSink(String pipeName, Map<String, String> connectorAttributes)
+  protected PipeConnector validateSink(String pipeName, Map<String, String> sinkAttributes)
       throws Exception {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-    final PipeConnector temporaryConnector = reflectSink(connectorParameters);
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final PipeConnector temporarySink = reflectSink(sinkParameters);
     try {
-      temporaryConnector.validate(new PipeParameterValidator(connectorParameters));
-      temporaryConnector.customize(
-          connectorParameters,
+      temporarySink.validate(new PipeParameterValidator(sinkParameters));
+      temporarySink.customize(
+          sinkParameters,
           new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
-      temporaryConnector.handshake();
+      temporarySink.handshake();
     } finally {
       try {
-        temporaryConnector.close();
+        temporarySink.close();
       } catch (Exception e) {
         LOGGER.warn("Failed to close temporary connector: {}", e.getMessage(), e);
       }
     }
-    return temporaryConnector;
+    return temporarySink;
   }
 
   /**
