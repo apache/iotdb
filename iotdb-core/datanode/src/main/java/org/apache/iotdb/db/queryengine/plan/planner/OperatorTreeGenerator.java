@@ -2829,7 +2829,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             DATA_NODE_SCHEMA_CACHE,
             isNeedUpdateLastCache,
             context.isNeedUpdateNullEntry(),
-            node.getOutputPaths());
+            node.getOutputPaths().get(idx));
   }
 
   private AlignedUpdateLastCacheOperator createAlignedUpdateLastCacheOperator(

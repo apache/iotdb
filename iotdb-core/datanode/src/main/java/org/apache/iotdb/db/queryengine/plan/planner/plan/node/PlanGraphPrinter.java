@@ -557,10 +557,11 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
-    // TODO
-    /*if (StringUtils.isNotBlank(node.getOutputPaths())) {
-      boxValue.add(String.format("ViewPath: %s", node.getOutputPaths()));
-    }*/
+
+    List<String> outputPaths = node.getOutputPaths();
+    if (outputPaths != null) {
+      boxValue.add(String.format("OutputPaths: %s", outputPaths));
+    }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
   }

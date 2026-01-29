@@ -28,14 +28,9 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
 
-  private final List<String> outputPaths;
-  private int outputPathIndex = 0;
+  private final String outputViewPath;
 
   public UpdateViewPathLastCacheOperator(
       OperatorContext operatorContext,
@@ -45,7 +40,7 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean needUpdateNullEntry,
-      List<String> outputPaths) {
+      String outputViewPath) {
     super(
         operatorContext,
         child,
@@ -54,25 +49,17 @@ public class UpdateViewPathLastCacheOperator extends UpdateLastCacheOperator {
         treeDeviceSchemaCacheManager,
         needUpdateCache,
         needUpdateNullEntry);
-    checkArgument(outputPaths != null, "outputPaths shouldn't be null");
-    this.outputPaths = outputPaths;
+    this.outputViewPath = outputViewPath;
   }
 
   @Override
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
-    String outputPath = outputPaths.get(outputPathIndex);
     LastQueryUtil.appendLastValueRespectBlob(
-        tsBlockBuilder,
-        lastTime,
-        outputPath == null ? fullPath.getFullPath() : outputPath,
-        lastValue,
-        dataType);
-    outputPathIndex++;
+        tsBlockBuilder, lastTime, outputViewPath, lastValue, dataType);
   }
 
   @Override
   public long ramBytesUsed() {
-    return super.ramBytesUsed()
-        + outputPaths.stream().mapToLong(path -> RamUsageEstimator.sizeOf(path)).sum();
+    return super.ramBytesUsed() + RamUsageEstimator.sizeOf(outputViewPath);
   }
 }
