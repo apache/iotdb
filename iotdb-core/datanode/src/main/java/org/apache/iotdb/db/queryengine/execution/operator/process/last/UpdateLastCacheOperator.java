@@ -40,7 +40,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
   // accept PartialPath
-  private final MeasurementPath fullPath;
+  protected final MeasurementPath fullPath;
 
   // type for queried time series
   protected final String dataType;

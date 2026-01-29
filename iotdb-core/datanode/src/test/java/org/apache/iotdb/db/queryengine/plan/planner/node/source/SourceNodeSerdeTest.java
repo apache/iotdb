@@ -45,6 +45,7 @@ public class SourceNodeSerdeTest {
             true,
             Arrays.asList(0, 1),
             null,
+            false,
             null,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),
@@ -61,6 +62,7 @@ public class SourceNodeSerdeTest {
             false,
             Arrays.asList(0, 1),
             null,
+            false,
             null,
             Arrays.asList(
                 new MeasurementSchema("s1", TSDataType.INT32),

@@ -95,7 +95,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
 import com.google.common.base.Joiner;
-import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.utils.Pair;
 
@@ -558,8 +557,10 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(
         String.format(
             "Series: %s%s", node.getDevicePath().getIDeviceID(), node.getMeasurementSchemas()));
-    if (StringUtils.isNotBlank(node.getOutputViewPath())) {
-      boxValue.add(String.format("ViewPath: %s", node.getOutputViewPath()));
+
+    List<String> outputPaths = node.getOutputPaths();
+    if (outputPaths != null) {
+      boxValue.add(String.format("OutputPaths: %s", outputPaths));
     }
     boxValue.add(printRegion(node.getRegionReplicaSet()));
     return render(node, boxValue, context);
