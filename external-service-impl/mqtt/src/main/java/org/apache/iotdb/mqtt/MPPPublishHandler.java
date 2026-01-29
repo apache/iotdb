@@ -292,7 +292,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
           AuthorityChecker.checkAuthority(
               statement,
               new TreeAccessCheckContext(
-                  session.getUserId(), session.getUsername(), session.getClientAddress()));
+                  session.getUserId(), session.getUsername(), session.getClientID()));
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOG.warn(tsStatus.message);
       } else {
