@@ -59,13 +59,15 @@ public class LastQueryTest {
             new MeasurementSchema("s3", TSDataType.INT32),
             new MeasurementSchema("s1", TSDataType.BOOLEAN),
             new MeasurementSchema("s2", TSDataType.INT32)),
-        null);
+        null,
+        false);
     lastQueryNode.addDeviceLastQueryScanNode(
         new PlanNodeId("test_last_query_scan2"),
         new PartialPath("root.test.d0"),
         false,
         Collections.singletonList(new MeasurementSchema("s0", TSDataType.BOOLEAN)),
-        null);
+        null,
+        false);
 
     Analysis analysis = Util.constructAnalysis();
     SourceRewriter sourceRewriter = new SourceRewriter(analysis);
@@ -255,7 +257,8 @@ public class LastQueryTest {
           devicePath,
           selectPath.isUnderAlignedEntity(),
           Collections.singletonList(selectPath.getMeasurementSchema()),
-          null);
+          null,
+          false);
     }
 
     return new LogicalQueryPlan(context, root);

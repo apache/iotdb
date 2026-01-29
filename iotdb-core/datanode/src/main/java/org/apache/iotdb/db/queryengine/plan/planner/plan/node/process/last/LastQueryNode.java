@@ -89,7 +89,8 @@ public class LastQueryNode extends MultiChildProcessNode {
       PartialPath devicePath,
       boolean aligned,
       List<IMeasurementSchema> measurementSchemas,
-      String outputViewPath) {
+      List<String> outputPaths,
+      boolean isOutputPathForView) {
     List<Integer> idxList = new ArrayList<>(measurementSchemas.size());
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
       int idx =
@@ -103,7 +104,13 @@ public class LastQueryNode extends MultiChildProcessNode {
     }
     LastQueryScanNode scanNode =
         new LastQueryScanNode(
-            id, devicePath, aligned, idxList, outputViewPath, globalMeasurementSchemaList);
+            id,
+            devicePath,
+            aligned,
+            idxList,
+            outputPaths,
+            isOutputPathForView,
+            globalMeasurementSchemaList);
     children.add(scanNode);
     return scanNode.ramBytesUsed();
   }

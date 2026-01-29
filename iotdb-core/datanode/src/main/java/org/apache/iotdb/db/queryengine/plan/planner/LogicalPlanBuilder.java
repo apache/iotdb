@@ -252,10 +252,24 @@ public class LogicalPlanBuilder {
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-          String outputViewPath =
-              sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath().getFullPath()
-                  : null;
+
+          String outputPath;
+          TSDataType outputViewPathType = null;
+          // the path is view, use the view path as the output path
+          if (sourceExpression.isViewExpression()) {
+            outputPath = sourceExpression.getViewPath().getFullPath();
+            outputViewPathType = selectedPath.getSeriesType();
+          } else {
+            outputPath = selectedPath.getFullPath();
+          }
+          // the path has alias, use alias as the output path
+          if (selectedPath.isMeasurementAliasExists()) {
+            outputPath =
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString();
+          }
 
           PartialPath devicePath = selectedPath.getDevicePath();
           // For expression with view path, we do not use the deviceId in Map.Entry because it is a
@@ -267,7 +281,8 @@ public class LogicalPlanBuilder {
                   devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
-                  outputViewPath);
+                  Collections.singletonList(outputPath),
+                  outputViewPathType != null);
           this.context.reserveMemoryForFrontEnd(memCost);
         }
       } else {
@@ -275,12 +290,31 @@ public class LogicalPlanBuilder {
         List<IMeasurementSchema> measurementSchemas =
             new ArrayList<>(measurementToExpressionsOfDevice.size());
         PartialPath devicePath = null;
+        List<String> outputPaths = null;
+        int i = 0;
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
           aligned = selectedPath.isUnderAlignedEntity();
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
+
+          // series has alias and use alias to SELECT
+          if (selectedPath.isMeasurementAliasExists()) {
+            if (outputPaths == null) {
+              // fill null as default value
+              outputPaths =
+                  new ArrayList<>(
+                      Collections.nCopies(measurementToExpressionsOfDevice.size(), null));
+            }
+            outputPaths.set(
+                i,
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString());
+          }
+          i++;
         }
         // DeviceId is needed in the distribution plan stage
         devicePath.setIDeviceID(deviceId);
@@ -290,7 +324,8 @@ public class LogicalPlanBuilder {
                 devicePath,
                 aligned,
                 measurementSchemas,
-                null);
+                outputPaths,
+                false);
         this.context.reserveMemoryForFrontEnd(memCost);
       }
     }

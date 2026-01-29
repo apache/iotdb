@@ -2789,7 +2789,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               fullPath);
     }
 
-    return Objects.isNull(node.getOutputViewPath())
+    return Objects.isNull(node.getOutputPaths())
         ? new UpdateLastCacheOperator(
             operatorContext,
             lastQueryScan,
@@ -2806,11 +2806,11 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             DATA_NODE_SCHEMA_CACHE,
             context.isNeedUpdateLastCache(),
             context.isNeedUpdateNullEntry(),
-            node.getOutputViewPath());
+            node.getOutputPaths().get(idx));
   }
 
   private AlignedUpdateLastCacheOperator createAlignedUpdateLastCacheOperator(
-      final String outputViewPath,
+      final List<String> outputPaths,
       final PlanNodeId planNodeId,
       final AlignedPath unCachedPath,
       final LocalExecutionPlanContext context,
@@ -2846,7 +2846,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       }
     }
 
-    return Objects.isNull(outputViewPath)
+    return Objects.isNull(outputPaths)
         ? new AlignedUpdateLastCacheOperator(
             operatorContext,
             lastQueryScan,
@@ -2862,7 +2862,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             DATA_NODE_SCHEMA_CACHE,
             context.isNeedUpdateLastCache(),
             context.isNeedUpdateNullEntry(),
-            outputViewPath,
+            outputPaths,
             deviceInMultiRegion);
   }
 
@@ -2964,6 +2964,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         updateFilterUsingTTL(
             context.getGlobalTimeFilter(),
             DataNodeTTLCache.getInstance().getTTL(devicePath.getNodes()));
+    boolean hasOutputPath = node.getOutputPaths() != null;
     for (int i = 0; i < idxOfMeasurementSchemas.size(); i++) {
       IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
       final PartialPath measurementPath =
@@ -2994,8 +2995,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           unCachedMeasurementIndexes.add(i);
         }
       } else { //  cached last value is satisfied, put it into LastCacheScanOperator
-        if (node.getOutputViewPath() != null) {
-          context.addCachedLastValue(timeValuePair, node.getOutputViewPath());
+        String outputPath = hasOutputPath ? node.getOutputPaths().get(i) : null;
+        if (outputPath != null) {
+          context.addCachedLastValue(timeValuePair, node.getOutputPaths().get(i));
         } else {
           context.addCachedLastValue(timeValuePair, measurementPath.getFullPath());
         }
@@ -3006,12 +3008,17 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     }
     if (node.isAligned()) {
       AlignedPath unCachedPath = new AlignedPath(node.getDevicePath());
+      // select output paths for uncached measurements
+      List<String> newOutputPaths = hasOutputPath ? new ArrayList<>() : null;
       for (int i : unCachedMeasurementIndexes) {
         IMeasurementSchema measurementSchema = node.getMeasurementSchema(i);
         unCachedPath.addMeasurement(measurementSchema.getMeasurementId(), measurementSchema);
+        if (hasOutputPath) {
+          newOutputPaths.add(node.getOutputPaths().get(i));
+        }
       }
       return createAlignedUpdateLastCacheOperator(
-          node.getOutputViewPath(),
+          newOutputPaths,
           node.getPlanNodeId(),
           unCachedPath,
           context,
