@@ -33,8 +33,6 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
-import java.util.Comparator;
 
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
@@ -128,7 +126,6 @@ public class IoTDBLastQueryAliasIT {
           "2,root.test.d2.alias2,3,INT32,",
           "2,root.test.d2.alias3,2,INT32,",
         };
-    Arrays.stream(retArray).sorted(Comparator.naturalOrder());
     resultSetEqualTest(
         "select last alias3,alias2,alias1 from root.test.d2 order by timeseries",
         expectedHeader,
