@@ -60,6 +60,7 @@ public class LastQueryTest {
             new MeasurementSchema("s1", TSDataType.BOOLEAN),
             new MeasurementSchema("s2", TSDataType.INT32)),
         null,
+        false,
         null);
     lastQueryNode.addDeviceLastQueryScanNode(
         new PlanNodeId("test_last_query_scan2"),
@@ -67,6 +68,7 @@ public class LastQueryTest {
         false,
         Collections.singletonList(new MeasurementSchema("s0", TSDataType.BOOLEAN)),
         null,
+        false,
         null);
 
     Analysis analysis = Util.constructAnalysis();
@@ -256,6 +258,7 @@ public class LastQueryTest {
           selectPath.isUnderAlignedEntity(),
           Collections.singletonList(selectPath.getMeasurementSchema()),
           null,
+          false,
           null);
     }
 
