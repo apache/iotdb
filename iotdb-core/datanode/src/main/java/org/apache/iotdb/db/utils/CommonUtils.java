@@ -468,6 +468,7 @@ public class CommonUtils {
     if (databaseName != null && PathUtils.isTableModelDatabase(databaseName)) {
       TsTable table =
           DataNodeTableCache.getInstance()
+              // in unit test
               .getTable(databaseName, deviceID.getTableName(), tableMustExist);
       if (table == null) {
         // if table does not exist, then we are creating a new table

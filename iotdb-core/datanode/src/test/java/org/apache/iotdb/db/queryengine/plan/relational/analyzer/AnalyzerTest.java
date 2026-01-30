@@ -120,7 +120,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 
-public class AnalyzerTest {
+public class AnalyzerTest extends BaseAnalyzerTest {
 
   private static final AccessControl nopAccessControl = new AllowAllAccessControl();
   final String database = "db";

@@ -57,7 +57,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Arithmetic
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN;
 
 // This test covers the remaining DistributionPlan cases that TSBSTest doesn't cover
-public class AggregationTest {
+public class AggregationTest extends BaseAnalyzerTest {
   @Test
   public void noPushDownTest() {
     PlanTester planTester = new PlanTester();

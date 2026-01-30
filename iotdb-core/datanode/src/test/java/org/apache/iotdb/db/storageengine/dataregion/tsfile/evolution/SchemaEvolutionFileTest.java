@@ -106,7 +106,7 @@ public class SchemaEvolutionFileTest {
     File[] files = dir.listFiles(f -> f.getName().endsWith(SchemaEvolutionFile.FILE_SUFFIX));
     assertNotNull(files);
     assertEquals(1, files.length);
-    assertEquals(24, SchemaEvolutionFile.parseValidLength(files[0].getName()));
+    assertEquals(25, SchemaEvolutionFile.parseValidLength(files[0].getName()));
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(files[0], true)) {
       fileOutputStream.write(new byte[100]);

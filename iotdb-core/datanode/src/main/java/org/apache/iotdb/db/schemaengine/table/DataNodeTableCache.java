@@ -329,6 +329,7 @@ public class DataNodeTableCache implements ITableCache {
       updateTable(getTablesInConfigNode(preUpdateTables), preUpdateTables);
     }
     final TsTable table = getTableInCache(database, tableName);
+
     if (Objects.isNull(table) && force) {
       TableMetadataImpl.throwTableNotExistsException(database, tableName);
     }
