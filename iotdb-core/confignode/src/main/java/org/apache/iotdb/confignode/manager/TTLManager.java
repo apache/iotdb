@@ -131,6 +131,20 @@ public class TTLManager {
   }
 
   /**
+   * Get the maximum ttl of the corresponding database level.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the corresponding database level.
+   */
+  public long getDatabaseLevelTTL(final String database) {
+    final long ttl = ttlInfo.getDatabaseLevelTTL(database);
+    return ttl == Long.MAX_VALUE || ttl < 0
+        ? ttl
+        : CommonDateTimeUtils.convertMilliTimeWithPrecision(
+            ttl, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());
+  }
+
+  /**
    * Get the maximum ttl of the subtree of the corresponding database.
    *
    * @param database the path of the database.
