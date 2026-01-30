@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -59,16 +60,20 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
@@ -92,12 +97,13 @@ public class TableHeaderSchemaValidator {
     return TableHeaderSchemaValidatorHolder.INSTANCE;
   }
 
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictTagColumn)
+      final boolean isStrictTagColumn,
+      final @Nonnull AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException {
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
     // operation executed by delete timeSeries will be effective.
@@ -135,8 +141,7 @@ public class TableHeaderSchemaValidator {
     } else {
       DataNodeTreeViewSchemaUtils.checkTableInWrite(database, table);
       // If table with this name already exists and isStrictTagColumn is true, make sure the
-      // existing
-      // id columns are the prefix of the incoming tag columns, or vice versa
+      // existing tag columns are a prefix of the incoming tag columns, or vice versa
       if (isStrictTagColumn) {
         final List<TsTableColumnSchema> realTagColumns = table.getTagColumnSchemaList();
         final List<ColumnSchema> incomingTagColumns = tableSchema.getTagColumns();
@@ -171,6 +176,32 @@ public class TableHeaderSchemaValidator {
             }
           }
         }
+      }
+      long realTimeIndex = 0;
+      boolean realWithoutTimeColumn = true;
+
+      for (final TsTableColumnSchema schema : table.getColumnList()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          realWithoutTimeColumn = false;
+          break;
+        }
+        if (schema.getColumnCategory() != TsTableColumnCategory.ATTRIBUTE) {
+          ++realTimeIndex;
+        }
+      }
+
+      long inputTimeIndex = 0;
+      boolean inputWithoutTimeColumn = true;
+      for (final ColumnSchema schema : tableSchema.getColumns()) {
+        if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
+          inputWithoutTimeColumn = false;
+          break;
+        }
+        ++inputTimeIndex;
+      }
+      if (inputWithoutTimeColumn != realWithoutTimeColumn
+          || !inputWithoutTimeColumn && inputTimeIndex != realTimeIndex) {
+        needDecode4DifferentTimeColumn.set(true);
       }
     }
 
@@ -211,7 +242,7 @@ public class TableHeaderSchemaValidator {
           noField = false;
         }
       } else {
-        // leave measurement columns' dataType checking to the caller, then the caller can decide
+        // leave field columns' dataType checking to the caller, then the caller can decide
         // whether to do partial insert
 
         // only check column category
@@ -233,7 +264,7 @@ public class TableHeaderSchemaValidator {
     final List<ColumnSchema> resultColumnList = new ArrayList<>();
     if (!missingColumnList.isEmpty() && isAutoCreateSchemaEnabled) {
       // TODO table metadata: authority check for table alter
-      // check id or attribute column data type in this method
+      // check tag or attribute column data type in this method
       autoCreateColumn(database, tableSchema.getTableName(), missingColumnList, context);
       table = DataNodeTableCache.getInstance().getTable(database, tableSchema.getTableName());
     } else if (!missingColumnList.isEmpty()
@@ -571,12 +602,10 @@ public class TableHeaderSchemaValidator {
       final ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       final ConfigTaskResult result = future.get();
       if (result.getStatusCode().getStatusCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(
-                String.format(
-                    "Auto add table column failed: %s.%s",
-                    database, measurementInfo.getTableName()),
-                result.getStatusCode().getStatusCode()));
+        throw new IoTDBRuntimeException(
+            String.format(
+                "Auto add table column failed: %s.%s", database, measurementInfo.getTableName()),
+            result.getStatusCode().getStatusCode());
       }
       DataNodeSchemaLockManager.getInstance()
           .takeReadLock(context, SchemaLockType.VALIDATE_VS_DELETION_TABLE);
@@ -631,6 +660,18 @@ public class TableHeaderSchemaValidator {
       return tsTable;
     }
 
+    long timeCandidateNums =
+        Arrays.stream(measurementInfo.getColumnCategories())
+            .filter(columnDefinition -> TsTableColumnCategory.TIME == columnDefinition)
+            .count();
+    if (timeCandidateNums > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeCandidateNums == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    }
+
     boolean hasObject = false;
     for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] == null) {
@@ -654,12 +695,16 @@ public class TableHeaderSchemaValidator {
         throw new SemanticException(
             String.format("Columns in table shall not share the same name %s.", columnName));
       }
-
       TSDataType dataType = measurementInfo.getType(i);
       if (dataType == null && (dataType = measurementInfo.getTypeForFirstValue(i)) == null) {
         throw new ColumnCreationFailException(
             "Cannot create column " + columnName + " datatype is not provided");
       }
+
+      if (category == TsTableColumnCategory.TIME && dataType != TSDataType.TIMESTAMP) {
+        throw new SemanticException("The time column's type shall be 'timestamp'.");
+      }
+
       hasObject |= dataType == TSDataType.OBJECT;
       tsTable.addColumnSchema(generateColumnSchema(category, columnName, dataType, null, null));
     }
@@ -675,6 +720,21 @@ public class TableHeaderSchemaValidator {
   }
 
   private void addColumnSchema(final List<ColumnSchema> columnSchemas, final TsTable tsTable) {
+    // check if the time column has been specified
+    long timeColumnCount =
+        columnSchemas.stream()
+            .filter(
+                columnDefinition ->
+                    columnDefinition.getColumnCategory() == TsTableColumnCategory.TIME)
+            .count();
+    if (timeColumnCount > 1) {
+      throw new SemanticException("A table cannot have more than one time column");
+    }
+    if (timeColumnCount == 0) {
+      // append the time column with default name "time" if user do not specify the time column
+      tsTable.addColumnSchema(new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP));
+    }
+
     for (final ColumnSchema columnSchema : columnSchemas) {
       TsTableColumnCategory category = columnSchema.getColumnCategory();
       if (category == null) {
@@ -718,8 +778,8 @@ public class TableHeaderSchemaValidator {
         schema = new AttributeColumnSchema(columnName, dataType);
         break;
       case TIME:
-        throw new SemanticException(
-            "Create table or add column statement shall not specify column category TIME");
+        schema = new TimeColumnSchema(columnName, dataType);
+        break;
       case FIELD:
         schema =
             dataType != TSDataType.UNKNOWN
@@ -810,10 +870,8 @@ public class TableHeaderSchemaValidator {
                   TSFileDescriptor.getInstance().getConfig().getCompressor(dataType)));
           break;
         case TIME:
-          throw new SemanticException(
-              "Adding column for column category "
-                  + inputColumn.getColumnCategory()
-                  + " is not supported");
+          // Do nothing, cause the time column shall never be appended to the existing table
+          break;
         default:
           throw new IllegalStateException(
               "Unknown ColumnCategory for adding column: " + inputColumn.getColumnCategory());

@@ -90,7 +90,8 @@ public class LastQueryNode extends MultiChildProcessNode {
       PartialPath devicePath,
       boolean aligned,
       List<IMeasurementSchema> measurementSchemas,
-      String outputViewPath,
+      List<String> outputPaths,
+      boolean isOutputPathForView,
       TSDataType outputViewPathType) {
     List<Integer> idxList = new ArrayList<>(measurementSchemas.size());
     for (IMeasurementSchema measurementSchema : measurementSchemas) {
@@ -109,7 +110,8 @@ public class LastQueryNode extends MultiChildProcessNode {
             devicePath,
             aligned,
             idxList,
-            outputViewPath,
+            outputPaths,
+            isOutputPathForView,
             outputViewPathType,
             globalMeasurementSchemaList);
     children.add(scanNode);

@@ -43,6 +43,7 @@ import org.apache.tsfile.read.common.type.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 // All the input databases shall not contain "root"
 public interface Metadata {
@@ -102,28 +103,31 @@ public interface Metadata {
    * <p>When table or column is missing, this method will execute auto creation if the user have
    * corresponding authority.
    *
-   * <p>When using SQL, the columnSchemaList could be null and there won't be any validation.
+   * <p>When using SQL, the columnSchemaList could be {@code null} and there won't be any
+   * validation.
    *
-   * <p>When the input dataType or category of one column is null, the column won't be auto created.
+   * <p>When the input dataType or category of one column is {@code null}, the column won't be auto
+   * created.
    *
    * <p>The caller need to recheck the dataType of measurement columns to decide whether to do
    * partial insert
    *
-   * @param isStrictIdColumn if true, when the table already exists, the id columns in the existing
-   *     table should be the prefix of those in the input tableSchema, or input id columns be the
-   *     prefix of existing id columns.
+   * @param isStrictTagColumn if {@code true}, when the table already exists, the tag columns in the
+   *     existing table should be the prefix of those in the input tableSchema, or input tag columns
+   *     be the prefix of existing tag columns.
    * @return If table doesn't exist and the user have no authority to create table, Optional.empty()
    *     will be returned. The returned table may not include all the columns
    *     in @param{tableSchema}, if the user have no authority to alter table.
-   * @throws SemanticException if column category mismatch or data types of id or attribute column
-   *     are not STRING or Category, Type of any missing ColumnSchema is null
+   * @throws SemanticException if column category mismatch or data types of tag or attribute column
+   *     are not STRING or Category, Type of any missing ColumnSchema is {@code null}
    */
-  Optional<TableSchema> validateTableHeaderSchema(
+  Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn)
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn)
       throws LoadAnalyzeTableColumnDisorderException;
 
   void validateInsertNodeMeasurements(

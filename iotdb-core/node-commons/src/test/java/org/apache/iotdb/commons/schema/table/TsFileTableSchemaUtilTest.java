@@ -325,9 +325,6 @@ public class TsFileTableSchemaUtilTest {
     final TsFileTableSchemaUtil.ColumnCategoryFilter filter =
         TsFileTableSchemaUtil.ColumnCategoryFilter.NO_ATTRIBUTE;
 
-    // TIME should be filtered out
-    Assert.assertFalse("TIME should be filtered out", filter.test(TsTableColumnCategory.TIME));
-
     // ATTRIBUTE should be filtered out
     Assert.assertFalse(
         "ATTRIBUTE should be filtered out", filter.test(TsTableColumnCategory.ATTRIBUTE));
@@ -340,8 +337,7 @@ public class TsFileTableSchemaUtilTest {
 
     // Test all enum values
     for (TsTableColumnCategory category : TsTableColumnCategory.values()) {
-      final boolean shouldInclude =
-          category != TsTableColumnCategory.TIME && category != TsTableColumnCategory.ATTRIBUTE;
+      final boolean shouldInclude = category != TsTableColumnCategory.ATTRIBUTE;
       Assert.assertEquals(
           "Category " + category + " filter result mismatch", shouldInclude, filter.test(category));
     }
@@ -641,11 +637,10 @@ public class TsFileTableSchemaUtilTest {
   public void testToTsFileTableSchemaNoAttributeWithMixedOrder() {
     // Test with columns in mixed order (TIME, TAG, ATTRIBUTE, FIELD, etc.)
     final TsTable table = new TsTable("mixedOrderTable");
-    table.addColumnSchema(new TimeColumnSchema("time", TSDataType.INT64));
     table.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("attr1", TSDataType.STRING));
     table.addColumnSchema(new FieldColumnSchema("field1", TSDataType.DOUBLE));
-    table.addColumnSchema(new TimeColumnSchema("time2", TSDataType.INT64));
+    table.addColumnSchema(new TimeColumnSchema("time2", TSDataType.TIMESTAMP));
     table.addColumnSchema(new TagColumnSchema("tag2", TSDataType.STRING));
     table.addColumnSchema(new AttributeColumnSchema("attr2", TSDataType.STRING));
     table.addColumnSchema(new FieldColumnSchema("field2", TSDataType.INT32));
@@ -653,7 +648,7 @@ public class TsFileTableSchemaUtilTest {
     final TableSchema result = TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table);
 
     // Should have 2 TAG + 2 FIELD = 4 columns
-    Assert.assertEquals("Should have 4 columns", 4, result.getColumnSchemas().size());
+    Assert.assertEquals("Should have 5 columns", 5, result.getColumnSchemas().size());
 
     // Verify order: tag1, tag2, field1, field2 (original order preserved)
     final List<String> columnNames =
@@ -662,8 +657,9 @@ public class TsFileTableSchemaUtilTest {
             .collect(Collectors.toList());
     Assert.assertEquals("tag1", columnNames.get(0));
     Assert.assertEquals("field1", columnNames.get(1));
-    Assert.assertEquals("tag2", columnNames.get(2));
-    Assert.assertEquals("field2", columnNames.get(3));
+    Assert.assertEquals("time2", columnNames.get(2));
+    Assert.assertEquals("tag2", columnNames.get(3));
+    Assert.assertEquals("field2", columnNames.get(4));
   }
 
   @Test

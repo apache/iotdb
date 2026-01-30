@@ -48,18 +48,21 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<Boolean> isTableModel;
   private final String database;
   private final File schemaEvolutionFile;
+  private final boolean needDecode4TimeColumn;
 
   public LoadTsFileNode(
-      PlanNodeId id,
-      List<TsFileResource> resources,
-      List<Boolean> isTableModel,
-      String database,
-      File schemaEvolutionFile) {
+      final PlanNodeId id,
+      final List<TsFileResource> resources,
+      final List<Boolean> isTableModel,
+      final String database,
+      final boolean needDecode4TimeColumn,
+      final File schemaEvolutionFile) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
     this.schemaEvolutionFile = schemaEvolutionFile;
+    this.needDecode4TimeColumn = needDecode4TimeColumn;
   }
 
   @Override
@@ -129,6 +132,7 @@ public class LoadTsFileNode extends WritePlanNode {
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
+              false,
               schemaEvolutionFile));
     }
     return res;
@@ -152,6 +156,7 @@ public class LoadTsFileNode extends WritePlanNode {
                 database,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
+                needDecode4TimeColumn,
                 schemaEvolutionFile));
       }
     }

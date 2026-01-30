@@ -1224,4 +1224,19 @@ public class IoTDBSimpleQueryIT {
       fail();
     }
   }
+
+  @Test
+  public void testQueryWithGlobalTimeFilterOrderByTimeDesc() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.sg1.d1(timestamp, s1, s2) aligned values(1, 1, 1)");
+      statement.execute("insert into root.sg1.d1(timestamp, s1, s2) aligned values(2, null, 2)");
+      statement.execute("insert into root.sg1.d1(timestamp, s1, s2) aligned values(3, null, 3)");
+      statement.execute("flush");
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select s1 from root.sg1.d1 where time >= 3 and time <= 4 order by time desc");
+      Assert.assertFalse(resultSet.next());
+    }
+  }
 }

@@ -269,7 +269,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -684,10 +683,23 @@ public class StatementAnalyzer {
               .collect(toImmutableList());
       analysis.registerTable(insert.getTable(), tableSchema, targetTable);
 
-      LinkedHashSet<String> tableColumns =
-          columns.stream()
-              .map(ColumnSchema::getName)
-              .collect(Collectors.toCollection(LinkedHashSet::new));
+      LinkedHashSet<String> tableColumns = new LinkedHashSet<>();
+      String actualTimeColumnName = null;
+      for (ColumnSchema column : columns) {
+        tableColumns.add(column.getName().toLowerCase(ENGLISH));
+
+        if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
+          if (actualTimeColumnName != null) {
+            throw new SemanticException(
+                "Multiple columns found with TIME category in table schema");
+          }
+          actualTimeColumnName = column.getName();
+        }
+      }
+      if (actualTimeColumnName == null) {
+        throw new SemanticException("Target table schema misses a TIME category column");
+      }
+
       LinkedHashSet<String> insertColumns;
       if (insert.getColumns().isPresent()) {
         insertColumns =
@@ -712,7 +724,7 @@ public class StatementAnalyzer {
       }
 
       // insert columns should contain time
-      if (!insertColumns.contains(TIME_COLUMN_NAME)) {
+      if (!insertColumns.contains(actualTimeColumnName)) {
         throw new SemanticException("time column can not be null");
       }
       // insert columns should contain at least one field column
@@ -1865,12 +1877,12 @@ public class StatementAnalyzer {
               (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
         }
         for (int i = 0; i < maxSize; i++) {
-          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          List<Expression> operandListBuilder = new ArrayList<>(childrenIndexes.length);
           for (int j = 0; j < childrenIndexes.length; j++) {
             int operandIndexInResult = childrenIndexes[j].get();
             operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
           }
-          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder.build()));
+          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder));
           baseIndex.getAndIncrement();
         }
         return resultBuilder.build();

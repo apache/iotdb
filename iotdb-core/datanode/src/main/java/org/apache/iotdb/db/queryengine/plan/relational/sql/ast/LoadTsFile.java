@@ -58,13 +58,14 @@ public class LoadTsFile extends Statement {
 
   private boolean isGeneratedByPipe = false;
 
-  private Map<String, String> loadAttributes;
+  private final Map<String, String> loadAttributes;
 
   private List<File> tsFiles;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
   private File schemaEvolutionFile;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
@@ -166,6 +167,14 @@ public class LoadTsFile extends Statement {
 
   public void setIsTableModel(List<Boolean> isTableModel) {
     this.isTableModel = isTableModel;
+  }
+
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
   }
 
   public List<File> getTsFiles() {
