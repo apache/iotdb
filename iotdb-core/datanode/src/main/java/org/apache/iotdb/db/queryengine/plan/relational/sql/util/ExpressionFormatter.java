@@ -398,9 +398,9 @@ public final class ExpressionFormatter {
       String value = process(node.getValue(), context);
 
       switch (node.getSign()) {
-          // Unary is ambiguous with respect to negative numbers. "-1" parses as a number, but
-          // "-(1)" parses as "unaryMinus(number)"
-          // The parentheses are needed to ensure the parsing roundtrips properly.
+        // Unary is ambiguous with respect to negative numbers. "-1" parses as a number, but
+        // "-(1)" parses as "unaryMinus(number)"
+        // The parentheses are needed to ensure the parsing roundtrips properly.
         case MINUS:
           return "-(" + value + ")";
         case PLUS:

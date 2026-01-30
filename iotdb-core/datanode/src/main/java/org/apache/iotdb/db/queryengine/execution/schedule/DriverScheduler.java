@@ -340,7 +340,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
         task.lock();
         DriverTaskStatus status = task.getStatus();
         switch (status) {
-            // If it has been aborted, return directly
+          // If it has been aborted, return directly
           case ABORTED:
             return;
           case READY:

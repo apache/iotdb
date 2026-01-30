@@ -439,10 +439,10 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-        // return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      // return new MaxByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       case MIN_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
-        // return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      // return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -459,46 +459,46 @@ public class AccumulatorFactory {
         return new CountAccumulator();
       case AVG:
         return new AvgAccumulator(tsDataType);
-        /*case SUM:
-          return new SumAccumulator(tsDataType);
-        case EXTREME:
-          return new ExtremeAccumulator(tsDataType);
-        case MAX_TIME:
-          return ascending ? new MaxTimeAccumulator() : new MaxTimeDescAccumulator();
-        case MIN_TIME:
-          return ascending ? new MinTimeAccumulator() : new MinTimeDescAccumulator();
-        case MAX_VALUE:
-          return new MaxValueAccumulator(tsDataType);
-        case MIN_VALUE:
-          return new MinValueAccumulator(tsDataType);
-        case LAST_VALUE:
-          return ascending
-              ? new LastValueAccumulator(tsDataType)
-              : new LastValueDescAccumulator(tsDataType);
-        case FIRST_VALUE:
-          return ascending
-              ? new FirstValueAccumulator(tsDataType)
-              : new FirstValueDescAccumulator(tsDataType);
-        case COUNT_IF:
-          return new CountIfAccumulator(
-              initKeepEvaluator(inputExpressions.get(1)),
-              Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
-        case TIME_DURATION:
-          return new TimeDurationAccumulator();
-        case MODE:
-          return createModeAccumulator(tsDataType);
-        case COUNT_TIME:
-          return new CountTimeAccumulator();
-        case STDDEV:
-        case STDDEV_SAMP:
-          return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_SAMP);
-        case STDDEV_POP:
-          return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_POP);
-        case VARIANCE:
-        case VAR_SAMP:
-          return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
-        case VAR_POP:
-          return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);*/
+      /*case SUM:
+        return new SumAccumulator(tsDataType);
+      case EXTREME:
+        return new ExtremeAccumulator(tsDataType);
+      case MAX_TIME:
+        return ascending ? new MaxTimeAccumulator() : new MaxTimeDescAccumulator();
+      case MIN_TIME:
+        return ascending ? new MinTimeAccumulator() : new MinTimeDescAccumulator();
+      case MAX_VALUE:
+        return new MaxValueAccumulator(tsDataType);
+      case MIN_VALUE:
+        return new MinValueAccumulator(tsDataType);
+      case LAST_VALUE:
+        return ascending
+            ? new LastValueAccumulator(tsDataType)
+            : new LastValueDescAccumulator(tsDataType);
+      case FIRST_VALUE:
+        return ascending
+            ? new FirstValueAccumulator(tsDataType)
+            : new FirstValueDescAccumulator(tsDataType);
+      case COUNT_IF:
+        return new CountIfAccumulator(
+            initKeepEvaluator(inputExpressions.get(1)),
+            Boolean.parseBoolean(inputAttributes.getOrDefault("ignoreNull", "true")));
+      case TIME_DURATION:
+        return new TimeDurationAccumulator();
+      case MODE:
+        return createModeAccumulator(tsDataType);
+      case COUNT_TIME:
+        return new CountTimeAccumulator();
+      case STDDEV:
+      case STDDEV_SAMP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_SAMP);
+      case STDDEV_POP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.STDDEV_POP);
+      case VARIANCE:
+      case VAR_SAMP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
+      case VAR_POP:
+        return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);*/
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
