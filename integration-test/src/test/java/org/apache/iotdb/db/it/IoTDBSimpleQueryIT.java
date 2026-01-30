@@ -703,48 +703,39 @@ public class IoTDBSimpleQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      // Test Case 1: Single Region scenario (single database)
-      // Create first database and write data, then verify immediately to ensure single Region
-      statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (1, 1)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (1, 2)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (1, 3)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s1) VALUES (2, 4)");
-      statement.execute("INSERT INTO root.sg1.d1(timestamp, s2) VALUES (2, 5)");
-      statement.execute("INSERT INTO root.sg1.d2(timestamp, s1) VALUES (3, 6)");
+      // Test Case 1: Single Region scenario (single database, single device)
+      // Create first database and write data to single device to ensure single Region
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s2) VALUES (1, 2)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s3) VALUES (1, 3)");
       statement.execute("flush");
 
       // Verify single Region scenario - offset only
       List<String> sg1AllPaths = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.**")) {
         while (resultSet.next()) {
           sg1AllPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertTrue("Should have at least 6 timeseries in root.sg1", sg1AllPaths.size() >= 6);
+      Assert.assertEquals(3, sg1AllPaths.size());
 
       int offset1 = 2;
       List<String> sg1ResultPaths = new ArrayList<>();
       try (ResultSet resultSet =
-          statement.executeQuery("show timeseries root.sg1.** offset " + offset1)) {
+          statement.executeQuery("show timeseries root.db1.** offset " + offset1)) {
         while (resultSet.next()) {
           sg1ResultPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertEquals(
-          "Should return all results after offset for single Region scenario",
-          sg1AllPaths.size() - offset1,
-          sg1ResultPaths.size());
+      Assert.assertEquals(sg1AllPaths.size() - offset1, sg1ResultPaths.size());
       for (int i = 0; i < sg1ResultPaths.size(); i++) {
-        Assert.assertEquals(
-            "Results should match from offset position in single Region",
-            sg1AllPaths.get(offset1 + i),
-            sg1ResultPaths.get(i));
+        Assert.assertEquals(sg1AllPaths.get(offset1 + i), sg1ResultPaths.get(i));
       }
 
       // Test Case 2: Single Region - different path patterns with offset
       List<String> d0Paths = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.**")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db1.d0.**")) {
         while (resultSet.next()) {
           d0Paths.add(resultSet.getString(1));
         }
@@ -753,33 +744,27 @@ public class IoTDBSimpleQueryIT {
       int offset2 = 1;
       List<String> d0ResultPaths = new ArrayList<>();
       try (ResultSet resultSet =
-          statement.executeQuery("show timeseries root.sg1.d0.** offset " + offset2)) {
+          statement.executeQuery("show timeseries root.db1.d0.** offset " + offset2)) {
         while (resultSet.next()) {
           d0ResultPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertEquals(
-          "Should return all results after offset for specific device in single Region",
-          d0Paths.size() - offset2,
-          d0ResultPaths.size());
+      Assert.assertEquals(d0Paths.size() - offset2, d0ResultPaths.size());
       for (int i = 0; i < d0ResultPaths.size(); i++) {
-        Assert.assertEquals(
-            "Results should match from offset position for specific device in single Region",
-            d0Paths.get(offset2 + i),
-            d0ResultPaths.get(i));
+        Assert.assertEquals(d0Paths.get(offset2 + i), d0ResultPaths.get(i));
       }
 
       // Test Case 3: Single Region - with time condition and offset
       // Insert data with different timestamps
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (10, 10)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s5) VALUES (20, 20)");
-      statement.execute("INSERT INTO root.sg1.d0(timestamp, s6) VALUES (30, 30)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s4) VALUES (10, 10)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s5) VALUES (20, 20)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s6) VALUES (30, 30)");
       statement.execute("flush");
 
       // Get all timeseries with time condition
       List<String> timeFilteredPaths = new ArrayList<>();
       try (ResultSet resultSet =
-          statement.executeQuery("show timeseries root.sg1.** where time > 5")) {
+          statement.executeQuery("show timeseries root.db1.** where time > 5")) {
         while (resultSet.next()) {
           timeFilteredPaths.add(resultSet.getString(1));
         }
@@ -789,55 +774,44 @@ public class IoTDBSimpleQueryIT {
       int offset3 = 1;
       List<String> timeFilteredResultPaths = new ArrayList<>();
       try (ResultSet resultSet =
-          statement.executeQuery("show timeseries root.sg1.** where time > 5 offset " + offset3)) {
+          statement.executeQuery("show timeseries root.db1.** where time > 5 offset " + offset3)) {
         while (resultSet.next()) {
           timeFilteredResultPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertEquals(
-          "Should return all results after offset with time condition in single Region",
-          timeFilteredPaths.size() - offset3,
-          timeFilteredResultPaths.size());
+      Assert.assertEquals(timeFilteredPaths.size() - offset3, timeFilteredResultPaths.size());
       for (int i = 0; i < timeFilteredResultPaths.size(); i++) {
-        Assert.assertEquals(
-            "Results should match from offset position with time condition in single Region",
-            timeFilteredPaths.get(offset3 + i),
-            timeFilteredResultPaths.get(i));
+        Assert.assertEquals(timeFilteredPaths.get(offset3 + i), timeFilteredResultPaths.get(i));
       }
 
       // Test Case 4: Multiple Regions scenario (multiple databases)
       // Create second database to test multi-Region scenario
-      statement.execute("CREATE DATABASE root.sg2");
-      statement.execute("INSERT INTO root.sg2.d0(timestamp, s1) VALUES (4, 7)");
-      statement.execute("INSERT INTO root.sg2.d0(timestamp, s2) VALUES (4, 8)");
-      statement.execute("INSERT INTO root.sg2.d1(timestamp, s1) VALUES (5, 9)");
+      statement.execute("CREATE DATABASE root.db2");
+      statement.execute("INSERT INTO root.db2.d0(timestamp, s1) VALUES (4, 7)");
+      statement.execute("INSERT INTO root.db2.d0(timestamp, s2) VALUES (4, 8)");
+      statement.execute("INSERT INTO root.db2.d1(timestamp, s1) VALUES (5, 9)");
       statement.execute("flush");
 
       // Test across multiple databases - offset only
       List<String> allPaths = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.db*.**")) {
         while (resultSet.next()) {
           allPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertTrue("Should have timeseries from multiple databases", allPaths.size() >= 9);
+      Assert.assertEquals(9, allPaths.size());
 
       int offset4 = 3;
       List<String> resultPaths = new ArrayList<>();
-      try (ResultSet resultSet = statement.executeQuery("show timeseries offset " + offset4)) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.db*.** offset " + offset4)) {
         while (resultSet.next()) {
           resultPaths.add(resultSet.getString(1));
         }
       }
-      Assert.assertEquals(
-          "Should return all results after offset across multiple Regions",
-          allPaths.size() - offset4,
-          resultPaths.size());
+      Assert.assertEquals(allPaths.size() - offset4, resultPaths.size());
       for (int i = 0; i < resultPaths.size(); i++) {
-        Assert.assertEquals(
-            "Results should match from offset position across multiple Regions",
-            allPaths.get(offset4 + i),
-            resultPaths.get(i));
+        Assert.assertEquals(allPaths.get(offset4 + i), resultPaths.get(i));
       }
 
       // Test Case 5: Edge case - offset equals or exceeds total count
