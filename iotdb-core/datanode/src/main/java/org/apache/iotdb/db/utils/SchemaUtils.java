@@ -406,25 +406,27 @@ public class SchemaUtils {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
-      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      ChunkMetadata newChunkMetadata = new ChunkMetadata((ChunkMetadata) valueChunkMetadata);
       newChunkMetadata.setTsDataType(targetDataType);
       newChunkMetadata.setStatistics(statistics);
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, newChunkMetadata);
     } else {
       alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
     }
   }
 
-  public static void rewriteNonAlignedChunkMetadataStatistics(
-      List<IChunkMetadata> chunkMetadataList, int index, TSDataType targetDataType) {
-    ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataList.get(index);
-    if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
+  public static ChunkMetadata rewriteChunkMetadata(
+      ChunkMetadata origin, TSDataType targetDataType) {
+    if (origin != null && targetDataType.isCompatible(origin.getDataType())) {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
-      statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
+      statistics = getNewStatistics(origin, targetDataType, statistics);
 
-      chunkMetadata.setTsDataType(targetDataType);
-      chunkMetadata.setStatistics(statistics);
+      ChunkMetadata target = new ChunkMetadata(origin);
+      target.setTsDataType(targetDataType);
+      target.setStatistics(statistics);
+      return target;
     } else {
-      chunkMetadataList.set(index, null);
+      return null;
     }
   }
 
