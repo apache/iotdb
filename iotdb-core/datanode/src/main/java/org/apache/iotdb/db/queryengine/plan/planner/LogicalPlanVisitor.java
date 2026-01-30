@@ -639,7 +639,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showDevicesStatement.getLimit();
     long offset = showDevicesStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit = showDevicesStatement.getLimit() + showDevicesStatement.getOffset();
+      limit =
+          showDevicesStatement.getLimit() != 0
+              ? showDevicesStatement.getLimit() + showDevicesStatement.getOffset()
+              : 0;
       offset = 0;
     }
 
@@ -1011,7 +1014,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long limit = showLogicalViewStatement.getLimit();
     long offset = showLogicalViewStatement.getOffset();
     if (!canPushDownOffsetLimit) {
-      limit = showLogicalViewStatement.getLimit() + showLogicalViewStatement.getOffset();
+      limit =
+          showLogicalViewStatement.getLimit() != 0
+              ? showLogicalViewStatement.getLimit() + showLogicalViewStatement.getOffset()
+              : 0;
       offset = 0;
     }
     planBuilder =
