@@ -827,6 +827,122 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
+  public void testShowDevicesWithOffsetOnly() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s1) VALUES (1, 1)");
+      statement.execute("INSERT INTO root.db1.d0(timestamp, s2) VALUES (1, 2)");
+      statement.execute("INSERT INTO root.db1.d1(timestamp, s3) VALUES (1, 3)");
+      statement.execute("flush");
+
+      List<String> sg1AllDevices = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("show devices root.db1.**")) {
+        while (resultSet.next()) {
+          sg1AllDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(2, sg1AllDevices.size());
+
+      int offset1 = 1;
+      List<String> sg1ResultDevices = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices root.db1.** offset " + offset1)) {
+        while (resultSet.next()) {
+          sg1ResultDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(sg1AllDevices.size() - offset1, sg1ResultDevices.size());
+      for (int i = 0; i < sg1ResultDevices.size(); i++) {
+        Assert.assertEquals(sg1AllDevices.get(offset1 + i), sg1ResultDevices.get(i));
+      }
+
+      List<String> d0Devices = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("show devices root.db1.d0.**")) {
+        while (resultSet.next()) {
+          d0Devices.add(resultSet.getString(1));
+        }
+      }
+
+      int offset2 = 0;
+      List<String> d0ResultDevices = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices root.db1.d0.** offset " + offset2)) {
+        while (resultSet.next()) {
+          d0ResultDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(d0Devices.size() - offset2, d0ResultDevices.size());
+      for (int i = 0; i < d0ResultDevices.size(); i++) {
+        Assert.assertEquals(d0Devices.get(offset2 + i), d0ResultDevices.get(i));
+      }
+
+      statement.execute("INSERT INTO root.db1.d2(timestamp, s4) VALUES (10, 10)");
+      statement.execute("INSERT INTO root.db1.d3(timestamp, s5) VALUES (20, 20)");
+      statement.execute("INSERT INTO root.db1.d4(timestamp, s6) VALUES (30, 30)");
+      statement.execute("flush");
+
+      List<String> timeFilteredDevices = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices root.db1.** where time > 5")) {
+        while (resultSet.next()) {
+          timeFilteredDevices.add(resultSet.getString(1));
+        }
+      }
+
+      int offset3 = 1;
+      List<String> timeFilteredResultDevices = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices root.db1.** where time > 5 offset " + offset3)) {
+        while (resultSet.next()) {
+          timeFilteredResultDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(timeFilteredDevices.size() - offset3, timeFilteredResultDevices.size());
+      for (int i = 0; i < timeFilteredResultDevices.size(); i++) {
+        Assert.assertEquals(timeFilteredDevices.get(offset3 + i), timeFilteredResultDevices.get(i));
+      }
+
+      statement.execute("CREATE DATABASE root.db2");
+      statement.execute("INSERT INTO root.db2.d0(timestamp, s1) VALUES (4, 7)");
+      statement.execute("INSERT INTO root.db2.d1(timestamp, s2) VALUES (4, 8)");
+      statement.execute("INSERT INTO root.db2.d2(timestamp, s1) VALUES (5, 9)");
+      statement.execute("flush");
+
+      List<String> allDevices = new ArrayList<>();
+      try (ResultSet resultSet = statement.executeQuery("show devices root.db*.**")) {
+        while (resultSet.next()) {
+          allDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(8, allDevices.size());
+
+      int offset4 = 3;
+      List<String> resultDevices = new ArrayList<>();
+      try (ResultSet resultSet =
+          statement.executeQuery("show devices root.db*.** offset " + offset4)) {
+        while (resultSet.next()) {
+          resultDevices.add(resultSet.getString(1));
+        }
+      }
+      Assert.assertEquals(allDevices.size() - offset4, resultDevices.size());
+      for (int i = 0; i < resultDevices.size(); i++) {
+        Assert.assertEquals(allDevices.get(offset4 + i), resultDevices.get(i));
+      }
+
+      int largeOffset = allDevices.size() + 10;
+      int count = 0;
+      try (ResultSet resultSet = statement.executeQuery("show devices offset " + largeOffset)) {
+        while (resultSet.next()) {
+          count++;
+        }
+      }
+      Assert.assertEquals("Should return 0 results when offset exceeds total count", 0, count);
+    }
+  }
+
+  @Test
   public void testShowDevicesWithLimitOffset() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
