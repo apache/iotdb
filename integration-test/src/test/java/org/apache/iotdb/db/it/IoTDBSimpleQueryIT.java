@@ -1238,7 +1238,7 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet =
           statement.executeQuery(
               "select s1 from root.sg1.d1 where time >= 3 and time <= 4 order by time desc");
-      Assert.assertFalse(!resultSet.next());
+      Assert.assertFalse(resultSet.next());
     }
   }
 }
