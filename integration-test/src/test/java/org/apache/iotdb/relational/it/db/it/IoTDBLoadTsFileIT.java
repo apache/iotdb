@@ -52,8 +52,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -311,7 +311,7 @@ public class IoTDBLoadTsFileIT {
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
     List<ColumnCategory> columnCategories =
-        generateTabletColumnCategory(0, measurementSchemas.size());
+        generateTabletColumnCategory(0, measurementSchemas.size(), -1);
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
 
