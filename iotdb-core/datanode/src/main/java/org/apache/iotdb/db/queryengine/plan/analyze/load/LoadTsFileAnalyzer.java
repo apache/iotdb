@@ -574,7 +574,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     getOrCreateTableSchemaCache().flush();
     if (getOrCreateTableSchemaCache().isNeedDecode4DifferentTimeColumn()) {
-      loadTsFileTableStatement.enableNeedDecode4TimeColumn();
+      if (isTableModelStatement) {
+        loadTsFileTableStatement.enableNeedDecode4TimeColumn();
+      } else {
+        loadTsFileTreeStatement.enableNeedDecode4TimeColumn();
+      }
     }
     getOrCreateTableSchemaCache().clearTagColumnMapper();
 
