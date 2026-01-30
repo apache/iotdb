@@ -323,7 +323,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE.setException(
         new IoTDBException(
-            "Subscription not enabled, please set config `subscription_enabled` to true.",
+            "Subscription is not enabled.",
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
   }
 
@@ -1977,7 +1977,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       if (!alterPipeStatement.getExtractorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllExtractorAttributes()) {
-          PipeDataNodeAgent.plugin().validateExtractor(alterPipeStatement.getExtractorAttributes());
+          PipeDataNodeAgent.plugin().validateSource(alterPipeStatement.getExtractorAttributes());
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
@@ -1985,7 +1985,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getExtractorAttributes()));
           PipeDataNodeAgent.plugin()
-              .validateExtractor(
+              .validateSource(
                   pipeMetaFromCoordinator.getStaticMeta().getExtractorParameters().getAttribute());
         }
       }
@@ -2008,7 +2008,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       if (!alterPipeStatement.getConnectorAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllConnectorAttributes()) {
           PipeDataNodeAgent.plugin()
-              .validateConnector(pipeName, alterPipeStatement.getConnectorAttributes());
+              .validateSource(pipeName, alterPipeStatement.getConnectorAttributes());
         } else {
           pipeMetaFromCoordinator
               .getStaticMeta()
@@ -2016,7 +2016,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getConnectorAttributes()));
           PipeDataNodeAgent.plugin()
-              .validateConnector(
+              .validateSource(
                   pipeName,
                   pipeMetaFromCoordinator.getStaticMeta().getConnectorParameters().getAttribute());
         }
@@ -2274,8 +2274,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final TopicMeta temporaryTopicMeta =
         new TopicMeta(topicName, System.currentTimeMillis(), topicAttributes);
     try {
-      PipeDataNodeAgent.plugin()
-          .validateExtractor(temporaryTopicMeta.generateExtractorAttributes());
+      PipeDataNodeAgent.plugin().validateSource(temporaryTopicMeta.generateExtractorAttributes());
       PipeDataNodeAgent.plugin()
           .validateProcessor(temporaryTopicMeta.generateProcessorAttributes());
     } catch (Exception e) {
