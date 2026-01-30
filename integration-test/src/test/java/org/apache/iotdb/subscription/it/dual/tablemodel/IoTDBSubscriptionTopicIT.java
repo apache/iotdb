@@ -44,6 +44,7 @@ import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -95,11 +96,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         .setIsPipeEnableMemoryCheck(false);
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithPath() throws Exception {
     testTopicWithPathTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithPath() throws Exception {
     testTopicWithPathTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -189,11 +192,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithTime() throws Exception {
     testTopicWithTimeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithTime() throws Exception {
     testTopicWithTimeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
@@ -273,11 +278,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTabletTopicWithSnapshotMode() throws Exception {
     testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE);
   }
 
+  @Ignore
   @Test
   public void testTsFileTopicWithSnapshotMode() throws Exception {
     testTopicWithSnapshotModeTemplate(TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);

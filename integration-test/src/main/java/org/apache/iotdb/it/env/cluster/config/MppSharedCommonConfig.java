@@ -595,12 +595,6 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    return this;
-  }
-
   @Override
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);

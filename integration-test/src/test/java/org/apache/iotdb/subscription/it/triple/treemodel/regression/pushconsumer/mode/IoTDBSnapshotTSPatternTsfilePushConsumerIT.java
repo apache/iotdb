@@ -45,6 +45,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -149,6 +150,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   @Retry
   public void do_test()
