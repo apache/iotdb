@@ -29,7 +29,7 @@ import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests;
 import com.tngtech.archunit.lang.ArchRule;
-import org.apache.tsfile.utils.MustOverride;
+import org.apache.tsfile.annotations.MustOverride;
 import org.junit.Test;
 
 import java.util.ArrayList;
