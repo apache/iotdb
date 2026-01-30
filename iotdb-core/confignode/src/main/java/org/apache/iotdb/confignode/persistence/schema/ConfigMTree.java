@@ -35,7 +35,6 @@ import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
@@ -98,7 +97,6 @@ import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE
 import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 
 // Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
@@ -803,20 +801,14 @@ public class ConfigMTree {
       throws MetadataException {
     final TsTable table = getTable(database, tableName);
 
-    final TsTableColumnSchema columnSchema =
-        !columnName.equals(TIME_COLUMN_NAME) || Objects.isNull(comment)
-            ? table.getColumnSchema(columnName)
-            : new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
+    final TsTableColumnSchema columnSchema = table.getColumnSchema(columnName);
+
     if (Objects.isNull(columnSchema)) {
       throw new ColumnNotExistsException(
           PathUtils.unQualifyDatabaseName(database.getFullPath()), tableName, columnName);
     }
     if (Objects.nonNull(comment)) {
       columnSchema.getProps().put(TsTable.COMMENT_KEY, comment);
-      if (columnName.equals("time")) {
-        // Replace the original time column
-        table.addColumnSchema(columnSchema);
-      }
     } else {
       columnSchema.getProps().remove(TsTable.COMMENT_KEY);
     }

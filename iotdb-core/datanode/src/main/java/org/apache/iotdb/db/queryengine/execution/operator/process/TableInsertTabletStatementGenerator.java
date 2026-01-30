@@ -35,8 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
-
 public class TableInsertTabletStatementGenerator extends InsertTabletStatementGenerator {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableInsertTabletStatementGenerator.class);
@@ -54,13 +52,14 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
       List<TSDataType> inputColumnTypes,
       List<TsTableColumnCategory> tsTableColumnCategories,
       boolean isAligned,
-      int rowLimit) {
+      int rowLimit,
+      String timeColumnName) {
     super(
         targetTable,
         measurementToDataTypeMap.keySet().toArray(new String[0]),
         measurementToDataTypeMap.values().toArray(new TSDataType[0]),
         measurementToInputLocationMap.entrySet().stream()
-            .filter(entry -> !entry.getKey().equalsIgnoreCase(TIME_COLUMN_NAME))
+            .filter(entry -> !entry.getKey().equalsIgnoreCase(timeColumnName))
             .map(Map.Entry::getValue)
             .toArray(InputLocation[]::new),
         inputColumnTypes.stream().map(TypeFactory::getType).toArray(Type[]::new),
@@ -69,8 +68,7 @@ public class TableInsertTabletStatementGenerator extends InsertTabletStatementGe
     this.databaseName = databaseName;
     this.writtenCounter = new AtomicLong(0);
     this.columnCategories = tsTableColumnCategories.toArray(new TsTableColumnCategory[0]);
-    this.timeColumnIndex =
-        measurementToInputLocationMap.get(TIME_COLUMN_NAME).getValueColumnIndex();
+    this.timeColumnIndex = measurementToInputLocationMap.get(timeColumnName).getValueColumnIndex();
     this.reset();
   }
 
