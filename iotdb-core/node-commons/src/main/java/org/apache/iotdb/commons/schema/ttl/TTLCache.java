@@ -186,19 +186,19 @@ public class TTLCache {
     long curTTL = NULL_TTL;
     // Get global TTL root.** if exists
     CacheNode curNode = ttlCacheTree.searchChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    if (curNode != null) {
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
       curTTL = curNode.ttl;
     }
     // Compare database TTL if exists
     curNode = ttlCacheTree.searchChild(database);
-    if (curNode != null) {
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
       curTTL = Math.max(curTTL, curNode.ttl);
     }
     // Compare database.** TTL if exists
     curNode =
         ttlCacheTree.searchChild(
             database + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    if (curNode != null) {
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
       curTTL = Math.max(curTTL, curNode.ttl);
     }
     return curTTL;
