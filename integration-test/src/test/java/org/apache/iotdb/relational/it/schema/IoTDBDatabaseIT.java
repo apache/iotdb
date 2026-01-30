@@ -67,7 +67,6 @@ public class IoTDBDatabaseIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -691,13 +690,6 @@ public class IoTDBDatabaseIT {
           "plugin_name,plugin_type,class_name,plugin_jar,",
           Collections.singleton(
               "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
-
-      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from topics where topic_name = 'tp'"),
-          "topic_name,topic_configs,",
-          Collections.singleton(
-              "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from views"),

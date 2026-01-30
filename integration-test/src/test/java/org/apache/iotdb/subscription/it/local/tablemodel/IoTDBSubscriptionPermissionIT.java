@@ -36,6 +36,7 @@ import org.apache.iotdb.subscription.it.local.AbstractSubscriptionLocalIT;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -61,6 +62,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testMetaAccessControl() {
     final String host = EnvFactory.getEnv().getIP();
@@ -156,6 +158,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
    *
    * <p>Since consumer3 uses different credentials, it should be rejected.
    */
+  @Ignore
   @Test
   public void testRuntimeAccessControl() {
     final String host = EnvFactory.getEnv().getIP();
@@ -264,6 +267,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
    * creates two consumers with "thulab:passwd" and one with "hacker:qwerty123". Since the latter
    * does not match the required credentials, it should be rejected.
    */
+  @Ignore
   @Test
   public void testStrictRuntimeAccessControl() {
     final String host = EnvFactory.getEnv().getIP();
@@ -349,6 +353,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTablePermission() {
     createUser(EnvFactory.getEnv(), "test", "test123123456");

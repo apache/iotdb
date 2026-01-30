@@ -184,8 +184,6 @@ public interface CommonConfig {
   CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
       int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
 
-  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
-
   default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
