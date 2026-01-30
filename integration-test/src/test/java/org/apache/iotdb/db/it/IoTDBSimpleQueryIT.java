@@ -789,8 +789,7 @@ public class IoTDBSimpleQueryIT {
       int offset3 = 1;
       List<String> timeFilteredResultPaths = new ArrayList<>();
       try (ResultSet resultSet =
-          statement.executeQuery(
-              "show timeseries root.sg1.** where time > 5 offset " + offset3)) {
+          statement.executeQuery("show timeseries root.sg1.** where time > 5 offset " + offset3)) {
         while (resultSet.next()) {
           timeFilteredResultPaths.add(resultSet.getString(1));
         }
@@ -849,8 +848,7 @@ public class IoTDBSimpleQueryIT {
           count++;
         }
       }
-      Assert.assertEquals(
-          "Should return 0 results when offset exceeds total count", 0, count);
+      Assert.assertEquals("Should return 0 results when offset exceeds total count", 0, count);
     }
   }
 
