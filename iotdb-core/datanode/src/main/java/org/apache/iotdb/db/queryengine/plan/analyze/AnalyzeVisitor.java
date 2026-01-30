@@ -597,7 +597,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                       timeseriesOrdering != null
                           ? new TreeMap<>(timeseriesOrdering.getStringComparator())
                           : new LinkedHashMap<>())
-              .put(outputPath.getMeasurement(), timeSeriesOperand);
+              .put(
+                  outputPath.isMeasurementAliasExists()
+                      ? outputPath.getMeasurementAlias()
+                      : outputPath.getMeasurement(),
+                  timeSeriesOperand);
 
         } else {
           lastQueryNonWritableViewSourceExpressionMap =
