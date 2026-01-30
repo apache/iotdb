@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -56,6 +57,10 @@ public class DataRegionTableSizeQueryContext {
 
   public Map<Long, TimePartitionTableSizeQueryContext> getTimePartitionTableSizeQueryContextMap() {
     return timePartitionTableSizeQueryContextMap;
+  }
+
+  public boolean isNeedAllData() {
+    return needAllData;
   }
 
   public boolean isEmpty() {
@@ -105,6 +110,12 @@ public class DataRegionTableSizeQueryContext {
       previousUsedTimePartitionContext = currentTimePartitionContext;
     }
     return true;
+  }
+
+  public void addAllTimePartitionsInTsFileManager(TsFileManager tsFileManager) {
+    for (Long timePartition : tsFileManager.getTimePartitions()) {
+      addTimePartition(timePartition, new TimePartitionTableSizeQueryContext(new HashMap<>()));
+    }
   }
 
   public void addTimePartition(

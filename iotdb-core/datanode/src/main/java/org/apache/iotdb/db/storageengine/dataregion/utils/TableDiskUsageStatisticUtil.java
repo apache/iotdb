@@ -49,11 +49,13 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   private final List<Pair<TsFileID, Long>> tsFilesToQueryInCache;
   private final TimePartitionTableSizeQueryContext tableSizeQueryContext;
   private final boolean databaseHasOnlyOneTable;
+  private final boolean needAllData;
 
   public TableDiskUsageStatisticUtil(
       DataRegion dataRegion,
       long timePartition,
       TimePartitionTableSizeQueryContext tableSizeQueryContext,
+      boolean needAllData,
       boolean databaseHasOnlyOneTable,
       List<Pair<TsFileID, Long>> tsFilesToQueryInCache,
       Optional<FragmentInstanceContext> context) {
@@ -62,6 +64,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     this.tableSizeQueryContext = tableSizeQueryContext;
     this.tsFilesToQueryInCache = tsFilesToQueryInCache;
     this.databaseHasOnlyOneTable = databaseHasOnlyOneTable;
+    this.needAllData = needAllData;
   }
 
   @Override
@@ -77,7 +80,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
       return false;
     }
     String table = tableSizeQueryContext.getTableSizeResultMap().keySet().iterator().next();
-    tableSizeQueryContext.updateResult(table, tsFileResource.getTsFileSize(), false);
+    tableSizeQueryContext.updateResult(table, tsFileResource.getTsFileSize(), needAllData);
     TableDiskUsageCache.getInstance()
         .write(
             database,
@@ -90,14 +93,15 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   protected void calculateNextFile(TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException {
     TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-    if (!hasSatisfiedData(tsFileMetadata)) {
+    if (!needAllData && !hasSatisfiedData(tsFileMetadata)) {
       return;
     }
 
     if (tsFileMetadata.getTableMetadataIndexNodeMap().size() == 1) {
       String satisfiedTable =
           tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
-      tableSizeQueryContext.updateResult(satisfiedTable, tsFileResource.getTsFileSize(), false);
+      tableSizeQueryContext.updateResult(
+          satisfiedTable, tsFileResource.getTsFileSize(), needAllData);
       TableDiskUsageCache.getInstance()
           .write(
               database,
@@ -132,7 +136,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
       nextTable = iterator.hasNext() ? iterator.next() : null;
       long tableSize =
           calculateTableSize(tableOffsetMap, tsFileMetadata, reader, currentTable, nextTable);
-      tableSizeQueryContext.updateResult(currentTable, tableSize, false);
+      tableSizeQueryContext.updateResult(currentTable, tableSize, needAllData);
       tsFileTableSizeMap.put(currentTable, tableSize);
       currentTable = nextTable;
     }

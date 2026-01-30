@@ -98,8 +98,11 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
     writer.compact();
 
+    Assert.assertFalse(oldKeyFile.exists());
     Assert.assertEquals("TableSizeKeyFile_1", writer.getKeyFile().getName());
     Assert.assertEquals("TableSizeValueFile_1", writer.getValueFile().getName());
+    Assert.assertEquals(0, writer.keyFileLength());
+    Assert.assertEquals(0, writer.valueFileLength());
     writer.close();
   }
 

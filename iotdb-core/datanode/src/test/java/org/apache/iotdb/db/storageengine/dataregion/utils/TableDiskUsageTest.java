@@ -37,6 +37,7 @@ import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -86,21 +87,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     timePartitionTableSizeMap.put("table1", 0L);
     timePartitionTableSizeMap.put("table2", 0L);
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
-    TableDiskUsageCacheReader reader =
-        new TableDiskUsageCacheReader(mockDataRegion, context, false);
-    try {
-      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
-    } finally {
-      reader.close();
-    }
+    queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
@@ -140,19 +127,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
     TableDiskUsageCacheReader reader =
         new TableDiskUsageCacheReader(mockDataRegion, context, false);
-    try {
-      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
-    } finally {
-      reader.close();
-    }
+    queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
@@ -191,19 +166,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
     TableDiskUsageCacheReader reader =
         new TableDiskUsageCacheReader(mockDataRegion, context, false);
-    try {
-      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
-    } finally {
-      reader.close();
-    }
+    queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
@@ -244,19 +207,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
     TableDiskUsageCacheReader reader =
         new TableDiskUsageCacheReader(mockDataRegion, context, false);
-    try {
-      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
-    } finally {
-      reader.close();
-    }
+    queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
@@ -274,8 +225,60 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     Assert.assertEquals(2, entryNum);
   }
 
+  @Test
+  public void testCalculateTableSizeFromFile() throws Exception {
+    Pair<TsFileResource, Map<String, Long>> resourceTableSizeMapPair =
+        prepareFileAndTableSizeMap(10, 100000);
+    TsFileResource resource1 = resourceTableSizeMapPair.getLeft();
+    Map<String, Long> tableSizeMapGeneratedByWrite = resourceTableSizeMapPair.getRight();
+    Assert.assertEquals(10, tableSizeMapGeneratedByWrite.size());
+    for (Long value : tableSizeMapGeneratedByWrite.values()) {
+      Assert.assertTrue(value > 0);
+    }
+    mockTsFileManager.add(resource1, true);
+
+    DataRegionTableSizeQueryContext context = new DataRegionTableSizeQueryContext(true);
+    queryTableSize(context);
+    Assert.assertEquals(1, context.getTimePartitionTableSizeQueryContextMap().size());
+    TimePartitionTableSizeQueryContext timePartitionContext =
+        context.getTimePartitionTableSizeQueryContextMap().values().iterator().next();
+    Map<String, Long> tableSizeMapGeneratedByQuery = timePartitionContext.getTableSizeResultMap();
+    Assert.assertEquals(10, tableSizeMapGeneratedByQuery.size());
+
+    for (Map.Entry<String, Long> entry : tableSizeMapGeneratedByQuery.entrySet()) {
+      String tableName = entry.getKey();
+      Long size = tableSizeMapGeneratedByWrite.get(tableName);
+      Assert.assertNotNull(size);
+      Assert.assertTrue(Math.abs(size - entry.getValue()) < 1000);
+    }
+  }
+
+  private void queryTableSize(DataRegionTableSizeQueryContext queryContext) throws Exception {
+    TableDiskUsageCacheReader reader =
+        new TableDiskUsageCacheReader(mockDataRegion, queryContext, false);
+    try {
+      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(
+          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
+    } finally {
+      reader.close();
+    }
+  }
+
   private TsFileResource prepareFile(int tableNum) throws IOException {
+    return prepareFileAndTableSizeMap(tableNum, 100).getLeft();
+  }
+
+  private Pair<TsFileResource, Map<String, Long>> prepareFileAndTableSizeMap(
+      int tableNum, int pointNum) throws IOException {
     TsFileResource resource1 = createEmptyFileAndResource(true);
+    Map<String, Long> tableSizeMap = null;
     try (CompactionTableModelTestFileWriter writer =
         new CompactionTableModelTestFileWriter(resource1)) {
       for (int i = 0; i < tableNum; i++) {
@@ -283,14 +286,17 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
         writer.startChunkGroup("table" + i, Collections.singletonList("d1"));
         writer.generateSimpleAlignedSeriesToCurrentDeviceWithNullValue(
             Arrays.asList("s0", "s1"),
-            new TimeRange[][][] {new TimeRange[][] {new TimeRange[] {new TimeRange(10, 12)}}},
+            new TimeRange[][][] {
+              new TimeRange[][] {new TimeRange[] {new TimeRange(10, 10 + pointNum - 1)}}
+            },
             TSEncoding.PLAIN,
             CompressionType.LZ4,
             Arrays.asList(false, false));
         writer.endChunkGroup();
       }
       writer.endFile();
+      tableSizeMap = writer.getFileWriter().getTableSizeMap();
     }
-    return resource1;
+    return new Pair<>(resource1, tableSizeMap);
   }
 }

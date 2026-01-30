@@ -65,6 +65,9 @@ public class TableDiskUsageCacheReader implements Closeable {
     this.dataRegion = dataRegion;
     this.dataRegionContext = dataRegionContext;
     this.currentDatabaseOnlyHasOneTable = databaseHasOnlyOneTable;
+    if (dataRegionContext.isNeedAllData()) {
+      dataRegionContext.addAllTimePartitionsInTsFileManager(dataRegion.getTsFileManager());
+    }
     this.timePartitionIterator =
         dataRegionContext.getTimePartitionTableSizeQueryContextMap().entrySet().iterator();
     dataRegionContext.reserveMemoryForResultMap();
@@ -146,6 +149,7 @@ public class TableDiskUsageCacheReader implements Closeable {
                 dataRegion,
                 timePartition,
                 currentTimePartitionEntry.getValue(),
+                dataRegionContext.isNeedAllData(),
                 currentDatabaseOnlyHasOneTable,
                 tsFilesToQueryInCache,
                 dataRegionContext.getFragmentInstanceContext());
