@@ -391,7 +391,14 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
-    this.delayAnalyzer = new DelayAnalyzer();
+    this.delayAnalyzer =
+        config.isEnableDelayAnalyzer()
+            ? new DelayAnalyzer(
+                config.getDelayAnalyzerWindowSize(),
+                config.getDelayAnalyzerMinWindowSize(),
+                config.getDelayAnalyzerMaxWindowSize(),
+                config.getDelayAnalyzerConfidenceLevel())
+            : null;
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
@@ -458,7 +465,14 @@ public class DataRegion implements IDataRegionForQuery {
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;
     this.metrics = new DataRegionMetrics(this);
-    this.delayAnalyzer = new DelayAnalyzer();
+    this.delayAnalyzer =
+        config.isEnableDelayAnalyzer()
+            ? new DelayAnalyzer(
+                config.getDelayAnalyzerWindowSize(),
+                config.getDelayAnalyzerMinWindowSize(),
+                config.getDelayAnalyzerMaxWindowSize(),
+                config.getDelayAnalyzerConfidenceLevel())
+            : null;
 
     initDiskSelector();
   }
@@ -1159,7 +1173,9 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long arrivalTime = System.currentTimeMillis();
       long generationTime = insertRowNode.getTime();
-      delayAnalyzer.update(generationTime, arrivalTime);
+      if (delayAnalyzer != null) {
+        delayAnalyzer.update(generationTime, arrivalTime);
+      }
 
       // init map
       long timePartitionId = TimePartitionUtils.getTimePartitionId(insertRowNode.getTime());
@@ -1327,8 +1343,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
       long arrivalTime = System.currentTimeMillis();
       long[] times = insertTabletNode.getTimes();
-      for (long generationTime : times) {
-        delayAnalyzer.update(generationTime, arrivalTime);
+      if (delayAnalyzer != null) {
+        for (long generationTime : times) {
+          delayAnalyzer.update(generationTime, arrivalTime);
+        }
       }
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
@@ -4124,7 +4142,9 @@ public class DataRegion implements IDataRegionForQuery {
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
-        delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
+        if (delayAnalyzer != null) {
+          delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
+        }
         if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
           // we do not need to write these part of data, as they can not be queried
           // or the sub-plan has already been executed, we are retrying other sub-plans
@@ -4243,7 +4263,9 @@ public class DataRegion implements IDataRegionForQuery {
       long arrivalTime = System.currentTimeMillis();
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
-        delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
+        if (delayAnalyzer != null) {
+          delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
+        }
         long ttl = getTTL(insertRowNode);
         if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
           insertRowsNode
@@ -4337,8 +4359,10 @@ public class DataRegion implements IDataRegionForQuery {
       for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         long[] times = insertTabletNode.getTimes();
-        for (long generationTime : times) {
-          delayAnalyzer.update(generationTime, arrivalTime);
+        if (delayAnalyzer != null) {
+          for (long generationTime : times) {
+            delayAnalyzer.update(generationTime, arrivalTime);
+          }
         }
         TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
         Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
@@ -4646,7 +4670,8 @@ public class DataRegion implements IDataRegionForQuery {
   /**
    * Get the delay analyzer instance for this data region
    *
-   * @return DelayAnalyzer instance for tracking data arrival delays and calculating safe watermarks
+   * @return DelayAnalyzer instance for tracking data arrival delays and calculating safe
+   *     watermarks, or null if delay analyzer is disabled
    */
   public DelayAnalyzer getDelayAnalyzer() {
     return delayAnalyzer;

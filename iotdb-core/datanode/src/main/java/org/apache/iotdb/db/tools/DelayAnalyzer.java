@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,9 +102,12 @@ public class DelayAnalyzer {
    */
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
+  /** Confidence level for calculating safe watermarks */
+  private final double confidenceLevel;
+
   /** Constructor using default window size */
   public DelayAnalyzer() {
-    this(DEFAULT_WINDOW_SIZE);
+    this(DEFAULT_WINDOW_SIZE, true);
   }
 
   /**
@@ -116,21 +117,61 @@ public class DelayAnalyzer {
    *     more accurate statistics but increase memory and computational overhead.
    * @throws IllegalArgumentException if window size is not within valid range
    */
-  public DelayAnalyzer(int windowSize) {
-    if (windowSize < MIN_WINDOW_SIZE || windowSize > MAX_WINDOW_SIZE) {
+  public DelayAnalyzer(int windowSize, boolean checkSize) {
+    if (checkSize) {
+      if (windowSize < MIN_WINDOW_SIZE || windowSize > MAX_WINDOW_SIZE) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Window size must be between %d and %d, got %d",
+                MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, windowSize));
+      }
+    }
+
+    this.windowSize = windowSize;
+    this.delaySamples = new long[windowSize];
+    this.confidenceLevel = DEFAULT_CONFIDENCE_LEVEL;
+  }
+
+  /**
+   * Constructor with configurable window size and validation range
+   *
+   * @param windowSize Sliding window size, recommended range: 5000 - 10000. Larger windows provide
+   *     more accurate statistics but increase memory and computational overhead.
+   * @param minWindowSize Minimum window size for validation
+   * @param maxWindowSize Maximum window size for validation
+   * @throws IllegalArgumentException if window size is not within valid range
+   */
+  public DelayAnalyzer(int windowSize, int minWindowSize, int maxWindowSize) {
+    this(windowSize, minWindowSize, maxWindowSize, DEFAULT_CONFIDENCE_LEVEL);
+  }
+
+  /**
+   * Constructor with configurable window size, validation range and confidence level
+   *
+   * @param windowSize Sliding window size, recommended range: 5000 - 10000. Larger windows provide
+   *     more accurate statistics but increase memory and computational overhead.
+   * @param minWindowSize Minimum window size for validation
+   * @param maxWindowSize Maximum window size for validation
+   * @param confidenceLevel Confidence level for calculating safe watermarks, range: (0, 1]
+   * @throws IllegalArgumentException if window size is not within valid range or confidence level
+   *     is invalid
+   */
+  public DelayAnalyzer(
+      int windowSize, int minWindowSize, int maxWindowSize, double confidenceLevel) {
+    if (windowSize < minWindowSize || windowSize > maxWindowSize) {
       throw new IllegalArgumentException(
           String.format(
               "Window size must be between %d and %d, got %d",
-              MIN_WINDOW_SIZE, MAX_WINDOW_SIZE, windowSize));
+              minWindowSize, maxWindowSize, windowSize));
     }
-    this.windowSize = windowSize;
-    this.delaySamples = new long[windowSize];
-  }
+    if (confidenceLevel <= 0 || confidenceLevel > 1) {
+      throw new IllegalArgumentException(
+          String.format("Confidence level must be between 0 and 1, got %f", confidenceLevel));
+    }
 
-  @TestOnly
-  public DelayAnalyzer(int windowSize, int placeHolder) {
     this.windowSize = windowSize;
     this.delaySamples = new long[windowSize];
+    this.confidenceLevel = confidenceLevel;
   }
 
   /**
@@ -258,13 +299,13 @@ public class DelayAnalyzer {
   }
 
   /**
-   * Get the recommended safe watermark (using default confidence level)
+   * Get the recommended safe watermark (using configured confidence level)
    *
    * @param currentSystemTime Current system time, unit: milliseconds
    * @return Safe watermark timestamp, unit: milliseconds
    */
   public long getSafeWatermark(long currentSystemTime) {
-    return getSafeWatermark(currentSystemTime, DEFAULT_CONFIDENCE_LEVEL);
+    return getSafeWatermark(currentSystemTime, confidenceLevel);
   }
 
   /**

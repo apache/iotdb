@@ -1119,6 +1119,51 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "include_null_value_in_write_throughput_metric",
                 String.valueOf(conf.isIncludeNullValueInWriteThroughputMetric()))));
+
+    conf.setEnableDelayAnalyzer(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_delay_analyzer",
+                ConfigurationFileUtils.getConfigurationDefaultValue("enable_delay_analyzer"))));
+
+    int delayAnalyzerWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue("delay_analyzer_window_size")));
+    if (delayAnalyzerWindowSize > 0) {
+      conf.setDelayAnalyzerWindowSize(delayAnalyzerWindowSize);
+    }
+
+    int delayAnalyzerMinWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_min_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_min_window_size")));
+    if (delayAnalyzerMinWindowSize > 0) {
+      conf.setDelayAnalyzerMinWindowSize(delayAnalyzerMinWindowSize);
+    }
+
+    int delayAnalyzerMaxWindowSize =
+        Integer.parseInt(
+            properties.getProperty(
+                "delay_analyzer_max_window_size",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_max_window_size")));
+    if (delayAnalyzerMaxWindowSize > 0) {
+      conf.setDelayAnalyzerMaxWindowSize(delayAnalyzerMaxWindowSize);
+    }
+
+    double delayAnalyzerConfidenceLevel =
+        Double.parseDouble(
+            properties.getProperty(
+                "delay_analyzer_confidence_level",
+                ConfigurationFileUtils.getConfigurationDefaultValue(
+                    "delay_analyzer_confidence_level")));
+    if (delayAnalyzerConfidenceLevel > 0 && delayAnalyzerConfidenceLevel <= 1) {
+      conf.setDelayAnalyzerConfidenceLevel(delayAnalyzerConfidenceLevel);
+    }
   }
 
   private void loadFixedSizeLimitForQuery(
