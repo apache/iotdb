@@ -122,7 +122,7 @@ public class SchemaUtils {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
-        // Partial aggregation names
+      // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
       case SqlConstant.STDDEV_POP + "_partial":
       case SqlConstant.STDDEV_SAMP + "_partial":
