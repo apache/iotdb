@@ -549,7 +549,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         loadTsFileStatement.getResources(),
         isTableModel,
         loadTsFileStatement.getDatabase(),
-        false);
+        loadTsFileStatement.isNeedDecode4TimeColumn());
   }
 
   @Override
