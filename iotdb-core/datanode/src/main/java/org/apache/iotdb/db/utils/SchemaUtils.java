@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
@@ -46,12 +47,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
 
   private static final Map<TSDataType, Class> dataTypeColumnClassMap;
+  private static final Map<TSDataType, Class> dataTypeColumnStatisticsClassMap;
+  private static final Set<TSDataType> canNotUseStatisticsClassSet = ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
   private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
 
@@ -66,6 +70,13 @@ public class SchemaUtils {
     dataTypeColumnClassMap.put(TSDataType.STRING, BinaryColumn.class);
     dataTypeColumnClassMap.put(TSDataType.BLOB, BinaryColumn.class);
     dataTypeColumnClassMap.put(TSDataType.TEXT, BinaryColumn.class);
+
+    dataTypeColumnStatisticsClassMap = new HashMap<>();
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.DATE, IntColumn.class);
+
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
   }
 
   private SchemaUtils() {}
@@ -294,8 +305,26 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
+    if (!dataTypeColumnClassMap.containsKey(originalDataType) || !dataTypeColumnClassMap.containsKey(dataType)) {
+      return false;
+    }
     return Objects.equals(
         dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
+  }
+
+  public static boolean isUsingSameStatistics(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    if (!dataTypeColumnStatisticsClassMap.containsKey(originalDataType) || !dataTypeColumnStatisticsClassMap.containsKey(dataType)) {
+      return false;
+    }
+    return Objects.equals(
+            dataTypeColumnStatisticsClassMap.get(originalDataType), dataTypeColumnStatisticsClassMap.get(dataType));
+  }
+
+  public static boolean canUseStatistics(TSDataType dataType) {
+    return !canNotUseStatisticsClassSet.contains(dataType);
   }
 
   public static void changeMetadataModified(
@@ -303,8 +332,8 @@ public class SchemaUtils {
     if (timeseriesMetadata == null) {
       return;
     }
-    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
+        && !SchemaUtils.canUseStatistics(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -328,10 +357,9 @@ public class SchemaUtils {
     for (TimeseriesMetadata timeseriesMetadata :
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
       if ((timeseriesMetadata != null)
-          && !SchemaUtils.isUsingSameColumn(
+          && !SchemaUtils.isUsingSameStatistics(
               timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && ((targetDataTypeList.get(i) == TSDataType.STRING)
-              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+          && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
         List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
@@ -353,8 +381,8 @@ public class SchemaUtils {
       return;
     }
 
-    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
+        && !SchemaUtils.canUseStatistics(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -372,8 +400,8 @@ public class SchemaUtils {
     if (chunkMetadata == null) {
       return;
     }
-    if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(sourceDataType, targetDataType)
+        && !SchemaUtils.canUseStatistics(targetDataType)) {
       chunkMetadata.setModified(true);
     }
   }
@@ -388,9 +416,8 @@ public class SchemaUtils {
     int i = 0;
     for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
       if ((iChunkMetadata != null)
-          && !SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
-          && ((targetDataTypeList.get(i) == TSDataType.STRING)
-              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+          && !SchemaUtils.isUsingSameStatistics(iChunkMetadata.getDataType(), targetDataTypeList.get(i))
+          && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
       }
@@ -446,7 +473,7 @@ public class SchemaUtils {
       case FLOAT:
       case DOUBLE:
       case BOOLEAN:
-        if (targetDataType == TSDataType.STRING) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
           Binary[] binaryValues = new Binary[4];
           binaryValues[0] =
               new Binary(
@@ -454,7 +481,7 @@ public class SchemaUtils {
           binaryValues[1] =
               new Binary(
                   chunkMetadata.getStatistics().getLastValue().toString(), StandardCharsets.UTF_8);
-          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+          if (chunkMetadata.getDataType() == org.apache.tsfile.enums.TSDataType.BOOLEAN) {
             binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
             binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
           } else {
@@ -471,9 +498,9 @@ public class SchemaUtils {
           longValues[2] = longValues[1];
           longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == TSDataType.TEXT) {
+        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
-          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
+          if (chunkMetadata.getDataType() == org.apache.tsfile.enums.TSDataType.BOOLEAN) {
             binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
             binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
           } else {
@@ -493,7 +520,7 @@ public class SchemaUtils {
         }
         break;
       case DATE:
-        if (targetDataType == TSDataType.STRING) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
           Binary[] binaryValues = new Binary[4];
           binaryValues[0] =
               new Binary(
@@ -521,7 +548,7 @@ public class SchemaUtils {
           longValues[2] = longValues[1];
           longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == TSDataType.TEXT) {
+        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] =
               new Binary(
@@ -540,7 +567,7 @@ public class SchemaUtils {
         }
         break;
       case STRING:
-        if (targetDataType == TSDataType.TEXT) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] =
               new Binary(
@@ -552,7 +579,7 @@ public class SchemaUtils {
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == TSDataType.BLOB) {
+        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.BLOB) {
           statistics.update(
               chunkMetadata.getStatistics().getStartTime(),
               new Binary(
@@ -566,7 +593,7 @@ public class SchemaUtils {
         }
         break;
       case TEXT:
-        if (targetDataType == TSDataType.STRING) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] = (Binary) chunkMetadata.getStatistics().getFirstValue();
           binaryValues[1] = (Binary) chunkMetadata.getStatistics().getLastValue();
@@ -574,7 +601,7 @@ public class SchemaUtils {
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == TSDataType.BLOB) {
+        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.BLOB) {
           statistics.update(chunkMetadata.getStatistics().getStartTime(), EMPTY_BINARY);
           statistics.update(chunkMetadata.getStatistics().getEndTime(), EMPTY_BINARY);
         } else {
@@ -582,7 +609,7 @@ public class SchemaUtils {
         }
         break;
       case BLOB:
-        if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING || targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] = EMPTY_BINARY;
           binaryValues[1] = EMPTY_BINARY;
