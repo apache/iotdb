@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.db.utils;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
@@ -55,7 +55,8 @@ public class SchemaUtils {
 
   private static final Map<TSDataType, Class> dataTypeColumnClassMap;
   private static final Map<TSDataType, Class> dataTypeColumnStatisticsClassMap;
-  private static final Set<TSDataType> canNotUseStatisticsClassSet = ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
+  private static final Set<TSDataType> canNotUseStatisticsClassSet =
+      ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
   private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
 
@@ -305,7 +306,8 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
-    if (!dataTypeColumnClassMap.containsKey(originalDataType) || !dataTypeColumnClassMap.containsKey(dataType)) {
+    if (!dataTypeColumnClassMap.containsKey(originalDataType)
+        || !dataTypeColumnClassMap.containsKey(dataType)) {
       return false;
     }
     return Objects.equals(
@@ -316,11 +318,13 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
-    if (!dataTypeColumnStatisticsClassMap.containsKey(originalDataType) || !dataTypeColumnStatisticsClassMap.containsKey(dataType)) {
+    if (!dataTypeColumnStatisticsClassMap.containsKey(originalDataType)
+        || !dataTypeColumnStatisticsClassMap.containsKey(dataType)) {
       return false;
     }
     return Objects.equals(
-            dataTypeColumnStatisticsClassMap.get(originalDataType), dataTypeColumnStatisticsClassMap.get(dataType));
+        dataTypeColumnStatisticsClassMap.get(originalDataType),
+        dataTypeColumnStatisticsClassMap.get(dataType));
   }
 
   public static boolean canUseStatistics(TSDataType dataType) {
@@ -416,7 +420,8 @@ public class SchemaUtils {
     int i = 0;
     for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
       if ((iChunkMetadata != null)
-          && !SchemaUtils.isUsingSameStatistics(iChunkMetadata.getDataType(), targetDataTypeList.get(i))
+          && !SchemaUtils.isUsingSameStatistics(
+              iChunkMetadata.getDataType(), targetDataTypeList.get(i))
           && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
@@ -609,7 +614,8 @@ public class SchemaUtils {
         }
         break;
       case BLOB:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING || targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
+        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING
+            || targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] = EMPTY_BINARY;
           binaryValues[1] = EMPTY_BINARY;
