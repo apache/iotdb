@@ -60,7 +60,12 @@ public class PartitionTableAutoCleaner<Env> extends InternalProcedure<Env> {
     List<String> databases = configManager.getClusterSchemaManager().getDatabaseNames();
     Map<String, Long> databaseTTLMap = new TreeMap<>();
     for (String database : databases) {
-      long databaseTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
+      long databaseTTL = configManager.getTTLManager().getDatabaseLevelTTL(database);
+      if (0 < databaseTTL && databaseTTL < Long.MAX_VALUE) {
+        // For tree mode, the auto cleaner takes effect only when the database-level TTL is set.
+        // Subsequently, we employ the maximum TTL among all time series in this database.
+        databaseTTL = configManager.getTTLManager().getDatabaseMaxTTL(database);
+      }
       databaseTTLMap.put(database, databaseTTL);
     }
     LOGGER.info(
