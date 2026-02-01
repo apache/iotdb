@@ -135,6 +135,9 @@ public class SchemaUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
         return TSDataType.DOUBLE;
       // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
@@ -143,6 +146,9 @@ public class SchemaUtils {
       case SqlConstant.VARIANCE + "_partial":
       case SqlConstant.VAR_POP + "_partial":
       case SqlConstant.VAR_SAMP + "_partial":
+      case SqlConstant.CORR + "_partial":
+      case SqlConstant.COVAR_POP + "_partial":
+      case SqlConstant.COVAR_SAMP + "_partial":
       case SqlConstant.MAX_BY + "_partial":
       case SqlConstant.MIN_BY + "_partial":
         return TSDataType.TEXT;
@@ -210,6 +216,12 @@ public class SchemaUtils {
         return SqlConstant.VAR_POP;
       case VAR_SAMP:
         return SqlConstant.VAR_SAMP;
+      case CORR:
+        return SqlConstant.CORR;
+      case COVAR_POP:
+        return SqlConstant.COVAR_POP;
+      case COVAR_SAMP:
+        return SqlConstant.COVAR_SAMP;
       default:
         return null;
     }
@@ -245,6 +257,9 @@ public class SchemaUtils {
       case VAR_SAMP:
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
       case UDAF:
         return true;
       default:
@@ -279,6 +294,12 @@ public class SchemaUtils {
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_POP));
       case VAR_SAMP:
         return Collections.singletonList(addPartialSuffix(SqlConstant.VAR_SAMP));
+      case CORR:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.CORR));
+      case COVAR_POP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_POP));
+      case COVAR_SAMP:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_SAMP));
       case MAX_BY:
         return Collections.singletonList(addPartialSuffix(SqlConstant.MAX_BY));
       case MIN_BY:

@@ -361,6 +361,23 @@ public class ExpressionTypeAnalyzer {
       }
 
       if (functionExpression.isBuiltInAggregationFunctionExpression()) {
+        // Additional type check for multi-input aggregation functions
+        String funcName = functionExpression.getFunctionName().toLowerCase();
+        if (funcName.equals(SqlConstant.CORR)
+            || funcName.equals(SqlConstant.COVAR_POP)
+            || funcName.equals(SqlConstant.COVAR_SAMP)) {
+          // Check both input parameters are numeric
+          if (inputExpressions.size() >= 2) {
+            TSDataType secondInputType = expressionTypes.get(NodeRef.of(inputExpressions.get(1)));
+            if (secondInputType != null && !secondInputType.isNumeric()) {
+              throw new SemanticException(
+                  String.format(
+                      "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                      functionExpression.getFunctionName().toUpperCase()));
+            }
+          }
+        }
+
         return setExpressionType(
             functionExpression,
             TypeInferenceUtils.getBuiltinAggregationDataType(
@@ -542,6 +559,9 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
