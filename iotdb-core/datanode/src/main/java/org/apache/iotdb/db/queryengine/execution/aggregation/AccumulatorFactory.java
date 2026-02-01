@@ -69,6 +69,9 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
         return true;
       default:
         return false;
@@ -84,6 +87,21 @@ public class AccumulatorFactory {
       case MIN_BY:
         checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
         return new MinByAccumulator(inputDataTypes.get(0), inputDataTypes.get(1));
+      case CORR:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CorrelationAccumulator.CorrelationType.COVAR_POP);
+      case COVAR_SAMP:
+        checkState(inputDataTypes.size() == 2, "Wrong inputDataTypes size.");
+        return new CorrelationAccumulator(
+            new TSDataType[] {inputDataTypes.get(0), inputDataTypes.get(1)},
+            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }

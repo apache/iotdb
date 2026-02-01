@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 
 import org.apache.iotdb.common.rpc.thrift.TAggregationType;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CorrelationAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BinaryGroupedApproxMostFrequentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.BlobGroupedApproxMostFrequentAccumulator;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCorrelationAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountIfAccumulator;
@@ -256,6 +258,21 @@ public class AccumulatorFactory {
         return new GroupedApproxCountDistinctAccumulator(inputDataTypes.get(0));
       case APPROX_MOST_FREQUENT:
         return getGroupedApproxMostFrequentAccumulator(inputDataTypes.get(0));
+      case CORR:
+        return new GroupedCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        return new GroupedCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.COVAR_POP);
+      case COVAR_SAMP:
+        return new GroupedCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -325,6 +342,21 @@ public class AccumulatorFactory {
         return new ApproxCountDistinctAccumulator(inputDataTypes.get(0));
       case APPROX_MOST_FREQUENT:
         return getApproxMostFrequentAccumulator(inputDataTypes.get(0));
+      case CORR:
+        return new TableCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.CORR);
+      case COVAR_POP:
+        return new TableCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.COVAR_POP);
+      case COVAR_SAMP:
+        return new TableCorrelationAccumulator(
+            inputDataTypes.get(0),
+            inputDataTypes.get(1),
+            CorrelationAccumulator.CorrelationType.COVAR_SAMP);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -384,6 +416,10 @@ public class AccumulatorFactory {
     switch (aggregationType) {
       case MAX_BY:
       case MIN_BY:
+        return true;
+      case CORR:
+      case COVAR_POP:
+      case COVAR_SAMP:
         return true;
       default:
         return false;
