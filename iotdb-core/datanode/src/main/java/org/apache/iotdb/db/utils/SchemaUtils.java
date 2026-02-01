@@ -478,7 +478,7 @@ public class SchemaUtils {
       case FLOAT:
       case DOUBLE:
       case BOOLEAN:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
+        if (targetDataType == TSDataType.STRING) {
           Binary[] binaryValues = new Binary[4];
           binaryValues[0] =
               new Binary(
@@ -486,7 +486,7 @@ public class SchemaUtils {
           binaryValues[1] =
               new Binary(
                   chunkMetadata.getStatistics().getLastValue().toString(), StandardCharsets.UTF_8);
-          if (chunkMetadata.getDataType() == org.apache.tsfile.enums.TSDataType.BOOLEAN) {
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
             binaryValues[2] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
             binaryValues[3] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
           } else {
@@ -503,9 +503,9 @@ public class SchemaUtils {
           longValues[2] = longValues[1];
           longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
+        } else if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
-          if (chunkMetadata.getDataType() == org.apache.tsfile.enums.TSDataType.BOOLEAN) {
+          if (chunkMetadata.getDataType() == TSDataType.BOOLEAN) {
             binaryValues[0] = new Binary(Boolean.FALSE.toString(), StandardCharsets.UTF_8);
             binaryValues[1] = new Binary(Boolean.TRUE.toString(), StandardCharsets.UTF_8);
           } else {
@@ -525,7 +525,7 @@ public class SchemaUtils {
         }
         break;
       case DATE:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
+        if (targetDataType == TSDataType.STRING) {
           Binary[] binaryValues = new Binary[4];
           binaryValues[0] =
               new Binary(
@@ -553,7 +553,7 @@ public class SchemaUtils {
           longValues[2] = longValues[1];
           longValues[3] = longValues[1];
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
+        } else if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] =
               new Binary(
@@ -572,7 +572,7 @@ public class SchemaUtils {
         }
         break;
       case STRING:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
+        if (targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] =
               new Binary(
@@ -584,7 +584,7 @@ public class SchemaUtils {
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.BLOB) {
+        } else if (targetDataType == TSDataType.BLOB) {
           statistics.update(
               chunkMetadata.getStatistics().getStartTime(),
               new Binary(
@@ -598,7 +598,7 @@ public class SchemaUtils {
         }
         break;
       case TEXT:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING) {
+        if (targetDataType == TSDataType.STRING) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] = (Binary) chunkMetadata.getStatistics().getFirstValue();
           binaryValues[1] = (Binary) chunkMetadata.getStatistics().getLastValue();
@@ -606,7 +606,7 @@ public class SchemaUtils {
           longValues[0] = chunkMetadata.getStatistics().getStartTime();
           longValues[1] = chunkMetadata.getStatistics().getEndTime();
           statistics.update(longValues, binaryValues, binaryValues.length);
-        } else if (targetDataType == org.apache.tsfile.enums.TSDataType.BLOB) {
+        } else if (targetDataType == TSDataType.BLOB) {
           statistics.update(chunkMetadata.getStatistics().getStartTime(), EMPTY_BINARY);
           statistics.update(chunkMetadata.getStatistics().getEndTime(), EMPTY_BINARY);
         } else {
@@ -614,8 +614,7 @@ public class SchemaUtils {
         }
         break;
       case BLOB:
-        if (targetDataType == org.apache.tsfile.enums.TSDataType.STRING
-            || targetDataType == org.apache.tsfile.enums.TSDataType.TEXT) {
+        if (targetDataType == TSDataType.STRING || targetDataType == TSDataType.TEXT) {
           Binary[] binaryValues = new Binary[2];
           binaryValues[0] = EMPTY_BINARY;
           binaryValues[1] = EMPTY_BINARY;
