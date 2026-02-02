@@ -572,14 +572,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     long offset = showTimeSeriesStatement.getOffset();
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
-          planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
-      if (showTimeSeriesStatement.isOrderByTimeseries()) {
-        SortItem sortItem =
-            new SortItem(
-                ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
-        planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
-      }
-      planBuilder = planBuilder.planOffset(offset).planLimit(limit);
+          planBuilder
+              .planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false)
+              .planLimit(limit)
+              .planOffset(offset);
       return planBuilder.getRoot();
     }
 
@@ -629,7 +625,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 orderByTimeseriesDesc)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
-    // order by timeseries name in multi-region or PBTree case: still need global SortNode
+    // order by timeseries name in multi-region or PBTree-DESC case: still need global SortNode
     if (showTimeSeriesStatement.isOrderByTimeseries()
         && (!singleSchemaRegion || isNeedSortInPBTree)) {
       SortItem sortItem =

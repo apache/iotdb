@@ -796,6 +796,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SemanticException(
             "LATEST and ORDER BY TIMESERIES cannot be used at the same time.");
       }
+      if (ctx.timeConditionClause() != null) {
+        throw new SemanticException("ORDER BY TIMESERIES does not support TIME condition.");
+      }
       Ordering ordering = Ordering.ASC;
       if (ctx.orderByTimeseriesClause().DESC() != null) {
         ordering = Ordering.DESC;
