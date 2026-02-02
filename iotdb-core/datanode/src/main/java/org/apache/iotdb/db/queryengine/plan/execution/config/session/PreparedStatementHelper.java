@@ -48,7 +48,7 @@ public class PreparedStatementHelper {
   }
 
   /** Unregisters a prepared statement from the session. */
-  public static PreparedStatementInfo unregister(IClientSession session, String statementName) {
+  public static void unregister(IClientSession session, String statementName) {
     PreparedStatementInfo removedInfo = session.removePreparedStatement(statementName);
     if (removedInfo == null) {
       throw new SemanticException(
@@ -56,7 +56,5 @@ public class PreparedStatementHelper {
     }
 
     PreparedStatementMemoryManager.getInstance().release(removedInfo.getMemorySizeInBytes());
-
-    return removedInfo;
   }
 }

@@ -139,7 +139,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   }
 
   private String generateStatementName() {
-    // StatementId is unique across all sessions in one IoTDB instance
+    // StatementId is unique in directly connected DataNode
     return "jdbc_ps_" + getStmtId();
   }
 

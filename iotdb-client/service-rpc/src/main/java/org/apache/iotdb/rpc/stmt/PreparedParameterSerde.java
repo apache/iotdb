@@ -51,14 +51,17 @@ public class PreparedParameterSerde {
   private PreparedParameterSerde() {}
 
   /** Serialize parameters to binary format. */
-  public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count)
-      throws IOException {
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    ReadWriteIOUtils.write(count, outputStream);
-    for (int i = 0; i < count; i++) {
-      serializeParameter(outputStream, values[i], jdbcTypes[i]);
+  public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count) {
+    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+      ReadWriteIOUtils.write(count, outputStream);
+      for (int i = 0; i < count; i++) {
+        serializeParameter(outputStream, values[i], jdbcTypes[i]);
+      }
+      return ByteBuffer.wrap(outputStream.toByteArray());
+    } catch (IOException e) {
+      // Should not happen with ByteArrayOutputStream
+      throw new IllegalStateException("Failed to serialize parameters", e);
     }
-    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   private static void serializeParameter(OutputStream outputStream, Object value, int jdbcType)

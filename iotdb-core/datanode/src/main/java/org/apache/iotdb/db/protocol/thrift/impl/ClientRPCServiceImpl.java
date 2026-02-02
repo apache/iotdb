@@ -233,6 +233,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import static org.apache.iotdb.commons.partition.DataPartition.NOT_ASSIGNED;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
@@ -316,6 +317,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   private TSExecuteStatementResp executeStatementInternal(
       TSExecuteStatementReq req, SelectResult setResult) {
+    return executeStatementInternal(req, setResult, null);
+  }
+
+  private TSExecuteStatementResp executeStatementInternal(
+      TSExecuteStatementReq req,
+      SelectResult setResult,
+      Supplier<org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
+          tableStatementSupplier) {
     boolean finished = false;
     Long statementId = req.getStatementId();
     long queryId = Long.MIN_VALUE;
@@ -409,7 +418,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         }
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            relationSqlParser.createStatement(statement, clientSession.getZoneId(), clientSession);
+            tableStatementSupplier != null
+                ? tableStatementSupplier.get()
+                : relationSqlParser.createStatement(
+                    statement, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -1542,80 +1554,47 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
-    boolean finished = false;
-    long queryId = Long.MIN_VALUE;
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
 
-    if (!SESSION_MANAGER.checkLogin(clientSession)) {
-      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
-    }
-
-    long startTime = System.nanoTime();
-    Throwable t = null;
     try {
       String statementName = req.getStatementName();
 
+      // Deserialize parameters and build Execute statement
       List<DeserializedParam> rawParams =
           PreparedParameterSerde.deserialize(ByteBuffer.wrap(req.getParameters()));
       List<Literal> parameters = new ArrayList<>(rawParams.size());
+      List<String> paramStrings = new ArrayList<>(rawParams.size());
       for (DeserializedParam param : rawParams) {
-        parameters.add(convertToLiteral(param));
+        Pair<Literal, String> literalAndString = convertToLiteralWithString(param);
+        parameters.add(literalAndString.left);
+        paramStrings.add(literalAndString.right);
       }
-
       Execute executeStatement = new Execute(new Identifier(statementName), parameters);
 
-      queryId = SESSION_MANAGER.requestQueryId(clientSession, req.getStatementId());
+      String fullStatement =
+          paramStrings.isEmpty()
+              ? "EXECUTE " + statementName
+              : "EXECUTE " + statementName + " USING " + String.join(", ", paramStrings);
 
-      long timeout = req.isSetTimeout() ? req.getTimeout() : config.getQueryTimeoutThreshold();
-      ExecutionResult result =
-          COORDINATOR.executeForTableModel(
-              executeStatement,
-              relationSqlParser,
-              clientSession,
-              queryId,
-              SESSION_MANAGER.getSessionInfo(clientSession),
-              "EXECUTE " + statementName,
-              metadata,
-              timeout,
-              true);
-
-      if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-          && result.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-        finished = true;
-        return RpcUtils.getTSExecuteStatementResp(result.status);
+      // Build a compatible TSExecuteStatementReq
+      TSExecuteStatementReq executeReq = new TSExecuteStatementReq();
+      executeReq.setSessionId(clientSession.getId());
+      executeReq.setStatement(fullStatement);
+      executeReq.setStatementId(req.getStatementId());
+      if (req.isSetFetchSize()) {
+        executeReq.setFetchSize(req.getFetchSize());
+      }
+      if (req.isSetTimeout()) {
+        executeReq.setTimeout(req.getTimeout());
       }
 
-      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
-
-      try (SetThreadName threadName = new SetThreadName(result.queryId.getId())) {
-        TSExecuteStatementResp resp;
-        if (queryExecution != null && queryExecution.isQuery()) {
-          resp = createResponse(queryExecution.getDatasetHeader(), queryId);
-          resp.setStatus(result.status);
-          int fetchSize =
-              req.isSetFetchSize() ? req.getFetchSize() : config.getThriftMaxFrameSize();
-          finished = setResultForPrepared.apply(resp, queryExecution, fetchSize);
-          resp.setMoreData(!finished);
-        } else {
-          finished = true;
-          resp = RpcUtils.getTSExecuteStatementResp(result.status);
-        }
-        return resp;
-      }
+      return executeStatementInternal(executeReq, setResultForPrepared, () -> executeStatement);
     } catch (Exception e) {
-      finished = true;
-      t = e;
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(
               e,
               OperationType.EXECUTE_PREPARED_STATEMENT.getName(),
               TSStatusCode.INTERNAL_SERVER_ERROR));
-    } finally {
-      long currentOperationCost = System.nanoTime() - startTime;
-      if (finished) {
-        COORDINATOR.cleanupQueryExecution(queryId, null, t);
-      }
-      COORDINATOR.recordExecutionTime(queryId, currentOperationCost);
     }
   }
 
@@ -1637,29 +1616,46 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     }
   }
 
-  private Literal convertToLiteral(DeserializedParam param) {
+  private Pair<Literal, String> convertToLiteralWithString(DeserializedParam param) {
     if (param.isNull()) {
-      return new NullLiteral();
+      return new Pair<>(new NullLiteral(), "NULL");
     }
 
     switch (param.type) {
       case BOOLEAN:
-        return new BooleanLiteral((Boolean) param.value ? "true" : "false");
+        String boolStr = (Boolean) param.value ? "true" : "false";
+        return new Pair<>(new BooleanLiteral(boolStr), boolStr);
       case INT32:
       case INT64:
-        return new LongLiteral(String.valueOf(param.value));
+        String numStr = String.valueOf(param.value);
+        return new Pair<>(new LongLiteral(numStr), numStr);
       case FLOAT:
-        return new DoubleLiteral((Float) param.value);
+        String floatStr = String.valueOf(param.value);
+        return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
       case DOUBLE:
-        return new DoubleLiteral((Double) param.value);
+        String doubleStr = String.valueOf(param.value);
+        return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
       case TEXT:
       case STRING:
-        return new StringLiteral((String) param.value);
+        String strVal = (String) param.value;
+        // Escape single quotes for SQL
+        String escapedStr = "'" + strVal.replace("'", "''") + "'";
+        return new Pair<>(new StringLiteral(strVal), escapedStr);
       case BLOB:
-        return new BinaryLiteral((byte[]) param.value);
+        byte[] bytes = (byte[]) param.value;
+        String hexStr = "X'" + bytesToHex(bytes) + "'";
+        return new Pair<>(new BinaryLiteral(bytes), hexStr);
       default:
         throw new IllegalArgumentException("Unknown parameter type: " + param.type);
     }
+  }
+
+  private static String bytesToHex(byte[] bytes) {
+    StringBuilder sb = new StringBuilder(bytes.length * 2);
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
   }
 
   private final SelectResult setResultForPrepared =
