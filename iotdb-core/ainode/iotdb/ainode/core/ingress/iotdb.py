@@ -69,9 +69,6 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
         password: str = AINodeDescriptor()
         .get_config()
         .get_ain_cluster_ingress_password(),
-        time_zone: str = AINodeDescriptor()
-        .get_config()
-        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
@@ -90,7 +87,6 @@ class IoTDBTreeModelDataset(BasicDatabaseForecastDataset):
             node_urls=[f"{ip}:{port}"],
             user=username,
             password=password,
-            zone_id=time_zone,
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),
@@ -258,9 +254,6 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
         password: str = AINodeDescriptor()
         .get_config()
         .get_ain_cluster_ingress_password(),
-        time_zone: str = AINodeDescriptor()
-        .get_config()
-        .get_ain_cluster_ingress_time_zone(),
         use_rate: float = 1.0,
         offset_rate: float = 0.0,
     ):
@@ -272,7 +265,6 @@ class IoTDBTableModelDataset(BasicDatabaseForecastDataset):
             node_urls=[f"{ip}:{port}"],
             username=username,
             password=password,
-            time_zone=time_zone,
             use_ssl=AINodeDescriptor()
             .get_config()
             .get_ain_cluster_ingress_ssl_enabled(),
