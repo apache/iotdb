@@ -200,19 +200,35 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
   }
 
   @Test
-  public void testConflictWithTimeCondition() throws Exception {
-    prepareComplexSchema();
+  public void testOrderByWithTimeCondition() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet ignored =
-          statement.executeQuery("show timeseries where time > 0 order by timeseries")) {
-        fail("Expected exception for conflict between TIME condition and ORDER BY TIMESERIES");
-      } catch (SQLException e) {
-        assertTrue(
-            e.getMessage().toLowerCase().contains("time condition")
-                && e.getMessage().toLowerCase().contains("order by timeseries"));
+      statement.execute("CREATE DATABASE root.db1");
+      statement.execute(
+          "create timeseries root.db1.devA.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.db1.devA.s2 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+      statement.execute(
+          "create timeseries root.db1.devB.s1 with datatype=INT32, encoding=RLE, compression=SNAPPY");
+
+      // s1 has points in [1..5], s2 only [1..3], devB.s1 only [4..5]
+      for (int t = 1; t <= 5; t++) {
+        statement.execute(
+            String.format("insert into root.db1.devA(timestamp, s1) values (%d, %d)", t, t));
+      }
+      for (int t = 1; t <= 3; t++) {
+        statement.execute(
+            String.format("insert into root.db1.devA(timestamp, s2) values (%d, %d)", t, t));
+      }
+      for (int t = 4; t <= 5; t++) {
+        statement.execute(
+            String.format("insert into root.db1.devB(timestamp, s1) values (%d, %d)", t, t));
       }
     }
+
+    List<String> actual =
+        queryTimeseries("show timeseries root.db1.** where time > 3 order by timeseries desc");
+    assertEquals(Arrays.asList("root.db1.devB.s1", "root.db1.devA.s1"), actual);
   }
 
   @Test
