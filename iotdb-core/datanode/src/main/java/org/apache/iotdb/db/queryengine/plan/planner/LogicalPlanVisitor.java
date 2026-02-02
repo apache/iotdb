@@ -593,16 +593,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .getConfig()
             .getSchemaEngineMode()
             .equals(SchemaEngineMode.Memory.toString());
-    boolean isNeedSortInPBTree =
-        !isMemorySchemaEngine && showTimeSeriesStatement.isOrderByTimeseries();
     boolean canPushDownOffsetLimit =
         singleSchemaRegion
-            && !isNeedSortInPBTree
             && !showTimeSeriesStatement.isOrderByHeat()
-            && showTimeSeriesStatement.getSchemaFilter() == null;
+            && ((isMemorySchemaEngine && showTimeSeriesStatement.getSchemaFilter() == null)
+                || (!isMemorySchemaEngine && !showTimeSeriesStatement.isOrderByTimeseries()));
 
     if (!canPushDownOffsetLimit) {
-      if (showTimeSeriesStatement.isOrderByHeat() || isNeedSortInPBTree) {
+      if (showTimeSeriesStatement.isOrderByHeat()
+          || (!isMemorySchemaEngine && showTimeSeriesStatement.isOrderByTimeseries())) {
         limit = 0;
         offset = 0;
       } else {
@@ -631,7 +630,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     // order by timeseries name in multi-region or PBTree case: still need global SortNode
     if (showTimeSeriesStatement.isOrderByTimeseries()
-        && (!singleSchemaRegion || isNeedSortInPBTree)) {
+        && (!singleSchemaRegion || !isMemorySchemaEngine)) {
       SortItem sortItem =
           new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
       planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
