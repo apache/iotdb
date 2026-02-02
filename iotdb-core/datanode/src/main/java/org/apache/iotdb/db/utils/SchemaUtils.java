@@ -55,7 +55,7 @@ public class SchemaUtils {
 
   private static final Map<TSDataType, Class> dataTypeColumnClassMap;
   private static final Map<TSDataType, Class> dataTypeColumnStatisticsClassMap;
-  private static final Set<TSDataType> canNotUseStatisticsClassSet =
+  private static final Set<TSDataType> canNotUseStatisticAfterAlterClassSet =
       ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
   private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
@@ -328,7 +328,7 @@ public class SchemaUtils {
   }
 
   public static boolean canUseStatistics(TSDataType dataType) {
-    return !canNotUseStatisticsClassSet.contains(dataType);
+    return !canNotUseStatisticAfterAlterClassSet.contains(dataType);
   }
 
   public static void changeMetadataModified(
