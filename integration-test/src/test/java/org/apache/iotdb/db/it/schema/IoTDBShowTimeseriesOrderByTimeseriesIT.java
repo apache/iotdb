@@ -239,7 +239,7 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("CREATE DATABASE root.sg1");
-      statement.execute("create device template t1 (s1 INT32)");
+      statement.execute("create device template t1 (s1 INT32, s0 INT32)");
       statement.execute("set device template t1 to root.sg1.d1");
       statement.execute("create timeseries using device template on root.sg1.d1");
       statement.execute("set device template t1 to root.sg1.d2");
@@ -247,16 +247,16 @@ public class IoTDBShowTimeseriesOrderByTimeseriesIT extends AbstractSchemaIT {
     }
 
     List<String> before =
-        queryTimeseries("show timeseries root.sg1.** order by timeseries desc offset 1 limit 1");
-    assertEquals(Arrays.asList("root.sg1.d1.s1"), before);
+        queryTimeseries("show timeseries root.sg1.** order by timeseries desc offset 2 limit 2");
+    assertEquals(Arrays.asList("root.sg1.d1.s1", "root.sg1.d1.s0"), before);
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("alter device template t1 add (s2 INT32)");
+      statement.execute("alter device template t1 add (s00 INT32)");
     }
 
     List<String> after =
-        queryTimeseries("show timeseries root.sg1.** order by timeseries desc offset 2 limit 2");
-    assertEquals(Arrays.asList("root.sg1.d1.s2", "root.sg1.d1.s1"), after);
+        queryTimeseries("show timeseries root.sg1.** order by timeseries offset 3 limit 3");
+    assertEquals(Arrays.asList("root.sg1.d2.s0", "root.sg1.d2.s00", "root.sg1.d2.s1"), after);
   }
 }
