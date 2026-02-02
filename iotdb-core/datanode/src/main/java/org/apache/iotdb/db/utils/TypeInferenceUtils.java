@@ -189,16 +189,22 @@ public class TypeInferenceUtils {
       case SqlConstant.VARIANCE:
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
-      case SqlConstant.CORR:
-      case SqlConstant.COVAR_POP:
-      case SqlConstant.COVAR_SAMP:
         if (dataType.isNumeric()) {
           return;
         }
         throw new SemanticException(
             "Aggregate functions [AVG, SUM, EXTREME, STDDEV, STDDEV_POP, STDDEV_SAMP, "
-                + "VARIANCE, VAR_POP, VAR_SAMP, CORR, COVAR_POP, COVAR_SAMP] only support "
+                + "VARIANCE, VAR_POP, VAR_SAMP] only support "
                 + "numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+        if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [CORR, COVAR_POP, COVAR_SAMP] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
       case SqlConstant.MIN_TIME:

@@ -366,13 +366,26 @@ public class ExpressionTypeAnalyzer {
         if (funcName.equals(SqlConstant.CORR)
             || funcName.equals(SqlConstant.COVAR_POP)
             || funcName.equals(SqlConstant.COVAR_SAMP)) {
-          // Check both input parameters are numeric
-          if (inputExpressions.size() >= 2) {
-            TSDataType secondInputType = expressionTypes.get(NodeRef.of(inputExpressions.get(1)));
-            if (secondInputType != null && !secondInputType.isNumeric()) {
+          // Check both input parameters are numeric or timestamp
+          if (inputExpressions.size() >= 1) {
+            TSDataType firstInputType = expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+            if (firstInputType != null
+                && !firstInputType.isNumeric()
+                && firstInputType != TSDataType.TIMESTAMP) {
               throw new SemanticException(
                   String.format(
-                      "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]",
+                      "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                      functionExpression.getFunctionName().toUpperCase()));
+            }
+          }
+          if (inputExpressions.size() >= 2) {
+            TSDataType secondInputType = expressionTypes.get(NodeRef.of(inputExpressions.get(1)));
+            if (secondInputType != null
+                && !secondInputType.isNumeric()
+                && secondInputType != TSDataType.TIMESTAMP) {
+              throw new SemanticException(
+                  String.format(
+                      "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
                       functionExpression.getFunctionName().toUpperCase()));
             }
           }
