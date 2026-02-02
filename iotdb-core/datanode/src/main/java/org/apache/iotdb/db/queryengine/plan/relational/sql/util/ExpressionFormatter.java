@@ -41,6 +41,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -231,6 +232,14 @@ public final class ExpressionFormatter {
       return literalFormatter
           .map(formatter -> formatter.apply(node))
           .orElseGet(() -> doubleFormatter.get().format(node.getValue()));
+    }
+
+    // do not use doubleFormatter, to prevent from introducing the precision noise
+    @Override
+    protected String visitFloatLiteral(FloatLiteral node, Void context) {
+      return literalFormatter
+          .map(formatter -> formatter.apply(node))
+          .orElseGet(() -> String.valueOf(node.getValue()));
     }
 
     @Override

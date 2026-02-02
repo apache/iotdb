@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -206,6 +207,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.tsfile.read.common.block.column.FloatColumn;
 import org.apache.tsfile.read.common.block.column.IntColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.DateType;
@@ -502,6 +504,22 @@ public class ColumnTransformerBuilder
                   new ConstantColumnTransformer(
                       DOUBLE,
                       new DoubleColumn(1, Optional.empty(), new double[] {node.getValue()}));
+              context.leafList.add(columnTransformer);
+              return columnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
+  }
+
+  @Override
+  protected ColumnTransformer visitFloatLiteral(FloatLiteral node, Context context) {
+    ColumnTransformer res =
+        context.cache.computeIfAbsent(
+            node,
+            e -> {
+              ConstantColumnTransformer columnTransformer =
+                  new ConstantColumnTransformer(
+                      FLOAT, new FloatColumn(1, Optional.empty(), new float[] {node.getValue()}));
               context.leafList.add(columnTransformer);
               return columnTransformer;
             });
@@ -1552,6 +1570,8 @@ public class ColumnTransformerBuilder
               timestampSet.add(((LongLiteral) value).getParsedValue());
             } else if (value instanceof DoubleLiteral) {
               timestampSet.add((long) ((DoubleLiteral) value).getValue());
+            } else if (value instanceof FloatLiteral) {
+              timestampSet.add((long) ((FloatLiteral) value).getValue());
             } else if (value instanceof GenericLiteral) {
               timestampSet.add(Long.parseLong(((GenericLiteral) value).getValue()));
             } else {
@@ -1568,7 +1588,11 @@ public class ColumnTransformerBuilder
         Set<Float> floatSet = new HashSet<>();
         for (Literal value : values) {
           try {
-            floatSet.add((float) ((DoubleLiteral) value).getValue());
+            if (value instanceof FloatLiteral) {
+              floatSet.add(((FloatLiteral) value).getValue());
+            } else {
+              floatSet.add((float) ((DoubleLiteral) value).getValue());
+            }
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }
@@ -1578,7 +1602,11 @@ public class ColumnTransformerBuilder
         Set<Double> doubleSet = new HashSet<>();
         for (Literal value : values) {
           try {
-            doubleSet.add(((DoubleLiteral) value).getValue());
+            if (value instanceof FloatLiteral) {
+              doubleSet.add((double) ((FloatLiteral) value).getValue());
+            } else {
+              doubleSet.add(((DoubleLiteral) value).getValue());
+            }
           } catch (IllegalArgumentException e) {
             throw new SemanticException(String.format(errorMsg, value, childType));
           }
