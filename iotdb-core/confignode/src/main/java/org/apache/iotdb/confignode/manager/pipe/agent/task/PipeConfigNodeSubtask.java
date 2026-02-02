@@ -88,7 +88,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
 
     // 1. Construct extractor
-    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    extractor = PipeConfigNodeAgent.plugin().reflectSource(extractorParameters);
 
     try {
       // 2. Validate extractor parameters
@@ -135,7 +135,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
 
     // 1. Construct connector
-    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
+    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectSink(connectorParameters);
 
     try {
       // 2. Validate connector parameters

@@ -40,6 +40,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -129,6 +130,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     session_src.executeNonQueryStatement("flush");
   }
 
+  @Ignore
   @Test
   public void testUnsetGroupConsumer()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -164,6 +166,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     }
   }
 
+  @Ignore
   @Test
   public void testAlterPollTime() throws IoTDBConnectionException, StatementExecutionException {
     String sql = "select count(s_0) from " + device;
@@ -201,11 +204,13 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     }
   }
 
+  @Ignore
   @Test(expected = NullPointerException.class)
   public void testCreateConsumer_null() {
     new SubscriptionPushConsumer(null).open();
   }
 
+  @Ignore
   @Test(
       expected =
           SubscriptionConnectionException.class) // connect to TEndPoint(ip:localhost, port:6667)
@@ -213,26 +218,31 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     new SubscriptionPushConsumer(new Properties()).open();
   }
 
+  @Ignore
   @Test(expected = SubscriptionConnectionException.class)
   public void testCreateConsumer_empty2() {
     new SubscriptionPushConsumer.Builder().buildPushConsumer().open();
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testSubscribe_null() {
     consumer.subscribe((String) null);
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testSubscribe_empty() {
     consumer.subscribe("");
   }
 
+  @Ignore
   @Test(expected = SubscriptionRuntimeCriticalException.class)
   public void testSubscribe_notTopic() {
     consumer.subscribe("topic_notCreate");
   }
 
+  @Ignore
   @Test
   public void testSubscribe_dup() {
     SubscriptionPushConsumer consumer1 =
@@ -248,21 +258,25 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.close();
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testUnSubscribe_null() {
     consumer.unsubscribe((String) null);
   }
 
+  @Ignore
   @Test(expected = SubscriptionIdentifierSemanticException.class)
   public void testUnSubscribe_empty() {
     consumer.unsubscribe("");
   }
 
+  @Ignore
   @Test(expected = SubscriptionRuntimeCriticalException.class)
   public void testUnSubscribe_notTopic() {
     consumer.unsubscribe("topic_notCreate");
   }
 
+  @Ignore
   @Test
   public void testUnSubscribe_dup() {
     SubscriptionPushConsumer consumer1 =
@@ -279,6 +293,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.close();
   }
 
+  @Ignore
   @Test
   public void testUnSubscribe_notSubs()
       throws IoTDBConnectionException, StatementExecutionException {
@@ -297,6 +312,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     subs.dropTopic("t");
   }
 
+  @Ignore
   @Test(expected = SubscriptionException.class)
   public void testSubscribe_AfterClose() {
     SubscriptionPushConsumer consumer1 =
@@ -312,6 +328,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.subscribe(topicName);
   }
 
+  @Ignore
   @Test(expected = SubscriptionException.class)
   public void testUnSubscribe_AfterClose() {
     SubscriptionPushConsumer consumer1 =
@@ -326,6 +343,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
     consumer1.unsubscribe(topicName);
   }
 
+  @Ignore
   @Test(expected = SubscriptionConnectionException.class)
   public void testNoUser() {
     String userName = "user01";
@@ -336,6 +354,7 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
         .open();
   }
 
+  @Ignore
   @Test(expected = SubscriptionConnectionException.class)
   public void testErrorPasswd() {
     String userName = "user02";

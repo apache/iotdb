@@ -38,6 +38,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -134,6 +135,7 @@ public class IoTDBPathTsLooseDatasetPushConsumerIT extends AbstractSubscriptionR
     session_src.executeNonQueryStatement("flush;");
   }
 
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,

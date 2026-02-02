@@ -33,7 +33,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSourceConstructor createPipeExtractorConstructor(
+  protected PipeSourceConstructor createPipeSourceConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeDataRegionSourceConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }
@@ -46,7 +46,7 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
   }
 
   @Override
-  protected PipeSinkConstructor createPipeConnectorConstructor(
+  protected PipeSinkConstructor createPipeSinkConstructor(
       PipePluginMetaKeeper pipePluginMetaKeeper) {
     return new PipeDataRegionSinkConstructor((DataNodePipePluginMetaKeeper) pipePluginMetaKeeper);
   }

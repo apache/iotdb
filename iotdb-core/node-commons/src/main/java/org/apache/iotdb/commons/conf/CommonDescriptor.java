@@ -257,11 +257,6 @@ public class CommonDescriptor {
   }
 
   private void loadSubscriptionProps(TrimProperties properties) {
-    config.setSubscriptionEnabled(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "subscription_enabled", String.valueOf(config.getSubscriptionEnabled()))));
-
     config.setSubscriptionCacheMemoryUsagePercentage(
         Float.parseFloat(
             properties.getProperty(

@@ -393,10 +393,6 @@ public class RemoteCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    return this;
-  }
-
   @Override
   public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
     return this;
