@@ -472,10 +472,10 @@ public class FileLoaderUtils {
           (AbstractAlignedChunkMetadata) chunkMetaData;
       for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
         if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
-          if (!SchemaUtils.isUsingSameColumn(
+          if (!SchemaUtils.isUsingSameStatistics(
                   alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                   targetDataTypeList.get(i))
-              && targetDataTypeList.get(i).equals(TSDataType.STRING)) {
+              && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
             isModified = true;
             alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
           }
@@ -484,8 +484,8 @@ public class FileLoaderUtils {
       IChunkLoader chunkLoader = alignedChunkMetadata.getChunkLoader();
       chunkReader = chunkLoader.getChunkReader(alignedChunkMetadata, globalTimeFilter);
     } else {
-      if (!SchemaUtils.isUsingSameColumn(chunkMetaData.getDataType(), targetDataTypeList.get(0))
-          && targetDataTypeList.get(0).equals(TSDataType.STRING)) {
+      if (!SchemaUtils.isUsingSameStatistics(chunkMetaData.getDataType(), targetDataTypeList.get(0))
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(0))) {
         isModified = true;
         chunkMetaData.setModified(true);
       }

@@ -93,10 +93,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
   private static final Logger log = LoggerFactory.getLogger(IoTDBAlterTimeSeriesTypeIT.class);
   private static long timeout = -1;
   private static final String database = "root.alter";
-  public static final List<TSDataType> DATA_TYPE_LIST =
-      Arrays.asList(TSDataType.STRING, TSDataType.TEXT, TSDataType.BOOLEAN);
-  public static final List<TSDataType> UNSUPPORT_ACCUMULATOR_QUERY_DATA_TYPE_LIST =
-      Collections.singletonList(TSDataType.BLOB);
+  public static final List<TSDataType> UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST =
+      Arrays.asList(TSDataType.BLOB, TSDataType.TEXT, TSDataType.BOOLEAN);
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -129,6 +127,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
           testAlignDeviceSequenceDataQuery(from, to);
           testAlignDeviceUnSequenceDataQuery(from, to);
           testAlignDeviceUnSequenceOverlappedDataQuery(from, to);
+
+          doWriteAndAlterWriteForAccumulatorQuery(from, to);
         }
       }
     }
@@ -295,7 +295,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
       assertFalse(dataSet.hasNext());
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
         dataSet =
             session.executeQueryStatement(
                 "select first_value(s1),last_value(s1) from "
@@ -348,6 +349,83 @@ public class IoTDBAlterTimeSeriesTypeIT {
       try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
         session.executeNonQueryStatement(
             "DELETE TIMESERIES " + database + ".write_and_alter_column_type.s1");
+      }
+    }
+  }
+
+  private void doWriteAndAlterWriteForAccumulatorQuery(TSDataType from, TSDataType to)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.executeNonQueryStatement(
+          "SET CONFIGURATION \"enable_unseq_space_compaction\"='false'");
+      session.executeNonQueryStatement("SET CONFIGURATION \"enable_seq_space_compaction\"='false'");
+      if (from == TSDataType.DATE && !to.isCompatible(from)) {
+        throw new NotSupportedException("Not supported DATE type.");
+      }
+
+      // create a table with type of "from"
+      session.executeNonQueryStatement(
+          "CREATE TIMESERIES " + database + ".write_and_alter_column_type_write.s1 " + from);
+
+      // write a sequence tsfile point of "from"
+      Tablet tablet =
+          new Tablet(
+              database + ".write_and_alter_column_type_write",
+              Collections.singletonList("s1"),
+              Collections.singletonList(from),
+              Collections.singletonList(ColumnCategory.FIELD));
+      for (int i = 1; i <= 512; i++) {
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", 0, genValue(from, i));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+      session.executeNonQueryStatement("FLUSH");
+
+      // alter the type to "to"
+      boolean isCompatible = MetadataUtils.canAlter(from, to);
+      if (isCompatible) {
+        session.executeNonQueryStatement(
+            "ALTER TIMESERIES "
+                + database
+                + ".write_and_alter_column_type_write.s1 SET DATA TYPE "
+                + to);
+      } else {
+        try {
+          session.executeNonQueryStatement(
+              "ALTER TIMESERIES "
+                  + database
+                  + ".write_and_alter_column_type_write.s1 SET DATA TYPE "
+                  + to);
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "701: New type " + to + " is not compatible with the existing one " + from,
+              e.getMessage());
+        }
+      }
+
+      // write a sequence tsfile point of "to"
+      tablet =
+          new Tablet(
+              database + ".write_and_alter_column_type_write",
+              Collections.singletonList("s1"),
+              Collections.singletonList(to),
+              Collections.singletonList(ColumnCategory.FIELD));
+      for (int i = 513; i <= 1024; i++) {
+        tablet.addTimestamp(0, i);
+        tablet.addValue("s1", 0, genValue(to, i));
+        session.insertTablet(tablet);
+        tablet.reset();
+      }
+      session.executeNonQueryStatement("FLUSH");
+
+      standardAccumulatorQueryByTimeOnlyInvolveOldDataTypeTest(session, from, to);
+      standardAccumulatorQueryByTimeOnlyInvolveNewDataTypeTest(session, from, to);
+      standardAccumulatorQueryByTimeInvolveAllDataTypeTest(session, from, to);
+    } finally {
+      try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+        session.executeNonQueryStatement(
+            "DELETE TIMESERIES " + database + ".write_and_alter_column_type_write.s1");
       }
     }
   }
@@ -1129,31 +1207,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
         tablet.reset();
       }
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1275,31 +1344,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
         tablet.reset();
       }
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1414,31 +1474,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1556,31 +1607,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1695,31 +1737,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1838,31 +1871,22 @@ public class IoTDBAlterTimeSeriesTypeIT {
       }
       //        session.executeNonQueryStatement("FLUSH");
 
-      if (DATA_TYPE_LIST.contains(from) || DATA_TYPE_LIST.contains(to)) {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+      String columns;
+      if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(from)
+          || UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(to)) {
+        columns = "first_value(s1),last_value(s1)";
       } else {
-        SessionDataSet dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        RowRecord rec = dataSet.next();
-        while (rec != null) {
-          System.out.println(rec.getFields().toString());
-          rec = dataSet.next();
-        }
-        dataSet.close();
+        columns = "min_value(s1),max_value(s1),first_value(s1),last_value(s1)";
       }
+      SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select " + columns + " from " + database + ".construct_and_alter_column_type");
+      RowRecord rec = dataSet.next();
+      while (rec != null) {
+        System.out.println(rec.getFields().toString());
+        rec = dataSet.next();
+      }
+      dataSet.close();
 
       try {
         standardSelectTest(session, from, to);
@@ -1984,7 +2008,8 @@ public class IoTDBAlterTimeSeriesTypeIT {
                 "select s1 from "
                     + database
                     + ".construct_and_alter_column_type where cast(s1 as TEXT) >= '1' and cast(s2 as TEXT) > '2' order by time");
-        //                "select s1 from construct_and_alter_column_type where cast(s1 as
+        //                "select s1 from " + database + ".construct_and_alter_column_type where
+        // cast(s1 as
         // TEXT) >= '1' and s2 > '2' order by time");
       } else {
         dataSet1 =
@@ -2350,77 +2375,163 @@ public class IoTDBAlterTimeSeriesTypeIT {
 
   private static void standardAccumulatorQueryTest(ISession session, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (newType == TSDataType.DATE) {
-      throw new NotSupportedException("Not supported DATE type.");
+    RowRecord rec = null;
+    RowRecord unsupportMinMaxRec = null;
+    SessionDataSet dataSet = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first_value(s1),last_value(s1) from "
+                  + database
+                  + ".construct_and_alter_column_type");
+      unsupportMinMaxRec = dataSet.next();
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".construct_and_alter_column_type");
+      rec = dataSet.next();
     }
 
-    SessionDataSet dataSet;
-    RowRecord rec;
-    if (!UNSUPPORT_ACCUMULATOR_QUERY_DATA_TYPE_LIST.contains(newType)) {
-      int[] expectedValue;
-      int max = 4;
-      if (DATA_TYPE_LIST.contains(newType)) {
-        dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        rec = dataSet.next();
-        expectedValue = new int[] {1, 1024};
-        if (newType == TSDataType.STRING
-            || newType == TSDataType.TEXT
-            || newType == TSDataType.BLOB) {
-          //        expectedValue[1] = 999;
-        } else if (newType == TSDataType.BOOLEAN) {
-          expectedValue = new int[] {19700102, 19721021};
-        }
-        max = 2;
-      } else {
-        dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        rec = dataSet.next();
-        expectedValue = new int[] {1, 1024, 1, 1024};
-        if (newType == TSDataType.STRING
-            || newType == TSDataType.TEXT
-            || newType == TSDataType.BLOB) {
-          expectedValue[1] = 999;
-        } else if (newType == TSDataType.BOOLEAN) {
-          expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
-        }
-      }
-
-      if (newType != TSDataType.BOOLEAN) {
-        for (int i = 0; i < max; i++) {
-          if (newType == TSDataType.BLOB) {
-            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
-          } else if (newType == TSDataType.DATE) {
-            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
-          } else {
-            log.info(
-                "i is {}, expected value: {}, actual value: {}",
-                i,
-                genValue(newType, expectedValue[i]).toString(),
-                rec.getFields().get(i).toString());
+    Object[] expectedValue;
+    switch (newType) {
+      case BOOLEAN:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Boolean[] {false, true};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
             assertEquals(
-                genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+                expectedValue[i], unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Boolean[] {false, true, false, true};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], rec.getFields().get(i).getObjectValue(newType));
           }
         }
-
-        assertFalse(dataSet.hasNext());
-
-        if (newType.isNumeric()) {
-          dataSet =
-              session.executeQueryStatement(
-                  "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
-          rec = dataSet.next();
-          assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
-          assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
-          assertFalse(dataSet.hasNext());
+        break;
+      case DATE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                String.valueOf(expectedValue[i]), unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28", "1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+          }
         }
-      }
+        break;
+      case DOUBLE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(
+                i,
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 1024, 1, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(
+                i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case BLOB:
+      case STRING:
+      case TEXT:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(
+                i,
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 999, 1, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(
+                i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case FLOAT:
+      case INT64:
+      case TIMESTAMP:
+      case INT32:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new Integer[] {1, 1024};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+              }
+            } else {
+              expectedValue = new Integer[] {1, 1024, 1, 1024};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).getObjectValue(newType));
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 1024, 1, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+
+    // test avg and sum
+    if (newType.isNumeric()) {
+      dataSet =
+          session.executeQueryStatement(
+              "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
+      rec = dataSet.next();
+      assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
+      assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
+      assertFalse(dataSet.hasNext());
     }
 
     // can use statistics information
@@ -2445,152 +2556,805 @@ public class IoTDBAlterTimeSeriesTypeIT {
   private static void standardAccumulatorQueryTest(
       ISession session, TSDataType from, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (from == TSDataType.DATE) {
-      throw new NotSupportedException("Not supported DATE type.");
+    if (!newType.isCompatible(from)) {
+      log.info(newType + " is Incompatible with " + from + ".");
     }
 
-    if (from == TSDataType.BLOB || newType == TSDataType.BLOB) {
-      throw new NotSupportedException("Not supported BLOB type.");
-    }
-    //    if (from == TSDataType.BOOLEAN
-    //        && (newType == TSDataType.STRING || newType == TSDataType.TEXT)) {
-    if (from == TSDataType.BOOLEAN && DATA_TYPE_LIST.contains(newType)) {
-      SessionDataSet dataSet =
+    RowRecord rec = null;
+    RowRecord unsupportMinMaxRec = null;
+    SessionDataSet dataSet = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
           session.executeQueryStatement(
               "select first_value(s1),last_value(s1) from "
                   + database
                   + ".construct_and_alter_column_type");
-      RowRecord rec = dataSet.next();
-      boolean[] expectedValue = {false, true};
-      for (int i = 0; i < 2; i++) {
-        if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
-          assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
-        }
-      }
+      unsupportMinMaxRec = dataSet.next();
+      Assert.assertNotNull(unsupportMinMaxRec);
     } else {
-      SessionDataSet dataSet;
-      int[] expectedValue;
-      int max = 4;
-      if (DATA_TYPE_LIST.contains(newType)) {
-        dataSet =
-            session.executeQueryStatement(
-                "select first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        expectedValue = new int[] {1, 1024};
-        max = 2;
-      } else {
-        dataSet =
-            session.executeQueryStatement(
-                "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
-                    + database
-                    + ".construct_and_alter_column_type");
-        expectedValue = new int[] {1, 1024, 1, 1024};
-        if (newType == TSDataType.BOOLEAN) {
-          expectedValue = new int[] {19700102, 19721021, 19700102, 19721021};
-        }
-      }
-      RowRecord rec = dataSet.next();
-      if (newType != TSDataType.BOOLEAN) {
-        for (int i = 0; i < max; i++) {
-          if (newType == TSDataType.BLOB) {
-            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getBinaryV());
-          } else if (newType == TSDataType.DATE) {
-            assertEquals(genValue(newType, expectedValue[i]), rec.getFields().get(i).getDateV());
-          } else if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
-            if (from == TSDataType.DATE) {
-              log.info(
-                  "i is {}, expected value: {}, actual value: {}",
-                  i,
-                  new Binary(genValue(from, expectedValue[i]).toString(), StandardCharsets.UTF_8),
-                  rec.getFields().get(i).getBinaryV());
-              assertEquals(
-                  new Binary(genValue(from, expectedValue[i]).toString(), StandardCharsets.UTF_8),
-                  rec.getFields().get(i).getBinaryV());
-            } else {
-              log.info(
-                  "i is {}, expected value: {}, actual value: {}",
-                  i,
-                  newType.castFromSingleValue(from, genValue(from, expectedValue[i])),
-                  rec.getFields().get(i).getBinaryV());
-              assertEquals(
-                  newType.castFromSingleValue(from, genValue(from, expectedValue[i])),
-                  rec.getFields().get(i).getBinaryV());
-            }
-          } else {
-            log.info(
-                "i is {}, expected value: {}, actual value: {}",
-                i,
-                genValue(newType, expectedValue[i]).toString(),
-                rec.getFields().get(i).toString());
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".construct_and_alter_column_type");
+      rec = dataSet.next();
+      Assert.assertNotNull(rec);
+    }
+
+    Object[] expectedValue;
+    switch (from) {
+      case BOOLEAN:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Boolean[] {false, true};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
             assertEquals(
-                genValue(newType, expectedValue[i]).toString(), rec.getFields().get(i).toString());
+                newType.castFromSingleValue(from, expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Boolean[] {false, true, false, true};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
           }
         }
-
-        assertFalse(dataSet.hasNext());
-
-        if (newType.isNumeric()) {
-          dataSet =
-              session.executeQueryStatement(
-                  "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
-          rec = dataSet.next();
-          assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
-          assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
-          assertFalse(dataSet.hasNext());
+        break;
+      case DATE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                String.valueOf(expectedValue[i]), unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28", "1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+          }
         }
-      }
+        break;
+      case DOUBLE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(
+                i,
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 999, 1, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(
+                i,
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case BLOB:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1", "1024"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1", "999", "1", "1024"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case STRING:
+      case TEXT:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                new Binary(expectedValue[i].toString(), StandardCharsets.UTF_8),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 999, 1, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                new Binary(expectedValue[i].toString(), StandardCharsets.UTF_8),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case FLOAT:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new String[] {"1.0", "1024.0"};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+              }
+            } else {
+              expectedValue = new String[] {"1.0", "999.0", "1.0", "1024.0"};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+                assertEquals(expectedValue[i], rec.getFields().get(i).toString());
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 1024, 1, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      case INT64:
+      case TIMESTAMP:
+      case INT32:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new Integer[] {1, 1024};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+              }
+            } else {
+              expectedValue = new Integer[] {1, 999, 1, 1024};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).getObjectValue(newType));
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 1024, 1, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      default:
+        break;
+    }
 
-      // can use statistics information
+    // test avg and sum
+    if (newType.isNumeric()) {
       dataSet =
           session.executeQueryStatement(
-              "select count(*) from "
-                  + database
-                  + ".construct_and_alter_column_type where time > 0");
+              "select avg(s1),sum(s1) from " + database + ".construct_and_alter_column_type");
       rec = dataSet.next();
-      assertEquals(1024, rec.getFields().get(0).getLongV());
-      assertFalse(dataSet.hasNext());
-
-      // can't use statistics information
-      dataSet =
-          session.executeQueryStatement(
-              "select count(*) from "
-                  + database
-                  + ".construct_and_alter_column_type where time > 10000");
-      rec = dataSet.next();
-      assertEquals(0, rec.getFields().get(0).getLongV());
+      assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
+      assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
       assertFalse(dataSet.hasNext());
     }
+
+    // can get statistics information
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from " + database + ".construct_and_alter_column_type where time > 0");
+    rec = dataSet.next();
+    assertEquals(1024, rec.getFields().get(0).getLongV());
+    assertFalse(dataSet.hasNext());
+
+    // can't use statistics information
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from "
+                + database
+                + ".construct_and_alter_column_type where time > 10000");
+    rec = dataSet.next();
+    assertEquals(0, rec.getFields().get(0).getLongV());
+    assertFalse(dataSet.hasNext());
+  }
+
+  private static void standardAccumulatorQueryByTimeOnlyInvolveOldDataTypeTest(
+      ISession session, TSDataType from, TSDataType newType)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (!newType.isCompatible(from)) {
+      log.info(newType + " is Incompatible with " + from + ".");
+    }
+
+    RowRecord rec = null;
+    RowRecord unsupportMinMaxRec = null;
+    SessionDataSet dataSet = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time <= 512");
+      unsupportMinMaxRec = dataSet.next();
+      Assert.assertNotNull(unsupportMinMaxRec);
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time <= 512");
+      rec = dataSet.next();
+      Assert.assertNotNull(rec);
+    }
+
+    Object[] expectedValue;
+    switch (from) {
+      case BOOLEAN:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Boolean[] {false, true};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Boolean[] {false, true, false, true};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case DATE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                String.valueOf(expectedValue[i]), unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1970-01-02", "1971-05-28", "1970-01-02", "1971-05-28"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case DOUBLE:
+      case BLOB:
+      case STRING:
+      case TEXT:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 512};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(
+                i,
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 99, 1, 512};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(
+                i,
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case FLOAT:
+      case INT64:
+      case TIMESTAMP:
+      case INT32:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new Integer[] {1, 512};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i,
+                    newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                    unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(
+                    newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                    unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+              }
+            } else {
+              expectedValue = new Integer[] {1, 99, 1, 512};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(
+                    i,
+                    newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                    rec.getFields().get(i).toString());
+                assertEquals(
+                    newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                    rec.getFields().get(i).getObjectValue(newType));
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 512, 1, 512};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i,
+                  newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                  rec.getFields().get(i).toString());
+              assertEquals(
+                  newType.castFromSingleValue(from, genValue(from, (int) expectedValue[i])),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+
+    // test avg and sum
+    if (newType.isNumeric()) {
+      dataSet =
+          session.executeQueryStatement(
+              "select avg(s1),sum(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time <= 512");
+      rec = dataSet.next();
+      assertEquals(256.5, rec.getFields().get(0).getDoubleV(), 0.001);
+      assertEquals(131328.0, rec.getFields().get(1).getDoubleV(), 0.001);
+      assertFalse(dataSet.hasNext());
+    }
+
+    // can get statistics information
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from "
+                + database
+                + ".write_and_alter_column_type_write where time <= 512");
+    rec = dataSet.next();
+    assertEquals(512, rec.getFields().get(0).getLongV());
+    assertFalse(dataSet.hasNext());
+  }
+
+  private static void standardAccumulatorQueryByTimeOnlyInvolveNewDataTypeTest(
+      ISession session, TSDataType from, TSDataType newType)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (!newType.isCompatible(from)) {
+      log.info(newType + " is Incompatible with " + from + ".");
+    }
+
+    RowRecord rec = null;
+    RowRecord unsupportMinMaxRec = null;
+    SessionDataSet dataSet = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time > 512");
+      unsupportMinMaxRec = dataSet.next();
+      Assert.assertNotNull(unsupportMinMaxRec);
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time > 512");
+      rec = dataSet.next();
+      Assert.assertNotNull(rec);
+    }
+
+    Object[] expectedValue;
+    switch (from) {
+      case BOOLEAN:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {513, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1000, 999, 513, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case DATE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {513, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                String.valueOf(expectedValue[i]), unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new Integer[] {1000, 999, 513, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case DOUBLE:
+      case BLOB:
+      case STRING:
+      case TEXT:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {513, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(
+                i,
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1000, 999, 513, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(
+                i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+            assertEquals(
+                genValue(newType, (int) expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case FLOAT:
+      case INT64:
+      case TIMESTAMP:
+      case INT32:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new Integer[] {513, 1024};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+              }
+            } else {
+              expectedValue = new Integer[] {1000, 999, 513, 1024};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).getObjectValue(newType));
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {513, 1024, 513, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+
+    // test avg and sum
+    if (newType.isNumeric()) {
+      dataSet =
+          session.executeQueryStatement(
+              "select avg(s1),sum(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write where time > 512");
+      rec = dataSet.next();
+      assertEquals(768.5, rec.getFields().get(0).getDoubleV(), 0.001);
+      assertEquals(393472.0, rec.getFields().get(1).getDoubleV(), 0.001);
+      assertFalse(dataSet.hasNext());
+    }
+
+    // can get statistics information
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from "
+                + database
+                + ".write_and_alter_column_type_write where time > 512");
+    rec = dataSet.next();
+    assertEquals(512, rec.getFields().get(0).getLongV());
+    assertFalse(dataSet.hasNext());
+  }
+
+  private static void standardAccumulatorQueryByTimeInvolveAllDataTypeTest(
+      ISession session, TSDataType from, TSDataType newType)
+      throws StatementExecutionException, IoTDBConnectionException {
+    if (!newType.isCompatible(from)) {
+      log.info(newType + " is Incompatible with " + from + ".");
+    }
+
+    RowRecord rec = null;
+    RowRecord unsupportMinMaxRec = null;
+    SessionDataSet dataSet = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write");
+      unsupportMinMaxRec = dataSet.next();
+      Assert.assertNotNull(unsupportMinMaxRec);
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".write_and_alter_column_type_write");
+      rec = dataSet.next();
+      Assert.assertNotNull(rec);
+    }
+
+    Object[] expectedValue;
+    switch (from) {
+      case BOOLEAN:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"false", "1024"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new String[] {"1000", "true", "false", "1024"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                newType.castFromSingleValue(from, expectedValue[i]),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case DATE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1970-01-02", "1024"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                String.valueOf(expectedValue[i]), unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1000", "999", "1970-01-02", "1024"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case DOUBLE:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1.0", "1024"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1.0", "999", "1.0", "1024"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case BLOB:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new String[] {"1", "1024"};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+          }
+        } else {
+          expectedValue = new String[] {"1", "999", "1", "1024"};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(expectedValue[i], rec.getFields().get(i).toString());
+          }
+        }
+        break;
+      case STRING:
+      case TEXT:
+        if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+          expectedValue = new Integer[] {1, 1024};
+          for (int i = 0; i < 2; i++) {
+            assertExpectLog(i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+            assertEquals(
+                new Binary(expectedValue[i].toString(), StandardCharsets.UTF_8),
+                unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+          }
+        } else {
+          expectedValue = new Integer[] {1, 999, 1, 1024};
+          for (int i = 0; i < 4; i++) {
+            assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+            assertEquals(
+                new Binary(expectedValue[i].toString(), StandardCharsets.UTF_8),
+                rec.getFields().get(i).getObjectValue(newType));
+          }
+        }
+        break;
+      case FLOAT:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new String[] {"1.0", "1024"};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i, expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(expectedValue[i], unsupportMinMaxRec.getFields().get(i).toString());
+              }
+            } else {
+              expectedValue = new String[] {"1.0", "999", "1.0", "1024"};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+                assertEquals(expectedValue[i], rec.getFields().get(i).toString());
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 1024, 1, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      case INT64:
+      case TIMESTAMP:
+      case INT32:
+        switch (newType) {
+          case STRING:
+          case TEXT:
+            if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+              expectedValue = new Integer[] {1, 1024};
+              for (int i = 0; i < 2; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    unsupportMinMaxRec.getFields().get(i).getObjectValue(newType));
+              }
+            } else {
+              expectedValue = new Integer[] {1, 999, 1, 1024};
+              for (int i = 0; i < 4; i++) {
+                assertExpectLog(
+                    i,
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).toString());
+                assertEquals(
+                    genValue(newType, (int) expectedValue[i]),
+                    rec.getFields().get(i).getObjectValue(newType));
+              }
+            }
+            break;
+          default:
+            expectedValue = new Integer[] {1, 1024, 1, 1024};
+            for (int i = 0; i < 4; i++) {
+              assertExpectLog(
+                  i, genValue(newType, (int) expectedValue[i]), rec.getFields().get(i).toString());
+              assertEquals(
+                  genValue(newType, (int) expectedValue[i]),
+                  rec.getFields().get(i).getObjectValue(newType));
+            }
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+
+    // test avg and sum
+    if (newType.isNumeric()) {
+      dataSet =
+          session.executeQueryStatement(
+              "select avg(s1),sum(s1) from " + database + ".write_and_alter_column_type_write");
+      rec = dataSet.next();
+      assertEquals(512.5, rec.getFields().get(0).getDoubleV(), 0.001);
+      assertEquals(524800.0, rec.getFields().get(1).getDoubleV(), 0.001);
+      assertFalse(dataSet.hasNext());
+    }
+
+    // can get statistics information
+    dataSet =
+        session.executeQueryStatement(
+            "select count(*) from " + database + ".write_and_alter_column_type_write");
+    rec = dataSet.next();
+    assertEquals(1024, rec.getFields().get(0).getLongV());
+    assertFalse(dataSet.hasNext());
   }
 
   private static void accumulatorQueryTestForDateType(ISession session, TSDataType newType)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (newType != TSDataType.STRING && newType != TSDataType.TEXT) {
-      return;
-    }
-
     log.info("Test the result that after transfered newType:");
 
-    SessionDataSet dataSet =
-        session.executeQueryStatement(
-            "select first_value(s1),last_value(s1) from "
-                + database
-                + ".construct_and_alter_column_type");
-    RowRecord rec = dataSet.next();
-    int[] expectedValue = {19700102, 19721021};
-    if (newType != TSDataType.BOOLEAN) {
+    SessionDataSet dataSet = null;
+    RowRecord rec = null;
+    if (UNSUPPORT_MIN_AND_MAX_QUERY_DATA_TYPE_LIST.contains(newType)) {
+      dataSet =
+          session.executeQueryStatement(
+              "select first_value(s1),last_value(s1) from "
+                  + database
+                  + ".construct_and_alter_column_type");
+      rec = dataSet.next();
+      Object[] expectedValue = new String[] {"1970-01-02", "1972-10-21"};
       for (int i = 0; i < 2; i++) {
-        if (newType == TSDataType.STRING || newType == TSDataType.TEXT) {
-          log.info(
-              "i is {}, expected value: {}, actual value: {}",
-              i,
-              TSDataType.getDateStringValue(expectedValue[i]),
-              //              rec.getFields().get(i).getBinaryV().toString());
-              rec.getFields().get(i).getStringValue());
-          assertEquals(
-              TSDataType.getDateStringValue(expectedValue[i]),
-              rec.getFields().get(i).getBinaryV().toString());
-        }
+        assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+        assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
+      }
+    } else {
+      dataSet =
+          session.executeQueryStatement(
+              "select min_value(s1),max_value(s1),first_value(s1),last_value(s1) from "
+                  + database
+                  + ".construct_and_alter_column_type");
+      rec = dataSet.next();
+      Object[] expectedValue =
+          new String[] {"1970-01-02", "1972-10-21", "1970-01-02", "1972-10-21"};
+      for (int i = 0; i < 4; i++) {
+        assertExpectLog(i, expectedValue[i], rec.getFields().get(i).toString());
+        assertEquals(String.valueOf(expectedValue[i]), rec.getFields().get(i).toString());
       }
     }
 
@@ -2611,6 +3375,17 @@ public class IoTDBAlterTimeSeriesTypeIT {
     rec = dataSet.next();
     assertEquals(0, rec.getFields().get(0).getLongV());
     assertFalse(dataSet.hasNext());
+  }
+
+  private static void assertExpectLog(int i, Object expectedValue, Object actualValue) {
+    StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+    String callerMethodName = stackTraceElements[2].getMethodName();
+    log.info(
+        "[{}] i is {}, expected value: {}, actual value: {}",
+        callerMethodName,
+        i,
+        expectedValue,
+        actualValue);
   }
 
   private static void writeWithTablets(
