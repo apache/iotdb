@@ -59,7 +59,7 @@ echo
 echo "Do you want to execute 'systemctl start iotdb-ainode'? y/n (default y)"
 read -r START_SERVICE
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
-    "${IOTDB_AINODE_SBIN_HOME}"/sbin/stop-ainode.sh >/dev/null 2>&1 &
+    "${IOTDB_AINODE_SBIN_HOME}"/stop-ainode.sh >/dev/null 2>&1 &
     systemctl start iotdb-ainode
     echo "Executed successfully."
 fi
