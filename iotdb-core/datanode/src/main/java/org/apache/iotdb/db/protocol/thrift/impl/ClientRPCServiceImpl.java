@@ -1623,7 +1623,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     switch (param.type) {
       case BOOLEAN:
-        String boolStr = (Boolean) param.value ? "true" : "false";
+        String boolStr = (boolean) param.value ? "true" : "false";
         return new Pair<>(new BooleanLiteral(boolStr), boolStr);
       case INT32:
       case INT64:

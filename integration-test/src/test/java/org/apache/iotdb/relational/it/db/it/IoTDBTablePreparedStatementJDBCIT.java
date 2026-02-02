@@ -32,12 +32,15 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.ParameterMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -410,6 +413,82 @@ public class IoTDBTablePreparedStatementJDBCIT {
         try (ResultSet rs = ps2.executeQuery()) {
           assertTrue(rs.next());
           assertEquals(2, rs.getLong("cnt"));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testPreparedStatementWithAllDataTypes() throws SQLException {
+    try (Connection connection = getConnection();
+        Statement stmt = connection.createStatement()) {
+      stmt.execute("USE " + DATABASE_NAME);
+      // Create table with all supported data types
+      stmt.execute(
+          "CREATE TABLE all_types_table("
+              + "bool_col BOOLEAN FIELD, "
+              + "int32_col INT32 FIELD, "
+              + "int64_col INT64 FIELD, "
+              + "float_col FLOAT FIELD, "
+              + "double_col DOUBLE FIELD, "
+              + "text_col TEXT FIELD, "
+              + "string_col STRING FIELD, "
+              + "timestamp_col TIMESTAMP FIELD, "
+              + "date_col DATE FIELD, "
+              + "blob_col BLOB FIELD)");
+
+      // Insert using PreparedStatement with all data types
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "INSERT INTO all_types_table VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")) {
+        ps.setLong(1, System.currentTimeMillis()); // time
+        ps.setBoolean(2, true); // BOOLEAN
+        ps.setInt(3, 123); // INT32
+        ps.setLong(4, 456789L); // INT64
+        ps.setFloat(5, 1.5f); // FLOAT
+        ps.setDouble(6, 2.5); // DOUBLE
+        ps.setString(7, "text value"); // TEXT
+        ps.setString(8, "string value"); // STRING
+        ps.setTimestamp(9, Timestamp.valueOf("2025-06-15 10:30:00")); // TIMESTAMP
+        ps.setDate(10, Date.valueOf(LocalDate.of(2025, 6, 15))); // DATE
+        ps.setBytes(11, new byte[] {0x0A, 0x0B, 0x0C}); // BLOB
+        assertTrue(ps.executeUpdate() >= 0);
+      }
+
+      // Query using PreparedStatement with all data types as WHERE parameters
+      try (PreparedStatement ps =
+          connection.prepareStatement(
+              "SELECT * FROM all_types_table WHERE "
+                  + "bool_col = ? AND int32_col = ? AND int64_col = ? AND "
+                  + "float_col = ? AND double_col = ? AND text_col = ? AND "
+                  + "string_col = ? AND timestamp_col = ? AND date_col = ? AND blob_col = ?")) {
+        ps.setBoolean(1, true); // BOOLEAN
+        ps.setInt(2, 123); // INT32
+        ps.setLong(3, 456789L); // INT64
+        ps.setFloat(4, 1.5f); // FLOAT
+        ps.setDouble(5, 2.5); // DOUBLE
+        ps.setString(6, "text value"); // TEXT
+        ps.setString(7, "string value"); // STRING
+        ps.setTimestamp(8, Timestamp.valueOf("2025-06-15 10:30:00")); // TIMESTAMP
+        ps.setDate(9, Date.valueOf(LocalDate.of(2025, 6, 15))); // DATE
+        ps.setBytes(10, new byte[] {0x0A, 0x0B, 0x0C}); // BLOB
+
+        try (ResultSet rs = ps.executeQuery()) {
+          assertTrue(rs.next());
+          // Verify all data types
+          assertTrue(rs.getBoolean("bool_col"));
+          assertEquals(123, rs.getInt("int32_col"));
+          assertEquals(456789L, rs.getLong("int64_col"));
+          assertEquals(1.5f, rs.getFloat("float_col"), 0.001f);
+          assertEquals(2.5, rs.getDouble("double_col"), 0.001);
+          assertEquals("text value", rs.getString("text_col"));
+          assertEquals("string value", rs.getString("string_col"));
+          assertEquals(
+              Timestamp.valueOf("2025-06-15 10:30:00").getTime(),
+              rs.getTimestamp("timestamp_col").getTime());
+          assertEquals("2025-06-15", rs.getDate("date_col").toString());
+          assertArrayEquals(new byte[] {0x0A, 0x0B, 0x0C}, rs.getBytes("blob_col"));
+          assertFalse(rs.next());
         }
       }
     }
