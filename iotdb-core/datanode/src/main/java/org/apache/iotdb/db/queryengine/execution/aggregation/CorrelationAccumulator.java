@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.execution.aggregation;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import java.nio.ByteBuffer;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
+
+import java.nio.ByteBuffer;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class CorrelationAccumulator implements Accumulator {
 
@@ -77,6 +78,7 @@ public class CorrelationAccumulator implements Accumulator {
       case INT32:
         return column.getInt(position);
       case INT64:
+      case TIMESTAMP:
         return column.getLong(position);
       case FLOAT:
         return column.getFloat(position);
