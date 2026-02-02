@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.service.rpc.thrift.TSDeallocatePreparedReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecutePreparedReq;
@@ -202,7 +202,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     req.setSessionId(sessionId);
     req.setStatementName(preparedStatementName);
     req.setParameters(
-        PreparedParameterSerializer.serialize(parameterValues, parameterTypes, parameterCount));
+        PreparedParameterSerde.serialize(parameterValues, parameterTypes, parameterCount));
     req.setStatementId(getStmtId());
     if (queryTimeout > 0) {
       req.setTimeout(queryTimeout * 1000L);

@@ -140,8 +140,8 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer;
-import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.DeserializedParam;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TCreateTimeseriesUsingSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -1556,7 +1556,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       String statementName = req.getStatementName();
 
       List<DeserializedParam> rawParams =
-          PreparedParameterSerializer.deserialize(ByteBuffer.wrap(req.getParameters()));
+          PreparedParameterSerde.deserialize(ByteBuffer.wrap(req.getParameters()));
       List<Literal> parameters = new ArrayList<>(rawParams.size());
       for (DeserializedParam param : rawParams) {
         parameters.add(convertToLiteral(param));

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.rpc.stmt;
 
-import org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.DeserializedParam;
+import org.apache.iotdb.rpc.stmt.PreparedParameterSerde.DeserializedParam;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
@@ -28,15 +28,15 @@ import java.nio.ByteBuffer;
 import java.sql.Types;
 import java.util.List;
 
-import static org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.deserialize;
-import static org.apache.iotdb.rpc.stmt.PreparedParameterSerializer.serialize;
+import static org.apache.iotdb.rpc.stmt.PreparedParameterSerde.deserialize;
+import static org.apache.iotdb.rpc.stmt.PreparedParameterSerde.serialize;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-/** Unit tests for {@link PreparedParameterSerializer}. */
-public class PreparedParameterSerializerTest {
+/** Unit tests for {@link PreparedParameterSerde}. */
+public class PreparedParameterSerdeTest {
 
   @Test
   public void testEmptyParameterList() {

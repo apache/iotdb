@@ -20,18 +20,19 @@
 package org.apache.iotdb.rpc.stmt;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
 /** Serializer for PreparedStatement parameters. */
-public class PreparedParameterSerializer {
+public class PreparedParameterSerde {
 
   public static class DeserializedParam {
     public final TSDataType type;
@@ -47,80 +48,67 @@ public class PreparedParameterSerializer {
     }
   }
 
-  private PreparedParameterSerializer() {}
+  private PreparedParameterSerde() {}
 
   /** Serialize parameters to binary format. */
-  public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count) {
-    try {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      DataOutputStream dos = new DataOutputStream(baos);
-
-      dos.writeInt(count);
-      for (int i = 0; i < count; i++) {
-        serializeParameter(dos, values[i], jdbcTypes[i]);
-      }
-
-      dos.flush();
-      return ByteBuffer.wrap(baos.toByteArray());
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to serialize parameters", e);
+  public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count)
+      throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ReadWriteIOUtils.write(count, outputStream);
+    for (int i = 0; i < count; i++) {
+      serializeParameter(outputStream, values[i], jdbcTypes[i]);
     }
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
-  private static void serializeParameter(DataOutputStream dos, Object value, int jdbcType)
+  private static void serializeParameter(OutputStream outputStream, Object value, int jdbcType)
       throws IOException {
     if (value == null || jdbcType == Types.NULL) {
-      dos.writeByte(TSDataType.UNKNOWN.serialize());
+      ReadWriteIOUtils.write(TSDataType.UNKNOWN, outputStream);
       return;
     }
 
     switch (jdbcType) {
       case Types.BOOLEAN:
-        dos.writeByte(TSDataType.BOOLEAN.serialize());
-        dos.writeByte((Boolean) value ? 1 : 0);
+        ReadWriteIOUtils.write(TSDataType.BOOLEAN, outputStream);
+        ReadWriteIOUtils.write((Boolean) value, outputStream);
         break;
 
       case Types.INTEGER:
-        dos.writeByte(TSDataType.INT32.serialize());
-        dos.writeInt(((Number) value).intValue());
+        ReadWriteIOUtils.write(TSDataType.INT32, outputStream);
+        ReadWriteIOUtils.write(((Number) value).intValue(), outputStream);
         break;
 
       case Types.BIGINT:
-        dos.writeByte(TSDataType.INT64.serialize());
-        dos.writeLong(((Number) value).longValue());
+        ReadWriteIOUtils.write(TSDataType.INT64, outputStream);
+        ReadWriteIOUtils.write(((Number) value).longValue(), outputStream);
         break;
 
       case Types.FLOAT:
-        dos.writeByte(TSDataType.FLOAT.serialize());
-        dos.writeFloat(((Number) value).floatValue());
+        ReadWriteIOUtils.write(TSDataType.FLOAT, outputStream);
+        ReadWriteIOUtils.write(((Number) value).floatValue(), outputStream);
         break;
 
       case Types.DOUBLE:
-        dos.writeByte(TSDataType.DOUBLE.serialize());
-        dos.writeDouble(((Number) value).doubleValue());
+        ReadWriteIOUtils.write(TSDataType.DOUBLE, outputStream);
+        ReadWriteIOUtils.write(((Number) value).doubleValue(), outputStream);
         break;
 
       case Types.VARCHAR:
       case Types.CHAR:
-        byte[] strBytes = ((String) value).getBytes(StandardCharsets.UTF_8);
-        dos.writeByte(TSDataType.STRING.serialize());
-        dos.writeInt(strBytes.length);
-        dos.write(strBytes);
+        ReadWriteIOUtils.write(TSDataType.STRING, outputStream);
+        ReadWriteIOUtils.write((String) value, outputStream);
         break;
 
       case Types.BINARY:
       case Types.VARBINARY:
-        byte[] binBytes = (byte[]) value;
-        dos.writeByte(TSDataType.BLOB.serialize());
-        dos.writeInt(binBytes.length);
-        dos.write(binBytes);
+        ReadWriteIOUtils.write(TSDataType.BLOB, outputStream);
+        ReadWriteIOUtils.write(new Binary((byte[]) value), outputStream);
         break;
 
       default:
-        byte[] defaultBytes = String.valueOf(value).getBytes(StandardCharsets.UTF_8);
-        dos.writeByte(TSDataType.STRING.serialize());
-        dos.writeInt(defaultBytes.length);
-        dos.write(defaultBytes);
+        ReadWriteIOUtils.write(TSDataType.STRING, outputStream);
+        ReadWriteIOUtils.write(String.valueOf(value), outputStream);
         break;
     }
   }
@@ -132,7 +120,7 @@ public class PreparedParameterSerializer {
     }
 
     buffer.rewind();
-    int count = buffer.getInt();
+    int count = ReadWriteIOUtils.readInt(buffer);
     if (count < 0 || count > buffer.remaining()) {
       throw new IllegalArgumentException("Invalid parameter count: " + count);
     }
@@ -140,8 +128,7 @@ public class PreparedParameterSerializer {
     List<DeserializedParam> result = new ArrayList<>(count);
 
     for (int i = 0; i < count; i++) {
-      byte typeCode = buffer.get();
-      TSDataType type = TSDataType.deserialize(typeCode);
+      TSDataType type = ReadWriteIOUtils.readDataType(buffer);
       Object value = deserializeValue(buffer, type);
       result.add(new DeserializedParam(type, value));
     }
@@ -154,26 +141,20 @@ public class PreparedParameterSerializer {
       case UNKNOWN:
         return null;
       case BOOLEAN:
-        return buffer.get() != 0;
+        return ReadWriteIOUtils.readBool(buffer);
       case INT32:
-        return buffer.getInt();
+        return ReadWriteIOUtils.readInt(buffer);
       case INT64:
-        return buffer.getLong();
+        return ReadWriteIOUtils.readLong(buffer);
       case FLOAT:
-        return buffer.getFloat();
+        return ReadWriteIOUtils.readFloat(buffer);
       case DOUBLE:
-        return buffer.getDouble();
+        return ReadWriteIOUtils.readDouble(buffer);
       case TEXT:
       case STRING:
-        int strLen = buffer.getInt();
-        byte[] strBytes = new byte[strLen];
-        buffer.get(strBytes);
-        return new String(strBytes, StandardCharsets.UTF_8);
+        return ReadWriteIOUtils.readString(buffer);
       case BLOB:
-        int binLen = buffer.getInt();
-        byte[] binBytes = new byte[binLen];
-        buffer.get(binBytes);
-        return binBytes;
+        return ReadWriteIOUtils.readBinary(buffer).getValues();
       default:
         throw new IllegalArgumentException("Unsupported type: " + type);
     }
