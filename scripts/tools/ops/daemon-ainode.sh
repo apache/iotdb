@@ -41,6 +41,7 @@ Type=simple
 User=root
 Group=root
 ExecStart=$IOTDB_AINODE_SBIN_HOME/start-ainode.sh
+ExecStop=$IOTDB_AINODE_SBIN_HOME/stop-ainode.sh
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5

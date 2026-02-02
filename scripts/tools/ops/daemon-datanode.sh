@@ -47,6 +47,7 @@ User=root
 Group=root
 Environment=JAVA_HOME=$JAVA_HOME
 ExecStart=$IOTDB_SBIN_HOME/start-datanode.sh
+ExecStop=$IOTDB_SBIN_HOME/stop-datanode.sh
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5
