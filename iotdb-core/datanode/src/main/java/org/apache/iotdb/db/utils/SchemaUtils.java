@@ -327,7 +327,7 @@ public class SchemaUtils {
         dataTypeColumnStatisticsClassMap.get(dataType));
   }
 
-  public static boolean canUseStatistics(TSDataType dataType) {
+  public static boolean canUseStatisticsAfterAlter(TSDataType dataType) {
     return !canNotUseStatisticAfterAlterClassSet.contains(dataType);
   }
 
@@ -337,7 +337,7 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
-        && !SchemaUtils.canUseStatistics(targetDataType)) {
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -363,7 +363,7 @@ public class SchemaUtils {
       if ((timeseriesMetadata != null)
           && !SchemaUtils.isUsingSameStatistics(
               timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
         List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
@@ -386,7 +386,7 @@ public class SchemaUtils {
     }
 
     if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
-        && !SchemaUtils.canUseStatistics(targetDataType)) {
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -405,7 +405,7 @@ public class SchemaUtils {
       return;
     }
     if (!SchemaUtils.isUsingSameStatistics(sourceDataType, targetDataType)
-        && !SchemaUtils.canUseStatistics(targetDataType)) {
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       chunkMetadata.setModified(true);
     }
   }
@@ -422,7 +422,7 @@ public class SchemaUtils {
       if ((iChunkMetadata != null)
           && !SchemaUtils.isUsingSameStatistics(
               iChunkMetadata.getDataType(), targetDataTypeList.get(i))
-          && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
       }

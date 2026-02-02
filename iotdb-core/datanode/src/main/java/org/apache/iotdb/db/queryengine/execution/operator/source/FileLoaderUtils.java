@@ -475,7 +475,7 @@ public class FileLoaderUtils {
           if (!SchemaUtils.isUsingSameStatistics(
                   alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                   targetDataTypeList.get(i))
-              && !SchemaUtils.canUseStatistics(targetDataTypeList.get(i))) {
+              && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
             isModified = true;
             alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
           }
@@ -485,7 +485,7 @@ public class FileLoaderUtils {
       chunkReader = chunkLoader.getChunkReader(alignedChunkMetadata, globalTimeFilter);
     } else {
       if (!SchemaUtils.isUsingSameStatistics(chunkMetaData.getDataType(), targetDataTypeList.get(0))
-          && !SchemaUtils.canUseStatistics(targetDataTypeList.get(0))) {
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(0))) {
         isModified = true;
         chunkMetaData.setModified(true);
       }

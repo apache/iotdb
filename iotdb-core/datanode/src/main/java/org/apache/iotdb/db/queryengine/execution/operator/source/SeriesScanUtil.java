@@ -514,7 +514,7 @@ public class SeriesScanUtil implements Accountable {
                   && !SchemaUtils.isUsingSameStatistics(
                       alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                       getTsDataTypeList().get(i))
-                  && !SchemaUtils.canUseStatistics(getTsDataTypeList().get(i))) {
+                  && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(i))) {
                 alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
               }
             }
@@ -522,7 +522,7 @@ public class SeriesScanUtil implements Accountable {
           } else if (chunkMetadata instanceof ChunkMetadata) {
             if (!SchemaUtils.isUsingSameStatistics(
                     chunkMetadata.getDataType(), getTsDataTypeList().get(0))
-                && !SchemaUtils.canUseStatistics(getTsDataTypeList().get(0))) {
+                && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(0))) {
               chunkMetadata.setModified(true);
             }
           }
