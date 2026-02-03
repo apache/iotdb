@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
@@ -318,5 +322,56 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionTest {
     resource2.updateEndTime(device, 2);
     resource2.serialize();
     seqResources.add(resource2);
+  }
+
+  @Test
+  public void testAlterDataTypeWithAlignedSeriesWithTimeDeletion()
+      throws IOException, WriteProcessException, IllegalPathException {
+    List<IMeasurementSchema> measurementSchemas1 = new ArrayList<>();
+    measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
+    measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
+
+    TsFileResource resource1 = createEmptyFileAndResource(true);
+    resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
+    try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
+      writer.registerAlignedTimeseries(new Path(device), measurementSchemas1);
+      for (int i = 0; i < 100; i++) {
+        TSRecord record = new TSRecord(device, i);
+        record.addTuple(new IntDataPoint("s1", 0));
+        record.addTuple(new IntDataPoint("s2", 1));
+        writer.writeRecord(record);
+      }
+      writer.flush();
+    }
+    resource1.updateStartTime(device, 1);
+    resource1.updateEndTime(device, 1);
+    resource1.serialize();
+    ModificationFile modFile = resource1.getExclusiveModFile();
+    modFile.write(new TreeDeletionEntry(new MeasurementPath(device + ".*"), 0, 40));
+    modFile.close();
+    seqResources.add(resource1);
+
+    List<IMeasurementSchema> measurementSchemas2 = new ArrayList<>();
+    measurementSchemas2.add(new MeasurementSchema("s1", TSDataType.DOUBLE));
+    measurementSchemas2.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    TsFileResource resource2 = createEmptyFileAndResource(true);
+    resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
+    try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
+      writer.registerAlignedTimeseries(new Path(device), measurementSchemas2);
+      TSRecord record = new TSRecord(device, 200);
+      record.addTuple(new DoubleDataPoint("s1", 2.0));
+      record.addTuple(new DoubleDataPoint("s2", 3.0));
+      writer.writeRecord(record);
+      writer.flush();
+    }
+    resource2.updateStartTime(device, 2);
+    resource2.updateEndTime(device, 2);
+    resource2.serialize();
+    seqResources.add(resource2);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+    Assert.assertTrue(task.start());
   }
 }
