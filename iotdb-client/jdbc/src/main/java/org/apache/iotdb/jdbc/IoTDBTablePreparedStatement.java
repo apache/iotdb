@@ -33,7 +33,6 @@ import org.apache.iotdb.service.rpc.thrift.TSPrepareResp;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.common.conf.TSFileConfig;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,12 +59,7 @@ import java.sql.SQLXML;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -174,7 +168,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
       return false;
     }
     String trimmedSql = sql.trim().toUpperCase();
-    return trimmedSql.startsWith("SELECT");
+    return trimmedSql.startsWith("SELECT") || trimmedSql.startsWith("WITH");
   }
 
   @Override
@@ -400,16 +394,21 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   public void setBytes(int parameterIndex, byte[] x) throws SQLException {
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.BINARY);
-    Binary binary = new Binary(x);
-    this.parameters.put(parameterIndex, binary.getStringValue(TSFileConfig.STRING_CHARSET));
+    // Format as hexadecimal string literal for SQL: X'0A0B0C'
+    StringBuilder hex = new StringBuilder("X'");
+    for (byte b : x) {
+      hex.append(String.format("%02X", b));
+    }
+    hex.append("'");
+    this.parameters.put(parameterIndex, hex.toString());
   }
 
   @Override
   public void setDate(int parameterIndex, Date x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-    String dateStr = dateFormat.format(x);
-    setPreparedParameterValue(parameterIndex, dateStr, Types.VARCHAR);
+    // Use ISO-8601 format YYYY-MM-DD for DATE columns
+    String dateStr = x.toLocalDate().toString();
+    setPreparedParameterValue(parameterIndex, dateStr, Types.DATE);
     this.parameters.put(parameterIndex, "'" + dateStr + "'");
   }
 
@@ -451,11 +450,10 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
   @Override
   public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
     checkParameterIndex(parameterIndex);
-    ZonedDateTime zonedDateTime =
-        ZonedDateTime.ofInstant(Instant.ofEpochMilli(x.getTime()), super.zoneId);
-    String tsStr = zonedDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-    setPreparedParameterValue(parameterIndex, tsStr, Types.VARCHAR);
-    this.parameters.put(parameterIndex, tsStr);
+    // Use millisecond value for SQL compatibility with TIMESTAMP columns
+    long timestampMs = x.getTime();
+    setPreparedParameterValue(parameterIndex, timestampMs, Types.BIGINT);
+    this.parameters.put(parameterIndex, Long.toString(timestampMs));
   }
 
   @Override

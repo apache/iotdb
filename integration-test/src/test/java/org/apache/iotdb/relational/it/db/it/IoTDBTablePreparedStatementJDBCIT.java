@@ -456,12 +456,14 @@ public class IoTDBTablePreparedStatementJDBCIT {
       }
 
       // Query using PreparedStatement with all data types as WHERE parameters
+      // Only DATE needs CAST; TIMESTAMP uses milliseconds, BLOB uses X'...' hex literal
       try (PreparedStatement ps =
           connection.prepareStatement(
               "SELECT * FROM all_types_table WHERE "
                   + "bool_col = ? AND int32_col = ? AND int64_col = ? AND "
                   + "float_col = ? AND double_col = ? AND text_col = ? AND "
-                  + "string_col = ? AND timestamp_col = ? AND date_col = ? AND blob_col = ?")) {
+                  + "string_col = ? AND timestamp_col = ? "
+                  + "AND date_col = CAST(? AS DATE) AND blob_col = ?")) {
         ps.setBoolean(1, true); // BOOLEAN
         ps.setInt(2, 123); // INT32
         ps.setLong(3, 456789L); // INT64
