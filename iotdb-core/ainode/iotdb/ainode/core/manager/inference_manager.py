@@ -292,4 +292,4 @@ class InferenceManager:
         while not self._result_queue.empty():
             self._result_queue.get_nowait()
         self._result_queue.close()
-        Logger.info("The Inference Manager has been stopped.")
+        logger.info("The Inference Manager has been stopped.")

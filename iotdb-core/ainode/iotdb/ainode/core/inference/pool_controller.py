@@ -20,6 +20,7 @@ import queue
 import random
 import threading
 from concurrent.futures import wait
+from queue import Empty
 from typing import Dict, Optional
 
 import torch
@@ -176,11 +177,15 @@ class PoolController:
 
     def _worker_loop(self):
         while not self._stop_event.is_set():
-            task = self._task_queue.get()
+            try:
+                task = self._task_queue.get(timeout=1)
+            except Empty:
+                # Ignore Empty exception and continue the loop
+                continue
             if task is None:
                 self._task_queue.task_done()
                 logger.info(
-                    f"PoolController received task None, the worker loop is existed."
+                    "PoolController received task None, the worker loop is existed."
                 )
                 break
             task_fn, args, kwargs = task
