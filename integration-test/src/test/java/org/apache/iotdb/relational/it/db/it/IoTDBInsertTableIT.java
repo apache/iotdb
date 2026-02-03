@@ -355,6 +355,42 @@ public class IoTDBInsertTableIT {
   }
 
   @Test
+  public void testInsertNullIntoTime() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use \"test\"");
+      statement.execute(
+          "CREATE TABLE insert_null (region string tag, time_test timestamp time, s1 int64 field)");
+
+      try {
+        statement.execute("insert into insert_null values('SZ', null, 1)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+      try {
+        statement.execute("insert into insert_null(region, time_test, s1) values('SZ', null, 1)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "insert into insert_null(region, time_test, s1) values('SZ', 2, 2),('HK', null ,3)");
+        fail("expected exception");
+      } catch (SQLException e) {
+        assertEquals("701: Timestamp cannot be null", e.getMessage());
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testInsertNaN() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
