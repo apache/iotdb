@@ -596,20 +596,17 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
             .getConfig()
             .getSchemaEngineMode()
             .equals(SchemaEngineMode.Memory.toString());
-    boolean canPushDownOffsetLimit =
-        singleSchemaRegion
-            && !showTimeSeriesStatement.isOrderByHeat()
-            && (isMemorySchemaEngine || !orderByTimeseriesDesc);
+    boolean canPushDownOffsetLimit = false;
 
-    if (!canPushDownOffsetLimit) {
-      if (showTimeSeriesStatement.isOrderByHeat()
-          || (!isMemorySchemaEngine && orderByTimeseriesDesc)) {
-        limit = 0;
-        offset = 0;
-      } else {
-        limit = showTimeSeriesStatement.getLimitWithOffset();
-        offset = 0;
-      }
+    if (showTimeSeriesStatement.isOrderByHeat()
+        || (!isMemorySchemaEngine && orderByTimeseriesDesc)) {
+      limit = 0;
+      offset = 0;
+    } else if (!singleSchemaRegion) {
+      limit = showTimeSeriesStatement.getLimitWithOffset();
+      offset = 0;
+    } else {
+      canPushDownOffsetLimit = true;
     }
 
     planBuilder =
