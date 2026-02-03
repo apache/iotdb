@@ -525,3 +525,5 @@ class PoolController:
         for inner in self._request_pool_map.values():
             for group in inner.values():
                 group.shutdown()
+
+        Logger.info("The PoolController has been stopped.")
