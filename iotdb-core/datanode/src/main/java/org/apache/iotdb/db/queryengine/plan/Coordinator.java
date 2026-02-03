@@ -150,7 +150,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
-import org.apache.thrift.TBase;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -179,7 +178,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 import static org.apache.iotdb.db.queryengine.plan.Coordinator.QueryInfo.DEFAULT_END_TIME;
-import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
@@ -711,47 +709,40 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
-  public void cleanupQueryExecution(
-      Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
+  public void cleanupQueryExecution(Long queryId, Supplier<String> contentSupplier, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.debug("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup(t);
-        boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
-        Supplier<String> contentOfQuerySupplier =
-            new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
-        if (isUserQuery) {
-          recordCurrentQueries(
-              queryExecution.getQueryId(),
-              queryExecution.getStartExecutionTime(),
-              System.currentTimeMillis(),
-              queryExecution.getTotalExecutionTime(),
-              contentOfQuerySupplier,
-              queryExecution.getUser(),
-              queryExecution.getClientHostname());
-        }
-        queryExecutionMap.remove(queryId);
-        if (isUserQuery) {
-          recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
-        }
-      }
+      Supplier<String> finalSupplier =
+          contentSupplier != null
+              ? contentSupplier
+              : () -> queryExecution.getExecuteSQL().orElse("UNKNOWN");
+      cleanupQueryExecutionInternal(queryId, queryExecution, finalSupplier, t);
     }
   }
 
-  private static class ContentOfQuerySupplier implements Supplier<String> {
-
-    private final org.apache.thrift.TBase<?, ?> nativeApiRequest;
-    private final IQueryExecution queryExecution;
-
-    private ContentOfQuerySupplier(TBase<?, ?> nativeApiRequest, IQueryExecution queryExecution) {
-      this.nativeApiRequest = nativeApiRequest;
-      this.queryExecution = queryExecution;
-    }
-
-    @Override
-    public String get() {
-      return getContentOfRequest(nativeApiRequest, queryExecution);
+  private void cleanupQueryExecutionInternal(
+      Long queryId,
+      IQueryExecution queryExecution,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t) {
+    try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+      LOGGER.debug("[CleanUpQuery]]");
+      queryExecution.stopAndCleanup(t);
+      boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
+      if (isUserQuery) {
+        recordCurrentQueries(
+            queryExecution.getQueryId(),
+            queryExecution.getStartExecutionTime(),
+            System.currentTimeMillis(),
+            queryExecution.getTotalExecutionTime(),
+            contentOfQuerySupplier,
+            queryExecution.getUser(),
+            queryExecution.getClientHostname());
+      }
+      queryExecutionMap.remove(queryId);
+      if (isUserQuery) {
+        recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
+      }
     }
   }
 

@@ -316,26 +316,19 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   }
 
   private TSExecuteStatementResp executeStatementInternal(
-      TSExecuteStatementReq req, SelectResult setResult) {
-    return executeStatementInternal(req, setResult, null);
-  }
-
-  private TSExecuteStatementResp executeStatementInternal(
-      TSExecuteStatementReq req,
-      SelectResult setResult,
-      Supplier<org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement>
-          tableStatementSupplier) {
-    boolean finished = false;
-    Long statementId = req.getStatementId();
-    long queryId = Long.MIN_VALUE;
-    String statement = req.getStatement();
+      NativeStatementRequest request, SelectResult setResult) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-
-    // quota
-    OperationQuota quota = null;
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
+
+    boolean finished = false;
+    Long statementId = request.getStatementId();
+    long queryId = Long.MIN_VALUE;
+    String statement = request.getSql();
+
+    // quota
+    OperationQuota quota = null;
 
     long startTime = System.nanoTime();
     StatementType statementType = null;
@@ -347,7 +340,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       // create and cache dataset
       ExecutionResult result;
       if (clientSession.getSqlDialect() == IClientSession.SqlDialect.TREE) {
-        Statement s = StatementGenerator.createStatement(statement, clientSession.getZoneId());
+        Statement s = request.getTreeStatement(clientSession.getZoneId());
         if (s instanceof SetSqlDialectStatement) {
           setSqlDialect = true;
         }
@@ -389,7 +382,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
           statementType = s.getType();
 
-          queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+          queryId = SESSION_MANAGER.requestQueryId(clientSession, request.getStatementId());
 
           // Split statement if needed to limit resource consumption during statement analysis
           if (s.shouldSplit()) {
@@ -412,16 +405,13 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     statement,
                     partitionFetcher,
                     schemaFetcher,
-                    req.getTimeout(),
+                    request.getTimeout(),
                     true);
           }
         }
       } else {
         org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement s =
-            tableStatementSupplier != null
-                ? tableStatementSupplier.get()
-                : relationSqlParser.createStatement(
-                    statement, clientSession.getZoneId(), clientSession);
+            request.getTableStatement(relationSqlParser, clientSession.getZoneId(), clientSession);
 
         if (s instanceof Use) {
           useDatabase = true;
@@ -437,7 +427,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
 
-        queryId = SESSION_MANAGER.requestQueryId(clientSession, req.statementId);
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, request.getStatementId());
 
         // Split statement if needed to limit resource consumption during statement analysis
         if (s.shouldSplit()) {
@@ -462,7 +452,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   SESSION_MANAGER.getSessionInfo(clientSession),
                   statement,
                   metadata,
-                  req.getTimeout(),
+                  request.getTimeout(),
                   true);
         }
       }
@@ -486,7 +476,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           statementType = statementType == null ? StatementType.QUERY : statementType;
           resp = createResponse(queryExecution.getDatasetHeader(), queryId);
           resp.setStatus(result.status);
-          finished = setResult.apply(resp, queryExecution, req.fetchSize);
+          finished = setResult.apply(resp, queryExecution, request.getFetchSize());
           resp.setMoreData(!finished);
           if (quota != null) {
             quota.addReadResult(resp.getQueryResult());
@@ -550,7 +540,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         long executionTime = COORDINATOR.getTotalExecutionTime(queryId);
         CommonUtils.addQueryLatency(
             statementType, executionTime > 0 ? executionTime : currentOperationCost);
-        clearUp(clientSession, statementId, queryId, req, t);
+        clearUp(clientSession, statementId, queryId, request, t);
       }
       SESSION_MANAGER.updateIdleTime();
       if (quota != null) {
@@ -563,11 +553,180 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       IClientSession clientSession,
       Long statementId,
       Long queryId,
-      org.apache.thrift.TBase<?, ?> req,
+      Supplier<String> contentSupplier,
       Throwable t) {
-    COORDINATOR.cleanupQueryExecution(queryId, req, t);
+    COORDINATOR.cleanupQueryExecution(queryId, contentSupplier, t);
     // clear up queryId Map in clientSession
     clientSession.removeQueryId(statementId, queryId);
+  }
+
+  private void clearUp(
+      IClientSession clientSession,
+      Long statementId,
+      Long queryId,
+      org.apache.thrift.TBase<?, ?> req,
+      Throwable t) {
+    // Create Supplier that uses CommonUtils.getContentOfRequest for TBase requests
+    Supplier<String> contentSupplier =
+        () -> CommonUtils.getContentOfRequest(req, COORDINATOR.getQueryExecution(queryId));
+    COORDINATOR.cleanupQueryExecution(queryId, contentSupplier, t);
+    // clear up queryId Map in clientSession
+    clientSession.removeQueryId(statementId, queryId);
+  }
+
+  /** Adapter that wraps TSExecuteStatementReq to implement NativeStatementRequest. */
+  private static class TSExecuteStatementReqAdapter implements NativeStatementRequest {
+    private final TSExecuteStatementReq req;
+
+    TSExecuteStatementReqAdapter(TSExecuteStatementReq req) {
+      this.req = req;
+    }
+
+    @Override
+    public Long getStatementId() {
+      return req.getStatementId();
+    }
+
+    @Override
+    public long getTimeout() {
+      return req.getTimeout();
+    }
+
+    @Override
+    public int getFetchSize() {
+      return req.getFetchSize();
+    }
+
+    @Override
+    public Statement getTreeStatement(ZoneId zoneId) {
+      return StatementGenerator.createStatement(req.getStatement(), zoneId);
+    }
+
+    @Override
+    public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+        SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
+      return parser.createStatement(req.getStatement(), zoneId, clientSession);
+    }
+
+    @Override
+    public String getSql() {
+      return req.getStatement();
+    }
+  }
+
+  /** Adapter that wraps TSExecutePreparedReq to implement NativeStatementRequest. */
+  private static class TSExecutePreparedReqAdapter implements NativeStatementRequest {
+    private final TSExecutePreparedReq req;
+
+    // Lazily computed fields
+    private String fullStatement;
+    private Execute executeStatement;
+
+    TSExecutePreparedReqAdapter(TSExecutePreparedReq req) {
+      this.req = req;
+    }
+
+    @Override
+    public Long getStatementId() {
+      return req.getStatementId();
+    }
+
+    @Override
+    public long getTimeout() {
+      return req.getTimeout();
+    }
+
+    @Override
+    public int getFetchSize() {
+      return req.getFetchSize();
+    }
+
+    @Override
+    public Statement getTreeStatement(ZoneId zoneId) {
+      // PreparedStatement is primarily for Table model, return null for Tree model
+      return null;
+    }
+
+    @Override
+    public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement getTableStatement(
+        SqlParser parser, ZoneId zoneId, IClientSession clientSession) {
+      ensureParsed();
+      return executeStatement;
+    }
+
+    @Override
+    public String getSql() {
+      ensureParsed();
+      return fullStatement;
+    }
+
+    /** Lazily parse parameters and build the Execute statement. */
+    private void ensureParsed() {
+      if (fullStatement != null) {
+        return;
+      }
+
+      String statementName = req.getStatementName();
+
+      // Deserialize parameters and build Execute statement
+      List<DeserializedParam> rawParams =
+          PreparedParameterSerde.deserialize(ByteBuffer.wrap(req.getParameters()));
+      List<Literal> parameters = new ArrayList<>(rawParams.size());
+      List<String> paramStrings = new ArrayList<>(rawParams.size());
+      for (DeserializedParam param : rawParams) {
+        Pair<Literal, String> literalAndString = convertToLiteralWithString(param);
+        parameters.add(literalAndString.left);
+        paramStrings.add(literalAndString.right);
+      }
+
+      executeStatement = new Execute(new Identifier(statementName), parameters);
+      fullStatement =
+          paramStrings.isEmpty()
+              ? "EXECUTE " + statementName
+              : "EXECUTE " + statementName + " USING " + String.join(", ", paramStrings);
+    }
+
+    private static Pair<Literal, String> convertToLiteralWithString(DeserializedParam param) {
+      if (param.isNull()) {
+        return new Pair<>(new NullLiteral(), "NULL");
+      }
+
+      switch (param.type) {
+        case BOOLEAN:
+          String boolStr = (Boolean) param.value ? "true" : "false";
+          return new Pair<>(new BooleanLiteral(boolStr), boolStr);
+        case INT32:
+        case INT64:
+          String numStr = String.valueOf(param.value);
+          return new Pair<>(new LongLiteral(numStr), numStr);
+        case FLOAT:
+          String floatStr = String.valueOf(param.value);
+          return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
+        case DOUBLE:
+          String doubleStr = String.valueOf(param.value);
+          return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
+        case TEXT:
+        case STRING:
+          String strVal = (String) param.value;
+          // Escape single quotes for SQL
+          String escapedStr = "'" + strVal.replace("'", "''") + "'";
+          return new Pair<>(new StringLiteral(strVal), escapedStr);
+        case BLOB:
+          byte[] bytes = (byte[]) param.value;
+          String hexStr = "X'" + bytesToHex(bytes) + "'";
+          return new Pair<>(new BinaryLiteral(bytes), hexStr);
+        default:
+          throw new IllegalArgumentException("Unknown parameter type: " + param.type);
+      }
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+      StringBuilder sb = new StringBuilder(bytes.length * 2);
+      for (byte b : bytes) {
+        sb.append(String.format("%02X", b));
+      }
+      return sb.toString();
+    }
   }
 
   private TSExecuteStatementResp executeRawDataQueryInternal(
@@ -991,7 +1150,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
-    return executeStatementInternal(req, SELECT_RESULT);
+    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+    if (!SESSION_MANAGER.checkLogin(clientSession)) {
+      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    }
+    return executeStatementInternal(new TSExecuteStatementReqAdapter(req), SELECT_RESULT);
   }
 
   @Override
@@ -1554,48 +1717,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executePreparedStatement(TSExecutePreparedReq req) {
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-
-    try {
-      String statementName = req.getStatementName();
-
-      // Deserialize parameters and build Execute statement
-      List<DeserializedParam> rawParams =
-          PreparedParameterSerde.deserialize(ByteBuffer.wrap(req.getParameters()));
-      List<Literal> parameters = new ArrayList<>(rawParams.size());
-      List<String> paramStrings = new ArrayList<>(rawParams.size());
-      for (DeserializedParam param : rawParams) {
-        Pair<Literal, String> literalAndString = convertToLiteralWithString(param);
-        parameters.add(literalAndString.left);
-        paramStrings.add(literalAndString.right);
-      }
-      Execute executeStatement = new Execute(new Identifier(statementName), parameters);
-
-      String fullStatement =
-          paramStrings.isEmpty()
-              ? "EXECUTE " + statementName
-              : "EXECUTE " + statementName + " USING " + String.join(", ", paramStrings);
-
-      // Build a compatible TSExecuteStatementReq
-      TSExecuteStatementReq executeReq = new TSExecuteStatementReq();
-      executeReq.setSessionId(clientSession.getId());
-      executeReq.setStatement(fullStatement);
-      executeReq.setStatementId(req.getStatementId());
-      if (req.isSetFetchSize()) {
-        executeReq.setFetchSize(req.getFetchSize());
-      }
-      if (req.isSetTimeout()) {
-        executeReq.setTimeout(req.getTimeout());
-      }
-
-      return executeStatementInternal(executeReq, setResultForPrepared, () -> executeStatement);
-    } catch (Exception e) {
-      return RpcUtils.getTSExecuteStatementResp(
-          onQueryException(
-              e,
-              OperationType.EXECUTE_PREPARED_STATEMENT.getName(),
-              TSStatusCode.INTERNAL_SERVER_ERROR));
-    }
+    return executeStatementInternal(new TSExecutePreparedReqAdapter(req), setResultForPrepared);
   }
 
   @Override
@@ -1614,48 +1736,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           OperationType.DEALLOCATE_PREPARED_STATEMENT.getName(),
           TSStatusCode.INTERNAL_SERVER_ERROR);
     }
-  }
-
-  private Pair<Literal, String> convertToLiteralWithString(DeserializedParam param) {
-    if (param.isNull()) {
-      return new Pair<>(new NullLiteral(), "NULL");
-    }
-
-    switch (param.type) {
-      case BOOLEAN:
-        String boolStr = (boolean) param.value ? "true" : "false";
-        return new Pair<>(new BooleanLiteral(boolStr), boolStr);
-      case INT32:
-      case INT64:
-        String numStr = String.valueOf(param.value);
-        return new Pair<>(new LongLiteral(numStr), numStr);
-      case FLOAT:
-        String floatStr = String.valueOf(param.value);
-        return new Pair<>(new DoubleLiteral((Float) param.value), floatStr);
-      case DOUBLE:
-        String doubleStr = String.valueOf(param.value);
-        return new Pair<>(new DoubleLiteral((Double) param.value), doubleStr);
-      case TEXT:
-      case STRING:
-        String strVal = (String) param.value;
-        // Escape single quotes for SQL
-        String escapedStr = "'" + strVal.replace("'", "''") + "'";
-        return new Pair<>(new StringLiteral(strVal), escapedStr);
-      case BLOB:
-        byte[] bytes = (byte[]) param.value;
-        String hexStr = "X'" + bytesToHex(bytes) + "'";
-        return new Pair<>(new BinaryLiteral(bytes), hexStr);
-      default:
-        throw new IllegalArgumentException("Unknown parameter type: " + param.type);
-    }
-  }
-
-  private static String bytesToHex(byte[] bytes) {
-    StringBuilder sb = new StringBuilder(bytes.length * 2);
-    for (byte b : bytes) {
-      sb.append(String.format("%02X", b));
-    }
-    return sb.toString();
   }
 
   private final SelectResult setResultForPrepared =
@@ -2002,7 +2082,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
-    return executeStatementInternal(req, OLD_SELECT_RESULT);
+    return executeStatementInternal(new TSExecuteStatementReqAdapter(req), OLD_SELECT_RESULT);
   }
 
   @Override
