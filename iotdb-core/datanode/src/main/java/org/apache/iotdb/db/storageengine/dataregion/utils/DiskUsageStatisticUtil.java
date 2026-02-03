@@ -56,17 +56,25 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
   protected final long timePartition;
   protected final Iterator<TsFileResource> iterator;
   protected final LongConsumer timeSeriesMetadataIoSizeRecorder;
+  protected final LongConsumer timeSeriesMetadataCountRecorder;
 
   public DiskUsageStatisticUtil(
       TsFileManager tsFileManager,
       long timePartition,
-      Optional<FragmentInstanceContext> operatorContext) {
+      Optional<FragmentInstanceContext> fragmentInstanceContext) {
     this.timePartition = timePartition;
     this.timeSeriesMetadataIoSizeRecorder =
-        operatorContext
+        fragmentInstanceContext
             .<LongConsumer>map(
                 context ->
                     context.getQueryStatistics().getLoadTimeSeriesMetadataActualIOSize()::addAndGet)
+            .orElse(null);
+    this.timeSeriesMetadataCountRecorder =
+        fragmentInstanceContext
+            .<LongConsumer>map(
+                context ->
+                    context.getQueryStatistics().getLoadTimeSeriesMetadataFromDiskCount()
+                        ::addAndGet)
             .orElse(null);
     List<TsFileResource> seqResources = tsFileManager.getTsFileListSnapshot(timePartition, true);
     List<TsFileResource> unseqResources = tsFileManager.getTsFileListSnapshot(timePartition, false);
@@ -88,6 +96,9 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     this.resourcesWithReadLock = new LinkedList<>();
     try {
       for (TsFileResource resource : resources) {
+        if (!resource.isClosed()) {
+          continue;
+        }
         resource.readLock();
         if (resource.isDeleted() || !resource.isClosed()) {
           resource.readUnlock();
@@ -159,6 +170,11 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
               .getChunkMetadataListByTimeseriesMetadataOffset(
                   timeseriesMetadataOffsetPair.getLeft(), timeseriesMetadataOffsetPair.getRight())
               .get(0);
+      if (timeSeriesMetadataCountRecorder != null) {
+        timeSeriesMetadataIoSizeRecorder.accept(
+            timeseriesMetadataOffsetPair.getRight() - timeseriesMetadataOffsetPair.getLeft());
+        timeSeriesMetadataCountRecorder.accept(1);
+      }
       return new Offsets(
           firstChunkMetadata.getOffsetOfChunkHeader() - chunkGroupHeaderSize,
           timeseriesMetadataOffsetPair.getLeft(),
@@ -175,6 +191,11 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
             minTimeseriesMetadataOffset == 0
                 ? entry.getValue().getRight().getLeft()
                 : minTimeseriesMetadataOffset;
+        if (timeSeriesMetadataIoSizeRecorder != null) {
+          timeSeriesMetadataIoSizeRecorder.accept(
+              entry.getValue().getRight().getRight() - entry.getValue().getRight().getLeft());
+          timeSeriesMetadataCountRecorder.accept(1);
+        }
         for (IChunkMetadata chunkMetadata : entry.getValue().getLeft()) {
           minChunkOffset = Math.min(minChunkOffset, chunkMetadata.getOffsetOfChunkHeader());
           break;

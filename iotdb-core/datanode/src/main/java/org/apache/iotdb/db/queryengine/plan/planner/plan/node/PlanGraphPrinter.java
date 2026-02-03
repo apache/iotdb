@@ -85,6 +85,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
@@ -128,6 +129,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
   public static final String CURRENT_USED_MEMORY = "CurrentUsedMemory";
   public static final String MAX_USED_MEMORY = "MaxUsedMemory";
   public static final String MAX_RESERVED_MEMORY = "MaxReservedMemory";
+  public static final String REGIONS_OF_CURRENT_SUB_TASK = "RegionsOfCurrentSubTask";
+  public static final String PREPARE_CACHE_READER_COST = "PrepareCacheReaderCost";
+  public static final String LOAD_OBJECT_FILE_COST = "LoadObjectFileCost";
+  public static final String PREPARE_CACHED_TSFILE_ID_COST = "PrepareCachedTsFileIdCost";
+  public static final String CHECK_ALL_FILES_IN_TSFILE_MANAGER_COST =
+      "CheckAllFilesInTSFileManagerCost";
+  public static final String READ_TSFILE_CACHE_VALUE_FILES_COST = "ReadTsFileCacheValueFilesCost";
 
   @Override
   public List<String> visitPlan(PlanNode node, GraphContext context) {
@@ -689,6 +697,13 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
       boxValue.add(
           String.format(
               "MeasurementToColumnName: %s", treeDeviceViewScanNode.getMeasurementColumnNameMap()));
+    }
+    if (node instanceof TableDiskUsageInformationSchemaTableScanNode) {
+      boxValue.add(
+          String.format(
+              "%s: %s",
+              REGIONS_OF_CURRENT_SUB_TASK,
+              ((TableDiskUsageInformationSchemaTableScanNode) node).getRegions()));
     }
     return render(node, boxValue, context);
   }

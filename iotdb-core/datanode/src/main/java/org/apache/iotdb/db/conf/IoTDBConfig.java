@@ -1219,6 +1219,8 @@ public class IoTDBConfig {
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
+  private int maxSubTaskNumForInformationTableScan = 4;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4366,5 +4368,13 @@ public class IoTDBConfig {
 
   public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
     this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public int getMaxSubTaskNumForInformationTableScan() {
+    return maxSubTaskNumForInformationTableScan;
+  }
+
+  public void setMaxSubTaskNumForInformationTableScan(int maxSubTaskNumForInformationTableScan) {
+    this.maxSubTaskNumForInformationTableScan = maxSubTaskNumForInformationTableScan;
   }
 }

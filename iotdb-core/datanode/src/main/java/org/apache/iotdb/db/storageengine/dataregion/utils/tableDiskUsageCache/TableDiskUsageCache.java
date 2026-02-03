@@ -19,10 +19,15 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
@@ -30,12 +35,14 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.ob
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.BlockingQueue;
@@ -45,6 +52,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TableDiskUsageCache {
+  protected static Map<String, List<TTableInfo>> databaseTableInfoMap;
   protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>(1000);
   // regionId -> writer mapping
@@ -136,8 +144,26 @@ public class TableDiskUsageCache {
     }
   }
 
+  public static Map<String, List<TTableInfo>> getDatabaseTableInfoMap()
+      throws TException, ClientManagerException {
+    Map<String, List<TTableInfo>> result = databaseTableInfoMap;
+    if (result == null) {
+      synchronized (TableDiskUsageCache.class) {
+        if (databaseTableInfoMap == null) {
+          try (final ConfigNodeClient client =
+              ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+            databaseTableInfoMap = client.showTables4InformationSchema().getDatabaseTableInfoMap();
+          }
+          result = databaseTableInfoMap;
+        }
+      }
+    }
+    return result;
+  }
+
   public void write(String database, TsFileID tsFileID, Map<String, Long> tableSizeMap) {
     if (tableSizeMap == null || tableSizeMap.isEmpty()) {
+      // tree model
       return;
     }
     addOperationToQueue(new WriteOperation(database, tsFileID, tableSizeMap));

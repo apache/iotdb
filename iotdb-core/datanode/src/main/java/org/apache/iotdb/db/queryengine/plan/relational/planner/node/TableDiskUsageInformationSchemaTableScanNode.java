@@ -16,52 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class InformationSchemaTableScanNode extends TableScanNode {
-  public InformationSchemaTableScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments) {
-    super(id, qualifiedObjectName, outputSymbols, assignments);
-  }
+public class TableDiskUsageInformationSchemaTableScanNode extends InformationSchemaTableScanNode {
 
-  public InformationSchemaTableScanNode(
-      PlanNodeId id,
-      QualifiedObjectName qualifiedObjectName,
-      List<Symbol> outputSymbols,
-      Map<Symbol, ColumnSchema> assignments,
-      Expression pushDownPredicate,
-      long pushDownLimit,
-      long pushDownOffset) {
-    super(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset);
-  }
+  private List<Integer> regions;
 
-  public InformationSchemaTableScanNode(
+  public TableDiskUsageInformationSchemaTableScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -69,28 +49,9 @@ public class InformationSchemaTableScanNode extends TableScanNode {
       Expression pushDownPredicate,
       long pushDownLimit,
       long pushDownOffset,
-      TRegionReplicaSet regionReplicaSet) {
+      TRegionReplicaSet regionReplicaSet,
+      List<Integer> regions) {
     super(
-        id,
-        qualifiedObjectName,
-        outputSymbols,
-        assignments,
-        pushDownPredicate,
-        pushDownLimit,
-        pushDownOffset);
-    this.regionReplicaSet = regionReplicaSet;
-  }
-
-  protected InformationSchemaTableScanNode() {}
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitInformationSchemaTableScan(this, context);
-  }
-
-  @Override
-  public PlanNode clone() {
-    return new InformationSchemaTableScanNode(
         id,
         qualifiedObjectName,
         outputSymbols,
@@ -99,36 +60,70 @@ public class InformationSchemaTableScanNode extends TableScanNode {
         pushDownLimit,
         pushDownOffset,
         regionReplicaSet);
+    this.regions = regions;
+  }
+
+  private TableDiskUsageInformationSchemaTableScanNode() {
+    super();
   }
 
   @Override
   public PlanNodeType getType() {
-    return PlanNodeType.INFORMATION_SCHEMA_TABLE_SCAN_NODE;
+    return PlanNodeType.TABLE_DISK_USAGE_INFORMATION_SCHEMA_TABLE_SCAN_NODE;
+  }
+
+  public void setRegions(List<Integer> regions) {
+    this.regions = regions;
+  }
+
+  public List<Integer> getRegions() {
+    return regions;
+  }
+
+  @Override
+  public PlanNode clone() {
+    return new TableDiskUsageInformationSchemaTableScanNode(
+        id,
+        qualifiedObjectName,
+        outputSymbols,
+        assignments,
+        pushDownPredicate,
+        pushDownLimit,
+        pushDownOffset,
+        regionReplicaSet,
+        regions);
   }
 
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
-    getType().serialize(byteBuffer);
-
-    TableScanNode.serializeMemberVariables(this, byteBuffer, true);
+    super.serializeAttributes(byteBuffer);
+    ReadWriteIOUtils.write(regions.size(), byteBuffer);
+    for (Integer region : regions) {
+      ReadWriteIOUtils.write(region, byteBuffer);
+    }
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    getType().serialize(stream);
-
-    TableScanNode.serializeMemberVariables(this, stream, true);
+    super.serializeAttributes(stream);
+    ReadWriteIOUtils.write(regions.size(), stream);
+    for (Integer region : regions) {
+      ReadWriteIOUtils.write(region, stream);
+    }
   }
 
   public static InformationSchemaTableScanNode deserialize(ByteBuffer byteBuffer) {
-    InformationSchemaTableScanNode node = new InformationSchemaTableScanNode();
+    TableDiskUsageInformationSchemaTableScanNode node =
+        new TableDiskUsageInformationSchemaTableScanNode();
     TableScanNode.deserializeMemberVariables(byteBuffer, node, true);
+    int length = ReadWriteIOUtils.readInt(byteBuffer);
+    List<Integer> regions = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
+      regions.add(ReadWriteIOUtils.readInt(byteBuffer));
+    }
 
     node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
+    node.regions = regions;
     return node;
-  }
-
-  public String toString() {
-    return "InformationSchemaTableScanNode-" + this.getPlanNodeId();
   }
 }

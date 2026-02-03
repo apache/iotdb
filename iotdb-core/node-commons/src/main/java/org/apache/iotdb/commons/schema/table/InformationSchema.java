@@ -358,7 +358,8 @@ public class InformationSchema {
 
     final TsTable tableDiskUsageTable = new TsTable(TABLE_DISK_USAGE);
     tableDiskUsageTable.addColumnSchema(
-        new FieldColumnSchema(ColumnHeaderConstant.DATABASE, TSDataType.STRING));
+        new FieldColumnSchema(
+            ColumnHeaderConstant.DATABASE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(
         new FieldColumnSchema(ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL, TSDataType.STRING));
     tableDiskUsageTable.addColumnSchema(

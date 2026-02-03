@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinct
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
@@ -321,6 +322,7 @@ public enum PlanNodeType {
   TABLE_UNION_NODE((short) 1034),
   TABLE_INTERSECT_NODE((short) 1035),
   TABLE_EXCEPT_NODE((short) 1036),
+  TABLE_DISK_USAGE_INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1037),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -723,6 +725,8 @@ public enum PlanNodeType {
         return IntersectNode.deserialize(buffer);
       case 1036:
         return ExceptNode.deserialize(buffer);
+      case 1037:
+        return TableDiskUsageInformationSchemaTableScanNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
