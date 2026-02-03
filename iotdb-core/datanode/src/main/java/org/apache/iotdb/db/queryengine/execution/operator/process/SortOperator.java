@@ -266,7 +266,7 @@ public class SortOperator implements ProcessOperator {
         mergeSortHeap.push(mergeSortKey);
       } else {
         noMoreData[readerIndex] = true;
-        sortBufferManager.releaseOneSortBranch();
+        sortReaders.get(readerIndex).releaseMemory();
       }
 
       // break if time is out or tsBlockBuilder is full or sortBuffer is not enough
@@ -289,7 +289,7 @@ public class SortOperator implements ProcessOperator {
           mergeSortHeap.push(mergeSortKey);
         } else {
           noMoreData[i] = true;
-          sortBufferManager.releaseOneSortBranch();
+          sortReader.releaseMemory();
         }
       }
     }
