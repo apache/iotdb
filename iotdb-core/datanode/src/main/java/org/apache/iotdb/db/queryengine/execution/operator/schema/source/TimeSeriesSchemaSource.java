@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.ViewType;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -54,8 +55,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
   private final SchemaFilter schemaFilter;
   private final Map<Integer, Template> templateMap;
   private final boolean needViewDetail;
-  private final boolean orderByTimeseries;
-  private final boolean orderByTimeseriesDesc;
+  private final Ordering timeseriesOrdering;
 
   TimeSeriesSchemaSource(
       PartialPath pathPattern,
@@ -66,8 +66,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
       Map<Integer, Template> templateMap,
       boolean needViewDetail,
       PathPatternTree scope,
-      boolean orderByTimeseries,
-      boolean orderByTimeseriesDesc) {
+      Ordering timeseriesOrdering) {
     this.pathPattern = pathPattern;
     this.isPrefixMatch = isPrefixMatch;
     this.limit = limit;
@@ -76,8 +75,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
     this.templateMap = templateMap;
     this.needViewDetail = needViewDetail;
     this.scope = scope;
-    this.orderByTimeseries = orderByTimeseries;
-    this.orderByTimeseriesDesc = orderByTimeseriesDesc;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   @Override
@@ -93,8 +91,7 @@ public class TimeSeriesSchemaSource implements ISchemaSource<ITimeSeriesSchemaIn
               schemaFilter,
               needViewDetail,
               scope,
-              orderByTimeseries,
-              orderByTimeseriesDesc));
+              timeseriesOrdering));
     } catch (MetadataException e) {
       throw new SchemaExecutionException(e.getMessage(), e);
     }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowTimeSeriesPlan;
 
 import java.util.Map;
@@ -37,9 +38,8 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   private final SchemaFilter schemaFilter;
   private final boolean needViewDetail;
 
-  // order-by-timeseries pushdown flags inside a single SchemaRegion
-  private final boolean orderByTimeseries;
-  private final boolean orderByTimeseriesDesc;
+  // order-by-timeseries pushdown ordering inside a single SchemaRegion
+  private final Ordering timeseriesOrdering;
 
   public ShowTimeSeriesPlanImpl(
       PartialPath path,
@@ -50,14 +50,12 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
       SchemaFilter schemaFilter,
       boolean needViewDetail,
       PathPatternTree scope,
-      boolean orderByTimeseries,
-      boolean orderByTimeseriesDesc) {
+      Ordering timeseriesOrdering) {
     super(path, limit, offset, isPrefixMatch, scope);
     this.relatedTemplate = relatedTemplate;
     this.schemaFilter = schemaFilter;
     this.needViewDetail = needViewDetail;
-    this.orderByTimeseries = orderByTimeseries;
-    this.orderByTimeseriesDesc = orderByTimeseriesDesc;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   @Override
@@ -76,13 +74,8 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
   }
 
   @Override
-  public boolean isOrderByTimeseries() {
-    return orderByTimeseries;
-  }
-
-  @Override
-  public boolean isOrderByTimeseriesDesc() {
-    return orderByTimeseriesDesc;
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
   }
 
   @Override
@@ -91,15 +84,13 @@ public class ShowTimeSeriesPlanImpl extends AbstractShowSchemaPlanImpl
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     ShowTimeSeriesPlanImpl that = (ShowTimeSeriesPlanImpl) o;
-    return orderByTimeseries == that.orderByTimeseries
-        && orderByTimeseriesDesc == that.orderByTimeseriesDesc
+    return Objects.equals(timeseriesOrdering, that.timeseriesOrdering)
         && Objects.equals(relatedTemplate, that.relatedTemplate)
         && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        super.hashCode(), relatedTemplate, schemaFilter, orderByTimeseries, orderByTimeseriesDesc);
+    return Objects.hash(super.hashCode(), relatedTemplate, schemaFilter, timeseriesOrdering);
   }
 }

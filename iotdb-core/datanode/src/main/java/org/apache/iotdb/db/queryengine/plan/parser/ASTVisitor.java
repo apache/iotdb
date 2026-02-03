@@ -796,11 +796,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SemanticException(
             "LATEST and ORDER BY TIMESERIES cannot be used at the same time.");
       }
-      Ordering ordering = Ordering.ASC;
-      if (ctx.orderByTimeseriesClause().DESC() != null) {
-        ordering = Ordering.DESC;
-      }
-      showTimeSeriesStatement.setOrderByTimeseries(true, ordering);
+      showTimeSeriesStatement.setTimeseriesOrdering(
+          ctx.orderByTimeseriesClause().DESC() != null ? Ordering.DESC : Ordering.ASC);
     }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {

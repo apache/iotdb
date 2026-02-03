@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAttributeUpdater;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionMemMetric;
 import org.apache.iotdb.db.schemaengine.rescon.MemSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.IMemMNode;
@@ -1644,7 +1645,8 @@ public class MTreeBelowSGMemoryImpl {
               throws MetadataException {
             Iterator<IMemMNode> baseIterator = super.getChildrenIterator(parent);
 
-            if (!showTimeSeriesPlan.isOrderByTimeseries()) {
+            Ordering timeseriesOrdering = showTimeSeriesPlan.getTimeseriesOrdering();
+            if (timeseriesOrdering == null) {
               return baseIterator;
             }
 
@@ -1664,7 +1666,7 @@ public class MTreeBelowSGMemoryImpl {
             children.sort(
                 (a, b) -> {
                   int cmp = a.getName().compareTo(b.getName());
-                  return showTimeSeriesPlan.isOrderByTimeseriesDesc() ? -cmp : cmp;
+                  return timeseriesOrdering == Ordering.DESC ? -cmp : cmp;
                 });
             return children.iterator();
           }

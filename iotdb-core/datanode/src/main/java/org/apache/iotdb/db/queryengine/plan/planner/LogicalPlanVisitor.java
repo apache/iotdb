@@ -570,16 +570,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
-    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries();
-    boolean orderByTimeseriesDesc =
-        orderByTimeseries && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
+    Ordering timeseriesOrdering = showTimeSeriesStatement.getTimeseriesOrdering();
+    boolean orderByTimeseries = timeseriesOrdering != null;
+    boolean orderByTimeseriesDesc = timeseriesOrdering == Ordering.DESC;
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
       if (orderByTimeseries) {
-        SortItem sortItem =
-            new SortItem(
-                ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
+        SortItem sortItem = new SortItem(ColumnHeaderConstant.TIMESERIES, timeseriesOrdering);
         planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
       }
       planBuilder = planBuilder.planOffset(offset).planLimit(limit);
@@ -620,15 +618,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 showTimeSeriesStatement.isPrefixPath(),
                 analysis.getRelatedTemplateInfo(),
                 showTimeSeriesStatement.getAuthorityScope(),
-                orderByTimeseries,
-                orderByTimeseriesDesc)
+                timeseriesOrdering)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
     // order by timeseries name in multi-region or PBTree-Desc case: still need global SortNode
     if (orderByTimeseries
         && (!singleSchemaRegion || (!isMemorySchemaEngine && orderByTimeseriesDesc))) {
-      SortItem sortItem =
-          new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
+      SortItem sortItem = new SortItem(ColumnHeaderConstant.TIMESERIES, timeseriesOrdering);
       planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
     }
 

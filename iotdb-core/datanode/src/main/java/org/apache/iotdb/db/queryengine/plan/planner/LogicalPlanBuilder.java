@@ -996,8 +996,7 @@ public class LogicalPlanBuilder {
       boolean prefixPath,
       Map<Integer, Template> templateMap,
       PathPatternTree scope,
-      boolean orderByTimeseries,
-      boolean orderByTimeseriesDesc) {
+      Ordering timeseriesOrdering) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1009,8 +1008,7 @@ public class LogicalPlanBuilder {
             prefixPath,
             templateMap,
             scope,
-            orderByTimeseries,
-            orderByTimeseriesDesc);
+            timeseriesOrdering);
     return this;
   }
 

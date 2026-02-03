@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
@@ -47,7 +48,7 @@ public class SchemaSourceFactory {
       Map<Integer, Template> templateMap,
       PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope, false, false);
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope, null);
   }
 
   // show time series
@@ -59,8 +60,7 @@ public class SchemaSourceFactory {
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
       PathPatternTree scope,
-      boolean orderByTimeseries,
-      boolean orderByTimeseriesDesc) {
+      Ordering timeseriesOrdering) {
     return new TimeSeriesSchemaSource(
         pathPattern,
         isPrefixMatch,
@@ -70,8 +70,7 @@ public class SchemaSourceFactory {
         templateMap,
         true,
         scope,
-        orderByTimeseries,
-        orderByTimeseriesDesc);
+        timeseriesOrdering);
   }
 
   // count device

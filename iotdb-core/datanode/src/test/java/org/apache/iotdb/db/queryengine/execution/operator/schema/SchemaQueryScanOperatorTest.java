@@ -216,8 +216,7 @@ public class SchemaQueryScanOperatorTest {
               null,
               Collections.emptyMap(),
               SchemaConstant.ALL_MATCH_SCOPE,
-              false,
-              false);
+              null);
       SchemaOperatorTestUtil.mockGetSchemaReader(
           timeSeriesSchemaSource, showTimeSeriesResults.iterator(), schemaRegion, true);
 

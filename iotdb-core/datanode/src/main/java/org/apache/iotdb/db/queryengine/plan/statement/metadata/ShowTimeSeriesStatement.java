@@ -44,8 +44,7 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   private final boolean orderByHeat;
   private WhereCondition timeCondition;
   // order by timeseries name
-  private boolean orderByTimeseries;
-  private Ordering nameOrdering = Ordering.ASC;
+  private Ordering timeseriesOrdering;
 
   public ShowTimeSeriesStatement(PartialPath pathPattern, boolean orderByHeat) {
     super();
@@ -70,18 +69,15 @@ public class ShowTimeSeriesStatement extends ShowStatement {
   }
 
   public boolean isOrderByTimeseries() {
-    return orderByTimeseries;
+    return timeseriesOrdering != null;
   }
 
-  public Ordering getNameOrdering() {
-    return nameOrdering;
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
   }
 
-  public void setOrderByTimeseries(boolean orderByTimeseries, Ordering ordering) {
-    this.orderByTimeseries = orderByTimeseries;
-    if (ordering != null) {
-      this.nameOrdering = ordering;
-    }
+  public void setTimeseriesOrdering(Ordering timeseriesOrdering) {
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   public void setTimeCondition(WhereCondition timeCondition) {

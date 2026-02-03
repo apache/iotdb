@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowDevicesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowNodesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.req.impl.ShowTimeSeriesPlanImpl;
@@ -62,8 +63,7 @@ public class SchemaRegionReadPlanFactory {
       SchemaFilter schemaFilter,
       boolean needViewDetail,
       PathPatternTree scope,
-      boolean orderByTimeseries,
-      boolean orderByTimeseriesDesc) {
+      Ordering timeseriesOrdering) {
     return new ShowTimeSeriesPlanImpl(
         path,
         relatedTemplate,
@@ -73,8 +73,7 @@ public class SchemaRegionReadPlanFactory {
         schemaFilter,
         needViewDetail,
         scope,
-        orderByTimeseries,
-        orderByTimeseriesDesc);
+        timeseriesOrdering);
   }
 
   public static IShowNodesPlan getShowNodesPlan(PartialPath path, PathPatternTree scope) {

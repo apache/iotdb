@@ -183,8 +183,7 @@ public class SchemaRegionTestUtil {
                 null,
                 false,
                 ALL_MATCH_SCOPE,
-                false,
-                false))) {
+                null))) {
       long count = 0;
       while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
@@ -217,8 +216,7 @@ public class SchemaRegionTestUtil {
                 null,
                 false,
                 ALL_MATCH_SCOPE,
-                false,
-                false))) {
+                null))) {
       Assert.assertTrue(timeSeriesReader.hasNext());
       final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
       Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
@@ -255,16 +253,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern,
-                null,
-                0,
-                0,
-                isPrefixMatch,
-                null,
-                false,
-                ALL_MATCH_SCOPE,
-                false,
-                false))) {
+                pathPattern, null, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE, null))) {
       Map<PartialPath, Long> countMap = new HashMap<>();
       while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
@@ -384,8 +373,7 @@ public class SchemaRegionTestUtil {
                 schemaFilter,
                 needViewDetail,
                 ALL_MATCH_SCOPE,
-                false,
-                false))) {
+                null))) {
       while (reader.hasNext()) {
         timeSeriesSchemaInfo = reader.next();
         result.add(

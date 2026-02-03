@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -1500,8 +1501,8 @@ public class MTreeBelowSGCachedImpl {
           @Override
           protected Iterator<ICachedMNode> getChildrenIterator(final ICachedMNode parent)
               throws MetadataException {
-            if (!showTimeSeriesPlan.isOrderByTimeseries()
-                || showTimeSeriesPlan.isOrderByTimeseriesDesc()) {
+            Ordering timeseriesOrdering = showTimeSeriesPlan.getTimeseriesOrdering();
+            if (timeseriesOrdering == null || timeseriesOrdering == Ordering.DESC) {
               return super.getChildrenIterator(parent);
             }
 
