@@ -61,7 +61,6 @@ def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
 
 def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
     device_map = model_kwargs.get("device_map", "cpu")
-    trust_remote_code = model_kwargs.get("trust_remote_code", True)
     train_from_scratch = model_kwargs.get("train_from_scratch", False)
 
     model_path = os.path.join(
@@ -107,11 +106,9 @@ def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
             model_cls = AutoModelForCausalLM
 
     if train_from_scratch:
-        model = model_cls.from_config(config_cls, trust_remote_code=trust_remote_code)
+        model = model_cls.from_config(config_cls)
     else:
-        model = model_cls.from_pretrained(
-            model_path, trust_remote_code=trust_remote_code
-        )
+        model = model_cls.from_pretrained(model_path)
 
     return BACKEND.move_model(model, device_map)
 

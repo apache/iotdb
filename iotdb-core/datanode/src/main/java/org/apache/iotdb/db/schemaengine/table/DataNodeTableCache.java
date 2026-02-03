@@ -288,13 +288,17 @@ public class DataNodeTableCache implements ITableCache {
     try {
       if (databaseTableMap.containsKey(database)
           && databaseTableMap.get(database).containsKey(tableName)) {
-        databaseTableMap.get(database).get(tableName).removeColumnSchema(columnName);
+        final TsTable copyTable = new TsTable(databaseTableMap.get(database).get(tableName));
+        copyTable.removeColumnSchema(columnName);
+        databaseTableMap.get(database).put(tableName, copyTable);
       }
       if (preUpdateTableMap.containsKey(database)
           && preUpdateTableMap.get(database).containsKey(tableName)) {
         final Pair<TsTable, Long> tableVersionPair = preUpdateTableMap.get(database).get(tableName);
         if (Objects.nonNull(tableVersionPair.getLeft())) {
-          tableVersionPair.getLeft().removeColumnSchema(columnName);
+          final TsTable copyTable = new TsTable(tableVersionPair.getLeft());
+          copyTable.removeColumnSchema(columnName);
+          tableVersionPair.setLeft(copyTable);
         }
         tableVersionPair.setRight(tableVersionPair.getRight() + 1);
       }

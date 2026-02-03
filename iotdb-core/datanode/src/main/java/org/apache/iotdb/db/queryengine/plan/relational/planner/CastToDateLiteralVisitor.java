@@ -23,6 +23,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -51,6 +52,11 @@ public class CastToDateLiteralVisitor extends AstVisitor<Integer, Void> {
 
   @Override
   protected Integer visitDoubleLiteral(DoubleLiteral node, Void context) {
+    return (int) node.getValue();
+  }
+
+  @Override
+  protected Integer visitFloatLiteral(FloatLiteral node, Void context) {
     return (int) node.getValue();
   }
 

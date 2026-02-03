@@ -47,5 +47,9 @@
             <source>${maven.multiModuleProjectDirectory}/external-service-impl/mqtt/target/mqtt-${project.version}-jar-with-dependencies.jar</source>
             <outputDirectory>/</outputDirectory>
         </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/external-service-impl/rest/target/rest-${project.version}-jar-with-dependencies.jar</source>
+            <outputDirectory>/</outputDirectory>
+        </file>
     </files>
 </assembly>

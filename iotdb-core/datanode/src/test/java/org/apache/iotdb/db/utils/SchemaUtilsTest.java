@@ -96,15 +96,15 @@ public class SchemaUtilsTest {
             || tsDataType == TSDataType.OBJECT) {
           continue;
         }
-        List<IChunkMetadata> valueChunkMetadatas =
-            Collections.singletonList(
-                new ChunkMetadata(
-                    "s0",
-                    tsDataType,
-                    TSEncoding.RLE,
-                    CompressionType.LZ4,
-                    0,
-                    Statistics.getStatsByType(tsDataType)));
+        List<IChunkMetadata> valueChunkMetadatas = new ArrayList<>(1);
+        valueChunkMetadatas.add(
+            new ChunkMetadata(
+                "s0",
+                tsDataType,
+                TSEncoding.RLE,
+                CompressionType.LZ4,
+                0,
+                Statistics.getStatsByType(tsDataType)));
         AlignedChunkMetadata alignedChunkMetadata =
             new AlignedChunkMetadata(new ChunkMetadata(), valueChunkMetadatas);
         try {

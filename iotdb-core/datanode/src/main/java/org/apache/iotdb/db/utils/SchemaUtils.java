@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
@@ -46,12 +47,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.addPartialSuffix;
 
 public class SchemaUtils {
 
   private static final Map<TSDataType, Class> dataTypeColumnClassMap;
+  private static final Map<TSDataType, Class> dataTypeColumnStatisticsClassMap;
+  private static final Set<TSDataType> canNotUseStatisticAfterAlterClassSet =
+      ImmutableSet.of(TSDataType.STRING, TSDataType.TEXT, TSDataType.BLOB);
   public static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
   private static final Binary EMPTY_BINARY = new Binary("", StandardCharsets.UTF_8);
 
@@ -66,6 +71,13 @@ public class SchemaUtils {
     dataTypeColumnClassMap.put(TSDataType.STRING, BinaryColumn.class);
     dataTypeColumnClassMap.put(TSDataType.BLOB, BinaryColumn.class);
     dataTypeColumnClassMap.put(TSDataType.TEXT, BinaryColumn.class);
+
+    dataTypeColumnStatisticsClassMap = new HashMap<>();
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT32, IntColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.DATE, IntColumn.class);
+
+    dataTypeColumnStatisticsClassMap.put(TSDataType.INT64, LongColumn.class);
+    dataTypeColumnStatisticsClassMap.put(TSDataType.TIMESTAMP, LongColumn.class);
   }
 
   private SchemaUtils() {}
@@ -122,7 +134,7 @@ public class SchemaUtils {
       case SqlConstant.VAR_POP:
       case SqlConstant.VAR_SAMP:
         return TSDataType.DOUBLE;
-        // Partial aggregation names
+      // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
       case SqlConstant.STDDEV_POP + "_partial":
       case SqlConstant.STDDEV_SAMP + "_partial":
@@ -294,8 +306,29 @@ public class SchemaUtils {
     if (originalDataType == dataType) {
       return true;
     }
+    if (!dataTypeColumnClassMap.containsKey(originalDataType)
+        || !dataTypeColumnClassMap.containsKey(dataType)) {
+      return false;
+    }
     return Objects.equals(
         dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
+  }
+
+  public static boolean isUsingSameStatistics(TSDataType originalDataType, TSDataType dataType) {
+    if (originalDataType == dataType) {
+      return true;
+    }
+    if (!dataTypeColumnStatisticsClassMap.containsKey(originalDataType)
+        || !dataTypeColumnStatisticsClassMap.containsKey(dataType)) {
+      return false;
+    }
+    return Objects.equals(
+        dataTypeColumnStatisticsClassMap.get(originalDataType),
+        dataTypeColumnStatisticsClassMap.get(dataType));
+  }
+
+  public static boolean canUseStatisticsAfterAlter(TSDataType dataType) {
+    return !canNotUseStatisticAfterAlterClassSet.contains(dataType);
   }
 
   public static void changeMetadataModified(
@@ -303,8 +336,8 @@ public class SchemaUtils {
     if (timeseriesMetadata == null) {
       return;
     }
-    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -328,10 +361,9 @@ public class SchemaUtils {
     for (TimeseriesMetadata timeseriesMetadata :
         alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
       if ((timeseriesMetadata != null)
-          && !SchemaUtils.isUsingSameColumn(
+          && !SchemaUtils.isUsingSameStatistics(
               timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && ((targetDataTypeList.get(i) == TSDataType.STRING)
-              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
         timeseriesMetadata.setModified(true);
         alignedTimeSeriesMetadata.setModified(true);
         List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
@@ -353,8 +385,8 @@ public class SchemaUtils {
       return;
     }
 
-    if (!SchemaUtils.isUsingSameColumn(timeseriesMetadata.getTsDataType(), targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       timeseriesMetadata.setModified(true);
       List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
       if (chunkMetadataList != null) {
@@ -372,8 +404,8 @@ public class SchemaUtils {
     if (chunkMetadata == null) {
       return;
     }
-    if (!SchemaUtils.isUsingSameColumn(sourceDataType, targetDataType)
-        && ((targetDataType == TSDataType.STRING) || (targetDataType == TSDataType.TEXT))) {
+    if (!SchemaUtils.isUsingSameStatistics(sourceDataType, targetDataType)
+        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
       chunkMetadata.setModified(true);
     }
   }
@@ -388,9 +420,9 @@ public class SchemaUtils {
     int i = 0;
     for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
       if ((iChunkMetadata != null)
-          && !SchemaUtils.isUsingSameColumn(sourceDataType, targetDataTypeList.get(i))
-          && ((targetDataTypeList.get(i) == TSDataType.STRING)
-              || (targetDataTypeList.get(i) == TSDataType.TEXT))) {
+          && !SchemaUtils.isUsingSameStatistics(
+              iChunkMetadata.getDataType(), targetDataTypeList.get(i))
+          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
         iChunkMetadata.setModified(true);
         chunkMetadata.setModified(true);
       }
@@ -406,25 +438,27 @@ public class SchemaUtils {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
       statistics = getNewStatistics(valueChunkMetadata, targetDataType, statistics);
 
-      ChunkMetadata newChunkMetadata = (ChunkMetadata) valueChunkMetadata;
+      ChunkMetadata newChunkMetadata = new ChunkMetadata((ChunkMetadata) valueChunkMetadata);
       newChunkMetadata.setTsDataType(targetDataType);
       newChunkMetadata.setStatistics(statistics);
+      alignedChunkMetadata.getValueChunkMetadataList().set(index, newChunkMetadata);
     } else {
       alignedChunkMetadata.getValueChunkMetadataList().set(index, null);
     }
   }
 
-  public static void rewriteNonAlignedChunkMetadataStatistics(
-      List<IChunkMetadata> chunkMetadataList, int index, TSDataType targetDataType) {
-    ChunkMetadata chunkMetadata = (ChunkMetadata) chunkMetadataList.get(index);
-    if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
+  public static ChunkMetadata rewriteChunkMetadata(
+      ChunkMetadata origin, TSDataType targetDataType) {
+    if (origin != null && targetDataType.isCompatible(origin.getDataType())) {
       Statistics<?> statistics = Statistics.getStatsByType(targetDataType);
-      statistics = getNewStatistics(chunkMetadata, targetDataType, statistics);
+      statistics = getNewStatistics(origin, targetDataType, statistics);
 
-      chunkMetadata.setTsDataType(targetDataType);
-      chunkMetadata.setStatistics(statistics);
+      ChunkMetadata target = new ChunkMetadata(origin);
+      target.setTsDataType(targetDataType);
+      target.setStatistics(statistics);
+      return target;
     } else {
-      chunkMetadataList.set(index, null);
+      return null;
     }
   }
 

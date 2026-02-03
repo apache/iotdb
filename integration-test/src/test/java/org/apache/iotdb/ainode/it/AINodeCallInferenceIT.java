@@ -40,6 +40,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.BUILTIN_MODEL_MAP;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 
 @RunWith(IoTDBTestRunner.class)
@@ -72,6 +73,7 @@ public class AINodeCallInferenceIT {
           Statement statement = connection.createStatement()) {
         callInferenceTest(statement, modelInfo);
         callInferenceByDefaultTest(statement, modelInfo);
+        callInferenceErrorTest(statement, modelInfo);
       }
     }
   }
@@ -117,5 +119,17 @@ public class AINodeCallInferenceIT {
         Assert.assertTrue(count > 0);
       }
     }
+  }
+
+  public static void callInferenceErrorTest(
+      Statement statement, AINodeTestUtils.FakeModelInfo modelInfo) {
+    String multiVariateSQL =
+        String.format(
+            "CALL INFERENCE(%s, \"SELECT s0,s1 FROM root.AI LIMIT 128\", generateTime=true, outputLength=10)",
+            modelInfo.getModelId());
+    errorTest(
+        statement,
+        multiVariateSQL,
+        "701: Call inference function should not contain more than one input column, found [2] input columns.");
   }
 }

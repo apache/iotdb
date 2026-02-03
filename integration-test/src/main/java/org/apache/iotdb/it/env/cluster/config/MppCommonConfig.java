@@ -574,11 +574,6 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
-    return this;
-  }
-
   @Override
   public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     setProperty("default_database_level", String.valueOf(defaultDatabaseLevel));

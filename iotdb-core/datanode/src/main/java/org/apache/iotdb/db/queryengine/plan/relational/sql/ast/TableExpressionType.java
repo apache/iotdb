@@ -51,7 +51,8 @@ public enum TableExpressionType {
   CURRENT_DATABASE((short) 29),
   CURRENT_USER((short) 30),
   ROW((short) 31),
-  EXTRACT((short) 32);
+  EXTRACT((short) 32),
+  FLOAT_LITERAL((short) 33);
 
   TableExpressionType(short type) {
     this.type = type;

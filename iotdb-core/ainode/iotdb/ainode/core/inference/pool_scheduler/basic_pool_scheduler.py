@@ -68,6 +68,15 @@ def _estimate_shared_pool_size_by_total_mem(
     # Seize memory usage for each model
     mem_usages: Dict[str, float] = {}
     for model_info in all_models:
+        if model_info.model_id not in MODEL_MEM_USAGE_MAP:
+            logger.error(
+                f"[Inference] Model '{model_info.model_id}' not found in MODEL_MEM_USAGE_MAP. "
+                f"Available types: {list(MODEL_MEM_USAGE_MAP.keys())}"
+            )
+            raise KeyError(
+                f"Model '{model_info.model_id}' not found in MODEL_MEM_USAGE_MAP. "
+                f"Please add memory usage configuration for '{model_info.model_id}' in constant.py"
+            )
         mem_usages[model_info.model_id] = (
             MODEL_MEM_USAGE_MAP[model_info.model_id] * INFERENCE_EXTRA_MEMORY_RATIO
         )

@@ -401,7 +401,8 @@ public class ConfigMTreeTest {
       final TsTable table = tables.get(0);
       assertEquals("table" + i, table.getTableName());
       assertEquals(1, table.getTagNum());
-      assertEquals(4, table.getColumnNum());
+      // currently, only construct the TsTable would not carry the time column
+      assertEquals(3, table.getColumnNum());
     }
   }
 

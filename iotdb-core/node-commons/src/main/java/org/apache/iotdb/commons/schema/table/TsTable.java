@@ -25,14 +25,12 @@ import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TimeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchemaUtil;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -64,9 +62,6 @@ public class TsTable {
 
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
-  private static final TimeColumnSchema TIME_COLUMN_SCHEMA =
-      new TimeColumnSchema(TIME_COLUMN_NAME, TSDataType.TIMESTAMP);
-
   public static final String TTL_PROPERTY = "ttl";
   public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
   private static final String OBJECT_STRING_ERROR =
@@ -101,7 +96,6 @@ public class TsTable {
 
   public TsTable(final String tableName) {
     this.tableName = tableName;
-    columnSchemaMap.put(TIME_COLUMN_NAME, TIME_COLUMN_SCHEMA);
   }
 
   // This interface is used by InformationSchema table, so time column is not necessary

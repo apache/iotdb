@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOperator {
 
   // Calculate from schema region extractors directly for it requires less computation
-  private final Set<IoTDBSchemaRegionSource> schemaRegionExtractors =
+  private final Set<IoTDBSchemaRegionSource> schemaRegionSources =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private final AtomicInteger insertNodeEventCount = new AtomicInteger(0);
@@ -105,7 +105,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
         tsfileEventCount.get()
             + rawTabletEventCount.get()
             + insertNodeEventCount.get()
-            + schemaRegionExtractors.stream()
+            + schemaRegionSources.stream()
                 .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
                 .reduce(Long::sum)
                 .orElse(0L);
@@ -157,7 +157,7 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
     }
 
     final long totalSchemaRegionWriteEventCount =
-        schemaRegionExtractors.stream()
+        schemaRegionSources.stream()
             .map(IoTDBSchemaRegionSource::getUnTransferredEventCount)
             .reduce(Long::sum)
             .orElse(0L);
@@ -192,8 +192,8 @@ public class PipeDataNodeRemainingEventAndTimeOperator extends PipeRemainingOper
 
   //////////////////////////// Register & deregister (pipe integration) ////////////////////////////
 
-  void register(final IoTDBSchemaRegionSource extractor) {
-    schemaRegionExtractors.add(extractor);
+  void register(final IoTDBSchemaRegionSource source) {
+    schemaRegionSources.add(source);
   }
 
   //////////////////////////// Rate ////////////////////////////

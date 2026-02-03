@@ -56,6 +56,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
   private final LongBigArray yLastTimes = new LongBigArray(Long.MIN_VALUE);
 
   private final BooleanBigArray inits = new BooleanBigArray();
+  private final BooleanBigArray initNullTimeValues = new BooleanBigArray();
 
   private LongBigArray xLongValues;
   private IntBigArray xIntValues;
@@ -132,13 +133,19 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
             String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
     }
 
-    return INSTANCE_SIZE + valuesSize + yLastTimes.sizeOf() + inits.sizeOf() + xNulls.sizeOf();
+    return INSTANCE_SIZE
+        + valuesSize
+        + yLastTimes.sizeOf()
+        + inits.sizeOf()
+        + initNullTimeValues.sizeOf()
+        + xNulls.sizeOf();
   }
 
   @Override
   public void setGroupCount(long groupCount) {
     yLastTimes.ensureCapacity(groupCount);
     inits.ensureCapacity(groupCount);
+    initNullTimeValues.ensureCapacity(groupCount);
     xNulls.ensureCapacity(groupCount);
     switch (xDataType) {
       case INT32:
@@ -177,6 +184,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
   public void reset() {
     yLastTimes.reset();
     inits.reset();
+    initNullTimeValues.reset();
     xNulls.reset();
     switch (xDataType) {
       case INT32:
@@ -239,7 +247,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         return;
       default:
         throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
+            String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
     }
   }
 
@@ -259,54 +267,78 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
       byte[] bytes = argument.getBinary(i).getValues();
       long curTime = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
       int offset = Long.BYTES;
-      boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
+      boolean isOrderTimeNull = BytesUtils.bytesToBool(bytes, offset);
+      offset += 1;
+      boolean isXValueNull = BytesUtils.bytesToBool(bytes, offset);
       offset += 1;
       int groupId = groupIds[i];
-
-      if (isXNull) {
-        if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-          inits.set(groupId, true);
-          yLastTimes.set(groupId, curTime);
-          xNulls.set(groupId, true);
-        }
-        continue;
-      }
 
       switch (xDataType) {
         case INT32:
         case DATE:
-          int xIntVal = BytesUtils.bytesToInt(bytes, offset);
-          updateIntLastValue(groupId, xIntVal, curTime);
+          int intVal = isXValueNull ? 0 : BytesUtils.bytesToInt(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateIntLastValue(groupId, isXValueNull, intVal, curTime);
+          } else {
+            updateIntNullTimeValue(groupId, isXValueNull, intVal);
+          }
           break;
         case INT64:
         case TIMESTAMP:
-          long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          updateLongLastValue(groupId, longVal, curTime);
+          long longVal =
+              isXValueNull ? 0 : BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
+          if (!isOrderTimeNull) {
+            updateLongLastValue(groupId, isXValueNull, longVal, curTime);
+          } else {
+            updateLongNullTimeValue(groupId, isXValueNull, longVal);
+          }
           break;
         case FLOAT:
-          float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          updateFloatLastValue(groupId, floatVal, curTime);
+          float floatVal = isXValueNull ? 0 : BytesUtils.bytesToFloat(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateFloatLastValue(groupId, isXValueNull, floatVal, curTime);
+          } else {
+            updateFloatNullTimeValue(groupId, isXValueNull, floatVal);
+          }
           break;
         case DOUBLE:
-          double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          updateDoubleLastValue(groupId, doubleVal, curTime);
+          double doubleVal = isXValueNull ? 0 : BytesUtils.bytesToDouble(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateDoubleLastValue(groupId, isXValueNull, doubleVal, curTime);
+          } else {
+            updateDoubleNullTimeValue(groupId, isXValueNull, doubleVal);
+          }
           break;
         case TEXT:
         case BLOB:
         case OBJECT:
         case STRING:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          updateBinaryLastValue(groupId, binaryVal, curTime);
+          Binary binaryVal = null;
+          if (!isXValueNull) {
+            int length = BytesUtils.bytesToInt(bytes, offset);
+            offset += Integer.BYTES;
+            binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
+          }
+          if (!isOrderTimeNull) {
+            updateBinaryLastValue(groupId, isXValueNull, binaryVal, curTime);
+          } else {
+            updateBinaryNullTimeValue(groupId, isXValueNull, binaryVal);
+          }
           break;
         case BOOLEAN:
-          boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          updateBooleanLastValue(groupId, boolVal, curTime);
+          boolean boolVal = false;
+          if (!isXValueNull) {
+            boolVal = BytesUtils.bytesToBool(bytes, offset);
+          }
+          if (!isOrderTimeNull) {
+            updateBooleanLastValue(groupId, isXValueNull, boolVal, curTime);
+          } else {
+            updateBooleanNullTimeValue(groupId, isXValueNull, boolVal);
+          }
           break;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
+              String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
       }
     }
   }
@@ -317,50 +349,54 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of LAST_BY should be BinaryColumn");
 
-    if (!inits.get(groupId)) {
-      columnBuilder.appendNull();
-    } else {
+    if (inits.get(groupId) || initNullTimeValues.get(groupId)) {
       columnBuilder.writeBinary(new Binary(serializeTimeWithValue(groupId)));
+      return;
     }
+    columnBuilder.appendNull();
   }
 
   private byte[] serializeTimeWithValue(int groupId) {
     boolean xNull = xNulls.get(groupId);
-    int length = Long.BYTES + 1 + (xNull ? 0 : calculateValueLength(groupId));
+    int length = Long.BYTES + 2 + (xNull ? 0 : calculateValueLength(groupId));
     byte[] bytes = new byte[length];
+    boolean isOrderTimeNull = !inits.get(groupId);
 
     longToBytes(yLastTimes.get(groupId), bytes, 0);
-    boolToBytes(xNulls.get(groupId), bytes, Long.BYTES);
+    boolToBytes(isOrderTimeNull, bytes, Long.BYTES);
+    boolToBytes(xNull, bytes, Long.BYTES + 1);
+
     if (!xNull) {
+      int valueOffset = Long.BYTES + 2;
       switch (xDataType) {
         case INT32:
         case DATE:
-          intToBytes(xIntValues.get(groupId), bytes, Long.BYTES + 1);
+          intToBytes(xIntValues.get(groupId), bytes, valueOffset);
           return bytes;
         case INT64:
         case TIMESTAMP:
-          longToBytes(xLongValues.get(groupId), bytes, Long.BYTES + 1);
+          longToBytes(xLongValues.get(groupId), bytes, valueOffset);
           return bytes;
         case FLOAT:
-          floatToBytes(xFloatValues.get(groupId), bytes, Long.BYTES + 1);
+          floatToBytes(xFloatValues.get(groupId), bytes, valueOffset);
           return bytes;
         case DOUBLE:
-          doubleToBytes(xDoubleValues.get(groupId), bytes, Long.BYTES + 1);
+          doubleToBytes(xDoubleValues.get(groupId), bytes, valueOffset);
           return bytes;
         case TEXT:
         case BLOB:
         case OBJECT:
         case STRING:
           byte[] values = xBinaryValues.get(groupId).getValues();
-          intToBytes(values.length, bytes, Long.BYTES + 1);
+          intToBytes(values.length, bytes, valueOffset);
           System.arraycopy(values, 0, bytes, length - values.length, values.length);
           return bytes;
         case BOOLEAN:
-          boolToBytes(xBooleanValues.get(groupId), bytes, Long.BYTES + 1);
+          boolToBytes(xBooleanValues.get(groupId), bytes, valueOffset);
           return bytes;
         default:
           throw new UnSupportedDataTypeException(
-              String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
+              String.format("Unsupported data type in LAST_BY Aggregation: %s", xDataType));
       }
     }
     return bytes;
@@ -393,7 +429,7 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
 
   @Override
   public void evaluateFinal(int groupId, ColumnBuilder columnBuilder) {
-    if (!inits.get(groupId) || xNulls.get(groupId)) {
+    if (xNulls.get(groupId)) {
       columnBuilder.appendNull();
       return;
     }
@@ -428,270 +464,266 @@ public class GroupedLastByAccumulator implements GroupedAccumulator {
     }
   }
 
-  private void addIntInput(
-      int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateIntLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateIntLastValue(groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
-
-  protected void updateIntLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
+  private boolean checkAndUpdateLastTime(int groupId, boolean isXValueNull, long curTime) {
     if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
       inits.set(groupId, true);
       yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
+
+      if (isXValueNull) {
         xNulls.set(groupId, true);
+        return false;
       } else {
         xNulls.set(groupId, false);
-        xIntValues.set(groupId, xColumn.getInt(xIdx));
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean checkAndUpdateNullTime(int groupId, boolean isXValueNull) {
+    if (!inits.get(groupId) && !initNullTimeValues.get(groupId)) {
+      initNullTimeValues.set(groupId, true);
+
+      if (isXValueNull) {
+        xNulls.set(groupId, true);
+        return false;
+      } else {
+        xNulls.set(groupId, false);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private void addIntInput(
+      int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateIntLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getInt(position),
+            timeColumn.getLong(position));
+      } else {
+        updateIntNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getInt(position));
       }
     }
   }
 
-  protected void updateIntLastValue(int groupId, int val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xIntValues.set(groupId, val);
+  protected void updateIntLastValue(int groupId, boolean isXValueNull, int xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xIntValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateIntNullTimeValue(int groupId, boolean isXValueNull, int xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xIntValues.set(groupId, xValue);
     }
   }
 
   private void addLongInput(
       int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateLongLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateLongLastValue(groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateLongLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
-        xNulls.set(groupId, true);
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateLongLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getLong(position),
+            timeColumn.getLong(position));
       } else {
-        xNulls.set(groupId, false);
-        xLongValues.set(groupId, xColumn.getLong(xIdx));
+        updateLongNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getLong(position));
       }
     }
   }
 
-  protected void updateLongLastValue(int groupId, long val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xLongValues.set(groupId, val);
+  protected void updateLongLastValue(int groupId, boolean isXValueNull, long xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xLongValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateLongNullTimeValue(int groupId, boolean isXValueNull, long xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xLongValues.set(groupId, xValue);
     }
   }
 
   private void addFloatInput(
       int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateFloatLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateFloatLastValue(groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateFloatLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
-        xNulls.set(groupId, true);
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateFloatLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getFloat(position),
+            timeColumn.getLong(position));
       } else {
-        xNulls.set(groupId, false);
-        xFloatValues.set(groupId, xColumn.getFloat(xIdx));
+        updateFloatNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getFloat(position));
       }
     }
   }
 
-  protected void updateFloatLastValue(int groupId, float val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xFloatValues.set(groupId, val);
+  protected void updateFloatLastValue(
+      int groupId, boolean isXValueNull, float xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xFloatValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateFloatNullTimeValue(int groupId, boolean isXValueNull, float xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xFloatValues.set(groupId, xValue);
     }
   }
 
   private void addDoubleInput(
       int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateDoubleLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateDoubleLastValue(
-              groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateDoubleLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
-        xNulls.set(groupId, true);
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateDoubleLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getDouble(position),
+            timeColumn.getLong(position));
       } else {
-        xNulls.set(groupId, false);
-        xDoubleValues.set(groupId, xColumn.getDouble(xIdx));
+        updateDoubleNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getDouble(position));
       }
     }
   }
 
-  protected void updateDoubleLastValue(int groupId, double val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xDoubleValues.set(groupId, val);
+  protected void updateDoubleLastValue(
+      int groupId, boolean isXValueNull, double xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xDoubleValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateDoubleNullTimeValue(int groupId, boolean isXValueNull, double xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xDoubleValues.set(groupId, xValue);
     }
   }
 
   private void addBinaryInput(
       int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBinaryLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBinaryLastValue(
-              groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateBinaryLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
-        xNulls.set(groupId, true);
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateBinaryLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getBinary(position),
+            timeColumn.getLong(position));
       } else {
-        xNulls.set(groupId, false);
-        xBinaryValues.set(groupId, xColumn.getBinary(xIdx));
+        updateBinaryNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getBinary(position));
       }
     }
   }
 
-  protected void updateBinaryLastValue(int groupId, Binary val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xBinaryValues.set(groupId, val);
+  protected void updateBinaryLastValue(
+      int groupId, boolean isXValueNull, Binary xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xBinaryValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateBinaryNullTimeValue(int groupId, boolean isXValueNull, Binary xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xBinaryValues.set(groupId, xValue);
     }
   }
 
   private void addBooleanInput(
       int[] groupIds, Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBooleanLastValue(groupIds[i], xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBooleanLastValue(
-              groupIds[position], xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateBooleanLastValue(int groupId, Column xColumn, int xIdx, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      if (xColumn.isNull(xIdx)) {
-        xNulls.set(groupId, true);
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      if (!timeColumn.isNull(position)) {
+        updateBooleanLastValue(
+            groupIds[position],
+            xColumn.isNull(position),
+            xColumn.getBoolean(position),
+            timeColumn.getLong(position));
       } else {
-        xNulls.set(groupId, false);
-        xBooleanValues.set(groupId, xColumn.getBoolean(xIdx));
+        updateBooleanNullTimeValue(
+            groupIds[position], xColumn.isNull(position), xColumn.getBoolean(position));
       }
     }
   }
 
-  protected void updateBooleanLastValue(int groupId, boolean val, long curTime) {
-    if (!inits.get(groupId) || curTime > yLastTimes.get(groupId)) {
-      inits.set(groupId, true);
-      yLastTimes.set(groupId, curTime);
-      xNulls.set(groupId, false);
-      xBooleanValues.set(groupId, val);
+  protected void updateBooleanLastValue(
+      int groupId, boolean isXValueNull, boolean xValue, long curTime) {
+    if (checkAndUpdateLastTime(groupId, isXValueNull, curTime)) {
+      xBooleanValues.set(groupId, xValue);
+    }
+  }
+
+  protected void updateBooleanNullTimeValue(int groupId, boolean isXValueNull, boolean xValue) {
+    if (checkAndUpdateNullTime(groupId, isXValueNull)) {
+      xBooleanValues.set(groupId, xValue);
     }
   }
 }

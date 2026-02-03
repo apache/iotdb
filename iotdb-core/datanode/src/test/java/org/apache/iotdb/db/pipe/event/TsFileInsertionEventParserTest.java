@@ -94,14 +94,14 @@ public class TsFileInsertionEventParserTest {
   }
 
   @Test
-  public void testQueryContainer() throws Exception {
+  public void testQueryParser() throws Exception {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(true);
     System.out.println(System.currentTimeMillis() - startTime);
   }
 
   @Test
-  public void testScanContainer() throws Exception {
+  public void testScanParser() throws Exception {
     final long startTime = System.currentTimeMillis();
     testToTabletInsertionEvents(false);
     System.out.println(System.currentTimeMillis() - startTime);

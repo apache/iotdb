@@ -136,7 +136,7 @@ public class ReadOnlyMemChunk {
       TVList tvList = entry.getKey();
       int queryRowCount = entry.getValue();
       if (!tvList.isSorted() && queryRowCount > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
         long tvListRamSize = tvList.calculateRamSize();
         tvList.lockQueryList();
         try {
@@ -283,13 +283,17 @@ public class ReadOnlyMemChunk {
     return cachedMetaData;
   }
 
+  public void setChunkMetadata(IChunkMetadata cachedMetaData) {
+    this.cachedMetaData = cachedMetaData;
+  }
+
   @TestOnly
   public IPointReader getPointReader() {
     for (Map.Entry<TVList, Integer> entry : tvListQueryMap.entrySet()) {
       TVList tvList = entry.getKey();
       int queryLength = entry.getValue();
       if (!tvList.isSorted() && queryLength > tvList.seqRowCount()) {
-        tvList.sort();
+        entry.setValue(tvList.sort());
         long tvListRamSize = tvList.calculateRamSize();
         tvList.lockQueryList();
         try {

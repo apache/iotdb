@@ -99,7 +99,6 @@
     "net.minidev:json-smart",
     "org.antlr:antlr4-runtime",
     "org.apache.commons:commons-csv",
-    "org.apache.commons:commons-jexl3",
     "org.apache.commons:commons-lang3",
     "org.apache.commons:commons-lang3",
     "org.apache.commons:commons-math3",

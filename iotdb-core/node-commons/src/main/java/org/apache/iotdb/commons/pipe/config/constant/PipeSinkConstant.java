@@ -229,6 +229,11 @@ public class PipeSinkConstant {
   public static final String SINK_OPC_UA_HISTORIZING_KEY = "sink.opcua.historizing";
   public static final boolean CONNECTOR_OPC_UA_HISTORIZING_DEFAULT_VALUE = false;
 
+  public static final String SINK_OPC_UA_TIMEOUT_SECONDS_KEY = "sink.opcua.timeout-seconds";
+  public static final String CONNECTOR_OPC_UA_TIMEOUT_SECONDS_KEY =
+      "connector.opcua.timeout-seconds";
+  public static final long CONNECTOR_OPC_UA_TIMEOUT_SECONDS_DEFAULT_VALUE = 10L;
+
   public static final String CONNECTOR_LEADER_CACHE_ENABLE_KEY = "connector.leader-cache.enable";
   public static final String SINK_LEADER_CACHE_ENABLE_KEY = "sink.leader-cache.enable";
   public static final boolean CONNECTOR_LEADER_CACHE_ENABLE_DEFAULT_VALUE = true;

@@ -67,7 +67,6 @@ public class IoTDBDatabaseIT {
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()
-        .setSubscriptionEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
@@ -369,10 +368,13 @@ public class IoTDBDatabaseIT {
               Arrays.asList(
                   "create database information_schema",
                   "drop database information_schema",
-                  "create table information_schema.tableA ()",
+                  // table in information_schema do not have the time column, add time column just
+                  // for simulate the base table
+                  "create table information_schema.tableA (time timestamp time)",
                   "alter table information_schema.tableA add column a id",
                   "alter table information_schema.tableA set properties ttl=default",
-                  "insert into information_schema.tables (database) values('db')",
+                  // given that create table in information_schema is not allowed, skip insert
+                  // "insert into information_schema.tables (database) values('db')",
                   "update information_schema.tables set status='RUNNING'"));
 
       for (final String writeSQL : writeSQLs) {
@@ -688,13 +690,6 @@ public class IoTDBDatabaseIT {
           "plugin_name,plugin_type,class_name,plugin_jar,",
           Collections.singleton(
               "IOTDB-THRIFT-SINK,Builtin,org.apache.iotdb.commons.pipe.agent.plugin.builtin.sink.iotdb.thrift.IoTDBThriftSink,null,"));
-
-      statement.execute("create topic tp with ('start-time'='2025-01-13T10:03:19.229+08:00')");
-      TestUtils.assertResultSetEqual(
-          statement.executeQuery("select * from topics where topic_name = 'tp'"),
-          "topic_name,topic_configs,",
-          Collections.singleton(
-              "tp,{__system.sql-dialect=table, start-time=2025-01-13T10:03:19.229+08:00},"));
 
       TestUtils.assertResultSetEqual(
           statement.executeQuery("select * from views"),

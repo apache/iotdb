@@ -78,28 +78,33 @@ public class Utils {
     System.arraycopy(binary.getValues(), 0, valueBytes, offset, binary.getValues().length);
   }
 
-  public static byte[] serializeTimeValue(
-      TSDataType seriesDataType, long time, TsPrimitiveType value) {
-    byte[] valueBytes = new byte[8 + calcTypeSize(seriesDataType, value)];
+  public static byte[] serializeTimeValueWithNull(
+      TSDataType seriesDataType, long time, boolean isOrderTimeNull, TsPrimitiveType value) {
+
+    byte[] valueBytes = new byte[9 + calcTypeSize(seriesDataType, value)];
     BytesUtils.longToBytes(time, valueBytes, 0);
-    serializeValue(seriesDataType, value, valueBytes, 8);
+    BytesUtils.boolToBytes(isOrderTimeNull, valueBytes, 8);
+    serializeValue(seriesDataType, value, valueBytes, 9);
     return valueBytes;
   }
 
-  public static byte[] serializeTimeValue(
-      TSDataType seriesDataType, long time, boolean valueIsNull, TsPrimitiveType value) {
-    byte[] valueBytes;
-    if (valueIsNull) {
-      valueBytes = new byte[9];
-      BytesUtils.longToBytes(time, valueBytes, 0);
-      BytesUtils.boolToBytes(true, valueBytes, 8);
-      return valueBytes;
-    }
-
-    valueBytes = new byte[9 + calcTypeSize(seriesDataType, value)];
+  public static byte[] serializeTimeValueWithNull(
+      TSDataType seriesDataType,
+      long time,
+      boolean valueIsNull,
+      boolean isOrderTimeNull,
+      TsPrimitiveType value) {
+    // Allocate buffer: fixed header size (10 bytes) + dynamic value size if present
+    byte[] valueBytes =
+        valueIsNull ? new byte[10] : new byte[10 + calcTypeSize(seriesDataType, value)];
     BytesUtils.longToBytes(time, valueBytes, 0);
-    BytesUtils.boolToBytes(false, valueBytes, 8);
-    serializeValue(seriesDataType, value, valueBytes, 9);
+    BytesUtils.boolToBytes(isOrderTimeNull, valueBytes, 8);
+    BytesUtils.boolToBytes(valueIsNull, valueBytes, 9);
+
+    // Serialize body: actual value if not null
+    if (!valueIsNull) {
+      serializeValue(seriesDataType, value, valueBytes, 10);
+    }
     return valueBytes;
   }
 
