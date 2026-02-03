@@ -19,12 +19,14 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.warnings.IoTDBWarning;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
@@ -39,13 +41,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.Ar
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableArgumentAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
-import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
@@ -132,6 +132,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -191,12 +192,12 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WithQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
-import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.cte.CteDataStore;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.udf.api.exception.UDFException;
@@ -211,6 +212,7 @@ import org.apache.iotdb.udf.api.relational.table.specification.ScalarParameterSp
 import org.apache.iotdb.udf.api.relational.table.specification.TableParameterSpecification;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.VerifyException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -221,6 +223,7 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Streams;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.BinaryType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.RowType;
 import org.apache.tsfile.read.common.type.StringType;
 import org.apache.tsfile.read.common.type.TimestampType;
@@ -266,7 +269,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.TsTable.TABLE_ALLOWED_PROPERTIES;
-import static org.apache.iotdb.commons.schema.table.TsTable.TIME_COLUMN_NAME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction.DATE_BIN;
 import static org.apache.iotdb.db.queryengine.execution.warnings.StandardWarningCode.REDUNDANT_ORDER_BY;
 import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AggregationAnalyzer.verifyOrderByAggregations;
@@ -280,6 +282,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.Scope.Bas
 import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.TIMECOL_PARAMETER_NAME;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.MetadataUtil.createQualifiedObjectName;
 import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isTimestampType;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.IrExpressionInterpreter.evaluateConstantExpression;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression.getQualifiedName;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.FULL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join.Type.INNER;
@@ -305,11 +308,11 @@ public class StatementAnalyzer {
 
   private final SessionInfo sessionContext;
 
-  private final TypeManager typeManager = new InternalTypeManager();
-
   private final Metadata metadata;
 
   private final CorrelationSupport correlationSupport;
+
+  private final TypeManager typeManager;
 
   public StatementAnalyzer(
       StatementAnalyzerFactory statementAnalyzerFactory,
@@ -319,7 +322,8 @@ public class StatementAnalyzer {
       WarningCollector warningCollector,
       SessionInfo sessionContext,
       Metadata metadata,
-      CorrelationSupport correlationSupport) {
+      CorrelationSupport correlationSupport,
+      TypeManager typeManager) {
     this.statementAnalyzerFactory = statementAnalyzerFactory;
     this.analysis = analysis;
     this.queryContext = queryContext;
@@ -328,6 +332,7 @@ public class StatementAnalyzer {
     this.sessionContext = sessionContext;
     this.metadata = metadata;
     this.correlationSupport = correlationSupport;
+    this.typeManager = typeManager;
   }
 
   public Scope analyze(Node node) {
@@ -550,9 +555,24 @@ public class StatementAnalyzer {
                       }
                       attributeNames.add((SymbolReference) parsedColumn);
 
-                      final Pair<Type, Expression> expressionPair =
-                          analyzeAndRewriteExpression(
-                              translationMap, translationMap.getScope(), assignment.getValue());
+                      final Pair<Type, Expression> expressionPair;
+                      try {
+                        expressionPair =
+                            analyzeAndRewriteExpression(
+                                translationMap, translationMap.getScope(), assignment.getValue());
+                      } catch (final Exception e) {
+                        if (e.getMessage().contains("cannot be resolved")) {
+                          throw new SemanticException(
+                              new IoTDBException(
+                                  e.getCause()
+                                      .getMessage()
+                                      .replace(
+                                          "cannot be resolved",
+                                          "is not an attribute or tag column"),
+                                  TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+                        }
+                        throw e;
+                      }
                       if (!expressionPair.getLeft().equals(StringType.STRING)
                           && !expressionPair.getLeft().equals(BinaryType.TEXT)
                           && !expressionPair.getLeft().equals(UnknownType.UNKNOWN)) {
@@ -663,10 +683,23 @@ public class StatementAnalyzer {
               .collect(toImmutableList());
       analysis.registerTable(insert.getTable(), tableSchema, targetTable);
 
-      LinkedHashSet<String> tableColumns =
-          columns.stream()
-              .map(ColumnSchema::getName)
-              .collect(Collectors.toCollection(LinkedHashSet::new));
+      LinkedHashSet<String> tableColumns = new LinkedHashSet<>();
+      String actualTimeColumnName = null;
+      for (ColumnSchema column : columns) {
+        tableColumns.add(column.getName().toLowerCase(ENGLISH));
+
+        if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
+          if (actualTimeColumnName != null) {
+            throw new SemanticException(
+                "Multiple columns found with TIME category in table schema");
+          }
+          actualTimeColumnName = column.getName();
+        }
+      }
+      if (actualTimeColumnName == null) {
+        throw new SemanticException("Target table schema misses a TIME category column");
+      }
+
       LinkedHashSet<String> insertColumns;
       if (insert.getColumns().isPresent()) {
         insertColumns =
@@ -691,7 +724,7 @@ public class StatementAnalyzer {
       }
 
       // insert columns should contain time
-      if (!insertColumns.contains(TIME_COLUMN_NAME)) {
+      if (!insertColumns.contains(actualTimeColumnName)) {
         throw new SemanticException("time column can not be null");
       }
       // insert columns should contain at least one field column
@@ -744,9 +777,7 @@ public class StatementAnalyzer {
 
       final MPPQueryContext context = insert.getContext();
       InsertBaseStatement innerInsert = insert.getInnerTreeStatement();
-
-      innerInsert.semanticCheck();
-      innerInsert.toLowerCase();
+      innerInsert.toLowerCaseForDevicePath();
 
       innerInsert =
           AnalyzeUtils.analyzeInsert(
@@ -814,13 +845,15 @@ public class StatementAnalyzer {
 
     @Override
     protected Scope visitExplain(Explain node, Optional<Scope> context) {
+      queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
     }
 
     @Override
     protected Scope visitExplainAnalyze(ExplainAnalyze node, Optional<Scope> context) {
-      queryContext.setExplainAnalyze(true);
+      queryContext.setExplainType(ExplainType.EXPLAIN_ANALYZE);
+      queryContext.setVerbose(node.isVerbose());
       return visitQuery((Query) node.getStatement(), context);
     }
 
@@ -874,6 +907,7 @@ public class StatementAnalyzer {
           Scope.builder()
               .withParent(withScope)
               .withRelationType(RelationId.of(node), queryBodyScope.getRelationType())
+              .withTables(queryBodyScope.getTables())
               .build();
 
       analysis.setScope(node, queryScope);
@@ -899,6 +933,7 @@ public class StatementAnalyzer {
 
       // analyze WITH clause
       With with = node.getWith().get();
+      analysis.setWith(with);
       Scope.Builder withScopeBuilder = scopeBuilder(scope);
 
       for (WithQuery withQuery : with.getQueries()) {
@@ -915,7 +950,7 @@ public class StatementAnalyzer {
 
         if (!isRecursive) {
           Query query = withQuery.getQuery();
-          analyze(query, withScopeBuilder.build());
+          Scope queryScope = analyze(query, withScopeBuilder.build());
 
           // check if all or none of the columns are explicitly alias
           if (withQuery.getColumnNames().isPresent()) {
@@ -925,6 +960,7 @@ public class StatementAnalyzer {
           }
 
           withScopeBuilder.withNamedQuery(name, withQuery);
+          queryContext.addSubQueryTables(withQuery.getQuery(), queryScope.getTables());
         }
       }
       Scope withScope = withScopeBuilder.build();
@@ -1841,12 +1877,12 @@ public class StatementAnalyzer {
               (childrenResultList.get(i).size() == maxSize) ? baseIndex : new AtomicInteger(0);
         }
         for (int i = 0; i < maxSize; i++) {
-          ImmutableList.Builder<Expression> operandListBuilder = new ImmutableList.Builder<>();
+          List<Expression> operandListBuilder = new ArrayList<>(childrenIndexes.length);
           for (int j = 0; j < childrenIndexes.length; j++) {
             int operandIndexInResult = childrenIndexes[j].get();
             operandListBuilder.add(childrenResultList.get(j).get(operandIndexInResult));
           }
-          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder.build()));
+          resultBuilder.add(new FunctionCall(node.getName(), operandListBuilder));
           baseIndex.getAndIncrement();
         }
         return resultBuilder.build();
@@ -3044,6 +3080,7 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitTable(Table table, Optional<Scope> scope) {
       if (!table.getName().getPrefix().isPresent()) {
+        scope.ifPresent(s -> s.addTable(table));
         // is this a reference to a WITH query?
         Optional<WithQuery> withQuery =
             createScope(scope).getNamedQuery(table.getName().getSuffix());
@@ -3075,7 +3112,36 @@ public class StatementAnalyzer {
       analysis.setRelationName(
           table, QualifiedName.of(name.getDatabaseName(), name.getObjectName()));
 
-      Optional<TableSchema> tableSchema = metadata.getTableSchema(sessionContext, name);
+      // check if table schema is found in CTE data stores
+      CteDataStore dataStore = queryContext.getCteDataStore(table);
+      Optional<TableSchema> tableSchema = Optional.empty();
+      if (dataStore != null) {
+        tableSchema = Optional.of(dataStore.getTableSchema());
+        List<Integer> columnIndex2TsBlockColumnIndexList =
+            dataStore.getColumnIndex2TsBlockColumnIndexList();
+        if (columnIndex2TsBlockColumnIndexList != null
+            && !columnIndex2TsBlockColumnIndexList.isEmpty()) {
+          // Check if the list is completely sequential (0, 1, 2, ...)
+          boolean isSequential = true;
+          for (int i = 0; i < columnIndex2TsBlockColumnIndexList.size(); i++) {
+            if (columnIndex2TsBlockColumnIndexList.get(i) != i) {
+              isSequential = false;
+              break;
+            }
+          }
+
+          // Generate new TableSchema with reordered columns only if not sequential
+          if (!isSequential) {
+            tableSchema =
+                reorderTableSchemaColumns(tableSchema.get(), columnIndex2TsBlockColumnIndexList);
+          }
+        }
+      }
+      // If table schema is not found, check if it is in metadata
+      if (!tableSchema.isPresent()) {
+        tableSchema = metadata.getTableSchema(sessionContext, name);
+      }
+
       // This can only be a table
       if (!tableSchema.isPresent()) {
         TableMetadataImpl.throwTableNotExistsException(
@@ -3094,9 +3160,21 @@ public class StatementAnalyzer {
       return createAndAssignScope(table, scope, relationType);
     }
 
+    private Optional<TableSchema> reorderTableSchemaColumns(
+        TableSchema tableSchema, List<Integer> columnIndex2TsBlockColumnIndexList) {
+      List<ColumnSchema> columnSchemas = tableSchema.getColumns();
+      final List<ColumnSchema> columnSchemaList =
+          columnIndex2TsBlockColumnIndexList.stream()
+              .map(columnSchemas::get)
+              .collect(Collectors.toList());
+
+      return Optional.of(new TableSchema(tableSchema.getTableName(), columnSchemaList));
+    }
+
     private Scope createScopeForCommonTableExpression(
         Table table, Optional<Scope> scope, WithQuery withQuery) {
       Query query = withQuery.getQuery();
+      query.setMaterialized(withQuery.isMaterialized());
       analysis.registerNamedQuery(table, query);
 
       // re-alias the fields with the name assigned to the query in the WITH declaration
@@ -3564,8 +3642,23 @@ public class StatementAnalyzer {
 
       joinConditionCheck(criteria);
 
+      // Remember original tables before processing left
+      List<Identifier> originalTables = new ArrayList<>();
+      scope.ifPresent(s -> originalTables.addAll(s.getTables()));
+
       Scope left = process(node.getLeft(), scope);
+      // Restore tables for right processing
+      scope.ifPresent(s -> s.setTables(originalTables));
       Scope right = process(node.getRight(), scope);
+
+      // Add back tables added during left processing to preserve them in the scope
+      if (left != null) {
+        List<Identifier> leftAddedTables =
+            left.getTables().stream()
+                .filter(table -> !originalTables.contains(table))
+                .collect(Collectors.toList());
+        scope.ifPresent(s -> s.getTables().addAll(leftAddedTables));
+      }
 
       if (criteria instanceof JoinUsing) {
         return analyzeJoinUsing(node, ((JoinUsing) criteria).getColumns(), scope, left, right);
@@ -3965,15 +4058,12 @@ public class StatementAnalyzer {
       if (node.getRowCount() instanceof LongLiteral) {
         rowCount = ((LongLiteral) node.getRowCount()).getParsedValue();
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected OFFSET rowCount: " +
-        // node.getRowCount().getClass().getSimpleName());
-        throw new SemanticException(
+        checkState(
+            node.getRowCount() instanceof Parameter,
             "unexpected OFFSET rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        OptionalLong providedValue =
-        //            analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
-        //        rowCount = providedValue.orElse(0);
+        OptionalLong providedValue =
+            analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "OFFSET");
+        rowCount = providedValue.orElse(0);
       }
       if (rowCount < 0) {
         throw new SemanticException(
@@ -4034,14 +4124,10 @@ public class StatementAnalyzer {
       } else if (node.getRowCount() instanceof LongLiteral) {
         rowCount = OptionalLong.of(((LongLiteral) node.getRowCount()).getParsedValue());
       } else {
-        //        checkState(
-        //            node.getRowCount() instanceof Parameter,
-        //            "unexpected LIMIT rowCount: " +
-        // node.getRowCount().getClass().getSimpleName());
-        throw new SemanticException(
+        checkState(
+            node.getRowCount() instanceof Parameter,
             "unexpected LIMIT rowCount: " + node.getRowCount().getClass().getSimpleName());
-        //        rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope,
-        // "LIMIT");
+        rowCount = analyzeParameterAsRowCount((Parameter) node.getRowCount(), scope, "LIMIT");
       }
       rowCount.ifPresent(
           count -> {
@@ -4057,32 +4143,27 @@ public class StatementAnalyzer {
       return false;
     }
 
-    //    private OptionalLong analyzeParameterAsRowCount(
-    //        Parameter parameter, Scope scope, String context) {
-    //      // validate parameter index
-    //      analyzeExpression(parameter, scope);
-    //      Expression providedValue = analysis.getParameters().get(NodeRef.of(parameter));
-    //      Object value;
-    //      try {
-    //        value =
-    //            evaluateConstantExpression(
-    //                providedValue,
-    //                BIGINT,
-    //                plannerContext,
-    //                session,
-    //                accessControl,
-    //                analysis.getParameters());
-    //      } catch (VerifyException e) {
-    //        throw new SemanticException(
-    //            String.format("Non constant parameter value for %s: %s", context, providedValue));
-    //      }
-    //      if (value == null) {
-    //        throw new SemanticException(
-    //            String.format("Parameter value provided for %s is NULL: %s", context,
-    // providedValue));
-    //      }
-    //      return OptionalLong.of((long) value);
-    //    }
+    private OptionalLong analyzeParameterAsRowCount(
+        Parameter parameter, Scope scope, String context) {
+      // validate parameter index
+      analyzeExpression(parameter, scope);
+      Expression providedValue = analysis.getParameters().get(NodeRef.of(parameter));
+      Object value;
+      try {
+        value =
+            evaluateConstantExpression(
+                providedValue, new PlannerContext(metadata, typeManager), sessionContext);
+
+      } catch (VerifyException e) {
+        throw new SemanticException(
+            String.format("Non constant parameter value for %s: %s", context, providedValue));
+      }
+      if (value == null) {
+        throw new SemanticException(
+            String.format("Parameter value provided for %s is NULL: %s", context, providedValue));
+      }
+      return OptionalLong.of((long) value);
+    }
 
     private void analyzeAggregations(
         QuerySpecification node,
@@ -4428,8 +4509,10 @@ public class StatementAnalyzer {
 
     private Scope createAndAssignScope(
         Node node, Optional<Scope> parentScope, RelationType relationType) {
-      Scope scope =
-          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType).build();
+      Scope.Builder scopeBuilder =
+          scopeBuilder(parentScope).withRelationType(RelationId.of(node), relationType);
+      parentScope.ifPresent(scope -> scopeBuilder.withTables(scope.getTables()));
+      Scope scope = scopeBuilder.build();
 
       analysis.setScope(node, scope);
       return scope;
@@ -4545,11 +4628,24 @@ public class StatementAnalyzer {
 
         final TableSchema originalSchema = tableSchema.get();
         final ImmutableList.Builder<Field> fields = ImmutableList.builder();
+        // We only leave attribute & tag here because the others are not allowed in device related
+        // SQLs
         fields.addAll(
             analyzeTableOutputFields(
                 node.getTable(),
                 name,
-                new TableSchema(originalSchema.getTableName(), originalSchema.getColumns())));
+                new TableSchema(
+                    originalSchema.getTableName(),
+                    originalSchema.getColumns().stream()
+                        .filter(
+                            columnSchema ->
+                                columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.ATTRIBUTE)
+                                    || columnSchema
+                                        .getColumnCategory()
+                                        .equals(TsTableColumnCategory.TAG))
+                        .collect(Collectors.toList()))));
         final List<Field> fieldList = fields.build();
         final Scope scope = createAndAssignScope(node, context, fieldList);
         translationMap =
@@ -4563,7 +4659,19 @@ public class StatementAnalyzer {
                 new PlannerContext(metadata, null));
 
         if (node.getWhere().isPresent()) {
-          analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          try {
+            analyzeWhere(node, translationMap.getScope(), node.getWhere().get());
+          } catch (final Throwable e) {
+            if (e instanceof SemanticException && e.getMessage().contains("cannot be resolved")) {
+              throw new SemanticException(
+                  new IoTDBException(
+                      e.getCause()
+                          .getMessage()
+                          .replace("cannot be resolved", "is not an attribute or tag column"),
+                      TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
+            }
+            throw e;
+          }
           node.setWhere(translationMap.rewrite(analysis.getWhere(node)));
         }
       }
@@ -4652,11 +4760,6 @@ public class StatementAnalyzer {
     public Scope visitTableFunctionInvocation(TableFunctionInvocation node, Optional<Scope> scope) {
       String functionName = node.getName().toString();
       TableFunction function = metadata.getTableFunction(functionName);
-
-      // set model fetcher for ForecastTableFunction
-      if (function instanceof ForecastTableFunction) {
-        ((ForecastTableFunction) function).setModelFetcher(metadata.getModelFetcher());
-      }
 
       Node errorLocation = node;
       if (!node.getArguments().isEmpty()) {
@@ -4753,11 +4856,15 @@ public class StatementAnalyzer {
           i ->
               i.getFields().stream()
                   .map(
-                      f ->
-                          Field.newUnqualified(
-                              f.getName(),
-                              UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType()),
-                              TsTableColumnCategory.FIELD))
+                      f -> {
+                        Type type =
+                            UDFDataTypeTransformer.transformUDFDataTypeToReadType(f.getType());
+                        if (type == ObjectType.OBJECT) {
+                          throw new SemanticException(
+                              "OBJECT type is not supported as return type");
+                        }
+                        return Field.newUnqualified(f.getName(), type, TsTableColumnCategory.FIELD);
+                      })
                   .forEach(fields::add));
 
       // next, columns derived from table arguments, in order of argument declarations
@@ -5146,7 +5253,7 @@ public class StatementAnalyzer {
         Expression expression, ScalarParameterSpecification argumentSpecification) {
       // currently, only constant arguments are supported
       Object constantValue =
-          IrExpressionInterpreter.evaluateConstantExpression(
+          evaluateConstantExpression(
               expression, new PlannerContext(metadata, typeManager), sessionContext);
       if (!argumentSpecification.getType().checkObjectType(constantValue)) {
         if ((argumentSpecification.getType().equals(org.apache.iotdb.udf.api.type.Type.STRING)

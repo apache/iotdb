@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.impl;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.IDualKeyCacheStats;
 
@@ -143,26 +144,7 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
   @Override
   public void update(
       final FK firstKey, final Predicate<SK> secondKeyChecker, final ToIntFunction<V> updater) {
-    final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-    if (Objects.nonNull(entryGroup)) {
-      entryGroup
-          .getAllCacheEntries()
-          .forEachRemaining(
-              entry -> {
-                if (!secondKeyChecker.test(entry.getKey())) {
-                  return;
-                }
-                entryGroup.computeCacheEntry(
-                    entry.getKey(),
-                    memory ->
-                        (secondKey, cacheEntry) -> {
-                          if (Objects.nonNull(cacheEntry)) {
-                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                          }
-                          return cacheEntry;
-                        });
-              });
-    }
+    clearSecondEntry(firstKeyMap.get(firstKey), secondKeyChecker, updater);
     mayEvict();
   }
 
@@ -175,36 +157,43 @@ class DualKeyCacheImpl<FK, SK, V, T extends ICacheEntry<SK, V>>
       if (!firstKeyChecker.test(firstKey)) {
         continue;
       }
-      final ICacheEntryGroup<FK, SK, V, T> entryGroup = firstKeyMap.get(firstKey);
-      if (Objects.nonNull(entryGroup)) {
-        entryGroup
-            .getAllCacheEntries()
-            .forEachRemaining(
-                entry -> {
-                  if (!secondKeyChecker.test(entry.getKey())) {
-                    return;
-                  }
-                  entryGroup.computeCacheEntry(
-                      entry.getKey(),
-                      memory ->
-                          (secondKey, cacheEntry) -> {
-                            memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
-                            return cacheEntry;
-                          });
-                });
-      }
-      mayEvict();
+      clearSecondEntry(firstKeyMap.get(firstKey), secondKeyChecker, updater);
+    }
+    mayEvict();
+  }
+
+  public void clearSecondEntry(
+      final ICacheEntryGroup<FK, SK, V, T> entryGroup,
+      final Predicate<SK> secondKeyChecker,
+      final ToIntFunction<V> updater) {
+    if (Objects.nonNull(entryGroup)) {
+      entryGroup
+          .getAllCacheEntries()
+          .forEachRemaining(
+              entry -> {
+                if (!secondKeyChecker.test(entry.getKey())) {
+                  return;
+                }
+                entryGroup.computeCacheEntryIfPresent(
+                    entry.getKey(),
+                    memory ->
+                        (secondKey, cacheEntry) -> {
+                          memory.getAndAdd(updater.applyAsInt(cacheEntry.getValue()));
+                          return cacheEntry;
+                        });
+              });
     }
   }
 
   private void mayEvict() {
     long exceedMemory;
+    final int threshold =
+        IoTDBDescriptor.getInstance().getConfig().getCacheEvictionMemoryComputationThreshold();
     while ((exceedMemory = cacheStats.getExceedMemory()) > 0) {
       // Not compute each time to save time when FK is too many
-      // The hard-coded size is 100
       do {
         exceedMemory -= evictOneCacheEntry();
-      } while (exceedMemory > 0 && firstKeyMap.size() > 100);
+      } while (exceedMemory > 0 && firstKeyMap.size() > threshold);
     }
   }
 

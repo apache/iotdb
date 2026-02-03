@@ -28,9 +28,9 @@ import org.apache.iotdb.it.env.cluster.config.MppJVMConfig;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.file.PathUtils;
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.file.PathUtils;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -572,7 +572,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       Thread.currentThread().interrupt();
       logger.error("Waiting node to shutdown error.", e);
     }
-    logger.info("In test {} {} started forcibly.", getTestLogDirName(), getId());
+    logger.info("In test {} {} stopped forcibly.", getTestLogDirName(), getId());
   }
 
   @Override

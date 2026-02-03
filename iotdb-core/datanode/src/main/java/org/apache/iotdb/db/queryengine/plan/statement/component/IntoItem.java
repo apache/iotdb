@@ -25,9 +25,9 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.StringUtils.SPACE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.DOUBLE_COLONS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.LEVELED_PATH_TEMPLATE_PATTERN;
+import static org.apache.tsfile.external.commons.lang3.StringUtils.SPACE;
 
 public class IntoItem extends StatementNode {
 

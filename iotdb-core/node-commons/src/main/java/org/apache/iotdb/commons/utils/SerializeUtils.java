@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.enums.CompressionType;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.common.BatchData.BatchDataType;
@@ -44,6 +46,22 @@ public class SerializeUtils {
 
   private SerializeUtils() {
     // util class
+  }
+
+  public static byte serializeNullable(final TSEncoding encoding) {
+    return encoding == null ? -1 : encoding.serialize();
+  }
+
+  public static TSEncoding deserializeEncodingNullable(final byte encoding) {
+    return encoding == -1 ? null : TSEncoding.deserialize(encoding);
+  }
+
+  public static byte serializeNullable(final CompressionType compressor) {
+    return compressor == null ? -1 : compressor.serialize();
+  }
+
+  public static CompressionType deserializeCompressorNullable(final byte compressor) {
+    return compressor == -1 ? null : CompressionType.deserialize(compressor);
   }
 
   public static void serialize(String str, DataOutputStream dataOutputStream) {
@@ -156,6 +174,7 @@ public class SerializeUtils {
         }
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         for (int i = 0; i < length; i++) {
@@ -200,6 +219,7 @@ public class SerializeUtils {
                   values[j] = new TsPrimitiveType.TsFloat(buffer.getFloat());
                   break;
                 case BLOB:
+                case OBJECT:
                 case STRING:
                 case TEXT:
                   int len = buffer.getInt();
@@ -297,6 +317,7 @@ public class SerializeUtils {
       dataOutputStream.writeInt(timeValuePairs.size());
       switch (timeValuePairs.get(0).getValue().getDataType()) {
         case BLOB:
+        case OBJECT:
         case STRING:
         case TEXT:
           serializeTextTVPairs(timeValuePairs, dataOutputStream);
@@ -337,6 +358,7 @@ public class SerializeUtils {
       switch (dataType) {
         case STRING:
         case BLOB:
+        case OBJECT:
         case TEXT:
           dataOutputStream.writeLong(timeValuePair.getTimestamp());
           if (timeValuePair.getTimestamp() != Long.MIN_VALUE) {
@@ -488,6 +510,7 @@ public class SerializeUtils {
         deserializeBooleanTVPairs(buffer, ret, size, dataType);
         break;
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         deserializeTextTVPairs(buffer, ret, size, dataType);
@@ -521,6 +544,7 @@ public class SerializeUtils {
       case BOOLEAN:
         return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, buffer.get() == 1));
       case BLOB:
+      case OBJECT:
       case STRING:
       case TEXT:
         int bytesLen = buffer.getInt();

@@ -207,6 +207,7 @@ public class TabletDecoder {
         break;
       case UNKNOWN:
       case VECTOR:
+      default:
         throw new IllegalArgumentException("Unsupported data type: " + dataType);
     }
     return column;

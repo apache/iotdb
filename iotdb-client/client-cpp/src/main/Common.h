@@ -95,7 +95,8 @@ enum TSDataType {
     TIMESTAMP = (char)8,
     DATE = (char)9,
     BLOB = (char)10,
-    STRING = (char)11
+    STRING = (char)11,
+    OBJECT = (char)12
 };
 }
 

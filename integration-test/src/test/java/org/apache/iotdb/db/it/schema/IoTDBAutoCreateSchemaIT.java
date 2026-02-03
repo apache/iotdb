@@ -164,12 +164,12 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
    */
   @Test
   public void testInsertAutoCreate2() throws Exception {
-    String storageGroup = "root.sg2.a.b.c";
+    String database = "root.sg2.a.b.c";
     String timeSeriesPrefix = "root.sg2.a.b";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
+      statement.execute(String.format("CREATE DATABASE %s", database));
       try {
         statement.execute(
             String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
@@ -177,18 +177,18 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
       }
 
       // ensure that current database in cache is right.
-      InsertAutoCreate2Tool(statement, storageGroup, timeSeriesPrefix);
+      InsertAutoCreate2Tool(statement, database, timeSeriesPrefix);
     }
     // todo restart test
     //    EnvironmentUtils.stopDaemon();
     //    setUp();
     //
     //    // ensure that database in cache is right after recovering.
-    //    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+    //    InsertAutoCreate2Tool(database, timeSeriesPrefix);
   }
 
-  private void InsertAutoCreate2Tool(
-      Statement statement, String storageGroup, String timeSeriesPrefix) throws SQLException {
+  private void InsertAutoCreate2Tool(Statement statement, String database, String timeSeriesPrefix)
+      throws SQLException {
     Set<String> resultList = new HashSet<>();
     try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
@@ -204,7 +204,7 @@ public class IoTDBAutoCreateSchemaIT extends AbstractSchemaIT {
         resultList.add(resultSet.getString(ColumnHeaderConstant.DATABASE));
       }
     }
-    Assert.assertTrue(resultList.contains(storageGroup));
+    Assert.assertTrue(resultList.contains(database));
   }
 
   /**

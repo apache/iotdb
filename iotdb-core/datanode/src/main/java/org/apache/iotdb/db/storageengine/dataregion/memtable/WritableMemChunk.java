@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
@@ -35,6 +36,7 @@ import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
@@ -48,10 +50,9 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 
@@ -166,6 +167,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) valueList;
         putBinaries(times, binaryValues, bitMap, start, end);
         break;
@@ -574,41 +576,64 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     return sortedList;
   }
 
-  private void filterDeletedTimestamp(
-      TVList tvlist, List<TimeRange> deletionList, List<Long> timestampList) {
-    long lastTime = Long.MIN_VALUE;
-    int[] deletionCursor = {0};
-    int rowCount = tvlist.rowCount();
-    for (int i = 0; i < rowCount; i++) {
-      if (tvlist.getBitMap() != null && tvlist.isNullValue(tvlist.getValueIndex(i))) {
-        continue;
-      }
-      long curTime = tvlist.getTime(i);
-      if (deletionList != null
-          && ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
-        continue;
-      }
-
-      if (i == rowCount - 1 || curTime != lastTime) {
-        timestampList.add(curTime);
-      }
-      lastTime = curTime;
+  public Optional<Long> getAnySatisfiedTimestamp(
+      List<TimeRange> deletionList, Filter globalTimeFilter) {
+    Optional<Long> anySatisfiedTimestamp =
+        getAnySatisfiedTimestamp(list, deletionList, globalTimeFilter);
+    if (anySatisfiedTimestamp.isPresent()) {
+      return anySatisfiedTimestamp;
     }
+    for (TVList tvList : sortedList) {
+      anySatisfiedTimestamp = getAnySatisfiedTimestamp(tvList, deletionList, globalTimeFilter);
+      if (anySatisfiedTimestamp.isPresent()) {
+        break;
+      }
+    }
+    return anySatisfiedTimestamp;
   }
 
-  public long[] getFilteredTimestamp(List<TimeRange> deletionList) {
-    List<Long> timestampList = new ArrayList<>();
-    filterDeletedTimestamp(list, deletionList, timestampList);
-    for (TVList tvList : sortedList) {
-      filterDeletedTimestamp(tvList, deletionList, timestampList);
+  private Optional<Long> getAnySatisfiedTimestamp(
+      TVList tvlist, List<TimeRange> deletionList, Filter globalTimeFilter) {
+    int[] deletionCursor = {0};
+    int rowCount = tvlist.rowCount();
+    if (globalTimeFilter != null
+        && !globalTimeFilter.satisfyStartEndTime(tvlist.getMinTime(), tvlist.getMaxTime())) {
+      return Optional.empty();
     }
 
-    // remove duplicated time
-    List<Long> distinctTimestamps = timestampList.stream().distinct().collect(Collectors.toList());
-    // sort timestamps
-    long[] filteredTimestamps = distinctTimestamps.stream().mapToLong(Long::longValue).toArray();
-    Arrays.sort(filteredTimestamps);
-    return filteredTimestamps;
+    List<long[]> timestampsList = tvlist.getTimestamps();
+    List<BitMap> bitMaps = tvlist.getBitMap();
+    List<int[]> indicesList = tvlist.getIndices();
+    for (int i = 0; i < timestampsList.size(); i++) {
+      long[] timestamps = timestampsList.get(i);
+      BitMap bitMap = bitMaps == null ? null : bitMaps.get(i);
+      int[] indices = indicesList == null ? null : indicesList.get(i);
+      int limit =
+          (i == timestampsList.size() - 1)
+              ? rowCount - i * PrimitiveArrayManager.ARRAY_SIZE
+              : PrimitiveArrayManager.ARRAY_SIZE;
+      for (int j = 0; j < limit; j++) {
+        if (bitMap != null
+            && (indices == null ? bitMap.isMarked(j) : tvlist.isNullValue(indices[j]))) {
+          continue;
+        }
+        long curTime = timestamps[j];
+        if (deletionList != null && !deletionList.isEmpty()) {
+          if (!tvlist.isSorted()) {
+            deletionCursor[0] = 0;
+          }
+          if (ModificationUtils.isPointDeleted(curTime, deletionList, deletionCursor)) {
+            continue;
+          }
+        }
+        if (globalTimeFilter != null && !globalTimeFilter.satisfy(curTime, null)) {
+          continue;
+        }
+
+        return Optional.of(curTime);
+      }
+    }
+    return Optional.empty();
   }
 
   @Override

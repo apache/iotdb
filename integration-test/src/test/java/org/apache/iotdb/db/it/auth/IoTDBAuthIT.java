@@ -54,6 +54,7 @@ import java.util.concurrent.Callable;
 import static org.apache.iotdb.commons.auth.entity.User.INTERNAL_USER_END_ID;
 import static org.apache.iotdb.db.audit.DNAuditLogger.PREFIX_PASSWORD_HISTORY;
 import static org.apache.iotdb.db.it.utils.TestUtils.createUser;
+import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQuery;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -980,6 +981,8 @@ public class IoTDBAuthIT {
     adminStmt.execute("CREATE USER user1 'password123456'");
     adminStmt.execute("CREATE USER user2 'password123456'");
     adminStmt.execute("CREATE USER user3 'password123456'");
+    adminStmt.execute("CREATE USER user4 'password123456'");
+    adminStmt.execute("CREATE USER user5 'password123456'");
     adminStmt.execute("CREATE ROLE testRole");
     adminStmt.execute("GRANT system ON root.** TO ROLE testRole WITH GRANT OPTION");
     adminStmt.execute("GRANT READ_DATA ON root.t1.** TO ROLE testRole");
@@ -1089,6 +1092,18 @@ public class IoTDBAuthIT {
         Assert.assertThrows(
             SQLException.class,
             () -> userStmt.execute("GRANT READ_DATA ON root.t1.t2.t3 TO USER user1"));
+      } finally {
+        userStmt.close();
+      }
+    }
+
+    try (Connection userCon = EnvFactory.getEnv().getConnection("user4", "password123456");
+        Statement userStmt = userCon.createStatement()) {
+      adminStmt.execute("GRANT SYSTEM ON root.** TO USER user4");
+      try {
+        Assert.assertThrows(
+            SQLException.class, () -> userStmt.execute("GRANT SYSTEM ON root.** TO USER user5"));
+        adminStmt.execute("GRANT SYSTEM ON root.** TO USER user5");
       } finally {
         userStmt.close();
       }
@@ -1381,6 +1396,7 @@ public class IoTDBAuthIT {
           "tempuser,",
         };
     resultSetEqualTest("show current_user", expectedHeader, retArray, "tempuser", "temppw123456");
+    executeNonQuery("SHOW AVAILABLE URLS", "tempuser", "temppw123456");
   }
 
   @Ignore
@@ -1672,6 +1688,44 @@ public class IoTDBAuthIT {
         userStatement.execute("REVOKE ROLE common_role FROM common_user");
         userStatement.execute("DROP USER common_user2");
         userStatement.execute("DROP ROLE common_role");
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testAudit() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.execute("grant read_data on root.__audit to user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from user user2");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("grant read_data on root.__audit to role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
+      }
+      try {
+        statement.execute("revoke read_data on root.__audit from role role1");
+      } catch (SQLException e) {
+        assertEquals(
+            "803: Access Denied: Cannot grant or revoke any privileges to root.__audit",
+            e.getMessage());
       }
     } catch (SQLException e) {
       e.printStackTrace();

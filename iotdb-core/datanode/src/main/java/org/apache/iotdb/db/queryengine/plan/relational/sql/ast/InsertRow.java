@@ -21,11 +21,15 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
+
+import org.apache.tsfile.enums.TSDataType;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class InsertRow extends WrappedInsertStatement {
 
@@ -56,7 +60,12 @@ public class InsertRow extends WrappedInsertStatement {
   @Override
   public List<Object[]> getDeviceIdList() {
     final InsertRowStatement insertRowStatement = getInnerTreeStatement();
-    Object[] segments = insertRowStatement.getTableDeviceID().getSegments();
+    final Object[] segments = insertRowStatement.getTableDeviceID().getSegments();
+    if (Objects.nonNull(getInnerTreeStatement().getMeasurementSchemas())
+        && Arrays.stream(getInnerTreeStatement().getMeasurementSchemas())
+            .anyMatch(schema -> Objects.nonNull(schema) && schema.getType() == TSDataType.OBJECT)) {
+      TableDeviceSchemaValidator.checkObject4DeviceId(segments);
+    }
     return Collections.singletonList(Arrays.copyOfRange(segments, 1, segments.length));
   }
 

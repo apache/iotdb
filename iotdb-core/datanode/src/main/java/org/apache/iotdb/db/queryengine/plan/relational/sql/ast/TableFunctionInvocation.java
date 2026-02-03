@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -26,6 +28,9 @@ import java.util.stream.Collectors;
 import static java.util.Objects.requireNonNull;
 
 public class TableFunctionInvocation extends Relation {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableFunctionInvocation.class);
+
   private final QualifiedName name;
   private final List<TableFunctionArgument> arguments;
 
@@ -88,5 +93,14 @@ public class TableFunctionInvocation extends Relation {
 
     TableFunctionInvocation other = (TableFunctionInvocation) o;
     return Objects.equals(name, other.name);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(arguments);
+    return size;
   }
 }

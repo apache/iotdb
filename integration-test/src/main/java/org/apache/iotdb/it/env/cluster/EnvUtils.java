@@ -21,7 +21,7 @@ package org.apache.iotdb.it.env.cluster;
 
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.apache.tsfile.utils.Pair;
 
 import java.io.*;

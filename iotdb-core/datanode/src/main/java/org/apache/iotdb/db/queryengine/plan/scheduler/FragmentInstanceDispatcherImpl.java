@@ -58,8 +58,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
@@ -328,7 +328,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     if (dispatchFailures.isEmpty()) {
       return immediateFuture(new FragInstanceDispatchResult(true));
     }
-    if (instances.size() == 1) {
+    if (instances.size() == 1 || dispatchFailures.size() == 1) {
       return immediateFuture(new FragInstanceDispatchResult(dispatchFailures.get(0)));
     } else {
       List<TSStatus> failureStatusList = new ArrayList<>();

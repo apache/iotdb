@@ -176,6 +176,35 @@ public class TTLCache {
   }
 
   /**
+   * Get the maximum ttl of the corresponding database level.
+   *
+   * @param database the path of the database.
+   * @return the maximum ttl of the corresponding database level.
+   * @throws IllegalPathException if the database path is illegal.
+   */
+  public long getDatabaseLevelTTL(String database) throws IllegalPathException {
+    long curTTL = NULL_TTL;
+    // Get global TTL root.** if exists
+    CacheNode curNode = ttlCacheTree.searchChild(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
+      curTTL = curNode.ttl;
+    }
+    // Compare database TTL if exists
+    curNode = ttlCacheTree.searchChild(database);
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
+      curTTL = Math.max(curTTL, curNode.ttl);
+    }
+    // Compare database.** TTL if exists
+    curNode =
+        ttlCacheTree.searchChild(
+            database + IoTDBConstant.PATH_SEPARATOR + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    if (curNode != null && curNode.ttl < Long.MAX_VALUE) {
+      curTTL = Math.max(curTTL, curNode.ttl);
+    }
+    return curTTL;
+  }
+
+  /**
    * Get the maximum ttl of the subtree of the corresponding database.
    *
    * @param database the path of the database.

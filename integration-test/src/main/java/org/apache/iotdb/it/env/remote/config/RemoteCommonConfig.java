@@ -424,11 +424,6 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    return this;
-  }
-
-  @Override
   public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
     return this;
   }
@@ -475,6 +470,21 @@ public class RemoteCommonConfig implements CommonConfig {
 
   @Override
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
     return this;
   }
 }

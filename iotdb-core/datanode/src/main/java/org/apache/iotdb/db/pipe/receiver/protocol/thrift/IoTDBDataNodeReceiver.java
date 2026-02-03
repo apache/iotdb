@@ -21,14 +21,15 @@ package org.apache.iotdb.db.pipe.receiver.protocol.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
-import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBFileReceiver;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -98,7 +99,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.storageengine.load.active.ActiveLoadUtil;
+import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.db.tools.schema.SRStatementGenerator;
@@ -134,8 +136,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.exception.metadata.DatabaseNotSetException.DATABASE_NOT_SET;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 
 public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
@@ -162,8 +164,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   private final PipeTreeStatementDataTypeConvertExecutionVisitor
       treeStatementDataTypeConvertExecutionVisitor =
           new PipeTreeStatementDataTypeConvertExecutionVisitor(this::executeStatementForTreeModel);
-  private final PipeTreeStatementToBatchVisitor batchVisitor =
-      new PipeTreeStatementToBatchVisitor();
+  public final PipeTreeStatementToBatchVisitor batchVisitor = new PipeTreeStatementToBatchVisitor();
 
   // Used for data transfer: confignode (cluster A) -> datanode (cluster B) -> confignode (cluster
   // B).
@@ -568,7 +569,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileAsync(final String dataBaseName, final List<String> absolutePaths)
       throws IOException {
-    if (!ActiveLoadUtil.loadFilesToActiveDir(dataBaseName, absolutePaths, true)) {
+    final Map<String, String> loadAttributes =
+        ActiveLoadPathHelper.buildAttributes(
+            dataBaseName,
+            null,
+            shouldConvertDataTypeOnTypeMismatch,
+            validateTsFile.get(),
+            null,
+            shouldMarkAsPipeRequest.get());
+
+    if (!LoadUtil.loadFilesToActiveDir(loadAttributes, absolutePaths, true)) {
       throw new PipeException("Load active listening pipe dir is not set.");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -580,7 +590,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
     statement.setVerifySchema(validateTsFile.get());
-    statement.setAutoCreateDatabase(true);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
 
     return executeStatementAndClassifyExceptions(statement);
@@ -604,10 +615,13 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     final Set<StatementType> executionTypes =
         PipeSchemaRegionSnapshotEvent.getStatementTypeSet(
             parameters.get(ColumnHeaderConstant.TYPE));
-    final IoTDBTreePattern treePattern =
-        new IoTDBTreePattern(
-            parameters.containsKey(PipeTransferFileSealReqV2.TREE),
-            parameters.get(ColumnHeaderConstant.PATH_PATTERN));
+    final boolean isTreeModelDataAllowedToBeCaptured =
+        parameters.containsKey(PipeTransferFileSealReqV2.TREE);
+    final TreePattern treePattern =
+        TreePattern.parsePatternFromString(
+            parameters.get(ColumnHeaderConstant.PATH_PATTERN),
+            isTreeModelDataAllowedToBeCaptured,
+            p -> new IoTDBTreePattern(isTreeModelDataAllowedToBeCaptured, p));
     final TablePattern tablePattern =
         new TablePattern(
             parameters.containsKey(PipeTransferFileSealReqV2.TABLE),
@@ -629,7 +643,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
         // Here we apply the statements as many as possible
         // Even if there are failed statements
         STATEMENT_TREE_PATTERN_PARSE_VISITOR
-            .process(originalStatement, treePattern)
+            .process(originalStatement, (IoTDBTreePatternOperations) treePattern)
             .flatMap(parsedStatement -> batchVisitor.process(parsedStatement, null))
             .ifPresent(statement -> results.add(executeStatementAndClassifyExceptions(statement)));
       } else if (treeOrTableStatement
@@ -678,7 +692,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       }
       return new TPipeTransferResp(
           ClusterConfigTaskExecutor.getInstance()
-              .alterLogicalViewByPipe((AlterLogicalViewNode) req.getPlanNode()));
+              .alterLogicalViewByPipe(
+                  (AlterLogicalViewNode) req.getPlanNode(), shouldMarkAsPipeRequest.get()));
     }
     final Object statement = PLAN_TO_STATEMENT_VISITOR.process(req.getPlanNode(), null);
     return statement instanceof Statement
@@ -823,17 +838,17 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             LOGGER::warn,
             "Receiver id = %s: Failure status encountered while executing statement %s: %s",
             receiverId.get(),
-            statement,
+            statement.getPipeLoggingString(),
             result);
         return statement.accept(STATEMENT_STATUS_VISITOR, result);
       }
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
+          e,
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
-          statement,
-          e);
+          statement.getPipeLoggingString());
       return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {
@@ -1000,8 +1015,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
       return;
     }
 
-    AuthorityChecker.getAccessControl()
-        .checkCanCreateDatabase(username, database, new UserEntity(userId, username, cliHostname));
+    AuthorityChecker.getAccessControl().checkCanCreateDatabase(username, database, userEntity);
     final TDatabaseSchema schema = new TDatabaseSchema(new TDatabaseSchema(database));
     schema.setIsTableModel(true);
 

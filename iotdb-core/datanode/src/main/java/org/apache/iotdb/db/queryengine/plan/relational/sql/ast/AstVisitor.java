@@ -69,6 +69,10 @@ public abstract class AstVisitor<R, C> {
     return visitLiteral(node, context);
   }
 
+  protected R visitFloatLiteral(FloatLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
   protected R visitDecimalLiteral(DecimalLiteral node, C context) {
     return visitLiteral(node, context);
   }
@@ -90,6 +94,22 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitUse(Use node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitPrepare(Prepare node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitExecute(Execute node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitExecuteImmediate(ExecuteImmediate node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDeallocate(Deallocate node, C context) {
     return visitStatement(node, context);
   }
 
@@ -393,6 +413,10 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitShowAvailableUrls(ShowAvailableUrls node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitShowConfigNodes(ShowConfigNodes node, C context) {
     return visitStatement(node, context);
   }
@@ -581,6 +605,26 @@ public abstract class AstVisitor<R, C> {
     return visitStatement(node, context);
   }
 
+  protected R visitCreateExternalService(CreateExternalService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStartExternalService(StartExternalService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitStopExternalService(StopExternalService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitDropExternalService(DropExternalService node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitShowExternalService(ShowExternalService node, C context) {
+    return visitStatement(node, context);
+  }
+
   protected R visitCreateOrUpdateDevice(CreateOrUpdateDevice node, C context) {
     return visitStatement(node, context);
   }
@@ -702,6 +746,10 @@ public abstract class AstVisitor<R, C> {
   }
 
   protected R visitKillQuery(KillQuery node, C context) {
+    return visitStatement(node, context);
+  }
+
+  protected R visitAlterColumnDataType(AlterColumnDataType node, C context) {
     return visitStatement(node, context);
   }
 

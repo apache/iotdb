@@ -41,9 +41,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Build AINode
-        shell: bash
-        run: mvn clean package -DskipTests -P with-ainode
       - name: IT Test
         shell: bash
         run: |
@@ -59,5 +56,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cluster-log-ainode-${{ matrix.os }}
-          path: integration-test/target/ainode-logs
+          path: integration-test/target/*-logs
           retention-days: 30

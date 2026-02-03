@@ -113,6 +113,10 @@ public class DatasetHeaderFactory {
     return new DatasetHeader(ColumnHeaderConstant.showTriggersColumnHeaders, true);
   }
 
+  public static DatasetHeader getShowExternalServiceHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showExternalServiceColumnHeaders, true);
+  }
+
   public static DatasetHeader getShowPipePluginsHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showPipePluginsColumnHeaders, true);
   }
@@ -127,6 +131,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowDataNodesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showDataNodesColumnHeaders, true);
+  }
+
+  public static DatasetHeader getShowAvailableUrlsHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showAvailableUrlsColumnHeaders, true);
   }
 
   public static DatasetHeader getShowConfigNodesHeader() {

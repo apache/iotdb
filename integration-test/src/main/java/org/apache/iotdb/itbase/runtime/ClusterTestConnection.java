@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 
 import java.sql.Array;
 import java.sql.Blob;

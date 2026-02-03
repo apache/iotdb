@@ -56,6 +56,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final Map<String, String> sinkAttributes = new HashMap<>();
 
       sourceAttributes.put("source.inclusion", "schema");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -79,15 +80,170 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
           Arrays.asList(
               // TODO: add database creation after the database auto creating on receiver can be
               // banned
-              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
-              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
+              "create timeSeries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeSeries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeSeries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4"),
           null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "show timeseries root.ln.**",
           "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "ALTER timeSeries root.** set STORAGE_PROPERTIES compressor=ZSTD",
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)",
+              "flush"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries root.ln.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          Collections.singleton(
+              "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,ZSTD,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+    }
+  }
+
+  @Test
+  public void testPureSchemaInclusionWithMultiplePattern() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
+
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.wf01.wt01.status,root.ln.wf02.**");
+      sourceAttributes.put("source.inclusion", "schema");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD ATTRIBUTES attr4=v4",
+              "create timeseries root.ln.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD ATTRIBUTES attr4=v4"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries root.ln.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          new HashSet<String>() {
+            {
+              add(
+                  "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,");
+              add(
+                  "root.ln.wf02.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,");
+            }
+          });
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.ln.wf01.wt01(time, status) values(now(), false)", "flush"),
+          null);
+
+      TestUtils.assertDataAlwaysOnEnv(
+          receiverEnv, "select * from root.ln.**", "Time,", Collections.emptySet());
+    }
+  }
+
+  @Test
+  public void testPureSchemaInclusionWithExclusionPattern() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
+
+      sourceAttributes.put("source.inclusion", "schema");
+      sourceAttributes.put("user", "root");
+
+      // Include root.ln.**
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.**");
+      // Exclude root.ln.wf02.* and root.ln.wf03.wt01.status
+      sourceAttributes.put("source.pattern.exclusion", "root.ln.wf02.**, root.ln.wf03.wt01.status");
+
+      sinkAttributes.put("connector", "iotdb-thrift-connector");
+      sinkAttributes.put("connector.ip", receiverIp);
+      sinkAttributes.put("connector.port", Integer.toString(receiverPort));
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
+
+      // Do not fail if the failure has nothing to do with pipe
+      // Because the failures will randomly generate due to resource limitation
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              // Should be included
+              "create timeseries root.ln.wf01.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf01.wt01.status ADD ATTRIBUTES attr4=v4",
+              // Should be excluded by root.ln.wf02.*
+              "create timeseries root.ln.wf02.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf02.wt01.status ADD ATTRIBUTES attr4=v4",
+              // Should be excluded by root.ln.wf03.wt01.status
+              "create timeseries root.ln.wf03.wt01.status with datatype=BOOLEAN,encoding=PLAIN",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD TAGS tag3=v3",
+              "ALTER timeseries root.ln.wf03.wt01.status ADD ATTRIBUTES attr4=v4"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show timeseries root.ln.**",
+          "Timeseries,Alias,Database,DataType,Encoding,Compression,Tags,Attributes,Deadband,DeadbandParameters,ViewType,",
+          // Only wf01 should be synced
           Collections.singleton(
               "root.ln.wf01.wt01.status,null,root.ln,BOOLEAN,PLAIN,LZ4,{\"tag3\":\"v3\"},{\"attr4\":\"v4\"},null,null,BASE,"));
 
@@ -111,12 +267,13 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "auth");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "auth");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -125,7 +282,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -149,12 +306,13 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "auth");
-      extractorAttributes.put("path", "root.ln.**");
+      sourceAttributes.put("source.inclusion", "auth");
+      sourceAttributes.put("source.pattern.inclusion", "root.ln.**");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -163,7 +321,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -201,11 +359,12 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "data.delete");
+      sourceAttributes.put("source.inclusion", "data.delete");
+      sourceAttributes.put("user", "root");
 
       sinkAttributes.put("sink", "iotdb-thrift-sink");
       sinkAttributes.put("sink.ip", receiverIp);
@@ -214,7 +373,7 @@ public class IoTDBPipeInclusionIT extends AbstractPipeDualTreeModelManualIT {
       final TSStatus status =
           client.createPipe(
               new TCreatePipeReq("testPipe", sinkAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());

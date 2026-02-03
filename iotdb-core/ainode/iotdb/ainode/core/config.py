@@ -16,10 +16,10 @@
 # under the License.
 #
 import os
+import re
 
 from iotdb.ainode.core.constant import (
     AINODE_BUILD_INFO,
-    AINODE_BUILTIN_MODELS_DIR,
     AINODE_CLUSTER_INGRESS_ADDRESS,
     AINODE_CLUSTER_INGRESS_PASSWORD,
     AINODE_CLUSTER_INGRESS_PORT,
@@ -32,13 +32,12 @@ from iotdb.ainode.core.constant import (
     AINODE_CONF_POM_FILE_NAME,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_EXTRA_MEMORY_RATIO,
-    AINODE_INFERENCE_MAX_PREDICT_LENGTH,
+    AINODE_INFERENCE_MAX_OUTPUT_LENGTH,
     AINODE_INFERENCE_MEMORY_USAGE_RATIO,
     AINODE_INFERENCE_MODEL_MEM_USAGE_MAP,
     AINODE_LOG_DIR,
+    AINODE_MODELS_BUILTIN_DIR,
     AINODE_MODELS_DIR,
-    AINODE_ROOT_CONF_DIRECTORY_NAME,
-    AINODE_ROOT_DIR,
     AINODE_RPC_ADDRESS,
     AINODE_RPC_PORT,
     AINODE_SYSTEM_DIR,
@@ -47,7 +46,7 @@ from iotdb.ainode.core.constant import (
     AINODE_THRIFT_COMPRESSION_ENABLED,
     AINODE_VERSION_INFO,
 )
-from iotdb.ainode.core.exception import BadNodeUrlError
+from iotdb.ainode.core.exception import BadNodeUrlException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.util.decorator import singleton
 from iotdb.thrift.common.ttypes import TEndPoint
@@ -76,9 +75,7 @@ class AINodeConfig(object):
         self._ain_inference_batch_interval_in_ms: int = (
             AINODE_INFERENCE_BATCH_INTERVAL_IN_MS
         )
-        self._ain_inference_max_predict_length: int = (
-            AINODE_INFERENCE_MAX_PREDICT_LENGTH
-        )
+        self._ain_inference_max_output_length: int = AINODE_INFERENCE_MAX_OUTPUT_LENGTH
         self._ain_inference_model_mem_usage_map: dict[str, int] = (
             AINODE_INFERENCE_MODEL_MEM_USAGE_MAP
         )
@@ -96,7 +93,7 @@ class AINodeConfig(object):
 
         # Directory to save models
         self._ain_models_dir = AINODE_MODELS_DIR
-        self._ain_builtin_models_dir = AINODE_BUILTIN_MODELS_DIR
+        self._ain_models_builtin_dir = AINODE_MODELS_BUILTIN_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
 
         # Whether to enable compression for thrift
@@ -161,13 +158,13 @@ class AINodeConfig(object):
     ) -> None:
         self._ain_inference_batch_interval_in_ms = ain_inference_batch_interval_in_ms
 
-    def get_ain_inference_max_predict_length(self) -> int:
-        return self._ain_inference_max_predict_length
+    def get_ain_inference_max_output_length(self) -> int:
+        return self._ain_inference_max_output_length
 
-    def set_ain_inference_max_predict_length(
-        self, ain_inference_max_predict_length: int
+    def set_ain_inference_max_output_length(
+        self, ain_inference_max_output_length: int
     ) -> None:
-        self._ain_inference_max_predict_length = ain_inference_max_predict_length
+        self._ain_inference_max_output_length = ain_inference_max_output_length
 
     def get_ain_inference_model_mem_usage_map(self) -> dict[str, int]:
         return self._ain_inference_model_mem_usage_map
@@ -205,11 +202,11 @@ class AINodeConfig(object):
     def set_ain_models_dir(self, ain_models_dir: str) -> None:
         self._ain_models_dir = ain_models_dir
 
-    def get_ain_builtin_models_dir(self) -> str:
-        return self._ain_builtin_models_dir
+    def get_ain_models_builtin_dir(self) -> str:
+        return self._ain_models_builtin_dir
 
-    def set_ain_builtin_models_dir(self, ain_builtin_models_dir: str) -> None:
-        self._ain_builtin_models_dir = ain_builtin_models_dir
+    def set_ain_models_builtin_dir(self, ain_models_builtin_dir: str) -> None:
+        self._ain_models_builtin_dir = ain_models_builtin_dir
 
     def get_ain_system_dir(self) -> str:
         return self._ain_system_dir
@@ -315,9 +312,7 @@ class AINodeDescriptor(object):
             if "ainode_id" in system_configs:
                 self._config.set_ainode_id(int(system_configs["ainode_id"]))
 
-        git_file = os.path.join(
-            AINODE_ROOT_DIR, AINODE_ROOT_CONF_DIRECTORY_NAME, AINODE_CONF_GIT_FILE_NAME
-        )
+        git_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_GIT_FILE_NAME)
         if os.path.exists(git_file):
             git_configs = load_properties(git_file)
             if "git.commit.id.abbrev" in git_configs:
@@ -327,9 +322,7 @@ class AINodeDescriptor(object):
                         build_info += "-dev"
                 self._config.set_build_info(build_info)
 
-        pom_file = os.path.join(
-            AINODE_ROOT_DIR, AINODE_ROOT_CONF_DIRECTORY_NAME, AINODE_CONF_POM_FILE_NAME
-        )
+        pom_file = os.path.join(AINODE_CONF_DIRECTORY_NAME, AINODE_CONF_POM_FILE_NAME)
         if os.path.exists(pom_file):
             pom_configs = load_properties(pom_file)
             if "version" in pom_configs:
@@ -378,6 +371,11 @@ class AINodeDescriptor(object):
 
             if "ain_models_dir" in config_keys:
                 self._config.set_ain_models_dir(file_configs["ain_models_dir"])
+
+            if "ain_models_builtin_dir" in config_keys:
+                self._config.set_ain_models_builtin_dir(
+                    file_configs["ain_models_builtin_dir"]
+                )
 
             if "ain_system_dir" in config_keys:
                 self._config.set_ain_system_dir(file_configs["ain_system_dir"])
@@ -439,7 +437,7 @@ class AINodeDescriptor(object):
                     file_configs["ain_cluster_ingress_time_zone"]
                 )
 
-        except BadNodeUrlError:
+        except BadNodeUrlException:
             logger.warning("Cannot load AINode conf file, use default configuration.")
 
         except Exception as e:
@@ -453,18 +451,29 @@ class AINodeDescriptor(object):
         return self._config
 
 
+def unescape_java_properties(value: str) -> str:
+    """Undo Java Properties escaping rules"""
+    value = value.replace("\\t", "\t")
+    value = value.replace("\\n", "\n")
+    value = value.replace("\\r", "\r")
+    value = value.replace("\\\\", "\\")
+    value = re.sub(r"\\([:=\s])", r"\1", value)
+    return value
+
+
 def load_properties(filepath, sep="=", comment_char="#"):
     """
     Read the file passed as parameter as a properties file.
     """
     props = {}
-    with open(filepath, "rt") as f:
+    with open(filepath, "rt", encoding="utf-8") as f:
         for line in f:
             l = line.strip()
             if l and not l.startswith(comment_char):
-                key_value = l.split(sep)
+                key_value = l.split(sep, 1)
                 key = key_value[0].strip()
-                value = sep.join(key_value[1:]).strip().strip('"')
+                value = key_value[1].strip().strip('"')
+                value = unescape_java_properties(value)
                 props[key] = value
     return props
 
@@ -480,7 +489,7 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
     """
     split = endpoint_url.split(":")
     if len(split) != 2:
-        raise BadNodeUrlError(endpoint_url)
+        raise BadNodeUrlException(endpoint_url)
 
     ip = split[0]
     try:
@@ -488,4 +497,4 @@ def parse_endpoint_url(endpoint_url: str) -> TEndPoint:
         result = TEndPoint(ip, port)
         return result
     except ValueError:
-        raise BadNodeUrlError(endpoint_url)
+        raise BadNodeUrlException(endpoint_url)

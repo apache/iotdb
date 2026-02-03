@@ -34,6 +34,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalBatchActi
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.internal.SeriesSchemaFetchStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterEncodingCompressorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesDataTypeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.CountDevicesStatement;
@@ -60,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeState
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowAvailableUrlsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterIdStatement;
@@ -77,6 +80,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesSta
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowVariablesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.CreateExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.DropExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.ShowExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StartExternalServiceStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.externalservice.StopExternalServiceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateModelStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.CreateTrainingStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.model.DropModelStatement;
@@ -196,11 +204,21 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(alterTimeSeriesStatement, context);
   }
 
+  public R visitAlterTimeSeries(
+      AlterTimeSeriesDataTypeStatement alterTimeSeriesDataTypeStatement, C context) {
+    return visitStatement(alterTimeSeriesDataTypeStatement, context);
+  }
+
+  public R visitAlterEncodingCompressor(
+      AlterEncodingCompressorStatement alterEncodingCompressorStatement, C context) {
+    return visitStatement(alterEncodingCompressorStatement, context);
+  }
+
   public R visitDeleteTimeSeries(DeleteTimeSeriesStatement deleteTimeSeriesStatement, C context) {
     return visitStatement(deleteTimeSeriesStatement, context);
   }
 
-  public R visitDeleteStorageGroup(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
+  public R visitDeleteDatabase(DeleteDatabaseStatement deleteDatabaseStatement, C context) {
     return visitStatement(deleteDatabaseStatement, context);
   }
 
@@ -265,6 +283,32 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowTriggers(ShowTriggersStatement showTriggersStatement, C context) {
     return visitStatement(showTriggersStatement, context);
+  }
+
+  // ExternalService
+  public R visitCreateExternalService(
+      CreateExternalServiceStatement createExternalServiceStatement, C context) {
+    return visitStatement(createExternalServiceStatement, context);
+  }
+
+  public R visitStartExternalService(
+      StartExternalServiceStatement startExternalServiceStatement, C context) {
+    return visitStatement(startExternalServiceStatement, context);
+  }
+
+  public R visitStopExternalService(
+      StopExternalServiceStatement stopExternalServiceStatement, C context) {
+    return visitStatement(stopExternalServiceStatement, context);
+  }
+
+  public R visitDropExternalService(
+      DropExternalServiceStatement dropExternalServiceStatement, C context) {
+    return visitStatement(dropExternalServiceStatement, context);
+  }
+
+  public R visitShowExternalService(
+      ShowExternalServiceStatement showExternalServiceStatement, C context) {
+    return visitStatement(showExternalServiceStatement, context);
   }
 
   // Pipe Plugin
@@ -384,7 +428,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(authorStatement, context);
   }
 
-  public R visitShowStorageGroup(ShowDatabaseStatement showDatabaseStatement, C context) {
+  public R visitShowDatabase(ShowDatabaseStatement showDatabaseStatement, C context) {
     return visitStatement(showDatabaseStatement, context);
   }
 
@@ -396,7 +440,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDevicesStatement, context);
   }
 
-  public R visitCountStorageGroup(CountDatabaseStatement countDatabaseStatement, C context) {
+  public R visitCountDatabase(CountDatabaseStatement countDatabaseStatement, C context) {
     return visitStatement(countDatabaseStatement, context);
   }
 
@@ -498,6 +542,11 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowAvailableUrls(
+      ShowAvailableUrlsStatement showAvailableUrlsStatement, C context) {
+    return visitStatement(showAvailableUrlsStatement, context);
   }
 
   public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {

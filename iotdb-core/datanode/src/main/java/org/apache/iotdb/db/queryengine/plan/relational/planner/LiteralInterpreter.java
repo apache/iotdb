@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BinaryLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -54,6 +55,7 @@ public class LiteralInterpreter {
     if (!(node instanceof Literal)) {
       throw new IllegalArgumentException("node must be a Literal");
     }
+    // return node.accept(new LiteralVisitor(type), null);
     return new LiteralVisitor(type).process(node, null);
   }
 
@@ -81,6 +83,11 @@ public class LiteralInterpreter {
 
     @Override
     protected Double visitDoubleLiteral(DoubleLiteral node, Void context) {
+      return node.getValue();
+    }
+
+    @Override
+    protected Float visitFloatLiteral(FloatLiteral node, Void context) {
       return node.getValue();
     }
 

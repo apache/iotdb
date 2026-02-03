@@ -136,6 +136,10 @@ public class WindowNode extends SingleChildProcessNode {
     return ImmutableList.copyOf(concat(child.getOutputSymbols(), windowFunctions.keySet()));
   }
 
+  public Set<Symbol> getCreatedSymbols() {
+    return ImmutableSet.copyOf(windowFunctions.keySet());
+  }
+
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
     return new WindowNode(

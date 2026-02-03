@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -31,6 +32,9 @@ import static java.util.Objects.requireNonNull;
 
 /** IF(v1,v2[,v3]): CASE WHEN v1 THEN v2 [ELSE v3] END */
 public class IfExpression extends Expression {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(IfExpression.class);
+
   private final Expression condition;
   private final Expression trueValue;
   @Nullable private final Expression falseValue;
@@ -101,5 +105,15 @@ public class IfExpression extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(condition);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(trueValue);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(falseValue);
+    return size;
   }
 }

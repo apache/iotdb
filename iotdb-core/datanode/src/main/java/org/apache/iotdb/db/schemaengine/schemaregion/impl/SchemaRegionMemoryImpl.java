@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
@@ -122,7 +125,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -700,7 +702,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan instanceof CreateTimeSeriesPlanImpl
                       && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
                   || plan instanceof CreateTimeSeriesNode
-                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe(),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -784,7 +789,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
@@ -872,7 +880,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -941,19 +953,34 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+  public void deleteTimeseriesInBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
               SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
                   Collections.singletonList(path)));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
     }
+  }
+
+  @Override
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
+      throws MetadataException {
+    boolean exist = false;
+    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
+      exist |=
+          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
+    }
+    if (!exist) {
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
+    }
+    writeToMLog(node);
   }
 
   @Override
@@ -1339,6 +1366,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
   }
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
+    mTree.alterTimeSeriesDataType(
+        leafMNode.getMeasurementPath(), leafMNode.getPartialPath().getMeasurement(), newDataType);
+  }
+
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(final IMeasurementMNode<IMemMNode> node)
@@ -1522,7 +1565,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata))
+                    metadata,
+                    null))
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
@@ -1549,7 +1593,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             filterOutputDataTypes,
             inputLocations.size(),
             mockTypeProvider,
-            metadata);
+            metadata,
+            null);
 
     final List<String> attributeNames =
         updateNode.getAssignments().stream()
@@ -2053,6 +2098,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         dropTableAttribute(dropTableAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        alterEncodingCompressor(alterEncodingCompressorNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

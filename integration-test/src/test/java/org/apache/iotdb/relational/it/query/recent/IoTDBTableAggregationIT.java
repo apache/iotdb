@@ -2498,6 +2498,15 @@ public class IoTDBTableAggregationIT {
         DATABASE_NAME,
         2);
 
+    expectedHeader = new String[] {"device_id", "_col1"};
+    retArray = new String[] {"d01,0xcafebabe55,", "d02,0xcafebabe50,"};
+    repeatTest(
+        "select device_id, last(s8) from table1 where device_id = 'd01' or device_id = 'd02' group by device_id order by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME,
+        2);
+
     expectedHeader =
         new String[] {
           "_col0", "_col1", "_col2", "_col3", "_col4", "_col5", "_col6", "_col7", "_col8", "_col9",
@@ -5476,6 +5485,30 @@ public class IoTDBTableAggregationIT {
     // test StreamingAggregationOperator
     tableResultSetEqualTest(
         "select count(1) from (select * from table1 where s1 + 1 < 1) group by device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void emptyTimeRangeQueryTest() {
+    String[] expectedHeader = new String[] {"_col0"};
+    String[] retArray = new String[] {"0,"};
+    tableResultSetEqualTest(
+        "select count(*) from table1 where time >= 0 and time < -1",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void orderByLimitTest() {
+    String[] expectedHeader =
+        new String[] {"province", "city", "region", "device_id", "_col4", "_col5"};
+    String[] retArray = new String[] {"beijing,beijing,chaoyang,d09,2024-09-24T06:00:00.000Z,2,"};
+
+    tableResultSetEqualTest(
+        "select province, city, region, device_id, date_bin(1h, time), count(s1) from table1 where s1 >= 40 group by 1,2,3,4,5 order by province, city, region, device_id, date_bin(1h, time) limit 1",
         expectedHeader,
         retArray,
         DATABASE_NAME);

@@ -73,7 +73,7 @@ cn_consensus_port=10720
 # Could set 127.0.0.1(for local test) or ipv4 address
 # effectiveMode: restart
 # Datatype: String
-dn_rpc_address=0.0.0.0
+dn_rpc_address=127.0.0.1
 
 # Used for connection of IoTDB native clients(Session)
 # Bind with dn_rpc_address
@@ -533,10 +533,10 @@ dn_rpc_selector_thread_count=1
 # Datatype: int
 dn_rpc_max_concurrent_client_num=1000
 
-# thrift max frame size, 512MB by default
+# thrift max frame size in bytes. When set to 0, use min(64MB, datanode heap memory / 64)
 # effectiveMode: restart
 # Datatype: int
-dn_thrift_max_frame_size=536870912
+dn_thrift_max_frame_size=0
 
 # thrift init buffer size
 # effectiveMode: restart
@@ -930,7 +930,7 @@ enable_auto_create_schema=true
 # Default: 1
 # When illegal: report an error and change nothing during hot-reload; use the default value in
 # start-up
-default_storage_group_level=1
+default_database_level=1
 
 # ALL data types: BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
 
@@ -1085,6 +1085,12 @@ max_tsblock_line_number=1000
 # Datatype: long
 slow_query_threshold=10000
 
+# Time window threshold(min) for record of history queries.
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+query_cost_stat_window=0
+
 # The max executing time of query. unit: ms
 # effectiveMode: restart
 # Datatype: int
@@ -1121,6 +1127,21 @@ batch_size=100000
 # effectiveMode: hot_reload
 # Datatype: long
 sort_buffer_size_in_bytes=0
+
+# The buffer size for CTE materialization. If cte_buffer_size_in_bytes <= 0, a default value of 128 KB is used; otherwise the specified value
+# will be used.
+# effectiveMode: hot_reload
+# Datatype: long
+# Privilege: SYSTEM
+# Unit: bytes
+cte_buffer_size_in_bytes=131072
+
+
+# Max rows for CTE materialization
+# effectiveMode: hot_reload
+# Datatype: int
+# Privilege: SYSTEM
+max_rows_in_cte_buffer=1000
 
 # The maximum mod entries size that each FragmentInstance can cache.
 # if mods_cache_size_limit_per_fi_in_bytes <= 0, default value will be used, default value = min(32MB, memory for query operators / query_thread_count / 2)

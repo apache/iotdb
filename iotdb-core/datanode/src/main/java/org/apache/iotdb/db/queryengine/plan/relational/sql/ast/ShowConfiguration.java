@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 
 public class ShowConfiguration extends WrappedStatement {
-
   public ShowConfiguration(Statement innerTreeStatement, MPPQueryContext context) {
     super(innerTreeStatement, context);
   }

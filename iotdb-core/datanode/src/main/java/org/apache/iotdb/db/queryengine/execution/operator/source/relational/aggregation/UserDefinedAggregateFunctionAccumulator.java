@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation;
 
-import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.customizer.analysis.AggregateFunctionAnalysis;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;

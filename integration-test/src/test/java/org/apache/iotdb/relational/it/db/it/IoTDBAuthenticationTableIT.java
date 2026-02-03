@@ -1103,4 +1103,40 @@ public class IoTDBAuthenticationTableIT {
               tmpDir.getAbsolutePath()));
     }
   }
+
+  @Test
+  public void testAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession sessionRoot = EnvFactory.getEnv().getTableSessionConnection()) {
+      sessionRoot.executeNonQueryStatement("CREATE DATABASE test3");
+      sessionRoot.executeNonQueryStatement("USE test3");
+      sessionRoot.executeNonQueryStatement("CREATE TABLE t1 (c1 INT32)");
+
+      // test users
+      sessionRoot.executeNonQueryStatement("CREATE USER userA 'userA1234567'");
+      sessionRoot.executeNonQueryStatement("CREATE USER userB 'userB1234567'");
+
+      try (ITableSession sessionA =
+              EnvFactory.getEnv().getTableSessionConnection("userA", "userA1234567");
+          ITableSession sessionB =
+              EnvFactory.getEnv().getTableSessionConnection("userB", "userB1234567")) {
+        sessionRoot.executeNonQueryStatement(
+            "GRANT SELECT,INSERT,DELETE ON test3.t1 TO USER userA");
+        sessionRoot.executeNonQueryStatement(
+            "GRANT SELECT,ALTER,INSERT,DELETE ON test3.t1 TO USER userB");
+        sessionA.executeNonQueryStatement("USE test3");
+        sessionB.executeNonQueryStatement("USE test3");
+
+        try {
+          sessionA.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
+          fail("Should have thrown an exception");
+        } catch (StatementExecutionException e) {
+          assertEquals(
+              "803: Access Denied: No permissions for this operation, please add privilege ALTER ON test3.t1",
+              e.getMessage());
+        }
+
+        sessionB.executeNonQueryStatement("ALTER TABLE t1 ALTER COLUMN c1 SET DATA TYPE FLOAT");
+      }
+    }
+  }
 }

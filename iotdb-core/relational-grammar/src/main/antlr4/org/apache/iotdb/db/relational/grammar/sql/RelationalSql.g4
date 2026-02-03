@@ -84,6 +84,13 @@ statement
     | dropFunctionStatement
     | createFunctionStatement
 
+    // ExternalService Statement
+    | createServiceStatement
+    | startServiceStatement
+    | stopServiceStatement
+    | dropServiceStatement
+    | showServiceStatement
+
     // Load Statement
     | loadTsFileStatement
 
@@ -113,6 +120,7 @@ statement
     | showClusterStatement
     | showRegionsStatement
     | showDataNodesStatement
+    | showAvailableUrlsStatement
     | showConfigNodesStatement
     | showAINodesStatement
     | showClusterIdStatement
@@ -172,6 +180,12 @@ statement
     | showAIDevicesStatement
     | loadModelStatement
     | unloadModelStatement
+
+    // Prepared Statement
+    | prepareStatement
+    | executeStatement
+    | executeImmediateStatement
+    | deallocateStatement
 
     // View, Trigger, CQ, Quota are not supported yet
     ;
@@ -248,6 +262,7 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
 commentStatement
@@ -366,6 +381,27 @@ showFunctionsStatement
     ;
 
 
+// -------------------------------------------- ExternalService Statement ----------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier
+        AS className=string
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropServiceStatement
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+    ;
+
+showServiceStatement
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_VALUE)?
+    ;
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
@@ -545,6 +581,10 @@ showRegionsStatement
 
 showDataNodesStatement
     : SHOW DATANODES
+    ;
+
+showAvailableUrlsStatement
+    : SHOW AVAILABLE URLS
     ;
 
 showConfigNodesStatement
@@ -852,6 +892,23 @@ unloadModelStatement
     : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
     ;
 
+// ------------------------------------------- Prepared Statement ---------------------------------------------------------
+prepareStatement
+    : PREPARE statementName=identifier FROM sql=statement
+    ;
+
+executeStatement
+    : EXECUTE statementName=identifier (USING literalExpression (',' literalExpression)*)?
+    ;
+
+executeImmediateStatement
+    : EXECUTE IMMEDIATE sql=string (USING literalExpression (',' literalExpression)*)?
+    ;
+
+deallocateStatement
+    : DEALLOCATE PREPARE statementName=identifier
+    ;
+
 // ------------------------------------------- Query Statement ---------------------------------------------------------
 queryStatement
     : query                                                        #statementDefault
@@ -930,8 +987,9 @@ rowCount
     ;
 
 queryTerm
-    : queryPrimary                                                                                #queryTermDefault
-    | left=queryTerm operator=(INTERSECT | UNION | EXCEPT) setQuantifier? right=queryTerm         #setOperation
+    : queryPrimary                                                                 #queryTermDefault
+    | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm             #setOperation
+    | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm      #setOperation
     ;
 
 queryPrimary
@@ -990,7 +1048,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier
@@ -1393,12 +1451,12 @@ authorizationUser
 
 nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTHORIZATION
+    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTHORIZATION | AVAILABLE
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
     | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
@@ -1411,10 +1469,10 @@ nonReserved
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
     | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
-    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
+    | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
     | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
-    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
+    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
@@ -1495,6 +1553,8 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
+AVAILABLE: 'AVAILABLE';
+URLS: 'URLS';
 DATASET: 'DATASET';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
@@ -1544,6 +1604,7 @@ FIRST: 'FIRST';
 FLUSH: 'FLUSH';
 FOLLOWING: 'FOLLOWING';
 FOR: 'FOR';
+FORCEDLY: 'FORCEDLY';
 FORMAT: 'FORMAT';
 FROM: 'FROM';
 FULL: 'FULL';
@@ -1732,6 +1793,8 @@ SECURITY: 'SECURITY';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';

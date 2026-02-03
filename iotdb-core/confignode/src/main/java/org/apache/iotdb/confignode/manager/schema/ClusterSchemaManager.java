@@ -27,12 +27,15 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
@@ -100,7 +103,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTableResp;
 import org.apache.iotdb.consensus.exception.ConsensusException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
@@ -110,6 +112,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -123,6 +126,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
@@ -1253,8 +1257,31 @@ public class ClusterSchemaManager {
   }
 
   public byte[] getAllTableInfoForDataNodeActivation() {
+    // To guarantee the safety of fetched tables
+    // If DataNode discovered that the table is being altered, it will fetch it from configNode, and
+    // if it's still in execution, it can use the table temporarily
+    // However, if the database is deleting then it must fetch it from configNode, or else the table
+    // is considered to be non exist
+    final Map<String, List<String>> alteringTables =
+        configManager.getProcedureManager().getAllExecutingTables();
+    final Map<String, List<TsTable>> usingTableMap = clusterSchemaInfo.getAllUsingTables();
+    final Map<String, List<TsTable>> preCreateTableMap = clusterSchemaInfo.getAllPreCreateTables();
+    alteringTables.forEach(
+        (k, v) -> {
+          final List<TsTable> preCreateList =
+              preCreateTableMap.computeIfAbsent(k, database -> new ArrayList<>());
+          if (Objects.isNull(v)) {
+            usingTableMap
+                .remove(k)
+                .forEach(
+                    table -> preCreateList.add(new NonCommittableTsTable(table.getTableName())));
+          } else {
+            preCreateList.addAll(
+                v.stream().map(NonCommittableTsTable::new).collect(Collectors.toList()));
+          }
+        });
     return TsTableInternalRPCUtil.serializeTableInitializationInfo(
-        clusterSchemaInfo.getAllUsingTables(), clusterSchemaInfo.getAllPreCreateTables());
+        usingTableMap, preCreateTableMap);
   }
 
   // endregion
@@ -1323,7 +1350,7 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     final String errorMsg =
         String.format(
@@ -1331,9 +1358,14 @@ public class ClusterSchemaManager {
             columnSchemaList.stream()
                 .map(TsTableColumnSchema::getColumnName)
                 .collect(Collectors.joining(", ")));
+
+    final AtomicBoolean hasObject = new AtomicBoolean(false);
     columnSchemaList.removeIf(
         columnSchema -> {
           if (Objects.isNull(originalTable.getColumnSchema(columnSchema.getColumnName()))) {
+            if (columnSchema.getDataType().equals(TSDataType.OBJECT)) {
+              hasObject.set(true);
+            }
             expandedTable.addColumnSchema(columnSchema);
             return false;
           }
@@ -1343,7 +1375,45 @@ public class ClusterSchemaManager {
     if (columnSchemaList.isEmpty()) {
       return new Pair<>(RpcUtils.getStatus(TSStatusCode.COLUMN_ALREADY_EXISTS, errorMsg), null);
     }
-    return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
+
+    if (hasObject.get()) {
+      expandedTable.checkTableNameAndObjectNames4Object();
+    }
+    return new Pair<>(StatusUtils.OK, expandedTable);
+  }
+
+  public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnAltering(
+      final String database,
+      final String tableName,
+      final String columnName,
+      final TSDataType dataType)
+      throws MetadataException {
+    final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
+
+    if (Objects.isNull(originalTable)) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.TABLE_NOT_EXISTS,
+              String.format("Table '%s.%s' does not exist", database, tableName)),
+          null);
+    }
+
+    TSStatus tsStatus =
+        clusterSchemaInfo.preAlterColumnDataType(database, tableName, columnName, dataType);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new Pair<>(tsStatus, null);
+    }
+
+    final TsTable alteredTable = new TsTable(originalTable);
+    TsTableColumnSchema tsTableColumnSchema = alteredTable.getColumnSchema(columnName);
+    tsTableColumnSchema.setDataType(dataType);
+    if (tsTableColumnSchema instanceof FieldColumnSchema) {
+      FieldColumnSchema fieldColumnSchema = ((FieldColumnSchema) tsTableColumnSchema);
+      fieldColumnSchema.setEncoding(
+          SchemaUtils.getDataTypeCompatibleEncoding(dataType, fieldColumnSchema.getEncoding()));
+    }
+
+    return new Pair<>(RpcUtils.SUCCESS_STATUS, alteredTable);
   }
 
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
@@ -1393,7 +1463,7 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
 
     expandedTable.renameColumnSchema(oldName, newName);
 
@@ -1430,7 +1500,7 @@ public class ClusterSchemaManager {
           null);
     }
 
-    final TsTable expandedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable expandedTable = new TsTable(originalTable);
     expandedTable.renameTable(newName);
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
@@ -1517,7 +1587,7 @@ public class ClusterSchemaManager {
       return new Pair<>(RpcUtils.SUCCESS_STATUS, null);
     }
 
-    final TsTable updatedTable = TsTable.deserialize(ByteBuffer.wrap(originalTable.serialize()));
+    final TsTable updatedTable = new TsTable(originalTable);
     updatedProperties.forEach(
         (k, v) -> {
           originalProperties.put(k, originalTable.getPropValue(k).orElse(null));

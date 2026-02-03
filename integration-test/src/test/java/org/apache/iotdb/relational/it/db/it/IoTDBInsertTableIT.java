@@ -294,6 +294,7 @@ public class IoTDBInsertTableIT {
         }
         Assert.assertEquals(200, cnt);
       }
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -505,6 +506,7 @@ public class IoTDBInsertTableIT {
   public void testInsertMultiRowWithNull() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement st1 = connection.createStatement()) {
+      st1.execute("SET CONFIGURATION enable_auto_create_schema='false'");
       st1.execute("use \"test\"");
       st1.execute(
           "create table wf14 (tag1 string tag, status boolean field, temperature float field)");
@@ -519,6 +521,8 @@ public class IoTDBInsertTableIT {
         st2.execute("CREATE TABLE wf15 (wt string tag, s1 double field, s2 double field)");
         st2.execute(
             "INSERT INTO wf15(wt, time, s1) VALUES ('1', 6, 10),('1', 7,12),('1', 8,14),('1', 9,160),('1', 10,null),('1', 11,58)");
+
+        st2.execute("SET CONFIGURATION enable_auto_create_schema='true'");
       } catch (SQLException e) {
         fail(e.getMessage());
       }
@@ -531,6 +535,7 @@ public class IoTDBInsertTableIT {
         Statement st1 = connection.createStatement()) {
       try {
         st1.execute("use \"test\"");
+        st1.execute("CREATE TABLE wf16 (tag1 string tag, status boolean field)");
         st1.execute(
             "insert into wf16(tag1, time, status) values('wt01', 1618283005586000, true), ('wt01', 1618283005586001, false)");
         fail();
@@ -829,6 +834,7 @@ public class IoTDBInsertTableIT {
   @Test
   public void testInsertKeyword() throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
       session.executeNonQueryStatement("USE \"test\"");
       session.executeNonQueryStatement(
           "create table table20 ("
@@ -1066,6 +1072,7 @@ public class IoTDBInsertTableIT {
   public void testInsertUnsequenceData()
       throws IoTDBConnectionException, StatementExecutionException {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
+      session.executeNonQueryStatement("SET CONFIGURATION enable_auto_create_schema='true'");
       session.executeNonQueryStatement("USE \"test\"");
       // the table is missing column "m2"
       session.executeNonQueryStatement(

@@ -25,8 +25,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 
-import org.apache.commons.collections4.comparators.ComparatorChain;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.collections4.comparators.ComparatorChain;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -113,6 +113,7 @@ public class MergeSortComparator {
         break;
       case TEXT:
       case BLOB:
+      case OBJECT:
       case STRING:
         comparator =
             Comparator.comparing(

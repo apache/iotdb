@@ -574,14 +574,9 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    setProperty("subscription_enabled", String.valueOf(subscriptionEnabled));
-    return this;
-  }
-
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    setProperty("default_storage_group_level", String.valueOf(defaultStorageGroupLevel));
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    setProperty("default_database_level", String.valueOf(defaultDatabaseLevel));
     return this;
   }
 
@@ -648,6 +643,24 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   @Override
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
     setProperty("auditable_operation_result", auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    setProperty("restrict_object_limit", String.valueOf(restrictObjectLimit));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    setProperty("cte_buffer_size_in_bytes", String.valueOf(cteBufferSize));
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    setProperty("max_rows_in_cte_buffer", String.valueOf(maxRows));
     return this;
   }
 

@@ -96,7 +96,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 @SuppressWarnings("java:S1135") // ignore todos
-public class TsFileResource implements PersistentResource {
+public class TsFileResource implements PersistentResource, Cloneable {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
@@ -320,7 +320,8 @@ public class TsFileResource implements PersistentResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       ReadWriteIOUtils.readByte(inputStream);
-      timeIndex = ITimeIndex.createTimeIndex(inputStream);
+      timeIndex =
+          ITimeIndex.createTimeIndex(inputStream, IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
 
@@ -676,7 +677,8 @@ public class TsFileResource implements PersistentResource {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)
+      throws IOException {
     readLock();
     try {
       if (!resourceFileExists()) {
@@ -686,7 +688,8 @@ public class TsFileResource implements PersistentResource {
           FSFactoryProducer.getFSFactory()
               .getBufferedInputStream(file.getPath() + RESOURCE_SUFFIX)) {
         ReadWriteIOUtils.readByte(inputStream);
-        ITimeIndex timeIndexFromResourceFile = ITimeIndex.createTimeIndex(inputStream);
+        ITimeIndex timeIndexFromResourceFile =
+            ITimeIndex.createTimeIndex(inputStream, deserializer);
         if (!(timeIndexFromResourceFile instanceof ArrayDeviceTimeIndex)) {
           throw new IOException("cannot build DeviceTimeIndex from resource " + file.getPath());
         }
@@ -698,6 +701,10 @@ public class TsFileResource implements PersistentResource {
     } finally {
       readUnlock();
     }
+  }
+
+  public ArrayDeviceTimeIndex buildDeviceTimeIndex() throws IOException {
+    return buildDeviceTimeIndex(IDeviceID.Deserializer.DEFAULT_DESERIALIZER);
   }
 
   /**
@@ -835,11 +842,13 @@ public class TsFileResource implements PersistentResource {
    * file physically.
    */
   public boolean remove() {
-    forceMarkDeleted();
     // To release the memory occupied by pipe if held by it
     // Note that pipe can safely handle the case that the time index does not exist
     isEmpty();
-    degradeTimeIndex();
+    if (getStatus() != TsFileResourceStatus.UNCLOSED) {
+      degradeTimeIndex();
+    }
+    forceMarkDeleted();
     try {
       fsFactory.deleteIfExists(file);
       fsFactory.deleteIfExists(
@@ -1584,5 +1593,46 @@ public class TsFileResource implements PersistentResource {
 
   public void setLastValues(Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues) {
     this.lastValues = lastValues;
+  }
+
+  public TsFileResource shallowClone() {
+    TsFileResource cloned = new TsFileResource();
+    cloned.file = this.file;
+    cloned.timeIndex = this.timeIndex;
+    cloned.maxPlanIndex = this.maxPlanIndex;
+    cloned.minPlanIndex = this.minPlanIndex;
+    cloned.exclusiveModFileFuture = this.exclusiveModFileFuture;
+    cloned.sharedModFilePathFuture = this.sharedModFilePathFuture;
+    cloned.modFileManagement = this.modFileManagement;
+    cloned.exclusiveModFile = this.exclusiveModFile;
+    cloned.sharedModFile = this.sharedModFile;
+    cloned.sharedModFileOffset = this.sharedModFileOffset;
+    cloned.compactionModFile = this.compactionModFile;
+    cloned.isSeq = this.isSeq;
+    cloned.tsFileRepairStatus = this.tsFileRepairStatus;
+    cloned.settleTsFileCallBack = this.settleTsFileCallBack;
+    cloned.deviceTimeIndexRamSize = this.deviceTimeIndexRamSize;
+    cloned.tsFileSize = this.tsFileSize;
+    cloned.processor = this.processor;
+    cloned.originTsFileResource = this.originTsFileResource;
+    cloned.isGeneratedByPipeConsensus = this.isGeneratedByPipeConsensus;
+    cloned.isGeneratedByPipe = this.isGeneratedByPipe;
+    cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
+    cloned.tierLevel = this.tierLevel;
+    cloned.pathToChunkMetadataListMap = this.pathToChunkMetadataListMap;
+    cloned.pathToReadOnlyMemChunkMap = this.pathToReadOnlyMemChunkMap;
+    cloned.pathToTimeSeriesMetadataMap = this.pathToTimeSeriesMetadataMap;
+    cloned.lastValues = this.lastValues;
+    cloned.maxProgressIndex.set(this.maxProgressIndex.get());
+    cloned.atomicStatus.set(this.atomicStatus.get());
+    cloned.isEmpty.set(this.isEmpty.get());
+    cloned.tsFileID = this.tsFileID;
+    cloned.prev = null;
+    cloned.next = null;
+    return cloned;
+  }
+
+  public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
+    return (TsFileResource) clone();
   }
 }

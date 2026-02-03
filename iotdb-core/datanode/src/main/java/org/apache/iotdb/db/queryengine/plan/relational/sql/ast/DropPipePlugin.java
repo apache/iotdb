@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DropPipePlugin extends PipeStatement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DropPipePlugin.class);
 
   private final String pluginName;
   private final boolean ifExistsCondition;
@@ -71,5 +75,13 @@ public class DropPipePlugin extends PipeStatement {
         .add("pluginName", pluginName)
         .add("ifExistsCondition", ifExistsCondition)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(pluginName);
+    return size;
   }
 }

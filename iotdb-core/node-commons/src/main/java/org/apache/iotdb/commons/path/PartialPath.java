@@ -24,11 +24,11 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.read.common.Path;
@@ -38,9 +38,12 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1038,6 +1041,29 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
 
   public PartialPath transformToPartialPath() {
     return this;
+  }
+
+  /**
+   * In specific scenarios, like internal create timeseries, the message can only be passed as
+   * String format.
+   */
+  public static String transformDataToString(PartialPath partialPath) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      partialPath.serialize(dataOutputStream);
+    } catch (IOException ignored) {
+      // this exception won't happen.
+    }
+    byte[] bytes = byteArrayOutputStream.toByteArray();
+    // must use single-byte char sets
+    return new String(bytes, StandardCharsets.ISO_8859_1);
+  }
+
+  public static PartialPath parseDataFromString(String measurementPathData) {
+    return (PartialPath)
+        PathDeserializeUtil.deserialize(
+            ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
   }
 
   /** Return true if the path ends with ** and no other nodes contain *. Otherwise, return false. */

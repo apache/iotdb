@@ -440,6 +440,7 @@ struct TRollbackSchemaBlackListReq {
 
 struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
+  2: optional bool needLock
 }
 
 struct TFetchSchemaBlackListReq {
@@ -462,6 +463,22 @@ struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+}
+
+struct TAlterEncodingCompressorReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+  3: required bool ifExists
+  4: optional byte encoding
+  5: optional byte compressor
+}
+
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -732,6 +749,8 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
 }
 
 
@@ -1002,6 +1021,11 @@ service IDataNodeRPCService {
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
 
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
+
   /* Maintenance Tools */
 
   common.TSStatus merge()
@@ -1071,6 +1095,16 @@ service IDataNodeRPCService {
    * Delete matched timeseries and remove according schema black list in target schemRegion
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter matched timeseries to specific encoding and compressor in target schemaRegions
+   */
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1196,7 +1230,6 @@ service IDataNodeRPCService {
    * Delete column data for drop column
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
-
 
   /**
    * Construct table device black list

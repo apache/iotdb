@@ -595,16 +595,10 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    return this;
-  }
-
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
-    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+    cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
     return this;
   }
 
@@ -682,6 +676,27 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
     dnConfig.setAuditableOperationResult(auditableOperationResult);
     cnConfig.setAuditableOperationResult(auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    cnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    dnConfig.setCteBufferSize(cteBufferSize);
+    cnConfig.setCteBufferSize(cteBufferSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    dnConfig.setMaxRowsInCteBuffer(maxRows);
+    cnConfig.setMaxRowsInCteBuffer(maxRows);
     return this;
   }
 }

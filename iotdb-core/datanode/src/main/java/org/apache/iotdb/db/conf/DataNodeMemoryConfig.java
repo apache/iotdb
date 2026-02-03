@@ -32,6 +32,10 @@ import org.slf4j.LoggerFactory;
 public class DataNodeMemoryConfig {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeMemoryConfig.class);
 
+  public static final String SCHEMA_CACHE = "SchemaCache";
+  public static final String SCHEMA_REGION = "SchemaRegion";
+  public static final String PARTITION_CACHE = "PartitionCache";
+
   /** Reject proportion for system */
   private double rejectProportion = 0.8;
 
@@ -272,13 +276,13 @@ public class DataNodeMemoryConfig {
 
     schemaRegionMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "SchemaRegion", schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
+            SCHEMA_REGION, schemaMemoryTotal * schemaMemoryProportion[0] / proportionSum);
     schemaCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "SchemaCache", schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
+            SCHEMA_CACHE, schemaMemoryTotal * schemaMemoryProportion[1] / proportionSum);
     partitionCacheMemoryManager =
         schemaEngineMemoryManager.getOrCreateMemoryManager(
-            "PartitionCache", schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
+            PARTITION_CACHE, schemaMemoryTotal * schemaMemoryProportion[2] / proportionSum);
 
     LOGGER.info(
         "allocateMemoryForSchemaRegion = {}",
@@ -417,13 +421,7 @@ public class DataNodeMemoryConfig {
         Boolean.parseBoolean(
             properties.getProperty(
                 "may_cache_nonexist_series", Boolean.toString(isMetaDataCacheEnable()))));
-    setQueryThreadCount(
-        Integer.parseInt(
-            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
 
-    if (getQueryThreadCount() <= 0) {
-      setQueryThreadCount(Runtime.getRuntime().availableProcessors());
-    }
     try {
       // update enable query memory estimation for memory control
       setEnableQueryMemoryEstimation(
@@ -492,8 +490,6 @@ public class DataNodeMemoryConfig {
       dataExchangeMemorySize += partForDataExchange;
       operatorsMemorySize += partForOperators;
     }
-    // set max bytes per fragment instance
-    setMaxBytesPerFragmentInstance(dataExchangeMemorySize / getQueryThreadCount());
 
     bloomFilterCacheMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager(
@@ -511,6 +507,11 @@ public class DataNodeMemoryConfig {
         queryEngineMemoryManager.getOrCreateMemoryManager("DataExchange", dataExchangeMemorySize);
     timeIndexMemoryManager =
         queryEngineMemoryManager.getOrCreateMemoryManager("TimeIndex", timeIndexMemorySize);
+
+    // must be called after dataExchangeMemoryManager being inited.
+    setQueryThreadCount(
+        Integer.parseInt(
+            properties.getProperty("query_thread_count", Integer.toString(getQueryThreadCount()))));
   }
 
   public double getRejectProportion() {
@@ -587,7 +588,6 @@ public class DataNodeMemoryConfig {
       queryThreadCount = Runtime.getRuntime().availableProcessors();
     }
     this.queryThreadCount = queryThreadCount;
-    // TODO @spricoder: influence dynamic change of memory size
     if (getDataExchangeMemoryManager() != null) {
       this.maxBytesPerFragmentInstance =
           getDataExchangeMemoryManager().getTotalMemorySizeInBytes() / queryThreadCount;

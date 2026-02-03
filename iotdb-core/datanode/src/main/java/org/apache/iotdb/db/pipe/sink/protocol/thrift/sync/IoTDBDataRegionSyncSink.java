@@ -62,8 +62,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,7 +253,8 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Transfer deletion %s error, result status %s.",
               pipeDeleteDataNodeEvent.getDeleteDataNode().getType(), status),
-          pipeDeleteDataNodeEvent.getDeletionResource().toString());
+          pipeDeleteDataNodeEvent.getDeletionResource().toString(),
+          true);
     }
 
     if (LOGGER.isDebugEnabled()) {

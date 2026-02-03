@@ -60,6 +60,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.factory.FilterFactory;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,11 +80,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.BLOCK_QUEUED_TIME;
 import static org.apache.iotdb.db.queryengine.metric.DriverSchedulerMetricSet.READY_QUEUED_TIME;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.EMPTY_QUERY_DATA_SOURCE;
 import static org.apache.iotdb.db.storageengine.dataregion.VirtualDataRegion.UNFINISHED_QUERY_DATA_SOURCE;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 public class FragmentInstanceContext extends QueryContext {
@@ -779,7 +780,7 @@ public class FragmentInstanceContext extends QueryContext {
     if (initQueryDataSourceRetryCount % 10 == 0) {
       LOGGER.warn(
           "Failed to acquire the read lock of DataRegion-{} for {} times",
-          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionId(),
+          dataRegion == null ? "UNKNOWN" : dataRegion.getDataRegionIdString(),
           initQueryDataSourceRetryCount);
     }
     return UNFINISHED_QUERY_DATA_SOURCE;
@@ -896,25 +897,45 @@ public class FragmentInstanceContext extends QueryContext {
    */
   private void releaseTVListOwnedByQuery() {
     for (TVList tvList : tvListSet) {
+      long tvListRamSize = tvList.calculateRamSize();
       tvList.lockQueryList();
       Set<QueryContext> queryContextSet = tvList.getQueryContextSet();
       try {
         queryContextSet.remove(this);
         if (tvList.getOwnerQuery() == this) {
+          if (tvList.getReservedMemoryBytes() != tvListRamSize) {
+            LOGGER.warn(
+                "Release TVList owned by query: allocate size {}, release size {}",
+                tvList.getReservedMemoryBytes(),
+                tvListRamSize);
+          }
           if (queryContextSet.isEmpty()) {
-            LOGGER.debug(
-                "TVList {} is released by the query, FragmentInstance Id is {}",
-                tvList,
-                this.getId());
-            memoryReservationManager.releaseMemoryCumulatively(tvList.calculateRamSize());
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is released by the query, FragmentInstance Id is {}",
+                  tvList,
+                  this.getId());
+            }
+            memoryReservationManager.releaseMemoryCumulatively(tvList.getReservedMemoryBytes());
             tvList.clear();
           } else {
+            // Transfer memory to next query. It must be exception-safe as this method is called
+            // during FragmentInstanceExecution cleanup. Any exception during this process could
+            // prevent proper resource cleanup and cause memory leaks.
+            Pair<Long, Long> releasedBytes =
+                memoryReservationManager.releaseMemoryVirtually(tvList.getReservedMemoryBytes());
             FragmentInstanceContext queryContext =
                 (FragmentInstanceContext) queryContextSet.iterator().next();
-            LOGGER.debug(
-                "TVList {} is now owned by another query, FragmentInstance Id is {}",
-                tvList,
-                queryContext.getId());
+            queryContext
+                .getMemoryReservationContext()
+                .reserveMemoryVirtually(releasedBytes.left, releasedBytes.right);
+
+            if (LOGGER.isDebugEnabled()) {
+              LOGGER.debug(
+                  "TVList {} is now owned by another query, FragmentInstance Id is {}",
+                  tvList,
+                  queryContext.getId());
+            }
             tvList.setOwnerQuery(queryContext);
           }
         }

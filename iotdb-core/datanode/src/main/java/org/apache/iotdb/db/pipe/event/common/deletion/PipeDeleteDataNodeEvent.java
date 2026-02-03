@@ -155,6 +155,7 @@ public class PipeDeleteDataNodeEvent extends EnrichedEvent implements Serializab
 
   @Override
   public void throwIfNoPrivilege() {
+    // The privilege will be parsed at PipeEventCollector
     if (skipIfNoPrivileges || !(deleteDataNode instanceof RelationalDeleteDataNode)) {
       return;
     }

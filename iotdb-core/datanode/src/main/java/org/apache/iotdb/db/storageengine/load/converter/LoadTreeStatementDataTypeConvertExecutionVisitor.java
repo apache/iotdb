@@ -29,14 +29,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -93,7 +91,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
             new TsFileInsertionEventScanParser(
-                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+                file,
+                new IoTDBTreePattern(null),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                true)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
@@ -172,9 +176,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               tsfile -> {
                 FileUtils.deleteQuietly(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -345,6 +345,7 @@ public class SnapshotLoader {
                 try {
                   Files.createLink(targetFile.toPath(), file.toPath());
                   LOGGER.debug("Created hard link from {} to {}", file, targetFile);
+                  fileTarget.put(fileKey, effectiveDir);
                   return targetFile;
                 } catch (IOException e) {
                   LOGGER.info(

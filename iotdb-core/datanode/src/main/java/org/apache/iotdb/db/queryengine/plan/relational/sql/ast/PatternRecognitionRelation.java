@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class PatternRecognitionRelation extends Relation {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(PatternRecognitionRelation.class);
+
   private final Relation input;
   private final List<Expression> partitionBy;
   private final Optional<OrderBy> orderBy;
@@ -201,5 +205,23 @@ public class PatternRecognitionRelation extends Relation {
     // Produce an additional output row for every unmatched row.
     // Pattern exclusions are not allowed with this option.
     ALL_WITH_UNMATCHED
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(input);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(partitionBy);
+    size += 3 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(measures);
+    size +=
+        AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            afterMatchSkipTo.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(pattern);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(subsets);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(variableDefinitions);
+    return size;
   }
 }

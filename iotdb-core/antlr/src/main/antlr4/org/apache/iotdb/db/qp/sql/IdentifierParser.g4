@@ -47,6 +47,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AVAILABLE
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -114,6 +115,7 @@ keyWords
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION
@@ -213,6 +215,8 @@ keyWords
     | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE
@@ -267,6 +271,7 @@ keyWords
     | UPDATE
     | UPSERT
     | URI
+    | URLS
     | USED
     | USER
     | USING
