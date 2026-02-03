@@ -372,6 +372,26 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
     } catch (final Exception ignore) {
       // Expected
     }
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipePlugin `"
+                  + wrongDir
+                  + "` as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+              new File(
+                          System.getProperty("user.dir")
+                              + File.separator
+                              + "target"
+                              + File.separator
+                              + "test-classes"
+                              + File.separator)
+                      .toURI()
+                  + "PipePlugin.jar"));
+      fail();
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("1600: Failed to create pipe plugin"));
+    }
   }
 
   @Test
