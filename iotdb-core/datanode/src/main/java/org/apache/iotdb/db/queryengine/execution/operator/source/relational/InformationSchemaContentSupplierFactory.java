@@ -1263,7 +1263,7 @@ public class InformationSchemaContentSupplierFactory {
       return result;
     }
 
-    public boolean hasNextInternal() {
+    private boolean hasNextInternal() {
       if (currentDataRegionCacheReader != null) {
         return true;
       }
