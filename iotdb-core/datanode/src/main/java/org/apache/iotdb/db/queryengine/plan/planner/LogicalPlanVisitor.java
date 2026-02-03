@@ -599,8 +599,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     boolean canPushDownOffsetLimit =
         singleSchemaRegion
             && !showTimeSeriesStatement.isOrderByHeat()
-            && ((isMemorySchemaEngine && showTimeSeriesStatement.getSchemaFilter() == null)
-                || (!isMemorySchemaEngine && !orderByTimeseriesDesc));
+            && (isMemorySchemaEngine || !orderByTimeseriesDesc);
 
     if (!canPushDownOffsetLimit) {
       if (showTimeSeriesStatement.isOrderByHeat()

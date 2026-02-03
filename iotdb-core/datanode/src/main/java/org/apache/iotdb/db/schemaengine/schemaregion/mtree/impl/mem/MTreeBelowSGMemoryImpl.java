@@ -1508,7 +1508,8 @@ public class MTreeBelowSGMemoryImpl {
             showTimeSeriesPlan.isPrefixMatch(),
             showTimeSeriesPlan.getScope()) {
 
-          private long remainingOffset = Math.max(0, showTimeSeriesPlan.getOffset());
+          private long remainingOffset =
+              showTimeSeriesPlan.getSchemaFilter() == null ? showTimeSeriesPlan.getOffset() : 0;
           private final String[] prunePrefixNodes =
               getSafePrunePrefixNodes(showTimeSeriesPlan.getPath());
 
@@ -1673,8 +1674,11 @@ public class MTreeBelowSGMemoryImpl {
     final ISchemaReader<ITimeSeriesSchemaInfo> reader =
         new TimeseriesReaderWithViewFetch(
             collector, showTimeSeriesPlan.getSchemaFilter(), showTimeSeriesPlan.needViewDetail());
-    if (showTimeSeriesPlan.getLimit() > 0) {
-      return new SchemaReaderLimitOffsetWrapper<>(reader, showTimeSeriesPlan.getLimit(), 0);
+    final long offsetForWrapper =
+        showTimeSeriesPlan.getSchemaFilter() == null ? 0 : showTimeSeriesPlan.getOffset();
+    if (showTimeSeriesPlan.getLimit() > 0 || offsetForWrapper > 0) {
+      return new SchemaReaderLimitOffsetWrapper<>(
+          reader, showTimeSeriesPlan.getLimit(), offsetForWrapper);
     } else {
       return reader;
     }
