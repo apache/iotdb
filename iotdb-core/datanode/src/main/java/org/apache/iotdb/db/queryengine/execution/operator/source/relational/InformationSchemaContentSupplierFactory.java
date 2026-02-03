@@ -1378,7 +1378,7 @@ public class InformationSchemaContentSupplierFactory {
 
       long maxRuntime = OperatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
       long start = System.nanoTime();
-      long prevStageEndTime;
+      long prevStageEndTime = start;
 
       try {
         try {
@@ -1386,8 +1386,9 @@ public class InformationSchemaContentSupplierFactory {
             return null;
           }
         } finally {
-          prevStageEndTime = System.nanoTime();
-          prepareCacheReaderCostInNS += prevStageEndTime - start;
+          long now = System.nanoTime();
+          prepareCacheReaderCostInNS += now - prevStageEndTime;
+          prevStageEndTime = now;
         }
 
         try {
@@ -1395,8 +1396,9 @@ public class InformationSchemaContentSupplierFactory {
             return null;
           }
         } finally {
-          prevStageEndTime = System.nanoTime();
-          loadObjectFileCostInNS += prevStageEndTime - start;
+          long now = System.nanoTime();
+          loadObjectFileCostInNS += now - prevStageEndTime;
+          prevStageEndTime = now;
         }
 
         try {
@@ -1404,8 +1406,9 @@ public class InformationSchemaContentSupplierFactory {
             return null;
           }
         } finally {
-          prevStageEndTime = System.nanoTime();
-          prepareCachedTsFileIDCostInNS += prevStageEndTime - start;
+          long now = System.nanoTime();
+          prepareCachedTsFileIDCostInNS += now - prevStageEndTime;
+          prevStageEndTime = now;
         }
 
         try {
@@ -1413,8 +1416,9 @@ public class InformationSchemaContentSupplierFactory {
             return null;
           }
         } finally {
-          prevStageEndTime = System.nanoTime();
-          checkAllFilesInTsFileManagerCostInNS += prevStageEndTime - start;
+          long now = System.nanoTime();
+          checkAllFilesInTsFileManagerCostInNS += now - prevStageEndTime;
+          prevStageEndTime = now;
         }
 
         try {
@@ -1423,8 +1427,7 @@ public class InformationSchemaContentSupplierFactory {
             return null;
           }
         } finally {
-          prevStageEndTime = System.nanoTime();
-          readTsFileCacheValueFilesCostInNS += prevStageEndTime - start;
+          readTsFileCacheValueFilesCostInNS += System.nanoTime() - prevStageEndTime;
         }
 
         return buildTsBlock();

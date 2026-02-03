@@ -738,7 +738,7 @@ public enum PlanNodeType {
       case 1039:
         return ValuesNode.deserialize(buffer);
       case 1040:
-      return TableDiskUsageInformationSchemaTableScanNode.deserialize(buffer);
+        return TableDiskUsageInformationSchemaTableScanNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
