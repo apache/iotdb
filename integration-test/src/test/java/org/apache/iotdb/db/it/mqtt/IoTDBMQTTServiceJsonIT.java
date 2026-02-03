@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.mqtt;
 
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
@@ -58,8 +59,9 @@ public class IoTDBMQTTServiceJsonIT {
 
   private BlockingConnection connection;
   private static final String IP = System.getProperty("RemoteIp", "127.0.0.1");
-  private static final String USER = System.getProperty("RemoteUser", "root");
-  private static final String PASSWORD = System.getProperty("RemotePassword", "root");
+  private static final String USER = System.getProperty("RemoteUser", SessionConfig.DEFAULT_USER);
+  private static final String PASSWORD =
+      System.getProperty("RemotePassword", SessionConfig.DEFAULT_PASSWORD);
   public static final String FORMATTER = "json";
 
   @Before
@@ -85,7 +87,7 @@ public class IoTDBMQTTServiceJsonIT {
   @After
   public void tearDown() throws Exception {
     try {
-      if (connection != null) {
+      if (connection != null && connection.isConnected()) {
         connection.disconnect();
       }
     } catch (IOException e) {
@@ -120,9 +122,13 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                   RowRecord row = dataSet.next();
                   List<Field> fields = row.getFields();
-                  assertEquals(2, fields.size());
-                  assertEquals(1.5, fields.get(0).getDoubleV(), 0.001);
-                  assertEquals(2.5, fields.get(1).getDoubleV(), 0.001);
+                  if (fields.size() != 2) {
+                    return false;
+                  }
+                  if (Math.abs(fields.get(0).getDoubleV() - 1.5) > 0.001
+                      || Math.abs(fields.get(1).getDoubleV() - 2.5) > 0.001) {
+                    return false;
+                  }
                   return true;
                 } catch (StatementExecutionException e) {
                   if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
@@ -132,6 +138,14 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement("select s1, s2 from root.sg.d1 where time = 1")) {
+        assertTrue(dataSet.hasNext());
+        List<Field> fields = dataSet.next().getFields();
+        assertEquals(2, fields.size());
+        assertEquals(1.5, fields.get(0).getDoubleV(), 0.001);
+        assertEquals(2.5, fields.get(1).getDoubleV(), 0.001);
+      }
     }
   }
 
@@ -159,8 +173,11 @@ public class IoTDBMQTTServiceJsonIT {
                     return false;
                   }
                   RowRecord row = dataSet.next();
-                  // Should have 3 records
-                  assertEquals(3, row.getFields().get(0).getLongV());
+                  long count = row.getFields().get(0).getLongV();
+                  // Retry when data not visible yet (count 0) or incomplete
+                  if (count != 3) {
+                    return false;
+                  }
                   return true;
                 } catch (StatementExecutionException e) {
                   if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
@@ -170,6 +187,12 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      // Assert after await so failure message is clear on timeout
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement("select count(s1) from root.sg.d2")) {
+        assertTrue(dataSet.hasNext());
+        assertEquals(3, dataSet.next().getFields().get(0).getLongV());
+      }
     }
   }
 
@@ -203,7 +226,9 @@ public class IoTDBMQTTServiceJsonIT {
                     return false;
                   }
                   // sum should be 10 + 20 + 30 = 60
-                  assertEquals(60.0, sum, 0.001);
+                  if (Math.abs(sum - 60.0) > 0.001) {
+                    return false;
+                  }
                   return true;
                 } catch (StatementExecutionException e) {
                   if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
@@ -213,6 +238,17 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement("select s1 from root.sg.d3")) {
+        int count = 0;
+        double sum = 0;
+        while (dataSet.hasNext()) {
+          sum += dataSet.next().getFields().get(0).getDoubleV();
+          count++;
+        }
+        assertEquals(3, count);
+        assertEquals(60.0, sum, 0.001);
+      }
     }
   }
 
@@ -242,11 +278,15 @@ public class IoTDBMQTTServiceJsonIT {
                     return false;
                   }
                   List<Field> fields = dataSet.next().getFields();
-                  assertEquals(4, fields.size());
-                  assertEquals(100, fields.get(0).getIntV());
-                  assertEquals(3.14f, fields.get(1).getFloatV(), 0.01);
-                  assertTrue(fields.get(2).getBoolV());
-                  assertEquals("hello", fields.get(3).getStringValue());
+                  if (fields.size() != 4) {
+                    return false;
+                  }
+                  if (fields.get(0).getIntV() != 100
+                      || Math.abs(fields.get(1).getFloatV() - 3.14f) > 0.01
+                      || !fields.get(2).getBoolV()
+                      || !"hello".equals(fields.get(3).getStringValue())) {
+                    return false;
+                  }
                   return true;
                 } catch (StatementExecutionException e) {
                   if (e.getMessage() != null && e.getMessage().contains("does not exist")) {
@@ -256,6 +296,17 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement(
+              "select intVal, floatVal, boolVal, textVal from root.sg.d4 where time = 1")) {
+        assertTrue(dataSet.hasNext());
+        List<Field> fields = dataSet.next().getFields();
+        assertEquals(4, fields.size());
+        assertEquals(100, fields.get(0).getIntV());
+        assertEquals(3.14f, fields.get(1).getFloatV(), 0.01);
+        assertTrue(fields.get(2).getBoolV());
+        assertEquals("hello", fields.get(3).getStringValue());
+      }
     }
   }
 
@@ -284,7 +335,9 @@ public class IoTDBMQTTServiceJsonIT {
                     if (!dataSet1.hasNext()) {
                       return false;
                     }
-                    assertEquals(25.5, dataSet1.next().getFields().get(0).getDoubleV(), 0.001);
+                    if (Math.abs(dataSet1.next().getFields().get(0).getDoubleV() - 25.5) > 0.001) {
+                      return false;
+                    }
                   }
                   // Check device2
                   try (final SessionDataSet dataSet2 =
@@ -293,7 +346,9 @@ public class IoTDBMQTTServiceJsonIT {
                     if (!dataSet2.hasNext()) {
                       return false;
                     }
-                    assertEquals(26.5, dataSet2.next().getFields().get(0).getDoubleV(), 0.001);
+                    if (Math.abs(dataSet2.next().getFields().get(0).getDoubleV() - 26.5) > 0.001) {
+                      return false;
+                    }
                   }
                   // Check device3
                   try (final SessionDataSet dataSet3 =
@@ -302,7 +357,9 @@ public class IoTDBMQTTServiceJsonIT {
                     if (!dataSet3.hasNext()) {
                       return false;
                     }
-                    assertEquals(27.5, dataSet3.next().getFields().get(0).getDoubleV(), 0.001);
+                    if (Math.abs(dataSet3.next().getFields().get(0).getDoubleV() - 27.5) > 0.001) {
+                      return false;
+                    }
                   }
                   return true;
                 } catch (StatementExecutionException e) {
@@ -313,6 +370,21 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      try (final SessionDataSet dataSet1 =
+          session.executeQueryStatement("select temp from root.sg.device1 where time = 1")) {
+        assertTrue(dataSet1.hasNext());
+        assertEquals(25.5, dataSet1.next().getFields().get(0).getDoubleV(), 0.001);
+      }
+      try (final SessionDataSet dataSet2 =
+          session.executeQueryStatement("select temp from root.sg.device2 where time = 1")) {
+        assertTrue(dataSet2.hasNext());
+        assertEquals(26.5, dataSet2.next().getFields().get(0).getDoubleV(), 0.001);
+      }
+      try (final SessionDataSet dataSet3 =
+          session.executeQueryStatement("select temp from root.sg.device3 where time = 1")) {
+        assertTrue(dataSet3.hasNext());
+        assertEquals(27.5, dataSet3.next().getFields().get(0).getDoubleV(), 0.001);
+      }
     }
   }
 
@@ -340,13 +412,14 @@ public class IoTDBMQTTServiceJsonIT {
                   while (dataSet.hasNext()) {
                     RowRecord row = dataSet.next();
                     List<Field> fields = row.getFields();
-                    assertEquals(2, fields.size());
-                    // Temperature should be between 20 and 25
+                    if (fields.size() != 2) {
+                      return false;
+                    }
                     double temp = fields.get(0).getDoubleV();
-                    assertTrue(temp >= 20.0 && temp <= 25.0);
-                    // Humidity should be between 60 and 65
                     double humidity = fields.get(1).getDoubleV();
-                    assertTrue(humidity >= 60.0 && humidity <= 65.0);
+                    if (temp < 20.0 || temp > 25.0 || humidity < 60.0 || humidity > 65.0) {
+                      return false;
+                    }
                     count++;
                   }
                   return count == 5;
@@ -358,6 +431,21 @@ public class IoTDBMQTTServiceJsonIT {
                   }
                 }
               });
+      try (final SessionDataSet dataSet =
+          session.executeQueryStatement("select temperature, humidity from root.sg.d5")) {
+        int count = 0;
+        while (dataSet.hasNext()) {
+          RowRecord row = dataSet.next();
+          List<Field> fields = row.getFields();
+          assertEquals(2, fields.size());
+          double temp = fields.get(0).getDoubleV();
+          double humidity = fields.get(1).getDoubleV();
+          assertTrue(temp >= 20.0 && temp <= 25.0);
+          assertTrue(humidity >= 60.0 && humidity <= 65.0);
+          count++;
+        }
+        assertEquals(5, count);
+      }
     }
   }
 }
