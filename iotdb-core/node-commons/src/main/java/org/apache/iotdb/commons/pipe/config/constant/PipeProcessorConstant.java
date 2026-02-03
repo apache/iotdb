@@ -52,6 +52,9 @@ public class PipeProcessorConstant {
   public static final String PROCESSOR_SLIDING_SECONDS_KEY = "processor.sliding.seconds";
   public static final long PROCESSOR_SLIDING_SECONDS_DEFAULT_VALUE = 120;
 
+  public static final String PROCESSOR_COUNT_KEY = "processor.count";
+  public static final long PROCESSOR_COUNT_DEFAULT_VALUE = 60;
+
   public static final String PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_KEY =
       "processor.tumbling-time.interval-seconds";
   public static final long PROCESSOR_TUMBLING_TIME_INTERVAL_SECONDS_DEFAULT_VALUE = 60;
