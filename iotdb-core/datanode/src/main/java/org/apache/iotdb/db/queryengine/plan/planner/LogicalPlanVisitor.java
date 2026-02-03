@@ -570,10 +570,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     long limit = showTimeSeriesStatement.getLimit();
     long offset = showTimeSeriesStatement.getOffset();
+    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries();
+    boolean orderByTimeseriesDesc =
+        orderByTimeseries && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
     if (showTimeSeriesStatement.hasTimeCondition()) {
       planBuilder =
           planBuilder.planTimeseriesRegionScan(analysis.getDeviceToTimeseriesSchemas(), false);
-      if (showTimeSeriesStatement.isOrderByTimeseries()) {
+      if (orderByTimeseries) {
         SortItem sortItem =
             new SortItem(
                 ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
@@ -597,11 +600,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         singleSchemaRegion
             && !showTimeSeriesStatement.isOrderByHeat()
             && ((isMemorySchemaEngine && showTimeSeriesStatement.getSchemaFilter() == null)
-                || (!isMemorySchemaEngine && !showTimeSeriesStatement.isOrderByTimeseries()));
+                || (!isMemorySchemaEngine && !orderByTimeseriesDesc));
 
     if (!canPushDownOffsetLimit) {
       if (showTimeSeriesStatement.isOrderByHeat()
-          || (!isMemorySchemaEngine && showTimeSeriesStatement.isOrderByTimeseries())) {
+          || (!isMemorySchemaEngine && orderByTimeseriesDesc)) {
         limit = 0;
         offset = 0;
       } else {
@@ -609,9 +612,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         offset = 0;
       }
     }
-    boolean orderByTimeseries = showTimeSeriesStatement.isOrderByTimeseries();
-    boolean orderByTimeseriesDesc =
-        orderByTimeseries && showTimeSeriesStatement.getNameOrdering() == Ordering.DESC;
 
     planBuilder =
         planBuilder
@@ -628,9 +628,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 orderByTimeseriesDesc)
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
 
-    // order by timeseries name in multi-region or PBTree case: still need global SortNode
-    if (showTimeSeriesStatement.isOrderByTimeseries()
-        && (!singleSchemaRegion || !isMemorySchemaEngine)) {
+    // order by timeseries name in multi-region or PBTree-Desc case: still need global SortNode
+    if (orderByTimeseries
+        && (!singleSchemaRegion || (!isMemorySchemaEngine && orderByTimeseriesDesc))) {
       SortItem sortItem =
           new SortItem(ColumnHeaderConstant.TIMESERIES, showTimeSeriesStatement.getNameOrdering());
       planBuilder = planBuilder.planOrderBy(Collections.singletonList(sortItem));
