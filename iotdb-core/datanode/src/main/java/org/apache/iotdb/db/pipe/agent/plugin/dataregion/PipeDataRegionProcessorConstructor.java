@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.CountWindowingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
@@ -64,6 +65,9 @@ class PipeDataRegionProcessorConstructor extends PipeProcessorConstructor {
     pluginConstructors.put(
         BuiltinPipePlugin.TUMBLING_WINDOWING_PROCESSOR.getPipePluginName(),
         TumblingWindowingProcessor::new);
+    pluginConstructors.put(
+        BuiltinPipePlugin.COUNT_WINDOWING_PROCESSOR.getPipePluginName(),
+        CountWindowingProcessor::new);
     pluginConstructors.put(
         BuiltinPipePlugin.COUNT_POINT_PROCESSOR.getPipePluginName(), TwoStageCountProcessor::new);
     pluginConstructors.put(

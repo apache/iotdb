@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.agent.plugin.builtin;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.AggregateProcessor;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.CountWindowingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.StandardStatisticsProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.TumblingWindowingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
@@ -73,6 +74,7 @@ public enum BuiltinPipePlugin {
   // Hidden-processors, which are plugins of the processors
   STANDARD_STATISTICS_PROCESSOR("standard-statistics-processor", StandardStatisticsProcessor.class),
   TUMBLING_WINDOWING_PROCESSOR("tumbling-windowing-processor", TumblingWindowingProcessor.class),
+  COUNT_WINDOWING_PROCESSOR("count-windowing-processor", CountWindowingProcessor.class),
   PIPE_CONSENSUS_PROCESSOR("pipe-consensus-processor", PipeConsensusProcessor.class),
   RENAME_DATABASE_PROCESSOR("rename-database-processor", RenameDatabaseProcessor.class),
 
@@ -155,6 +157,7 @@ public enum BuiltinPipePlugin {
                   AGGREGATE_PROCESSOR.getPipePluginName().toUpperCase(),
                   COUNT_POINT_PROCESSOR.getPipePluginName().toUpperCase(),
                   STANDARD_STATISTICS_PROCESSOR.getPipePluginName().toUpperCase(),
+                  COUNT_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
                   TUMBLING_WINDOWING_PROCESSOR.getPipePluginName().toUpperCase(),
                   PIPE_CONSENSUS_PROCESSOR.getPipePluginName().toUpperCase(),
                   RENAME_DATABASE_PROCESSOR.getPipePluginName().toUpperCase(),
