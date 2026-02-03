@@ -31,6 +31,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -41,6 +42,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -340,8 +342,12 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
   public void testDirectoryErrors() throws SQLException {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      final List<String> wrongDirs =
-          Arrays.asList(".", "..", "./hackYou", ".\\hackYouTwice", "BombWindows/:*?", "AUX");
+      List<String> wrongDirs = Arrays.asList(".", "..", "./hackYou", ".\\hackYouTwice");
+      if (SystemUtils.IS_OS_WINDOWS) {
+        wrongDirs = new ArrayList<>(wrongDirs);
+        wrongDirs.add("BombWindows/:*?");
+        wrongDirs.add("AUX");
+      }
       for (final String name : wrongDirs) {
         testDirectoryError(name, statement);
       }
