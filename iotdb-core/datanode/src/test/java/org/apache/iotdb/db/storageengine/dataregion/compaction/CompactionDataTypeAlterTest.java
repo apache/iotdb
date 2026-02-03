@@ -358,7 +358,7 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionTest {
     resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
     try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
       writer.registerAlignedTimeseries(new Path(device), measurementSchemas2);
-      TSRecord record = new TSRecord(device, 2);
+      TSRecord record = new TSRecord(device, 200);
       record.addTuple(new DoubleDataPoint("s1", 2.0));
       record.addTuple(new DoubleDataPoint("s2", 3.0));
       writer.writeRecord(record);
