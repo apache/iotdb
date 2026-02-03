@@ -60,8 +60,8 @@ import static org.apache.iotdb.db.utils.EnvironmentUtils.cleanDir;
 import static org.junit.Assert.assertEquals;
 
 public class SortOperatorSortBranchTest {
-  private final String sortTmpPrefixPath =
-      "target" + File.separator + "sort" + File.separator + "tmp";
+  private final String sortDir = "target" + File.separator + "sort";
+  private final String sortTmpPrefixPath = sortDir + File.separator + "tmp";
 
   private int dataNodeId;
 
@@ -81,7 +81,7 @@ public class SortOperatorSortBranchTest {
 
   @After
   public void tearDown() throws IOException {
-    cleanDir(sortTmpPrefixPath);
+    cleanDir(sortDir);
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(dataNodeId);
     TSFileDescriptor.getInstance().getConfig().setMaxTsBlockSizeInBytes(maxTsBlockSizeInBytes);
     IoTDBDescriptor.getInstance().getConfig().setSortBufferSize(sortBufferSize);
