@@ -27,6 +27,7 @@ import org.apache.iotdb.db.utils.datastructure.MergeSortHeap;
 import org.apache.iotdb.db.utils.datastructure.MergeSortKey;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.db.utils.sort.DiskSpiller;
+import org.apache.iotdb.db.utils.sort.FileSpillerReader;
 import org.apache.iotdb.db.utils.sort.MemoryReader;
 import org.apache.iotdb.db.utils.sort.SortBufferManager;
 import org.apache.iotdb.db.utils.sort.SortReader;
@@ -240,7 +241,9 @@ public abstract class AbstractSortOperator implements ProcessOperator {
         mergeSortHeap.push(mergeSortKey);
       } else {
         noMoreData[readerIndex] = true;
-        sortBufferManager.releaseOneSortBranch();
+        if (sortReaders.get(readerIndex) instanceof FileSpillerReader) {
+          sortBufferManager.releaseOneSortBranch();
+        }
       }
 
       // break if time is out or tsBlockBuilder is full or sortBuffer is not enough
@@ -264,7 +267,9 @@ public abstract class AbstractSortOperator implements ProcessOperator {
           mergeSortHeap.push(mergeSortKey);
         } else {
           noMoreData[i] = true;
-          sortBufferManager.releaseOneSortBranch();
+          if (sortReader instanceof FileSpillerReader) {
+            sortBufferManager.releaseOneSortBranch();
+          }
         }
       }
     }
