@@ -79,7 +79,9 @@ public class CountWindowingProcessor extends AbstractSimpleTimeWindowingProcesso
     if ((long) window.getCustomizedRuntimeValue() >= count - 1) {
       return new Pair<>(
           WindowState.EMIT_AND_PURGE_WITH_COMPUTE,
-          new WindowOutput().setTimestamp(timeStamp).setProgressTime(timeStamp));
+          new WindowOutput()
+              .setTimestamp(window.getTimestamp())
+              .setProgressTime(window.getTimestamp()));
     }
     window.setCustomizedRuntimeValue((long) window.getCustomizedRuntimeValue() + 1);
     return new Pair<>(WindowState.COMPUTE, null);

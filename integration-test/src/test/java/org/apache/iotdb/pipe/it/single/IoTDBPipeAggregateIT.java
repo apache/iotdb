@@ -28,7 +28,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT1;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Ignore;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,14 +36,22 @@ import org.junit.runner.RunWith;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT1.class})
 public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
+
+  @Before
+  public void setUp() {
+    Locale.setDefault(Locale.ENGLISH);
+    super.setUp();
+  }
+
   @Test
-  @Ignore
-  public void testAggregator() throws Exception {
+  public void testWindowingAggregator() throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) env.getLeaderConfigNodeConnection()) {
       // Test the mixture of historical and realtime data
@@ -131,5 +139,31 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
           "count(root.testdb.wf01.wt01.temperature.cE),",
           Collections.singleton("2,"));
     }
+  }
+
+  @Test
+  public void testCountAggregator() {
+    TestUtils.executeNonQueries(
+        env,
+        Arrays.asList(
+            "create pipe factory with source('path'='root.test.**') with processor ('processor'='aggregate-processor', 'operators'='min', 'output.database'='root.aggregate', 'windowing-strategy'='count', 'count'='5') with sink ('sink'='write-back-sink')",
+            "insert into root.test.factory.vehicle (time, temperature) values(1, 1)",
+            "insert into root.test.factory.vehicle (time, temperature) values(2, 2)",
+            "insert into root.test.factory.vehicle (time, temperature) values(3, 3)",
+            "insert into root.test.factory.vehicle (time, temperature) values(4, 4)",
+            "insert into root.test.factory.vehicle (time, temperature) values(5, 5)",
+            "insert into root.test.factory.vehicle (time, temperature) values(6, 6)",
+            "insert into root.test.factory.vehicle (time, temperature) values(7, 7)",
+            "insert into root.test.factory.vehicle (time, temperature) values(8, 8)",
+            "insert into root.test.factory.vehicle (time, temperature) values(10, 10)",
+            "insert into root.test.factory.vehicle (time, temperature) values(9, 9)",
+            "flush"));
+
+    TestUtils.assertDataEventuallyOnEnv(
+        env,
+        "select min from root.aggregate.factory.vehicle.temperature",
+        "Time,root.aggregate.factory.vehicle.temperature.min,",
+        new HashSet<>(Arrays.asList("5,1.0", "9,6.0")),
+        10);
   }
 }
