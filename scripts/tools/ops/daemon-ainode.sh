@@ -48,7 +48,7 @@ RestartSec=5
 StartLimitInterval=600s
 StartLimitBurst=3
 RestartPreventExitStatus=SIGKILL
-TimeoutStopSec=10s
+TimeoutStopSec=5s
 
 [Install]
 WantedBy=multi-user.target
