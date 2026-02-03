@@ -1171,9 +1171,9 @@ public class DataRegion implements IDataRegionForQuery {
       if (deleted) {
         return;
       }
-      long arrivalTime = System.currentTimeMillis();
-      long generationTime = insertRowNode.getTime();
       if (delayAnalyzer != null) {
+        long arrivalTime = System.currentTimeMillis();
+        long generationTime = insertRowNode.getTime();
         delayAnalyzer.update(generationTime, arrivalTime);
       }
 
@@ -1341,9 +1341,9 @@ public class DataRegion implements IDataRegionForQuery {
             "Won't insert tablet {}, because region is deleted", insertTabletNode.getSearchIndex());
         return;
       }
-      long arrivalTime = System.currentTimeMillis();
-      long[] times = insertTabletNode.getTimes();
       if (delayAnalyzer != null) {
+        long arrivalTime = System.currentTimeMillis();
+        long[] times = insertTabletNode.getTimes();
         for (long generationTime : times) {
           delayAnalyzer.update(generationTime, arrivalTime);
         }
@@ -4138,11 +4138,11 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
       long ttl = getTTL(insertRowsOfOneDeviceNode);
-      long arrivalTime = System.currentTimeMillis();
       Map<TsFileProcessor, InsertRowsNode> tsFileProcessorMap = new HashMap<>();
       for (int i = 0; i < insertRowsOfOneDeviceNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsOfOneDeviceNode.getInsertRowNodeList().get(i);
         if (delayAnalyzer != null) {
+          long arrivalTime = System.currentTimeMillis();
           delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
         }
         if (!CommonUtils.isAlive(insertRowNode.getTime(), ttl)) {
@@ -4260,10 +4260,10 @@ public class DataRegion implements IDataRegionForQuery {
       }
       boolean[] areSequence = new boolean[insertRowsNode.getInsertRowNodeList().size()];
       long[] timePartitionIds = new long[insertRowsNode.getInsertRowNodeList().size()];
-      long arrivalTime = System.currentTimeMillis();
       for (int i = 0; i < insertRowsNode.getInsertRowNodeList().size(); i++) {
         InsertRowNode insertRowNode = insertRowsNode.getInsertRowNodeList().get(i);
         if (delayAnalyzer != null) {
+          long arrivalTime = System.currentTimeMillis();
           delayAnalyzer.update(insertRowNode.getTime(), arrivalTime);
         }
         long ttl = getTTL(insertRowNode);
@@ -4354,13 +4354,13 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[1]: ScheduleMemoryBlockTimeCost
       // infoForMetrics[2]: ScheduleWalTimeCost
       // infoForMetrics[3]: ScheduleMemTableTimeCost
-      // infoForMetrics[4]: InsertedPointsNumber
-      long arrivalTime = System.currentTimeMillis();
+      // infoForMetrics[4]: InsertedPointsNumbe
       for (int i = 0; i < insertMultiTabletsNode.getInsertTabletNodeList().size(); i++) {
         InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
         long[] times = insertTabletNode.getTimes();
         if (delayAnalyzer != null) {
           for (long generationTime : times) {
+            long arrivalTime = System.currentTimeMillis();
             delayAnalyzer.update(generationTime, arrivalTime);
           }
         }

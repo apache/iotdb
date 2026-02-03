@@ -398,7 +398,7 @@ public class IoTDBConfig {
    * Whether to enable delay analyzer for tracking data arrival delays and calculating safe
    * watermarks
    */
-  private boolean enableDelayAnalyzer = true;
+  private boolean enableDelayAnalyzer = false;
 
   /** Default window size for delay analyzer, empirical value: 10000 sample points */
   private int delayAnalyzerWindowSize = 10000;

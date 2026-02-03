@@ -288,7 +288,7 @@ public class DelayAnalyzer {
 
     if (LOGGER.isDebugEnabled()) {
       LOGGER.debug(
-          "Calculated safe watermark: {} (currentTime: {}, P{} delay: {}ms)",
+          "[DelayAnalyzer] Calculated safe watermark: {} (currentTime: {}, P{} delay: {}ms)",
           watermark,
           currentSystemTime,
           (int) (confidenceLevel * 100),
@@ -315,7 +315,7 @@ public class DelayAnalyzer {
    */
   public String getStatistics() {
     if (!isFull && cursor == 0) {
-      return "DelayAnalyzer: No data collected yet";
+      return "[DelayAnalyzer] No data collected yet";
     }
 
     long p50 = getDelayQuantile(0.50);
@@ -379,7 +379,7 @@ public class DelayAnalyzer {
       cursor = 0;
       isFull = false;
       totalSamples = 0;
-      LOGGER.debug("DelayAnalyzer has been reset");
+      LOGGER.debug("[DelayAnalyzer] DelayAnalyzer has been reset");
     } finally {
       lock.writeLock().unlock();
     }
