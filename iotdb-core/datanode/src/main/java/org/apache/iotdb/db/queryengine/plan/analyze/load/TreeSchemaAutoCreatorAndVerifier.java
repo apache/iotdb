@@ -259,7 +259,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
         schemaCache.getDevice2TimeSeries().entrySet()) {
       final IDeviceID device = entry.getKey();
       final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
-      boolean deviceHasDuplicates =false;
+      boolean deviceHasDuplicates = false;
 
       for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
         final String measurement = timeseriesSchema.getMeasurementName();
