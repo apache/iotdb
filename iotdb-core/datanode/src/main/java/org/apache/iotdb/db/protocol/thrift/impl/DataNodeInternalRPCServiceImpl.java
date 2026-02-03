@@ -2578,7 +2578,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 ByteBuffer.wrap(req.getTemplateInfo()));
         Template oldTemplate =
             ClusterTemplateManager.getInstance().getTemplate(newTemplate.getId());
-        ClusterTemplateManager.getInstance().updateTemplateInfo(req.getTemplateInfo());
+        ClusterTemplateManager.getInstance().updateTemplateInfo(newTemplate);
         long delta =
             newTemplate.getMeasurementNumber()
                 - (oldTemplate == null ? 0 : oldTemplate.getMeasurementNumber());
