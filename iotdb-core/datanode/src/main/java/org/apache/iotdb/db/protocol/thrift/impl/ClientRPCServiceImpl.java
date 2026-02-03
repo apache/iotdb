@@ -713,19 +713,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           return new Pair<>(new StringLiteral(strVal), escapedStr);
         case BLOB:
           byte[] bytes = (byte[]) param.value;
-          String hexStr = "X'" + bytesToHex(bytes) + "'";
+          String hexStr = "X'" + PreparedParameterSerde.bytesToHex(bytes) + "'";
           return new Pair<>(new BinaryLiteral(bytes), hexStr);
         default:
           throw new IllegalArgumentException("Unknown parameter type: " + param.type);
       }
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-      StringBuilder sb = new StringBuilder(bytes.length * 2);
-      for (byte b : bytes) {
-        sb.append(String.format("%02X", b));
-      }
-      return sb.toString();
     }
   }
 

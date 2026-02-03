@@ -395,12 +395,7 @@ public class IoTDBTablePreparedStatement extends IoTDBStatement implements Prepa
     checkParameterIndex(parameterIndex);
     setPreparedParameterValue(parameterIndex, x, Types.BINARY);
     // Format as hexadecimal string literal for SQL: X'0A0B0C'
-    StringBuilder hex = new StringBuilder("X'");
-    for (byte b : x) {
-      hex.append(String.format("%02X", b));
-    }
-    hex.append("'");
-    this.parameters.put(parameterIndex, hex.toString());
+    this.parameters.put(parameterIndex, "X'" + PreparedParameterSerde.bytesToHex(x) + "'");
   }
 
   @Override

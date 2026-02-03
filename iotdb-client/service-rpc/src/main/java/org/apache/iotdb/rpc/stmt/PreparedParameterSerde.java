@@ -21,9 +21,9 @@ package org.apache.iotdb.rpc.stmt;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -52,14 +52,15 @@ public class PreparedParameterSerde {
 
   /** Serialize parameters to binary format. */
   public static ByteBuffer serialize(Object[] values, int[] jdbcTypes, int count) {
-    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+    try {
+      PublicBAOS outputStream = new PublicBAOS();
       ReadWriteIOUtils.write(count, outputStream);
       for (int i = 0; i < count; i++) {
         serializeParameter(outputStream, values[i], jdbcTypes[i]);
       }
-      return ByteBuffer.wrap(outputStream.toByteArray());
+      return ByteBuffer.wrap(outputStream.getBuf(), 0, outputStream.size());
     } catch (IOException e) {
-      // Should not happen with ByteArrayOutputStream
+      // Should not happen with PublicBAOS
       throw new IllegalStateException("Failed to serialize parameters", e);
     }
   }
@@ -74,7 +75,7 @@ public class PreparedParameterSerde {
     switch (jdbcType) {
       case Types.BOOLEAN:
         ReadWriteIOUtils.write(TSDataType.BOOLEAN, outputStream);
-        ReadWriteIOUtils.write((Boolean) value, outputStream);
+        ReadWriteIOUtils.write((boolean) value, outputStream);
         break;
 
       case Types.INTEGER:
@@ -161,5 +162,14 @@ public class PreparedParameterSerde {
       default:
         throw new IllegalArgumentException("Unsupported type: " + type);
     }
+  }
+
+  /** Convert byte array to hexadecimal string representation. */
+  public static String bytesToHex(byte[] bytes) {
+    StringBuilder sb = new StringBuilder(bytes.length * 2);
+    for (byte b : bytes) {
+      sb.append(String.format("%02X", b));
+    }
+    return sb.toString();
   }
 }
