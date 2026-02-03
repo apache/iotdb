@@ -337,6 +337,44 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
+  public void testDirectoryErrors() throws SQLException {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      final List<String> wrongDirs =
+          Arrays.asList(".", "..", "./hackYou", ".\\hackYouTwice", "BombWindows/:*?", "AUX");
+      for (final String name : wrongDirs) {
+        testDirectoryError(name, statement);
+      }
+    }
+  }
+
+  private void testDirectoryError(final String wrongDir, final Statement statement) {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipe `"
+                  + wrongDir
+                  + "` with source ()"
+                  + " with processor ()"
+                  + " with sink ("
+                  + "'sink'='invalid-param',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp,
+              receiverPort));
+      fail();
+    } catch (final Exception ignore) {
+      // Expected
+    }
+  }
+
+  @Test
   public void testBrackets() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
