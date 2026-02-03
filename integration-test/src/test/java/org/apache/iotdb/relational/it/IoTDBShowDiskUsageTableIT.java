@@ -144,7 +144,7 @@ public class IoTDBShowDiskUsageTableIT {
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(
-            iterator.getLong("time_partition") < 0 || iterator.getLong("node_id") >= 2);
+            iterator.getLong("time_partition") < 0 || iterator.getLong("datanode_id") >= 2);
       }
     } catch (Exception e) {
       e.printStackTrace();

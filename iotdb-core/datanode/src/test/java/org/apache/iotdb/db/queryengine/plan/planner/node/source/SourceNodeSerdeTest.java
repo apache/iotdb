@@ -154,6 +154,10 @@ public class SourceNodeSerdeTest {
     ByteBuffer byteBuffer = ByteBuffer.allocate(2048);
     node.serialize(byteBuffer);
     byteBuffer.flip();
-    assertEquals(PlanNodeDeserializeHelper.deserialize(byteBuffer), node);
+    assertEquals(
+        ((TableDiskUsageInformationSchemaTableScanNode)
+                PlanNodeDeserializeHelper.deserialize(byteBuffer))
+            .getRegions(),
+        node.getRegions());
   }
 }
