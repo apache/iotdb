@@ -229,10 +229,6 @@ public class LoadTsFileTreeSchemaCache {
     return tsFileDevice2IsAlignedMemoryUsageSizeInBytes >= FLUSH_ALIGNED_CACHE_MEMORY_SIZE_IN_BYTES;
   }
 
-  public void updateDevice2TimeSeries(Map<IDeviceID, Set<MeasurementSchema>> newDevice2TimeSeries) {
-    currentBatchDevice2TimeSeriesSchemas = newDevice2TimeSeries;
-  }
-
   public void clearTimeSeries() {
     currentBatchDevice2TimeSeriesSchemas.clear();
     block.reduceMemoryUsage(batchDevice2TimeSeriesSchemasMemoryUsageSizeInBytes);
