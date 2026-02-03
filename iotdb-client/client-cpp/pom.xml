@@ -38,6 +38,7 @@
         <cmake.root.dir>${project.build.directory}/dependency/cmake/</cmake.root.dir>
         <thrift.exec.absolute.path>${project.build.directory}/thrift/bin/${thrift.executable}</thrift.exec.absolute.path>
         <maven.test.skip>${ctest.skip.tests}</maven.test.skip>
+        <with.ssl>false</with.ssl>
     </properties>
     <dependencies>
         <dependency>
@@ -50,28 +51,6 @@
     <build>
         <plugins>
             <!-- Build and do session integration test -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>copy-test-resources</id>
-                        <goals>
-                            <goal>copy-resources</goal>
-                        </goals>
-                        <phase>validate</phase>
-                        <configuration>
-                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
-                            <resources>
-                                <resource>
-                                    <directory>${project.basedir}/src/test</directory>
-                                    <filtering>true</filtering>
-                                </resource>
-                            </resources>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -92,6 +71,22 @@
                                         <include>**/*.cpp</include>
                                         <include>**/*.cc</include>
                                     </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-test-resources</id>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/build/test</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${project.basedir}/src/test</directory>
+                                    <filtering>true</filtering>
                                 </resource>
                             </resources>
                         </configuration>
@@ -129,7 +124,7 @@
                 <artifactId>download-maven-plugin</artifactId>
                 <executions>
                     <!-- Download the Catch2 header file. -->
-                    <execution>
+                    <!-- <execution>
                         <id>get-catch2</id>
                         <goals>
                             <goal>wget</goal>
@@ -141,7 +136,7 @@
                             <outputDirectory>${project.build.directory}/build/test/catch2</outputDirectory>
                             <skip>${ctest.skip.tests}</skip>
                         </configuration>
-                    </execution>
+                    </execution> -->
                 </executions>
             </plugin>
             <plugin>
@@ -223,6 +218,7 @@
                             <targetPath>${project.build.directory}/build/main</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>
@@ -239,6 +235,7 @@
                             <targetPath>${project.build.directory}/build/test</targetPath>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
+                                <option>-DWITH_SSL=${with.ssl}</option>
                             </options>
                         </configuration>
                     </execution>

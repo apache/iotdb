@@ -85,7 +85,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.LastCacheLoadStrategy;
@@ -163,7 +162,6 @@ import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.ObjectTypeUtils;
-import org.apache.iotdb.db.utils.ObjectWriter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -197,7 +195,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1493,15 +1490,10 @@ public class DataRegion implements IDataRegionForQuery {
       registerToTsFile(insertTabletNode, tsFileProcessor);
       tsFileProcessor.insertTablet(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
     } catch (DataTypeInconsistentException e) {
-      // flush both MemTables so that the new type can be inserted into a new MemTable
-      TsFileProcessor workSequenceProcessor = workSequenceTsFileProcessors.get(timePartitionId);
-      if (workSequenceProcessor != null) {
-        fileFlushPolicy.apply(this, workSequenceProcessor, workSequenceProcessor.isSequence());
-      }
-      TsFileProcessor workUnsequenceProcessor = workUnsequenceTsFileProcessors.get(timePartitionId);
-      if (workUnsequenceProcessor != null) {
-        fileFlushPolicy.apply(this, workUnsequenceProcessor, workUnsequenceProcessor.isSequence());
-      }
+      // flush all MemTables so that the new type can be inserted into a new MemTable
+      // cannot just flush the current TsFileProcessor, because the new type may be inserted into
+      // other TsFileProcessors of this region
+      asyncCloseAllWorkingTsFileProcessors();
       throw e;
     } catch (WriteProcessRejectException e) {
       logger.warn("insert to TsFileProcessor rejected, {}", e.getMessage());
@@ -1654,8 +1646,11 @@ public class DataRegion implements IDataRegionForQuery {
   private TsFileProcessor insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
+    if (insertRowNode.allMeasurementFailed()) {
+      return null;
+    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null || insertRowNode.allMeasurementFailed()) {
+    if (tsFileProcessor == null) {
       return null;
     }
     long[] infoForMetrics = new long[5];
@@ -3817,59 +3812,6 @@ public class DataRegion implements IDataRegionForQuery {
       return 0;
     } finally {
       CompactionScheduler.exclusiveUnlockCompactionSelection();
-      writeUnlock();
-    }
-  }
-
-  public void writeObject(ObjectNode objectNode) throws Exception {
-    writeLock("writeObject");
-    try {
-      String relativeTmpPathString = objectNode.getFilePathString() + ".tmp";
-      String objectFileDir = null;
-      File objectTmpFile = null;
-      for (String objectDir : TierManager.getInstance().getAllObjectFileFolders()) {
-        File tmpFile = FSFactoryProducer.getFSFactory().getFile(objectDir, relativeTmpPathString);
-        if (tmpFile.exists()) {
-          objectFileDir = objectDir;
-          objectTmpFile = tmpFile;
-          break;
-        }
-      }
-      if (objectTmpFile == null) {
-        objectFileDir = TierManager.getInstance().getNextFolderForObjectFile();
-        objectTmpFile =
-            FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeTmpPathString);
-      }
-      try (ObjectWriter writer = new ObjectWriter(objectTmpFile)) {
-        writer.write(
-            objectNode.isGeneratedByRemoteConsensusLeader(),
-            objectNode.getOffset(),
-            objectNode.getContent());
-      }
-      if (objectNode.isEOF()) {
-        File objectFile =
-            FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
-        if (objectFile.exists()) {
-          String relativeBackPathString = objectNode.getFilePathString() + ".back";
-          File objectBackFile =
-              FSFactoryProducer.getFSFactory().getFile(objectFileDir, relativeBackPathString);
-          Files.move(
-              objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          Files.move(
-              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          FileMetrics.getInstance().decreaseObjectFileNum(1);
-          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
-          Files.delete(objectBackFile.toPath());
-        } else {
-          Files.move(
-              objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-        FileMetrics.getInstance().increaseObjectFileNum(1);
-        FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
-      }
-      getWALNode()
-          .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));
-    } finally {
       writeUnlock();
     }
   }

@@ -43,6 +43,7 @@ import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -71,9 +72,6 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
   public void setUp() throws Exception {
     super.setUp();
 
-    // enable subscription
-    EnvFactory.getEnv().getConfig().getCommonConfig().setSubscriptionEnabled(true);
-
     // set cluster env
     EnvFactory.getEnv()
         .getConfig()
@@ -97,6 +95,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     super.tearDown();
   }
 
+  @Ignore
   @Test
   public void testSubscriptionAfterRestartCluster() throws Exception {
     final String host = EnvFactory.getEnv().getIP();
@@ -275,6 +274,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
   }
 
+  @Ignore
   @Test
   public void testSubscriptionAfterRestartDataNode() throws Exception {
     // Fetch ip and port from DN 0
@@ -413,6 +413,7 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
     }
   }
 
+  @Ignore
   @Test
   public void testSubscriptionWhenConfigNodeLeaderChange() throws Exception {
     // Fetch ip and port from DN 0

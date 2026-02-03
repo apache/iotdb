@@ -33,7 +33,7 @@ import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValue;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.Utils.serializeTimeValueWithNull;
 
 public class LastByAccumulator implements TableAccumulator {
 
@@ -52,6 +52,7 @@ public class LastByAccumulator implements TableAccumulator {
   private boolean xIsNull = true;
 
   protected boolean initResult = false;
+  protected boolean initNullTimeValue = false;
 
   public LastByAccumulator(
       TSDataType xDataType, TSDataType yDataType, boolean xIsTimeColumn, boolean yIsTimeColumn) {
@@ -59,7 +60,6 @@ public class LastByAccumulator implements TableAccumulator {
     this.yDataType = yDataType;
     this.xIsTimeColumn = xIsTimeColumn;
     this.yIsTimeColumn = yIsTimeColumn;
-
     this.xResult = TsPrimitiveType.getByType(xDataType);
   }
 
@@ -140,50 +140,81 @@ public class LastByAccumulator implements TableAccumulator {
       byte[] bytes = argument.getBinary(i).getValues();
       long curTime = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, 0);
       int offset = Long.BYTES;
-      boolean isXNull = BytesUtils.bytesToBool(bytes, offset);
+      boolean isOrderTimeNull = BytesUtils.bytesToBool(bytes, offset);
       offset += 1;
-
-      if (isXNull) {
-        if (!initResult || curTime > yLastTime) {
-          initResult = true;
-          yLastTime = curTime;
-          xIsNull = true;
-        }
-        continue;
-      }
+      boolean isXValueNull = BytesUtils.bytesToBool(bytes, offset);
+      offset += 1;
 
       switch (xDataType) {
         case INT32:
         case DATE:
-          int xIntVal = BytesUtils.bytesToInt(bytes, offset);
-          updateIntLastValue(xIntVal, curTime);
+          // if the x value is null, could not serialize the x value
+          int xIntVal = isXValueNull ? 0 : BytesUtils.bytesToInt(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateIntLastValue(isXValueNull, xIntVal, curTime);
+          } else {
+            updateIntNullTimeValue(isXValueNull, xIntVal);
+          }
           break;
+
         case INT64:
         case TIMESTAMP:
-          long longVal = BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
-          updateLongLastValue(longVal, curTime);
+          long longVal =
+              isXValueNull ? 0 : BytesUtils.bytesToLongFromOffset(bytes, Long.BYTES, offset);
+          if (!isOrderTimeNull) {
+            updateLongLastValue(isXValueNull, longVal, curTime);
+          } else {
+            updateLongNullTimeValue(isXValueNull, longVal);
+          }
           break;
+
         case FLOAT:
-          float floatVal = BytesUtils.bytesToFloat(bytes, offset);
-          updateFloatLastValue(floatVal, curTime);
+          float floatVal = isXValueNull ? 0 : BytesUtils.bytesToFloat(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateFloatLastValue(isXValueNull, floatVal, curTime);
+          } else {
+            updateFloatNullTimeValue(isXValueNull, floatVal);
+          }
           break;
+
         case DOUBLE:
-          double doubleVal = BytesUtils.bytesToDouble(bytes, offset);
-          updateDoubleLastValue(doubleVal, curTime);
+          double doubleVal = isXValueNull ? 0 : BytesUtils.bytesToDouble(bytes, offset);
+          if (!isOrderTimeNull) {
+            updateDoubleLastValue(isXValueNull, doubleVal, curTime);
+          } else {
+            updateDoubleNullTimeValue(isXValueNull, doubleVal);
+          }
           break;
+
         case TEXT:
         case BLOB:
         case STRING:
         case OBJECT:
-          int length = BytesUtils.bytesToInt(bytes, offset);
-          offset += Integer.BYTES;
-          Binary binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
-          updateBinaryLastValue(binaryVal, curTime);
+          Binary binaryVal = null;
+          if (!isXValueNull) {
+            int length = BytesUtils.bytesToInt(bytes, offset);
+            offset += Integer.BYTES;
+            binaryVal = new Binary(BytesUtils.subBytes(bytes, offset, length));
+          }
+          if (!isOrderTimeNull) {
+            updateBinaryLastValue(isXValueNull, binaryVal, curTime);
+          } else {
+            updateBinaryNullTimeValue(isXValueNull, binaryVal);
+          }
           break;
+
         case BOOLEAN:
-          boolean boolVal = BytesUtils.bytesToBool(bytes, offset);
-          updateBooleanLastValue(boolVal, curTime);
+          boolean boolVal = false;
+          if (!isXValueNull) {
+            boolVal = BytesUtils.bytesToBool(bytes, offset);
+          }
+          if (!isOrderTimeNull) {
+            updateBooleanLastValue(isXValueNull, boolVal, curTime);
+          } else {
+            updateBooleanNullTimeValue(isXValueNull, boolVal);
+          }
           break;
+
         default:
           throw new UnSupportedDataTypeException(
               String.format("Unsupported data type in LAST_BY Aggregation: %s", yDataType));
@@ -197,17 +228,22 @@ public class LastByAccumulator implements TableAccumulator {
         columnBuilder instanceof BinaryColumnBuilder,
         "intermediate input and output of LAST_BY should be BinaryColumn");
 
-    if (!initResult) {
-      columnBuilder.appendNull();
-    } else {
+    if (initResult || initNullTimeValue) {
+      // if the initResult is activated, the result must carry a not null time
+      boolean isOrderTimeNull = !initResult;
       columnBuilder.writeBinary(
-          new Binary(serializeTimeValue(xDataType, yLastTime, xIsNull, xResult)));
+          new Binary(
+              serializeTimeValueWithNull(xDataType, yLastTime, xIsNull, isOrderTimeNull, xResult)));
+      return;
     }
+
+    columnBuilder.appendNull();
   }
 
   @Override
   public void evaluateFinal(ColumnBuilder columnBuilder) {
-    if (!initResult || xIsNull) {
+
+    if (xIsNull) {
       columnBuilder.appendNull();
       return;
     }
@@ -316,273 +352,257 @@ public class LastByAccumulator implements TableAccumulator {
   @Override
   public void reset() {
     initResult = false;
+    initNullTimeValue = false;
     xIsNull = true;
     this.yLastTime = Long.MIN_VALUE;
     this.xResult.reset();
   }
 
-  // TODO can add last position optimization if last position is null ?
-  protected void addIntInput(
-      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
-
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateIntLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateIntLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
-
-  protected void updateIntLastValue(Column xColumn, int xIdx, long curTime) {
+  private boolean checkAndUpdateLastTime(boolean isXValueNull, long curTime) {
     if (!initResult || curTime > yLastTime) {
       initResult = true;
       yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
+
+      if (isXValueNull) {
         xIsNull = true;
+        return false;
       } else {
         xIsNull = false;
-        xResult.setInt(xColumn.getInt(xIdx));
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean checkAndUpdateNullTime(boolean isXValueNull) {
+    if (!initResult && !initNullTimeValue) {
+      initNullTimeValue = true;
+
+      if (isXValueNull) {
+        xIsNull = true;
+        return false;
+      } else {
+        xIsNull = false;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // maybe could add last position optimization if last position is null ?
+  protected void addIntInput(
+      Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
+    int selectPositionCount = mask.getSelectedPositionCount();
+
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
+
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: The order time is not null. Attempt to update the xResult.
+        updateIntLastValue(
+            xColumn.isNull(position), xColumn.getInt(position), timeColumn.getLong(position));
+      } else {
+        // Case B: The order time is null. Attempt to update the xNullTimeValue.
+        updateIntNullTimeValue(xColumn.isNull(position), xColumn.getInt(position));
       }
     }
   }
 
-  protected void updateIntLastValue(int val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setInt(val);
+  protected void updateIntLastValue(boolean isXValueNull, int xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setInt(xValue);
+    }
+  }
+
+  protected void updateIntNullTimeValue(boolean isXValueNull, int xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setInt(xValue);
     }
   }
 
   protected void addLongInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateLongLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateLongLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateLongLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
-        xIsNull = true;
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: The order time is not null. Attempt to update the xResult.
+        updateLongLastValue(
+            xColumn.isNull(position), xColumn.getLong(position), timeColumn.getLong(position));
       } else {
-        xIsNull = false;
-        xResult.setLong(xColumn.getLong(xIdx));
+        // Case A: The order time is  null. Attempt to update the xNullTimeValue.
+        updateLongNullTimeValue(xColumn.isNull(position), xColumn.getLong(position));
       }
     }
   }
 
-  protected void updateLongLastValue(long value, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setLong(value);
+  protected void updateLongLastValue(boolean isXValueNull, long xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setLong(xValue);
+    }
+  }
+
+  protected void updateLongNullTimeValue(boolean isXValueNull, long xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setLong(xValue);
     }
   }
 
   protected void addFloatInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateFloatLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateFloatLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateFloatLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
-        xIsNull = true;
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        // Case A: Valid Time
+        updateFloatLastValue(
+            xColumn.isNull(position), xColumn.getFloat(position), timeColumn.getLong(position));
       } else {
-        xIsNull = false;
-        xResult.setFloat(xColumn.getFloat(xIdx));
+        // Case B: Null Time
+        updateFloatNullTimeValue(xColumn.isNull(position), xColumn.getFloat(position));
       }
     }
   }
 
-  protected void updateFloatLastValue(float value, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setFloat(value);
+  protected void updateFloatLastValue(boolean isXValueNull, float xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setFloat(xValue);
+    }
+  }
+
+  protected void updateFloatNullTimeValue(boolean isXValueNull, float xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setFloat(xValue);
     }
   }
 
   protected void addDoubleInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateDoubleLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateDoubleLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateDoubleLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
-        xIsNull = true;
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateDoubleLastValue(
+            xColumn.isNull(position), xColumn.getDouble(position), timeColumn.getLong(position));
       } else {
-        xIsNull = false;
-        xResult.setDouble(xColumn.getDouble(xIdx));
+        updateDoubleNullTimeValue(xColumn.isNull(position), xColumn.getDouble(position));
       }
     }
   }
 
-  protected void updateDoubleLastValue(double val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setDouble(val);
+  protected void updateDoubleLastValue(boolean isXValueNull, double xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setDouble(xValue);
+    }
+  }
+
+  protected void updateDoubleNullTimeValue(boolean isXValueNull, double xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setDouble(xValue);
     }
   }
 
   protected void addBinaryInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBinaryLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBinaryLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateBinaryLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
-        xIsNull = true;
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateBinaryLastValue(
+            xColumn.isNull(position), xColumn.getBinary(position), timeColumn.getLong(position));
       } else {
-        xIsNull = false;
-        xResult.setBinary(xColumn.getBinary(xIdx));
+        updateBinaryNullTimeValue(xColumn.isNull(position), xColumn.getBinary(position));
       }
     }
   }
 
-  protected void updateBinaryLastValue(Binary val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setBinary(val);
+  protected void updateBinaryLastValue(boolean isXValueNull, Binary xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setBinary(xValue);
+    }
+  }
+
+  protected void updateBinaryNullTimeValue(boolean isXValueNull, Binary xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setBinary(xValue);
     }
   }
 
   protected void addBooleanInput(
       Column xColumn, Column yColumn, Column timeColumn, AggregationMask mask) {
-    int positionCount = mask.getSelectedPositionCount();
+    int selectPositionCount = mask.getSelectedPositionCount();
 
-    if (mask.isSelectAll()) {
-      for (int i = 0; i < positionCount; i++) {
-        if (!yColumn.isNull(i)) {
-          updateBooleanLastValue(xColumn, i, timeColumn.getLong(i));
-        }
-      }
-    } else {
-      int[] selectedPositions = mask.getSelectedPositions();
-      int position;
-      for (int i = 0; i < positionCount; i++) {
-        position = selectedPositions[i];
-        if (!yColumn.isNull(position)) {
-          updateBooleanLastValue(xColumn, position, timeColumn.getLong(position));
-        }
-      }
-    }
-  }
+    boolean isSelectAll = mask.isSelectAll();
+    int[] selectedPositions = isSelectAll ? null : mask.getSelectedPositions();
 
-  protected void updateBooleanLastValue(Column xColumn, int xIdx, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      if (xColumn.isNull(xIdx)) {
-        xIsNull = true;
+    for (int i = 0; i < selectPositionCount; i++) {
+      int position = isSelectAll ? i : selectedPositions[i];
+      if (yColumn.isNull(position)) {
+        continue;
+      }
+
+      // Check if the time is null
+      if (!timeColumn.isNull(position)) {
+        updateBooleanLastValue(
+            xColumn.isNull(position), xColumn.getBoolean(position), timeColumn.getLong(position));
       } else {
-        xIsNull = false;
-        xResult.setBoolean(xColumn.getBoolean(xIdx));
+        updateBooleanNullTimeValue(xColumn.isNull(position), xColumn.getBoolean(position));
       }
     }
   }
 
-  protected void updateBooleanLastValue(boolean val, long curTime) {
-    if (!initResult || curTime > yLastTime) {
-      initResult = true;
-      yLastTime = curTime;
-      xIsNull = false;
-      xResult.setBoolean(val);
+  protected void updateBooleanLastValue(boolean isXValueNull, boolean xValue, long curTime) {
+    if (checkAndUpdateLastTime(isXValueNull, curTime)) {
+      xResult.setBoolean(xValue);
+    }
+  }
+
+  protected void updateBooleanNullTimeValue(boolean isXValueNull, boolean xValue) {
+    if (checkAndUpdateNullTime(isXValueNull)) {
+      xResult.setBoolean(xValue);
     }
   }
 }

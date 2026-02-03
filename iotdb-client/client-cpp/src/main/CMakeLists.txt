@@ -26,6 +26,25 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2 ")
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../../thrift/include)
 
+# =========================
+# SSL option (default OFF)
+# =========================
+option(WITH_SSL "Build with SSL support" OFF)
+
+IF(WITH_SSL)
+    FIND_PACKAGE(OpenSSL REQUIRED)
+    IF(OpenSSL_FOUND)
+        MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+        INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
+        ADD_DEFINITIONS(-DWITH_SSL=1)
+    ELSE()
+        MESSAGE(FATAL_ERROR "OpenSSL not found, but WITH_SSL is enabled")
+    ENDIF()
+ELSE()
+    MESSAGE(STATUS "Building without SSL support")
+    ADD_DEFINITIONS(-DWITH_SSL=0)
+ENDIF()
+
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
 
@@ -41,11 +60,6 @@ ELSE()
     SET(THRIFT_STATIC_LIB "${CMAKE_SOURCE_DIR}/../../thrift/lib/libthrift.a")
 ENDIF()
 
-IF(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT MSVC)
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address)
-ENDIF()
-
 # Add the generated source files to the sources for the library.
 AUX_SOURCE_DIRECTORY(./generated-sources-cpp SESSION_SRCS)
 IF(MSVC)
@@ -54,5 +68,20 @@ ELSE()
     ADD_LIBRARY(iotdb_session SHARED ${SESSION_SRCS})
 ENDIF()
 
-# Link with Thrift static library
-TARGET_LINK_LIBRARIES(iotdb_session ${THRIFT_STATIC_LIB})
+# =========================
+# Link libraries (SSL optional)
+# =========================
+IF(WITH_SSL)
+    target_link_libraries(iotdb_session
+        PUBLIC
+            OpenSSL::SSL
+            OpenSSL::Crypto
+            ${THRIFT_STATIC_LIB}
+    )
+ELSE()
+    target_link_libraries(iotdb_session
+        PUBLIC
+            ${THRIFT_STATIC_LIB}
+    )
+ENDIF()
+

@@ -47,7 +47,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -116,6 +118,40 @@ public class IoTDBLoadTsFileIT {
     return pairs;
   }
 
+  private List<Pair<MeasurementSchema, MeasurementSchema>> generateMeasurementSchemasWithTime(
+      final int timeColumnIndex, final String timeColumnName) {
+    List<TSDataType> dataTypes =
+        new ArrayList<>(
+            Arrays.asList(
+                TSDataType.STRING,
+                TSDataType.TEXT,
+                TSDataType.BLOB,
+                TSDataType.TIMESTAMP,
+                TSDataType.BOOLEAN,
+                TSDataType.DATE,
+                TSDataType.DOUBLE,
+                TSDataType.FLOAT,
+                TSDataType.INT32,
+                TSDataType.INT64));
+    List<Pair<MeasurementSchema, MeasurementSchema>> pairs = new ArrayList<>();
+    for (TSDataType type : dataTypes) {
+      for (TSDataType dataType : dataTypes) {
+        String id = String.format("%s2%s", type.name(), dataType.name());
+        pairs.add(new Pair<>(new MeasurementSchema(id, type), new MeasurementSchema(id, dataType)));
+      }
+    }
+
+    if (timeColumnIndex >= 0) {
+      pairs.add(
+          timeColumnIndex,
+          new Pair<>(
+              new MeasurementSchema(timeColumnName, TSDataType.TIMESTAMP),
+              new MeasurementSchema(timeColumnName, TSDataType.TIMESTAMP)));
+    }
+
+    return pairs;
+  }
+
   @Test
   public void testLoadWithEmptyDatabaseForTableModel() throws Exception {
     final int lineCount = 10000;
@@ -123,7 +159,7 @@ public class IoTDBLoadTsFileIT {
     final List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
     final List<ColumnCategory> columnCategories =
-        generateTabletColumnCategory(0, measurementSchemas.size());
+        generateTabletColumnCategory(measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
 
@@ -177,8 +213,7 @@ public class IoTDBLoadTsFileIT {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
-    List<ColumnCategory> columnCategories =
-        generateTabletColumnCategory(0, measurementSchemas.size());
+    List<ColumnCategory> columnCategories = generateTabletColumnCategory(measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
 
@@ -219,8 +254,7 @@ public class IoTDBLoadTsFileIT {
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
         generateMeasurementSchemas();
-    List<ColumnCategory> columnCategories =
-        generateTabletColumnCategory(0, measurementSchemas.size());
+    List<ColumnCategory> columnCategories = generateTabletColumnCategory(measurementSchemas.size());
 
     final File file = new File(tmpDir, "1-0-0-0.tsfile");
 
@@ -260,13 +294,174 @@ public class IoTDBLoadTsFileIT {
     }
   }
 
-  private List<ColumnCategory> generateTabletColumnCategory(int tagNum, int filedNum) {
-    List<ColumnCategory> columnTypes = new ArrayList<>(tagNum + filedNum);
+  @Test
+  public void testLoadWithTimeColumn() throws Exception {
+    final int lineCount = 10000;
+
+    // from: 1 time
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemasWithTime(1, "time");
+    List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size(), 1);
+
+    File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // to: 1 time
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+    // to: empty
+    testWithTimeColumn(lineCount, null, null, file);
+
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    // to: 2 time
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: 0 time
+    measurementSchemas = generateMeasurementSchemasWithTime(-1, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: 2 time1
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // from: 2 time1
+    file = new File(tmpDir, "2-0-0-0.tsfile");
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // to: 2 time
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: 1 time
+    measurementSchemas = generateMeasurementSchemasWithTime(1, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: empty
+    testWithTimeColumn(lineCount, null, null, file);
+
+    // to: 0 time
+    measurementSchemas = generateMeasurementSchemasWithTime(-1, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // from: 0 time
+    file = new File(tmpDir, "3-0-0-0.tsfile");
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // to: 2 time
+    measurementSchemas = generateMeasurementSchemasWithTime(2, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 2);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: 1 time1
+    measurementSchemas = generateMeasurementSchemasWithTime(1, "time1");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), 1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: 0 time
+    measurementSchemas = generateMeasurementSchemasWithTime(-1, "time");
+    columnCategories = generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+    schemaList1 = measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+    testWithTimeColumn(lineCount, schemaList1, columnCategories, file);
+
+    // to: empty
+    testWithTimeColumn(lineCount, null, null, file);
+  }
+
+  private void testWithTimeColumn(
+      final long lineCount,
+      final List<MeasurementSchema> schemaList1,
+      final List<ColumnCategory> columnCategories,
+      final File file)
+      throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      ResultSet resultSetOld = null;
+      if (Objects.nonNull(schemaList1)) {
+        statement.execute(convert2TableSQL(SchemaConfig.TABLE_0, schemaList1, columnCategories));
+        resultSetOld = statement.executeQuery("desc " + SchemaConfig.TABLE_0);
+      }
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s')", file.getAbsolutePath(), SchemaConfig.DATABASE_0));
+      try (final ResultSet resultSet =
+          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+        if (resultSet.next()) {
+          Assert.assertEquals(lineCount, resultSet.getLong(1));
+        } else {
+          Assert.fail("This ResultSet is empty.");
+        }
+      }
+
+      try (final ResultSet resultSet = statement.executeQuery("show tables")) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertFalse(resultSet.next());
+      }
+
+      // Time column's difference shall not affect the old column
+      if (Objects.nonNull(resultSetOld)) {
+        try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
+          while (resultSet.next() && resultSetOld.next()) {
+            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
+            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
+            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
+          }
+          if (resultSet.next() || resultSetOld.next()) {
+            Assert.fail("The table schema has changed after load.");
+          }
+        }
+      }
+
+      statement.execute(String.format("drop database %s", SchemaConfig.DATABASE_0));
+    }
+  }
+
+  private List<ColumnCategory> generateTabletColumnCategory(final int fieldNum) {
+    return generateTabletColumnCategory(0, fieldNum, -1);
+  }
+
+  private List<ColumnCategory> generateTabletColumnCategory(
+      final int tagNum, final int fieldNum, final int timeIndex) {
+    List<ColumnCategory> columnTypes =
+        new ArrayList<>(tagNum + fieldNum + (timeIndex >= 0 ? 1 : 0));
     for (int i = 0; i < tagNum; i++) {
       columnTypes.add(ColumnCategory.TAG);
     }
-    for (int i = 0; i < filedNum; i++) {
+    for (int i = 0; i < fieldNum; i++) {
       columnTypes.add(ColumnCategory.FIELD);
+    }
+    if (timeIndex >= 0) {
+      columnTypes.add(timeIndex, ColumnCategory.TIME);
     }
     return columnTypes;
   }

@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
+import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -124,7 +125,7 @@ public class AlterTimeSeriesDataTypeProcedure
               this::setFailure,
               true);
           collectPayload4Pipe(env);
-          break;
+          return Flow.NO_MORE_STATE;
         default:
           setFailure(
               new ProcedureException(
@@ -178,22 +179,13 @@ public class AlterTimeSeriesDataTypeProcedure
             env.getConfigManager().getRelatedSchemaRegionGroup(patternTree, false),
             false,
             CnToDnAsyncRequestType.ALTER_TIMESERIES_DATATYPE,
-            ((dataNodeLocation, consensusGroupIdList) -> {
-              ByteBuffer measurementPathBuffer = null;
-              try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                measurementPath.serialize(baos);
-                measurementPathBuffer = ByteBuffer.wrap(baos.toByteArray());
-              } catch (IOException ignored) {
-                // ByteArrayOutputStream won't throw IOException
-              }
-
-              return new TAlterTimeSeriesReq(
-                  consensusGroupIdList,
-                  queryId,
-                  measurementPathBuffer,
-                  operationType,
-                  ByteBuffer.wrap(stream.toByteArray()));
-            })) {
+            ((dataNodeLocation, consensusGroupIdList) ->
+                new TAlterTimeSeriesReq(
+                    consensusGroupIdList,
+                    queryId,
+                    measurementPathBytes,
+                    operationType,
+                    prepareDataTypeBytesData()))) {
 
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
@@ -209,13 +201,11 @@ public class AlterTimeSeriesDataTypeProcedure
             if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
               final List<TSStatus> subStatus = response.getSubStatus();
               for (int i = 0; i < subStatus.size(); i++) {
-                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-                    && !(subStatus.get(i).getCode()
-                        == TSStatusCode.PATH_NOT_EXIST.getStatusCode())) {
+                if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                   failedRegionList.add(consensusGroupIdList.get(i));
                 }
               }
-            } else if (!(response.getCode() == TSStatusCode.PATH_NOT_EXIST.getStatusCode())) {
+            } else {
               failedRegionList.addAll(consensusGroupIdList);
             }
             if (!failedRegionList.isEmpty()) {
@@ -234,11 +224,8 @@ public class AlterTimeSeriesDataTypeProcedure
                 new ProcedureException(
                     new MetadataException(
                         String.format(
-                            "Alter timeseries %s data type from %s to %s in schema regions failed. Failures: %s",
-                            measurementPath.getFullPath(),
-                            measurementPath.getSeriesType(),
-                            dataType,
-                            printFailureMap()))));
+                            "Alter timeseries %s data type to %s in schema regions failed. Failures: %s",
+                            measurementPath.getFullPath(), dataType, printFailureMap()))));
             interruptTask();
           }
         };
@@ -333,7 +320,7 @@ public class AlterTimeSeriesDataTypeProcedure
 
   public void setMeasurementPath(final MeasurementPath measurementPath) {
     this.measurementPath = measurementPath;
-    measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
+    this.measurementPathBytes = prepareMeasurementPathBytesData(measurementPath);
   }
 
   public static ByteBuffer prepareMeasurementPathBytesData(final MeasurementPath measurementPath) {
@@ -358,6 +345,16 @@ public class AlterTimeSeriesDataTypeProcedure
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
+  public ByteBuffer prepareDataTypeBytesData() {
+    final ByteArrayOutputStream stream = new ByteArrayOutputStream(1);
+    try {
+      ReadWriteIOUtils.write(dataType, stream);
+    } catch (final IOException ignored) {
+      // ByteArrayOutputStream won't throw IOException
+    }
+    return ByteBuffer.wrap(stream.toByteArray());
+  }
+
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     stream.writeShort(
@@ -375,9 +372,9 @@ public class AlterTimeSeriesDataTypeProcedure
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     queryId = ReadWriteIOUtils.readString(byteBuffer);
-    setMeasurementPath(MeasurementPath.deserialize(byteBuffer));
+    setMeasurementPath((MeasurementPath) PathDeserializeUtil.deserialize(byteBuffer));
     if (getCurrentState() == AlterTimeSeriesDataTypeState.CLEAR_CACHE) {
-      LOGGER.info("Successfully restored, will set mods to the data regions anyway");
+      LOGGER.info("Successfully operate, will clear cache to the data regions anyway");
     }
     if (byteBuffer.hasRemaining()) {
       operationType = ReadWriteIOUtils.readByte(byteBuffer);

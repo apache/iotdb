@@ -75,7 +75,6 @@ import org.apache.iotdb.db.conf.DataNodeSystemPropertiesHandler;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
-import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -1190,14 +1189,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private void prepareExternalServiceResources() throws StartupException {
     long startTime = System.currentTimeMillis();
-    if (resourcesInformationHolder.getExternalServiceEntryList() == null
-        || resourcesInformationHolder.getExternalServiceEntryList().isEmpty()) {
-      return;
-    }
 
     try {
-      ExternalServiceManagementService.getInstance()
-          .restoreUserDefinedServices(resourcesInformationHolder.getExternalServiceEntryList());
+      if (resourcesInformationHolder.getExternalServiceEntryList() != null
+          && !resourcesInformationHolder.getExternalServiceEntryList().isEmpty()) {
+        ExternalServiceManagementService.getInstance()
+            .restoreUserDefinedServices(resourcesInformationHolder.getExternalServiceEntryList());
+      }
+
       ExternalServiceManagementService.getInstance().restoreRunningServiceInstance();
     } catch (Exception e) {
       throw new StartupException(e);
@@ -1290,6 +1289,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   public void stop() {
     stopTriggerRelatedServices();
     registerManager.deregisterAll();
+    ExternalServiceManagementService.getInstance().stopRunningServices();
     JMXService.deregisterMBean(mbeanName);
     MetricService.getInstance().stop();
     if (schemaRegionConsensusStarted) {
@@ -1310,12 +1310,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
   }
 
   private void initProtocols() throws StartupException {
-    if (config.isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
-    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestService.getInstance());
-    }
     prepareExternalServiceResources();
     if (PipeConfig.getInstance().getPipeAirGapReceiverEnabled()) {
       registerManager.register(PipeDataNodeAgent.receiver().airGap());

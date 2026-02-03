@@ -19,20 +19,12 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.ObjectFileNotExist;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.queryengine.plan.Coordinator;
-import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
-import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.encoding.decoder.Decoder;
@@ -48,10 +40,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -101,55 +90,7 @@ public class ObjectTypeUtils {
 
   private static ByteBuffer readObjectContentFromRemoteFile(
       final String relativePath, final long offset, final int readSize) {
-    int regionId;
-    try {
-      regionId = Integer.parseInt(Paths.get(relativePath).getName(0).toString());
-    } catch (NumberFormatException e) {
-      throw new IoTDBRuntimeException(
-          "wrong object file path: " + relativePath,
-          TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
-    }
-    TConsensusGroupId consensusGroupId =
-        new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
-    List<TRegionReplicaSet> regionReplicaSetList =
-        ClusterPartitionFetcher.getInstance()
-            .getRegionReplicaSet(Collections.singletonList(consensusGroupId));
-    if (regionReplicaSetList.isEmpty()) {
-      throw new ObjectFileNotExist(relativePath);
-    }
-    TRegionReplicaSet regionReplicaSet = regionReplicaSetList.iterator().next();
-    if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-      throw new ObjectFileNotExist(relativePath);
-    }
-    final int batchSize = 1024 * 1024;
-    final TReadObjectReq req = new TReadObjectReq();
-    req.setRelativePath(relativePath);
-    ByteBuffer buffer = ByteBuffer.allocate(readSize);
-    for (int i = 0; i < regionReplicaSet.getDataNodeLocations().size(); i++) {
-      TDataNodeLocation dataNodeLocation = regionReplicaSet.getDataNodeLocations().get(i);
-      int toReadSizeInCurrentDataNode = readSize;
-      try (SyncDataNodeInternalServiceClient client =
-          Coordinator.getInstance()
-              .getInternalServiceClientManager()
-              .borrowClient(dataNodeLocation.getInternalEndPoint())) {
-        while (toReadSizeInCurrentDataNode > 0) {
-          req.setOffset(offset + buffer.position());
-          req.setSize(Math.min(toReadSizeInCurrentDataNode, batchSize));
-          toReadSizeInCurrentDataNode -= req.getSize();
-          ByteBuffer partial = client.readObject(req);
-          buffer.put(partial);
-        }
-      } catch (Exception e) {
-        logger.warn("Failed to read object from datanode: {}", dataNodeLocation, e);
-        if (i == regionReplicaSet.getDataNodeLocations().size() - 1) {
-          throw new IoTDBRuntimeException(e, TSStatusCode.OBJECT_READ_ERROR.getStatusCode());
-        }
-        continue;
-      }
-      break;
-    }
-    buffer.flip();
-    return buffer;
+    throw new UnsupportedOperationException("readObjectContentFromRemoteFile");
   }
 
   public static Binary generateObjectBinary(long objectSize, IObjectPath objectPath) {

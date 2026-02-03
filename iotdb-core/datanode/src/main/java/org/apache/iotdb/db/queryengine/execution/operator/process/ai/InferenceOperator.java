@@ -21,7 +21,10 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.client.an.AINodeClient;
 import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -33,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -222,6 +226,12 @@ public class InferenceOperator implements ProcessOperator {
         maxTimestamp = Math.max(maxTimestamp, timestamp);
       }
       timeColumnBuilder.writeLong(timestamp);
+      if (inputTsBlock.getValueColumnCount() > 1) {
+        throw new SemanticException(
+            String.format(
+                "Call inference function should not contain more than one input column, found [%d] input columns.",
+                inputTsBlock.getValueColumnCount()));
+      }
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
         columnBuilders[columnIndexes[columnIndex]].write(inputTsBlock.getColumn(columnIndex), i);
       }
@@ -247,8 +257,8 @@ public class InferenceOperator implements ProcessOperator {
                     new TInferenceReq(
                             modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
                         .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
-              } catch (Exception e) {
-                throw new ModelInferenceProcessException(e.getMessage());
+              } catch (ClientManagerException | TException e) {
+                throw new AINodeConnectionException(e);
               }
             },
             modelInferenceExecutor);

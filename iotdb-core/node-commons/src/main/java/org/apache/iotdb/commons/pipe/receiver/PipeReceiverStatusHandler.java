@@ -21,15 +21,12 @@ package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
-import org.apache.iotdb.commons.exception.pipe.PipeNonReportException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
-import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeSubtask;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -51,8 +48,6 @@ public class PipeReceiverStatusHandler {
   private static final String NO_PERMISSION = "No permission";
   private static final String UNCLASSIFIED_EXCEPTION = "Unclassified exception";
   private static final String NO_PERMISSION_STR = "No permissions for this operation";
-
-  private static final int CONFLICT_RETRY_MAX_TIMES = 100;
 
   private final boolean isRetryAllowedWhenConflictOccurs;
   private final long retryMaxMillisWhenConflictOccurs;
@@ -99,7 +94,7 @@ public class PipeReceiverStatusHandler {
    * exception if retry the {@link Event}. Upper class must ensure that the method is invoked only
    * by a single thread.
    *
-   * @throws PipeException to retry the current {@link Event}
+   * @throws PipeRuntimeSinkNonReportTimeConfigurableException to retry the current {@link Event}
    * @param status the {@link TSStatus} to judge
    * @param exceptionMessage The exception message to throw
    * @param recordMessage The message to record an ignored {@link Event}, the caller should assure
@@ -142,7 +137,8 @@ public class PipeReceiverStatusHandler {
               LOGGER::info,
               "Temporary unavailable exception: will retry forever. status: %s",
               status);
-          throw new PipeNonReportException(exceptionMessage);
+          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
+              exceptionMessage, Long.MAX_VALUE);
         }
 
       case 1810: // PIPE_RECEIVER_USER_CONFLICT_EXCEPTION
@@ -181,16 +177,12 @@ public class PipeReceiverStatusHandler {
                       + " seconds",
               status);
           exceptionEventHasBeenRetried.set(true);
-          throw status.getCode() == 1815
-                  && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
-              ? new PipeNonReportException(exceptionMessage)
-              : new PipeRuntimeSinkRetryTimesConfigurableException(
-                  exceptionMessage,
-                  (int)
-                      Math.max(
-                          PipeSubtask.MAX_RETRY_TIMES,
-                          Math.min(
-                              CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenConflictOccurs * 1.1)));
+          throw new PipeRuntimeSinkNonReportTimeConfigurableException(
+              exceptionMessage,
+              status.getCode() == 1815
+                      && PipeConfig.getInstance().isPipeRetryLocallyForParallelOrUserConflict()
+                  ? Long.MAX_VALUE
+                  : retryMaxMillisWhenConflictOccurs);
         }
 
       case 803: // NO_PERMISSION
@@ -266,12 +258,8 @@ public class PipeReceiverStatusHandler {
     }
 
     exceptionEventHasBeenRetried.set(true);
-    throw new PipeRuntimeSinkRetryTimesConfigurableException(
-        exceptionMessage,
-        (int)
-            Math.max(
-                PipeSubtask.MAX_RETRY_TIMES,
-                Math.min(CONFLICT_RETRY_MAX_TIMES, retryMaxMillisWhenOtherExceptionsOccur * 1.1)));
+    throw new PipeRuntimeSinkNonReportTimeConfigurableException(
+        exceptionMessage, retryMaxMillisWhenOtherExceptionsOccur);
   }
 
   private static String getNoPermission(final boolean noPermission) {

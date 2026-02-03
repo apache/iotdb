@@ -572,7 +572,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       Thread.currentThread().interrupt();
       logger.error("Waiting node to shutdown error.", e);
     }
-    logger.info("In test {} {} started forcibly.", getTestLogDirName(), getId());
+    logger.info("In test {} {} stopped forcibly.", getTestLogDirName(), getId());
   }
 
   @Override

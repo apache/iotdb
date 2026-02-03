@@ -133,7 +133,7 @@ public class AINodeForecastIT {
         "701: The OUTPUT_START_TIME should be greater than the maximum timestamp of target time series. Expected greater than [5759] but found [5759].");
 
     // OUTPUT_LENGTH error
-    String invalidOutputLengthSQL =
+    String invalidOutputLengthSQLWithZero =
         String.format(
             FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
             modelInfo.getModelId(),
@@ -144,7 +144,24 @@ public class AINodeForecastIT {
             0,
             1,
             "time");
-    errorTest(statement, invalidOutputLengthSQL, "701: OUTPUT_LENGTH should be greater than 0");
+    errorTest(
+        statement, invalidOutputLengthSQLWithZero, "701: OUTPUT_LENGTH should be greater than 0");
+
+    String invalidOutputLengthSQLWithOutOfRange =
+        String.format(
+            FORECAST_TABLE_FUNCTION_SQL_TEMPLATE,
+            modelInfo.getModelId(),
+            0,
+            5760,
+            2880,
+            5760,
+            2881,
+            1,
+            "time");
+    errorTest(
+        statement,
+        invalidOutputLengthSQLWithOutOfRange,
+        "1599: Error occurred while executing forecast:[Attribute output_length expect value between 1 and 2880, got 2881 instead.]");
 
     // OUTPUT_INTERVAL error
     String invalidOutputIntervalSQL =

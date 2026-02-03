@@ -66,12 +66,13 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   private TRegionReplicaSet localRegionReplicaSet;
 
   public LoadSingleTsFileNode(
-      PlanNodeId id,
-      TsFileResource resource,
-      boolean isTableModel,
-      String database,
-      boolean deleteAfterLoad,
-      long writePointCount) {
+      final PlanNodeId id,
+      final TsFileResource resource,
+      final boolean isTableModel,
+      final String database,
+      final boolean deleteAfterLoad,
+      final long writePointCount,
+      final boolean needDecodeTsFile) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -79,6 +80,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.database = database;
     this.deleteAfterLoad = deleteAfterLoad;
     this.writePointCount = writePointCount;
+    this.needDecodeTsFile = needDecodeTsFile;
   }
 
   public boolean isTsFileEmpty() {
@@ -89,6 +91,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
   public boolean needDecodeTsFile(
       Function<List<Pair<IDeviceID, TTimePartitionSlot>>, List<TRegionReplicaSet>>
           partitionFetcher) {
+    if (needDecodeTsFile) {
+      return true;
+    }
+
     List<Pair<IDeviceID, TTimePartitionSlot>> slotList = new ArrayList<>();
     resource
         .getDevices()

@@ -230,11 +230,7 @@ public class Slice {
 
     @Override
     public Binary readObject(int columnIndex, long offset, int length) {
-      if (getDataType(columnIndex) != Type.OBJECT) {
-        throw new UnsupportedOperationException("current column is not object column");
-      }
-      Binary binary = getBinarySafely(columnIndex);
-      return new Binary(ObjectTypeUtils.readObjectContent(binary, offset, length, true).array());
+      throw new UnsupportedOperationException("readObject is not supported");
     }
 
     @Override

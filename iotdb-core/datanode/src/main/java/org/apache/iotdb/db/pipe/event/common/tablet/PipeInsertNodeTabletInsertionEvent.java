@@ -287,9 +287,6 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
 
   @Override
   public void throwIfNoPrivilege() throws Exception {
-    if (skipIfNoPrivileges) {
-      return;
-    }
     final InsertNode node = insertNode;
     if (Objects.isNull(node)) {
       // Event is released, skip privilege check
@@ -320,10 +317,14 @@ public class PipeInsertNodeTabletInsertionEvent extends PipeInsertionEvent
             userName,
             new QualifiedObjectName(getTableModelDatabaseName(), tableName),
             new UserEntity(Long.parseLong(userId), userName, cliHostname))) {
-      throw new AccessDeniedException(
-          String.format(
-              "No privilege for SELECT for user %s at table %s.%s",
-              userName, tableModelDatabaseName, tableName));
+      if (skipIfNoPrivileges) {
+        shouldParse4Privilege = true;
+      } else {
+        throw new AccessDeniedException(
+            String.format(
+                "No privilege for SELECT for user %s at table %s.%s",
+                userName, tableModelDatabaseName, tableName));
+      }
     }
   }
 

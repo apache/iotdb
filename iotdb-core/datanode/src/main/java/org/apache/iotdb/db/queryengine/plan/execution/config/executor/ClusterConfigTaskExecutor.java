@@ -175,6 +175,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -420,7 +421,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE = SettableFuture.create();
     SUBSCRIPTION_NOT_ENABLED_ERROR_FUTURE.setException(
         new IoTDBException(
-            "Subscription not enabled, please set config `subscription_enabled` to true.",
+            "Subscription is not enabled.",
             TSStatusCode.SUBSCRIPTION_NOT_ENABLED_ERROR.getStatusCode()));
   }
 
@@ -2332,9 +2333,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
-    final Map<String, String> extractorAttributes;
+    final Map<String, String> sourceAttributes;
     final Map<String, String> processorAttributes;
-    final Map<String, String> connectorAttributes;
+    final Map<String, String> sinkAttributes;
     try {
       if (!alterPipeStatement.getSourceAttributes().isEmpty()) {
         // We don't allow changing the extractor plugin type
@@ -2346,7 +2347,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
         if (alterPipeStatement.isReplaceAllSourceAttributes()) {
-          extractorAttributes = alterPipeStatement.getSourceAttributes();
+          sourceAttributes = alterPipeStatement.getSourceAttributes();
         } else {
           final boolean onlyContainsUser =
               onlyContainsUser(alterPipeStatement.getSourceAttributes());
@@ -2355,14 +2356,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .getSourceParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getSourceAttributes()));
-          extractorAttributes =
+          sourceAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSourceType(alterPipeStatement.getPipeName(), extractorAttributes);
+            checkSourceType(alterPipeStatement.getPipeName(), sourceAttributes);
           }
         }
       } else {
-        extractorAttributes =
+        sourceAttributes =
             pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
       }
 
@@ -2385,7 +2386,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
-          connectorAttributes = alterPipeStatement.getSinkAttributes();
+          sinkAttributes = alterPipeStatement.getSinkAttributes();
         } else {
           final boolean onlyContainsUser = onlyContainsUser(alterPipeStatement.getSinkAttributes());
           pipeMetaFromCoordinator
@@ -2393,19 +2394,18 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               .getSinkParameters()
               .addOrReplaceEquivalentAttributes(
                   new PipeParameters(alterPipeStatement.getSinkAttributes()));
-          connectorAttributes =
+          sinkAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSinkType(alterPipeStatement.getPipeName(), connectorAttributes);
+            checkSinkType(alterPipeStatement.getPipeName(), sinkAttributes);
           }
         }
       } else {
-        connectorAttributes =
-            pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
+        sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
 
       PipeDataNodeAgent.plugin()
-          .validate(pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+          .validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -3705,8 +3705,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final TException | ClientManagerException e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3723,7 +3723,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (final ClientManagerException | TException e) {
-      future.setException(e);
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3743,8 +3743,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       ShowModelsTask.buildTsBlock(resp, future);
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3762,8 +3762,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       ShowLoadedModelsTask.buildTsBlock(resp, future);
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3779,8 +3779,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         return future;
       }
       ShowAIDevicesTask.buildTsBlock(resp, future);
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3798,8 +3798,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3817,8 +3817,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }
@@ -3850,8 +3850,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (final Exception e) {
-      future.setException(e);
+    } catch (final ClientManagerException | TException e) {
+      future.setException(new AINodeConnectionException(e));
     }
     return future;
   }

@@ -69,6 +69,10 @@ public abstract class AstVisitor<R, C> {
     return visitLiteral(node, context);
   }
 
+  protected R visitFloatLiteral(FloatLiteral node, C context) {
+    return visitLiteral(node, context);
+  }
+
   protected R visitDecimalLiteral(DecimalLiteral node, C context) {
     return visitLiteral(node, context);
   }

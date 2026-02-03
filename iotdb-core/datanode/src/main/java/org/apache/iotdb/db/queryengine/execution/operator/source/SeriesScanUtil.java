@@ -511,18 +511,18 @@ public class SeriesScanUtil implements Accountable {
                 (AbstractAlignedChunkMetadata) chunkMetadata;
             for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
               if ((alignedChunkMetadata.getValueChunkMetadataList().get(i) != null)
-                  && !SchemaUtils.isUsingSameColumn(
+                  && !SchemaUtils.isUsingSameStatistics(
                       alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                       getTsDataTypeList().get(i))
-                  && getTsDataTypeList().get(i).equals(TSDataType.STRING)) {
+                  && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(i))) {
                 alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
               }
             }
             chunkMetadata = alignedChunkMetadata;
           } else if (chunkMetadata instanceof ChunkMetadata) {
-            if (!SchemaUtils.isUsingSameColumn(
+            if (!SchemaUtils.isUsingSameStatistics(
                     chunkMetadata.getDataType(), getTsDataTypeList().get(0))
-                && getTsDataTypeList().get(0).equals(TSDataType.STRING)) {
+                && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(0))) {
               chunkMetadata.setModified(true);
             }
           }

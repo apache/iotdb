@@ -25,6 +25,25 @@ SET(TARGET_NAME_RELATIONAL session_relational_tests)
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -g -O2")
 ENABLE_TESTING()
 
+# =========================
+# SSL option (default OFF)
+# =========================
+option(WITH_SSL "Build with SSL support" OFF)
+
+IF(WITH_SSL)
+    FIND_PACKAGE(OpenSSL REQUIRED)
+    IF(OpenSSL_FOUND)
+        MESSAGE(STATUS "OpenSSL found: ${OPENSSL_VERSION}")
+        INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
+        ADD_DEFINITIONS(-DWITH_SSL=1)
+    ELSE()
+        MESSAGE(FATAL_ERROR "OpenSSL not found, but WITH_SSL is enabled")
+    ENDIF()
+ELSE()
+    MESSAGE(STATUS "Building without SSL support")
+    ADD_DEFINITIONS(-DWITH_SSL=0)
+ENDIF()
+
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
 # Add Session related include files
@@ -57,11 +76,53 @@ ADD_EXECUTABLE(${TARGET_NAME_RELATIONAL} main_Relational.cpp cpp/sessionRelation
 
 # Link with shared library iotdb_session and pthread
 IF(MSVC)
-    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session ${THRIFT_STATIC_LIB})
-    TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session ${THRIFT_STATIC_LIB})
+    IF(WITH_SSL)
+        TARGET_LINK_LIBRARIES(${TARGET_NAME}
+            iotdb_session
+            ${THRIFT_STATIC_LIB}
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
+        TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL}
+            iotdb_session
+            ${THRIFT_STATIC_LIB}
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
+    ELSE()
+        TARGET_LINK_LIBRARIES(${TARGET_NAME}
+            iotdb_session
+            ${THRIFT_STATIC_LIB}
+        )
+        TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL}
+            iotdb_session
+            ${THRIFT_STATIC_LIB}
+        )
+    ENDIF()
 ELSE()
-    TARGET_LINK_LIBRARIES(${TARGET_NAME} iotdb_session pthread)
-    TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL} iotdb_session pthread)
+    IF(WITH_SSL)
+        TARGET_LINK_LIBRARIES(${TARGET_NAME}
+            iotdb_session
+            pthread
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
+        TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL}
+            iotdb_session
+            pthread
+            OpenSSL::SSL
+            OpenSSL::Crypto
+        )
+    ELSE()
+        TARGET_LINK_LIBRARIES(${TARGET_NAME}
+            iotdb_session
+            pthread
+        )
+        TARGET_LINK_LIBRARIES(${TARGET_NAME_RELATIONAL}
+            iotdb_session
+            pthread
+        )
+    ENDIF()
 ENDIF()
 
 # Add Catch2 include directory
@@ -76,3 +137,8 @@ ELSE()
     ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
     ADD_TEST(NAME sessionRelationalIT COMMAND ${TARGET_NAME_RELATIONAL})
 ENDIF()
+
+if(UNIX AND NOT APPLE)
+  target_link_options(session_tests PRIVATE -Wl,--no-as-needed)
+  target_link_options(session_relational_tests PRIVATE -Wl,--no-as-needed)
+endif()

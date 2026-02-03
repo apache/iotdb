@@ -354,6 +354,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       Pattern.compile(NODE_NAME_IN_INTO_PATH_MATCHER);
 
   private static final String IGNORENULL = "IgnoreNull";
+  public static final String UNSUPPORTED_DATATYPE_MSG = "Unsupported datatype: %s";
+  public static final String INCORRECT_DATA_TYPE_MSG = "Incorrect Data type";
   private ZoneId zoneId;
 
   private boolean useWildcard = false;
@@ -461,7 +463,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         createTimeSeriesStatement.setDataType(TSDataType.valueOf(datatypeString));
         props.remove(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE.toLowerCase());
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", datatypeString));
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, datatypeString));
       }
     }
     if (createTimeSeriesStatement.getDataType() == null) {
@@ -686,15 +688,24 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private TSDataType parseDataTypeAttribute(IoTDBSqlParser.AttributeValueContext ctx) {
     if (ctx == null) {
-      throw new SemanticException("Incorrect Data type");
+      throw new SemanticException(INCORRECT_DATA_TYPE_MSG);
     }
 
     String dataTypeString = parseAttributeValue(ctx);
-    TSDataType dataType = TSDataType.valueOf(dataTypeString);
-    if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
-      throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+    if (dataTypeString == null || dataTypeString.isEmpty()) {
+      throw new SemanticException(INCORRECT_DATA_TYPE_MSG);
     }
-    return dataType;
+
+    dataTypeString = dataTypeString.trim().toUpperCase();
+    try {
+      TSDataType dataType = TSDataType.valueOf(dataTypeString);
+      if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
+      }
+      return dataType;
+    } catch (IllegalArgumentException e) {
+      throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
+    }
   }
 
   @Override
@@ -4072,10 +4083,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       try {
         dataType = TSDataType.valueOf(dataTypeString);
         if (TSDataType.UNKNOWN.equals(dataType) || TSDataType.VECTOR.equals(dataType)) {
-          throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+          throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
         }
       } catch (Exception e) {
-        throw new SemanticException(String.format("Unsupported datatype: %s", dataTypeString));
+        throw new SemanticException(String.format(UNSUPPORTED_DATATYPE_MSG, dataTypeString));
       }
     }
     return dataType;

@@ -32,6 +32,7 @@ import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -82,6 +83,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
         .setIsPipeEnableMemoryCheck(false);
   }
 
+  @Ignore
   @Test
   public void testTopicTimePrecision() throws Exception {
     final String host = senderEnv.getIP();

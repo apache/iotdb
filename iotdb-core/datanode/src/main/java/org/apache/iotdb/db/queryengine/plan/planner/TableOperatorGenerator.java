@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSort
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -100,7 +101,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
@@ -205,17 +208,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
@@ -234,6 +240,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -3258,9 +3265,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .initOrInvalidateLastCache(
                   node.getQualifiedObjectName().getDatabaseName(),
                   deviceEntry.getDeviceID(),
-                  needInitTime && node.getGroupingKeys().isEmpty()
-                      ? Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1)
-                      : targetColumns,
+                  needInitTime || node.getGroupingKeys().isEmpty()
+                      ? targetColumns
+                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
                   false);
         } else {
           hitCachesIndexes.add(i);
@@ -3473,13 +3480,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .collect(Collectors.toList());
 
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            arguments.stream().map(Map.Entry::getKey).collect(Collectors.toList()),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     BoundSignature signature = resolvedFunction.getSignature();
 
@@ -3820,13 +3821,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       int index = map.get(originInputColumnNames.get(i));
       inputColumns.set(index, originColumns.get(i));
     }
-
+    ColumnSchema timeColumnOfTargetTable = null;
     for (int i = 0; i < inputColumns.size(); i++) {
       String columnName = inputColumns.get(i).getName();
       inputLocationMap.put(columnName, new InputLocation(0, i));
 
       TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
       if (columnCategory == TIME) {
+        if (timeColumnOfTargetTable == null) {
+          timeColumnOfTargetTable = inputColumns.get(i);
+        } else {
+          throw new SemanticException("Multiple columns with TIME category found");
+        }
         continue;
       }
 
@@ -3834,6 +3840,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       tsDataTypeMap.put(columnName, columnType);
       inputColumnTypes.add(columnType);
       inputColumnCategories.add(columnCategory);
+    }
+    if (timeColumnOfTargetTable == null) {
+      throw new SemanticException("Missing TIME category column");
     }
 
     long statementSizePerLine =
@@ -3850,7 +3859,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         tsDataTypeMap,
         true,
         FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
-        statementSizePerLine);
+        statementSizePerLine,
+        timeColumnOfTargetTable);
   }
 
   private boolean[] checkStatisticAndScanOrder(
@@ -3893,6 +3903,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           if (BlobType.BLOB.equals(argumentType) || ObjectType.OBJECT.equals(argumentType)) {
             canUseStatistic = false;
             break;
+          }
+
+          // first and last, the second argument has to be the time column
+          if (FIRST_AGGREGATION.equals(funcName) || LAST_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(1), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
+          }
+
+          // first_by and last_by, the second argument has to be the time column
+          if (FIRST_BY_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(2), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
           }
 
           // only last_by(time, x) or last_by(x,time) can use statistic
@@ -3940,6 +3966,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       return OptimizeType.NOOP;
     }
 
+    // if the timeColumnName is null, the param of function is just a timestamp column other than
+    // the time column
+    if (timeColumnName == null || !checkOrderColumnIsTime(node.getAggregations(), timeColumnName)) {
+      return OptimizeType.NOOP;
+    }
+
     if (canUseLastRowOptimize(aggregators)) {
       return OptimizeType.LAST_ROW;
     }
@@ -3949,6 +3981,33 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     }
 
     return OptimizeType.NOOP;
+  }
+
+  /**
+   * Checks if the ordering column in aggregations matches the time column. only check for
+   * FIRST/LAST/FIRST_BY/LAST_BY
+   */
+  private boolean checkOrderColumnIsTime(
+      Map<Symbol, AggregationNode.Aggregation> aggregations, String timeColumnName) {
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
+      String functionName =
+          entry.getValue().getResolvedFunction().getSignature().getName().toLowerCase();
+      List<Expression> arguments = entry.getValue().getArguments();
+      Expression lastParam = entry.getValue().getArguments().get(arguments.size() - 1);
+
+      switch (functionName) {
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+        case FIRST_BY_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+          if (!((SymbolReference) lastParam).getName().equalsIgnoreCase(timeColumnName)) {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
   }
 
   private boolean canUseLastRowOptimize(List<TableAggregator> aggregators) {
@@ -4171,13 +4230,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .map(InternalTypeManager::getTSDataType)
             .collect(Collectors.toList());
     TableAccumulator accumulator =
-        createBuiltinAccumulator(
-            getAggregationTypeByFuncName(functionName),
-            originalArgumentTypes,
-            function.getArguments(),
-            Collections.emptyMap(),
-            true,
-            false);
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
 
     // Create aggregator by accumulator
     return new WindowAggregator(
@@ -4212,5 +4265,128 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               .collect(Collectors.toList()));
     }
     return new MappingCollectOperator(operatorContext, children, mappings);
+  }
+
+  @Override
+  public Operator visitValuesNode(ValuesNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    // Currently we only support empty values operator
+    assert node.getRowCount() == 0;
+    return new ValuesOperator(operatorContext, ImmutableList.of());
+  }
+
+  @Override
+  public Operator visitRowNumber(RowNumberNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    // row number function goes in the last channel
+    int channel = inputDataTypes.size();
+    outputMappings.put(node.getRowNumberSymbol(), channel);
+
+    return new RowNumberOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        node.getMaxRowCountPerPartition(),
+        10_000);
+  }
+
+  @Override
+  public Operator visitTopKRanking(TopKRankingNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    List<TSDataType> partitionTypes =
+        partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
+
+    List<Symbol> orderBySymbols = new ArrayList<>();
+    Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+    if (orderingScheme.isPresent()) {
+      orderBySymbols = orderingScheme.get().getOrderBy();
+    }
+
+    List<SortOrder> sortOrder = new ArrayList<>();
+    List<Integer> sortChannels = getChannelsForSymbols(orderBySymbols, childLayout);
+    if (orderingScheme.isPresent()) {
+      sortOrder =
+          orderBySymbols.stream()
+              .map(symbol -> orderingScheme.get().getOrdering(symbol))
+              .collect(toImmutableList());
+    }
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    if (!node.isPartial() || !partitionChannels.isEmpty()) {
+      // ranking function goes in the last channel
+      int channel = inputDataTypes.size();
+      outputMappings.put(node.getRankingSymbol(), channel);
+    }
+
+    return new TopKRankingOperator(
+        operatorContext,
+        child,
+        node.getRankingType(),
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrder,
+        node.getMaxRankingPerPartition(),
+        node.isPartial(),
+        Optional.empty(),
+        1000,
+        Optional.empty());
   }
 }

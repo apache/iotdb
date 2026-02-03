@@ -78,7 +78,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.STATEMENT_TABLE_MODEL, TSDataType.STRING));
     queriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
-    queriesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES, queriesTable);
 
     final TsTable databaseTable = new TsTable(DATABASES);
@@ -103,7 +102,6 @@ public class InformationSchema {
     databaseTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.DATA_REGION_GROUP_NUM_TABLE_MODEL, TSDataType.INT32));
-    databaseTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATABASES, databaseTable);
 
     final TsTable tableTable = new TsTable(TABLES);
@@ -123,7 +121,6 @@ public class InformationSchema {
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     tableTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.TABLE_TYPE_TABLE_MODEL, TSDataType.STRING));
-    tableTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TABLES, tableTable);
 
     final TsTable columnTable = new TsTable(COLUMNS);
@@ -146,7 +143,6 @@ public class InformationSchema {
     columnTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMMENT.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    columnTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(COLUMNS, columnTable);
 
     final TsTable regionTable = new TsTable(REGIONS);
@@ -188,7 +184,6 @@ public class InformationSchema {
     regionTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMPRESSION_RATIO_TABLE_MODEL, TSDataType.DOUBLE));
-    regionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(REGIONS, regionTable);
 
     final TsTable pipeTable = new TsTable(PIPES);
@@ -217,7 +212,6 @@ public class InformationSchema {
     pipeTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ESTIMATED_REMAINING_SECONDS_TABLE_MODEL, TSDataType.DOUBLE));
-    pipeTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(PIPES, pipeTable);
 
     final TsTable pipePluginTable = new TsTable(PIPE_PLUGINS);
@@ -229,7 +223,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.CLASS_NAME_TABLE_MODEL, TSDataType.STRING));
     pipePluginTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.PLUGIN_JAR_TABLE_MODEL, TSDataType.STRING));
-    pipePluginTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(PIPE_PLUGINS, pipePluginTable);
 
     final TsTable topicTable = new TsTable(TOPICS);
@@ -238,7 +231,6 @@ public class InformationSchema {
     topicTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.TOPIC_CONFIGS_TABLE_MODEL, TSDataType.STRING));
-    topicTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(TOPICS, topicTable);
 
     final TsTable subscriptionTable = new TsTable(SUBSCRIPTIONS);
@@ -250,7 +242,6 @@ public class InformationSchema {
     subscriptionTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.SUBSCRIBED_CONSUMERS_TABLE_MODEL, TSDataType.STRING));
-    subscriptionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(SUBSCRIPTIONS, subscriptionTable);
 
     final TsTable viewTable = new TsTable(VIEWS);
@@ -262,7 +253,6 @@ public class InformationSchema {
     viewTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.VIEW_DEFINITION_TABLE_MODEL, TSDataType.STRING));
-    viewTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(VIEWS, viewTable);
 
     final TsTable functionTable = new TsTable(FUNCTIONS);
@@ -277,7 +267,6 @@ public class InformationSchema {
     functionTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.STATE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    functionTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(FUNCTIONS, functionTable);
 
     final TsTable configurationsTable = new TsTable(CONFIGURATIONS);
@@ -287,7 +276,6 @@ public class InformationSchema {
     configurationsTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.VALUE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    configurationsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(CONFIGURATIONS, configurationsTable);
 
     final TsTable keywordsTable = new TsTable(KEYWORDS);
@@ -295,7 +283,6 @@ public class InformationSchema {
         new TagColumnSchema(ColumnHeaderConstant.WORD, TSDataType.STRING));
     keywordsTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.RESERVED, TSDataType.INT32));
-    keywordsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(KEYWORDS, keywordsTable);
 
     final TsTable nodesTable = new TsTable(NODES);
@@ -317,7 +304,6 @@ public class InformationSchema {
             ColumnHeaderConstant.VERSION.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
     nodesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.BUILD_INFO_TABLE_MODEL, TSDataType.STRING));
-    nodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(NODES, nodesTable);
 
     final TsTable configNodesTable = new TsTable(CONFIG_NODES);
@@ -329,7 +315,6 @@ public class InformationSchema {
     configNodesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.ROLE.toLowerCase(Locale.ENGLISH), TSDataType.STRING));
-    configNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(CONFIG_NODES, configNodesTable);
 
     final TsTable dataNodesTable = new TsTable(DATA_NODES);
@@ -353,7 +338,6 @@ public class InformationSchema {
     dataNodesTable.addColumnSchema(
         new AttributeColumnSchema(
             ColumnHeaderConstant.SCHEMA_CONSENSUS_PORT_TABLE_MODEL, TSDataType.INT32));
-    dataNodesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(DATA_NODES, dataNodesTable);
 
     final TsTable tableDiskUsageTable = new TsTable(TABLE_DISK_USAGE);
@@ -386,7 +370,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.LAST_ACTIVE_TIME, TSDataType.TIMESTAMP));
     connectionsTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
-    connectionsTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(CONNECTIONS, connectionsTable);
 
     final TsTable currentQueriesTable = new TsTable(CURRENT_QUERIES);
@@ -409,7 +392,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.USER_TABLE_MODEL, TSDataType.STRING));
     currentQueriesTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.CLIENT_IP, TSDataType.STRING));
-    currentQueriesTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(CURRENT_QUERIES, currentQueriesTable);
 
     final TsTable queriesCostsHistogramTable = new TsTable(QUERIES_COSTS_HISTOGRAM);
@@ -419,7 +401,6 @@ public class InformationSchema {
         new AttributeColumnSchema(ColumnHeaderConstant.NUMS, TSDataType.INT32));
     queriesCostsHistogramTable.addColumnSchema(
         new AttributeColumnSchema(ColumnHeaderConstant.DATANODE_ID, TSDataType.INT32));
-    queriesCostsHistogramTable.removeColumnSchema(TsTable.TIME_COLUMN_NAME);
     schemaTables.put(QUERIES_COSTS_HISTOGRAM, queriesCostsHistogramTable);
 
     final TsTable servicesTable = new TsTable(SERVICES);
