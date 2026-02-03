@@ -64,6 +64,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
@@ -162,6 +163,7 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION
 import static org.apache.tsfile.read.common.type.BlobType.BLOB;
 import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 import static org.apache.tsfile.read.common.type.DoubleType.DOUBLE;
+import static org.apache.tsfile.read.common.type.FloatType.FLOAT;
 import static org.apache.tsfile.read.common.type.IntType.INT32;
 import static org.apache.tsfile.read.common.type.LongType.INT64;
 import static org.apache.tsfile.read.common.type.StringType.STRING;
@@ -952,6 +954,12 @@ public class ExpressionAnalyzer {
     protected Type visitDoubleLiteral(
         DoubleLiteral node, StackableAstVisitorContext<Context> context) {
       return setExpressionType(node, DOUBLE);
+    }
+
+    @Override
+    protected Type visitFloatLiteral(
+        FloatLiteral node, StackableAstVisitorContext<Context> context) {
+      return setExpressionType(node, FLOAT);
     }
 
     @Override

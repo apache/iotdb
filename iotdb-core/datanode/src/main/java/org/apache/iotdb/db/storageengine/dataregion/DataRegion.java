@@ -1829,8 +1829,11 @@ public class DataRegion implements IDataRegionForQuery {
   private TsFileProcessor insertToTsFileProcessor(
       InsertRowNode insertRowNode, boolean sequence, long timePartitionId)
       throws WriteProcessException {
+    if (insertRowNode.allMeasurementFailed()) {
+      return null;
+    }
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
-    if (tsFileProcessor == null || insertRowNode.allMeasurementFailed()) {
+    if (tsFileProcessor == null) {
       return null;
     }
     long[] infoForMetrics = new long[5];

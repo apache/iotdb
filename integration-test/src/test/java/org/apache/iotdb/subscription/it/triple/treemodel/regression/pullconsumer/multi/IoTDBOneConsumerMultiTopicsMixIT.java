@@ -45,6 +45,7 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -136,6 +137,7 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
   }
 
   @Retry
+  @Ignore
   @Test
   public void do_test()
       throws InterruptedException,

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
@@ -163,30 +164,38 @@ public class ConvertPredicateToFilterVisitor
     Type type = context.getType(Symbol.from(symbolReference));
     TSDataType columnDataType = InternalTypeManager.getTSDataType(type);
 
+    // the literal could be the floatLiteral, select * from table where s1 > cast(1.1 as float)
+    // convert the floatLiteral to doubleLiteral
+    Double floatPoint = null;
+    if (literal instanceof DoubleLiteral) {
+      floatPoint = ((DoubleLiteral) literal).getValue();
+    } else if (literal instanceof FloatLiteral) {
+      floatPoint = (double) ((FloatLiteral) literal).getValue();
+    }
+
     // when literal is the doubleLiteral type and the columnDataType is INT64 or INT32,
     // the doubleLiteral has to be converted.
-    if (literal instanceof DoubleLiteral) {
-      DoubleLiteral doubleLiteral = (DoubleLiteral) literal;
-      double doubleLiteralValue = doubleLiteral.getValue();
+    if (floatPoint != null) {
+      double floatPointValue = floatPoint;
 
       if (columnDataType == INT64) {
-        if (doubleLiteralValue > Long.MAX_VALUE) {
+        if (floatPointValue > Long.MAX_VALUE) {
           return constructFilterForGreaterThanMax(operator, measurementIndex);
         }
-        if (doubleLiteralValue < Long.MIN_VALUE) {
+        if (floatPointValue < Long.MIN_VALUE) {
           return constructFilterForLessThanMin(operator, measurementIndex);
         }
-        return constructFilterFromDouble(operator, doubleLiteralValue, measurementIndex, type);
+        return constructFilterFromDouble(operator, floatPointValue, measurementIndex, type);
 
       } else if (columnDataType == INT32) {
-        if (doubleLiteralValue > Integer.MAX_VALUE) {
+        if (floatPointValue > Integer.MAX_VALUE) {
           return constructFilterForGreaterThanMax(operator, measurementIndex);
         }
 
-        if (doubleLiteralValue < Integer.MIN_VALUE) {
+        if (floatPointValue < Integer.MIN_VALUE) {
           return constructFilterForLessThanMin(operator, measurementIndex);
         }
-        return constructFilterFromDouble(operator, doubleLiteralValue, measurementIndex, type);
+        return constructFilterFromDouble(operator, floatPointValue, measurementIndex, type);
       }
     }
 
@@ -572,6 +581,8 @@ public class ConvertPredicateToFilterVisitor
       return ((DoubleLiteral) expression).getValue();
     } else if (expression instanceof LongLiteral) {
       return ((LongLiteral) expression).getParsedValue();
+    } else if (expression instanceof FloatLiteral) {
+      return ((FloatLiteral) expression).getValue();
     } else {
       throw new IllegalArgumentException("expression should be numeric, actual is " + expression);
     }

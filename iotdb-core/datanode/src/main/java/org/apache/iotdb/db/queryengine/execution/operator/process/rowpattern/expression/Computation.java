@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
@@ -125,6 +126,9 @@ public abstract class Computation {
         return new ConstantComputation(constExpr.getParsedValue());
       } else if (expression instanceof DoubleLiteral) {
         DoubleLiteral constExpr = (DoubleLiteral) expression;
+        return new ConstantComputation(constExpr.getValue());
+      } else if (expression instanceof FloatLiteral) {
+        FloatLiteral constExpr = (FloatLiteral) expression;
         return new ConstantComputation(constExpr.getValue());
       } else if (expression instanceof StringLiteral) {
         StringLiteral constExpr = (StringLiteral) expression;

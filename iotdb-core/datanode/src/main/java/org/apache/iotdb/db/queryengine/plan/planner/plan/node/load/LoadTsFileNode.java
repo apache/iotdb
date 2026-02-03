@@ -132,7 +132,7 @@ public class LoadTsFileNode extends WritePlanNode {
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
-              false,
+              needDecode4TimeColumn,
               schemaEvolutionFile));
     }
     return res;

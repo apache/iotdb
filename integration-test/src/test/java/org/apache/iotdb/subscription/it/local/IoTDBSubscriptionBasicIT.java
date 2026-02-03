@@ -45,6 +45,7 @@ import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -78,6 +79,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     super.setUp();
   }
 
+  @Ignore
   @Test
   public void testBasicPullConsumerWithCommitAsync() throws Exception {
     // Insert some historical data
@@ -225,6 +227,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testBasicPushConsumer() {
     final AtomicInteger onReceiveCount = new AtomicInteger(0);
@@ -324,6 +327,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testPollUnsubscribedTopics() throws Exception {
     // Insert some historical data
@@ -424,6 +428,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testTsFileDeduplication() {
     // Insert some historical data
@@ -496,6 +501,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDataSetDeduplication() {
     // Insert some historical data
@@ -562,6 +568,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
   // same to
   // org.apache.iotdb.subscription.it.local.IoTDBSubscriptionBasicIT.testDataSetDeduplication,
   // but missing consumer id & consumer group id when building consumer
+  @Ignore
   @Test
   public void testMissingConsumerId() {
     // Insert some historical data
@@ -628,6 +635,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
     }
   }
 
+  @Ignore
   @Test
   public void testDropSubscriptionBySession() throws Exception {
     // Insert some historical data

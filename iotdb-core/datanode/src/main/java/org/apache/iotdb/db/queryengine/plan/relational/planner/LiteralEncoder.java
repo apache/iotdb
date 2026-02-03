@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
@@ -92,8 +93,12 @@ public final class LiteralEncoder {
       return new LongLiteral(object.toString());
     }
 
-    if (type.equals(FLOAT) || type.equals(DOUBLE)) {
+    if (type.equals(DOUBLE)) {
       return new DoubleLiteral(((Number) object).doubleValue());
+    }
+
+    if (type.equals(FLOAT)) {
+      return new FloatLiteral(((Number) object).floatValue());
     }
 
     if (isBool(type)) {

@@ -69,6 +69,7 @@ public class LoadTsFileStatement extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private File schemaEvolutionFile;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
@@ -222,6 +223,14 @@ public class LoadTsFileStatement extends Statement {
 
   public boolean isGeneratedByPipe() {
     return isGeneratedByPipe;
+  }
+
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
   }
 
   public List<File> getTsFiles() {
