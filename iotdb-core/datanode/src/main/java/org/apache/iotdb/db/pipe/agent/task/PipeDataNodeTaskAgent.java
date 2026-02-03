@@ -104,6 +104,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_END_TIME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY;
@@ -603,6 +604,13 @@ public class PipeDataNodeTaskAgent extends PipeTaskAgent {
             EXTRACTOR_REALTIME_ENABLE_DEFAULT_VALUE);
 
     return isHistoryEnable && isRealtimeEnable;
+  }
+
+  public boolean canSplit4Processor(final PipeParameters parameters) {
+    return !parameters
+        .getStringOrDefault(
+            PROCESSOR_KEY, BuiltinPipePlugin.DO_NOTHING_PROCESSOR.getPipePluginName())
+        .equals(BuiltinPipePlugin.AGGREGATE_PROCESSOR.getPipePluginName());
   }
 
   @Override

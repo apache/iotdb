@@ -20,13 +20,13 @@
 package org.apache.iotdb.db.pipe.agent.plugin.dataregion;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.aggregate.CountWindowingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.donothing.DoNothingProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.processor.throwing.ThrowingExceptionProcessor;
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeProcessorConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.DataNodePipePluginMetaKeeper;
 import org.apache.iotdb.db.pipe.processor.aggregate.AggregateProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.operator.processor.StandardStatisticsOperatorProcessor;
+import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.CountWindowingProcessor;
 import org.apache.iotdb.db.pipe.processor.aggregate.window.processor.TumblingWindowingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.changing.ChangingValueSamplingProcessor;
 import org.apache.iotdb.db.pipe.processor.downsampling.sdt.SwingingDoorTrendingSamplingProcessor;

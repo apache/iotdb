@@ -2176,7 +2176,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getSourceAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
-        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
+        && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)
+        && PipeDataNodeAgent.task()
+            .canSplit4Processor(new PipeParameters(createPipeStatement.getProcessorAttributes()))) {
       try (final ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         // 1. Send request to create the real-time data synchronization pipeline
