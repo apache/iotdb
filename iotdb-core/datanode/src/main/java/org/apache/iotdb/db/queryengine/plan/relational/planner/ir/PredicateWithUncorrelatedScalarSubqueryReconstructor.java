@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpress
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -203,7 +204,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
         case TIMESTAMP:
           return Optional.of(new LongLiteral(Long.toString(column.getLong(0))));
         case FLOAT:
-          return Optional.of(new DoubleLiteral(Double.toString(column.getFloat(0))));
+          return Optional.of(new FloatLiteral(column.getFloat(0)));
         case DOUBLE:
           return Optional.of(new DoubleLiteral(Double.toString(column.getDouble(0))));
         case BOOLEAN:

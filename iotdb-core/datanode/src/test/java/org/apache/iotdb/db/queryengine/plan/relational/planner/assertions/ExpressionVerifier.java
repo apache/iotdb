@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -139,6 +140,15 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
   }
 
   @Override
+  protected Boolean visitFloatLiteral(FloatLiteral actual, Expression expectedExpression) {
+    if (!(expectedExpression instanceof FloatLiteral)) {
+      return false;
+    }
+
+    return getValueFromLiteral(actual).equals(getValueFromLiteral(expectedExpression));
+  }
+
+  @Override
   protected Boolean visitDecimalLiteral(DecimalLiteral actual, Expression expectedExpression) {
     if (!(expectedExpression instanceof DecimalLiteral)) {
       return false;
@@ -172,6 +182,10 @@ public final class ExpressionVerifier extends AstVisitor<Boolean, Expression> {
 
     if (expression instanceof DoubleLiteral) {
       return String.valueOf(((DoubleLiteral) expression).getValue());
+    }
+
+    if (expression instanceof FloatLiteral) {
+      return String.valueOf(((FloatLiteral) expression).getValue());
     }
 
     if (expression instanceof DecimalLiteral) {
