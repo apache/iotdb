@@ -179,6 +179,9 @@ class PoolController:
             task = self._task_queue.get()
             if task is None:
                 self._task_queue.task_done()
+                logger.info(
+                    f"PoolController received task None, the worker loop is existed."
+                )
                 break
             task_fn, args, kwargs = task
             try:
@@ -519,6 +522,7 @@ class PoolController:
         self._task_queue.put(None)
         self._pool_control_worker_thread.join()
         self._executor.close()
+        logger.info(f"PoolController stopped its task executor.")
 
         # shutdown pool instances
         # TODO: pool instances can be shutdown in parallel
@@ -526,4 +530,4 @@ class PoolController:
             for group in inner.values():
                 group.shutdown()
 
-        Logger.info("The PoolController has been stopped.")
+        logger.info("The PoolController has been stopped.")
