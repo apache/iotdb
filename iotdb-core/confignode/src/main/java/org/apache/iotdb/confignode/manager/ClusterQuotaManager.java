@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -111,8 +112,8 @@ public class ClusterQuotaManager {
   /** If the new quota is smaller than the quota already used, the setting fails. */
   private boolean checkSpaceQuota(TSetSpaceQuotaReq req) {
     for (String database : req.getDatabase()) {
-      if (quotaInfo.getSpaceQuotaLimit().containsKey(database)) {
-        TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
+      TSpaceQuota spaceQuota = quotaInfo.getSpaceQuotaUsage().get(database);
+      if (Objects.nonNull(spaceQuota)) {
         if (req.getSpaceLimit().getDeviceNum() != IoTDBConstant.UNLIMITED_VALUE
             && req.getSpaceLimit().getDeviceNum() != IoTDBConstant.DEFAULT_VALUE
             && spaceQuota.getDeviceNum() > req.getSpaceLimit().getDeviceNum()) {
