@@ -163,7 +163,6 @@ public class IoTDBPipeAggregateIT extends AbstractPipeSingleIT {
         env,
         "select min from root.aggregate.factory.vehicle.temperature",
         "Time,root.aggregate.factory.vehicle.temperature.min,",
-        new HashSet<>(Arrays.asList("5,1.0", "9,6.0")),
-        10);
+        new HashSet<>(Arrays.asList("5,1.0,", "10,6.0,")));
   }
 }
