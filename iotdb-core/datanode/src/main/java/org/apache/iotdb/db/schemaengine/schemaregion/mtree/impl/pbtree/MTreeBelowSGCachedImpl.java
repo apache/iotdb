@@ -1506,14 +1506,18 @@ public class MTreeBelowSGCachedImpl {
               return super.getChildrenIterator(parent);
             }
 
-            final IMNodeIterator<ICachedMNode> directIterator = store.getChildrenIterator(parent);
             final Iterator<ICachedMNode> templateIterator = getSortedTemplateChildren(parent);
+            if (!templateIterator.hasNext()) {
+              return super.getChildrenIterator(parent);
+            }
 
             return new IMNodeIterator<ICachedMNode>() {
               private ICachedMNode next = null;
               private ICachedMNode nextDirect = null;
               private ICachedMNode nextTemplate = null;
               private boolean skipTemplateChildren = false;
+              // Lazy init: avoid prefetching direct iterator before template collection/sort.
+              private IMNodeIterator<ICachedMNode> directIterator = null;
 
               @Override
               public boolean hasNext() {
@@ -1542,7 +1546,9 @@ public class MTreeBelowSGCachedImpl {
 
               @Override
               public void close() {
-                directIterator.close();
+                if (directIterator != null) {
+                  directIterator.close();
+                }
               }
 
               private ICachedMNode computeNext() {
@@ -1580,6 +1586,13 @@ public class MTreeBelowSGCachedImpl {
               }
 
               private ICachedMNode fetchNextDirect() {
+                if (directIterator == null) {
+                  try {
+                    directIterator = store.getChildrenIterator(parent);
+                  } catch (MetadataException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
                 while (directIterator.hasNext()) {
                   ICachedMNode node = directIterator.next();
                   if (!skipPreDeletedSchema
