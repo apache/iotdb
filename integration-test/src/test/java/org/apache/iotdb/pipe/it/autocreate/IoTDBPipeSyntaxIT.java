@@ -29,6 +29,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2AutoCreateSchema;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -38,6 +39,7 @@ import java.io.File;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -313,6 +315,68 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
 
       final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
       Assert.assertEquals(1, showPipeResult.size());
+    }
+  }
+
+  @Test
+  public void testDirectoryErrors() throws SQLException {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      List<String> wrongDirs = Arrays.asList(".", "..", "./hackYou", ".\\hackYouTwice");
+      if (SystemUtils.IS_OS_WINDOWS) {
+        wrongDirs = new ArrayList<>(wrongDirs);
+        wrongDirs.add("BombWindows/:*?");
+        wrongDirs.add("AUX");
+      }
+      for (final String name : wrongDirs) {
+        testDirectoryError(name, statement);
+      }
+    }
+  }
+
+  private void testDirectoryError(final String wrongDir, final Statement statement) {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipe `"
+                  + wrongDir
+                  + "` with source ()"
+                  + " with processor ()"
+                  + " with sink ("
+                  + "'sink'='invalid-param',"
+                  + "'sink.ip'='%s',"
+                  + "'sink.port'='%s',"
+                  + "'sink.batch.enable'='false')",
+              receiverIp,
+              receiverPort));
+      fail();
+    } catch (final Exception ignore) {
+      // Expected
+    }
+
+    try {
+      statement.execute(
+          String.format(
+              "create pipePlugin `"
+                  + wrongDir
+                  + "` as 'org.apache.iotdb.db.pipe.example.TestProcessor' USING URI '%s'",
+              new File(
+                          System.getProperty("user.dir")
+                              + File.separator
+                              + "target"
+                              + File.separator
+                              + "test-classes"
+                              + File.separator)
+                      .toURI()
+                  + "PipePlugin.jar"));
+      fail();
+    } catch (final SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("1600: Failed to create pipe plugin"));
     }
   }
 
