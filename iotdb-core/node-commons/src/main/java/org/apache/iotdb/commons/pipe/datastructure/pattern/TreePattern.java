@@ -156,10 +156,16 @@ public abstract class TreePattern {
     final boolean hasPatternInclusionKey =
         sourceParameters.hasAnyAttributes(
             EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY);
+    final boolean hasPatternExclusionKey =
+        sourceParameters.hasAnyAttributes(
+            EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY);
     final boolean hasLegacyPathKey =
         sourceParameters.hasAnyAttributes(EXTRACTOR_PATH_KEY, SOURCE_PATH_KEY);
     final boolean hasLegacyPatternKey =
         sourceParameters.hasAnyAttributes(EXTRACTOR_PATTERN_KEY, SOURCE_PATTERN_KEY);
+    final boolean usePatternSyntax =
+        hasPatternInclusionKey
+            || (hasPatternExclusionKey && !hasLegacyPathKey && !hasLegacyPatternKey);
 
     if (hasPatternInclusionKey && (hasLegacyPathKey || hasLegacyPatternKey)) {
       final String msg =
@@ -172,7 +178,7 @@ public abstract class TreePattern {
 
     // 1. Parse INCLUSION patterns into a list
     List<TreePattern> inclusionPatterns =
-        hasPatternInclusionKey
+        usePatternSyntax
             ? parseIoTDBPatternList(
                 sourceParameters.getStringByKeys(
                     EXTRACTOR_PATTERN_INCLUSION_KEY, SOURCE_PATTERN_INCLUSION_KEY),
@@ -198,7 +204,7 @@ public abstract class TreePattern {
     }
 
     // 2. Parse EXCLUSION patterns into a list
-    if (hasPatternInclusionKey
+    if (usePatternSyntax
         && sourceParameters.hasAnyAttributes(
             EXTRACTOR_PATH_EXCLUSION_KEY, SOURCE_PATH_EXCLUSION_KEY)) {
       final String msg =
@@ -210,7 +216,7 @@ public abstract class TreePattern {
     }
 
     List<TreePattern> exclusionPatterns =
-        hasPatternInclusionKey
+        usePatternSyntax
             ? parseIoTDBPatternList(
                 sourceParameters.getStringByKeys(
                     EXTRACTOR_PATTERN_EXCLUSION_KEY, SOURCE_PATTERN_EXCLUSION_KEY),
