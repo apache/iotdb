@@ -73,6 +73,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -114,6 +115,7 @@ import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -809,6 +811,15 @@ public class MTreeBelowSGMemoryImpl {
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
+        if (cur.isDevice()
+            && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE
+            && ClusterTemplateManager.getInstance()
+                    .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId())
+                    .getSchema(nodeNames[i])
+                != null) {
+          throw new PathAlreadyExistException(
+              new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+        }
         child =
             store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
       }
