@@ -287,30 +287,37 @@ public class TestUtils {
         EnvFactory.getEnv().getConnection(userName, password, BaseEnv.TABLE_SQL_DIALECT)) {
       connection.setClientInfo("time_zone", timeZone);
       try (Statement statement = connection.createStatement()) {
-        statement.execute("use " + database);
+        if (database != null) {
+          statement.execute("use " + database);
+        }
         try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
-          }
-          assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
-
-          int cnt = 0;
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= expectedHeader.length; i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            assertEquals(expectedRetArray[cnt], builder.toString());
-            cnt++;
-          }
-          assertEquals(expectedRetArray.length, cnt);
+          tableResultSetEqual(resultSet, expectedHeader, expectedRetArray);
         }
       }
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  public static void tableResultSetEqual(
+      ResultSet resultSet, String[] expectedHeader, String[] expectedRetArray) throws SQLException {
+    ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      assertEquals(expectedHeader[i - 1], resultSetMetaData.getColumnName(i));
+    }
+    assertEquals(expectedHeader.length, resultSetMetaData.getColumnCount());
+
+    int cnt = 0;
+    while (resultSet.next()) {
+      StringBuilder builder = new StringBuilder();
+      for (int i = 1; i <= expectedHeader.length; i++) {
+        builder.append(resultSet.getString(i)).append(",");
+      }
+      assertEquals(expectedRetArray[cnt], builder.toString());
+      cnt++;
+    }
+    assertEquals(expectedRetArray.length, cnt);
   }
 
   public static void tableResultSetEqualByDataTypeTest(
