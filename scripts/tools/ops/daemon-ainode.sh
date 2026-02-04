@@ -41,7 +41,7 @@ Type=simple
 User=root
 Group=root
 ExecStart=$IOTDB_AINODE_SBIN_HOME/start-ainode.sh
-ExecStop=$IOTDB_AINODE_SBIN_HOME/stop-ainode.sh
+ExecStop=/bin/kill -TERM -\$MAINPID
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5
@@ -49,8 +49,6 @@ StartLimitInterval=600s
 StartLimitBurst=3
 RestartPreventExitStatus=SIGKILL
 TimeoutStopSec=60s
-KillMode=control-group
-KillSignal=SIGTERM
 
 [Install]
 WantedBy=multi-user.target
