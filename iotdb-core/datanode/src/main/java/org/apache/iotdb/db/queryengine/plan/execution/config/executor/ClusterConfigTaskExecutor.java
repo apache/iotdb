@@ -74,6 +74,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAINodeRemoveReq;
@@ -943,6 +944,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String pluginName = createPipePluginStatement.getPluginName();
     final String className = createPipePluginStatement.getClassName();
     final String uriString = createPipePluginStatement.getUriString();
+
+    final String pathError = FileUtils.getIllegalError4Directory(pluginName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
+              TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode()));
+      return future;
+    }
 
     if (uriString == null || uriString.isEmpty()) {
       future.setException(
@@ -2065,6 +2075,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
+    final String pipeName = createPipeStatement.getPipeName();
     if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
         && !Objects.equals(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
@@ -2073,18 +2084,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new IoTDBException(
               String.format(
                   "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
-                  createPipeStatement.getPipeName()),
+                  pipeName),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
     // Validate pipe name
-    if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (pipeName.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       future.setException(
           new IoTDBException(
               String.format(
                   "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
-                  createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  pipeName, PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    final String pathError = FileUtils.getIllegalError4Directory(pipeName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe %s, " + pathError, pipeName),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2093,7 +2113,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       PipeDataNodeAgent.plugin()
           .validate(
-              createPipeStatement.getPipeName(),
+              pipeName,
               createPipeStatement.getExtractorAttributes(),
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getConnectorAttributes());
@@ -2115,7 +2135,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq realtimeReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for real-time data
-                .setPipeName(createPipeStatement.getPipeName() + "_realtime")
+                .setPipeName(pipeName + "_realtime")
                 // NOTE: set if not exists always to true to handle partial failure
                 .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
@@ -2143,7 +2163,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq historyReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for historical data
-                .setPipeName(createPipeStatement.getPipeName() + "_history")
+                .setPipeName(pipeName + "_history")
                 .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
                 // Use source parameters for historical data
                 .setExtractorAttributes(
@@ -2186,7 +2206,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreatePipeReq req =
           new TCreatePipeReq()
-              .setPipeName(createPipeStatement.getPipeName())
+              .setPipeName(pipeName)
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
               .setExtractorAttributes(createPipeStatement.getExtractorAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
