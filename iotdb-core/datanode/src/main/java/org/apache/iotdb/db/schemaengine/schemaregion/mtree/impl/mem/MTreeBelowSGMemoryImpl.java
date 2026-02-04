@@ -66,8 +66,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -427,8 +427,7 @@ public class MTreeBelowSGMemoryImpl {
     IMemMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkDeviceLimit(databaseMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkDeviceLimit(databaseMNode.getName())) {
           throw new ExceedQuotaException(
               "The number of devices has reached the upper limit",
               TSStatusCode.SPACE_QUOTA_EXCEEDED.getStatusCode());
@@ -487,8 +486,7 @@ public class MTreeBelowSGMemoryImpl {
                 devicePath.getFullPath() + "." + measurementList.get(i), aliasList.get(i)));
       }
       if (IoTDBDescriptor.getInstance().getConfig().isQuotaEnable()) {
-        if (!DataNodeSpaceQuotaManager.getInstance()
-            .checkTimeSeriesNum(databaseMNode.getName())) {
+        if (!DataNodeSpaceQuotaManager.getInstance().checkTimeSeriesNum(databaseMNode.getName())) {
           failingMeasurementMap.put(
               i,
               new ExceedQuotaException(
