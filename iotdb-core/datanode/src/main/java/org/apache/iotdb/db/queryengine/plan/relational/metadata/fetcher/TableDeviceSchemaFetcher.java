@@ -71,6 +71,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class TableDeviceSchemaFetcher {
@@ -187,7 +188,7 @@ public class TableDeviceSchemaFetcher {
       requestCache.removeCompletedRequest(statement);
       queryIdSet.remove(queryId);
       attributeGuard.tryUpdateCache();
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (Supplier<String>) null, t);
     }
   }
 
@@ -548,7 +549,7 @@ public class TableDeviceSchemaFetcher {
         queryIdSet.remove(queryId);
         attributeGuard.tryUpdateCache();
       }
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (Supplier<String>) null, t);
     }
   }
 

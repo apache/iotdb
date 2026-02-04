@@ -382,7 +382,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   .checkQuota(SESSION_MANAGER.getCurrSession().getUsername(), s);
           statementType = s.getType();
 
-          queryId = SESSION_MANAGER.requestQueryId(clientSession, request.getStatementId());
+          queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
 
           // Split statement if needed to limit resource consumption during statement analysis
           if (s.shouldSplit()) {
@@ -427,7 +427,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
         }
 
-        queryId = SESSION_MANAGER.requestQueryId(clientSession, request.getStatementId());
+        queryId = SESSION_MANAGER.requestQueryId(clientSession, statementId);
 
         // Split statement if needed to limit resource consumption during statement analysis
         if (s.shouldSplit()) {
@@ -556,7 +556,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Supplier<String> contentSupplier,
       Throwable t) {
     COORDINATOR.cleanupQueryExecution(queryId, contentSupplier, t);
-    // clear up queryId Map in clientSession
     clientSession.removeQueryId(statementId, queryId);
   }
 
@@ -566,11 +565,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       Long queryId,
       org.apache.thrift.TBase<?, ?> req,
       Throwable t) {
-    // Create Supplier that uses CommonUtils.getContentOfRequest for TBase requests
-    Supplier<String> contentSupplier =
-        () -> CommonUtils.getContentOfRequest(req, COORDINATOR.getQueryExecution(queryId));
-    COORDINATOR.cleanupQueryExecution(queryId, contentSupplier, t);
-    // clear up queryId Map in clientSession
+    COORDINATOR.cleanupQueryExecution(queryId, req, t);
     clientSession.removeQueryId(statementId, queryId);
   }
 
@@ -643,8 +638,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
     @Override
     public Statement getTreeStatement(ZoneId zoneId) {
-      // PreparedStatement is primarily for Table model, return null for Tree model
-      return null;
+      throw new UnsupportedOperationException("PreparedStatement is not supported for Tree model");
     }
 
     @Override
@@ -1142,10 +1136,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSExecuteStatementResp executeStatementV2(TSExecuteStatementReq req) {
-    IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
-    if (!SESSION_MANAGER.checkLogin(clientSession)) {
-      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
-    }
     return executeStatementInternal(new TSExecuteStatementReqAdapter(req), SELECT_RESULT);
   }
 

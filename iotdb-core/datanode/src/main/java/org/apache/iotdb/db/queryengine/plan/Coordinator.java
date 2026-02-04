@@ -150,6 +150,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.thrift.TBase;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
@@ -178,6 +179,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
 import static org.apache.iotdb.db.queryengine.plan.Coordinator.QueryInfo.DEFAULT_END_TIME;
+import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
 import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
@@ -712,11 +714,17 @@ public class Coordinator {
   public void cleanupQueryExecution(Long queryId, Supplier<String> contentSupplier, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
-      Supplier<String> finalSupplier =
-          contentSupplier != null
-              ? contentSupplier
-              : () -> queryExecution.getExecuteSQL().orElse("UNKNOWN");
-      cleanupQueryExecutionInternal(queryId, queryExecution, finalSupplier, t);
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
+    }
+  }
+
+  public void cleanupQueryExecution(
+      Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      Supplier<String> contentSupplier =
+          new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
     }
   }
 
@@ -746,6 +754,22 @@ public class Coordinator {
     }
   }
 
+  private static class ContentOfQuerySupplier implements Supplier<String> {
+
+    private final TBase<?, ?> nativeApiRequest;
+    private final IQueryExecution queryExecution;
+
+    private ContentOfQuerySupplier(TBase<?, ?> nativeApiRequest, IQueryExecution queryExecution) {
+      this.nativeApiRequest = nativeApiRequest;
+      this.queryExecution = queryExecution;
+    }
+
+    @Override
+    public String get() {
+      return getContentOfRequest(nativeApiRequest, queryExecution);
+    }
+  }
+
   public static void recordQueries(
       LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
 
@@ -770,7 +794,7 @@ public class Coordinator {
   }
 
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, null, null);
+    cleanupQueryExecution(queryId, (Supplier<String>) null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>

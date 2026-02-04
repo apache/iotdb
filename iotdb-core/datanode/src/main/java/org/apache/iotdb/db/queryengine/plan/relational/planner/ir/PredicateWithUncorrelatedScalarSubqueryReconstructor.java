@@ -54,6 +54,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -221,7 +222,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
     } catch (final Throwable throwable) {
       t = throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (Supplier<String>) null, t);
     }
     return Optional.empty();
   }
