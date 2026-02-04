@@ -839,14 +839,14 @@ public class MTreeBelowSGCachedImpl {
       for (int i = levelOfDB + 1; i < nodeNames.length; i++) {
         child = store.getChild(cur, nodeNames[i]);
         if (child == null) {
-          if (cur.isDevice()
-              && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE
-              && ClusterTemplateManager.getInstance()
-                      .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId())
-                      .getSchema(nodeNames[i])
-                  != null) {
-            throw new PathAlreadyExistException(
-                new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+          if (cur.isDevice() && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE) {
+            final Template template =
+                ClusterTemplateManager.getInstance()
+                    .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
+            if (template.getSchema(nodeNames[i]) != null) {
+              throw new PathAlreadyExistException(
+                  new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+            }
           }
           child =
               store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
