@@ -1087,21 +1087,21 @@ public class LogicalPlanBuilder {
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    PartialPath storageGroupPath;
+    PartialPath databasePath;
     for (String storageGroup : storageGroupList) {
       try {
-        storageGroupPath = new PartialPath(storageGroup);
+        databasePath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SeriesSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                storageGroupPath,
+                databasePath,
                 overlappedPatternTree,
                 templateMap,
                 withTags,
