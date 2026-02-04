@@ -1651,17 +1651,10 @@ public class MTreeBelowSGMemoryImpl {
             }
 
             List<IMemMNode> children = new ArrayList<>();
-            if (baseIterator instanceof IMNodeIterator) {
-              IMNodeIterator<IMemMNode> it = (IMNodeIterator<IMemMNode>) baseIterator;
-              while (it.hasNext()) {
-                children.add(it.next());
-              }
-              it.close();
-            } else {
-              while (baseIterator.hasNext()) {
-                children.add(baseIterator.next());
-              }
+            while (baseIterator.hasNext()) {
+              children.add(baseIterator.next());
             }
+            releaseNodeIterator(baseIterator);
 
             children.sort(
                 (a, b) -> {
