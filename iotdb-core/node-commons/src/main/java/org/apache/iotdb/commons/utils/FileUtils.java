@@ -57,6 +57,8 @@ public class FileUtils {
       "Renamed file {} to {} because it already exists in the target directory: {}";
   private static final String COPY_FILE_MESSAGE =
       "Copy file {} to {} because it already exists in the target directory: {}";
+  private static final String ILLEGAL_PATH_MESSAGE =
+      "The path cannot be '.', '..', './' or '.\\'. ";
 
   private FileUtils() {}
 
@@ -578,5 +580,15 @@ public class FileUtils {
         sourceFile.getName(),
         targetFile,
         targetFile.getParentFile().getAbsolutePath());
+  }
+
+  public static String getIllegalError4Directory(final String path) {
+    if (path.equals(".") || path.equals("..") || path.contains("./") || path.contains(".\\")) {
+      return ILLEGAL_PATH_MESSAGE;
+    }
+    if (!WindowsOSUtils.isLegalPathSegment4Windows(path)) {
+      return WindowsOSUtils.OS_SEGMENT_ERROR;
+    }
+    return null;
   }
 }
