@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
@@ -107,7 +108,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private String syncConnectorVersion;
 
   private String pipeName;
-  private String databaseName;
+  private String databaseName = "";
   private IoTDBSyncClient client;
 
   private SessionPool sessionPool;
@@ -199,10 +200,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
 
-    databaseName =
+    final DataRegion dataRegion =
         StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()))
-            .getDatabaseName();
+            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
+    if (Objects.nonNull(dataRegion)) {
+      databaseName = dataRegion.getDatabaseName();
+    }
   }
 
   @Override
