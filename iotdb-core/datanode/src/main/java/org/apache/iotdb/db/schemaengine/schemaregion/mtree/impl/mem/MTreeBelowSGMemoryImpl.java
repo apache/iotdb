@@ -815,7 +815,7 @@ public class MTreeBelowSGMemoryImpl {
           final Template template =
               ClusterTemplateManager.getInstance()
                   .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
-          if (template.getSchema(nodeNames[i]) != null) {
+          if (Objects.nonNull(template) && template.getSchema(nodeNames[i]) != null) {
             throw new PathAlreadyExistException(
                 new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
           }

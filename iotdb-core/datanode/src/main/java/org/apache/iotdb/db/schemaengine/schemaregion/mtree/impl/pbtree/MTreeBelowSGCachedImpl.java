@@ -89,6 +89,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -843,7 +844,7 @@ public class MTreeBelowSGCachedImpl {
             final Template template =
                 ClusterTemplateManager.getInstance()
                     .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
-            if (template.getSchema(nodeNames[i]) != null) {
+            if (Objects.nonNull(template) && template.getSchema(nodeNames[i]) != null) {
               throw new PathAlreadyExistException(
                   new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
             }
