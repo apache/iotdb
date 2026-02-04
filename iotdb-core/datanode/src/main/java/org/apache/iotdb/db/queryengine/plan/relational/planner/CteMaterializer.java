@@ -66,7 +66,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -200,7 +199,7 @@ public class CteMaterializer {
     } finally {
       long cost = System.nanoTime() - startTime;
       context.addCteMaterializationCost(table, cost);
-      coordinator.cleanupQueryExecution(queryId, (Supplier<String>) null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
     return null;
   }

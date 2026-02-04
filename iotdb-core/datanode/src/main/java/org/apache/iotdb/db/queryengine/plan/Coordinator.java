@@ -794,7 +794,7 @@ public class Coordinator {
   }
 
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, (Supplier<String>) null, null);
+    cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
