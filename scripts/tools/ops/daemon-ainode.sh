@@ -49,7 +49,8 @@ StartLimitInterval=600s
 StartLimitBurst=3
 RestartPreventExitStatus=SIGKILL
 TimeoutStopSec=60s
-KillMode=process
+KillMode=control-group
+KillSignal=SIGTERM
 
 [Install]
 WantedBy=multi-user.target
