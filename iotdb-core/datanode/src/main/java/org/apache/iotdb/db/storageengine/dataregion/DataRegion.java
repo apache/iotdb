@@ -379,6 +379,8 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
+  private boolean isTableModel;
+
   /**
    * Construct a database processor.
    *
@@ -397,6 +399,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    this.isTableModel = isTableModelDatabase(databaseName);
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
@@ -458,6 +461,7 @@ public class DataRegion implements IDataRegionForQuery {
   @TestOnly
   public DataRegion(String databaseName, String dataRegionIdString) {
     this.databaseName = databaseName;
+    this.isTableModel = isTableModelDatabase(databaseName);
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
     this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
@@ -499,6 +503,10 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public boolean isReady() {

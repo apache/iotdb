@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeaderFactory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
@@ -73,7 +72,7 @@ public class ShowDiskUsageOperator implements SourceOperator {
             Optional.of(
                 dataRegion -> {
                   String databaseName = dataRegion.getDatabaseName();
-                  return !PathUtils.isTableModelDatabase(databaseName)
+                  return !dataRegion.isTableModel()
                       && pathPattern.matchPrefixPath(new PartialPath(databaseName));
                 }),
             Optional.of(

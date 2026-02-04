@@ -145,11 +145,21 @@ public class TreeDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     } else {
       chunkGroupTimeseriesMetadataEndOffsetPair =
           calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
-              reader, nodeOfNextNotMatchedDevice, nextNotMatchedDevice, 0);
+              reader,
+              nodeOfNextNotMatchedDevice,
+              nextNotMatchedDevice,
+              0,
+              timeSeriesMetadataCountRecorder,
+              timeSeriesMetadataIoSizeRecorder);
     }
     chunkGroupTimeseriesMetadataStartOffsetPair =
         calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
-            reader, nodeOfFirstMatchedDevice, firstMatchedDevice, 0);
+            reader,
+            nodeOfFirstMatchedDevice,
+            firstMatchedDevice,
+            0,
+            timeSeriesMetadataCountRecorder,
+            timeSeriesMetadataIoSizeRecorder);
     return chunkGroupTimeseriesMetadataEndOffsetPair.minusOffsetForTreeModel(
         chunkGroupTimeseriesMetadataStartOffsetPair);
   }

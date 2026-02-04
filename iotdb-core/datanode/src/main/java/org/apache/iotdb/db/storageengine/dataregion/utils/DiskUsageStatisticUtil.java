@@ -154,17 +154,20 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       TsFileResource tsFileResource, TsFileSequenceReader reader)
       throws IOException, IllegalPathException;
 
-  protected Offsets calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
+  protected static Offsets calculateStartOffsetOfChunkGroupAndTimeseriesMetadata(
       TsFileSequenceReader reader,
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice,
       Pair<IDeviceID, Boolean> deviceIsAlignedPair,
-      long rootMeasurementNodeStartOffset)
+      long rootMeasurementNodeStartOffset,
+      LongConsumer timeSeriesMetadataCountRecorder,
+      LongConsumer timeSeriesMetadataIoSizeRecorder)
       throws IOException {
     int chunkGroupHeaderSize =
         new ChunkGroupHeader(deviceIsAlignedPair.getLeft()).getSerializedSize();
     if (deviceIsAlignedPair.getRight()) {
       Pair<Long, Long> timeseriesMetadataOffsetPair =
-          getTimeColumnMetadataOffset(reader, firstMeasurementNodeOfCurrentDevice);
+          getTimeColumnMetadataOffset(
+              reader, firstMeasurementNodeOfCurrentDevice, timeSeriesMetadataIoSizeRecorder);
       IChunkMetadata firstChunkMetadata =
           reader
               .getChunkMetadataListByTimeseriesMetadataOffset(
@@ -208,8 +211,11 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
     }
   }
 
-  private Pair<Long, Long> getTimeColumnMetadataOffset(
-      TsFileSequenceReader reader, MetadataIndexNode measurementNode) throws IOException {
+  private static Pair<Long, Long> getTimeColumnMetadataOffset(
+      TsFileSequenceReader reader,
+      MetadataIndexNode measurementNode,
+      LongConsumer timeSeriesMetadataIoSizeRecorder)
+      throws IOException {
     if (measurementNode.isDeviceLevel()) {
       throw new IllegalArgumentException("device level metadata index node is not supported");
     }
@@ -223,7 +229,8 @@ public abstract class DiskUsageStatisticUtil implements Closeable {
       MetadataIndexNode metadataIndexNode =
           reader.readMetadataIndexNode(
               startOffset, endOffset, false, timeSeriesMetadataIoSizeRecorder);
-      return getTimeColumnMetadataOffset(reader, metadataIndexNode);
+      return getTimeColumnMetadataOffset(
+          reader, metadataIndexNode, timeSeriesMetadataIoSizeRecorder);
     }
   }
 

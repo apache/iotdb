@@ -21,9 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
@@ -37,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.concurrent.BlockingQueue;
@@ -47,7 +45,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TableDiskUsageCache {
-  protected static Map<String, List<TTableInfo>> databaseTableInfoMap;
   protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>(1000);
   // regionId -> writer mapping
@@ -119,6 +116,9 @@ public class TableDiskUsageCache {
   protected void persistPendingObjectDeltasIfNecessary(DataRegionTableSizeCacheWriter writer) {}
 
   protected void compactIfNecessary(long maxRunTime) {
+    if (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
+      return;
+    }
     long startTime = System.currentTimeMillis();
     for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
       if (System.currentTimeMillis() - startTime > maxRunTime) {
@@ -177,7 +177,7 @@ public class TableDiskUsageCache {
 
   public void registerRegion(DataRegion region) {
     RegisterRegionOperation operation = new RegisterRegionOperation(region);
-    if (!PathUtils.isTableModelDatabase(region.getDatabaseName())) {
+    if (!region.isTableModel()) {
       return;
     }
     addOperationToQueue(operation);
