@@ -1310,22 +1310,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 InformationSchemaTableScanOperator.class.getSimpleName());
 
-    Filter pushDownFilter = null;
-    if (node.getPushDownPredicate() != null) {
-      Map<String, Integer> measurementColumnsIndexMap =
-          new HashMap<>(node.getOutputColumnNames().size());
-      for (int i = 0; i < node.getOutputColumnNames().size(); i++) {
-        measurementColumnsIndexMap.put(node.getOutputColumnNames().get(i), i);
-      }
-      pushDownFilter =
-          convertPredicateToFilter(
-              node.getPushDownPredicate(),
-              measurementColumnsIndexMap,
-              node.getAssignments(),
-              null,
-              context.getZoneId(),
-              TimestampPrecisionUtils.currPrecision);
-    }
     final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
             .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
@@ -1342,8 +1326,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 .getFragmentInstanceContext()
                 .getSessionInfo()
                 .getUserEntity(),
-            node,
-            pushDownFilter));
+            node));
   }
 
   @Override

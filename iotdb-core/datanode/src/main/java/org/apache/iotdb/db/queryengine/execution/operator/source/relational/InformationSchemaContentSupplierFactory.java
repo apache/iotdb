@@ -116,6 +116,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -139,6 +140,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_T
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_CONFIG_NODE;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NODE_TYPE_DATA_NODE;
 import static org.apache.iotdb.commons.schema.table.TsTable.TTL_PROPERTY;
+import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowDB;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.canShowTable;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.BINARY_MAP;
@@ -158,8 +160,7 @@ public class InformationSchemaContentSupplierFactory {
       final OperatorContext context,
       final List<TSDataType> dataTypes,
       final UserEntity userEntity,
-      final InformationSchemaTableScanNode node,
-      final Filter pushDownFilter) {
+      final InformationSchemaTableScanNode node) {
     String tableName = node.getQualifiedObjectName().getObjectName();
     try {
       switch (tableName) {
@@ -196,6 +197,25 @@ public class InformationSchemaContentSupplierFactory {
         case InformationSchema.DATA_NODES:
           return new DataNodesSupplier(dataTypes, userEntity);
         case InformationSchema.TABLE_DISK_USAGE:
+          Filter pushDownFilter = null;
+          if (!InformationSchema.getColumnsSupportPushDownPredicate(
+                      node.getQualifiedObjectName().getObjectName())
+                  .isEmpty()
+              && node.getPushDownPredicate() != null) {
+            Map<String, Integer> measurementColumnsIndexMap =
+                new HashMap<>(node.getOutputColumnNames().size());
+            for (int i = 0; i < node.getOutputColumnNames().size(); i++) {
+              measurementColumnsIndexMap.put(node.getOutputColumnNames().get(i), i);
+            }
+            pushDownFilter =
+                convertPredicateToFilter(
+                    node.getPushDownPredicate(),
+                    measurementColumnsIndexMap,
+                    node.getAssignments(),
+                    null,
+                    context.getSessionInfo().getZoneId(),
+                    TimestampPrecisionUtils.currPrecision);
+          }
           return new TableDiskUsageSupplier(
               dataTypes,
               userEntity,
