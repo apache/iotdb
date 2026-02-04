@@ -48,14 +48,14 @@ public class SeriesSchemaFetchScanNode extends SchemaFetchScanNode {
 
   public SeriesSchemaFetchScanNode(
       PlanNodeId id,
-      PartialPath storageGroup,
+      PartialPath database,
       PathPatternTree patternTree,
       Map<Integer, Template> templateMap,
       boolean withTags,
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    super(id, storageGroup, patternTree);
+    super(id, database, patternTree);
     this.templateMap = templateMap;
     this.withTags = withTags;
     this.withAttributes = withAttributes;

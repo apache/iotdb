@@ -107,6 +107,8 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
             || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+            || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {

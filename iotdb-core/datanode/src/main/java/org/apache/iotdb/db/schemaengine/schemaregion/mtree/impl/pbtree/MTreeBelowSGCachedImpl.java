@@ -65,6 +65,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Times
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
@@ -86,10 +87,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -117,14 +121,14 @@ public class MTreeBelowSGCachedImpl {
   private final CachedMTreeStore store;
 
   @SuppressWarnings("java:S3077")
-  private volatile ICachedMNode storageGroupMNode;
+  private volatile ICachedMNode databaseMNode;
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
-  private final int levelOfSG;
+  private final int levelOfDB;
   private final CachedSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
@@ -146,16 +150,16 @@ public class MTreeBelowSGCachedImpl {
         PBTreeFactory.getInstance()
             .createNewCachedMTreeStore(
                 storageGroupPath, schemaRegionId, regionStatistics, metric, flushCallback);
-    this.storageGroupMNode = store.getRoot();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    this.databaseMNode = store.getRoot();
+    this.databaseMNode.setParent(databaseMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    levelOfDB = storageGroupPath.getNodeLength() - 1;
 
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(storageGroupMNode.getFullPath()),
+            new PartialPath(databaseMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -185,9 +189,9 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     this.store = store;
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
+    this.databaseMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    levelOfDB = databaseMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
 
@@ -195,7 +199,7 @@ public class MTreeBelowSGCachedImpl {
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(storageGroupMNode.getFullPath()),
+            new PartialPath(databaseMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -215,7 +219,7 @@ public class MTreeBelowSGCachedImpl {
 
   public void clear() {
     store.clear();
-    storageGroupMNode = null;
+    databaseMNode = null;
   }
 
   public boolean createSnapshot(File snapshotDir) {
@@ -583,15 +587,15 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
-    if (nodeNames.length == levelOfSG + 1) {
+    if (nodeNames.length == levelOfDB + 1) {
       return null;
     }
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     String childName;
     try {
       // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
-      for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
+      for (int i = levelOfDB + 1; i < nodeNames.length - 1; i++) {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
         if (child == null) {
@@ -614,8 +618,8 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     if (deviceParent == null) {
       // device is sg
-      pinMNode(storageGroupMNode);
-      return storageGroupMNode;
+      pinMNode(databaseMNode);
+      return databaseMNode;
     }
     ICachedMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
@@ -823,12 +827,21 @@ public class MTreeBelowSGCachedImpl {
   public ICachedMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     MetaFormatUtils.checkTimeseries(deviceId);
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     try {
-      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+      for (int i = levelOfDB + 1; i < nodeNames.length; i++) {
         child = store.getChild(cur, nodeNames[i]);
         if (child == null) {
+          if (cur.isDevice() && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE) {
+            final Template template =
+                ClusterTemplateManager.getInstance()
+                    .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
+            if (Objects.nonNull(template) && template.getSchema(nodeNames[i]) != null) {
+              throw new PathAlreadyExistException(
+                  new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+            }
+          }
           child =
               store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         }
@@ -976,10 +989,10 @@ public class MTreeBelowSGCachedImpl {
    */
   public ICachedMNode getNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode next;
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         next = store.getChild(cur, nodes[i]);
         if (next == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1156,12 +1169,12 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         child = store.getChild(cur, nodes[i]);
         if (child == null) {
           throw new PathNotExistException(activatePath.getFullPath());
@@ -1203,12 +1216,12 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplateWithoutCheck(
       PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         child = store.getChild(cur, nodes[i]);
         if (child == null) {
           throw new PathNotExistException(activatePath.getFullPath());
