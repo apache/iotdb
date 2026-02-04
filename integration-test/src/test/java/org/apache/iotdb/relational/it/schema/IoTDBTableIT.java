@@ -64,7 +64,6 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1233,6 +1232,7 @@ public class IoTDBTableIT {
 
       statement.execute("CREATE TABLE IF NOT EXISTS alter_column_name (s1 int32)");
       statement.execute("INSERT INTO alter_column_name (time, s1) VALUES (1, 1)");
+
       // alter once
       statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s1 TO s2");
       try {
@@ -1346,7 +1346,8 @@ public class IoTDBTableIT {
       }
       assertFalse(resultSet.next());
       resultSet =
-          statement.executeQuery("SELECT last(time), last_by(s2,time), last_by(s902,time) FROM alter_column_name");
+          statement.executeQuery(
+              "SELECT last(time), last_by(s2,time), last_by(s902,time) FROM alter_column_name");
       assertTrue(resultSet.next());
       assertEquals(5, resultSet.getLong(1));
       assertEquals(5, resultSet.getLong(2));

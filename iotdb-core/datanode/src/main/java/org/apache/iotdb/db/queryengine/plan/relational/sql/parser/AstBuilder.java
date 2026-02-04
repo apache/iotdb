@@ -1013,6 +1013,8 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       Expression timeExpression = expressions.get(timeColumnIndex);
       if (timeExpression instanceof LongLiteral) {
         timestamp = ((LongLiteral) timeExpression).getParsedValue();
+      } else if (timeExpression instanceof NullLiteral) {
+        throw new SemanticException("Timestamp cannot be null");
       } else {
         timestamp =
             parseDateTimeFormat(

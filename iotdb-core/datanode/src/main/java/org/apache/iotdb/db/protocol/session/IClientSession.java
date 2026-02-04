@@ -175,6 +175,9 @@ public abstract class IClientSession {
   }
 
   public void setSqlDialectAndClean(SqlDialect sqlDialect) {
+    if (this.sqlDialect == sqlDialect) {
+      return;
+    }
     this.sqlDialect = sqlDialect;
     // clean database to avoid misuse of it between different SqlDialect
     this.databaseName = null;

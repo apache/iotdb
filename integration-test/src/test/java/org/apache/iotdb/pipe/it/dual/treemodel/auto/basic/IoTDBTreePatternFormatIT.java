@@ -385,4 +385,60 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
         "Time,root.db.d1.t,root.db.d2.s,",
         expectedResSet);
   }
+
+  @Test
+  public void testIoTDBPatternWithExclusionOnlyHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+    expectedResSet.add("4,4.0,null,null,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.db1.**,root.db.**",
+        "Time,root.db1.d1.s,root.db.d1.t,root.db.d2.s,",
+        expectedResSet);
+  }
+
+  @Test
+  public void testIoTDBPatternWithExclusionOnlyRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put("source.pattern.exclusion", "root.db.d1.s*, root.db.d3.*");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.db.d1(time, s, s1, t) values (1, 1, 1, 1)",
+            "insert into root.db.d2(time, s) values (2, 2)",
+            "insert into root.db.d3(time, s) values (3, 3)",
+            "insert into root.db1.d1(time, s) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,null,1.0,null,");
+    expectedResSet.add("2,null,null,2.0,");
+    expectedResSet.add("4,4.0,null,null,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.db1.**,root.db.**",
+        "Time,root.db1.d1.s,root.db.d1.t,root.db.d2.s,",
+        expectedResSet);
+  }
 }
