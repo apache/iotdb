@@ -396,6 +396,31 @@ public class IoTDBDeletionIT {
   }
 
   @Test
+  public void testDeleteDataAfterInsertFailed() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.dd.wf01.wt01.status with datatype=BOOLEAN;");
+      statement.execute(
+          "INSERT INTO root.dd.wf01.wt01(Time,status) VALUES (2022-10-11 10:20:50,'rr');");
+    } catch (SQLException e) {
+      assertEquals(507, e.getErrorCode());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("DELETE FROM root.dd.wf01.wt01.status");
+
+      try (ResultSet resultSet = statement.executeQuery("select ** from root.dd")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
+  @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
