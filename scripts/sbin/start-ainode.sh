@@ -51,5 +51,5 @@ if [ "$daemon_mode" = true ]; then
   echo AINode started in background
 else
   echo Starting AINode...
-  $ain_ainode_executable start
+  exec "$ain_ainode_executable" start
 fi
