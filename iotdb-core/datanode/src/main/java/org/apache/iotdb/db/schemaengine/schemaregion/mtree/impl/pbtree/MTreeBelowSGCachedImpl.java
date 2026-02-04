@@ -64,8 +64,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.Schem
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
+import org.apache.iotdb.db.schemaengine.template.Template;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
@@ -80,6 +80,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
