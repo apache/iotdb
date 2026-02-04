@@ -185,7 +185,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
         String.format(
             "Failed to create pipe %s, %s",
             createPipeRequest.getPipeName(), PIPE_ALREADY_EXIST_MSG);
-    LOGGER.warn(exceptionMessage);
+    LOGGER.info(exceptionMessage);
     throw new PipeException(exceptionMessage);
   }
 
