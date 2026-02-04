@@ -379,7 +379,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
-  private boolean isTableModel;
+  private final boolean isTableModel;
 
   /**
    * Construct a database processor.
