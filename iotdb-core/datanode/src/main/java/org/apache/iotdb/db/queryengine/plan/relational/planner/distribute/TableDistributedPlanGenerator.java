@@ -33,6 +33,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
@@ -1070,6 +1071,20 @@ public class TableDistributedPlanGenerator
                 new TRegionReplicaSet(null, ImmutableList.of(dataNodeLocation)),
                 regionIds));
       }
+    }
+    if (result.isEmpty()) {
+      result.add(
+          new TableDiskUsageInformationSchemaTableScanNode(
+              queryId.genPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              new TRegionReplicaSet(
+                  null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation())),
+              Collections.emptyList()));
     }
     return result;
   }
