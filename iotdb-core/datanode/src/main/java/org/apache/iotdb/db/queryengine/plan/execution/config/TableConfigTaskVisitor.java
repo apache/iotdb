@@ -176,6 +176,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTopic;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
@@ -272,6 +273,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MAX_DATABASE_NAME_LENGTH;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.TTL_INFINITE;
@@ -756,17 +758,22 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
     accessControl.checkCanAlterTable(
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
-    final String oldName = node.getSource().getValue();
-    final String newName = node.getTarget().getValue();
-    if (oldName.equals(newName)) {
+    final List<String> oldNames =
+        node.getSources().stream().map(Identifier::getValue).collect(Collectors.toList());
+    final List<String> newNames =
+        node.getTargets().stream().map(Identifier::getValue).collect(Collectors.toList());
+    if (oldNames.equals(newNames)) {
       throw new SemanticException("The column's old name shall not be equal to the new one.");
+    }
+    if (!Collections.disjoint(oldNames, newNames)) {
+      throw new SemanticException("The old names must be disjoint with the new names");
     }
 
     return new AlterTableRenameColumnTask(
         database,
         tableName,
-        node.getSource().getValue(),
-        node.getTarget().getValue(),
+        oldNames,
+        newNames,
         context.getQueryId().getId(),
         node.tableIfExists(),
         node.columnIfExists(),

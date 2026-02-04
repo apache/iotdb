@@ -969,10 +969,15 @@ public final class SqlFormatter {
         builder.append("IF EXISTS ");
       }
 
-      builder
-          .append(formatName(node.getSource()))
-          .append(" TO ")
-          .append(formatName(node.getTarget()));
+      for (int i = 0; i < node.getSources().size(); i++) {
+        builder
+            .append(formatName(node.getSources().get(i)))
+            .append(" TO ")
+            .append(formatName(node.getTargets().get(i)));
+        if (i != node.getSources().size() - 1) {
+          builder.append(" ");
+        }
+      }
 
       return null;
     }

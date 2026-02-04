@@ -972,8 +972,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameTableColumnPlan) plan).getDatabase(),
                     ((RenameTableColumnPlan) plan).getTableName(),
                     queryId,
-                    ((RenameTableColumnPlan) plan).getOldName(),
-                    ((RenameTableColumnPlan) plan).getNewName(),
+                    ((RenameTableColumnPlan) plan).getOldNames(),
+                    ((RenameTableColumnPlan) plan).getNewNames(),
                     shouldMarkAsPipeRequest.get()));
       case RenameViewColumn:
         return configManager
@@ -988,8 +988,8 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
                     ((RenameViewColumnPlan) plan).getDatabase(),
                     ((RenameViewColumnPlan) plan).getTableName(),
                     queryId,
-                    ((RenameViewColumnPlan) plan).getOldName(),
-                    ((RenameViewColumnPlan) plan).getNewName(),
+                    ((RenameViewColumnPlan) plan).getOldNames(),
+                    ((RenameViewColumnPlan) plan).getNewNames(),
                     shouldMarkAsPipeRequest.get()));
       case CommitDeleteTable:
         return configManager

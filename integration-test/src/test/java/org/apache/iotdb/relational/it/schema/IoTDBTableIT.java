@@ -64,6 +64,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -1129,6 +1130,22 @@ public class IoTDBTableIT {
       statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
       statement.execute("USE testdb");
 
+      // alter non-exist
+      try {
+        statement.execute("ALTER TABLE alter_table_name RENAME TO alter_table_named");
+        fail();
+      } catch (SQLException e) {
+        assertEquals("550: Table 'testdb.alter_table_name' does not exist", e.getMessage());
+      }
+
+      // alter information schema
+      try {
+        statement.execute("ALTER TABLE information_schema.tables RENAME TO tables_new");
+        fail();
+      } catch (SQLException e) {
+        assertEquals("701: The database 'information_schema' can only be queried", e.getMessage());
+      }
+
       // alter once
       statement.execute("CREATE TABLE IF NOT EXISTS alter_table_name (s1 int32)");
       statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (1, 1)");
@@ -1270,6 +1287,7 @@ public class IoTDBTableIT {
       assertEquals(3, resultSet.getLong(1));
       assertEquals(3, resultSet.getLong(2));
       assertFalse(resultSet.next());
+
       // alter back
       statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s3 TO s1");
       try {
@@ -1296,6 +1314,43 @@ public class IoTDBTableIT {
       assertTrue(resultSet.next());
       assertEquals(4, resultSet.getLong(1));
       assertEquals(4, resultSet.getLong(2));
+      assertFalse(resultSet.next());
+
+      // alter multi
+      statement.execute("ALTER TABLE alter_column_name ADD COLUMN s901 INT32");
+      statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s1 TO s2 s901 TO s902");
+      try {
+        statement.execute("INSERT INTO alter_column_name (time, s1, s901) VALUES (0, 0, 0)");
+        fail();
+      } catch (SQLException e) {
+        assertEquals(
+            "616: Unknown column category for s1. Cannot auto create column.", e.getMessage());
+      }
+      statement.execute("INSERT INTO alter_column_name (time, s2, s902) VALUES (5, 5, 5)");
+
+      resultSet = statement.executeQuery("SELECT * FROM alter_column_name");
+      metaData = resultSet.getMetaData();
+      assertEquals(3, metaData.getColumnCount());
+      assertEquals("s2", metaData.getColumnName(2));
+      assertEquals("s902", metaData.getColumnName(3));
+      for (int i = 1; i <= 5; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getInt(2));
+        if (i <= 4) {
+          resultSet.getInt(3);
+          assertTrue(resultSet.wasNull());
+        } else {
+          assertEquals(i, resultSet.getInt(3));
+        }
+      }
+      assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery("SELECT last(time), last_by(s2,time), last_by(s902,time) FROM alter_column_name");
+      assertTrue(resultSet.next());
+      assertEquals(5, resultSet.getLong(1));
+      assertEquals(5, resultSet.getLong(2));
+      assertEquals(5, resultSet.getLong(3));
       assertFalse(resultSet.next());
     }
   }
@@ -1543,27 +1598,6 @@ public class IoTDBTableIT {
         assertTrue(
             e.getMessage().toLowerCase().contains("does not exist")
                 || e.getMessage().toLowerCase().contains("cannot be resolved"));
-      }
-    }
-  }
-
-  @Test
-  public void testRenameTimeColumnForbidden() throws Exception {
-    try (final Connection connection =
-            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
-        final Statement statement = connection.createStatement()) {
-      statement.execute("DROP DATABASE IF EXISTS testdb");
-      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
-      statement.execute("USE testdb");
-
-      // create a table with explicit time column
-      statement.execute("CREATE TABLE IF NOT EXISTS ttime (time TIMESTAMP TIME, a INT32)");
-
-      try {
-        statement.execute("ALTER TABLE ttime RENAME COLUMN time TO newtime");
-        fail();
-      } catch (final SQLException e) {
-        assertEquals("615: The renaming for time column is not supported.", e.getMessage());
       }
     }
   }

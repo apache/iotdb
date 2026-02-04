@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTableColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewColumnPlan;
@@ -40,7 +41,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +48,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -57,8 +56,8 @@ public class RenameTableColumnProcedure
     extends AbstractAlterOrDropTableProcedure<RenameTableColumnState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RenameTableColumnProcedure.class);
 
-  private String oldName;
-  private String newName;
+  private List<String> oldNames;
+  private List<String> newNames;
 
   public RenameTableColumnProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -68,12 +67,12 @@ public class RenameTableColumnProcedure
       final String database,
       final String tableName,
       final String queryId,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final boolean isGeneratedByPipe) {
     super(database, tableName, queryId, isGeneratedByPipe);
-    this.oldName = oldName;
-    this.newName = newName;
+    this.oldNames = oldNames;
+    this.newNames = newNames;
   }
 
   @Override
@@ -125,7 +124,11 @@ public class RenameTableColumnProcedure
           env.getConfigManager()
               .getClusterSchemaManager()
               .tableColumnCheckForColumnRenaming(
-                  database, tableName, oldName, newName, this instanceof RenameViewColumnProcedure);
+                  database,
+                  tableName,
+                  oldNames,
+                  newNames,
+                  this instanceof RenameViewColumnProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         setFailure(new ProcedureException(new IoTDBException(status)));
@@ -150,8 +153,8 @@ public class RenameTableColumnProcedure
             .getClusterSchemaManager()
             .executePlan(
                 this instanceof RenameViewColumnProcedure
-                    ? new RenameViewColumnPlan(database, tableName, oldName, newName)
-                    : new RenameTableColumnPlan(database, tableName, oldName, newName),
+                    ? new RenameViewColumnPlan(database, tableName, oldNames, newNames)
+                    : new RenameTableColumnPlan(database, tableName, oldNames, newNames),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
@@ -165,8 +168,10 @@ public class RenameTableColumnProcedure
         env.getConfigManager().getRelatedDataRegionGroup4TableModel(database);
 
     if (!relatedRegionGroup.isEmpty()) {
-      List<SchemaEvolution> schemaEvolutions =
-          Collections.singletonList(new ColumnRename(tableName, oldName, newName));
+      List<SchemaEvolution> schemaEvolutions = new ArrayList<>();
+      for (int i = 0; i < oldNames.size(); i++) {
+        schemaEvolutions.add(new ColumnRename(tableName, oldNames.get(i), newNames.get(i)));
+      }
       PublicBAOS publicBAOS = new PublicBAOS();
       try {
         SchemaEvolution.serializeList(schemaEvolutions, publicBAOS);
@@ -222,7 +227,7 @@ public class RenameTableColumnProcedure
         env.getConfigManager()
             .getClusterSchemaManager()
             .executePlan(
-                new RenameTableColumnPlan(database, tableName, newName, oldName),
+                new RenameTableColumnPlan(database, tableName, newNames, oldNames),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
@@ -261,27 +266,27 @@ public class RenameTableColumnProcedure
   protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
-    ReadWriteIOUtils.write(oldName, stream);
-    ReadWriteIOUtils.write(newName, stream);
+    IOUtils.write(oldNames, stream);
+    IOUtils.write(newNames, stream);
   }
 
   @Override
   public void deserialize(final ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
 
-    this.oldName = ReadWriteIOUtils.readString(byteBuffer);
-    this.newName = ReadWriteIOUtils.readString(byteBuffer);
+    this.oldNames = IOUtils.readStringList(byteBuffer);
+    this.newNames = IOUtils.readStringList(byteBuffer);
   }
 
   @Override
   public boolean equals(final Object o) {
     return super.equals(o)
-        && Objects.equals(oldName, ((RenameTableColumnProcedure) o).oldName)
-        && Objects.equals(newName, ((RenameTableColumnProcedure) o).newName);
+        && Objects.equals(oldNames, ((RenameTableColumnProcedure) o).oldNames)
+        && Objects.equals(newNames, ((RenameTableColumnProcedure) o).newNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), oldName, newName);
+    return Objects.hash(super.hashCode(), oldNames, newNames);
   }
 }
