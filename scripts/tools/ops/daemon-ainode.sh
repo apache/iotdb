@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-IOTDB_SBIN_HOME="$(cd "`dirname "$0"`"/../../sbin; pwd)"
+IOTDB_AINODE_SBIN_HOME="$(cd "`dirname "$0"`"/../../sbin; pwd)"
 SYSTEMD_DIR="/etc/systemd/system"
 
 if [ ! -d "$SYSTEMD_DIR" ]; then
@@ -25,16 +25,11 @@ if [ ! -d "$SYSTEMD_DIR" ]; then
     exit 1  # Exit with an error status
 fi
 
-if [ -z "$JAVA_HOME" ]; then
-    echo "JAVA_HOME is not set. Please set the JAVA_HOME environment variable."
-    exit 1
-fi
-
-FILE_NAME=$SYSTEMD_DIR/iotdb-datanode.service
+FILE_NAME=$SYSTEMD_DIR/iotdb-ainode.service
 
 cat > "$FILE_NAME" <<EOF
 [Unit]
-Description=iotdb-datanode
+Description=iotdb-ainode
 Documentation=https://iotdb.apache.org/
 After=network.target
 
@@ -45,35 +40,35 @@ LimitNOFILE=65536
 Type=simple
 User=root
 Group=root
-Environment=JAVA_HOME=$JAVA_HOME
-ExecStart=$IOTDB_SBIN_HOME/start-datanode.sh
-ExecStop=$IOTDB_SBIN_HOME/stop-datanode.sh
+ExecStart=$IOTDB_AINODE_SBIN_HOME/start-ainode.sh
+ExecStop=/bin/kill -TERM -\$MAINPID
 Restart=on-failure
 SuccessExitStatus=143
 RestartSec=5
 StartLimitInterval=600s
 StartLimitBurst=3
 RestartPreventExitStatus=SIGKILL
+TimeoutStopSec=60s
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "Daemon service of IoTDB DataNode has been successfully registered."
+echo "Daemon service of IoTDB AINode has been successfully registered."
 
 systemctl daemon-reload
 echo
-echo "Do you want to execute 'systemctl start iotdb-datanode'? y/n (default y)"
+echo "Do you want to execute 'systemctl start iotdb-ainode'? y/n (default y)"
 read -r START_SERVICE
 if [[ -z "$START_SERVICE" || "$START_SERVICE" =~ ^[Yy]$ ]]; then
-    "${IOTDB_SBIN_HOME}"/stop-datanode.sh >/dev/null 2>&1 &
-    systemctl start iotdb-datanode
+    "${IOTDB_AINODE_SBIN_HOME}"/stop-ainode.sh >/dev/null 2>&1 &
+    systemctl start iotdb-ainode
     echo "Executed successfully."
 fi
 echo
-echo "Do you want to execute 'systemctl enable iotdb-datanode' to start at boot? y/n (default y)"
+echo "Do you want to execute 'systemctl enable iotdb-ainode' to start at boot? y/n (default y)"
 read -r ADD_STARTUP
 if [[ -z "$ADD_STARTUP" || "$ADD_STARTUP" =~ ^[Yy]$ ]]; then
-   systemctl enable iotdb-datanode >/dev/null 2>&1
+   systemctl enable iotdb-ainode >/dev/null 2>&1
    echo "Executed successfully."
 fi

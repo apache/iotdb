@@ -73,7 +73,7 @@ if [ -z "$PID" ]; then
   fi
   exit 1
 elif [[ "${PID_VERIFY}" =~ ${PID} ]]; then
-  kill -s TERM "$PID"
+  kill -s TERM -- "-$PID"
   echo "Stop AINode, PID:" "$PID"
 else
   echo "No AINode to stop"
