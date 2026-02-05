@@ -127,9 +127,7 @@ public class TableDiskUsageCache {
       if (writer.getActiveReaderNum() > 0) {
         continue;
       }
-      if (writer.tsFileCacheWriter.needCompact()) {
-        writer.tsFileCacheWriter.compact();
-      }
+      writer.compactIfNecessary();
     }
   }
 
@@ -483,6 +481,12 @@ public class TableDiskUsageCache {
 
     public int getActiveReaderNum() {
       return activeReaderNum;
+    }
+
+    public void compactIfNecessary() {
+      if (tsFileCacheWriter.needCompact()) {
+        tsFileCacheWriter.compact();
+      }
     }
 
     public void closeIfIdle() {
