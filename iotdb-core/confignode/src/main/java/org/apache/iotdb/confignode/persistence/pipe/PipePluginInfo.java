@@ -155,8 +155,8 @@ public class PipePluginInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               "Failed to create or alter pipe, the pipe extractor plugin %s does not exist",
-              extractorPluginName);
-      LOGGER.warn(exceptionMessage);
+             extractorPluginName);
+      LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 
