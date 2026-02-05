@@ -426,6 +426,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
       }
     } else {
+      if (!modsInfos.isEmpty()
+          && ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(0))) {
+        return false;
+      }
+
       isNeedFillTime = true;
       switch (tablet.getSchemas().get(0).getType()) {
         case BOOLEAN:
@@ -507,7 +512,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     : new SinglePageWholeChunkReader(chunk);
             currentIsAligned = false;
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
                     currentDevice,
@@ -577,7 +586,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             valueChunkSize += chunkHeader.getDataSize();
             valueChunkList.add(chunk);
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
                     currentDevice,
