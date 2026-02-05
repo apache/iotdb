@@ -509,11 +509,9 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean needSetHighestPriority() {
-    // if is this Statement is ShowQueryStatement or ShowDiskUsageStatement, set its instances to
-    // the highest priority, so
-    // that the sub-tasks of the instances could be executed first.
-    return StatementType.SHOW_QUERIES.equals(statement.getType())
-        || StatementType.SHOW_DISK_USAGE.equals(statement.getType());
+    // if is this Statement is ShowQueryStatement, set its instances to the highest priority, so
+    // that the sub-tasks of the ShowQueries instances could be executed first.
+    return StatementType.SHOW_QUERIES.equals(statement.getType());
   }
 
   @Override

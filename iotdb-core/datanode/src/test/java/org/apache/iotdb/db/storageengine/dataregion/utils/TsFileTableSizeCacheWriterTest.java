@@ -229,8 +229,7 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     Assert.assertFalse(reader.hasNextEntryInKeyFile());
     reader.closeCurrentFile();
     reader.openValueFile();
-    reader.readFromValueFile(
-        offsets.iterator(), context, System.currentTimeMillis(), Long.MAX_VALUE);
+    reader.readFromValueFile(offsets.iterator(), context, System.nanoTime(), Long.MAX_VALUE);
     reader.closeCurrentFile();
     System.out.println("cost: " + (System.currentTimeMillis() - start) + "ms");
     System.out.println("keyFileLength: " + keyFile.length());

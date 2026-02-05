@@ -257,15 +257,12 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     TableDiskUsageCacheReader reader =
         new TableDiskUsageCacheReader(mockDataRegion, queryContext, false);
     try {
-      Assert.assertTrue(reader.prepareCacheReader(System.currentTimeMillis(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.prepareCacheReader(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.loadObjectFileTableSizeCache(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.prepareCachedTsFileIDKeys(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.checkAllFilesInTsFileManager(System.nanoTime(), Long.MAX_VALUE));
       Assert.assertTrue(
-          reader.loadObjectFileTableSizeCache(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.prepareCachedTsFileIDKeys(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.checkAllFilesInTsFileManager(System.currentTimeMillis(), Long.MAX_VALUE));
-      Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.currentTimeMillis(), Long.MAX_VALUE));
+          reader.readCacheValueFilesAndUpdateResultMap(System.nanoTime(), Long.MAX_VALUE));
     } finally {
       reader.close();
     }
