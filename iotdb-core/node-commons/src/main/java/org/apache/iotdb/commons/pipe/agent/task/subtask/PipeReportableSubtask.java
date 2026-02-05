@@ -22,6 +22,7 @@ package org.apache.iotdb.commons.pipe.agent.task.subtask;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
@@ -50,10 +51,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       return;
     }
 
-    if (lastEvent instanceof EnrichedEvent) {
-      onEnrichedEventFailure(throwable);
+    if (lastEvent instanceof EnrichedEvent
+        && !(throwable instanceof PipeRuntimeSinkNonReportTimeConfigurableException)) {
+      onReportEventFailure(throwable);
     } else {
-      onNonEnrichedEventFailure(throwable);
+      onNonReportEventFailure(throwable);
     }
 
     // Although the pipe task will be stopped, we still don't release the last event here
@@ -76,7 +78,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     return sleepInterval;
   }
 
-  private void onEnrichedEventFailure(final Throwable throwable) {
+  private void onReportEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeSinkRetryTimesConfigurableException
             ? ((PipeRuntimeSinkRetryTimesConfigurableException) throwable).getRetryTimes()
@@ -151,7 +153,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
   protected abstract void report(final EnrichedEvent event, final PipeRuntimeException exception);
 
-  private void onNonEnrichedEventFailure(final Throwable throwable) {
+  private void onNonReportEventFailure(final Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), "

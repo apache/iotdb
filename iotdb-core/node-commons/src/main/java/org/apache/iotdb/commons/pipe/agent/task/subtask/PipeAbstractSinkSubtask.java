@@ -132,6 +132,12 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           // return if the pipe task should be stopped
           return;
         }
+        if (PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
+          super.onFailure(
+              new PipeRuntimeSinkNonReportTimeConfigurableException(
+                  throwable.getMessage(), Long.MAX_VALUE));
+          return;
+        }
       }
 
       // Handle exceptions if any available clients exist
