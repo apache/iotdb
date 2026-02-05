@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import java.util.Random;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -59,7 +54,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
@@ -1650,12 +1650,9 @@ public class IoTDBTableIT {
         }
       }
 
-      final AtomicReference<Throwable> err =
-          new AtomicReference<>();
-      final CountDownLatch startLatch =
-          new CountDownLatch(1);
-      final CountDownLatch doneLatch =
-          new CountDownLatch(4);
+      final AtomicReference<Throwable> err = new AtomicReference<>();
+      final CountDownLatch startLatch = new CountDownLatch(1);
+      final CountDownLatch doneLatch = new CountDownLatch(4);
 
       ExecutorService exec = null;
       try {
