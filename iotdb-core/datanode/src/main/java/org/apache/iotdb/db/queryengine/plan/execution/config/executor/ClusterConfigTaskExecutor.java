@@ -1071,7 +1071,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
         final boolean isTableModel = createPipePluginStatement.isTableModel();
         if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
-          LOGGER.warn(
+          LOGGER.info(
               "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
               createPipePluginStatement.getPluginName(),
               isTableModel ? "table" : "tree");
@@ -1151,10 +1151,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
                   .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to drop pipe plugin {}.",
-            executionStatus,
-            dropPipePluginStatement.getPluginName());
+        if (TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode() != executionStatus.getCode()) {
+          LOGGER.warn(
+              "[{}] Failed to drop pipe plugin {}.",
+              executionStatus,
+              dropPipePluginStatement.getPluginName());
+        }
         future.setException(new IoTDBException(executionStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
