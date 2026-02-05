@@ -270,7 +270,7 @@ public class CommonConfig {
   private int pipeSinkTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeSinkReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeSinkReadFileBufferMemoryControlEnabled = false;
-  private long pipeSinkRetryIntervalMs = 1000L;
+  private long pipeSinkRetryIntervalMs = 800L;
   private boolean pipeSinkRetryLocallyForConnectionError = true;
   private boolean pipeSinkRPCThriftCompressionEnabled = false;
 
