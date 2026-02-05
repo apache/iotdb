@@ -355,7 +355,7 @@ public class Coordinator {
         schemaFetcher,
         Long.MAX_VALUE,
         false,
-        false);
+        statement.isDebug());
   }
 
   public ExecutionResult executeForTreeModel(

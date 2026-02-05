@@ -76,7 +76,8 @@ public class FragmentInstanceSerdeTest {
             new TreeModelTimePredicate(ExpressionFactory.groupByTime(1, 2, 3, 4)),
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
-            sessionInfo);
+            sessionInfo,
+            false);
     // test FI with StorageExecutor
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
@@ -118,7 +119,8 @@ public class FragmentInstanceSerdeTest {
             null,
             QueryType.READ,
             config.getQueryTimeoutThreshold(),
-            sessionInfo);
+            sessionInfo,
+            false);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),

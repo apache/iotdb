@@ -99,7 +99,7 @@ class ClusterSchemaFetchExecutor {
         schemaFetcher,
         timeout,
         false,
-        false);
+        statement.isDebug());
   }
 
   /**

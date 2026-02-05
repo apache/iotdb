@@ -81,7 +81,8 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               queryContext.getQueryType(),
               // Never timeout for write
               Long.MAX_VALUE,
-              queryContext.getSession());
+              queryContext.getSession(),
+              false);
       if (split.getRegionReplicaSet() != null) {
         final TRegionReplicaSet validSet =
             topology.getValidatedReplicaSet(split.getRegionReplicaSet());

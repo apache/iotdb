@@ -504,7 +504,7 @@ public class TableDeviceSchemaFetcher {
               mppQueryContext.getTimeOut()
                   - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
               false,
-              false);
+              mppQueryContext.isDebug());
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new IoTDBRuntimeException(

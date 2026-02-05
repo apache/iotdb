@@ -389,7 +389,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     schemaFetcher,
                     req.getTimeout(),
                     true,
-                    false);
+                    s.isDebug());
           }
         }
       } else {
@@ -437,7 +437,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                   metadata,
                   req.getTimeout(),
                   true,
-                  false);
+                  s.isDebug());
         }
       }
 
