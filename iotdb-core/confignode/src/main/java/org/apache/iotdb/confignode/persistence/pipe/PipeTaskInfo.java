@@ -205,7 +205,7 @@ public class PipeTaskInfo implements SnapshotProcessor {
       final String exceptionMessage =
           String.format(
               "Failed to alter pipe %s, %s", alterPipeRequest.getPipeName(), PIPE_NOT_EXIST_MSG);
-      LOGGER.warn(exceptionMessage);
+      LOGGER.info(exceptionMessage);
       throw new PipeException(exceptionMessage);
     }
 

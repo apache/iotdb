@@ -1071,7 +1071,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
         final boolean isTableModel = createPipePluginStatement.isTableModel();
         if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
-          LOGGER.warn(
+          LOGGER.info(
               "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
               createPipePluginStatement.getPluginName(),
               isTableModel ? "table" : "tree");
