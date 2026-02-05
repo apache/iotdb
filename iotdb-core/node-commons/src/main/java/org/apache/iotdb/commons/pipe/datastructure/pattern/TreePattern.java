@@ -890,15 +890,16 @@ public abstract class TreePattern {
 
     /** Adds a path to the Trie. */
     public void add(final PartialPath path) {
-      if (containsComplexWildcard(path)) {
-        complexPatterns.add(path);
-        return;
-      }
-
       TrieNode node = root;
       final String[] nodes = path.getNodes();
 
       for (final String segment : nodes) {
+        if (PathPatternUtil.hasWildcard(segment)
+            && !IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(segment)
+            && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(segment)) {
+          complexPatterns.add(path);
+          return;
+        }
         // If we are at a node that is already a MultiLevelWildcard (**),
         // everything below is already covered. We can stop adding.
         if (node.isMultiLevelWildcard) {
@@ -1026,17 +1027,6 @@ public abstract class TreePattern {
 
       // 5b. Check '*' in Trie (matches specific query node)
       return node.wildcardNode != null && checkOverlap(node.wildcardNode, pathNodes, index + 1);
-    }
-
-    private static boolean containsComplexWildcard(final PartialPath path) {
-      for (final String node : path.getNodes()) {
-        if (PathPatternUtil.hasWildcard(node)
-            && !IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
-            && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
-          return true;
-        }
-      }
-      return false;
     }
   }
 }
