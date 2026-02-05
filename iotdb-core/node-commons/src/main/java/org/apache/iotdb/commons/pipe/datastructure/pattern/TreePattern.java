@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.pipe.datastructure.pattern;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.PathPatternUtil;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -873,6 +874,7 @@ public abstract class TreePattern {
   /** A specialized Trie to efficiently check path coverage. */
   private static class PatternTrie {
     private final TrieNode root = new TrieNode();
+    private final List<PartialPath> complexPatterns = new ArrayList<>();
 
     private static class TrieNode {
       // Children nodes mapped by specific path segments (excluding *)
@@ -888,6 +890,11 @@ public abstract class TreePattern {
 
     /** Adds a path to the Trie. */
     public void add(final PartialPath path) {
+      if (containsComplexWildcard(path)) {
+        complexPatterns.add(path);
+        return;
+      }
+
       TrieNode node = root;
       final String[] nodes = path.getNodes();
 
@@ -924,7 +931,15 @@ public abstract class TreePattern {
 
     /** Checks if the given path is covered by any existing pattern in the Trie. */
     public boolean isCovered(final PartialPath path) {
-      return checkCoverage(root, path.getNodes(), 0);
+      if (checkCoverage(root, path.getNodes(), 0)) {
+        return true;
+      }
+      for (final PartialPath complexPattern : complexPatterns) {
+        if (complexPattern.include(path)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private boolean checkCoverage(final TrieNode node, final String[] pathNodes, final int index) {
@@ -957,7 +972,15 @@ public abstract class TreePattern {
 
     /** Checks if the given path overlaps with any pattern in the Trie. */
     public boolean overlaps(final PartialPath path) {
-      return checkOverlap(root, path.getNodes(), 0);
+      if (checkOverlap(root, path.getNodes(), 0)) {
+        return true;
+      }
+      for (final PartialPath complexPattern : complexPatterns) {
+        if (complexPattern.overlapWith(path)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     private boolean checkOverlap(final TrieNode node, final String[] pathNodes, final int index) {
@@ -1003,6 +1026,17 @@ public abstract class TreePattern {
 
       // 5b. Check '*' in Trie (matches specific query node)
       return node.wildcardNode != null && checkOverlap(node.wildcardNode, pathNodes, index + 1);
+    }
+
+    private static boolean containsComplexWildcard(final PartialPath path) {
+      for (final String node : path.getNodes()) {
+        if (PathPatternUtil.hasWildcard(node)
+            && !IoTDBConstant.ONE_LEVEL_PATH_WILDCARD.equals(node)
+            && !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(node)) {
+          return true;
+        }
+      }
+      return false;
     }
   }
 }
