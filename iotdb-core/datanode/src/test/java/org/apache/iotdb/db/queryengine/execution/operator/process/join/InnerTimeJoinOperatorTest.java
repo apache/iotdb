@@ -87,7 +87,8 @@ public class InnerTimeJoinOperatorTest {
     // 13     13,   130
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -375,7 +376,8 @@ public class InnerTimeJoinOperatorTest {
     // 3     3       4       30.0    false
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1000, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1000, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -692,7 +694,8 @@ public class InnerTimeJoinOperatorTest {
     // 10    10      20      null    false
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1000, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1000, TimeUnit.SECONDS));
 
     Operator child1 =
         new Operator() {
@@ -996,7 +999,8 @@ public class InnerTimeJoinOperatorTest {
     // empty
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1000, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1000, TimeUnit.SECONDS));
 
     Operator child1 =
         new Operator() {
@@ -1375,7 +1379,8 @@ public class InnerTimeJoinOperatorTest {
     // 90    90      180     null    false   "love"
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1000, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1000, TimeUnit.SECONDS));
 
     Operator child1 =
         new Operator() {

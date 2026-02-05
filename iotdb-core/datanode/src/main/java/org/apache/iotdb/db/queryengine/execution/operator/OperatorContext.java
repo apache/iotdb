@@ -116,6 +116,11 @@ public class OperatorContext implements Accountable {
     return maxRunTime;
   }
 
+  @TestOnly
+  public Duration getMaxRunTimeForTest() {
+    return maxRunTime;
+  }
+
   public static void setMaxRunTime(Duration maxRunTime) {
     OperatorContext.maxRunTime = maxRunTime;
   }
