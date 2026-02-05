@@ -512,7 +512,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
                     : new SinglePageWholeChunkReader(chunk);
             currentIsAligned = false;
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
                     currentDevice,
@@ -582,7 +586,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
             valueChunkSize += chunkHeader.getDataSize();
             valueChunkList.add(chunk);
             currentMeasurements.add(
-                new MeasurementSchema(chunkHeader.getMeasurementID(), chunkHeader.getDataType()));
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType()));
             modsInfos.addAll(
                 ModsOperationUtil.initializeMeasurementMods(
                     currentDevice,
