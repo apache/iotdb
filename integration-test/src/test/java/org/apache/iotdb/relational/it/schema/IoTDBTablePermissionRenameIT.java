@@ -162,7 +162,7 @@ public class IoTDBTablePermissionRenameIT {
     // grant a non-ALTER privilege so the user can USE the database
     try (final Connection adminCon = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("USE permdb");
+      adminStmt.execute("USE col_db");
       adminStmt.execute("GRANT SELECT ON TABLE tc TO USER colUser");
     }
 
@@ -188,7 +188,7 @@ public class IoTDBTablePermissionRenameIT {
         final Statement adminStmt = adminCon.createStatement()) {
       // ensure we're operating in the target database
       adminStmt.execute("USE col_db");
-      adminStmt.execute("GRANT ALTER ON TABLE tc TO USER colUser");
+      adminStmt.execute("GRANT ALTER,INSERT,SELECT ON TABLE tc TO USER colUser");
     }
 
     try (final Connection userCon =

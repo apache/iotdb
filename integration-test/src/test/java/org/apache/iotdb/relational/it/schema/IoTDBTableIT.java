@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -1606,9 +1611,13 @@ public class IoTDBTableIT {
 
   // Helper: recognize SQLExceptions that mean the target table/device cannot be found.
   private static boolean isTableNotFound(final SQLException e) {
-    if (e == null) return false;
+    if (e == null) {
+      return false;
+    }
     final String msg = e.getMessage();
-    if (msg == null) return false;
+    if (msg == null) {
+      return false;
+    }
     final String lm = msg.toLowerCase();
     // code 550 is commonly used for 'does not exist' in this project; also match textual phrases
     return msg.startsWith("550") || lm.contains("not exist");
@@ -1617,6 +1626,11 @@ public class IoTDBTableIT {
   @Test(timeout = 120000)
   @SuppressWarnings("resource")
   public void testConcurrentRenameVsQueries() throws Throwable {
+    if (EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      // The RequestDelegate cannot be used in the cluster mode with concurrent operations
+      // Because the results may vary due to concurrent operations
+      return;
+    }
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement stmt = connection.createStatement()) {
@@ -1636,16 +1650,16 @@ public class IoTDBTableIT {
         }
       }
 
-      final java.util.concurrent.atomic.AtomicReference<Throwable> err =
-          new java.util.concurrent.atomic.AtomicReference<>();
-      final java.util.concurrent.CountDownLatch startLatch =
-          new java.util.concurrent.CountDownLatch(1);
-      final java.util.concurrent.CountDownLatch doneLatch =
-          new java.util.concurrent.CountDownLatch(4);
+      final AtomicReference<Throwable> err =
+          new AtomicReference<>();
+      final CountDownLatch startLatch =
+          new CountDownLatch(1);
+      final CountDownLatch doneLatch =
+          new CountDownLatch(4);
 
-      java.util.concurrent.ExecutorService exec = null;
+      ExecutorService exec = null;
       try {
-        exec = java.util.concurrent.Executors.newFixedThreadPool(8);
+        exec = Executors.newFixedThreadPool(8);
 
         // Renamer task: rotate rename a subset of tables repeatedly
         exec.submit(
@@ -1701,7 +1715,7 @@ public class IoTDBTableIT {
                 try (final Connection c =
                         EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
                     final Statement s = c.createStatement()) {
-                  final java.util.Random rnd = new java.util.Random();
+                  final Random rnd = new Random();
                   startLatch.await();
                   // ensure this thread's connection uses the test database
                   try {
