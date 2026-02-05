@@ -214,7 +214,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    try (final Connection connection = EnvFactory.getEnv().getConnection();
+    try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute(
           String.format(
