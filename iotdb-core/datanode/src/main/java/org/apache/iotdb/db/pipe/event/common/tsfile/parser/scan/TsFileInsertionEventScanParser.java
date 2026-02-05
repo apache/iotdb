@@ -426,6 +426,11 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
         }
       }
     } else {
+      if (!modsInfos.isEmpty()
+          && ModsOperationUtil.isDelete(data.currentTime(), modsInfos.get(0))) {
+        return false;
+      }
+
       isNeedFillTime = true;
       switch (tablet.getSchemas().get(0).getType()) {
         case BOOLEAN:
