@@ -917,6 +917,8 @@ public class SeriesScanUtil implements Accountable {
 
       firstPageReader = null;
 
+      LOGGER.info("[SeriesScanUtil] nextPage tsBlock: {}", CommonUtils.toString(tsBlock));
+
       return getTransferedDataTypeTsBlock(tsBlock);
     }
   }

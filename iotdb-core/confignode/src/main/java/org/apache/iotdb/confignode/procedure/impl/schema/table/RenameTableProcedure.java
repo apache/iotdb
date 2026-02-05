@@ -20,12 +20,15 @@
 package org.apache.iotdb.confignode.procedure.impl.schema.table;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
+import org.apache.iotdb.confignode.client.sync.CnToDnSyncRequestType;
+import org.apache.iotdb.confignode.client.sync.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.view.RenameViewPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
@@ -36,6 +39,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 import org.apache.iotdb.mpp.rpc.thrift.TDataRegionEvolveSchemaReq;
+import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaRegionEvolveSchemaReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -50,6 +54,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -201,7 +206,45 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
           .execute();
     }
 
+    invalidateAuthCache(env);
+
     setNextState(RenameTableState.COMMIT_RELEASE);
+  }
+
+  private void invalidateAuthCache(final ConfigNodeProcedureEnv env) {
+    TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
+    // use all empty to invalidate all cache
+    req.setUsername("");
+    req.setRoleName("");
+    TSStatus status;
+    List<TDataNodeConfiguration> allDataNodes =
+        env.getConfigManager().getNodeManager().getRegisteredDataNodes();
+    List<Pair<TDataNodeConfiguration, Long>> dataNodesToInvalid = new ArrayList<>();
+    for (TDataNodeConfiguration item : allDataNodes) {
+      dataNodesToInvalid.add(new Pair<>(item, System.currentTimeMillis()));
+    }
+    Iterator<Pair<TDataNodeConfiguration, Long>> it = dataNodesToInvalid.iterator();
+    long timeoutMS = 10 * 60 * 1000; // 10 minutes
+    while (it.hasNext()) {
+      Pair<TDataNodeConfiguration, Long> pair = it.next();
+      if (pair.getRight() + timeoutMS < System.currentTimeMillis()) {
+        LOGGER.error(
+            "invalidateAuthCache: timeout on {}, may need clear cache manually",
+            pair.getLeft().getLocation());
+        it.remove();
+        continue;
+      }
+      status =
+          (TSStatus)
+              SyncDataNodeClientPool.getInstance()
+                  .sendSyncRequestToDataNodeWithRetry(
+                      pair.getLeft().getLocation().getInternalEndPoint(),
+                      req,
+                      CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        it.remove();
+      }
+    }
   }
 
   @Override

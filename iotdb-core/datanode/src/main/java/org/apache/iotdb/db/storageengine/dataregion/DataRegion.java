@@ -1255,6 +1255,7 @@ public class DataRegion implements IDataRegionForQuery {
   public void applySchemaEvolution(List<SchemaEvolution> schemaEvolutions) throws IOException {
     long startTime = System.nanoTime();
     writeLock("applySchemaEvolution");
+    TableDeviceSchemaCache.getInstance().invalidateLastCache();
     PERFORMANCE_OVERVIEW_METRICS.recordScheduleLockCost(System.nanoTime() - startTime);
     try {
       if (deleted) {
@@ -2564,6 +2565,19 @@ public class DataRegion implements IDataRegionForQuery {
         List<TsFileResource> satisfiedUnSeqResourceList =
             getFileResourceListForQuery(
                 unSeqTsFileResouceList, pathList, singleDeviceId, context, globalTimeFilter, false);
+
+        logger.info(
+            "Querying data {} from database: {}, satisfied seq files: {}, satisfied unseq files: {}",
+            pathList,
+            databaseName,
+            satisfiedSeqResourceList.stream()
+                .map(TsFileResource::getTsFile)
+                .map(File::getAbsolutePath)
+                .collect(Collectors.toList()),
+            satisfiedUnSeqResourceList.stream()
+                .map(TsFileResource::getTsFile)
+                .map(File::getAbsolutePath)
+                .collect(Collectors.toList()));
 
         QUERY_RESOURCE_METRIC_SET.recordQueryResourceNum(
             SEQUENCE_TSFILE, satisfiedSeqResourceList.size());

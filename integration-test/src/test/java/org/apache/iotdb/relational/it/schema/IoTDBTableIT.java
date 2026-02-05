@@ -75,6 +75,7 @@ public class IoTDBTableIT {
   public static void setUp() throws Exception {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 

@@ -166,4 +166,8 @@ public class TablePrivilege {
     SerializeUtils.deserializePrivilegeTypeSet(this.privileges, byteBuffer);
     SerializeUtils.deserializePrivilegeTypeSet(this.grantOption, byteBuffer);
   }
+
+  public void setTableName(String newTableName) {
+    this.tableName = newTableName;
+  }
 }
