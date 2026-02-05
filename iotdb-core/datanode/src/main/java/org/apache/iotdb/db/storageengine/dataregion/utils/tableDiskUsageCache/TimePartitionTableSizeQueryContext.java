@@ -95,7 +95,7 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
         + ramBytesUsedOfTsFileIDOffsetMap();
   }
 
-  // tsFileIDOffsetInValueFileMap should be null af first
+  // tsFileIDOffsetInValueFileMap should be null at first
   public long ramBytesUsedOfTsFileIDOffsetMap() {
     if (tsFileIDOffsetInValueFileMap == null) {
       return 0;

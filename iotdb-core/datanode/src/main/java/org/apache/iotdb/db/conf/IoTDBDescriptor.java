@@ -2215,7 +2215,7 @@ public class IoTDBDescriptor {
                   "max_sub_task_num_for_information_table_scan",
                   Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
       if (maxSubTaskNumForInformationTableScan > 0) {
-        conf.setMaxRowsInCteBuffer(maxSubTaskNumForInformationTableScan);
+        conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
     } catch (Exception e) {

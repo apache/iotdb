@@ -28,5 +28,6 @@ public interface IObjectTableSizeCacheReader extends AutoCloseable {
       DataRegionTableSizeQueryContext dataRegionContext, long startTime, long maxRunTime)
       throws IOException;
 
+  @Override
   void close();
 }

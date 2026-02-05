@@ -2005,7 +2005,7 @@ public class DataRegion implements IDataRegionForQuery {
         "{} will close all files for deleting data folder {}",
         databaseName + "-" + dataRegionIdString,
         systemDir);
-    int regionId = Integer.parseInt(dataRegionIdString);
+    int regionId = dataRegionId.getId();
     TableDiskUsageCache.getInstance().remove(databaseName, regionId);
     FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");

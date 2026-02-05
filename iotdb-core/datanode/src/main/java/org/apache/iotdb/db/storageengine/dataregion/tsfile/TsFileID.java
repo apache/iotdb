@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
@@ -26,7 +28,7 @@ import static org.apache.tsfile.utils.FilePathUtils.splitTsFilePath;
 
 public class TsFileID {
 
-  public static final long SHALLOW_SIZE = TsFileID.SHALLOW_SIZE;
+  public static final long SHALLOW_SIZE = RamUsageEstimator.shallowSizeOfInstance(TsFileID.class);
 
   public final int regionId;
   public final long timePartitionId;

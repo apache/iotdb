@@ -436,7 +436,7 @@ public class InformationSchema {
   }
 
   public static boolean supportsPushDownLimitOffset(String tableName) {
-    return columnsThatSupportPushDownPredicate.containsKey(tableName);
+    return tablesThatSupportPushDownLimitOffset.contains(tableName);
   }
 
   private InformationSchema() {

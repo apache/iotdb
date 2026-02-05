@@ -56,6 +56,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
   private TsFileManager mockTsFileManager;
 
   @Before
+  @Override
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
@@ -71,6 +72,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
   }
 
   @After
+  @Override
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     StorageEngine.getInstance().deleteDataRegion(new DataRegionId(0));

@@ -1478,7 +1478,7 @@ public class InformationSchemaContentSupplierFactory {
               new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
           columns[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
           columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-          columns[3].writeInt(Integer.parseInt(currentDataRegion.getDataRegionIdString()));
+          columns[3].writeInt(currentDataRegion.getDataRegionId().getId());
           columns[4].writeLong(timePartition);
           columns[5].writeLong(size);
           builder.declarePosition();
