@@ -465,6 +465,7 @@ public class FileLoaderUtils {
                 alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
                 targetDataTypeList.get(i))) {
               cannotUseStatisticsAfterAlter = true;
+              break;
             }
           }
         }
