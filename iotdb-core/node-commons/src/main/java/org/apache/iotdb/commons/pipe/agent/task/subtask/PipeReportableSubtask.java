@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,15 +95,16 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     retryCount.incrementAndGet();
     if (retryCount.get() <= maxRetryTimes) {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
+          throwable,
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
           maxRetryTimes,
-          throwable.getMessage(),
-          throwable);
+          throwable.getMessage());
       try {
         sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
@@ -162,7 +164,8 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     retryCount.incrementAndGet();
-    LOGGER.warn(
+    PipeLogger.log(
+        LOGGER::warn,
         "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}",
         taskID,
         creationTime,

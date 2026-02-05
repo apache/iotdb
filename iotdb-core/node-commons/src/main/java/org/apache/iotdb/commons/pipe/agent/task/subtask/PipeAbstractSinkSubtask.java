@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfi
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -141,9 +142,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         super.onFailure(throwable);
       } else {
         // Print stack trace for better debugging
-        LOGGER.warn(
-            "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
-            throwable);
+        PipeLogger.log(
+            LOGGER::warn,
+            throwable,
+            "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
         super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
       }
     }
