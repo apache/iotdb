@@ -348,7 +348,7 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_read_file_buffer_size",
                         String.valueOf(config.getPipeConnectorReadFileBufferSize())))));
-    config.setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+    config.setIsPipeSinkReadFileBufferMemoryControlEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_memory_control"))
                 .orElse(
@@ -356,14 +356,14 @@ public class PipeDescriptor {
                         "pipe_connector_read_file_buffer_memory_control",
                         String.valueOf(
                             config.isPipeConnectorReadFileBufferMemoryControlEnabled())))));
-    config.setPipeConnectorRetryIntervalMs(
+    config.setPipeSinkRetryIntervalMs(
         Long.parseLong(
             Optional.ofNullable(properties.getProperty("pipe_sink_retry_interval_ms"))
                 .orElse(
                     properties.getProperty(
                         "pipe_connector_retry_interval_ms",
-                        String.valueOf(config.getPipeConnectorRetryIntervalMs())))));
-    config.setPipeConnectorRPCThriftCompressionEnabled(
+                        String.valueOf(config.getPipeSinkRetryIntervalMs())))));
+    config.setPipeSinkRPCThriftCompressionEnabled(
         Boolean.parseBoolean(
             Optional.ofNullable(properties.getProperty("pipe_sink_rpc_thrift_compression_enabled"))
                 .orElse(

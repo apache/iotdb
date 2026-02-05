@@ -177,7 +177,8 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             e);
         try {
           sleepIfNoHighPriorityTask(
-              retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+              Math.min(retry, MAX_RETRY_TIMES)
+                  * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",

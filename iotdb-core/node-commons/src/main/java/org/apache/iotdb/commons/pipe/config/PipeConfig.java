@@ -184,7 +184,7 @@ public class PipeConfig {
   }
 
   public long getPipeConnectorRetryIntervalMs() {
-    return COMMON_CONFIG.getPipeConnectorRetryIntervalMs();
+    return COMMON_CONFIG.getPipeSinkRetryIntervalMs();
   }
 
   public boolean isPipeConnectorRPCThriftCompressionEnabled() {

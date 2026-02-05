@@ -270,7 +270,8 @@ public class CommonConfig {
   private int pipeConnectorTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeConnectorReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeConnectorReadFileBufferMemoryControlEnabled = false;
-  private long pipeConnectorRetryIntervalMs = 1000L;
+  private long pipeSinkRetryIntervalMs = 1000L;
+  private boolean pipeSinkRetryLocallyForConnectionError = true;
   private boolean pipeConnectorRPCThriftCompressionEnabled = false;
 
   private int pipeAsyncSinkForcedRetryTsFileEventQueueSize = 5;
@@ -1105,7 +1106,7 @@ public class CommonConfig {
     return isPipeConnectorReadFileBufferMemoryControlEnabled;
   }
 
-  public void setIsPipeConnectorReadFileBufferMemoryControlEnabled(
+  public void setIsPipeSinkReadFileBufferMemoryControlEnabled(
       boolean isPipeConnectorReadFileBufferMemoryControlEnabled) {
     if (this.isPipeConnectorReadFileBufferMemoryControlEnabled
         == isPipeConnectorReadFileBufferMemoryControlEnabled) {
@@ -1118,7 +1119,7 @@ public class CommonConfig {
         isPipeConnectorReadFileBufferMemoryControlEnabled);
   }
 
-  public void setPipeConnectorRPCThriftCompressionEnabled(
+  public void setPipeSinkRPCThriftCompressionEnabled(
       boolean pipeConnectorRPCThriftCompressionEnabled) {
     if (this.isPipeConnectorReadFileBufferMemoryControlEnabled
         == pipeConnectorRPCThriftCompressionEnabled) {
@@ -1355,16 +1356,20 @@ public class CommonConfig {
     logger.info("pipeAutoRestartEnabled is set to {}.", pipeAutoRestartEnabled);
   }
 
-  public long getPipeConnectorRetryIntervalMs() {
-    return pipeConnectorRetryIntervalMs;
+  public long getPipeSinkRetryIntervalMs() {
+    return pipeSinkRetryIntervalMs;
   }
 
-  public void setPipeConnectorRetryIntervalMs(long pipeConnectorRetryIntervalMs) {
-    if (this.pipeConnectorRetryIntervalMs == pipeConnectorRetryIntervalMs) {
+  public void setPipeSinkRetryIntervalMs(long pipeConnectorRetryIntervalMs) {
+    if (this.pipeSinkRetryIntervalMs == pipeConnectorRetryIntervalMs) {
       return;
     }
-    this.pipeConnectorRetryIntervalMs = pipeConnectorRetryIntervalMs;
-    logger.info("pipeConnectorRetryIntervalMs is set to {}", pipeConnectorRetryIntervalMs);
+    this.pipeSinkRetryIntervalMs = pipeConnectorRetryIntervalMs;
+    logger.info("pipeSinkRetryIntervalMs is set to {}", pipeConnectorRetryIntervalMs);
+  }
+
+  public boolean isPipeSinkRetryLocallyForConnectionError() {
+    return pipeSinkRetryLocallyForConnectionError;
   }
 
   public int getPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount() {
