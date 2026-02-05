@@ -159,8 +159,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         throwable);
 
     int retry = 0;
-    while (retry < MAX_RETRY_TIMES
-        || PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
+    while (retry < MAX_RETRY_TIMES) {
       try {
         outputPipeSink.handshake();
         LOGGER.info(
@@ -171,16 +170,13 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         retry++;
         LOGGER.warn(
             "{} failed to handshake with the target system for {} times, "
-                + (PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()
-                    ? "will retry forever."
-                    : String.format("will retry at most %s times.", MAX_RETRY_TIMES)),
+                + "will retry at most {} times.",
             outputPipeSink.getClass().getName(),
             retry,
+            MAX_RETRY_TIMES,
             e);
         try {
-          sleepIfNoHighPriorityTask(
-              Math.min(retry, MAX_RETRY_TIMES)
-                  * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
+          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
