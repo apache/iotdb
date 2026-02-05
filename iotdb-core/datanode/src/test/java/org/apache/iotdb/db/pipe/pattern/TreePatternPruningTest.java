@@ -174,20 +174,22 @@ public class TreePatternPruningTest {
     }
   }
 
-    @Test
-    public void testWithExclusionPreserved() {
-        final PipeParameters params =
-                new PipeParameters(
-                        new HashMap<String, String>() {
-                              {
-                                put(PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
-                                        "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
-                                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.test.g_0.d_20.**");
-                            }
-                        });
+  @Test
+  public void testWithExclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(
+                    PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+                    "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.test.g_0.d_20.**");
+              }
+            });
 
-        final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
-        Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
-        Assert.assertEquals("INCLUSION(root.test.g_0.d_2*.**), EXCLUSION(root.test.g_0.d_20.**)", result.getPattern());
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
+    Assert.assertEquals(
+        "INCLUSION(root.test.g_0.d_2*.**), EXCLUSION(root.test.g_0.d_20.**)", result.getPattern());
   }
 }
