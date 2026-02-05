@@ -26,7 +26,7 @@ tokens {
 }
 
 singleStatement
-    : statement EOF
+    : DEBUG? statement EOF
     ;
 
 

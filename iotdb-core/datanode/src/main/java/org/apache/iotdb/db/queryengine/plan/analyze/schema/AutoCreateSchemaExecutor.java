@@ -93,6 +93,7 @@ class AutoCreateSchemaExecutor {
         schemaFetcher,
         // Never timeout for write statement
         Long.MAX_VALUE,
+        false,
         false);
   }
 

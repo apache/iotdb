@@ -297,6 +297,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       boolean userQuery,
+      boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -314,6 +315,7 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
+      queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -345,7 +347,15 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
+        statement,
+        queryId,
+        session,
+        sql,
+        partitionFetcher,
+        schemaFetcher,
+        Long.MAX_VALUE,
+        false,
+        false);
   }
 
   public ExecutionResult executeForTreeModel(
@@ -356,12 +366,14 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -425,12 +437,14 @@ public class Coordinator {
       Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
@@ -455,12 +469,14 @@ public class Coordinator {
       String sql,
       Metadata metadata,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -485,6 +501,7 @@ public class Coordinator {
         queryId,
         session,
         sql,
+        false,
         false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(

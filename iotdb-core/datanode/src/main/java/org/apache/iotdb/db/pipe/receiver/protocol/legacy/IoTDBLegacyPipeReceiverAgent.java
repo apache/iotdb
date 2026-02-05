@@ -165,6 +165,7 @@ public class IoTDBLegacyPipeReceiverAgent {
                   partitionFetcher,
                   schemaFetcher,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                  false,
                   false);
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()

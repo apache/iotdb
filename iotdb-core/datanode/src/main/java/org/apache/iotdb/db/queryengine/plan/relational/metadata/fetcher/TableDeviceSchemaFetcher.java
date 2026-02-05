@@ -135,6 +135,7 @@ public class TableDeviceSchemaFetcher {
               LocalExecutionPlanner.getInstance().metadata,
               // Never timeout for insert
               Long.MAX_VALUE,
+              false,
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -502,6 +503,7 @@ public class TableDeviceSchemaFetcher {
               LocalExecutionPlanner.getInstance().metadata,
               mppQueryContext.getTimeOut()
                   - (System.currentTimeMillis() - mppQueryContext.getStartTime()),
+              false,
               false);
 
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
