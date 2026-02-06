@@ -400,8 +400,6 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
         Collections.singleton("2,"));
   }
 
-  // Table model
-
   private void testIdempotent(
       final List<String> beforeSqlList,
       final String testSql,

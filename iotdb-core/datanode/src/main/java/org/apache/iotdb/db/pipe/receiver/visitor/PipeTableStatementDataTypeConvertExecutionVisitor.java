@@ -154,9 +154,8 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
           TSStatus result;
           try {
             result =
-                statement.accept(
-                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                    statementExecutor.execute(statement, databaseName));
+                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                    statement, statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -167,15 +166,14 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
-                  statement.accept(
-                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                      statementExecutor.execute(statement, databaseName));
+                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                      statement, statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
               Thread.currentThread().interrupt();
             }
-            result = statement.accept(IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR, e);
+            result = IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR.process(statement, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
