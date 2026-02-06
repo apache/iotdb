@@ -18,6 +18,7 @@
     "com.github.ben-manes.caffeine:caffeine",
     "com.github.luben:zstd-jni",
     "com.github.moquette-io.moquette:moquette-broker",
+    "com.github.oshi:oshi-core",
     "com.github.stephenc.jcip:jcip-annotations",
     "com.github.wendykierp:JTransforms",
     "com.google.code.findbugs:jsr305",
