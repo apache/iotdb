@@ -34,6 +34,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -46,6 +47,7 @@ public class LoadTsFileNode extends WritePlanNode {
   private final List<TsFileResource> resources;
   private final List<Boolean> isTableModel;
   private final String database;
+  private final File schemaEvolutionFile;
   private final boolean needDecode4TimeColumn;
 
   public LoadTsFileNode(
@@ -53,11 +55,13 @@ public class LoadTsFileNode extends WritePlanNode {
       final List<TsFileResource> resources,
       final List<Boolean> isTableModel,
       final String database,
-      final boolean needDecode4TimeColumn) {
+      final boolean needDecode4TimeColumn,
+      final File schemaEvolutionFile) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
+    this.schemaEvolutionFile = schemaEvolutionFile;
     this.needDecode4TimeColumn = needDecode4TimeColumn;
   }
 
@@ -128,7 +132,8 @@ public class LoadTsFileNode extends WritePlanNode {
               database,
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
-              needDecode4TimeColumn));
+              needDecode4TimeColumn,
+              schemaEvolutionFile));
     }
     return res;
   }
@@ -151,7 +156,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 database,
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
-                needDecode4TimeColumn));
+                needDecode4TimeColumn,
+                schemaEvolutionFile));
       }
     }
     return res;

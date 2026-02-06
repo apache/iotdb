@@ -1392,7 +1392,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             node.getResources(),
             isTableModel,
             node.getDatabase(),
-            node.isNeedDecode4TimeColumn()),
+            node.isNeedDecode4TimeColumn(),
+            node.getSchemaEvolutionFile()),
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);

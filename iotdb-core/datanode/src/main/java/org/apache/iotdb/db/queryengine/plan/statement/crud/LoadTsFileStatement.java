@@ -68,6 +68,7 @@ public class LoadTsFileStatement extends Statement {
   private List<Boolean> isTableModel;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
+  private File schemaEvolutionFile;
   private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
@@ -256,6 +257,10 @@ public class LoadTsFileStatement extends Statement {
     initAttributes(loadAttributes);
   }
 
+  public File getSchemaEvolutionFile() {
+    return schemaEvolutionFile;
+  }
+
   public boolean isAsyncLoad() {
     return isAsyncLoad;
   }
@@ -273,6 +278,7 @@ public class LoadTsFileStatement extends Statement {
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+    this.schemaEvolutionFile = LoadTsFileConfigurator.parseSevoFile(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

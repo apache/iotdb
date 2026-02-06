@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -35,8 +33,8 @@ public final class RenameColumn extends Statement {
       RamUsageEstimator.shallowSizeOfInstance(RenameColumn.class);
 
   private final QualifiedName table;
-  private final Identifier source;
-  private final Identifier target;
+  private final List<Identifier> sources;
+  private final List<Identifier> targets;
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
@@ -45,33 +43,30 @@ public final class RenameColumn extends Statement {
   public RenameColumn(
       final NodeLocation location,
       final QualifiedName table,
-      final Identifier source,
-      final Identifier target,
+      final List<Identifier> sources,
+      final List<Identifier> targets,
       final boolean tableIfExists,
       final boolean columnIfNotExists,
       final boolean view) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
-    this.source = requireNonNull(source, "source is null");
-    this.target = requireNonNull(target, "target is null");
+    this.sources = requireNonNull(sources, "source is null");
+    this.targets = requireNonNull(targets, "target is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
     this.view = view;
-    if (!view) {
-      throw new SemanticException("The renaming for base table column is currently unsupported");
-    }
   }
 
   public QualifiedName getTable() {
     return table;
   }
 
-  public Identifier getSource() {
-    return source;
+  public List<Identifier> getSources() {
+    return sources;
   }
 
-  public Identifier getTarget() {
-    return target;
+  public List<Identifier> getTargets() {
+    return targets;
   }
 
   public boolean tableIfExists() {
@@ -108,22 +103,22 @@ public final class RenameColumn extends Statement {
     return tableIfExists == that.tableIfExists
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(table, that.table)
-        && Objects.equals(source, that.source)
-        && Objects.equals(target, that.target)
+        && Objects.equals(sources, that.sources)
+        && Objects.equals(targets, that.targets)
         && view == that.view;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table, source, target, view);
+    return Objects.hash(table, sources, targets, view);
   }
 
   @Override
   public String toString() {
     return toStringHelper(this)
         .add("table", table)
-        .add("source", source)
-        .add("target", target)
+        .add("source", sources)
+        .add("target", targets)
         .add("tableIfExists", tableIfExists)
         .add("columnIfExists", columnIfNotExists)
         .add("view", view)
@@ -135,8 +130,12 @@ public final class RenameColumn extends Statement {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
     size += table == null ? 0L : table.ramBytesUsed();
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(source);
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(target);
+    for (Identifier source : sources) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(source);
+    }
+    for (Identifier target : targets) {
+      size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(target);
+    }
     return size;
   }
 }

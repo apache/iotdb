@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.storageengine.dataregion.modification;
 
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.TagPredicateType;
 import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
@@ -42,7 +43,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   public static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(DeletionPredicate.class);
   private String tableName;
-  private IDPredicate idPredicate = new NOP();
+  private TagPredicate tagPredicate = new NOP();
   // an empty list means affecting all columns
   private List<String> measurementNames = Collections.emptyList();
 
@@ -52,32 +53,28 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     this.tableName = tableName;
   }
 
-  public DeletionPredicate(String tableName, IDPredicate idPredicate) {
+  public DeletionPredicate(String tableName, TagPredicate tagPredicate) {
     this.tableName = tableName;
-    this.idPredicate = idPredicate;
+    this.tagPredicate = tagPredicate;
   }
 
   public DeletionPredicate(
-      String tableName, IDPredicate idPredicate, List<String> measurementNames) {
+      String tableName, TagPredicate tagPredicate, List<String> measurementNames) {
     this.tableName = tableName;
-    this.idPredicate = idPredicate;
+    this.tagPredicate = tagPredicate;
     this.measurementNames = measurementNames;
   }
 
   public boolean matches(IDeviceID deviceID) {
-    return tableName.equals(deviceID.getTableName()) && idPredicate.matches(deviceID);
+    return tableName.equals(deviceID.getTableName()) && tagPredicate.matches(deviceID);
   }
 
-  public void setIdPredicate(IDPredicate idPredicate) {
-    this.idPredicate = idPredicate;
+  public void setIdPredicate(TagPredicate tagPredicate) {
+    this.tagPredicate = tagPredicate;
   }
 
-  public IDPredicate getIdPredicate() {
-    return idPredicate;
-  }
-
-  public IDPredicate.IDPredicateType getIdPredicateType() {
-    return this.idPredicate.type;
+  public TagPredicateType getTagPredicateType() {
+    return this.tagPredicate.type;
   }
 
   public String getTableName() {
@@ -88,6 +85,10 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     return measurementNames;
   }
 
+  public TagPredicate getTagPredicate() {
+    return tagPredicate;
+  }
+
   public boolean affects(String measurementName) {
     return measurementNames.isEmpty() || measurementNames.contains(measurementName);
   }
@@ -95,7 +96,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public long serialize(OutputStream stream) throws IOException {
     long size = ReadWriteIOUtils.writeVar(tableName, stream);
-    size += idPredicate.serialize(stream);
+    size += tagPredicate.serialize(stream);
     size += ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), stream);
     for (String measurementName : measurementNames) {
       size += ReadWriteIOUtils.writeVar(measurementName, stream);
@@ -106,7 +107,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public long serialize(ByteBuffer buffer) {
     long size = ReadWriteIOUtils.writeVar(tableName, buffer);
-    size += idPredicate.serialize(buffer);
+    size += tagPredicate.serialize(buffer);
     size += ReadWriteForEncodingUtils.writeVarInt(measurementNames.size(), buffer);
     for (String measurementName : measurementNames) {
       size += ReadWriteIOUtils.writeVar(measurementName, buffer);
@@ -117,7 +118,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public void deserialize(InputStream stream) throws IOException {
     tableName = ReadWriteIOUtils.readVarIntString(stream);
-    idPredicate = IDPredicate.createFrom(stream);
+    tagPredicate = TagPredicate.createFrom(stream);
 
     int measurementLength = ReadWriteForEncodingUtils.readVarInt(stream);
     if (measurementLength > 0) {
@@ -133,7 +134,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   @Override
   public void deserialize(ByteBuffer buffer) {
     tableName = ReadWriteIOUtils.readVarIntString(buffer);
-    idPredicate = IDPredicate.createFrom(buffer);
+    tagPredicate = TagPredicate.createFrom(buffer);
 
     int measurementLength = ReadWriteForEncodingUtils.readVarInt(buffer);
     if (measurementLength > 0) {
@@ -151,7 +152,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     int size =
         ReadWriteForEncodingUtils.varIntSize(tableName.length())
             + tableName.length() * Character.BYTES
-            + idPredicate.serializedSize()
+            + tagPredicate.serializedSize()
             + ReadWriteForEncodingUtils.varIntSize(measurementNames.size());
     for (String measurementName : measurementNames) {
       size +=
@@ -171,13 +172,13 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
     }
     DeletionPredicate that = (DeletionPredicate) o;
     return Objects.equals(tableName, that.tableName)
-        && Objects.equals(idPredicate, that.idPredicate)
+        && Objects.equals(tagPredicate, that.tagPredicate)
         && Objects.equals(measurementNames, that.measurementNames);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, idPredicate, measurementNames);
+    return Objects.hash(tableName, tagPredicate, measurementNames);
   }
 
   @Override
@@ -187,7 +188,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
         + tableName
         + '\''
         + ", idPredicate="
-        + idPredicate
+        + tagPredicate
         + ", measurementNames="
         + measurementNames
         + '}';
@@ -197,7 +198,7 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
   public long ramBytesUsed() {
     return SHALLOW_SIZE
         + RamUsageEstimator.sizeOf(tableName)
-        + RamUsageEstimator.sizeOfObject(idPredicate)
+        + RamUsageEstimator.sizeOfObject(tagPredicate)
         + RamUsageEstimator.sizeOfArrayList(measurementNames);
   }
 }

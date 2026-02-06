@@ -363,6 +363,7 @@ public class TsFileNameGenerator {
               TsFileResourceStatus.COMPACTING);
       targetResource.setSeq(sequence);
       targetResources.add(targetResource);
+      targetResource.setTsFileManager(resource.getTsFileManager());
     }
     return targetResources;
   }

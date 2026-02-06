@@ -22,10 +22,13 @@ package org.apache.iotdb.commons.partition;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.annotations.TreeModel;
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.ArrayList;
@@ -75,18 +78,20 @@ public class SchemaPartition extends Partition {
    *
    * <p>The device id shall be [table, seg1, ....]
    */
-  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, IDeviceID deviceID) {
-    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+  public TRegionReplicaSet getSchemaRegionReplicaSet(String database, SeriesPartitionKey key) {
+    TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(key);
     return schemaPartitionMap.get(database).get(seriesPartitionSlot);
   }
 
+  @TreeModel
   // [root, db, ....]
   public TRegionReplicaSet getSchemaRegionReplicaSet(final IDeviceID deviceID) {
     // A list of data region replica sets will store data in a same time partition.
     // We will insert data to the last set in the list.
     // TODO return the latest dataRegionReplicaSet for each time partition
     final String storageGroup = getStorageGroupByDevice(deviceID);
-    final TSeriesPartitionSlot seriesPartitionSlot = calculateDeviceGroupId(deviceID);
+    final TSeriesPartitionSlot seriesPartitionSlot =
+        calculateDeviceGroupId(new FullDeviceIdKey(deviceID));
     if (schemaPartitionMap.get(storageGroup) == null) {
       throw new RuntimeException(
           new IoTDBException("Path does not exist. ", TSStatusCode.PATH_NOT_EXIST.getStatusCode()));

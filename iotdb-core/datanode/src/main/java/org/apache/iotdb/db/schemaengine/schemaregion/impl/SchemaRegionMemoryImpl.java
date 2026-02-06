@@ -49,10 +49,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceAt
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DeviceBlackListConstructor;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
+import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder.Context;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
@@ -125,6 +127,8 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
@@ -1563,7 +1567,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         Objects.nonNull(predicate)
             ? visitor.process(
                 predicate,
-                new ColumnTransformerBuilder.Context(
+                new Context(
                     sessionInfo,
                     filterLeafColumnTransformerList,
                     inputLocations,
@@ -1590,8 +1594,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // records common ColumnTransformer between filter and project expressions
     final List<ColumnTransformer> commonTransformerList = new ArrayList<>();
 
-    final ColumnTransformerBuilder.Context projectColumnTransformerContext =
-        new ColumnTransformerBuilder.Context(
+    final Context projectColumnTransformerContext =
+        new Context(
             sessionInfo,
             projectLeafColumnTransformerList,
             inputLocations,
@@ -1788,6 +1792,23 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (deviceAttributeCacheUpdater.addLocation(node.getLocation())) {
       writeToMLog(node);
     }
+  }
+
+  @Override
+  public void applySchemaEvolution(EvolveSchemaNode node) throws MetadataException {
+    for (SchemaEvolution schemaEvolution : node.getSchemaEvolutions()) {
+      if (schemaEvolution instanceof TableRename) {
+        TableRename tableRename = (TableRename) schemaEvolution;
+        applyTableRename(tableRename.getNameBefore(), tableRename.getNameAfter());
+      } else {
+        logger.warn("Unsupported schemaEvolution {}, ignore it", schemaEvolution);
+      }
+    }
+    writeToMLog(node);
+  }
+
+  public void applyTableRename(String oldName, String newName) {
+    mTree.renameTable(oldName, newName);
   }
 
   // endregion
@@ -2118,6 +2139,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         alterEncodingCompressor(alterEncodingCompressorNode);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitEvolveSchema(
+        EvolveSchemaNode evolveSchemaNode, SchemaRegionMemoryImpl context) {
+      try {
+        applySchemaEvolution(evolveSchemaNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

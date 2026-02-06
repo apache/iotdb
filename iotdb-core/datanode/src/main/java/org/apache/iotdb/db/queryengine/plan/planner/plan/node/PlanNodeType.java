@@ -60,6 +60,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedEvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -107,6 +108,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueries
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ContinuousSameSearchIndexSeparatorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -329,6 +331,8 @@ public enum PlanNodeType {
   RELATIONAL_INSERT_ROWS((short) 2002),
   RELATIONAL_DELETE_DATA((short) 2003),
   OBJECT_FILE_NODE((short) 2004),
+  EVOLVE_SCHEMA((short) 2005),
+  PIPE_ENRICHED_EVOLVE_SCHEMA((short) 2006),
   ;
 
   public static final int BYTES = Short.BYTES;
@@ -374,6 +378,10 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserializeFromWAL(stream);
       case 2004:
         return ObjectNode.deserializeFromWAL(stream);
+      case 2005:
+        return EvolveSchemaNode.deserializeFromWAL(stream);
+      case 2006:
+        return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(stream);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -402,6 +410,10 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserializeFromWAL(buffer);
       case 2004:
         return ObjectNode.deserialize(buffer);
+      case 2005:
+        return EvolveSchemaNode.deserializeFromWAL(buffer);
+      case 2006:
+        return PipeEnrichedEvolveSchemaNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
@@ -737,6 +749,10 @@ public enum PlanNodeType {
         return RelationalDeleteDataNode.deserialize(buffer);
       case 2004:
         return ObjectNode.deserialize(buffer);
+      case 2005:
+        return EvolveSchemaNode.deserialize(buffer);
+      case 2006:
+        return PipeEnrichedEvolveSchemaNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

@@ -25,12 +25,17 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 
 import com.google.common.base.Supplier;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -288,5 +293,40 @@ public class IOUtils {
       }
     }
     return Optional.empty();
+  }
+
+  public static void write(List<String> strings, OutputStream outputStream) throws IOException {
+    if (strings == null) {
+      ReadWriteForEncodingUtils.writeVarInt(-1, outputStream);
+      return;
+    }
+    ReadWriteForEncodingUtils.writeVarInt(strings.size(), outputStream);
+    for (String string : strings) {
+      ReadWriteIOUtils.writeVar(string, outputStream);
+    }
+  }
+
+  public static List<String> readStringList(InputStream inputStream) throws IOException {
+    int size = ReadWriteForEncodingUtils.readVarInt(inputStream);
+    if (size == -1) {
+      return null;
+    }
+    List<String> strings = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      strings.add(ReadWriteIOUtils.readVarIntString(inputStream));
+    }
+    return strings;
+  }
+
+  public static List<String> readStringList(ByteBuffer buffer) {
+    int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+    if (size == -1) {
+      return null;
+    }
+    List<String> strings = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      strings.add(ReadWriteIOUtils.readVarIntString(buffer));
+    }
+    return strings;
   }
 }

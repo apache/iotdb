@@ -41,8 +41,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +64,10 @@ public class TsTable {
   public static final String TIME_COLUMN_NAME = "time";
   public static final String COMMENT_KEY = "__comment";
   public static final String TTL_PROPERTY = "ttl";
-  public static final Set<String> TABLE_ALLOWED_PROPERTIES = Collections.singleton(TTL_PROPERTY);
+  public static final String ALLOW_ALTER_NAME_PROPERTY = "allow_alter_name";
+  public static final boolean ALLOW_ALTER_NAME_DEFAULT = true;
+  public static final Set<String> TABLE_ALLOWED_PROPERTIES =
+      new HashSet<>(Arrays.asList(TTL_PROPERTY, ALLOW_ALTER_NAME_PROPERTY));
   private static final String OBJECT_STRING_ERROR =
       "When there are object fields, the %s %s shall not be '.', '..' or contain './', '.\\'.";
   protected String tableName;
@@ -432,5 +436,13 @@ public class TsTable {
         + ", props="
         + props
         + '}';
+  }
+
+  public boolean canAlterName() {
+    if (getProps() == null) {
+      return false;
+    }
+    return Boolean.parseBoolean(
+        getProps().getOrDefault(TsTable.ALLOW_ALTER_NAME_PROPERTY, "false"));
   }
 }
