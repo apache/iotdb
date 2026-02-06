@@ -175,6 +175,66 @@ class InferenceManager:
             with self._result_wrapper_lock:
                 del self._result_wrapper_map[req_id]
 
+    def _do_inference_and_construct_resp(
+        self,
+        model_id: str,
+        model_inputs_list: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]],
+        output_length: int,
+        inference_attrs: dict,
+        **kwargs,
+    ) -> list[bytes]:
+        auto_adapt = kwargs.get("auto_adapt", True)
+        if (
+            output_length
+            > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
+        ):
+            raise NumericalRangeException(
+                "output_length",
+                output_length,
+                1,
+                AINodeDescriptor().get_config().get_ain_inference_max_output_length(),
+            )
+
+        if self._pool_controller.has_running_pools(model_id):
+            infer_req = InferenceRequest(
+                req_id=generate_req_id(),
+                model_id=model_id,
+                inputs=torch.stack(
+                    [data["targets"] for data in model_inputs_list], dim=0
+                ),
+                output_length=output_length,
+            )
+            outputs = self._process_request(infer_req)
+        else:
+            model_info = self._model_manager.get_model_info(model_id)
+            inference_pipeline = load_pipeline(
+                model_info, device=self._backend.torch_device("cpu")
+            )
+            inputs = inference_pipeline.preprocess(
+                model_inputs_list,
+                output_length=output_length,
+                auto_adapt=auto_adapt,
+            )
+            if isinstance(inference_pipeline, ForecastPipeline):
+                outputs = inference_pipeline.forecast(
+                    inputs, output_length=output_length, **inference_attrs
+                )
+            elif isinstance(inference_pipeline, ClassificationPipeline):
+                outputs = inference_pipeline.classify(inputs)
+            elif isinstance(inference_pipeline, ChatPipeline):
+                outputs = inference_pipeline.chat(inputs)
+            else:
+                outputs = None
+                logger.error("[Inference] Unsupported pipeline type.")
+            outputs = inference_pipeline.postprocess(outputs)
+
+        # convert tensor into tsblock for the output in each batch
+        resp_list = []
+        for batch_idx, output in enumerate(outputs):
+            resp = convert_tensor_to_tsblock(output)
+            resp_list.append(resp)
+        return resp_list
+
     def _run(
         self,
         req,
@@ -191,65 +251,17 @@ class InferenceManager:
             inference_attrs = extract_attrs(req)
             output_length = int(inference_attrs.pop("output_length", 96))
 
-            # model_inputs_list: Each element is a dict, which contains the following keys:
-            #   `targets`: The input tensor for the target variable(s), whose shape is [target_count, input_length].
             model_inputs_list: list[
                 dict[str, torch.Tensor | dict[str, torch.Tensor]]
             ] = [{"targets": inputs[0]}]
 
-            if (
-                output_length
-                > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
-            ):
-                raise NumericalRangeException(
-                    "output_length",
-                    output_length,
-                    1,
-                    AINodeDescriptor()
-                    .get_config()
-                    .get_ain_inference_max_output_length(),
-                )
-
-            if self._pool_controller.has_running_pools(model_id):
-                infer_req = InferenceRequest(
-                    req_id=generate_req_id(),
-                    model_id=model_id,
-                    inputs=torch.stack(
-                        [data["targets"] for data in model_inputs_list], dim=0
-                    ),
-                    output_length=output_length,
-                )
-                outputs = self._process_request(infer_req)
-            else:
-                model_info = self._model_manager.get_model_info(model_id)
-                inference_pipeline = load_pipeline(
-                    model_info, device=self._backend.torch_device("cpu")
-                )
-                inputs = inference_pipeline.preprocess(
-                    model_inputs_list, output_length=output_length
-                )
-                if isinstance(inference_pipeline, ForecastPipeline):
-                    outputs = inference_pipeline.forecast(
-                        inputs, output_length=output_length, **inference_attrs
-                    )
-                elif isinstance(inference_pipeline, ClassificationPipeline):
-                    outputs = inference_pipeline.classify(inputs)
-                elif isinstance(inference_pipeline, ChatPipeline):
-                    outputs = inference_pipeline.chat(inputs)
-                else:
-                    outputs = None
-                    logger.error("[Inference] Unsupported pipeline type.")
-                outputs = inference_pipeline.postprocess(outputs)
-
-            # convert tensor into tsblock for the output in each batch
-            output_list = []
-            for batch_idx, output in enumerate(outputs):
-                output = convert_tensor_to_tsblock(output)
-                output_list.append(output)
+            resp_list = self._do_inference_and_construct_resp(
+                model_id, model_inputs_list, output_length, inference_attrs
+            )
 
             return resp_cls(
                 get_status(TSStatusCode.SUCCESS_STATUS),
-                [output_list[0]] if single_batch else output_list,
+                [resp_list[0]] if single_batch else resp_list,
             )
 
         except Exception as e:
