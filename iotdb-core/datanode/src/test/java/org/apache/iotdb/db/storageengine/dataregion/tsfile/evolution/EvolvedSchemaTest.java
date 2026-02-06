@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
+import org.apache.iotdb.db.utils.constant.TestConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.junit.Test;
 
@@ -30,7 +36,7 @@ import static org.junit.Assert.assertEquals;
 public class EvolvedSchemaTest {
 
   @Test
-  public void testMerge() {
+  public void testMerge() throws IOException {
     // t1 -> t2, t2.s1 -> t2.s2, t3 -> t1
     List<SchemaEvolution> schemaEvolutionList =
         Arrays.asList(
@@ -55,6 +61,17 @@ public class EvolvedSchemaTest {
     EvolvedSchema mergedShema = EvolvedSchema.merge(oldSchema, newSchema);
 
     assertEquals(allSchema, mergedShema);
+
+    ByteBuffer fileBuffer = mergedShema.toSchemaEvolutionFileBuffer();
+    File file = new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "0.sevo");
+    try (FileChannel fileChannel = FileChannel.open(
+        file.toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+      fileChannel.write(fileBuffer);
+    }
+
+    SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(file.getAbsolutePath());
+    EvolvedSchema schemaFromFile = schemaEvolutionFile.readAsSchema();
+    assertEquals(allSchema, schemaFromFile);
   }
 
   @Test
@@ -122,7 +139,7 @@ public class EvolvedSchemaTest {
     schemaEvolution = new ColumnRename("t1", "s3", "s1");
     schemaEvolution.applyTo(schema);
     assertEquals("s1", schema.getOriginalColumnName("t1", "s1"));
-    assertEquals("", schema.getOriginalColumnName("t1", "s3"));
+    assertEquals("s3", schema.getOriginalColumnName("t1", "s3"));
     assertEquals("s1", schema.getFinalColumnName("t1", "s1"));
     assertEquals("s3", schema.getFinalColumnName("t3", "s3"));
   }

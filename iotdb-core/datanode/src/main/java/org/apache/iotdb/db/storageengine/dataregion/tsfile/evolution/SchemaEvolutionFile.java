@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import org.apache.iotdb.commons.utils.FileUtils;
-
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
 import java.util.Collection;
 
@@ -46,15 +45,25 @@ public class SchemaEvolutionFile {
    * @return true if the file exists false otherwise
    * @throws IOException if the file cannot be recovered
    */
-  private boolean recoverFile() throws IOException {
+  private boolean recoverFile(boolean forWrite) throws IOException {
     File file = new File(filePath);
-    if (!file.exists() || file.length() == 0) {
+    if (!file.exists() || file.length() < Long.BYTES) {
+      if (file.exists()) {
+        boolean ignored = file.delete();
+      }
+      if (forWrite) {
+        try (RandomAccessFile randomAccessFile = new RandomAccessFile(filePath, "rw")) {
+          randomAccessFile.writeLong(8);
+        }
+      }
       return false;
     }
 
     long length = file.length();
-    String fileName = file.getName();
-    long validLength = parseValidLength(fileName);
+    long validLength = readValidLength();
+    if (validLength == -1) {
+      return true;
+    }
     if (length > validLength) {
       try (FileOutputStream fis = new FileOutputStream(file, true);
           FileChannel fileChannel = fis.getChannel()) {
@@ -64,12 +73,14 @@ public class SchemaEvolutionFile {
     return true;
   }
 
-  public static long parseValidLength(String fileName) {
-    return Long.parseLong(fileName.substring(0, fileName.lastIndexOf('.')));
+  public long readValidLength() throws IOException {
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(filePath, "r")) {
+      return randomAccessFile.readLong();
+    }
   }
 
   public void append(Collection<SchemaEvolution> schemaEvolutions) throws IOException {
-    recoverFile();
+    recoverFile(true);
 
     try (FileOutputStream fos = new FileOutputStream(filePath, true);
         BufferedOutputStream bos = new BufferedOutputStream(fos)) {
@@ -78,15 +89,15 @@ public class SchemaEvolutionFile {
       }
     }
 
-    File originFile = new File(filePath);
-    long newLength = originFile.length();
-    File newFile = new File(originFile.getParentFile(), newLength + FILE_SUFFIX);
-    FileUtils.moveFileSafe(originFile, newFile);
-    filePath = newFile.getAbsolutePath();
+    File file = new File(filePath);
+    long newLength = file.length();
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(filePath, "rw")) {
+      randomAccessFile.writeLong(newLength);
+    }
   }
 
   public EvolvedSchema readAsSchema() throws IOException {
-    boolean exists = recoverFile();
+    boolean exists = recoverFile(false);
     if (!exists) {
       return null;
     }
@@ -94,6 +105,11 @@ public class SchemaEvolutionFile {
     EvolvedSchema evolvedSchema = new EvolvedSchema();
     try (FileInputStream fis = new FileInputStream(filePath);
         BufferedInputStream bis = new BufferedInputStream(fis)) {
+      // skip valid length
+      long skipped = bis.skip(8);
+      if (skipped != 8) {
+        throw new IOException("Cannot skip the length of SchemaEvolutionFile");
+      }
       while (bis.available() > 0) {
         SchemaEvolution evolution = SchemaEvolution.createFrom(bis);
         evolution.applyTo(evolvedSchema);

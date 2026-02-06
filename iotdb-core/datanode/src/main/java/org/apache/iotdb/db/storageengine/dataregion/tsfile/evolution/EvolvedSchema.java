@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
@@ -33,7 +35,9 @@ import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
@@ -86,22 +90,40 @@ public class EvolvedSchema implements Accountable {
   }
 
   public void renameColumn(String newTableName, String oldColumnName, String newColumnName) {
-    Map<String, String> columnNameMap =
+    Map<String, String> finalToOriginalMap =
         finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
     String originalTableName = getOriginalTableName(newTableName);
-    if (!columnNameMap.containsKey(oldColumnName) || columnNameMap.get(oldColumnName).isEmpty()) {
-      columnNameMap.put(newColumnName, oldColumnName);
-      columnNameMap.put(oldColumnName, "");
+    if (!finalToOriginalMap.containsKey(oldColumnName) || finalToOriginalMap.get(oldColumnName).isEmpty()) {
+      finalToOriginalMap.put(newColumnName, oldColumnName);
+      finalToOriginalMap.put(oldColumnName, "");
       originalToFinalColumnNames
           .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
           .put(oldColumnName, newColumnName);
     } else {
       // mark the old column name as non-exists
-      String originalName = columnNameMap.put(oldColumnName, "");
-      columnNameMap.put(newColumnName, originalName);
-      originalToFinalColumnNames
-          .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
-          .put(originalName, newColumnName);
+      String originalName = finalToOriginalMap.put(oldColumnName, "");
+      if (!newColumnName.equals(originalName)) {
+        finalToOriginalMap.put(newColumnName, originalName);
+        originalToFinalColumnNames
+            .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+            .put(originalName, newColumnName);
+      } else {
+        // the new name is the same as the original name, remove the mapping
+        finalToOriginalMap.remove(newColumnName);
+        finalToOriginalMap.remove(oldColumnName);
+        if (finalToOriginalMap.isEmpty()) {
+          finalToOriginalColumnNames.remove(newTableName);
+        }
+
+        Map<String, String> originalToFinalMap = originalToFinalColumnNames
+            .get(originalTableName);
+        if (originalToFinalMap != null) {
+          originalToFinalMap.remove(originalName);
+          if (originalToFinalMap.isEmpty()) {
+            originalToFinalColumnNames.remove(originalTableName);
+          }
+        }
+      }
     }
   }
 
@@ -171,6 +193,24 @@ public class EvolvedSchema implements Accountable {
               });
         });
     return schemaEvolutions;
+  }
+
+  public ByteBuffer toSchemaEvolutionFileBuffer() {
+    PublicBAOS publicBAOS = new PublicBAOS();
+    try {
+      ReadWriteIOUtils.write(0L, publicBAOS);
+      List<SchemaEvolution> schemaEvolutions = toSchemaEvolutions();
+      for (SchemaEvolution evolution : schemaEvolutions) {
+        evolution.serialize(publicBAOS);
+      }
+    } catch (IOException e) {
+      // ignored
+    }
+
+    ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    buffer.putLong(0, buffer.limit());
+    buffer.position(0);
+    return buffer;
   }
 
   public ModEntry rewriteToOriginal(ModEntry entry) {

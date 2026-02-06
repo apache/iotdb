@@ -907,4 +907,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
       }
     }
   }
+
+  public TsFileResource getResource() {
+    return resource;
+  }
 }
