@@ -73,7 +73,7 @@ public class IoTDBDebugQueryIT {
   }
 
   @Test
-  public void treeTest() throws IOException {
+  public void tableTest() throws IOException {
     // clear log content to reduce lines spanned in logContains check
     dataNodeWrapper.clearLogContent();
 
@@ -86,7 +86,7 @@ public class IoTDBDebugQueryIT {
   }
 
   @Test
-  public void tableTest() throws IOException {
+  public void treeTest() throws IOException {
     // clear log content to reduce lines spanned in logContains check
     dataNodeWrapper.clearLogContent();
 

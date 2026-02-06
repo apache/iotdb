@@ -306,9 +306,6 @@ public class Coordinator {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
-      if (userQuery) {
-        System.out.println("--------------" + debug);
-      }
       queryContext =
           new MPPQueryContext(
               sql,
