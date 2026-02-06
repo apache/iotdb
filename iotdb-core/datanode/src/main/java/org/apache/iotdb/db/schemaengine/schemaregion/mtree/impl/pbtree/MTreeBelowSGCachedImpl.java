@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.Timeser
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
@@ -83,8 +85,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -1505,6 +1509,150 @@ public class MTreeBelowSGCachedImpl {
                     node, getPartialPath(), getTags(), getAttributes(), isUnderAlignedDevice());
               }
             };
+          }
+
+          @Override
+          protected Iterator<ICachedMNode> getChildrenIterator(final ICachedMNode parent)
+              throws MetadataException {
+            Ordering timeseriesOrdering = showTimeSeriesPlan.getTimeseriesOrdering();
+            if (timeseriesOrdering == null || timeseriesOrdering == Ordering.DESC) {
+              return super.getChildrenIterator(parent);
+            }
+
+            final Iterator<ICachedMNode> templateIterator = getSortedTemplateChildren(parent);
+            if (!templateIterator.hasNext()) {
+              return super.getChildrenIterator(parent);
+            }
+
+            return new IMNodeIterator<ICachedMNode>() {
+              private ICachedMNode next = null;
+              private ICachedMNode nextDirect = null;
+              private ICachedMNode nextTemplate = null;
+              private boolean skipTemplateChildren = false;
+              // Lazy init: avoid prefetching direct iterator before template collection/sort.
+              private IMNodeIterator<ICachedMNode> directIterator = null;
+
+              @Override
+              public boolean hasNext() {
+                if (next != null) {
+                  return true;
+                }
+                next = computeNext();
+                return next != null;
+              }
+
+              @Override
+              public ICachedMNode next() {
+                if (!hasNext()) {
+                  throw new NoSuchElementException();
+                }
+                ICachedMNode result = next;
+                next = null;
+                return result;
+              }
+
+              @Override
+              public void skipTemplateChildren() {
+                skipTemplateChildren = true;
+                nextTemplate = null;
+              }
+
+              @Override
+              public void close() {
+                if (directIterator != null) {
+                  directIterator.close();
+                }
+              }
+
+              private ICachedMNode computeNext() {
+                if (nextDirect == null) {
+                  nextDirect = fetchNextDirect();
+                }
+                if (nextTemplate == null && !skipTemplateChildren) {
+                  nextTemplate = fetchNextTemplate();
+                }
+
+                if (nextDirect == null && (skipTemplateChildren || nextTemplate == null)) {
+                  return null;
+                }
+                if (nextDirect == null) {
+                  ICachedMNode result = nextTemplate;
+                  nextTemplate = null;
+                  return result;
+                }
+                if (skipTemplateChildren || nextTemplate == null) {
+                  ICachedMNode result = nextDirect;
+                  nextDirect = null;
+                  return result;
+                }
+
+                int cmp = nextDirect.getName().compareTo(nextTemplate.getName());
+                if (cmp <= 0) {
+                  ICachedMNode result = nextDirect;
+                  nextDirect = null;
+                  return result;
+                } else {
+                  ICachedMNode result = nextTemplate;
+                  nextTemplate = null;
+                  return result;
+                }
+              }
+
+              private ICachedMNode fetchNextDirect() {
+                if (directIterator == null) {
+                  try {
+                    directIterator = store.getChildrenIterator(parent);
+                  } catch (MetadataException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+                while (directIterator.hasNext()) {
+                  ICachedMNode node = directIterator.next();
+                  if (!skipPreDeletedSchema
+                      || !node.isMeasurement()
+                      || !node.getAsMeasurementMNode().isPreDeleted()) {
+                    return node;
+                  }
+                }
+                return null;
+              }
+
+              private ICachedMNode fetchNextTemplate() {
+                while (templateIterator.hasNext()) {
+                  ICachedMNode node = templateIterator.next();
+                  if (!skipPreDeletedSchema
+                      || !node.isMeasurement()
+                      || !node.getAsMeasurementMNode().isPreDeleted()) {
+                    return node;
+                  }
+                }
+                return null;
+              }
+            };
+          }
+
+          private Iterator<ICachedMNode> getSortedTemplateChildren(final ICachedMNode parent) {
+            if (templateMap == null || templateMap.isEmpty() || !parent.isDevice()) {
+              return Collections.emptyIterator();
+            }
+            final IDeviceMNode<ICachedMNode> deviceNode = parent.getAsDeviceMNode();
+            if (deviceNode.getSchemaTemplateId() == SchemaConstant.NON_TEMPLATE) {
+              return Collections.emptyIterator();
+            }
+            if (skipPreDeletedSchema && deviceNode.isPreDeactivateSelfOrTemplate()) {
+              return Collections.emptyIterator();
+            }
+            final Template template = templateMap.get(deviceNode.getSchemaTemplateId());
+            if (template == null) {
+              return Collections.emptyIterator();
+            }
+            final List<ICachedMNode> children = new ArrayList<>();
+            final Iterator<ICachedMNode> iterator = MNodeUtils.getChildren(template, nodeFactory);
+            while (iterator.hasNext()) {
+              children.add(iterator.next());
+            }
+            children.sort(Comparator.comparing(ICachedMNode::getName));
+            return children.iterator();
           }
         };
 

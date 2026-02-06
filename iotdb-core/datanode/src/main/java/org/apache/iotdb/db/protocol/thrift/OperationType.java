@@ -52,7 +52,10 @@ public enum OperationType {
   EXECUTE_NON_QUERY_PLAN("executeNonQueryPlan"),
   SELECT_INTO("selectInto"),
   QUERY_LATENCY("queryLatency"),
-  WRITE_AUDIT_LOG("writeAuditLog");
+  WRITE_AUDIT_LOG("writeAuditLog"),
+  PREPARE_STATEMENT("prepareStatement"),
+  EXECUTE_PREPARED_STATEMENT("executePreparedStatement"),
+  DEALLOCATE_PREPARED_STATEMENT("deallocatePreparedStatement");
   private final String name;
 
   OperationType(String name) {

@@ -200,7 +200,7 @@ public class CteMaterializer {
     } finally {
       long cost = System.nanoTime() - startTime;
       context.addCteMaterializationCost(table, cost);
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
     return null;
   }

@@ -937,7 +937,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
-    if (rowLimit == 0) {
+    if (rowLimit <= 0) {
       return this;
     }
 
@@ -1027,7 +1027,8 @@ public class LogicalPlanBuilder {
       boolean orderByHeat,
       boolean prefixPath,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1038,7 +1039,8 @@ public class LogicalPlanBuilder {
             orderByHeat,
             prefixPath,
             templateMap,
-            scope);
+            scope,
+            timeseriesOrdering);
     return this;
   }
 
