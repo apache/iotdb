@@ -441,4 +441,62 @@ public class IoTDBTreePatternFormatIT extends AbstractPipeDualTreeModelAutoIT {
         "Time,root.db1.d1.s,root.db.d1.t,root.db.d2.s,",
         expectedResSet);
   }
+
+  @Test
+  public void testIoTDBPatternWithInclusionAndExclusionHistoricalData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(
+        "source.pattern.inclusion", "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+    sourceAttributes.put("source.pattern.exclusion", "root.test.g_0.d_20.**");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.test.g_0.d_21(time, s_1) values (1, 1)",
+            "insert into root.test.g_0.d_22(time, s_1) values (2, 2)",
+            "insert into root.test.g_0.d_20(time, s_0, s_1) values (3, 3, 3)",
+            "insert into root.test.g_0.d_30(time, s_1) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        true, // isHistorical = true
+        "select * from root.test.**",
+        "Time,root.test.g_0.d_21.s_1,root.test.g_0.d_22.s_1,",
+        expectedResSet);
+  }
+
+  @Test
+  public void testIoTDBPatternWithInclusionAndExclusionRealtimeData() throws Exception {
+    final Map<String, String> sourceAttributes = new HashMap<>();
+    sourceAttributes.put(
+        "source.pattern.inclusion", "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+    sourceAttributes.put("source.pattern.exclusion", "root.test.g_0.d_20.**");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("user", "root");
+
+    final List<String> insertQueries =
+        Arrays.asList(
+            "insert into root.test.g_0.d_21(time, s_1) values (1, 1)",
+            "insert into root.test.g_0.d_22(time, s_1) values (2, 2)",
+            "insert into root.test.g_0.d_20(time, s_0, s_1) values (3, 3, 3)",
+            "insert into root.test.g_0.d_30(time, s_1) values (4, 4)");
+
+    final Set<String> expectedResSet = new HashSet<>();
+    expectedResSet.add("1,1.0,null,");
+    expectedResSet.add("2,null,2.0,");
+
+    testPipeWithMultiplePatterns(
+        sourceAttributes,
+        insertQueries,
+        false, // isHistorical = false
+        "select * from root.test.**",
+        "Time,root.test.g_0.d_21.s_1,root.test.g_0.d_22.s_1,",
+        expectedResSet);
+  }
 }
