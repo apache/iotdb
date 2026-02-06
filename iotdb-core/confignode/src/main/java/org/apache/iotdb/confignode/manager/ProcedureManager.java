@@ -1367,9 +1367,9 @@ public class ProcedureManager {
     }
   }
 
-  public TSStatus alterPipe(TAlterPipeReq req) {
+  public TSStatus alterPipe(final TAlterPipeReq req) {
     try {
-      AlterPipeProcedureV2 procedure = new AlterPipeProcedureV2(req);
+      final AlterPipeProcedureV2 procedure = new AlterPipeProcedureV2(req);
       executor.submitProcedure(procedure);
       TSStatus status = waitingProcedureFinished(procedure);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
