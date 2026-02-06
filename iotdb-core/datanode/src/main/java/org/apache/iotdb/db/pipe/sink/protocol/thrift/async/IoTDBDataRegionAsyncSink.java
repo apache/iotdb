@@ -127,6 +127,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       new ConcurrentHashMap<>();
 
   private boolean enableSendTsFileLimit;
+  private volatile boolean isConnectionException;
 
   @Override
   public void validate(final PipeParameterValidator validator) throws Exception {
