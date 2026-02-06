@@ -1328,6 +1328,7 @@ public class LogicalPlanBuilder {
                   false,
                   Ordering.ASC,
                   true)
+              .planSort(analysis.getMergeOrderParameter())
               .getRoot();
     } else if (analysis.getMergeOrderParameter().isEmpty()) {
       CollectNode collectNode =
