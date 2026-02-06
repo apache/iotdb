@@ -583,7 +583,7 @@ public class FileUtils {
   }
 
   public static String getIllegalError4Directory(final String path) {
-    if (path.equals(".") || path.equals("..") || path.contains("./") || path.contains(".\\")) {
+    if (path.equals(".") || path.equals("..") || path.contains("/") || path.contains("\\")) {
       return ILLEGAL_PATH_MESSAGE;
     }
     if (!WindowsOSUtils.isLegalPathSegment4Windows(path)) {
