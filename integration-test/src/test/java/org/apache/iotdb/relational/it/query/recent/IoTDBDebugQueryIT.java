@@ -36,6 +36,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class})
@@ -81,7 +82,7 @@ public class IoTDBDebugQueryIT {
     tableResultSetEqualTest(
         "debug select time,device,value from table1", expectedHeader, retArray, DATABASE_NAME);
 
-    dataNodeWrapper.logContains("Cache miss: table1.d1");
+    assertTrue(dataNodeWrapper.logContains("Cache miss: table1.d1"));
   }
 
   @Test
@@ -99,6 +100,6 @@ public class IoTDBDebugQueryIT {
         expectedHeader,
         retArray);
 
-    dataNodeWrapper.logContains("Cache miss: root.test.departments");
+    assertTrue(dataNodeWrapper.logContains("Cache miss: root.test.departments"));
   }
 }

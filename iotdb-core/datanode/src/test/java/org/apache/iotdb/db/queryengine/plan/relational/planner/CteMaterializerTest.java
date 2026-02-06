@@ -116,8 +116,8 @@ public class CteMaterializerTest {
             Mockito.anyMap(), // Map<NodeRef<Table>, CteDataStore>
             Mockito.any(), // ExplainType
             Mockito.anyLong(), // timeOut
-            Mockito.anyBoolean(),
-            false)) // userQuery
+            Mockito.anyBoolean(), // userQuery
+            false)) // debug
         .thenReturn(mockResult);
   }
 
