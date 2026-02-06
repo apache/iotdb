@@ -364,7 +364,7 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
       TSDataType targetDataType = measurementMap.get(measurement);
       if (valueChunkMetadata.getDataType() != targetDataType) {
         SchemaUtils.rewriteAlignedChunkMetadataStatistics(alignedChunkMetadata, i, targetDataType);
-        alignedChunkMetadata.setModified(true);
+        alignedChunkMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
       }
     }
   }
@@ -571,7 +571,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
           return null;
         }
         chunkMetadataList.set(index, chunkMetadata);
-        chunkMetadata.setModified(true);
+        chunkMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
       }
       if (!useFakeStatistics) {
         if (chunkMetadata != null && targetDataType.isCompatible(chunkMetadata.getDataType())) {
@@ -597,7 +597,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
             return null;
           }
           memChunk.setChunkMetadata(rewritedChunkMetadata);
-          memChunk.getChunkMetaData().setModified(true);
+          memChunk.getChunkMetaData().setDataTypeModifiedAndCannotUseStatistics(true);
         }
         if (useFakeStatistics) {
           memChunk.initChunkMetaFromTVListsWithFakeStatistics();

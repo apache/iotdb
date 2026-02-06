@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import javax.validation.constraints.NotNull;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -324,7 +323,7 @@ public class SchemaUtils {
     }
     if (!SchemaUtils.canUseStatisticsAfterAlter(
         timeseriesMetadata.getTsDataType(), targetDataType)) {
-      markAllChunkMetadataModified(timeseriesMetadata);
+      timeseriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
     }
   }
 
@@ -340,17 +339,8 @@ public class SchemaUtils {
       if (valueTimeseriesMetadata != null
           && !SchemaUtils.canUseStatisticsAfterAlter(
               valueTimeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))) {
-        markAllChunkMetadataModified(alignedTimeSeriesMetadata.getTimeseriesMetadata());
+        alignedTimeSeriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
         return;
-      }
-    }
-  }
-
-  private static void markAllChunkMetadataModified(@NotNull TimeseriesMetadata timeseriesMetadata) {
-    timeseriesMetadata.setModified(true);
-    for (IChunkMetadata iChunkMetadata : timeseriesMetadata.getChunkMetadataList()) {
-      if (iChunkMetadata != null) {
-        iChunkMetadata.setModified(true);
       }
     }
   }

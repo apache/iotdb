@@ -45,8 +45,6 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
@@ -486,27 +484,7 @@ public class SeriesScanUtil implements Accountable {
   protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
-    chunkMetadataList.forEach(
-        chunkMetadata -> {
-          if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
-            AbstractAlignedChunkMetadata alignedChunkMetadata =
-                (AbstractAlignedChunkMetadata) chunkMetadata;
-            for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-              if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null
-                  && !SchemaUtils.canUseStatisticsAfterAlter(
-                      alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
-                      getTsDataTypeList().get(i))) {
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
-              }
-            }
-          } else if (chunkMetadata instanceof ChunkMetadata) {
-            if (!SchemaUtils.canUseStatisticsAfterAlter(
-                chunkMetadata.getDataType(), getTsDataTypeList().get(0))) {
-              chunkMetadata.setModified(true);
-            }
-          }
-          chunkMetadata.setSeq(timeSeriesMetadata.isSeq());
-        });
+    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
     cachedChunkMetadata.addAll(chunkMetadataList);
   }

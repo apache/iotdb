@@ -40,7 +40,6 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.AbstractAlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -453,45 +452,22 @@ public class FileLoaderUtils {
       throws IOException {
     checkArgument(chunkMetaData != null, "Can't init null chunkMeta");
 
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader;
-    boolean cannotUseStatisticsAfterAlter = false;
-    if (chunkMetaData instanceof AbstractAlignedChunkMetadata) {
-      AbstractAlignedChunkMetadata alignedChunkMetadata =
-          (AbstractAlignedChunkMetadata) chunkMetaData;
-      if (alignedChunkMetadata.isModified()) {
-        for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
-            if (!SchemaUtils.canUseStatisticsAfterAlter(
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
-                targetDataTypeList.get(i))) {
-              cannotUseStatisticsAfterAlter = true;
-              break;
-            }
-          }
-        }
-      }
-      IChunkLoader chunkLoader = alignedChunkMetadata.getChunkLoader();
-      chunkReader = chunkLoader.getChunkReader(alignedChunkMetadata, globalTimeFilter);
-    } else {
-      if (chunkMetaData.isModified()
-          && !SchemaUtils.canUseStatisticsAfterAlter(
-              chunkMetaData.getDataType(), targetDataTypeList.get(0))) {
-        cannotUseStatisticsAfterAlter = true;
-      }
-      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-      try {
-        chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
-      } catch (ChunkTypeInconsistentException e) {
-        // if the chunk in tsfile is a value chunk of aligned series, we should skip all data of
-        // this chunk.
-        return Collections.emptyList();
-      }
+    try {
+      chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
+    } catch (ChunkTypeInconsistentException e) {
+      // if the chunk in tsfile is a value chunk of aligned series but registered series is
+      // non-aligned, we should skip all data of
+      // this chunk.
+      return Collections.emptyList();
     }
 
-    if (cannotUseStatisticsAfterAlter) {
-      chunkReader.loadPageReaderList().forEach(iPageReader -> iPageReader.setModified(true));
+    List<IPageReader> pageReaderList = chunkReader.loadPageReaderList();
+    if (chunkMetaData.isDataTypeModifiedAndCannotUseStatistics()) {
+      pageReaderList.forEach(iPageReader -> iPageReader.setModified(true));
     }
-    return chunkReader.loadPageReaderList();
+    return pageReaderList;
   }
 
   /**
