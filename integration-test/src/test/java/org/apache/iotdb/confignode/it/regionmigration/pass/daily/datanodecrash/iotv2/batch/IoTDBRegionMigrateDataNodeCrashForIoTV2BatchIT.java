@@ -25,6 +25,7 @@ import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliab
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.DailyIT;
 
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -41,7 +42,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2BatchIT
   private final int configNodeNum = 1;
   private final int dataNodeNum = 3;
 
-  //  @Test
+  @Test
   public void coordinatorCrashDuringAddPeerTransition() throws Exception {
     failTest(
         2,
@@ -53,7 +54,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2BatchIT
         KillNode.COORDINATOR_DATANODE);
   }
 
-  //  @Test
+  @Test
   public void coordinatorCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
@@ -69,7 +70,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2BatchIT
 
   // region Original DataNode crash tests
 
-  //  @Test
+  @Test
   public void originalCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
@@ -85,7 +86,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2BatchIT
 
   // region Destination DataNode crash tests
 
-  //  @Test
+  @Test
   public void destinationCrashDuringCreateLocalPeer() throws Exception {
     failTest(
         2,
@@ -97,7 +98,7 @@ public class IoTDBRegionMigrateDataNodeCrashForIoTV2BatchIT
         KillNode.DESTINATION_DATANODE);
   }
 
-  //  @Test
+  @Test
   public void destinationCrashDuringAddPeerDone() throws Exception {
     failTest(
         2,
