@@ -222,7 +222,7 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
     } catch (final Throwable throwable) {
       t = throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
     return Optional.empty();
   }
