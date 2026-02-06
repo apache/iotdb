@@ -458,16 +458,13 @@ public class FileLoaderUtils {
       chunkReader = chunkLoader.getChunkReader(chunkMetaData, globalTimeFilter);
     } catch (ChunkTypeInconsistentException e) {
       // if the chunk in tsfile is a value chunk of aligned series but registered series is
-      // non-aligned, we should skip all data of
-      // this chunk.
+      // non-aligned, we should skip all data of this chunk.
       return Collections.emptyList();
     }
-
-    List<IPageReader> pageReaderList = chunkReader.loadPageReaderList();
     if (chunkMetaData.isDataTypeModifiedAndCannotUseStatistics()) {
-      pageReaderList.forEach(iPageReader -> iPageReader.setModified(true));
+      chunkReader.markDataTypeModifiedAndCannotUseStatistics();
     }
-    return pageReaderList;
+    return chunkReader.loadPageReaderList();
   }
 
   /**
