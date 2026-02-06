@@ -340,7 +340,9 @@ public class PredicatePushDown implements PlanOptimizer {
 
       if (cannotPushDownConjuncts.isEmpty()) {
         // all conjuncts can be push down
-        return node;
+        PlanNode resultNode = planTransform(node, context);
+        resultNode = planProject(resultNode, context);
+        return resultNode;
       } else {
         return planFilter(
             node, PredicateUtils.combineConjuncts(cannotPushDownConjuncts), context, true);

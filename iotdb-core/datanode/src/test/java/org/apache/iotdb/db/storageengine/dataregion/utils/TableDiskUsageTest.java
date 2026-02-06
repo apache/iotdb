@@ -65,6 +65,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("test");
     Mockito.when(mockDataRegion.getDataRegionId()).thenReturn(new DataRegionId(0));
     Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
+    Mockito.when(mockDataRegion.isTableModel()).thenReturn(true);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), mockDataRegion);
     mockTsFileManager = new TsFileManager("test", "0", "");
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(mockTsFileManager);
@@ -127,8 +128,6 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     timePartitionTableSizeMap.put("table1", 0L);
     timePartitionTableSizeMap.put("table2", 0L);
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
-    TableDiskUsageCacheReader reader =
-        new TableDiskUsageCacheReader(mockDataRegion, context, false);
     queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
