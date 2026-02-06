@@ -90,24 +90,24 @@ public class SessionExample {
     }
 
     //     createTemplate();
-    // createTimeseries();
-    // createMultiTimeseries();
-    // createMultiTimeseriesWithNullPartical();
-    // insertRecord();
-    // insertTablet();
+    createTimeseries();
+    createMultiTimeseries();
+    createMultiTimeseriesWithNullPartical();
+    insertRecord();
+    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
-    insertRecords();
+    //    insertRecords();
     //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
-    // queryByIterator();
+    queryByIterator();
     //    queryWithTimeout();
-    // rawDataQuery();
-    // lastDataQuery();
-    // aggregationQuery();
-    // groupByQuery();
+    rawDataQuery();
+    lastDataQuery();
+    aggregationQuery();
+    groupByQuery();
     //    deleteData();
     //    deleteTimeseries();
     //    setTimeout();
