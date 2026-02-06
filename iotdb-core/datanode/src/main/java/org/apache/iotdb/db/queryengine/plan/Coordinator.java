@@ -306,6 +306,9 @@ public class Coordinator {
       if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
+      if (userQuery) {
+        System.out.println("--------------" + debug);
+      }
       queryContext =
           new MPPQueryContext(
               sql,
@@ -488,6 +491,8 @@ public class Coordinator {
                 startTime)));
   }
 
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
   public ExecutionResult executeForTableModel(
       Statement statement,
       SqlParser sqlParser,
@@ -512,6 +517,54 @@ public class Coordinator {
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
                 startTime)));
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo sessionInfo,
+      String s,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTreeModel(
+        statement,
+        queryId,
+        sessionInfo,
+        s,
+        partitionFetcher,
+        schemaFetcher,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession currSession,
+      Long queryId,
+      SessionInfo sessionInfo,
+      String sql,
+      Metadata metadata,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        currSession,
+        queryId,
+        sessionInfo,
+        sql,
+        metadata,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
