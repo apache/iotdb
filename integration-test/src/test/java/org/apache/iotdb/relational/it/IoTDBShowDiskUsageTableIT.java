@@ -140,7 +140,7 @@ public class IoTDBShowDiskUsageTableIT {
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       SessionDataSet sessionDataSet =
           session.executeQueryStatement(
-              "select * from information_schema.table_disk_usage where database = 'test' and (time_partition < 0 or node_id >= 2)");
+              "select * from information_schema.table_disk_usage where database = 'test' and (time_partition < 0 or datanode_id >= 2)");
       SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
       while (iterator.next()) {
         Assert.assertTrue(

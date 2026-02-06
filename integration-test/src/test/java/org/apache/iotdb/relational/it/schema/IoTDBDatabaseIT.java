@@ -414,6 +414,7 @@ public class IoTDBDatabaseIT {
               "regions,INF,",
               "services,INF,",
               "subscriptions,INF,",
+              "table_disk_usage,INF,",
               "tables,INF,",
               "topics,INF,",
               "views,INF,"));
@@ -566,6 +567,17 @@ public class IoTDBDatabaseIT {
                   "mpp_port,INT32,ATTRIBUTE,",
                   "data_consensus_port,INT32,ATTRIBUTE,",
                   "schema_consensus_port,INT32,ATTRIBUTE,")));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("desc table_disk_usage"),
+          "ColumnName,DataType,Category,",
+          new HashSet<>(
+              Arrays.asList(
+                  "database,STRING,FIELD,",
+                  "table_name,STRING,FIELD,",
+                  "datanode_id,INT32,FIELD,",
+                  "region_id,INT32,FIELD,",
+                  "time_partition,INT64,FIELD,",
+                  "size_in_bytes,INT64,FIELD,")));
 
       // Only root user is allowed
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from regions"));
@@ -580,6 +592,8 @@ public class IoTDBDatabaseIT {
       Assert.assertThrows(SQLException.class, () -> statement.execute("select * from data_nodes"));
       Assert.assertThrows(
           SQLException.class, () -> statement.executeQuery("select * from pipe_plugins"));
+      Assert.assertThrows(
+          SQLException.class, () -> statement.executeQuery("select * from table_disk_usage"));
 
       // Filter out not self-created pipes
       TestUtils.assertResultSetEqual(
