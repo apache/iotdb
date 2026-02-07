@@ -36,6 +36,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   private final boolean isAscending;
   private final boolean leftCRightO;
+  private final boolean rightClosed;
 
   private long curInterval;
   private long curSlidingStep;
@@ -51,13 +52,15 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       long interval,
       long slidingStep,
       boolean isAscending,
-      boolean leftCRightO) {
+      boolean leftCRightO,
+      boolean rightClosed) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
     this.isAscending = isAscending;
     this.leftCRightO = leftCRightO;
+    this.rightClosed = rightClosed;
     initIntervalAndStep();
   }
 
@@ -130,6 +133,21 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
       return getFinalTimeRange(curTimeRange, leftCRightO);
     }
     return null;
+  }
+
+  @Override
+  public TimeRange getFinalTimeRange(TimeRange timeRange, boolean leftCRightO) {
+    // For rightClosed intervals ending at endTime, preserve the right boundary
+    if (rightClosed && timeRange.getMax() == endTime) {
+      // Still need to adjust left boundary if leftCRightO is false
+      return leftCRightO
+          ? timeRange // [start, end] - no adjustment needed
+          : new TimeRange(timeRange.getMin() + 1, timeRange.getMax()); // (start, end]
+    }
+    // Standard adjustment for non-end windows
+    return leftCRightO
+        ? new TimeRange(timeRange.getMin(), timeRange.getMax() - 1)
+        : new TimeRange(timeRange.getMin() + 1, timeRange.getMax());
   }
 
   private void initIntervalAndStep() {
