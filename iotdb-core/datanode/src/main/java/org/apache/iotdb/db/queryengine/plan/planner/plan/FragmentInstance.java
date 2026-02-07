@@ -79,6 +79,8 @@ public class FragmentInstance implements IConsensusRequest {
   // We need to cache and calculate the statistics of this FragmentInstance if it is.
   private boolean isExplainAnalyze = false;
 
+  private final boolean debug;
+
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
 
@@ -88,7 +90,8 @@ public class FragmentInstance implements IConsensusRequest {
       TimePredicate globalTimePredicate,
       QueryType type,
       long timeOut,
-      SessionInfo sessionInfo) {
+      SessionInfo sessionInfo,
+      boolean debug) {
     this.fragment = fragment;
     this.globalTimePredicate = globalTimePredicate;
     this.id = id;
@@ -96,6 +99,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeOut = timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
+    this.debug = debug;
   }
 
   public FragmentInstance(
@@ -106,8 +110,9 @@ public class FragmentInstance implements IConsensusRequest {
       long timeOut,
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
+      boolean debug,
       boolean isRoot) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -119,8 +124,9 @@ public class FragmentInstance implements IConsensusRequest {
       long timeOut,
       SessionInfo sessionInfo,
       boolean isExplainAnalyze,
+      boolean debug,
       boolean isRoot) {
-    this(fragment, id, null, type, timeOut, sessionInfo);
+    this(fragment, id, null, type, timeOut, sessionInfo, debug);
     this.isRoot = isRoot;
     this.isExplainAnalyze = isExplainAnalyze;
   }
@@ -132,8 +138,9 @@ public class FragmentInstance implements IConsensusRequest {
       QueryType type,
       long timeOut,
       SessionInfo sessionInfo,
-      int dataNodeFINum) {
-    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo);
+      int dataNodeFINum,
+      boolean debug) {
+    this(fragment, id, globalTimePredicate, type, timeOut, sessionInfo, debug);
     this.dataNodeFINum = dataNodeFINum;
   }
 
@@ -200,6 +207,10 @@ public class FragmentInstance implements IConsensusRequest {
     this.dataNodeFINum = dataNodeFINum;
   }
 
+  public boolean isDebug() {
+    return debug;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
@@ -229,9 +240,17 @@ public class FragmentInstance implements IConsensusRequest {
     TimePredicate globalTimePredicate = hasTimePredicate ? TimePredicate.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
+    boolean debug = ReadWriteIOUtils.readBool(buffer);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
-            planFragment, id, globalTimePredicate, queryType, timeOut, sessionInfo, dataNodeFINum);
+            planFragment,
+            id,
+            globalTimePredicate,
+            queryType,
+            timeOut,
+            sessionInfo,
+            dataNodeFINum,
+            debug);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -255,6 +274,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
+      ReadWriteIOUtils.write(debug, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);

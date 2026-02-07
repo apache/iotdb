@@ -139,7 +139,8 @@ public class CteSubqueryTest {
             Mockito.anyMap(), // Map<NodeRef<Table>, CteDataStore>
             Mockito.any(), // ExplainType
             Mockito.anyLong(), // timeOut
-            Mockito.anyBoolean())) // userQuery
+            Mockito.anyBoolean(), // userQuery
+            Mockito.anyBoolean())) // debug
         .thenReturn(mockResult);
 
     // Create QueryExecution mock

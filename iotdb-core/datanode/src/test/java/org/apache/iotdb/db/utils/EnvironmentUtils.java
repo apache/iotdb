@@ -84,7 +84,7 @@ public class EnvironmentUtils {
   private static final TierManager tierManager = TierManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
-  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+  public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   public static FragmentInstanceContext TEST_QUERY_FI_CONTEXT =
       FragmentInstanceContext.createFragmentInstanceContextForCompaction(TEST_QUERY_JOB_ID);
 
@@ -278,7 +278,7 @@ public class EnvironmentUtils {
     }
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID, false);
   }
 
   private static void createAllDir() {

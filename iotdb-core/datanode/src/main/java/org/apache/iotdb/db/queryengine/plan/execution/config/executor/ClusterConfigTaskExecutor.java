@@ -3041,6 +3041,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false,
                 false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.setException(

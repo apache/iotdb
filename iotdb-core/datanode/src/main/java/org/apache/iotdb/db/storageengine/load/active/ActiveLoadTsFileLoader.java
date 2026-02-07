@@ -257,7 +257,8 @@ public class ActiveLoadTsFileLoader {
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IOTDB_CONFIG.getQueryTimeoutThreshold(),
-              false)
+              false,
+              statement.isDebug())
           .status;
     } finally {
       SESSION_MANAGER.removeCurrSession();

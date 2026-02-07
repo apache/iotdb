@@ -512,7 +512,8 @@ public class WriteBackSink implements PipeConnector {
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-              false)
+              false,
+              statement.isDebug())
           .status;
     } catch (final IoTDBRuntimeException e) {
       if (e.getErrorCode() == TSStatusCode.NO_PERMISSION.getStatusCode()) {

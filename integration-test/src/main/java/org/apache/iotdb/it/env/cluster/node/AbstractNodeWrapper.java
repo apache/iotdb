@@ -57,6 +57,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -833,5 +834,19 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   public int[] getPortList() {
     return portList;
+  }
+
+  public void clearLogContent() throws IOException {
+    Files.newOutputStream(Paths.get(getLogPath()), StandardOpenOption.TRUNCATE_EXISTING).close();
+  }
+
+  public boolean logContains(String content) throws IOException {
+    List<String> lines = Files.readAllLines(Paths.get(getLogPath()), StandardCharsets.UTF_8);
+    for (String line : lines) {
+      if (line.contains(content)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

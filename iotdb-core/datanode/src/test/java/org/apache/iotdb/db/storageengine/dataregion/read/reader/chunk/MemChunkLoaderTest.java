@@ -75,7 +75,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -155,7 +155,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -235,7 +235,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -315,7 +315,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -395,7 +395,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();
@@ -475,7 +475,7 @@ public class MemChunkLoaderTest {
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(), chunk);
+    MemChunkLoader memChunkLoader = new MemChunkLoader(new QueryContext(false), chunk);
     try {
       memChunkLoader.loadChunk(chunkMetadata);
       fail();

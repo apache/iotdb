@@ -297,6 +297,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       boolean userQuery,
+      boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -314,6 +315,7 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
+      queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -345,7 +347,15 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
+        statement,
+        queryId,
+        session,
+        sql,
+        partitionFetcher,
+        schemaFetcher,
+        Long.MAX_VALUE,
+        false,
+        statement.isDebug());
   }
 
   public ExecutionResult executeForTreeModel(
@@ -356,12 +366,14 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -425,12 +437,14 @@ public class Coordinator {
       Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
@@ -455,12 +469,14 @@ public class Coordinator {
       String sql,
       Metadata metadata,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -472,6 +488,8 @@ public class Coordinator {
                 startTime)));
   }
 
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
   public ExecutionResult executeForTableModel(
       Statement statement,
       SqlParser sqlParser,
@@ -486,6 +504,7 @@ public class Coordinator {
         session,
         sql,
         false,
+        false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -495,6 +514,54 @@ public class Coordinator {
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
                 startTime)));
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo sessionInfo,
+      String s,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTreeModel(
+        statement,
+        queryId,
+        sessionInfo,
+        s,
+        partitionFetcher,
+        schemaFetcher,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession currSession,
+      Long queryId,
+      SessionInfo sessionInfo,
+      String sql,
+      Metadata metadata,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        currSession,
+        queryId,
+        sessionInfo,
+        sql,
+        metadata,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
