@@ -973,6 +973,7 @@ number
 timeRange
     : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    | LS_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
 // ---- Having Clause
