@@ -51,6 +51,35 @@ public class Cli extends AbstractCli {
   // TODO: Make non-static
   private static final Properties info = new Properties();
 
+  /** Number of reconnection attempts when connection is lost during interactive session. */
+  private static final int RECONNECT_RETRY_NUM = 3;
+
+  /** Delay in ms between reconnection attempts. */
+  private static final long RECONNECT_RETRY_INTERVAL_MS = 1000;
+
+  /** Result of reading and processing one line; used to support reconnection. */
+  private static class ReadLineResult {
+    final boolean stop;
+    final String failedCommand;
+
+    ReadLineResult(boolean stop, String failedCommand) {
+      this.stop = stop;
+      this.failedCommand = failedCommand;
+    }
+
+    static ReadLineResult continueLoop() {
+      return new ReadLineResult(false, null);
+    }
+
+    static ReadLineResult stopLoop() {
+      return new ReadLineResult(true, null);
+    }
+
+    static ReadLineResult reconnectAndRetry(String command) {
+      return new ReadLineResult(false, command);
+    }
+  }
+
   /**
    * IoTDB Client main function.
    *
@@ -155,6 +184,29 @@ public class Cli extends AbstractCli {
     return true;
   }
 
+  private static IoTDBConnection openConnection() throws SQLException {
+    return (IoTDBConnection)
+        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info);
+  }
+
+  private static void setupConnection(IoTDBConnection connection)
+      throws java.sql.SQLException, org.apache.thrift.TException {
+    connection.setQueryTimeout(queryTimeout);
+    properties = connection.getServerProperties();
+    AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+    timestampPrecision = properties.getTimestampPrecision();
+  }
+
+  private static void closeConnectionQuietly(IoTDBConnection connection) {
+    if (connection != null) {
+      try {
+        connection.close();
+      } catch (SQLException ignored) {
+        // ignore
+      }
+    }
+  }
+
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
@@ -195,36 +247,78 @@ public class Cli extends AbstractCli {
   }
 
   private static void receiveCommands(CliContext ctx) throws TException {
-    try (IoTDBConnection connection =
-        (IoTDBConnection)
-            DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
-      connection.setQueryTimeout(queryTimeout);
-      properties = connection.getServerProperties();
-      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
-      timestampPrecision = properties.getTimestampPrecision();
-
+    IoTDBConnection connection = null;
+    try {
+      connection = openConnection();
+      setupConnection(connection);
       echoStarting(ctx);
       displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
       ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
-        boolean readLine = readerReadLine(ctx, connection);
-        if (readLine) {
+        ReadLineResult result = readerReadLine(ctx, connection);
+        if (result.stop) {
           break;
+        }
+        if (result.failedCommand != null) {
+          // Connection failed during processCommand; try to reconnect and retry the command.
+          closeConnectionQuietly(connection);
+          connection = null;
+          boolean reconnected = false;
+          for (int attempt = 1; attempt <= RECONNECT_RETRY_NUM; attempt++) {
+            if (attempt > 1) {
+              try {
+                Thread.sleep(RECONNECT_RETRY_INTERVAL_MS);
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                ctx.getErr().printf("%s: Reconnection interrupted.%n", IOTDB_ERROR_PREFIX);
+                ctx.exit(CODE_ERROR);
+              }
+            }
+            try {
+              connection = openConnection();
+              setupConnection(connection);
+              ctx.getPrinter().println("Connection lost. Reconnected. Retrying command.");
+              processCommand(ctx, result.failedCommand, connection);
+              reconnected = true;
+              break;
+            } catch (SQLException e) {
+              if (attempt == RECONNECT_RETRY_NUM) {
+                ctx.getErr()
+                    .printf(
+                        "%s: Could not reconnect after %d attempts. Please check that the server is running and try again.%n",
+                        IOTDB_ERROR_PREFIX, RECONNECT_RETRY_NUM);
+                ctx.exit(CODE_ERROR);
+              }
+            }
+          }
+          if (!reconnected) {
+            break;
+          }
         }
       }
     } catch (SQLException e) {
       ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
       ctx.exit(CODE_ERROR);
+    } finally {
+      closeConnectionQuietly(connection);
     }
   }
 
-  private static boolean readerReadLine(CliContext ctx, IoTDBConnection connection) {
+  private static ReadLineResult readerReadLine(CliContext ctx, IoTDBConnection connection) {
     String s;
     try {
       s = ctx.getLineReader().readLine(cliPrefix + "> ", null);
-      boolean continues = processCommand(ctx, s, connection);
-      if (!continues) {
-        return true;
+      try {
+        boolean continues = processCommand(ctx, s, connection);
+        if (!continues) {
+          return ReadLineResult.stopLoop();
+        }
+      } catch (SQLException e) {
+        if (isConnectionRelated(e)) {
+          return ReadLineResult.reconnectAndRetry(s);
+        }
+        ctx.getErr().printf("%s: %s%n", IOTDB_ERROR_PREFIX, e.getMessage());
+        return ReadLineResult.stopLoop();
       }
     } catch (UserInterruptException e) {
       // Exit on signal INT requires confirmation.
@@ -233,12 +327,12 @@ public class Cli extends AbstractCli {
       // Exit on EOF (usually by pressing CTRL+D).
       ctx.exit(CODE_OK);
     } catch (IllegalArgumentException e) {
-      if (e.getMessage().contains("history")) {
-        return false;
+      if (e.getMessage() != null && e.getMessage().contains("history")) {
+        return ReadLineResult.continueLoop();
       }
       throw e;
     }
-    return false;
+    return ReadLineResult.continueLoop();
   }
 
   private static void readLine(CliContext ctx) {
