@@ -117,7 +117,7 @@ public class CteMaterializerTest {
             Mockito.any(), // ExplainType
             Mockito.anyLong(), // timeOut
             Mockito.anyBoolean(), // userQuery
-            false)) // debug
+            Mockito.anyBoolean())) // debug
         .thenReturn(mockResult);
   }
 

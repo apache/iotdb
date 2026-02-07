@@ -140,7 +140,7 @@ public class CteSubqueryTest {
             Mockito.any(), // ExplainType
             Mockito.anyLong(), // timeOut
             Mockito.anyBoolean(), // userQuery
-            false)) // debug
+            Mockito.anyBoolean())) // debug
         .thenReturn(mockResult);
 
     // Create QueryExecution mock
