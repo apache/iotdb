@@ -84,6 +84,30 @@ public abstract class AbstractCli {
         || lower.contains("broken pipe");
   }
 
+  /**
+   * Returns true if the SQLException indicates a session/statement state error (e.g. statement ID
+   * no longer valid after reconnect). Used to show a friendly message instead of the raw exception.
+   */
+  static boolean isSessionOrStatementError(SQLException e) {
+    if (e == null) {
+      return false;
+    }
+    if (e.getMessage() != null && matchesSessionOrStatementFailure(e.getMessage())) {
+      return true;
+    }
+    Throwable cause = e.getCause();
+    return cause != null
+        && cause.getMessage() != null
+        && matchesSessionOrStatementFailure(cause.getMessage());
+  }
+
+  private static boolean matchesSessionOrStatementFailure(String msg) {
+    String lower = msg.toLowerCase();
+    return lower.contains("doesn't exist in this session")
+        || lower.contains("statementid")
+        || lower.contains("statement id");
+  }
+
   static final String HOST_ARGS = "h";
   static final String HOST_NAME = "host";
 
@@ -656,7 +680,13 @@ public abstract class AbstractCli {
       if (isConnectionRelated(e)) {
         throw e;
       }
-      ctx.getPrinter().println("Msg: " + e);
+      if (isSessionOrStatementError(e)) {
+        ctx.getPrinter()
+            .println(
+                "Reconnected, but the previous command could not be completed. Please run your command again.");
+      } else {
+        ctx.getPrinter().println("Msg: " + e);
+      }
       executeStatus = CODE_ERROR;
     } catch (Exception e) {
       ctx.getPrinter().println("Msg: " + e);

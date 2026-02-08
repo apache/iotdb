@@ -282,6 +282,15 @@ public class Cli extends AbstractCli {
               reconnected = true;
               break;
             } catch (SQLException e) {
+              if (isSessionOrStatementError(e)) {
+                // Reconnect succeeded but retry failed due to session/statement state; ask user to
+                // run the command again.
+                ctx.getPrinter()
+                    .println(
+                        "Reconnected, but the previous command could not be completed. Please run your command again.");
+                reconnected = true;
+                break;
+              }
               if (attempt == RECONNECT_RETRY_NUM) {
                 ctx.getErr()
                     .printf(
