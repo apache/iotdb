@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.relational.it.schema;
 
-import java.io.File;
-import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.isession.ITableSession;
@@ -50,6 +48,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -65,10 +64,10 @@ import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NUMS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
@@ -2053,9 +2052,10 @@ public class IoTDBTableIT {
   @Test
   public void testAlterTableAndColumnWithCompaction() throws Exception {
     try (final Connection connection =
-        EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement stmt = connection.createStatement()) {
-      if (EnvFactory.getEnv().getDataNodeWrapperList() != null && EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+      if (EnvFactory.getEnv().getDataNodeWrapperList() != null
+          && EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
         // file distribution is not deterministic in cluster mode, so skip this test
         return;
       }
@@ -2082,30 +2082,38 @@ public class IoTDBTableIT {
 
       stmt.execute("FLUSH");
 
-//      Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
-//        DataNodeWrapper nodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
-//        String dataDir = nodeWrapper.getDataNodeDir() + File.separator + "data" + File.separator + "sequence";
-//        File dbDir = new File(dataDir, db);
-//        String[] regionList = dbDir.list();
-//        assertNotNull(regionList);
-//        assertEquals(1, regionList.length);
-//        File regionDir = new File(dbDir, regionList[0]);
-//        String[] partitionList = regionDir.list();
-//        assertNotNull(partitionList);
-//        assertEquals(1, partitionList.length);
-//        File partitionDir = new File(regionDir, partitionList[0]);
-//        File[] fileList = partitionDir.listFiles();
-//        assertNotNull(fileList);
-//        for (File file : fileList) {
-//          if (file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-//            TsFileID tsFileID = new TsFileID(file.getAbsolutePath());
-//            if (tsFileID.getInnerCompactionCount() == 0) {
-//              return false;
-//            }
-//          }
-//        }
-//        return true;
-//      });
+      Awaitility.await()
+          .atMost(30, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                DataNodeWrapper nodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+                String dataDir =
+                    nodeWrapper.getDataNodeDir()
+                        + File.separator
+                        + "data"
+                        + File.separator
+                        + "sequence";
+                File dbDir = new File(dataDir, db);
+                String[] regionList = dbDir.list();
+                assertNotNull(regionList);
+                assertEquals(1, regionList.length);
+                File regionDir = new File(dbDir, regionList[0]);
+                String[] partitionList = regionDir.list();
+                assertNotNull(partitionList);
+                assertEquals(1, partitionList.length);
+                File partitionDir = new File(regionDir, partitionList[0]);
+                File[] fileList = partitionDir.listFiles();
+                assertNotNull(fileList);
+                for (File file : fileList) {
+                  if (file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+                    TsFileID tsFileID = new TsFileID(file.getAbsolutePath());
+                    if (tsFileID.getInnerCompactionCount() == 0) {
+                      return false;
+                    }
+                  }
+                }
+                return true;
+              });
 
       try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM tab1_new")) {
         if (rs.next()) {
