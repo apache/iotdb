@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -48,6 +49,9 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;
 
+  // Ordering of timeseries full path in this region, null means no ordering.
+  private final Ordering timeseriesOrdering;
+
   private final SchemaFilter schemaFilter;
 
   private final Map<Integer, Template> templateMap;
@@ -66,6 +70,25 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     this.schemaFilter = schemaFilter;
     this.orderByHeat = orderByHeat;
     this.templateMap = templateMap;
+    this.timeseriesOrdering = null;
+  }
+
+  public TimeSeriesSchemaScanNode(
+      PlanNodeId id,
+      PartialPath partialPath,
+      SchemaFilter schemaFilter,
+      long limit,
+      long offset,
+      boolean orderByHeat,
+      boolean isPrefixPath,
+      @NotNull Map<Integer, Template> templateMap,
+      @NotNull PathPatternTree scope,
+      Ordering timeseriesOrdering) {
+    super(id, partialPath, limit, offset, isPrefixPath, scope);
+    this.schemaFilter = schemaFilter;
+    this.orderByHeat = orderByHeat;
+    this.templateMap = templateMap;
+    this.timeseriesOrdering = timeseriesOrdering;
   }
 
   public SchemaFilter getSchemaFilter() {
@@ -82,6 +105,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(offset, byteBuffer);
     ReadWriteIOUtils.write(orderByHeat, byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+    ReadWriteIOUtils.write(timeseriesOrdering != null, byteBuffer);
+    ReadWriteIOUtils.write(timeseriesOrdering == Ordering.DESC, byteBuffer);
 
     ReadWriteIOUtils.write(templateMap.size(), byteBuffer);
     for (Template template : templateMap.values()) {
@@ -99,6 +124,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(offset, stream);
     ReadWriteIOUtils.write(orderByHeat, stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(timeseriesOrdering != null, stream);
+    ReadWriteIOUtils.write(timeseriesOrdering == Ordering.DESC, stream);
 
     ReadWriteIOUtils.write(templateMap.size(), stream);
     for (Template template : templateMap.values()) {
@@ -120,6 +147,12 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
     long offset = ReadWriteIOUtils.readLong(byteBuffer);
     boolean oderByHeat = ReadWriteIOUtils.readBool(byteBuffer);
     boolean isPrefixPath = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean orderByTimeseries = ReadWriteIOUtils.readBool(byteBuffer);
+    boolean orderByTimeseriesDesc = ReadWriteIOUtils.readBool(byteBuffer);
+    Ordering timeseriesOrdering = null;
+    if (orderByTimeseries) {
+      timeseriesOrdering = orderByTimeseriesDesc ? Ordering.DESC : Ordering.ASC;
+    }
 
     int templateNum = ReadWriteIOUtils.readInt(byteBuffer);
     Map<Integer, Template> templateMap = new HashMap<>();
@@ -141,11 +174,16 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
         oderByHeat,
         isPrefixPath,
         templateMap,
-        scope);
+        scope,
+        timeseriesOrdering);
   }
 
   public boolean isOrderByHeat() {
     return orderByHeat;
+  }
+
+  public Ordering getTimeseriesOrdering() {
+    return timeseriesOrdering;
   }
 
   public Map<Integer, Template> getTemplateMap() {
@@ -168,7 +206,8 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
         orderByHeat,
         isPrefixPath,
         templateMap,
-        scope);
+        scope,
+        timeseriesOrdering);
   }
 
   @Override
@@ -190,12 +229,14 @@ public class TimeSeriesSchemaScanNode extends SchemaQueryScanNode {
       return false;
     }
     TimeSeriesSchemaScanNode that = (TimeSeriesSchemaScanNode) o;
-    return orderByHeat == that.orderByHeat && Objects.equals(schemaFilter, that.schemaFilter);
+    return orderByHeat == that.orderByHeat
+        && Objects.equals(timeseriesOrdering, that.timeseriesOrdering)
+        && Objects.equals(schemaFilter, that.schemaFilter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), schemaFilter, orderByHeat);
+    return Objects.hash(super.hashCode(), schemaFilter, orderByHeat, timeseriesOrdering);
   }
 
   @Override

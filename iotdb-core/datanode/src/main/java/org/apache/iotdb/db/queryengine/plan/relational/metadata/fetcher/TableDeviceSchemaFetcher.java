@@ -187,7 +187,7 @@ public class TableDeviceSchemaFetcher {
       requestCache.removeCompletedRequest(statement);
       queryIdSet.remove(queryId);
       attributeGuard.tryUpdateCache();
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
   }
 
@@ -548,7 +548,7 @@ public class TableDeviceSchemaFetcher {
         queryIdSet.remove(queryId);
         attributeGuard.tryUpdateCache();
       }
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
   }
 

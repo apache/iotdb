@@ -295,7 +295,7 @@ class ClusterSchemaFetchExecutor {
       t = throwable;
       throw throwable;
     } finally {
-      coordinator.cleanupQueryExecution(queryId, null, t);
+      coordinator.cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, t);
     }
   }
 
