@@ -396,7 +396,7 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_rpc_thrift_compression_enabled",
                         String.valueOf(config.isPipeSinkRPCThriftCompressionEnabled())))));
-    config.setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
+    config.setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(
         Long.parseLong(
             Optional.ofNullable(
                     properties.getProperty("pipe_async_sink_max_retry_execution_time_ms_per_call"))

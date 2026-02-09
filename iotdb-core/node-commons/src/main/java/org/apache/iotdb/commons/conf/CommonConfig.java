@@ -279,7 +279,7 @@ public class CommonConfig {
   private int pipeAsyncSinkForcedRetryTsFileEventQueueSize = 5;
   private int pipeAsyncSinkForcedRetryTabletEventQueueSize = 20;
   private int pipeAsyncSinkForcedRetryTotalEventQueueSize = 30;
-  private long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall = 500;
+  private long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = 500;
   private int pipeAsyncConnectorSelectorNumber =
       Math.max(4, Runtime.getRuntime().availableProcessors() / 2);
   private int pipeAsyncConnectorMaxClientNumber =
@@ -1187,21 +1187,20 @@ public class CommonConfig {
     return pipeAsyncSinkForcedRetryTotalEventQueueSize;
   }
 
-  public void setPipeAsyncConnectorMaxRetryExecutionTimeMsPerCall(
-      long pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall) {
-    if (this.pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall
-        == pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall) {
+  public void setPipeAsyncSinkMaxRetryExecutionTimeMsPerCall(
+      long pipeAsyncSinkMaxRetryExecutionTimeMsPerCall) {
+    if (this.pipeAsyncSinkMaxRetryExecutionTimeMsPerCall
+        == pipeAsyncSinkMaxRetryExecutionTimeMsPerCall) {
       return;
     }
-    this.pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall =
-        pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
+    this.pipeAsyncSinkMaxRetryExecutionTimeMsPerCall = pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
     logger.info(
-        "pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall is set to {}.",
-        pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall);
+        "pipeAsyncSinkMaxRetryExecutionTimeMsPerCall is set to {}.",
+        pipeAsyncSinkMaxRetryExecutionTimeMsPerCall);
   }
 
   public long getPipeAsyncSinkMaxRetryExecutionTimeMsPerCall() {
-    return pipeAsyncConnectorMaxRetryExecutionTimeMsPerCall;
+    return pipeAsyncSinkMaxRetryExecutionTimeMsPerCall;
   }
 
   public int getPipeAsyncSinkSelectorNumber() {
