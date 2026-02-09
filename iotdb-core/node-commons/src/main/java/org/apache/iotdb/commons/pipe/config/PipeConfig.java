@@ -117,6 +117,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeRealTimeQueueMaxWaitingTsFileSize();
   }
 
+  public boolean getPipeRealtimeForceDowngradingEnabled() {
+    return COMMON_CONFIG.getPipeRealtimeForceDowngradingEnabled();
+  }
+
+  public double getPipeRealtimeForceDowngradingProportion() {
+    return COMMON_CONFIG.getPipeRealtimeForceDowngradingProportion();
+  }
+
   /////////////////////////////// Subtask Executor ///////////////////////////////
 
   public int getPipeSubtaskExecutorMaxThreadNum() {
@@ -477,6 +485,12 @@ public class PipeConfig {
     LOGGER.info(
         "PipeRealTimeQueuePollHistoricalTsFileThreshold: {}",
         getPipeRealTimeQueuePollHistoricalTsFileThreshold());
+    LOGGER.info(
+        "PipeRealTimeQueueMaxWaitingTsFileSize: {}", getPipeRealTimeQueueMaxWaitingTsFileSize());
+    LOGGER.info(
+        "PipeRealtimeForceDowngradingEnabled: {}", getPipeRealtimeForceDowngradingEnabled());
+    LOGGER.info(
+        "PipeRealtimeForceDowngradingProportion: {}", getPipeRealtimeForceDowngradingProportion());
 
     LOGGER.info("PipeSubtaskExecutorMaxThreadNum: {}", getPipeSubtaskExecutorMaxThreadNum());
     LOGGER.info(
