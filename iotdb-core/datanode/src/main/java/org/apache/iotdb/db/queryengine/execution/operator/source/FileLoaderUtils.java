@@ -122,8 +122,7 @@ public class FileLoaderUtils {
         if (timeSeriesMetadata != null) {
           long t2 = System.nanoTime();
           List<ModEntry> pathModifications =
-              context.getPathModifications(
-                  resource, deviceId, measurement);
+              context.getPathModifications(resource, deviceId, measurement);
           timeSeriesMetadata.setModified(!pathModifications.isEmpty());
           timeSeriesMetadata.setChunkMetadataLoader(
               new DiskChunkMetadataLoader(resource, context, globalTimeFilter, pathModifications));
@@ -215,7 +214,12 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         alignedTimeSeriesMetadata =
             loadAlignedTimeSeriesMetadataFromDisk(
-                resource, alignedPath, context, globalTimeFilter, ignoreAllNullRows, maxTsFileSetEndVersion);
+                resource,
+                alignedPath,
+                context,
+                globalTimeFilter,
+                ignoreAllNullRows,
+                maxTsFileSetEndVersion);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
