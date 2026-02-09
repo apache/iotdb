@@ -179,7 +179,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     }
   }
 
-  private void handleReq(final AirGapPseudoTPipeTransferRequest req) throws IOException {
+  private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime) throws IOException {
     final TPipeTransferResp resp = agent.receive(req);
 
     final TSStatus status = resp.getStatus();
@@ -200,7 +200,9 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      handleReq(req);
+      if (System.currentTimeMillis() - startTime < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
+        handleReq(req, startTime);
+      }
     } else {
       LOGGER.warn(
           "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
