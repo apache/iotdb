@@ -173,6 +173,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
+      LOGGER.info(
+          "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);
