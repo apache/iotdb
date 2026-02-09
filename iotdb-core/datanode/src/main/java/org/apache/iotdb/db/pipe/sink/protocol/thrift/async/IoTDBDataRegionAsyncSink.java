@@ -684,9 +684,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
    */
   @SuppressWarnings("java:S899")
   public void addFailureEventToRetryQueue(final Event event, final Exception e) {
-    if (e instanceof PipeConnectionException || ThriftClient.isConnectionBroken(e)) {
-      isConnectionException = true;
-    }
+    isConnectionException =
+        e instanceof PipeConnectionException || ThriftClient.isConnectionBroken(e);
     if (event instanceof EnrichedEvent && ((EnrichedEvent) event).isReleased()) {
       return;
     }
