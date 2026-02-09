@@ -75,7 +75,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRepeatedSubmitBeforeExecution() throws Exception {
     LOGGER.warn("testRepeatedSubmitBeforeExecution");
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
@@ -114,7 +114,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRepeatedSubmitWhenExecuting() throws Exception {
     LOGGER.warn("testRepeatedSubmitWhenExecuting");
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
@@ -154,7 +154,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRepeatedSubmitAfterExecution() throws Exception {
     LOGGER.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
@@ -180,7 +180,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   public void testRemoveSelfFromRunningList() throws Exception {
     LOGGER.warn("testRemoveSelfFromRunningList");
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task1 =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
@@ -209,7 +209,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testSizeTieredCompactionStatus() throws Exception {
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     tsFileManager.addAll(seqResources, true);
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(0, tsFileManager, seqResources, true, performer, 0);
@@ -231,7 +231,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
   @Test
   public void testRewriteCrossCompactionFileStatus() throws Exception {
     TsFileManager tsFileManager =
-        new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
+        new TsFileManager("root.compactionTest", "0");
     seqResources = seqResources.subList(1, 5);
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);

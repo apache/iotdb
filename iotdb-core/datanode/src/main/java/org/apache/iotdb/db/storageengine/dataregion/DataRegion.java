@@ -414,7 +414,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
     this.tsFileManager =
-        new TsFileManager(databaseName, dataRegionIdString, dataRegionSysDir.getPath());
+        new TsFileManager(databaseName, dataRegionIdString);
     if (dataRegionSysDir.mkdirs()) {
       logger.info(
           "Database system Directory {} doesn't exist, create it", dataRegionSysDir.getPath());
@@ -471,7 +471,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.databaseName = databaseName;
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
-    this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
+    this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString);
     this.partitionMaxFileVersions = new HashMap<>();
     partitionMaxFileVersions.put(0L, 0L);
     upgradeModFileThreadPool = null;

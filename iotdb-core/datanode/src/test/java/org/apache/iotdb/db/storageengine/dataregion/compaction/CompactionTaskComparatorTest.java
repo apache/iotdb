@@ -63,7 +63,7 @@ public class CompactionTaskComparatorTest {
   private final Logger LOGGER = LoggerFactory.getLogger(CompactionTaskComparatorTest.class);
   private FixedPriorityBlockingQueue<AbstractCompactionTask> compactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
-  private TsFileManager tsFileManager = new TsFileManager("fakeSg", "0", "/");
+  private TsFileManager tsFileManager = new TsFileManager("fakeSg", "0");
 
   @Before
   public void setUp() {
@@ -314,7 +314,7 @@ public class CompactionTaskComparatorTest {
     AbstractCompactionTask[] compactionTasks = new AbstractCompactionTask[100];
     TsFileManager[] tsFileManagers = new TsFileManager[10];
     for (int i = 0; i < 10; ++i) {
-      tsFileManagers[i] = new TsFileManager("fakeSg" + i, "0", "/");
+      tsFileManagers[i] = new TsFileManager("fakeSg" + i, "0");
       for (int j = 0; j < 10; ++j) {
         List<TsFileResource> resources = new ArrayList<>();
         // the j th compaction task for i th sg

@@ -52,7 +52,7 @@ public class SizeTieredCompactionSelectorTest {
       resources.add(resource);
     }
 
-    TsFileManager manager = new TsFileManager("root.test", "0", "");
+    TsFileManager manager = new TsFileManager("root.test", "0");
     manager.addAll(resources, true);
 
     for (long i = 0; i < 9; ++i) {

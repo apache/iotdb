@@ -1051,8 +1051,8 @@ public class CrossSpaceCompactionWithReadPointPerformerTest {
     TsFileManager tsFileManager =
         new TsFileManager(
             "root.compactionTest",
-            "0",
-            "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\");
+            "0"
+        );
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     return tsFileManager;

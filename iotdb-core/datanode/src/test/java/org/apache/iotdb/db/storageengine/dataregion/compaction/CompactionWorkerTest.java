@@ -145,7 +145,7 @@ public class CompactionWorkerTest {
                 TsFileResourceStatus.COMPACTION_CANDIDATE));
       }
 
-      TsFileManager tsFileManager = new TsFileManager("root.testsg", "0", "");
+      TsFileManager tsFileManager = new TsFileManager("root.testsg", "0");
       tsFileManager.addAll(sequenceFiles, true);
       tsFileManager.addAll(unsequenceFiles, false);
       CrossSpaceCompactionTask task =

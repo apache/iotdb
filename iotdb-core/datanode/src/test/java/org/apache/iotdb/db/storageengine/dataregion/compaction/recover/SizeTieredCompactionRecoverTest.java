@@ -103,7 +103,7 @@ public class SizeTieredCompactionRecoverTest {
           + File.separator
           + "0";
   static final TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0", TestConstant.BASE_OUTPUT_PATH);
+      new TsFileManager(COMPACTION_TEST_SG, "0");
   static final String[] fullPaths =
       new String[] {
         COMPACTION_TEST_SG + ".device0.sensor0",

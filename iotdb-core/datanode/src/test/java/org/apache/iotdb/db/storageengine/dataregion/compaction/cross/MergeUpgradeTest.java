@@ -84,7 +84,7 @@ public class MergeUpgradeTest {
 
   @Test
   public void testMergeUpgradeSelect() throws MergeException {
-    TsFileManager tsFileManager = new TsFileManager("", "", "");
+    TsFileManager tsFileManager = new TsFileManager("", "");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, true);
     RewriteCrossSpaceCompactionSelector selector =

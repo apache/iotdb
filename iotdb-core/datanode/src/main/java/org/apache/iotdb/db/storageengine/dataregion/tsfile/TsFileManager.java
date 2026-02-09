@@ -49,7 +49,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TsFileManager {
   private final String storageGroupName;
   private String dataRegionId;
-  private final String dataRegionSysDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -64,9 +63,8 @@ public class TsFileManager {
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegionId, String dataRegionSysDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId) {
     this.storageGroupName = storageGroupName;
-    this.dataRegionSysDir = dataRegionSysDir;
     this.dataRegionId = dataRegionId;
   }
 
@@ -434,10 +432,6 @@ public class TsFileManager {
 
   public String getStorageGroupName() {
     return storageGroupName;
-  }
-
-  public String getDataRegionSysDir() {
-    return dataRegionSysDir;
   }
 
   public Set<Long> getTimePartitions() {
