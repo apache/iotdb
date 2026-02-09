@@ -273,6 +273,16 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_realTime_queue_max_waiting_tsFile_size",
                 String.valueOf(config.getPipeRealTimeQueueMaxWaitingTsFileSize()))));
+    config.setPipeRealtimeForceDowngradingEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "pipe_realtime_force_downgrading_enabled",
+                String.valueOf(config.getPipeRealtimeForceDowngradingEnabled()))));
+    config.setPipeRealtimeForceDowngradingProportion(
+        Double.parseDouble(
+            properties.getProperty(
+                "pipe_realtime_force_downgrading_proportion",
+                String.valueOf(config.getPipeRealtimeForceDowngradingProportion()))));
     config.setPipeSubtaskExecutorBasicCheckPointIntervalByConsumedEventCount(
         Integer.parseInt(
             properties.getProperty(
