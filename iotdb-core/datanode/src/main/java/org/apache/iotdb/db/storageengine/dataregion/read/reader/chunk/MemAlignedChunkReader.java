@@ -87,7 +87,9 @@ public class MemAlignedChunkReader implements IChunkReader {
 
   @Override
   public void markDataTypeModifiedAndCannotUseStatistics() {
-    // Do nothing because MemPageReader.setModified() is empty
+    for (IPageReader iPageReader : pageReaderList) {
+      iPageReader.setModified(true);
+    }
   }
 
   @Override
