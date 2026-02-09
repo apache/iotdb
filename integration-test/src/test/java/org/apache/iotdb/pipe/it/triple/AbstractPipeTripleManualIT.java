@@ -20,20 +20,25 @@
 package org.apache.iotdb.pipe.it.triple;
 
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+
+import java.util.Arrays;
 
 abstract class AbstractPipeTripleManualIT {
 
-  protected BaseEnv env1;
-  protected BaseEnv env2;
-  protected BaseEnv env3;
+  protected static BaseEnv env1;
+  protected static BaseEnv env2;
+  protected static BaseEnv env3;
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(3);
     env1 = MultiEnvFactory.getEnv(0);
     env2 = MultiEnvFactory.getEnv(1);
@@ -44,7 +49,7 @@ abstract class AbstractPipeTripleManualIT {
     env3.initClusterEnvironment(1, 1);
   }
 
-  protected void setupConfig() {
+  protected static void setupConfig() {
     env1.getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
@@ -79,10 +84,17 @@ abstract class AbstractPipeTripleManualIT {
     env3.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
   }
 
-  @After
-  public final void tearDown() {
+  @AfterClass
+  public static void tearDown() {
     env1.cleanClusterEnvironment();
     env2.cleanClusterEnvironment();
     env3.cleanClusterEnvironment();
+  }
+
+  @After
+  public final void cleanEnvironments() {
+    TestUtils.executeNonQueries(env1, Arrays.asList("drop database root.**"), null);
+    TestUtils.executeNonQueries(env2, Arrays.asList("drop database root.**"), null);
+    TestUtils.executeNonQueries(env3, Arrays.asList("drop database root.**"), null);
   }
 }
