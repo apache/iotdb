@@ -134,6 +134,12 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           // return if the pipe task should be stopped
           return;
         }
+        if (PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
+          super.onFailure(
+              new PipeRuntimeSinkNonReportTimeConfigurableException(
+                  throwable.getMessage(), Long.MAX_VALUE));
+          return;
+        }
       }
 
       // Handle exceptions if any available clients exist
@@ -144,9 +150,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         super.onFailure(throwable);
       } else {
         // Print stack trace for better debugging
-        LOGGER.warn(
-            "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
-            throwable);
+        PipeLogger.log(
+            LOGGER::warn,
+            throwable,
+            "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
         super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
       }
     }
@@ -179,8 +186,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             MAX_RETRY_TIMES,
             e);
         try {
-          sleepIfNoHighPriorityTask(
-              retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
@@ -192,7 +198,9 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
     // Stop current pipe task directly if failed to reconnect to
     // the target system after MAX_RETRY_TIMES times
-    if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
+    if (retry == MAX_RETRY_TIMES
+        && lastEvent instanceof EnrichedEvent
+        && !PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
