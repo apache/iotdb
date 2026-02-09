@@ -200,8 +200,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         reader = new RandomAccessFile(tsFile, "r");
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
-        if (!isSevoTransferred) {
-          transferSevo(client);
+        if (!isSevoTransferred && transferSevo(client)) {
+          // if the transfer has been initiated, return directly to allow the callback to trigger
+          // the next transfer
           return;
         }
 
@@ -268,13 +269,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (resource == null) {
       isSevoTransferred = true;
       // transferring tsfile written from tablets, no schema evolution
-      return true;
+      return false;
     }
 
     EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
     if (evolvedSchema == null) {
       isSevoTransferred = true;
-      return true;
+      return false;
     }
 
     ByteBuffer fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
@@ -293,12 +294,9 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
                 client.getEndPoint(),
                 (long) (req.getBody().length * weight)));
 
-    if (tryTransfer(client, req)) {
-      LOGGER.info("Transferred schema evolution file for tsfile {}.", tsFile);
-      return true;
-    } else {
-      return false;
-    }
+    tryTransfer(client, req);
+    LOGGER.info("Transferring schema evolution file for tsfile {}.", tsFile);
+    return true;
   }
 
   @Override
