@@ -23,14 +23,31 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiver;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 public class PipeStatementTsStatusVisitorTest {
+
+  @Test
+  public void testActivateTemplate() {
+    Assert.assertEquals(
+        TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode(),
+        IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR
+            .process(
+                new BatchActivateTemplateStatement(Collections.emptyList()),
+                new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+                    .setSubStatus(
+                        Arrays.asList(
+                            StatusUtils.OK,
+                            new TSStatus(TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()))))
+            .getCode());
+  }
 
   @Test
   public void testTTLIdempotency() {
