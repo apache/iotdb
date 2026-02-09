@@ -1072,7 +1072,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
         final boolean isTableModel = createPipePluginStatement.isTableModel();
         if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
-          LOGGER.warn(
+          LOGGER.info(
               "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
               createPipePluginStatement.getPluginName(),
               isTableModel ? "table" : "tree");
@@ -1152,10 +1152,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
                   .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to drop pipe plugin {}.",
-            executionStatus,
-            dropPipePluginStatement.getPluginName());
+        if (TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode() != executionStatus.getCode()) {
+          LOGGER.warn(
+              "[{}] Failed to drop pipe plugin {}.",
+              executionStatus,
+              dropPipePluginStatement.getPluginName());
+        }
         future.setException(new IoTDBException(executionStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -3549,15 +3551,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     LOGGER.info("Starting to remove AINode");
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowClusterResp showClusterResp = configNodeClient.showCluster();
-      if (showClusterResp.getAiNodeListSize() < 1) {
-        LOGGER.error("Remove AINode failed because there is no AINode in the cluster.");
-        future.setException(
-            new IOException("Remove AINode failed because there is no AINode in the cluster."));
-        return future;
-      }
       TSStatus status = configNodeClient.removeAINode(new TAINodeRemoveReq());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode()) {
+        LOGGER.warn("Remove AINode failed because there is no AINode in the cluster.");
+        future.set(
+            new ConfigTaskResult(
+                new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
+                    .setMessage(
+                        "Remove AINode failed because there is no AINode in the cluster.")));
+        return future;
+      } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IOException("Remove AINode failed: " + status.getMessage()));
         return future;
       } else {

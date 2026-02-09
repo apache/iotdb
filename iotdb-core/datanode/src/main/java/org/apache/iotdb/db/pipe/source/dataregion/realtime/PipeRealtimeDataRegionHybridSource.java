@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.source.dataregion.realtime;
 
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -205,11 +206,22 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    final long totalFloatingMemorySizeInBytes =
+    long totalFloatingMemorySizeInBytes =
         PipeDataNodeResourceManager.memory().getTotalFloatingMemorySizeInBytes();
+    // If the occupied memory has reached the max, it may cause a large latency to the receiver due
+    // to queuing. To reduce the latency, we lower the memory limit forcibly in the single tsFile
+    // since the tsFile is doomed to be transferred, then more downgrading will just cause more
+    // latency to a few points and will greatly reduce the incoming latencies.
+    if (PipeConfig.getInstance().getPipeRealtimeForceDowngradingEnabled()
+        && !event.maySourceOnlyUseTablets(this)) {
+      totalFloatingMemorySizeInBytes =
+          (long)
+              ((double) totalFloatingMemorySizeInBytes
+                  * PipeConfig.getInstance().getPipeRealtimeForceDowngradingProportion());
+    }
     final boolean mayInsertNodeMemoryReachDangerousThreshold =
         floatingMemoryUsageInByte * pipeCount >= totalFloatingMemorySizeInBytes;
-    if (mayInsertNodeMemoryReachDangerousThreshold && event.mayExtractorUseTablets(this)) {
+    if (mayInsertNodeMemoryReachDangerousThreshold && event.maySourceOnlyUseTablets(this)) {
       final PipeDataNodeRemainingEventAndTimeOperator operator =
           PipeDataNodeSinglePipeMetrics.getInstance().remainingEventAndTimeOperatorMap.get(pipeID);
       LOGGER.info(

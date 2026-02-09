@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.UnionIoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.WithExclusionIoTDBTreePattern;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
@@ -171,5 +172,24 @@ public class TreePatternPruningTest {
     } catch (final PipeException ignored) {
       // Expected exception
     }
+  }
+
+  @Test
+  public void testWithExclusionPreserved() {
+    final PipeParameters params =
+        new PipeParameters(
+            new HashMap<String, String>() {
+              {
+                put(
+                    PipeSourceConstant.SOURCE_PATTERN_INCLUSION_KEY,
+                    "root.test.g_0.d_2*.**,root.test.g_0.d_20.s_0");
+                put(PipeSourceConstant.SOURCE_PATTERN_EXCLUSION_KEY, "root.test.g_0.d_20.**");
+              }
+            });
+
+    final TreePattern result = TreePattern.parsePipePatternFromSourceParameters(params);
+    Assert.assertTrue(result instanceof WithExclusionIoTDBTreePattern);
+    Assert.assertEquals(
+        "INCLUSION(root.test.g_0.d_2*.**), EXCLUSION(root.test.g_0.d_20.**)", result.getPattern());
   }
 }

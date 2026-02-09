@@ -77,6 +77,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.ViewType;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -188,6 +189,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaRea
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
@@ -2618,7 +2620,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ClusterTemplateManager.getInstance().commitTemplatePreSetInfo(req.getTemplateInfo());
         break;
       case UPDATE_TEMPLATE_INFO:
-        ClusterTemplateManager.getInstance().updateTemplateInfo(req.getTemplateInfo());
+        Template newTemplate =
+            TemplateInternalRPCUtil.parseUpdateTemplateInfoBytes(
+                ByteBuffer.wrap(req.getTemplateInfo()));
+        Template oldTemplate =
+            ClusterTemplateManager.getInstance().getTemplate(newTemplate.getId());
+        ClusterTemplateManager.getInstance().updateTemplateInfo(newTemplate);
+        long delta =
+            newTemplate.getMeasurementNumber()
+                - (oldTemplate == null ? 0 : oldTemplate.getMeasurementNumber());
+        if (delta != 0) {
+          SchemaEngine.getInstance()
+              .updateSubtreeMeasurementCountForTemplate(newTemplate.getId(), delta);
+        }
         break;
       default:
         LOGGER.warn("Unsupported type {} when updating template", req.type);

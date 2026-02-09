@@ -1454,6 +1454,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return result;
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta)
+      throws MetadataException {
+    if (delta == 0 || mTree == null) {
+      return;
+    }
+    mTree.updateSubtreeMeasurementCountForTemplate(templateId, delta);
+  }
+
   @Override
   public int fillLastQueryMap(
       final PartialPath pattern,

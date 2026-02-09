@@ -117,6 +117,7 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
             || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+            || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
