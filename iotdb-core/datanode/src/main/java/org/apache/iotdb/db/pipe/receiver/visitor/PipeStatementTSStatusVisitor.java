@@ -187,8 +187,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
 
   private TSStatus visitGeneralCreateMultiTimeSeries(
       final Statement statement, final TSStatus status) {
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
+    if (status.getCode() == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()
         || status.getCode() == TSStatusCode.ALIAS_ALREADY_EXIST.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(status.getMessage());
@@ -237,8 +236,7 @@ public class PipeStatementTSStatusVisitor extends StatementVisitor<TSStatus, TSS
   @Override
   public TSStatus visitBatchActivateTemplate(
       final BatchActivateTemplateStatement batchActivateTemplateStatement, final TSStatus status) {
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())
           .setMessage(status.getMessage());
     }
