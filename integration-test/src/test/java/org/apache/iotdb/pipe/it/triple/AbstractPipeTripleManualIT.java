@@ -33,24 +33,30 @@ import java.util.Arrays;
 
 abstract class AbstractPipeTripleManualIT {
 
-  protected static BaseEnv env1;
-  protected static BaseEnv env2;
-  protected static BaseEnv env3;
+  protected static ThreadLocal<BaseEnv> env1Container;
+  protected static ThreadLocal<BaseEnv> env2Container;
+  protected static ThreadLocal<BaseEnv> env3Container;
+
+  protected BaseEnv env1;
+  protected BaseEnv env2;
+  protected BaseEnv env3;
 
   @BeforeClass
   public static void setUp() {
     MultiEnvFactory.createEnv(3);
-    env1 = MultiEnvFactory.getEnv(0);
-    env2 = MultiEnvFactory.getEnv(1);
-    env3 = MultiEnvFactory.getEnv(2);
+    env1Container.set(MultiEnvFactory.getEnv(0));
+    env2Container.set(MultiEnvFactory.getEnv(1));
+    env3Container.set(MultiEnvFactory.getEnv(2));
     setupConfig();
-    env1.initClusterEnvironment(1, 1);
-    env2.initClusterEnvironment(1, 1);
-    env3.initClusterEnvironment(1, 1);
+    env1Container.get().initClusterEnvironment(1, 1);
+    env2Container.get().initClusterEnvironment(1, 1);
+    env3Container.get().initClusterEnvironment(1, 1);
   }
 
   protected static void setupConfig() {
-    env1.getConfig()
+    env1Container
+        .get()
+        .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -58,9 +64,11 @@ abstract class AbstractPipeTripleManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    env1.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+    env1Container.get().getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
 
-    env2.getConfig()
+    env2Container
+        .get()
+        .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -69,7 +77,9 @@ abstract class AbstractPipeTripleManualIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    env3.getConfig()
+    env3Container
+        .get()
+        .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -79,16 +89,23 @@ abstract class AbstractPipeTripleManualIT {
         .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
-    env1.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    env2.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    env3.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    env1Container.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    env2Container.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    env3Container.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
   }
 
   @AfterClass
   public static void tearDown() {
-    env1.cleanClusterEnvironment();
-    env2.cleanClusterEnvironment();
-    env3.cleanClusterEnvironment();
+    env1Container.get().cleanClusterEnvironment();
+    env2Container.get().cleanClusterEnvironment();
+    env3Container.get().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setEnv() {
+    env1 = env1Container.get();
+    env2 = env2Container.get();
+    env3 = env3Container.get();
   }
 
   @After

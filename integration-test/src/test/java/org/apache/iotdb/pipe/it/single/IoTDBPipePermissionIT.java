@@ -27,7 +27,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.pipe.it.dual.tablemodel.TableModelUtils;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -44,11 +44,13 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT1.class})
 public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(1);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
+    envContainer.set(MultiEnvFactory.getEnv(0));
+    envContainer
+        .get()
+        .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setPipeMemoryManagementEnabled(false)
@@ -57,7 +59,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeSingleIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     // 1C1D to directly show the remaining count
-    env.initClusterEnvironment(1, 1);
+    envContainer.get().initClusterEnvironment(1, 1);
   }
 
   @Test

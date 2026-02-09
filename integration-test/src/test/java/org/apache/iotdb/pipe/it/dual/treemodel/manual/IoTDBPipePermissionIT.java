@@ -52,14 +52,15 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv
+  @Before
+  public static void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
+
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
@@ -71,8 +72,13 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
-    receiverEnv
+    senderEnvContainer
+        .get()
+        .getConfig()
+        .getDataNodeConfig()
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
@@ -87,8 +93,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment(3, 3);
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment(3, 3);
   }
 
   @Test

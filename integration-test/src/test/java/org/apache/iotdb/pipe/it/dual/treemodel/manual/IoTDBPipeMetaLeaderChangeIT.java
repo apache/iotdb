@@ -31,7 +31,7 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,14 +43,15 @@ import java.util.Map;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManualIT {
-  @Override
-  @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
 
-    senderEnv
+  @BeforeClass
+  public static void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
+
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
@@ -59,11 +60,11 @@ public class IoTDBPipeMetaLeaderChangeIT extends AbstractPipeDualTreeModelManual
         .setSchemaReplicationFactor(3);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    senderEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment();
+    senderEnvContainer.get().initClusterEnvironment(3, 3, 180);
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
   @Test

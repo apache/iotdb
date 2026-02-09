@@ -19,31 +19,49 @@
 
 package org.apache.iotdb.pipe.it.single;
 
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
+
+import java.util.Arrays;
 
 abstract class AbstractPipeSingleIT {
 
+  protected static ThreadLocal<BaseEnv> envContainer;
   protected BaseEnv env;
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(1);
-    env = MultiEnvFactory.getEnv(0);
-    env.getConfig()
+    envContainer.set(MultiEnvFactory.getEnv(0));
+    envContainer
+        .get()
+        .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    env.initClusterEnvironment();
+    envContainer.get().initClusterEnvironment();
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    envContainer.get().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setEnv() {
+    env = envContainer.get();
   }
 
   @After
-  public final void tearDown() {
-    env.cleanClusterEnvironment();
+  public final void cleanEnvironment() {
+    TestUtils.executeNonQueries(env, Arrays.asList("drop database root.**"), null);
   }
 }

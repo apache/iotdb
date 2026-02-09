@@ -50,11 +50,18 @@ import java.util.Random;
 public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualTreeModelManualIT {
   private static final int generateDataSize = 10;
 
-  @Override
-  protected void setupConfig() {
-    super.setupConfig();
-    senderEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(4);
-    receiverEnv.getConfig().getCommonConfig().setPipeConnectorRequestSliceThresholdBytes(4);
+  protected static void setupConfig() {
+    AbstractPipeDualTreeModelManualIT.setupConfig();
+    senderEnvContainer
+        .get()
+        .getConfig()
+        .getCommonConfig()
+        .setPipeConnectorRequestSliceThresholdBytes(4);
+    receiverEnvContainer
+        .get()
+        .getConfig()
+        .getCommonConfig()
+        .setPipeConnectorRequestSliceThresholdBytes(4);
   }
 
   @Test

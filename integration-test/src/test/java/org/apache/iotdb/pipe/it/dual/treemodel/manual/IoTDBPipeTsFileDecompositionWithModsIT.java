@@ -36,12 +36,11 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipeTsFileDecompositionWithModsIT extends AbstractPipeDualTreeModelManualIT {
 
-  @Override
-  protected void setupConfig() {
-    super.setupConfig();
-    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
-    senderEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
-    receiverEnv.getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+  protected static void setupConfig() {
+    AbstractPipeDualTreeModelManualIT.setupConfig();
+    senderEnvContainer.get().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+    senderEnvContainer.get().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
+    receiverEnvContainer.get().getConfig().getCommonConfig().setAutoCreateSchemaEnabled(true);
   }
 
   /**

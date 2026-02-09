@@ -28,29 +28,35 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.awaitility.Awaitility;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractPipeDualTreeModelManualIT {
 
+  protected static ThreadLocal<BaseEnv> senderEnvContainer;
+  protected static ThreadLocal<BaseEnv> receiverEnvContainer;
   protected BaseEnv senderEnv;
   protected BaseEnv receiverEnv;
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
     setupConfig();
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
-  protected void setupConfig() {
-    senderEnv
+  static void setupConfig() {
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
@@ -59,9 +65,14 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
+    senderEnvContainer
+        .get()
+        .getConfig()
+        .getDataNodeConfig()
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
 
-    receiverEnv
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(false)
@@ -72,14 +83,26 @@ public abstract class AbstractPipeDualTreeModelManualIT {
         .setPipeAutoSplitFullEnabled(false);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    senderEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+  }
+
+  @AfterClass
+  public static void tearDown() {
+    senderEnvContainer.get().cleanClusterEnvironment();
+    receiverEnvContainer.get().cleanClusterEnvironment();
+  }
+
+  @Before
+  public void setEnv() {
+    senderEnv = senderEnvContainer.get();
+    receiverEnv = receiverEnvContainer.get();
   }
 
   @After
-  public final void tearDown() {
-    senderEnv.cleanClusterEnvironment();
-    receiverEnv.cleanClusterEnvironment();
+  public final void cleanEnvironment() {
+    TestUtils.executeNonQueries(senderEnv, Arrays.asList("drop database root.**"), null);
+    TestUtils.executeNonQueries(receiverEnv, Arrays.asList("drop database root.**"), null);
   }
 
   protected static void awaitUntilFlush(BaseEnv env) {
