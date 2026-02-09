@@ -236,4 +236,8 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
   public TsFileResource getTsFileResource() {
     return tsFileResource;
   }
+
+  public IDeviceID getCurrentOriginalDeviceId() {
+    return currentOriginalDeviceId;
+  }
 }

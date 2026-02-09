@@ -183,8 +183,7 @@ public class AbstractCompactionTest {
 
   private int fileCount = 0;
 
-  protected TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0");
+  protected TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {

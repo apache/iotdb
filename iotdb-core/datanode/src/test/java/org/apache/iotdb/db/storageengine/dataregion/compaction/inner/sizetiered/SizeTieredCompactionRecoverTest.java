@@ -95,8 +95,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   /** Target file uncompleted, source files and log exists */
   @Test
   public void testCompactionRecoverWithUncompletedTargetFileAndLog() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -215,8 +214,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   @Test
   public void testRecoverWithAllSourceFilesExisted() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -323,8 +321,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   @Test
   public void testRecoverWithAllSourceFilesExistedAndTargetFileNotExist() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -433,8 +430,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   @Test
   public void testRecoverWithoutAllSourceFilesExisted() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -758,8 +754,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   /** compaction recover merge finished, delete one offset */
   @Test
   public void testRecoverCompleteTargetFileAndCompactionLog() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -856,8 +851,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
 
   @Test
   public void testCompactionRecoverWithCompletedTargetFileAndLog() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =
@@ -948,8 +942,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   /** compeleted target file, and not resource files, compaction log exists */
   @Test
   public void testCompactionRecoverWithCompletedTargetFile() throws Exception {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     IFullPath path =

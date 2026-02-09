@@ -38,6 +38,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.NoMeasurementException;
 import org.apache.tsfile.exception.write.NoTableException;
 import org.apache.tsfile.file.metadata.ColumnSchemaBuilder;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.query.dataset.ResultSet;
@@ -50,7 +51,9 @@ import org.junit.Test;
 import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -596,6 +599,12 @@ public class CompactionWithSevoTest extends AbstractCompactionTest {
     performer = compactionPerformerFunction.apply(targetResources);
     performer.setSummary(summarySupplier.get());
     performer.perform();
+
+    Set<IDeviceID> devices = targetResources.get(0).getDevices();
+    Set<IDeviceID> expectedDevices = new HashSet<>();
+    expectedDevices.add(Factory.DEFAULT_FACTORY.create(new String[] {"table1"}));
+    expectedDevices.add(Factory.DEFAULT_FACTORY.create(new String[] {"table2"}));
+    assertEquals(expectedDevices, devices);
 
     try (ITsFileReader tsFileReader =
         new TsFileReaderBuilder().file(targetResources.get(0).getTsFile()).build()) {

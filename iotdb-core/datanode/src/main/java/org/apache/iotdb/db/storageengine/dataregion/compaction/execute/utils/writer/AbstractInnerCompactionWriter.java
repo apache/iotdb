@@ -144,7 +144,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void endChunkGroup() throws IOException {
-    CompactionUtils.updateResource(targetResources.get(currentFileIndex), fileWriter, deviceId);
+    CompactionUtils.updateResource(targetResources.get(currentFileIndex), fileWriter);
     fileWriter.endChunkGroup();
   }
 

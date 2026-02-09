@@ -413,8 +413,7 @@ public class DataRegion implements IDataRegionForQuery {
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
-    this.tsFileManager =
-        new TsFileManager(databaseName, dataRegionIdString);
+    this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString);
     if (dataRegionSysDir.mkdirs()) {
       logger.info(
           "Database system Directory {} doesn't exist, create it", dataRegionSysDir.getPath());
@@ -1068,8 +1067,7 @@ public class DataRegion implements IDataRegionForQuery {
     return dataRegionSysDir;
   }
 
-  private List<TsFileSet> recoverTsFileSets(
-      long partitionId, Map<Long, List<TsFileSet>> tsFileSetMap) {
+  private void recoverTsFileSets(long partitionId, Map<Long, List<TsFileSet>> tsFileSetMap) {
     List<TsFileSet> tsFileSets =
         tsFileSetMap.computeIfAbsent(
             partitionId,
@@ -1099,7 +1097,6 @@ public class DataRegion implements IDataRegionForQuery {
       tsFileSets.sort(null);
       lastTsFileSetMap.put(partitionId, tsFileSets.get(tsFileSets.size() - 1));
     }
-    return tsFileSets;
   }
 
   private Callable<Void> recoverFilesInPartition(

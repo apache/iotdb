@@ -138,7 +138,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       CompactionTsFileWriter targetFileWriter = targetFileWriters.get(i);
       if (isDeviceExistedInTargetFiles[i]) {
         // update resource
-        CompactionUtils.updateResource(targetResources.get(i), targetFileWriter, deviceId);
+        CompactionUtils.updateResource(targetResources.get(i), targetFileWriter);
         targetFileWriter.endChunkGroup();
       } else {
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);

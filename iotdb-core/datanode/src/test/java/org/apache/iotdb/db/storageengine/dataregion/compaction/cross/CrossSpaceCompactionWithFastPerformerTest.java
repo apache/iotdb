@@ -1049,11 +1049,7 @@ public class CrossSpaceCompactionWithFastPerformerTest {
   }
 
   private TsFileManager getTsFileManager() {
-    TsFileManager tsFileManager =
-        new TsFileManager(
-            "root.compactionTest",
-            "0"
-        );
+    TsFileManager tsFileManager = new TsFileManager("root.compactionTest", "0");
     tsFileManager.getOrCreateUnsequenceListByTimePartition(0);
     tsFileManager.getOrCreateSequenceListByTimePartition(0);
     return tsFileManager;

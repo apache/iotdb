@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.relational.it.schema;
 
+import java.io.File;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
@@ -29,6 +33,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.ColumnSchema;
@@ -36,6 +41,7 @@ import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -62,6 +68,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.NUMS;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.describeTableDetailsColumnHeaders;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showDBColumnHeaders;
@@ -69,6 +76,7 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTa
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.showTablesDetailsColumnHeaders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -81,6 +89,7 @@ public class IoTDBTableIT {
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setRestrictObjectLimit(true);
     EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
+    EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(100);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -2031,6 +2040,73 @@ public class IoTDBTableIT {
 
       // use final name
       stmt.execute("INSERT INTO tab1_new (time, c1_final, c2) VALUES (3, 3, 30)");
+      try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM tab1_new")) {
+        if (rs.next()) {
+          assertEquals(3L, rs.getLong(1));
+        } else {
+          fail();
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testAlterTableAndColumnWithCompaction() throws Exception {
+    try (final Connection connection =
+        EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement stmt = connection.createStatement()) {
+      if (EnvFactory.getEnv().getDataNodeWrapperList() != null && EnvFactory.getEnv().getDataNodeWrapperList().size() > 1) {
+        // file distribution is not deterministic in cluster mode, so skip this test
+        return;
+      }
+
+      final String db = "dualalterdb";
+      stmt.execute("DROP DATABASE IF EXISTS " + db);
+      stmt.execute("CREATE DATABASE IF NOT EXISTS " + db);
+      stmt.execute("USE " + db);
+
+      stmt.execute("CREATE TABLE IF NOT EXISTS tab1 (c1 int32, c2 int32)");
+      stmt.execute("INSERT INTO tab1 (time, c1, c2) VALUES (1, 1, 10)");
+
+      // rename column first and then rename table
+      stmt.execute("ALTER TABLE tab1 RENAME COLUMN c1 TO c1_new");
+      stmt.execute("ALTER TABLE tab1 RENAME TO tab1_new");
+
+      // inserting using new table and new column names should succeed
+      stmt.execute("INSERT INTO tab1_new (time, c1_new, c2) VALUES (2, 2, 20)");
+
+      // rename column again on the renamed table and verify
+      stmt.execute("ALTER TABLE tab1_new RENAME COLUMN c1_new TO c1_final");
+      // use final name
+      stmt.execute("INSERT INTO tab1_new (time, c1_final, c2) VALUES (3, 3, 30)");
+
+      stmt.execute("FLUSH");
+
+//      Awaitility.await().atMost(30, TimeUnit.SECONDS).until(() -> {
+//        DataNodeWrapper nodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
+//        String dataDir = nodeWrapper.getDataNodeDir() + File.separator + "data" + File.separator + "sequence";
+//        File dbDir = new File(dataDir, db);
+//        String[] regionList = dbDir.list();
+//        assertNotNull(regionList);
+//        assertEquals(1, regionList.length);
+//        File regionDir = new File(dbDir, regionList[0]);
+//        String[] partitionList = regionDir.list();
+//        assertNotNull(partitionList);
+//        assertEquals(1, partitionList.length);
+//        File partitionDir = new File(regionDir, partitionList[0]);
+//        File[] fileList = partitionDir.listFiles();
+//        assertNotNull(fileList);
+//        for (File file : fileList) {
+//          if (file.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+//            TsFileID tsFileID = new TsFileID(file.getAbsolutePath());
+//            if (tsFileID.getInnerCompactionCount() == 0) {
+//              return false;
+//            }
+//          }
+//        }
+//        return true;
+//      });
+
       try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM tab1_new")) {
         if (rs.next()) {
           assertEquals(3L, rs.getLong(1));

@@ -272,8 +272,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {
-        targetResource.updateStartTime(device, chunkMetadata.getStartTime());
-        targetResource.updateEndTime(device, chunkMetadata.getEndTime());
+        targetResource.updateStartTime(
+            writer.getCurrentOriginalDeviceId(), chunkMetadata.getStartTime());
+        targetResource.updateEndTime(
+            writer.getCurrentOriginalDeviceId(), chunkMetadata.getEndTime());
       }
     }
     writer.checkMetadataSizeAndMayFlush();

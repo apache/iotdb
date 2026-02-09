@@ -220,8 +220,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
@@ -449,8 +448,7 @@ public class RewriteCrossSpaceCompactionWithReadPointPerformerTest extends Abstr
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0");
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CrossSpaceCompactionTask task =
