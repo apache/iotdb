@@ -306,52 +306,45 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     asyncPlanNodeSender.sendAll();
 
     if (!localInstances.isEmpty()) {
+      List<FragmentInstance> failedLocalInstances = new ArrayList<>();
       // sync dispatch to local
       long localScheduleStartTime = System.nanoTime();
       for (FragmentInstance localInstance : localInstances) {
         try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
           dispatchLocally(localInstance);
         } catch (FragmentInstanceDispatchException e) {
-          dataNodeFailureList.add(e.getFailureStatus());
+          failedLocalInstances.add(localInstance);
         } catch (Throwable t) {
           LOGGER.warn(DISPATCH_FAILED, t);
-          dataNodeFailureList.add(
-              RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+          failedLocalInstances.add(localInstance);
         }
       }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
           System.nanoTime() - localScheduleStartTime);
+
+      // retry dispatch failed instance remotely
+      if (!failedLocalInstances.isEmpty()) {
+        AsyncPlanNodeSender failedPlanNodeSender =
+            new AsyncPlanNodeSender(asyncInternalServiceClientManager, failedLocalInstances);
+        failedPlanNodeSender.sendAll();
+        try {
+          getRemoteDispatchResultAndRetry(failedPlanNodeSender);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOGGER.error("Interrupted when dispatching write async", e);
+          return immediateFuture(
+              new FragInstanceDispatchResult(
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR,
+                      "Interrupted errors: " + e.getMessage())));
+        }
+
+        dataNodeFailureList.addAll(failedPlanNodeSender.getFailureStatusList());
+      }
     }
     // wait until remote dispatch done
     try {
-      asyncPlanNodeSender.waitUntilCompleted();
-      final long maxRetryDurationInNs =
-          COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
-              ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
-              : 0;
-      if (maxRetryDurationInNs > 0 && asyncPlanNodeSender.needRetry()) {
-        // retry failed remote FIs
-        int retryCount = 0;
-        long waitMillis = getRetrySleepTime(retryCount);
-        long retryStartTime = System.nanoTime();
-
-        while (asyncPlanNodeSender.needRetry()) {
-          retryCount++;
-          asyncPlanNodeSender.retry();
-          // if !(still need retry and current time + next sleep time < maxRetryDurationInNs)
-          if (!(asyncPlanNodeSender.needRetry()
-              && (System.nanoTime() - retryStartTime + waitMillis * 1_000_000L)
-                  < maxRetryDurationInNs)) {
-            break;
-          }
-          // still need to retry, sleep some time before make another retry.
-          Thread.sleep(waitMillis);
-          PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
-          waitMillis = getRetrySleepTime(retryCount);
-        }
-      }
-
+      getRemoteDispatchResultAndRetry(asyncPlanNodeSender);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error("Interrupted when dispatching write async", e);
@@ -378,6 +371,36 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
       }
       return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
+    }
+  }
+
+  private void getRemoteDispatchResultAndRetry(AsyncPlanNodeSender asyncPlanNodeSender)
+      throws InterruptedException {
+    asyncPlanNodeSender.waitUntilCompleted();
+    final long maxRetryDurationInNs =
+        COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
+            ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
+            : 0;
+    if (maxRetryDurationInNs > 0 && asyncPlanNodeSender.needRetry()) {
+      // retry failed remote FIs
+      int retryCount = 0;
+      long waitMillis = getRetrySleepTime(retryCount);
+      long retryStartTime = System.nanoTime();
+
+      while (asyncPlanNodeSender.needRetry()) {
+        retryCount++;
+        asyncPlanNodeSender.retry();
+        // if !(still need retry and current time + next sleep time < maxRetryDurationInNs)
+        if (!(asyncPlanNodeSender.needRetry()
+            && (System.nanoTime() - retryStartTime + waitMillis * 1_000_000L)
+                < maxRetryDurationInNs)) {
+          break;
+        }
+        // still need to retry, sleep some time before make another retry.
+        Thread.sleep(waitMillis);
+        PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
+        waitMillis = getRetrySleepTime(retryCount);
+      }
     }
   }
 
