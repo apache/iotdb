@@ -135,6 +135,6 @@ public class SchemaEvolutionFile {
 
   public static File getTsFileAssociatedSchemaEvolutionFile(File tsFile) {
     return new File(
-        tsFile.getParentFile().getParentFile(), getTsFileAssociatedSchemaEvolutionFileName(tsFile));
+        tsFile.getParentFile(), getTsFileAssociatedSchemaEvolutionFileName(tsFile));
   }
 }
