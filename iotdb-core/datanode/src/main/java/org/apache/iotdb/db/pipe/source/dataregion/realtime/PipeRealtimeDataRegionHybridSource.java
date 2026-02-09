@@ -206,8 +206,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     final long floatingMemoryUsageInByte =
         PipeDataNodeAgent.task().getFloatingMemoryUsageInByte(pipeName);
     final long pipeCount = PipeDataNodeAgent.task().getPipeCount();
-    long totalFloatingMemorySizeInBytes =
-        PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
+    long totalFloatingMemorySizeInBytes = PipeMemoryManager.getTotalFloatingMemorySizeInBytes();
     // If the occupied memory has reached the max, it may cause a large latency to the receiver due
     // to queuing. To reduce the latency, we lower the memory limit forcibly in the single tsFile
     // since the tsFile is doomed to be transferred, then more downgrading will just cause more
