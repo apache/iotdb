@@ -19,15 +19,16 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import org.apache.iotdb.db.utils.constant.TestConstant;
+
+import org.apache.tsfile.enums.TSDataType;
+import org.junit.Test;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
-import org.apache.iotdb.db.utils.constant.TestConstant;
-import org.apache.tsfile.enums.TSDataType;
-import org.junit.Test;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -64,8 +65,12 @@ public class EvolvedSchemaTest {
 
     ByteBuffer fileBuffer = mergedShema.toSchemaEvolutionFileBuffer();
     File file = new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "0.sevo");
-    try (FileChannel fileChannel = FileChannel.open(
-        file.toPath(), StandardOpenOption.WRITE, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+    try (FileChannel fileChannel =
+        FileChannel.open(
+            file.toPath(),
+            StandardOpenOption.WRITE,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING)) {
       fileChannel.write(fileBuffer);
     }
 

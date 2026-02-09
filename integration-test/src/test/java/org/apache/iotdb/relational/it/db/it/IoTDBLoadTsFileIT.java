@@ -339,7 +339,7 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(
           String.format(
-              "load '%s' with ('database'='%s', 'sevo-file-path'='%s')",
+              "load '%s' with ('database'='%s', 'sevo-file-path'='%s', 'on-success'='delete')",
               file.getAbsolutePath(), SchemaConfig.DATABASE_0, schemaEvolutionFile.getFilePath()));
 
       // cannot query using table0
@@ -386,6 +386,7 @@ public class IoTDBLoadTsFileIT {
         assertFalse(resultSet.next());
       }
     }
+    assertFalse(sevoFile.exists());
   }
 
   @Test

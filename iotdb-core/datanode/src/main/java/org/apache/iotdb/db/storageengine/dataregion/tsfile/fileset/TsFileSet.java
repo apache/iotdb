@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchemaCache;
@@ -62,7 +63,10 @@ public class TsFileSet implements Comparable<TsFileSet> {
     if (schemaEvolutionFile == null) {
       schemaEvolutionFile =
           new SchemaEvolutionFile(
-              fileSetDir + File.separator + endVersion + SchemaEvolutionFile.FILE_SUFFIX);
+              fileSetDir
+                  + File.separator
+                  + endVersion
+                  + IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX);
     }
   }
 
@@ -70,7 +74,7 @@ public class TsFileSet implements Comparable<TsFileSet> {
     File[] files = fileSetDir.listFiles();
     if (files != null) {
       for (File file : files) {
-        if (file.getName().endsWith(SchemaEvolutionFile.FILE_SUFFIX)) {
+        if (file.getName().endsWith(IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX)) {
           schemaEvolutionFile = new SchemaEvolutionFile(file.getAbsolutePath());
         }
       }

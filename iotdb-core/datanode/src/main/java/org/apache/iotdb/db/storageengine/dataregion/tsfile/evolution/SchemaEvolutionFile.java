@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
+import org.apache.tsfile.common.constant.TsFileConstant;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -31,7 +35,6 @@ import java.util.Collection;
 
 /** SchemaEvolutionFile manages schema evolutions related to a TsFileSet. */
 public class SchemaEvolutionFile {
-  public static final String FILE_SUFFIX = ".sevo";
 
   private String filePath;
 
@@ -120,5 +123,18 @@ public class SchemaEvolutionFile {
 
   public String getFilePath() {
     return filePath;
+  }
+
+  // pipe will associate a TsFile with a SchemaEvolutionFile to record the schema evolutions
+  // this method is used to get the associated SchemaEvolutionFile name for a given TsFile
+  public static String getTsFileAssociatedSchemaEvolutionFileName(File tsFile) {
+    return tsFile
+        .getName()
+        .replace(TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX);
+  }
+
+  public static File getTsFileAssociatedSchemaEvolutionFile(File tsFile) {
+    return new File(
+        tsFile.getParentFile().getParentFile(), getTsFileAssociatedSchemaEvolutionFileName(tsFile));
   }
 }

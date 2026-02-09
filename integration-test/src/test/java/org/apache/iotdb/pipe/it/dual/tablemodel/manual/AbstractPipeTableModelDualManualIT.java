@@ -28,8 +28,8 @@ import org.junit.Before;
 
 public abstract class AbstractPipeTableModelDualManualIT {
 
-  protected BaseEnv senderEnv;
-  protected BaseEnv receiverEnv;
+  protected static BaseEnv senderEnv;
+  protected static BaseEnv receiverEnv;
 
   @Before
   public void setUp() {
@@ -71,7 +71,7 @@ public abstract class AbstractPipeTableModelDualManualIT {
   }
 
   @After
-  public final void tearDown() {
+  public void tearDown() {
     senderEnv.cleanClusterEnvironment();
     receiverEnv.cleanClusterEnvironment();
   }

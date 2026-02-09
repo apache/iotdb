@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
@@ -42,6 +40,8 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -93,7 +93,8 @@ public class EvolvedSchema implements Accountable {
     Map<String, String> finalToOriginalMap =
         finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
     String originalTableName = getOriginalTableName(newTableName);
-    if (!finalToOriginalMap.containsKey(oldColumnName) || finalToOriginalMap.get(oldColumnName).isEmpty()) {
+    if (!finalToOriginalMap.containsKey(oldColumnName)
+        || finalToOriginalMap.get(oldColumnName).isEmpty()) {
       finalToOriginalMap.put(newColumnName, oldColumnName);
       finalToOriginalMap.put(oldColumnName, "");
       originalToFinalColumnNames
@@ -115,8 +116,7 @@ public class EvolvedSchema implements Accountable {
           finalToOriginalColumnNames.remove(newTableName);
         }
 
-        Map<String, String> originalToFinalMap = originalToFinalColumnNames
-            .get(originalTableName);
+        Map<String, String> originalToFinalMap = originalToFinalColumnNames.get(originalTableName);
         if (originalToFinalMap != null) {
           originalToFinalMap.remove(originalName);
           if (originalToFinalMap.isEmpty()) {
@@ -167,10 +167,14 @@ public class EvolvedSchema implements Accountable {
   @Override
   public String toString() {
     return "EvolvedSchema{"
-        + "originalTableNames="
+        + "finalToOriginalTableNames="
         + finalToOriginalTableNames
-        + ", originalColumnNames="
+        + ", finalToOriginalColumnNames="
         + finalToOriginalColumnNames
+        + ", originalToFinalTableNames="
+        + originalToFinalTableNames
+        + ", originalToFinalColumnNames="
+        + originalToFinalColumnNames
         + '}';
   }
 

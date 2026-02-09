@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -186,6 +187,15 @@ public class LoadUtil {
             moveFileWithMD5Check(file, targetDir);
           } else {
             copyFileWithMD5Check(file, targetDir);
+          }
+
+          File sevoFile = SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFile(file);
+          if (sevoFile.exists()) {
+            if (isDeleteAfterLoad) {
+              moveFileWithMD5Check(sevoFile, targetDir);
+            } else {
+              copyFileWithMD5Check(sevoFile, targetDir);
+            }
           }
           return null;
         });

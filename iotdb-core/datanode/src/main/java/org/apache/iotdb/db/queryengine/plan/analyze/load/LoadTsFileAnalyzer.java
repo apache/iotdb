@@ -563,8 +563,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
+    LOGGER.info("Table schemas before rewriting to final: {}", tableSchemaMap);
     if (evolvedSchema != null) {
+      LOGGER.info("Rewriting table schemas with {}", evolvedSchema);
       tableSchemaMap = evolvedSchema.rewriteToFinal(tableSchemaMap);
+      LOGGER.info("Table schemas after rewriting to final: {}", tableSchemaMap);
     }
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);

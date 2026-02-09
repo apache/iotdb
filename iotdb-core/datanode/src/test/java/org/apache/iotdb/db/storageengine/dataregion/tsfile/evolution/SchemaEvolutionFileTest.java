@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -82,7 +83,8 @@ public class SchemaEvolutionFileTest {
 
   private void clearSchemaEvolutionFile() {
     File dir = new File(TestConstant.BASE_OUTPUT_PATH);
-    File[] files = dir.listFiles(f -> f.getName().endsWith(SchemaEvolutionFile.FILE_SUFFIX));
+    File[] files =
+        dir.listFiles(f -> f.getName().endsWith(IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX));
     if (files != null) {
       for (File file : files) {
         file.delete();
@@ -103,7 +105,8 @@ public class SchemaEvolutionFileTest {
     schemaEvolutionFile.append(schemaEvolutionList);
 
     File dir = new File(TestConstant.BASE_OUTPUT_PATH);
-    File[] files = dir.listFiles(f -> f.getName().endsWith(SchemaEvolutionFile.FILE_SUFFIX));
+    File[] files =
+        dir.listFiles(f -> f.getName().endsWith(IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX));
     assertNotNull(files);
     assertEquals(1, files.length);
     assertEquals(33, schemaEvolutionFile.readValidLength());

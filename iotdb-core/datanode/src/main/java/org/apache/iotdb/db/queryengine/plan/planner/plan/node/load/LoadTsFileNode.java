@@ -133,7 +133,8 @@ public class LoadTsFileNode extends WritePlanNode {
               statement.isDeleteAfterLoad(),
               statement.getWritePointCount(i),
               needDecode4TimeColumn,
-              schemaEvolutionFile));
+              schemaEvolutionFile,
+              i == resources.size() - 1));
     }
     return res;
   }
@@ -157,7 +158,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 statement.isDeleteAfterLoad(),
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn,
-                schemaEvolutionFile));
+                schemaEvolutionFile,
+                i == resources.size() - 1));
       }
     }
     return res;

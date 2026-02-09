@@ -49,6 +49,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.SEVO_FILE_PATH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
@@ -261,6 +262,10 @@ public class LoadTsFileStatement extends Statement {
     return schemaEvolutionFile;
   }
 
+  public void setSchemaEvolutionFile(File schemaEvolutionFile) {
+    this.schemaEvolutionFile = schemaEvolutionFile;
+  }
+
   public boolean isAsyncLoad() {
     return isAsyncLoad;
   }
@@ -393,6 +398,9 @@ public class LoadTsFileStatement extends Statement {
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
     }
+    if (schemaEvolutionFile != null) {
+      loadAttributes.put(SEVO_FILE_PATH_KEY, schemaEvolutionFile.getAbsolutePath());
+    }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }
@@ -421,6 +429,8 @@ public class LoadTsFileStatement extends Statement {
         + isAsyncLoad
         + ", tsFiles size="
         + tsFiles.size()
+        + ", database='"
+        + database
         + '}';
   }
 }
