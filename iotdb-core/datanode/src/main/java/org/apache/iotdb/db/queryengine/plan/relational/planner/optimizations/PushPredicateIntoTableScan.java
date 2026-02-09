@@ -976,9 +976,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
                 leftSource.getOutputSymbols(),
                 rightSource.getOutputSymbols(),
                 newJoinFilter,
-                node.isSpillable(),
-                node.getLeftTables(),
-                node.getRightTables());
+                node.isSpillable());
       }
 
       JoinNode outputJoinNode = (JoinNode) output;
@@ -1381,9 +1379,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
-              node.isSpillable(),
-              node.getLeftTables(),
-              node.getRightTables());
+              node.isSpillable());
         }
         if (canConvertToLeftJoin) {
           return new JoinNode(
@@ -1396,9 +1392,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               node.getLeftOutputSymbols(),
               node.getRightOutputSymbols(),
               node.getFilter(),
-              node.isSpillable(),
-              node.getLeftTables(),
-              node.getRightTables());
+              node.isSpillable());
         } else {
           // temp fix because right join is not supported for now.
           return node;
@@ -1433,9 +1427,7 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getLeftOutputSymbols(),
           node.getRightOutputSymbols(),
           node.getFilter(),
-          node.isSpillable(),
-          node.getLeftTables(),
-          node.getRightTables());
+          node.isSpillable());
     }
 
     private boolean canConvertOuterToInner(

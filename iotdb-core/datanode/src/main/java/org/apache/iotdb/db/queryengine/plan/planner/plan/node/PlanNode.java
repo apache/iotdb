@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -32,8 +33,10 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
@@ -77,6 +80,15 @@ public abstract class PlanNode implements IConsensusRequest {
   public abstract List<PlanNode> getChildren();
 
   public abstract void addChild(PlanNode child);
+
+  public Set<Identifier> getInputTables() {
+    Set<Identifier> tables = new HashSet<>();
+    for (PlanNode child : getChildren()) {
+      tables.addAll(child.getInputTables());
+    }
+    ;
+    return tables;
+  }
 
   /**
    * If this plan node has to be serialized or deserialized, override this method. If this method is

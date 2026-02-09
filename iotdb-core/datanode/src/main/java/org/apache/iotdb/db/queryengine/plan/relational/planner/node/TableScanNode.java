@@ -43,10 +43,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -112,6 +114,13 @@ public abstract class TableScanNode extends SourceNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitTableScan(this, context);
+  }
+
+  @Override
+  public Set<Identifier> getInputTables() {
+    Set<Identifier> tables = new HashSet<>();
+    tables.add(alias != null ? alias : new Identifier(qualifiedObjectName.getObjectName()));
+    return tables;
   }
 
   @Override
