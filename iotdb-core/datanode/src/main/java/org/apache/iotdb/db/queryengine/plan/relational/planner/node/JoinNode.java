@@ -168,8 +168,8 @@ public class JoinNode extends TwoChildProcessNode {
         rightOutputSymbols,
         filter,
         spillable,
-        ImmutableSet.of(),
-        ImmutableSet.of());
+        leftChild.getInputTables(),
+        rightChild.getInputTables());
   }
 
   // only used for deserialize

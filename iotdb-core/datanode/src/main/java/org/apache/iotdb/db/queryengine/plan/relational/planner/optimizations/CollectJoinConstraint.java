@@ -28,6 +28,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.JoinConstraint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.JoinOrderHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeadingHint;
 
@@ -86,8 +87,8 @@ public class CollectJoinConstraint implements PlanOptimizer {
       Set<Identifier> leadingTables =
           leading.getTables().stream().map(Identifier::new).collect(Collectors.toSet());
 
-      Set<Identifier> leftTables = node.getLeftTables();
-      Set<Identifier> rightTables = node.getRightTables();
+      Set<Identifier> leftHand = node.getLeftTables();
+      Set<Identifier> rightHand = node.getRightTables();
       Set<Identifier> totalJoinTables = ImmutableSet.of();
 
       // join conjunctions
@@ -96,20 +97,24 @@ public class CollectJoinConstraint implements PlanOptimizer {
         Set<Identifier> equiJoinTables = Sets.intersection(leadingTables, equiJoin.getTables());
         totalJoinTables = Sets.union(totalJoinTables, equiJoinTables);
         if (node.getJoinType() == JoinNode.JoinType.LEFT) {
-          // do something
+          /*
+           SELECT *
+           FROM A
+           LEFT JOIN B ON A.id = B.id
+           LEFT JOIN C ON A.id = C.id;
+
+           join conjunction A.id = C.id（A ⋈ B ⋈ C）, and join table set is {A, B, C}.
+          */
+          equiJoinTables = Sets.union(equiJoinTables, leftHand);
         }
         leading.getFilters().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
-        // leading.putConditionJoinType(expression, join.getJoinType());
+        leading.putConditionJoinType(equiJoin.toExpression(), node.getJoinType());
       }
-      collectJoinConstraintList(leading, leftTables, rightTables, node, totalJoinTables);
+      // join constraint
+      collectJoinConstraintList(leading, leftHand, rightHand, node, totalJoinTables);
 
       return node;
     }
-
-    //    @Override
-    //    public PlanNode visitSemiJoin(SemiJoinNode node, Context context) {
-    //      return visitTwoChildProcess(node, context);
-    //    }
 
     private void collectJoinConstraintList(
         LeadingHint leading,
@@ -123,9 +128,68 @@ public class CollectJoinConstraint implements PlanOptimizer {
         return;
       }
       if (join.getJoinType() == JoinNode.JoinType.FULL) {
-        // full join
+        JoinConstraint joinConstraint =
+            new JoinConstraint(leftHand, rightHand, leftHand, rightHand, JoinNode.JoinType.FULL);
+        leading.getJoinConstraintList().add(joinConstraint);
         return;
       }
+      Set<Identifier> minLeftHand = Sets.intersection(joinTables, leftHand);
+      Set<Identifier> innerJoinTables =
+          Sets.intersection(totalTables, leading.getInnerJoinTables());
+      Set<Identifier> filterAndInnerBelow = Sets.union(joinTables, innerJoinTables);
+      Set<Identifier> minRightHand = Sets.intersection(filterAndInnerBelow, rightHand);
+
+      for (JoinConstraint other : leading.getJoinConstraintList()) {
+        if (other.getJoinType() == JoinNode.JoinType.FULL) {
+          if (isOverlap(leftHand, other.getLeftHand())
+              || isOverlap(leftHand, other.getRightHand())) {
+            minLeftHand = Sets.union(minLeftHand, other.getLeftHand());
+            minLeftHand = Sets.union(minLeftHand, other.getRightHand());
+          }
+
+          if (isOverlap(rightHand, other.getLeftHand())
+              || isOverlap(rightHand, other.getRightHand())) {
+            minRightHand = Sets.union(minRightHand, other.getLeftHand());
+            minRightHand = Sets.union(minRightHand, other.getRightHand());
+          }
+          /* Needn't do anything else with the full join */
+          continue;
+        }
+
+        // 当前join的左表包含之前某个join的右表 & join条件包含之前某个join的右表
+        if (isOverlap(leftHand, other.getRightHand())
+            && isOverlap(joinTables, other.getRightHand())) {
+          minLeftHand = Sets.union(minLeftHand, other.getLeftHand());
+          minLeftHand = Sets.union(minLeftHand, other.getRightHand());
+        }
+
+        // 当前join的右表包含之前某个join的右表
+        if (isOverlap(rightHand, other.getRightHand())) {
+          if (isOverlap(joinTables, other.getRightHand())
+              || !isOverlap(joinTables, other.getMinLeftHand())) {
+            minRightHand = Sets.union(minRightHand, other.getLeftHand());
+            minRightHand = Sets.union(minRightHand, other.getRightHand());
+          }
+        }
+      }
+      if (minLeftHand.isEmpty()) {
+        minLeftHand = leftHand;
+      }
+      if (minRightHand.isEmpty()) {
+        minRightHand = rightHand;
+      }
+
+      JoinConstraint joinConstraint =
+          new JoinConstraint(
+              minLeftHand, minRightHand, minLeftHand, minRightHand, join.getJoinType());
+      leading.getJoinConstraintList().add(joinConstraint);
+    }
+
+    private boolean isOverlap(Set<Identifier> set1, Set<Identifier> set2) {
+      if (set1 == null || set2 == null || set1.isEmpty() || set2.isEmpty()) {
+        return false;
+      }
+      return !Sets.intersection(set1, set2).isEmpty();
     }
   }
 }

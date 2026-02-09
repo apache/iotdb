@@ -25,15 +25,14 @@ import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Pair;
 
@@ -59,6 +58,10 @@ public class LeadingHint extends JoinOrderHint {
 
   private Set<Identifier> innerJoinTables = ImmutableSet.of();
 
+  private final List<JoinConstraint> joinConstraintList = new ArrayList<>();
+
+  private final Map<Expression, JoinNode.JoinType> conditionJoinType = Maps.newLinkedHashMap();
+
   public LeadingHint(List<String> parameters) {
     super(hintName);
     // /* leading(t3 {}) 会报错
@@ -83,8 +86,16 @@ public class LeadingHint extends JoinOrderHint {
     return tables;
   }
 
+  public List<JoinConstraint> getJoinConstraintList() {
+    return joinConstraintList;
+  }
+
   public List<Pair<Set<Identifier>, Expression>> getFilters() {
     return filters;
+  }
+
+  public void putConditionJoinType(Expression filter, JoinNode.JoinType joinType) {
+    conditionJoinType.put(filter, joinType);
   }
 
   public Map<String, PlanNode> getRelationToScanMap() {
@@ -122,11 +133,10 @@ public class LeadingHint extends JoinOrderHint {
 
     PlanNode finalJoin = stack.pop();
     // we want all filters been removed
-    //    if (Utils.enableAssert && !filters.isEmpty()) {
-    //      throw new IllegalStateException(
-    //              "Leading hint process failed: filter should be empty, but meet: " + filters
-    //      );
-    //    }
+    if (!filters.isEmpty()) {
+      throw new IllegalStateException(
+          "Leading hint process failed: filter should be empty, but meet: " + filters);
+    }
     if (finalJoin == null) {
       throw new IoTDBRuntimeException(
           "final join plan should not be null", INTERNAL_SERVER_ERROR.getStatusCode());
@@ -209,10 +219,11 @@ public class LeadingHint extends JoinOrderHint {
 
   private PlanNode makeJoinPlan(PlanNode leftChild, PlanNode rightChild) {
     List<Expression> conditions = getJoinConditions(getFilters(), leftChild, rightChild);
-    JoinNode.JoinType joinType = computeJoinType();
+    JoinNode.JoinType joinType =
+        computeJoinType(leftChild.getInputTables(), rightChild.getInputTables(), conditions);
     if (joinType == null) {
       return null;
-    } else if (!isConditionJoinTypeMatched()) {
+    } else if (!isConditionJoinTypeMatched(conditions, joinType)) {
       return null;
     }
 
@@ -246,9 +257,7 @@ public class LeadingHint extends JoinOrderHint {
         leftOutputSymbols,
         rightOutputSymbols,
         Optional.empty(),
-        Optional.empty(),
-        getTables(leftChild),
-        getTables(rightChild));
+        Optional.empty());
   }
 
   private List<Expression> getJoinConditions(
@@ -256,7 +265,7 @@ public class LeadingHint extends JoinOrderHint {
     List<Expression> joinConditions = new ArrayList<>();
     for (int i = filters.size() - 1; i >= 0; i--) {
       Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
-      Set<Identifier> tables = Sets.union(getTables(left), getTables(right));
+      Set<Identifier> tables = Sets.union(left.getInputTables(), right.getInputTables());
       // left one is smaller set
       if (tables.containsAll(filterPair.left)) {
         joinConditions.add(filterPair.right);
@@ -273,7 +282,7 @@ public class LeadingHint extends JoinOrderHint {
     }
     for (int i = filters.size() - 1; i >= 0; i--) {
       Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
-      if (getTables(plan).containsAll(filterPair.left)) {
+      if (plan.getInputTables().containsAll(filterPair.left)) {
         plan = new FilterNode(plan.getPlanNodeId(), plan, filterPair.right);
         filters.remove(i);
       }
@@ -281,26 +290,151 @@ public class LeadingHint extends JoinOrderHint {
     return plan;
   }
 
-  private Set<Identifier> getTables(PlanNode root) {
-    if (root instanceof JoinNode) {
-      return Sets.union(((JoinNode) root).getLeftTables(), ((JoinNode) root).getRightTables());
-    } else if (root instanceof DeviceTableScanNode) {
-      return ImmutableSet.of(
-          new Identifier(((DeviceTableScanNode) root).getQualifiedObjectName().getObjectName()));
-    } else if (root instanceof FilterNode) {
-      return getTables(((FilterNode) root).getChild());
-    } else if (root instanceof ProjectNode) {
-      return getTables(((ProjectNode) root).getChild());
-    } else {
-      return null;
-    }
-  }
+  //  private Set<Identifier> getTables(PlanNode root) {
+  //    if (root instanceof JoinNode) {
+  //      return Sets.union(((JoinNode) root).getLeftTables(), ((JoinNode) root).getRightTables());
+  //    } else if (root instanceof DeviceTableScanNode) {
+  //      return ImmutableSet.of(
+  //          new Identifier(((DeviceTableScanNode)
+  // root).getQualifiedObjectName().getObjectName()));
+  //    } else if (root instanceof FilterNode) {
+  //      return getTables(((FilterNode) root).getChild());
+  //    } else if (root instanceof ProjectNode) {
+  //      return getTables(((ProjectNode) root).getChild());
+  //    } else {
+  //      return null;
+  //    }
+  //  }
 
-  public JoinNode.JoinType computeJoinType() {
+  public JoinNode.JoinType computeJoinType(
+      Set<Identifier> left, Set<Identifier> right, List<Expression> conditions) {
+    Pair<JoinConstraint, Boolean> joinConstraintBooleanPair =
+        getJoinConstraint(Sets.union(left, right), left, right);
+    if (!joinConstraintBooleanPair.right) {
+      return null;
+    } else if (joinConstraintBooleanPair.left == null) {
+      return JoinNode.JoinType.INNER;
+    } else {
+      JoinConstraint joinConstraint = joinConstraintBooleanPair.left;
+      if (joinConstraint.isReversed()) {
+        JoinNode.JoinType joinType = joinConstraint.getJoinType();
+        if (joinType == JoinNode.JoinType.LEFT) {
+          return JoinNode.JoinType.RIGHT;
+        } else if (joinType == JoinNode.JoinType.RIGHT) {
+          return JoinNode.JoinType.LEFT;
+        } else {
+          return joinType;
+        }
+      }
+    }
     return JoinNode.JoinType.INNER;
   }
 
-  public boolean isConditionJoinTypeMatched() {
+  public boolean isConditionJoinTypeMatched(
+      List<Expression> conditions, JoinNode.JoinType joinType) {
+    for (Expression condition : conditions) {
+      JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
+      if (originalJoinType == joinType
+          || (originalJoinType == JoinNode.JoinType.LEFT && joinType == JoinNode.JoinType.RIGHT)
+          || (originalJoinType == JoinNode.JoinType.RIGHT && joinType == JoinNode.JoinType.LEFT)) {
+        continue;
+      }
+      return false;
+    }
     return true;
+  }
+
+  public Pair<JoinConstraint, Boolean> getJoinConstraint(
+      Set<Identifier> joinTables, Set<Identifier> leftHand, Set<Identifier> rightHand) {
+    boolean reversed = false;
+    boolean mustBeLeftJoin = false;
+
+    JoinConstraint matchedJoinConstraint = null;
+    for (JoinConstraint joinConstraint : joinConstraintList) {
+      if (joinConstraint.getJoinType() == JoinNode.JoinType.FULL) {
+        if ((isEqual(joinConstraint.getLeftHand(), leftHand)
+                && isEqual(joinConstraint.getRightHand(), rightHand))
+            || (isEqual(joinConstraint.getLeftHand(), rightHand)
+                && isEqual(joinConstraint.getRightHand(), leftHand))) {
+          if (matchedJoinConstraint != null) {
+            return new Pair<>(null, false);
+          }
+          matchedJoinConstraint = joinConstraint;
+          reversed = false;
+          break;
+        } else {
+          continue;
+        }
+      }
+
+      if (!isOverlap(joinConstraint.getRightHand(), joinTables)) {
+        continue;
+      }
+
+      if (joinTables.containsAll(joinConstraint.getMinRightHand())) {
+        continue;
+      }
+
+      if ((joinConstraint.getMinLeftHand().containsAll(leftHand))
+          && joinConstraint.getMinRightHand().containsAll(leftHand)) {
+        continue;
+      }
+
+      if (joinConstraint.getMinLeftHand().containsAll(rightHand)
+          && joinConstraint.getMinRightHand().containsAll(rightHand)) {
+        continue;
+      }
+
+      if (joinConstraint.getMinLeftHand().containsAll(leftHand)
+          && joinConstraint.getMinRightHand().containsAll(rightHand)) {
+        if (matchedJoinConstraint != null) {
+          return new Pair<>(null, false);
+        }
+        matchedJoinConstraint = joinConstraint;
+        reversed = false;
+      } else if (joinConstraint.getMinLeftHand().containsAll(rightHand)
+          && joinConstraint.getMinRightHand().containsAll(leftHand)) {
+        if (matchedJoinConstraint != null) {
+          return new Pair<>(null, false);
+        }
+        matchedJoinConstraint = joinConstraint;
+        reversed = true;
+      } else {
+        if (isOverlap(leftHand, joinConstraint.getMinRightHand())
+            && isOverlap(rightHand, joinConstraint.getRightHand())) {
+          continue;
+        }
+        if (joinConstraint.getJoinType() == JoinNode.JoinType.LEFT
+            || isOverlap(joinTables, joinConstraint.getMinLeftHand())) {
+          return new Pair<>(null, false);
+        }
+        mustBeLeftJoin = true;
+      }
+    }
+    if (mustBeLeftJoin
+        && (matchedJoinConstraint == null
+            || matchedJoinConstraint.getJoinType() != JoinNode.JoinType.LEFT)) {
+      return new Pair<>(null, false);
+    }
+    // inner join
+    if (matchedJoinConstraint == null) {
+      return new Pair<>(null, true);
+    }
+    matchedJoinConstraint.setReversed(reversed);
+    return new Pair<>(matchedJoinConstraint, true);
+  }
+
+  private boolean isEqual(Set<Identifier> set1, Set<Identifier> set2) {
+    if (set1 == null || set2 == null) {
+      return set1 == set2;
+    }
+    return set1.size() == set2.size() && set1.containsAll(set2);
+  }
+
+  private boolean isOverlap(Set<Identifier> set1, Set<Identifier> set2) {
+    if (set1 == null || set2 == null || set1.isEmpty() || set2.isEmpty()) {
+      return false;
+    }
+    return !Sets.intersection(set1, set2).isEmpty();
   }
 }
