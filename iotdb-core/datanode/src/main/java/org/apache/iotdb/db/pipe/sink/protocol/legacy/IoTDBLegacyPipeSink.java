@@ -389,7 +389,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
+    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeSinkReadFileBufferSize()];
     try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);
