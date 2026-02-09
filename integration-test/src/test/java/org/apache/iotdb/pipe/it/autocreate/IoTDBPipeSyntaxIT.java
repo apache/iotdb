@@ -322,7 +322,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
   public void testDirectoryErrors() throws SQLException {
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
-      List<String> wrongDirs = Arrays.asList(".", "..", "./hackYou", ".\\hackYouTwice");
+      List<String> wrongDirs = Arrays.asList(".", "..", "/hackYou", "..\\hackYouTwice");
       if (SystemUtils.IS_OS_WINDOWS) {
         wrongDirs = new ArrayList<>(wrongDirs);
         wrongDirs.add("BombWindows/:*?");
