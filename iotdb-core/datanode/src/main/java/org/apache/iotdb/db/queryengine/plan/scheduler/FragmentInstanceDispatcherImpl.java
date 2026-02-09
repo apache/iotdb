@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -306,29 +307,42 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     asyncPlanNodeSender.sendAll();
 
     if (!localInstances.isEmpty()) {
-      List<FragmentInstance> failedLocalInstances = new ArrayList<>();
+      List<FragmentInstance> instancesNeedRemoteRetry = new ArrayList<>();
       // sync dispatch to local
       long localScheduleStartTime = System.nanoTime();
       for (FragmentInstance localInstance : localInstances) {
         try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
           dispatchLocally(localInstance);
         } catch (FragmentInstanceDispatchException e) {
-          failedLocalInstances.add(localInstance);
+          if (localInstance.getRegionReplicaSet().dataNodeLocations.size() > 1
+              && StatusUtils.needRetryHelper(e.getFailureStatus())) {
+            instancesNeedRemoteRetry.add(localInstance);
+          } else {
+            dataNodeFailureList.add(e.getFailureStatus());
+          }
         } catch (Throwable t) {
           LOGGER.warn(DISPATCH_FAILED, t);
-          failedLocalInstances.add(localInstance);
+          TSStatus status =
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage());
+          if (localInstance.getRegionReplicaSet().dataNodeLocations.size() > 1
+              && StatusUtils.needRetryHelper(status)) {
+            instancesNeedRemoteRetry.add(localInstance);
+          } else {
+            dataNodeFailureList.add(status);
+          }
         }
       }
       PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
           System.nanoTime() - localScheduleStartTime);
 
       // retry dispatch failed instance remotely
-      if (!failedLocalInstances.isEmpty()) {
-        AsyncPlanNodeSender failedPlanNodeSender =
-            new AsyncPlanNodeSender(asyncInternalServiceClientManager, failedLocalInstances);
-        failedPlanNodeSender.sendAll();
+      if (!instancesNeedRemoteRetry.isEmpty()) {
+        AsyncPlanNodeSender remoteRetrySender =
+            new AsyncPlanNodeSender(asyncInternalServiceClientManager, instancesNeedRemoteRetry);
+        remoteRetrySender.sendAll();
         try {
-          getRemoteDispatchResultAndRetry(failedPlanNodeSender);
+          getRemoteDispatchResultAndRetry(remoteRetrySender);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           LOGGER.error("Interrupted when dispatching write async", e);
@@ -339,7 +353,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                       "Interrupted errors: " + e.getMessage())));
         }
 
-        dataNodeFailureList.addAll(failedPlanNodeSender.getFailureStatusList());
+        dataNodeFailureList.addAll(remoteRetrySender.getFailureStatusList());
       }
     }
     // wait until remote dispatch done
