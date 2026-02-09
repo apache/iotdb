@@ -95,7 +95,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
           throwable.getMessage());
       try {
         sleepIfNoHighPriorityTask(
-            retryCount.get() * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+            retryCount.get() * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -164,7 +164,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable);
     try {
       sleepIfNoHighPriorityTask(
-          retryCount.get() * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          retryCount.get() * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
