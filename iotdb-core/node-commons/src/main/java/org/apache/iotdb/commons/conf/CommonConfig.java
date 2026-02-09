@@ -302,6 +302,9 @@ public class CommonConfig {
   private boolean pipeAirGapReceiverEnabled = false;
   private int pipeAirGapReceiverPort = 9780;
 
+  private long pipeAirGapRetryLocalIntervalMs = 1000L;
+  private long pipeAirGapRetryMaxMs = -1;
+
   private long pipeReceiverLoginPeriodicVerificationIntervalMs = -1;
   private double pipeReceiverActualToEstimatedMemoryRatio = 3;
 
@@ -1571,6 +1574,30 @@ public class CommonConfig {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public long getPipeAirGapRetryLocalIntervalMs() {
+    return pipeAirGapRetryLocalIntervalMs;
+  }
+
+  public void setPipeAirGapRetryLocalIntervalMs(long pipeAirGapRetryLocalIntervalMs) {
+    if (pipeAirGapRetryLocalIntervalMs == this.pipeAirGapRetryLocalIntervalMs) {
+      return;
+    }
+    this.pipeAirGapRetryLocalIntervalMs = pipeAirGapRetryLocalIntervalMs;
+    logger.info("pipeAirGapRetryLocalIntervalMs is set to {}.", pipeAirGapRetryLocalIntervalMs);
+  }
+
+  public long getPipeAirGapRetryMaxMs() {
+    return pipeAirGapRetryMaxMs;
+  }
+
+  public void setPipeAirGapRetryMaxMs(long pipeAirGapRetryMaxMs) {
+    if (pipeAirGapRetryMaxMs == this.pipeAirGapRetryMaxMs) {
+      return;
+    }
+    this.pipeAirGapRetryMaxMs = pipeAirGapRetryMaxMs;
+    logger.info("pipeAirGapRetryMaxMs is set to {}.", pipeAirGapRetryMaxMs);
   }
 
   public void setPipeReceiverLoginPeriodicVerificationIntervalMs(
