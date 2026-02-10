@@ -83,7 +83,7 @@ public class IoTDBDebugQueryIT {
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     assertTrue(dataNodeWrapper.logContains("Cache miss: table1.d1"));
-    assertTrue(dataNodeWrapper.logContains(String.format(sql)));
+    assertTrue(dataNodeWrapper.logContains(sql));
   }
 
   @Test
