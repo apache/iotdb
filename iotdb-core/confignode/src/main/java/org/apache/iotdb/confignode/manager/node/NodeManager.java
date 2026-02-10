@@ -558,7 +558,7 @@ public class NodeManager {
   public TSStatus removeAINode() {
     // check if the node exists
     if (nodeInfo.getRegisteredAINodes().isEmpty()) {
-      return new TSStatus(TSStatusCode.REMOVE_AI_NODE_ERROR.getStatusCode())
+      return new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
           .setMessage("Remove AINode failed because there is no AINode in the cluster.");
     }
 

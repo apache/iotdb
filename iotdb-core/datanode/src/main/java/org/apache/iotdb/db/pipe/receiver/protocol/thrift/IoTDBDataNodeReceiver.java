@@ -840,7 +840,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             receiverId.get(),
             statement.getPipeLoggingString(),
             result);
-        return statement.accept(STATEMENT_STATUS_VISITOR, result);
+        return STATEMENT_STATUS_VISITOR.process(statement, result);
       }
     } catch (final Exception e) {
       PipeLogger.log(
@@ -849,7 +849,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           "Receiver id = %s: Exception encountered while executing statement %s: ",
           receiverId.get(),
           statement.getPipeLoggingString());
-      return statement.accept(STATEMENT_EXCEPTION_VISITOR, e);
+      return STATEMENT_EXCEPTION_VISITOR.process(statement, e);
     } finally {
       if (Objects.nonNull(allocatedMemoryBlock)) {
         allocatedMemoryBlock.close();
