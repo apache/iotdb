@@ -1685,6 +1685,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
+              false,
               false);
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()

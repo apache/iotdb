@@ -201,6 +201,8 @@ public class Coordinator {
   private static final Logger SAMPLED_QUERIES_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -297,6 +299,7 @@ public class Coordinator {
       SessionInfo session,
       String sql,
       boolean userQuery,
+      boolean debug,
       BiFunction<MPPQueryContext, Long, IQueryExecution> iQueryExecutionFactory) {
     long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
@@ -314,6 +317,7 @@ public class Coordinator {
               DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
               DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       queryContext.setUserQuery(userQuery);
+      queryContext.setDebug(debug);
       IQueryExecution execution = iQueryExecutionFactory.apply(queryContext, startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
@@ -345,7 +349,15 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
     return executeForTreeModel(
-        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE, false);
+        statement,
+        queryId,
+        session,
+        sql,
+        partitionFetcher,
+        schemaFetcher,
+        Long.MAX_VALUE,
+        false,
+        statement.isDebug());
   }
 
   public ExecutionResult executeForTreeModel(
@@ -356,12 +368,14 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTreeModel(
                 statement,
@@ -425,12 +439,14 @@ public class Coordinator {
       Map<NodeRef<Table>, Query> cteQueries,
       ExplainType explainType,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) -> {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
@@ -455,12 +471,14 @@ public class Coordinator {
       String sql,
       Metadata metadata,
       long timeOut,
-      boolean userQuery) {
+      boolean userQuery,
+      boolean debug) {
     return execution(
         queryId,
         session,
         sql,
         userQuery,
+        debug,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -472,6 +490,8 @@ public class Coordinator {
                 startTime)));
   }
 
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
   public ExecutionResult executeForTableModel(
       Statement statement,
       SqlParser sqlParser,
@@ -486,6 +506,7 @@ public class Coordinator {
         session,
         sql,
         false,
+        false,
         ((queryContext, startTime) ->
             createQueryExecutionForTableModel(
                 statement,
@@ -495,6 +516,54 @@ public class Coordinator {
                 metadata,
                 timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
                 startTime)));
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTreeModel(
+      Statement statement,
+      long queryId,
+      SessionInfo sessionInfo,
+      String s,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTreeModel(
+        statement,
+        queryId,
+        sessionInfo,
+        s,
+        partitionFetcher,
+        schemaFetcher,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
+  }
+
+  /** For compatibility of MQTT and REST, this method should never be called. */
+  @Deprecated
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession currSession,
+      Long queryId,
+      SessionInfo sessionInfo,
+      String sql,
+      Metadata metadata,
+      long queryTimeoutThreshold,
+      boolean isUserQuery) {
+    return executeForTableModel(
+        statement,
+        sqlParser,
+        currSession,
+        queryId,
+        sessionInfo,
+        sql,
+        metadata,
+        queryTimeoutThreshold,
+        isUserQuery,
+        false);
   }
 
   private IQueryExecution createQueryExecutionForTableModel(
@@ -749,7 +818,11 @@ public class Coordinator {
       }
       queryExecutionMap.remove(queryId);
       if (isUserQuery) {
-        recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
+        recordQueries(
+            queryExecution::getTotalExecutionTime,
+            contentOfQuerySupplier,
+            t,
+            queryExecution.isDebug());
       }
     }
   }
@@ -771,12 +844,20 @@ public class Coordinator {
   }
 
   public static void recordQueries(
-      LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
+      LongSupplier executionTime,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t,
+      boolean debug) {
 
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
       SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // always print the query when debug is true
+    if (debug) {
+      DEBUG_LOGGER.info(contentOfQuerySupplier.get());
     }
 
     // only sample successful query
