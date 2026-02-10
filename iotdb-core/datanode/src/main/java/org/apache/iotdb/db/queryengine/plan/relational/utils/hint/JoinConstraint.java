@@ -35,8 +35,6 @@ public class JoinConstraint {
 
   private final JoinNode.JoinType joinType;
 
-  private boolean isReversed;
-
   public JoinConstraint(
       Set<Identifier> minLeftHand,
       Set<Identifier> minRightHand,
@@ -68,13 +66,5 @@ public class JoinConstraint {
 
   public Set<Identifier> getMinRightHand() {
     return minRightHand;
-  }
-
-  public void setReversed(boolean reversed) {
-    isReversed = reversed;
-  }
-
-  public boolean isReversed() {
-    return isReversed;
   }
 }

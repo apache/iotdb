@@ -130,7 +130,10 @@ public class TransformFilteringSemiJoinToInnerJoin implements Rule<FilterNode> {
             filteringSourceDistinct,
             ImmutableList.of(
                 new JoinNode.EquiJoinClause(
-                    semiJoin.getSourceJoinSymbol(), semiJoin.getFilteringSourceJoinSymbol())),
+                    semiJoin.getSourceJoinSymbol(),
+                    semiJoin.getFilteringSourceJoinSymbol(),
+                    semiJoin.getSource().getInputTables(),
+                    semiJoin.getFilteringSource().getInputTables())),
             Optional.empty(),
             semiJoin.getSource().getOutputSymbols(),
             ImmutableList.of(),
