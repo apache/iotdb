@@ -185,7 +185,6 @@ public class Cli extends AbstractCli {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
       timestampPrecision = properties.getTimestampPrecision();
-      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       processCommand(ctx, execute, connection);
       ctx.exit(lastProcessStatus);
     } catch (SQLException e) {
@@ -200,7 +199,6 @@ public class Cli extends AbstractCli {
             DriverManager.getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", info)) {
       connection.setQueryTimeout(queryTimeout);
       properties = connection.getServerProperties();
-      AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
 
       echoStarting(ctx);

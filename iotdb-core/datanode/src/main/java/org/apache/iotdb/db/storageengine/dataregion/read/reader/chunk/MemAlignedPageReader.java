@@ -60,6 +60,9 @@ public class MemAlignedPageReader implements IPageReader {
   private Filter recordFilter;
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
+  // data type is modified in query and statistics cannot be used
+  private boolean modified;
+
   private TsBlockBuilder builder;
 
   public MemAlignedPageReader(
@@ -214,11 +217,13 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public boolean isModified() {
-    return false;
+    return modified;
   }
 
   @Override
-  public void setModified(boolean modified) {}
+  public void setModified(boolean modified) {
+    this.modified = modified;
+  }
 
   @Override
   public void initTsBlockBuilder(List<TSDataType> dataTypes) {
