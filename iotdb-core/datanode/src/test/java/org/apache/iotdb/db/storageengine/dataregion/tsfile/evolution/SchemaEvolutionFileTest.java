@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
-import java.nio.file.Files;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -30,6 +29,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 

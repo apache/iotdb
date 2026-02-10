@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -66,6 +67,9 @@ public class LoadTsFile extends Statement {
   private List<Boolean> isTableModel;
   private File schemaEvolutionFile;
   private boolean needDecode4TimeColumn;
+
+  // for loading iotdb datanode dir
+  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
@@ -199,6 +203,11 @@ public class LoadTsFile extends Statement {
 
   public File getSchemaEvolutionFile() {
     return schemaEvolutionFile;
+  }
+
+  public void setDatabaseRegionTsFileManagers(
+      Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
+    this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
   }
 
   private void initAttributes() {

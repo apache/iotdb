@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -71,6 +72,9 @@ public class LoadTsFileStatement extends Statement {
   private List<Long> writePointCountList;
   private File schemaEvolutionFile;
   private boolean needDecode4TimeColumn;
+
+  // for loading iotdb datanode dir
+  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
@@ -270,6 +274,11 @@ public class LoadTsFileStatement extends Statement {
     return isAsyncLoad;
   }
 
+  public void setDatabaseRegionTsFileManagers(
+      Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
+    this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
+  }
+
   private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
@@ -372,6 +381,10 @@ public class LoadTsFileStatement extends Statement {
     }
 
     return subStatements;
+  }
+
+  public File getFile() {
+    return file;
   }
 
   @Override

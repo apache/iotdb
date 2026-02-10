@@ -39,10 +39,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
@@ -71,6 +74,7 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -125,6 +129,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
   private LoadTsFileTableSchemaCache tableSchemaCache;
+
+  // for loading iotdb datanode dir
+  Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
@@ -208,6 +215,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     try {
       if (schemaEvolutionFile != null && schemaEvolutionFile.exists()) {
+
         SchemaEvolutionFile sevoFile =
             new SchemaEvolutionFile(schemaEvolutionFile.getAbsolutePath());
         evolvedSchema = sevoFile.readAsSchema();
@@ -279,7 +287,102 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
+    File inputFile;
+    if (isTableModelStatement) {
+      inputFile = new File(loadTsFileTableStatement.getFilePath());
+    } else {
+      inputFile = loadTsFileTreeStatement.getFile();
+    }
+    if (inputFile.getName().equals("datanode")) {
+      analyzeIoTDBDirectory(inputFile);
+    }
+
     return true;
+  }
+
+  private void analyzeIoTDBDirectory(File dataNodeDirectory) {
+    if (!dataNodeDirectory.exists() || !dataNodeDirectory.isDirectory()) {
+      return;
+    }
+    File systemDirectory = new File(dataNodeDirectory, "system");
+    if (!systemDirectory.exists() || !systemDirectory.isDirectory()) {
+      return;
+    }
+
+    File databasesDirectory = new File(dataNodeDirectory, "databases");
+    if (!databasesDirectory.exists() || !databasesDirectory.isDirectory()) {
+      return;
+    }
+
+    String[] databases = databasesDirectory.list();
+    if (databases == null) {
+      return;
+    }
+
+    databaseRegionTsFileManagers = new HashMap<>();
+    for (String database : databases) {
+      File databaseDirectory = new File(databasesDirectory, database);
+      String[] regions = databaseDirectory.list();
+      if (regions == null) {
+        continue;
+      }
+
+      for (String region : regions) {
+        File regionDirectory = new File(databaseDirectory, region);
+        String[] timePartitions = regionDirectory.list();
+        if (timePartitions == null) {
+          continue;
+        }
+
+        int regionId = Integer.parseInt(region);
+
+        TsFileManager tsFileManager = new TsFileManager(database, region);
+        databaseRegionTsFileManagers
+            .computeIfAbsent(database, k -> new HashMap<>())
+            .put(regionId, tsFileManager);
+        for (String timePartition : timePartitions) {
+          File timePartitionDir = new File(regionDirectory, timePartition);
+          File filesetsDir = new File(timePartitionDir, "filesets");
+          if (!filesetsDir.exists()) {
+            continue;
+          }
+
+          String[] filesets = filesetsDir.list();
+          if (filesets == null) {
+            continue;
+          }
+
+          for (String fileset : filesets) {
+            File filesetDir = new File(filesetsDir, fileset);
+            String[] sevos = filesetDir.list();
+            if (sevos == null || sevos.length == 0) {
+              continue;
+            }
+
+            long endFileVersion = Long.parseLong(fileset);
+            long partitionId = Long.parseLong(timePartition);
+            TsFileSet tsFileSet = new TsFileSet(endFileVersion, filesetDir.getAbsolutePath(), true);
+            tsFileManager.addTsFileSet(tsFileSet, partitionId);
+          }
+        }
+      }
+    }
+
+    if (schemaEvolutionFile != null) {
+      if (databaseRegionTsFileManagers.isEmpty()) {
+        // no sevo found, treat as normal load
+        databaseRegionTsFileManagers = null;
+      } else {
+        throw new SemanticException(
+            "Schema evolution file is not supported when loading from datanode directory");
+      }
+    }
+
+    if (isTableModelStatement) {
+      loadTsFileTableStatement.setDatabaseRegionTsFileManagers(databaseRegionTsFileManagers);
+    } else {
+      loadTsFileTreeStatement.setDatabaseRegionTsFileManagers(databaseRegionTsFileManagers);
+    }
   }
 
   private boolean doAsyncLoad(final IAnalysis analysis) {
@@ -535,6 +638,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     addWritePointCount(writePointCount);
   }
 
+  private EvolvedSchema getEvolvedSchema(File tsFile) {
+    if (evolvedSchema != null) {
+      return evolvedSchema;
+    }
+
+    if (databaseRegionTsFileManagers != null) {
+      TsFileID tsFileID = new TsFileID(tsFile.getAbsolutePath());
+      TsFileManager tsFileManager =
+          databaseRegionTsFileManagers.get(tsFileID.databaseName).get(tsFileID.regionId);
+      List<TsFileSet> tsFileSets =
+          tsFileManager.getTsFileSet(
+              tsFileID.timePartitionId, tsFileID.fileVersion, Long.MAX_VALUE);
+
+      return TsFileSet.getMergedEvolvedSchema(tsFileSets);
+    }
+    return null;
+  }
+
   private void doAnalyzeSingleTableFile(
       final File tsFile,
       final TsFileSequenceReader reader,
@@ -564,9 +685,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
     getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
     LOGGER.info("Table schemas before rewriting to final: {}", tableSchemaMap);
-    if (evolvedSchema != null) {
-      LOGGER.info("Rewriting table schemas with {}", evolvedSchema);
-      tableSchemaMap = evolvedSchema.rewriteToFinal(tableSchemaMap);
+
+    EvolvedSchema currEvolvedSchema = getEvolvedSchema(tsFile);
+    if (currEvolvedSchema != null) {
+      LOGGER.info("Rewriting table schemas with {}", currEvolvedSchema);
+      tableSchemaMap = currEvolvedSchema.rewriteToFinal(tableSchemaMap);
       LOGGER.info("Table schemas after rewriting to final: {}", tableSchemaMap);
     }
     getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
@@ -576,14 +699,14 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
 
-      if (evolvedSchema != null) {
+      if (currEvolvedSchema != null) {
         device2TimeseriesMetadata =
             device2TimeseriesMetadata.entrySet().stream()
                 .collect(
                     Collectors.toMap(
-                        e -> evolvedSchema.rewriteToFinal(e.getKey()),
+                        e -> currEvolvedSchema.rewriteToFinal(e.getKey()),
                         e -> {
-                          evolvedSchema.rewriteToFinal(e.getKey().getTableName(), e.getValue());
+                          currEvolvedSchema.rewriteToFinal(e.getKey().getTableName(), e.getValue());
                           return e.getValue();
                         }));
       }

@@ -29,6 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -40,6 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class LoadTsFileNode extends WritePlanNode {
@@ -49,6 +52,9 @@ public class LoadTsFileNode extends WritePlanNode {
   private final String database;
   private final File schemaEvolutionFile;
   private final boolean needDecode4TimeColumn;
+
+  // for loading IoTDB datanode dir
+  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileNode(
       final PlanNodeId id,
@@ -124,6 +130,16 @@ public class LoadTsFileNode extends WritePlanNode {
             : (LoadTsFileStatement) analysis.getTreeStatement();
 
     for (int i = 0; i < resources.size(); i++) {
+      TsFileManager managerForLoadingIoTDBDir = null;
+      String database = this.database;
+      if (databaseRegionTsFileManagers != null) {
+        TsFileID tsFileID = resources.get(i).getTsFileID();
+        Map<Integer, TsFileManager> regionTsFileManagers =
+            databaseRegionTsFileManagers.get(tsFileID.databaseName);
+        managerForLoadingIoTDBDir = regionTsFileManagers.get(tsFileID.regionId);
+        database = tsFileID.databaseName;
+      }
+
       res.add(
           new LoadSingleTsFileNode(
               getPlanNodeId(),
@@ -134,7 +150,8 @@ public class LoadTsFileNode extends WritePlanNode {
               statement.getWritePointCount(i),
               needDecode4TimeColumn,
               schemaEvolutionFile,
-              i == resources.size() - 1));
+              i == resources.size() - 1,
+              managerForLoadingIoTDBDir));
     }
     return res;
   }
@@ -149,6 +166,16 @@ public class LoadTsFileNode extends WritePlanNode {
 
     for (int i = 0; i < resources.size(); i++) {
       if (statement != null) {
+        TsFileManager managerForLoadingIoTDBDir = null;
+        String database = this.database;
+        if (databaseRegionTsFileManagers != null) {
+          TsFileID tsFileID = resources.get(i).getTsFileID();
+          Map<Integer, TsFileManager> regionTsFileManagers =
+              databaseRegionTsFileManagers.get(tsFileID.databaseName);
+          managerForLoadingIoTDBDir = regionTsFileManagers.get(tsFileID.regionId);
+          database = tsFileID.databaseName;
+        }
+
         res.add(
             new LoadSingleTsFileNode(
                 getPlanNodeId(),
@@ -159,7 +186,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 statement.getWritePointCount(i),
                 needDecode4TimeColumn,
                 schemaEvolutionFile,
-                i == resources.size() - 1));
+                i == resources.size() - 1,
+                managerForLoadingIoTDBDir));
       }
     }
     return res;

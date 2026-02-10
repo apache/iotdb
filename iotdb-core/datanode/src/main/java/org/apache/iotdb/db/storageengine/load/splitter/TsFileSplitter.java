@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -90,17 +89,12 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
-  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer, File schemaEvolutionFile) {
+  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer, EvolvedSchema evolvedSchema) {
     this.tsFile = tsFile;
     this.consumer = consumer;
-    if (schemaEvolutionFile != null && schemaEvolutionFile.exists()) {
-      SchemaEvolutionFile sevoFile = new SchemaEvolutionFile(schemaEvolutionFile.getAbsolutePath());
-      try {
-        this.evolvedSchema = sevoFile.readAsSchema();
-        this.consumer = new SchemaEvolutionTsFileDataConsumer(this.consumer, evolvedSchema);
-      } catch (IOException e) {
-        logger.error("Cannot read schema evolution file, ignoring it.", e);
-      }
+    if (evolvedSchema != null) {
+      this.evolvedSchema = evolvedSchema;
+      this.consumer = new SchemaEvolutionTsFileDataConsumer(this.consumer, evolvedSchema);
     }
   }
 

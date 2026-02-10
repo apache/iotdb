@@ -39,6 +39,8 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.apache.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -55,6 +57,7 @@ import java.util.stream.Collectors;
 
 public class EvolvedSchema implements Accountable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(EvolvedSchema.class);
   // the evolved table names after applying all schema evolution operations
   private Map<String, String> finalToOriginalTableNames = new LinkedHashMap<>();
 

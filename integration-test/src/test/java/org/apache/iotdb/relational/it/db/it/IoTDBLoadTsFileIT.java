@@ -342,51 +342,116 @@ public class IoTDBLoadTsFileIT {
               "load '%s' with ('database'='%s', 'sevo-file-path'='%s', 'on-success'='delete')",
               file.getAbsolutePath(), SchemaConfig.DATABASE_0, schemaEvolutionFile.getFilePath()));
 
-      // cannot query using table0
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
-        fail();
-      } catch (SQLException e) {
-        assertEquals("550: Table 'root.test' does not exist.", e.getMessage());
-      }
-
-      // can query with table1
-      try (final ResultSet resultSet =
-          statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_1))) {
-        if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
-        } else {
-          Assert.fail("This ResultSet is empty.");
-        }
-      }
-
-      // cannot query using INT322INT32
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
-        fail();
-      } catch (SQLException e) {
-        assertEquals("616: Column 'int322int32' cannot be resolved", e.getMessage());
-      }
-
-      // can query with INT322INT32_NEW
-      try (final ResultSet resultSet =
-          statement.executeQuery(
-              String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
-        if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
-        } else {
-          Assert.fail("This ResultSet is empty.");
-        }
-      }
-
-      try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
-        assertEquals(SchemaConfig.TABLE_1, resultSet.getString(1));
-        assertFalse(resultSet.next());
-      }
+      checkSevoResult(statement, lineCount);
     }
     assertFalse(sevoFile.exists());
+  }
+
+  private void checkSevoResult(Statement statement, int lineCount) throws SQLException {
+    // cannot query using table0
+    try (final ResultSet resultSet =
+        statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+      fail();
+    } catch (SQLException e) {
+      assertEquals("550: Table 'root.test' does not exist.", e.getMessage());
+    }
+
+    // can query with table1
+    try (final ResultSet resultSet =
+        statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_1))) {
+      if (resultSet.next()) {
+        Assert.assertEquals(lineCount, resultSet.getLong(1));
+      } else {
+        Assert.fail("This ResultSet is empty.");
+      }
+    }
+
+    // cannot query using INT322INT32
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
+      fail();
+    } catch (SQLException e) {
+      assertEquals("616: Column 'int322int32' cannot be resolved", e.getMessage());
+    }
+
+    // can query with INT322INT32_NEW
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
+      if (resultSet.next()) {
+        Assert.assertEquals(lineCount, resultSet.getLong(1));
+      } else {
+        Assert.fail("This ResultSet is empty.");
+      }
+    }
+
+    try (final ResultSet resultSet = statement.executeQuery("show tables")) {
+      Assert.assertTrue(resultSet.next());
+      assertEquals(SchemaConfig.TABLE_1, resultSet.getString(1));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void testLoadSevoWithIoTDBDir() throws Exception {
+    final int lineCount = 10000;
+    File datanodeDir = prepareIoTDBDirWithSevo(lineCount);
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", "another"));
+      statement.execute(String.format("use %s", "another"));
+      statement.execute(String.format("load '%s'", datanodeDir.getAbsolutePath()));
+
+      checkSevoResult(statement, lineCount);
+    }
+  }
+
+  @SuppressWarnings({"ResultOfMethodCallIgnored", "SameParameterValue"})
+  private File prepareIoTDBDirWithSevo(int lineCount) throws Exception {
+    File datanodeDir = new File(tmpDir, "datanode");
+    File dataDir = new File(datanodeDir, "data");
+    File sequenceDir = new File(dataDir, "sequence");
+    File databaseDataDir = new File(sequenceDir, "test_iotdb_dir_with_sevo");
+    File regionDataDir = new File(databaseDataDir, "0");
+    File partitionDataDir = new File(regionDataDir, "0");
+    partitionDataDir.mkdirs();
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemas();
+    List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+
+    final File file = new File(partitionDataDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    File systemDir = new File(datanodeDir, "system");
+    File databasesDir = new File(systemDir, "databases");
+    File databaseSystemDir = new File(databasesDir, "test_iotdb_dir_with_sevo");
+    File regionSystemDir = new File(databaseSystemDir, "0");
+    File partitionSystemDir = new File(regionSystemDir, "0");
+    File fileSetsDir = new File(partitionSystemDir, "filesets");
+    File fileSetDir = new File(fileSetsDir, "0");
+    fileSetDir.mkdirs();
+
+    // rename table0 to table1
+    File sevoFile = new File(fileSetDir, "0.sevo");
+    SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(sevoFile.getAbsolutePath());
+    SchemaEvolution schemaEvolution = new TableRename(SchemaConfig.TABLE_0, SchemaConfig.TABLE_1);
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+    // rename INT322INT32 to INT322INT32_NEW
+    schemaEvolution = new ColumnRename(SchemaConfig.TABLE_1, "INT322INT32", "INT322INT32_NEW");
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+
+    return datanodeDir;
   }
 
   @Test

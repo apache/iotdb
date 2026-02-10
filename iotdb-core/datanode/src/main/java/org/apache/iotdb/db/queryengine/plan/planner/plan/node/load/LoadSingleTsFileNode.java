@@ -30,8 +30,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 
 import org.apache.tsfile.exception.NotImplementedException;
@@ -68,6 +71,9 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   private TRegionReplicaSet localRegionReplicaSet;
 
+  // for loading IoTDB datanode dir
+  private TsFileManager managerForLoadingIoTDBDir = null;
+
   public LoadSingleTsFileNode(
       final PlanNodeId id,
       final TsFileResource resource,
@@ -77,7 +83,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final long writePointCount,
       final boolean needDecodeTsFile,
       File schemaEvolutionFile,
-      boolean isLastFile) {
+      boolean isLastFile,
+      TsFileManager managerForLoadingIoTDBDir) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -88,6 +95,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.needDecodeTsFile = needDecodeTsFile;
     this.schemaEvolutionFile = schemaEvolutionFile;
     this.isLastFile = isLastFile;
+    this.managerForLoadingIoTDBDir = managerForLoadingIoTDBDir;
   }
 
   public boolean isTsFileEmpty() {
@@ -102,7 +110,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       return true;
     }
 
-    if (schemaEvolutionFile != null) {
+    if (schemaEvolutionFile != null || managerForLoadingIoTDBDir != null) {
       // with schema evolution, must split
       needDecodeTsFile = true;
       return needDecodeTsFile;
@@ -171,8 +179,27 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     return writePointCount;
   }
 
-  public File getSchemaEvolutionFile() {
-    return schemaEvolutionFile;
+  public EvolvedSchema getSchemaEvolutionFile() {
+    if (schemaEvolutionFile != null) {
+      try {
+        SchemaEvolutionFile evolutionFile =
+            new SchemaEvolutionFile(schemaEvolutionFile.getAbsolutePath());
+        return evolutionFile.readAsSchema();
+      } catch (IOException e) {
+        LOGGER.error("Failed to read schema evolution file {}", schemaEvolutionFile, e);
+      }
+    }
+
+    if (managerForLoadingIoTDBDir != null) {
+      List<TsFileSet> tsFileSets =
+          managerForLoadingIoTDBDir.getTsFileSet(
+              resource.getTsFileID().timePartitionId,
+              resource.getTsFileID().fileVersion,
+              Long.MAX_VALUE);
+      return TsFileSet.getMergedEvolvedSchema(tsFileSets);
+    }
+
+    return null;
   }
 
   /**
@@ -258,8 +285,10 @@ public class LoadSingleTsFileNode extends WritePlanNode {
             new File(LoadUtil.getTsFileModsV1Path(tsFile.getAbsolutePath())).toPath());
         Files.deleteIfExists(
             SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFile(tsFile).toPath());
-        if (isLastFile && schemaEvolutionFile != null) {
-          Files.deleteIfExists(schemaEvolutionFile.toPath());
+        if (isLastFile) {
+          if (schemaEvolutionFile != null) {
+            Files.deleteIfExists(schemaEvolutionFile.toPath());
+          }
         }
       }
     } catch (final IOException e) {
