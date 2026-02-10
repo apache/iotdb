@@ -335,6 +335,14 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeAirGapReceiverPort();
   }
 
+  public long getPipeAirGapRetryLocalIntervalMs() {
+    return COMMON_CONFIG.getPipeAirGapRetryLocalIntervalMs();
+  }
+
+  public long getPipeAirGapRetryMaxMs() {
+    return COMMON_CONFIG.getPipeAirGapRetryMaxMs();
+  }
+
   /////////////////////////////// Receiver ///////////////////////////////
 
   public long getPipeReceiverLoginPeriodicVerificationIntervalMs() {
