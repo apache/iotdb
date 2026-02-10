@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
 
+import java.nio.file.Files;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
@@ -95,6 +96,7 @@ public class SchemaEvolutionFileTest {
   @Test
   public void testRecover() throws IOException {
     String filePath = TestConstant.BASE_OUTPUT_PATH + File.separator + "0.sevo";
+    Files.deleteIfExists(new File(filePath).toPath());
 
     SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(filePath);
     List<SchemaEvolution> schemaEvolutionList =
