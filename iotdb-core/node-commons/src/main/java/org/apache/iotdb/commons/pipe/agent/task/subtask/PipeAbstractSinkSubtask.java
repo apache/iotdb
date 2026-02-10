@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeOutOfMemoryCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.pipe.agent.task.execution.PipeSubtaskScheduler;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -33,6 +35,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,6 +134,12 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
           // return if the pipe task should be stopped
           return;
         }
+        if (PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
+          super.onFailure(
+              new PipeRuntimeSinkNonReportTimeConfigurableException(
+                  throwable.getMessage(), Long.MAX_VALUE));
+          return;
+        }
       }
 
       // Handle exceptions if any available clients exist
@@ -141,9 +150,10 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
         super.onFailure(throwable);
       } else {
         // Print stack trace for better debugging
-        LOGGER.warn(
-            "A non PipeRuntimeConnectorCriticalException occurred, will throw a PipeRuntimeConnectorCriticalException.",
-            throwable);
+        PipeLogger.log(
+            LOGGER::warn,
+            throwable,
+            "A non PipeRuntimeSinkCriticalException occurred, will throw a PipeRuntimeSinkCriticalException.");
         super.onFailure(new PipeRuntimeSinkCriticalException(throwable.getMessage()));
       }
     }
@@ -176,8 +186,7 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
             MAX_RETRY_TIMES,
             e);
         try {
-          sleepIfNoHighPriorityTask(
-              retry * PipeConfig.getInstance().getPipeConnectorRetryIntervalMs());
+          sleepIfNoHighPriorityTask(retry * PipeConfig.getInstance().getPipeSinkRetryIntervalMs());
         } catch (final InterruptedException interruptedException) {
           LOGGER.info(
               "Interrupted while sleeping, will retry to handshake with the target system.",
@@ -189,7 +198,9 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
     // Stop current pipe task directly if failed to reconnect to
     // the target system after MAX_RETRY_TIMES times
-    if (retry == MAX_RETRY_TIMES && lastEvent instanceof EnrichedEvent) {
+    if (retry == MAX_RETRY_TIMES
+        && lastEvent instanceof EnrichedEvent
+        && !PipeConfig.getInstance().isPipeSinkRetryLocallyForConnectionError()) {
       report(
           (EnrichedEvent) lastEvent,
           new PipeRuntimeSinkCriticalException(
@@ -268,7 +279,13 @@ public abstract class PipeAbstractSinkSubtask extends PipeReportableSubtask {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   protected void handleException(final Event event, final Exception e) {
-    if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
+    if (e instanceof PipeRuntimeOutOfMemoryCriticalException
+        || ExceptionUtils.getRootCause(e) instanceof PipeRuntimeOutOfMemoryCriticalException) {
+      PipeLogger.log(
+          LOGGER::info,
+          e,
+          "Temporarily out of memory in pipe event transferring, will wait for the memory to release.");
+    } else if (e instanceof PipeRuntimeSinkNonReportTimeConfigurableException) {
       if (lastExceptionTime == Long.MAX_VALUE) {
         lastExceptionTime = System.currentTimeMillis();
       }

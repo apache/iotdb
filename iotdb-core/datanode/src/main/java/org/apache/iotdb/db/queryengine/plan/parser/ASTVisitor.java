@@ -790,6 +790,16 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showTimeSeriesStatement.setTimeCondition(
           parseWhereClause(ctx.timeConditionClause().whereClause()));
     }
+
+    // ORDER BY TIMESERIES [ASC|DESC]
+    if (ctx.orderByTimeseriesClause() != null) {
+      if (orderByHeat) {
+        throw new SemanticException(
+            "LATEST and ORDER BY TIMESERIES cannot be used at the same time.");
+      }
+      showTimeSeriesStatement.setTimeseriesOrdering(
+          ctx.orderByTimeseriesClause().DESC() != null ? Ordering.DESC : Ordering.ASC);
+    }
     if (ctx.rowPaginationClause() != null) {
       if (ctx.rowPaginationClause().limitClause() != null) {
         showTimeSeriesStatement.setLimit(parseLimitClause(ctx.rowPaginationClause().limitClause()));

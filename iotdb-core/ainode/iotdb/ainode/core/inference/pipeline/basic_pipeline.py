@@ -19,13 +19,16 @@
 from abc import ABC, abstractmethod
 
 import torch
+from torch.nn import functional as F
 
 from iotdb.ainode.core.exception import InferenceModelInternalException
+from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.device_manager import DeviceManager
 from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.model.model_loader import load_model
 
 BACKEND = DeviceManager()
+logger = Logger()
 
 
 class BasicPipeline(ABC):
@@ -70,6 +73,7 @@ class ForecastPipeline(BasicPipeline):
 
             infer_kwargs (dict, optional): Additional keyword arguments for inference, such as:
                 - `output_length`(int): Used to check validation of 'future_covariates' if provided.
+                - `auto_adapt`(bool): Whether to automatically adapt the covariates.
 
         Raises:
             ValueError: If the input format is incorrect (e.g., missing keys, invalid tensor shapes).
@@ -80,6 +84,7 @@ class ForecastPipeline(BasicPipeline):
 
         if isinstance(inputs, list):
             output_length = infer_kwargs.get("output_length", 96)
+            auto_adapt = infer_kwargs.get("auto_adapt", True)
             for idx, input_dict in enumerate(inputs):
                 # Check if the dictionary contains the expected keys
                 if not isinstance(input_dict, dict):
@@ -121,10 +126,30 @@ class ForecastPipeline(BasicPipeline):
                         raise ValueError(
                             f"Each value in 'past_covariates' must be torch.Tensor, but got {type(cov_value)} for key '{cov_key}' at index {idx}."
                         )
-                    if cov_value.ndim != 1 or cov_value.shape[0] != input_length:
+                    if cov_value.ndim != 1:
                         raise ValueError(
-                            f"Each covariate in 'past_covariates' must have shape ({input_length},), but got shape {cov_value.shape} for key '{cov_key}' at index {idx}."
+                            f"Individual `past_covariates` must be 1-d, found: {cov_key} with {cov_value.ndim} dimensions in element at index {idx}."
                         )
+                    # If any past_covariate's length is not equal to input_length, process it accordingly.
+                    if cov_value.shape[0] != input_length:
+                        if auto_adapt:
+                            if cov_value.shape[0] > input_length:
+                                logger.warning(
+                                    f"Past covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (> {input_length}), which will be truncated from the beginning."
+                                )
+                                past_covariates[cov_key] = cov_value[-input_length:]
+                            else:
+                                logger.warning(
+                                    f"Past covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {input_length}), which will be padded with zeros at the beginning."
+                                )
+                                pad_size = input_length - cov_value.shape[0]
+                                past_covariates[cov_key] = F.pad(
+                                    cov_value, (pad_size, 0)
+                                )
+                        else:
+                            raise ValueError(
+                                f"Individual `past_covariates` must be 1-d with length equal to the length of `target` (= {input_length}), found: {cov_key} with shape {tuple(cov_value.shape)} in element at index {idx}."
+                            )
 
                 # Check 'future_covariates' if it exists (optional)
                 future_covariates = input_dict.get("future_covariates", {})
@@ -134,19 +159,52 @@ class ForecastPipeline(BasicPipeline):
                     )
                 # If future_covariates exists, check if they are a subset of past_covariates
                 if future_covariates:
-                    for cov_key, cov_value in future_covariates.items():
+                    for cov_key, cov_value in list(future_covariates.items()):
+                        # If any future_covariate not found in past_covariates, ignore it or raise an error.
                         if cov_key not in past_covariates:
-                            raise ValueError(
-                                f"Key '{cov_key}' in 'future_covariates' is not in 'past_covariates' at index {idx}."
-                            )
+                            if auto_adapt:
+                                future_covariates.pop(cov_key)
+                                logger.warning(
+                                    f"Future covariate {cov_key} not found in past_covariates {list(past_covariates.keys())}, which will be ignored when executing forecasting."
+                                )
+                                if not future_covariates:
+                                    input_dict.pop("future_covariates")
+                                continue
+                            else:
+                                raise ValueError(
+                                    f"Expected keys in `future_covariates` to be a subset of `past_covariates` {list(past_covariates.keys())}, "
+                                    f"but found {cov_key} in element at index {idx}."
+                                )
                         if not isinstance(cov_value, torch.Tensor):
                             raise ValueError(
                                 f"Each value in 'future_covariates' must be torch.Tensor, but got {type(cov_value)} for key '{cov_key}' at index {idx}."
                             )
-                        if cov_value.ndim != 1 or cov_value.shape[0] != output_length:
+                        if cov_value.ndim != 1:
                             raise ValueError(
-                                f"Each covariate in 'future_covariates' must have shape ({output_length},), but got shape {cov_value.shape} for key '{cov_key}' at index {idx}."
+                                f"Individual `future_covariates` must be 1-d, found: {cov_key} with {cov_value.ndim} dimensions in element at index {idx}."
                             )
+                        # If any future_covariate's length is not equal to output_length, process it accordingly.
+                        if cov_value.shape[0] != output_length:
+                            if auto_adapt:
+                                if cov_value.shape[0] > output_length:
+                                    logger.warning(
+                                        f"Future covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (> {output_length}), which will be truncated from the end."
+                                    )
+                                    future_covariates[cov_key] = cov_value[
+                                        :output_length
+                                    ]
+                                else:
+                                    logger.warning(
+                                        f"Future covariate {cov_key} at index {idx} has length {cov_value.shape[0]} (< {output_length}), which will be padded with zeros at the end."
+                                    )
+                                    pad_size = output_length - cov_value.shape[0]
+                                    future_covariates[cov_key] = F.pad(
+                                        cov_value, (0, pad_size)
+                                    )
+                            else:
+                                raise ValueError(
+                                    f"Individual `future_covariates` must be 1-d with length equal to `output_length` (= {output_length}), found: {cov_key} with shape {tuple(cov_value.shape)} in element at index {idx}."
+                                )
         else:
             raise ValueError(
                 f"The inputs must be a list of dictionaries, but got {type(inputs)}."

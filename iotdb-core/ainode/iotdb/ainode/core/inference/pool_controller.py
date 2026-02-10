@@ -20,6 +20,7 @@ import queue
 import random
 import threading
 from concurrent.futures import wait
+from queue import Empty
 from typing import Dict, Optional
 
 import torch
@@ -176,9 +177,16 @@ class PoolController:
 
     def _worker_loop(self):
         while not self._stop_event.is_set():
-            task = self._task_queue.get()
+            try:
+                task = self._task_queue.get(timeout=1)
+            except Empty:
+                # Ignore Empty exception and continue the loop
+                continue
             if task is None:
                 self._task_queue.task_done()
+                logger.info(
+                    "PoolController received task None, the worker loop is existed."
+                )
                 break
             task_fn, args, kwargs = task
             try:
@@ -519,9 +527,12 @@ class PoolController:
         self._task_queue.put(None)
         self._pool_control_worker_thread.join()
         self._executor.close()
+        logger.info(f"PoolController stopped its task executor.")
 
         # shutdown pool instances
         # TODO: pool instances can be shutdown in parallel
         for inner in self._request_pool_map.values():
             for group in inner.values():
                 group.shutdown()
+
+        logger.info("The PoolController has been stopped.")

@@ -91,6 +91,7 @@ import org.apache.iotdb.commons.trigger.service.TriggerExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -988,6 +989,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final String className = createPipePluginStatement.getClassName();
     final String uriString = createPipePluginStatement.getUriString();
 
+    final String pathError = FileUtils.getIllegalError4Directory(pluginName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
+              TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode()));
+      return future;
+    }
+
     if (uriString == null || uriString.isEmpty()) {
       future.setException(
           new IoTDBException(
@@ -1061,7 +1071,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final Visibility pluginVisibility = VisibilityUtils.calculateFromPluginClass(clazz);
         final boolean isTableModel = createPipePluginStatement.isTableModel();
         if (!VisibilityUtils.isCompatible(pluginVisibility, isTableModel)) {
-          LOGGER.warn(
+          LOGGER.info(
               "Failed to create PipePlugin({}) because this plugin is not designed for {} model.",
               createPipePluginStatement.getPluginName(),
               isTableModel ? "table" : "tree");
@@ -1141,10 +1151,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                   .setIfExistsCondition(dropPipePluginStatement.hasIfExistsCondition())
                   .setIsTableModel(dropPipePluginStatement.isTableModel()));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != executionStatus.getCode()) {
-        LOGGER.warn(
-            "[{}] Failed to drop pipe plugin {}.",
-            executionStatus,
-            dropPipePluginStatement.getPluginName());
+        if (TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode() != executionStatus.getCode()) {
+          LOGGER.warn(
+              "[{}] Failed to drop pipe plugin {}.",
+              executionStatus,
+              dropPipePluginStatement.getPluginName());
+        }
         future.setException(new IoTDBException(executionStatus));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
@@ -2133,6 +2145,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     final SettableFuture<ConfigTaskResult> future = SettableFuture.create();
 
     // Verify that Pipe is disabled if TSFile encryption is enabled
+    final String pipeName = createPipeStatement.getPipeName();
     if (!Objects.equals(TSFileDescriptor.getInstance().getConfig().getEncryptType(), "UNENCRYPTED")
         && !Objects.equals(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
@@ -2141,18 +2154,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           new IoTDBException(
               String.format(
                   "Failed to create Pipe %s because TSFile is configured with encryption, which prohibits the use of Pipe",
-                  createPipeStatement.getPipeName()),
+                  pipeName),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
     // Validate pipe name
-    if (createPipeStatement.getPipeName().startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
+    if (pipeName.startsWith(PipeStaticMeta.SYSTEM_PIPE_PREFIX)) {
       future.setException(
           new IoTDBException(
               String.format(
                   "Failed to create pipe %s, pipe name starting with \"%s\" are not allowed to be created.",
-                  createPipeStatement.getPipeName(), PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+                  pipeName, PipeStaticMeta.SYSTEM_PIPE_PREFIX),
+              TSStatusCode.PIPE_ERROR.getStatusCode()));
+      return future;
+    }
+
+    final String pathError = FileUtils.getIllegalError4Directory(pipeName);
+    if (Objects.nonNull(pathError)) {
+      future.setException(
+          new IoTDBException(
+              String.format("Failed to create pipe %s, " + pathError, pipeName),
               TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
@@ -2161,7 +2183,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       PipeDataNodeAgent.plugin()
           .validate(
-              createPipeStatement.getPipeName(),
+              pipeName,
               createPipeStatement.getSourceAttributes(),
               createPipeStatement.getProcessorAttributes(),
               createPipeStatement.getSinkAttributes());
@@ -2183,7 +2205,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq realtimeReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for real-time data
-                .setPipeName(createPipeStatement.getPipeName() + "_realtime")
+                .setPipeName(pipeName + "_realtime")
                 // NOTE: set if not exists always to true to handle partial failure
                 .setIfNotExistsCondition(true)
                 // Use extractor parameters for real-time data
@@ -2211,7 +2233,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         final TCreatePipeReq historyReq =
             new TCreatePipeReq()
                 // Append suffix to the pipeline name for historical data
-                .setPipeName(createPipeStatement.getPipeName() + "_history")
+                .setPipeName(pipeName + "_history")
                 .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
                 // Use source parameters for historical data
                 .setExtractorAttributes(
@@ -2254,7 +2276,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       final TCreatePipeReq req =
           new TCreatePipeReq()
-              .setPipeName(createPipeStatement.getPipeName())
+              .setPipeName(pipeName)
               .setIfNotExistsCondition(createPipeStatement.hasIfNotExistsCondition())
               .setExtractorAttributes(createPipeStatement.getSourceAttributes())
               .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
@@ -3528,15 +3550,16 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     LOGGER.info("Starting to remove AINode");
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TShowClusterResp showClusterResp = configNodeClient.showCluster();
-      if (showClusterResp.getAiNodeListSize() < 1) {
-        LOGGER.error("Remove AINode failed because there is no AINode in the cluster.");
-        future.setException(
-            new IOException("Remove AINode failed because there is no AINode in the cluster."));
-        return future;
-      }
       TSStatus status = configNodeClient.removeAINode(new TAINodeRemoveReq());
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() == TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode()) {
+        LOGGER.warn("Remove AINode failed because there is no AINode in the cluster.");
+        future.set(
+            new ConfigTaskResult(
+                new TSStatus(TSStatusCode.NO_REGISTERED_AI_NODE_ERROR.getStatusCode())
+                    .setMessage(
+                        "Remove AINode failed because there is no AINode in the cluster.")));
+        return future;
+      } else if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new IOException("Remove AINode failed: " + status.getMessage()));
         return future;
       } else {

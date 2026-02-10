@@ -45,8 +45,6 @@ import org.apache.iotdb.db.utils.datastructure.MemPointIterator;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
-import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IMetadata;
@@ -453,15 +451,6 @@ public class SeriesScanUtil implements Accountable {
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()));
         unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
             orderUtils.getOverlapCheckTime(firstChunkMetadata.getStatistics()), false);
-        if (isAligned) {
-          SchemaUtils.changeAlignedMetadataModified(
-              (AbstractAlignedChunkMetadata) firstChunkMetadata,
-              firstChunkMetadata.getDataType(),
-              getTsDataTypeList());
-        } else {
-          SchemaUtils.changeMetadataModified(
-              firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
-        }
         if (firstChunkMetadata.equals(cachedChunkMetadata.peek())) {
           firstChunkMetadata = cachedChunkMetadata.poll();
           break;
@@ -489,45 +478,13 @@ public class SeriesScanUtil implements Accountable {
 
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {
       firstChunkMetadata = cachedChunkMetadata.poll();
-      if (isAligned) {
-        SchemaUtils.changeAlignedMetadataModified(
-            (AbstractAlignedChunkMetadata) firstChunkMetadata,
-            firstChunkMetadata.getDataType(),
-            getTsDataTypeList());
-      } else {
-        SchemaUtils.changeMetadataModified(
-            firstChunkMetadata, firstChunkMetadata.getDataType(), dataType);
-      }
     }
   }
 
   protected void unpackOneTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
     List<IChunkMetadata> chunkMetadataList =
         FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
-    chunkMetadataList.forEach(
-        chunkMetadata -> {
-          if (chunkMetadata instanceof AbstractAlignedChunkMetadata) {
-            AbstractAlignedChunkMetadata alignedChunkMetadata =
-                (AbstractAlignedChunkMetadata) chunkMetadata;
-            for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
-              if ((alignedChunkMetadata.getValueChunkMetadataList().get(i) != null)
-                  && !SchemaUtils.isUsingSameStatistics(
-                      alignedChunkMetadata.getValueChunkMetadataList().get(i).getDataType(),
-                      getTsDataTypeList().get(i))
-                  && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(i))) {
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).setModified(true);
-              }
-            }
-            chunkMetadata = alignedChunkMetadata;
-          } else if (chunkMetadata instanceof ChunkMetadata) {
-            if (!SchemaUtils.isUsingSameStatistics(
-                    chunkMetadata.getDataType(), getTsDataTypeList().get(0))
-                && !SchemaUtils.canUseStatisticsAfterAlter(getTsDataTypeList().get(0))) {
-              chunkMetadata.setModified(true);
-            }
-          }
-          chunkMetadata.setSeq(timeSeriesMetadata.isSeq());
-        });
+    chunkMetadataList.forEach(chunkMetadata -> chunkMetadata.setSeq(timeSeriesMetadata.isSeq()));
 
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
@@ -704,7 +661,7 @@ public class SeriesScanUtil implements Accountable {
     }
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), isAligned, getTsDataTypeList());
+            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
 
     // init TsBlockBuilder for each page reader
     pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));

@@ -281,15 +281,13 @@ public class ClientPoolFactory {
               new AsyncPipeDataTransferServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getPipeConnectorTransferTimeoutMs())
-                      .setRpcThriftCompressionEnabled(
-                          conf.isPipeConnectorRPCThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(
-                          conf.getPipeAsyncConnectorSelectorNumber())
+                      .setConnectionTimeoutMs(conf.getPipeSinkTransferTimeoutMs())
+                      .setRpcThriftCompressionEnabled(conf.isPipeSinkRPCThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .build(),
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
-                  .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxClientNumber())
+                  .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxClientNumber())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()
@@ -308,16 +306,14 @@ public class ClientPoolFactory {
               new AsyncPipeDataTransferServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
-                      .setConnectionTimeoutMs(conf.getPipeConnectorTransferTimeoutMs())
-                      .setRpcThriftCompressionEnabled(
-                          conf.isPipeConnectorRPCThriftCompressionEnabled())
-                      .setSelectorNumOfAsyncClientManager(
-                          conf.getPipeAsyncConnectorSelectorNumber())
+                      .setConnectionTimeoutMs(conf.getPipeSinkTransferTimeoutMs())
+                      .setRpcThriftCompressionEnabled(conf.isPipeSinkRPCThriftCompressionEnabled())
+                      .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .setPrintLogWhenEncounterException(conf.isPrintLogWhenEncounterException())
                       .build(),
                   ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
-                  .setMaxClientNumForEachNode(conf.getPipeAsyncConnectorMaxTsFileClientNumber())
+                  .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxTsFileClientNumber())
                   .build()
                   .getConfig());
       ClientManagerMetrics.getInstance()

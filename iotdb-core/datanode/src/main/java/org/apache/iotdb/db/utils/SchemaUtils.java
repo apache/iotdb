@@ -40,6 +40,8 @@ import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
+
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -314,7 +316,44 @@ public class SchemaUtils {
         dataTypeColumnClassMap.get(originalDataType), dataTypeColumnClassMap.get(dataType));
   }
 
-  public static boolean isUsingSameStatistics(TSDataType originalDataType, TSDataType dataType) {
+  public static void changeTimeseriesMetadataModified(
+      @Nullable TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
+    if (timeseriesMetadata == null) {
+      return;
+    }
+    if (!SchemaUtils.canUseStatisticsAfterAlter(
+        timeseriesMetadata.getTsDataType(), targetDataType)) {
+      timeseriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
+    }
+  }
+
+  public static void changeAlignedTimeseriesMetadataModified(
+      @Nullable AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
+      List<TSDataType> targetDataTypeList) {
+    if (alignedTimeSeriesMetadata == null) {
+      return;
+    }
+    for (int i = 0; i < alignedTimeSeriesMetadata.getValueTimeseriesMetadataList().size(); i++) {
+      TimeseriesMetadata valueTimeseriesMetadata =
+          alignedTimeSeriesMetadata.getValueTimeseriesMetadataList().get(i);
+      if (valueTimeseriesMetadata != null
+          && !SchemaUtils.canUseStatisticsAfterAlter(
+              valueTimeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))) {
+        alignedTimeSeriesMetadata.setDataTypeModifiedAndCannotUseStatistics(true);
+        return;
+      }
+    }
+  }
+
+  public static boolean canUseStatisticsAfterAlter(
+      TSDataType originalDataType, TSDataType targetDataType) {
+    if (isUsingSameStatistics(originalDataType, targetDataType)) {
+      return true;
+    }
+    return canUseStatisticsAfterAlter(targetDataType);
+  }
+
+  private static boolean isUsingSameStatistics(TSDataType originalDataType, TSDataType dataType) {
     if (originalDataType == dataType) {
       return true;
     }
@@ -327,107 +366,8 @@ public class SchemaUtils {
         dataTypeColumnStatisticsClassMap.get(dataType));
   }
 
-  public static boolean canUseStatisticsAfterAlter(TSDataType dataType) {
+  private static boolean canUseStatisticsAfterAlter(TSDataType dataType) {
     return !canNotUseStatisticAfterAlterClassSet.contains(dataType);
-  }
-
-  public static void changeMetadataModified(
-      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
-    if (timeseriesMetadata == null) {
-      return;
-    }
-    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
-        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
-      timeseriesMetadata.setModified(true);
-      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-      if (chunkMetadataList != null) {
-        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-          if (chunkMetadata != null) {
-            chunkMetadata.setModified(true);
-          }
-        }
-      }
-    }
-  }
-
-  public static void changeAlignedMetadataModified(
-      AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata,
-      List<TSDataType> targetDataTypeList) {
-    if (alignedTimeSeriesMetadata == null) {
-      return;
-    }
-
-    int i = 0;
-    for (TimeseriesMetadata timeseriesMetadata :
-        alignedTimeSeriesMetadata.getValueTimeseriesMetadataList()) {
-      if ((timeseriesMetadata != null)
-          && !SchemaUtils.isUsingSameStatistics(
-              timeseriesMetadata.getTsDataType(), targetDataTypeList.get(i))
-          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
-        timeseriesMetadata.setModified(true);
-        alignedTimeSeriesMetadata.setModified(true);
-        List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-        if (chunkMetadataList != null) {
-          for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-            if (chunkMetadata != null) {
-              chunkMetadata.setModified(true);
-            }
-          }
-        }
-      }
-      i++;
-    }
-  }
-
-  public static void changeAlignedMetadataModified(
-      TimeseriesMetadata timeseriesMetadata, TSDataType targetDataType) {
-    if (timeseriesMetadata == null) {
-      return;
-    }
-
-    if (!SchemaUtils.isUsingSameStatistics(timeseriesMetadata.getTsDataType(), targetDataType)
-        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
-      timeseriesMetadata.setModified(true);
-      List<IChunkMetadata> chunkMetadataList = timeseriesMetadata.getChunkMetadataList();
-      if (chunkMetadataList != null) {
-        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-          if (chunkMetadata != null) {
-            chunkMetadata.setModified(true);
-          }
-        }
-      }
-    }
-  }
-
-  public static void changeMetadataModified(
-      IChunkMetadata chunkMetadata, TSDataType sourceDataType, TSDataType targetDataType) {
-    if (chunkMetadata == null) {
-      return;
-    }
-    if (!SchemaUtils.isUsingSameStatistics(sourceDataType, targetDataType)
-        && !SchemaUtils.canUseStatisticsAfterAlter(targetDataType)) {
-      chunkMetadata.setModified(true);
-    }
-  }
-
-  public static void changeAlignedMetadataModified(
-      AbstractAlignedChunkMetadata chunkMetadata,
-      TSDataType sourceDataType,
-      List<TSDataType> targetDataTypeList) {
-    if (chunkMetadata == null) {
-      return;
-    }
-    int i = 0;
-    for (IChunkMetadata iChunkMetadata : chunkMetadata.getValueChunkMetadataList()) {
-      if ((iChunkMetadata != null)
-          && !SchemaUtils.isUsingSameStatistics(
-              iChunkMetadata.getDataType(), targetDataTypeList.get(i))
-          && !SchemaUtils.canUseStatisticsAfterAlter(targetDataTypeList.get(i))) {
-        iChunkMetadata.setModified(true);
-        chunkMetadata.setModified(true);
-      }
-      i++;
-    }
   }
 
   public static void rewriteAlignedChunkMetadataStatistics(
