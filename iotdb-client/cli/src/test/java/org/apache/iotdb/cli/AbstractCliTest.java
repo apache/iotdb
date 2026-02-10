@@ -39,6 +39,8 @@ import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.SQLException;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
@@ -150,7 +152,7 @@ public class AbstractCliTest {
   }
 
   @Test
-  public void testHandleInputInputCmd() {
+  public void testHandleInputInputCmd() throws SQLException {
     CliContext ctx = new CliContext(System.in, System.out, System.err, ExitType.EXCEPTION);
     assertEquals(
         OperationResult.STOP_OPER,
