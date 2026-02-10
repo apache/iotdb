@@ -133,10 +133,10 @@ public class IoTDBPipeNullValueIT extends AbstractPipeDualTreeModelAutoIT {
             1);
   }
 
-  @Override
   @Before
-  public void setUp() {
-    super.setUp();
+  @Override
+  public void setEnv() {
+    super.setEnv();
 
     constructTablet();
 
