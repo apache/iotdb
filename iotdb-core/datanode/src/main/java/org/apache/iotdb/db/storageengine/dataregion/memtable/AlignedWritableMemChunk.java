@@ -500,13 +500,6 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public int delete(long lowerBound, long upperBound) {
     int deletedNumber = list.delete(lowerBound, upperBound);
     for (AlignedTVList alignedTvList : sortedList) {
@@ -557,6 +550,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       long maxNumberOfPointsInChunk,
       int maxNumberOfPointsInPage) {
     BitMap allValueColDeletedMap;
+    AlignedTVList list = (AlignedTVList) listForFlushSort;
+
     allValueColDeletedMap = ignoreAllNullRows ? list.getAllValueColDeletedMap() : null;
 
     boolean[] timeDuplicateInfo = null;
@@ -623,6 +618,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       boolean[] timeDuplicateInfo,
       BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
+    AlignedTVList list = (AlignedTVList) listForFlushSort;
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
@@ -754,6 +750,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   @Override
   public synchronized void encode(
       BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+    AlignedTVList list = (AlignedTVList) listForFlushSort;
     encodeInfo.maxNumberOfPointsInChunk =
         Math.min(
             encodeInfo.maxNumberOfPointsInChunk,

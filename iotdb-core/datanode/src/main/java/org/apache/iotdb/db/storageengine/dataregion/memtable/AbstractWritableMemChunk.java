@@ -47,6 +47,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
 
+  protected TVList listForFlushSort;
+
   /**
    * Release the TVList if there is no query on it. Otherwise, it should set the first query as the
    * owner. TVList is released until all queries finish. If it throws memory-not-enough exception
@@ -198,7 +200,24 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IMeasurementSchema getSchema();
 
   @Override
-  public abstract void sortTvListForFlush();
+  public synchronized void sortTvListForFlush() {
+    TVList workingList = getWorkingTVList();
+    if (workingList.isSorted()) {
+      listForFlushSort = workingList;
+      return;
+    }
+
+    boolean needCloneTimesAndIndicesInWorkingTVList;
+    workingList.lockQueryList();
+    try {
+      needCloneTimesAndIndicesInWorkingTVList = !workingList.getQueryContextSet().isEmpty();
+    } finally {
+      workingList.unlockQueryList();
+    }
+    listForFlushSort =
+        needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
+    listForFlushSort.sort();
+  }
 
   @Override
   public abstract int delete(long lowerBound, long upperBound);

@@ -263,13 +263,6 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public TVList getWorkingTVList() {
     return list;
   }
@@ -391,6 +384,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   public void encodeWorkingTVList(
       BlockingQueue<Object> ioTaskQueue, long maxNumberOfPointsInChunk, long targetChunkSize) {
 
+    TVList list = listForFlushSort;
     TSDataType tsDataType = schema.getType();
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
     long dataSizeInCurrentChunk = 0;
@@ -488,7 +482,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
     // create MultiTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
-    tvLists.add(list);
+    tvLists.add(listForFlushSort);
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
             schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage);
