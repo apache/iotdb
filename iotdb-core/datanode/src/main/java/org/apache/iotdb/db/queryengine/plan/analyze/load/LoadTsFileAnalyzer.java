@@ -79,6 +79,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
@@ -293,8 +294,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     } else {
       inputFile = loadTsFileTreeStatement.getFile();
     }
+
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("LoadTsFileAnalyzer: Input file: {}", inputFile.getAbsolutePath());
+    }
     if (inputFile.getName().equals("datanode")) {
+      LOGGER.info("LoadTsFileAnalyzer: Load TsFile from datanode file.");
       analyzeIoTDBDirectory(inputFile);
+      Set<String> databases = databaseRegionTsFileManagers.keySet();
+      for (String database : databases) {
+        try {
+          getOrCreateTableSchemaCache().autoCreateTableDatabaseIfAbsent(database);
+        } catch (LoadAnalyzeException e) {
+          throw new SemanticException(
+              "Cannot create database " + database + " when loading datanode directory");
+        }
+      }
     }
 
     return true;
@@ -306,16 +321,22 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
     File systemDirectory = new File(dataNodeDirectory, "system");
     if (!systemDirectory.exists() || !systemDirectory.isDirectory()) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No system directory found in datanode directory, treat as normal directory.");
       return;
     }
 
-    File databasesDirectory = new File(dataNodeDirectory, "databases");
+    File databasesDirectory = new File(systemDirectory, "databases");
     if (!databasesDirectory.exists() || !databasesDirectory.isDirectory()) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No databases directory found in datanode directory, treat as normal directory.");
       return;
     }
 
     String[] databases = databasesDirectory.list();
     if (databases == null) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No databases found in datanode directory, treat as normal directory.");
       return;
     }
 
@@ -324,6 +345,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       File databaseDirectory = new File(databasesDirectory, database);
       String[] regions = databaseDirectory.list();
       if (regions == null) {
+        LOGGER.info("LoadTsFileAnalyzer: No region directory found in database {}.", database);
         continue;
       }
 
@@ -331,6 +353,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         File regionDirectory = new File(databaseDirectory, region);
         String[] timePartitions = regionDirectory.list();
         if (timePartitions == null) {
+          LOGGER.info(
+              "LoadTsFileAnalyzer: No partition directory found in region {}-{}.",
+              database,
+              region);
           continue;
         }
 
@@ -344,6 +370,11 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           File timePartitionDir = new File(regionDirectory, timePartition);
           File filesetsDir = new File(timePartitionDir, "filesets");
           if (!filesetsDir.exists()) {
+            LOGGER.info(
+                "LoadTsFileAnalyzer: No filesets directory found in partition {}-{}-{}.",
+                database,
+                region,
+                timePartition);
             continue;
           }
 
@@ -361,12 +392,15 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
 
             long endFileVersion = Long.parseLong(fileset);
             long partitionId = Long.parseLong(timePartition);
-            TsFileSet tsFileSet = new TsFileSet(endFileVersion, filesetDir.getAbsolutePath(), true);
+            TsFileSet tsFileSet =
+                new TsFileSet(endFileVersion, filesetsDir.getAbsolutePath(), true);
             tsFileManager.addTsFileSet(tsFileSet, partitionId);
           }
         }
       }
     }
+
+    LOGGER.info("databaseRegionTsFileManagers: {}", databaseRegionTsFileManagers);
 
     if (schemaEvolutionFile != null) {
       if (databaseRegionTsFileManagers.isEmpty()) {
@@ -374,8 +408,23 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         databaseRegionTsFileManagers = null;
       } else {
         throw new SemanticException(
-            "Schema evolution file is not supported when loading from datanode directory");
+            "Schema evolution file is not supported when loading from datanode directory, if you wish "
+                + "to use specified schema evolution file and ignore ones in the datanode directory, "
+                + "please rename the datanode directory to any other one.");
       }
+    }
+
+    String userDatabase;
+    if (isTableModelStatement) {
+      userDatabase = loadTsFileTableStatement.getDatabase();
+    } else {
+      userDatabase = loadTsFileTreeStatement.getDatabase();
+    }
+    if (userDatabase != null && isLoadingIoTDBDir()) {
+      throw new SemanticException(
+          "Database is not supported when loading from datanode directory, if you wish "
+              + "to use specified database and ignore ones in the datanode directory, "
+              + "please rename the datanode directory to any other one.");
     }
 
     if (isTableModelStatement) {
@@ -643,7 +692,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       return evolvedSchema;
     }
 
-    if (databaseRegionTsFileManagers != null) {
+    if (isLoadingIoTDBDir()) {
       TsFileID tsFileID = new TsFileID(tsFile.getAbsolutePath());
       TsFileManager tsFileManager =
           databaseRegionTsFileManagers.get(tsFileID.databaseName).get(tsFileID.regionId);
@@ -683,16 +732,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       }
     }
 
-    getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
+    String databaseToUse =
+        isLoadingIoTDBDir() ? tsFileResource.getDatabaseName() : databaseForTableData;
+
     LOGGER.info("Table schemas before rewriting to final: {}", tableSchemaMap);
 
     EvolvedSchema currEvolvedSchema = getEvolvedSchema(tsFile);
+    LOGGER.info("Schema evolution {}", currEvolvedSchema);
     if (currEvolvedSchema != null) {
       LOGGER.info("Rewriting table schemas with {}", currEvolvedSchema);
       tableSchemaMap = currEvolvedSchema.rewriteToFinal(tableSchemaMap);
       LOGGER.info("Table schemas after rewriting to final: {}", tableSchemaMap);
     }
-    getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
+    getOrCreateTableSchemaCache().setTableSchemaMap(databaseToUse, tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     while (timeseriesMetadataIterator.hasNext()) {
@@ -720,7 +772,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-        getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
+        getOrCreateTableSchemaCache().autoCreateAndVerify(databaseToUse, deviceId);
       }
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
@@ -924,6 +976,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         isTableModelTsFileReliableIndex = i;
       }
     }
+  }
+
+  private boolean isLoadingIoTDBDir() {
+    return databaseRegionTsFileManagers != null;
   }
 
   @Override

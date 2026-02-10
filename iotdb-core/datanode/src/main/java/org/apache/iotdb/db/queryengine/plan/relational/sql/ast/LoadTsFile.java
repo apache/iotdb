@@ -210,6 +210,10 @@ public class LoadTsFile extends Statement {
     this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
   }
 
+  public Map<String, Map<Integer, TsFileManager>> getDatabaseRegionTsFileManagers() {
+    return databaseRegionTsFileManagers;
+  }
+
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);

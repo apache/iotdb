@@ -54,7 +54,7 @@ public class LoadTsFileNode extends WritePlanNode {
   private final boolean needDecode4TimeColumn;
 
   // for loading IoTDB datanode dir
-  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
+  private final Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileNode(
       final PlanNodeId id,
@@ -62,13 +62,15 @@ public class LoadTsFileNode extends WritePlanNode {
       final List<Boolean> isTableModel,
       final String database,
       final boolean needDecode4TimeColumn,
-      final File schemaEvolutionFile) {
+      final File schemaEvolutionFile,
+      final Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
     this.database = database;
     this.schemaEvolutionFile = schemaEvolutionFile;
     this.needDecode4TimeColumn = needDecode4TimeColumn;
+    this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
   }
 
   @Override

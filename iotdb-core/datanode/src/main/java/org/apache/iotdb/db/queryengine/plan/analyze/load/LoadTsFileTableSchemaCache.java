@@ -66,10 +66,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.schema.MemUsageUtil.computeStringMemUsage;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.validateDatabaseName;
@@ -92,13 +94,13 @@ public class LoadTsFileTableSchemaCache {
 
   private final LoadTsFileMemoryBlock block;
 
-  private String database;
-  private boolean needToCreateDatabase;
-  private Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap;
+  // database -> table name -> TableSchema
+  private final Map<String, Map<String, org.apache.tsfile.file.metadata.TableSchema>>
+      databaseTableSchemaMap = new HashMap<>();
   private final Metadata metadata;
   private final MPPQueryContext context;
 
-  private Map<String, Set<IDeviceID>> currentBatchTable2Devices;
+  private Map<String, Map<String, Set<IDeviceID>>> currentBatchTable2Devices;
 
   // tableName -> Pair<device column count, device column mapping>
   private Map<String, Pair<Integer, Map<Integer, Integer>>> tableTagColumnMapper = new HashMap<>();
@@ -113,6 +115,8 @@ public class LoadTsFileTableSchemaCache {
 
   private int currentBatchDevicesCount = 0;
   private final AtomicBoolean needDecode4DifferentTimeColumn = new AtomicBoolean(false);
+  private final boolean needToCreateDatabase;
+  private final Set<String> createdDatabases = new HashSet<>();
 
   public LoadTsFileTableSchemaCache(
       final Metadata metadata, final MPPQueryContext context, final boolean needToCreateDatabase)
@@ -127,16 +131,14 @@ public class LoadTsFileTableSchemaCache {
     this.needToCreateDatabase = needToCreateDatabase;
   }
 
-  public void setDatabase(final String database) {
-    this.database = database;
-  }
-
   public void setTableSchemaMap(
+      final String database,
       final Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap) {
-    this.tableSchemaMap = tableSchemaMap;
+    this.databaseTableSchemaMap.put(database, tableSchemaMap);
   }
 
-  public void autoCreateAndVerify(final IDeviceID device) throws LoadAnalyzeException {
+  public void autoCreateAndVerify(final String database, final IDeviceID device)
+      throws LoadAnalyzeException {
     try {
       if (ModificationUtils.isDeviceDeletedByMods(currentModifications, currentTimeIndex, device)) {
         return;
@@ -149,7 +151,7 @@ public class LoadTsFileTableSchemaCache {
     }
 
     try {
-      createTableAndDatabaseIfNecessary(device.getTableName());
+      createTableAndDatabaseIfNecessary(database, device.getTableName());
     } catch (final Exception e) {
       if (IoTDBDescriptor.getInstance().getConfig().isSkipFailedTableSchemaCheck()) {
         LOGGER.info(
@@ -161,19 +163,22 @@ public class LoadTsFileTableSchemaCache {
     }
 
     // TODO: add permission check and record auth cost
-    addDevice(device);
+    addDevice(database, device);
     if (shouldFlushDevices()) {
       flush();
     }
   }
 
-  private void addDevice(final IDeviceID device) {
+  private void addDevice(final String database, final IDeviceID device) {
     final String tableName = device.getTableName();
     long memoryUsageSizeInBytes = 0;
     if (!currentBatchTable2Devices.containsKey(tableName)) {
       memoryUsageSizeInBytes += computeStringMemUsage(tableName);
     }
-    if (currentBatchTable2Devices.computeIfAbsent(tableName, k -> new HashSet<>()).add(device)) {
+    if (currentBatchTable2Devices
+        .computeIfAbsent(database, db -> new HashMap<>())
+        .computeIfAbsent(tableName, k -> new HashSet<>())
+        .add(device)) {
       memoryUsageSizeInBytes += device.ramBytesUsed();
       currentBatchDevicesCount++;
     }
@@ -209,12 +214,19 @@ public class LoadTsFileTableSchemaCache {
   }
 
   private Iterator<ITableDeviceSchemaValidation> getTableSchemaValidationIterator() {
-    return currentBatchTable2Devices.keySet().stream()
-        .map(this::createTableSchemaValidation)
-        .iterator();
+    Stream<ITableDeviceSchemaValidation> stream = Stream.empty();
+    for (Entry<String, Map<String, Set<IDeviceID>>> entry : currentBatchTable2Devices.entrySet()) {
+      String database = entry.getKey();
+      Map<String, Set<IDeviceID>> tableMap = entry.getValue();
+      Stream<ITableDeviceSchemaValidation> iTableDeviceSchemaValidationStream =
+          tableMap.keySet().stream().map(s -> createTableSchemaValidation(database, s));
+      stream = Stream.concat(stream, iTableDeviceSchemaValidationStream);
+    }
+    return stream.iterator();
   }
 
-  private ITableDeviceSchemaValidation createTableSchemaValidation(String tableName) {
+  private ITableDeviceSchemaValidation createTableSchemaValidation(
+      String database, String tableName) {
     return new ITableDeviceSchemaValidation() {
 
       @Override
@@ -237,7 +249,7 @@ public class LoadTsFileTableSchemaCache {
           LOGGER.warn("Failed to find tag column mapping for table {}", tableName);
         }
 
-        for (final IDeviceID device : currentBatchTable2Devices.get(tableName)) {
+        for (final IDeviceID device : currentBatchTable2Devices.get(database).get(tableName)) {
           if (Objects.isNull(tagColumnCountAndMapper)) {
             devices.add(Arrays.copyOfRange(device.getSegments(), 1, device.getSegments().length));
             continue;
@@ -265,7 +277,8 @@ public class LoadTsFileTableSchemaCache {
 
       @Override
       public List<Object[]> getAttributeValueList() {
-        return Collections.nCopies(currentBatchTable2Devices.get(tableName).size(), new Object[0]);
+        return Collections.nCopies(
+            currentBatchTable2Devices.get(database).get(tableName).size(), new Object[0]);
       }
     };
   }
@@ -278,8 +291,10 @@ public class LoadTsFileTableSchemaCache {
     return Arrays.copyOf(segments, lastNonNullIndex + 1);
   }
 
-  public void createTableAndDatabaseIfNecessary(final String tableName)
+  public void createTableAndDatabaseIfNecessary(final String database, final String tableName)
       throws LoadAnalyzeException {
+    Map<String, org.apache.tsfile.file.metadata.TableSchema> tableSchemaMap =
+        databaseTableSchemaMap.get(database);
     final org.apache.tsfile.file.metadata.TableSchema schema = tableSchemaMap.remove(tableName);
     if (Objects.isNull(schema)) {
       return;
@@ -292,9 +307,9 @@ public class LoadTsFileTableSchemaCache {
             new QualifiedObjectName(database, tableName),
             context);
 
-    if (needToCreateDatabase) {
+    if (needToCreateDatabase && !createdDatabases.contains(database)) {
       autoCreateTableDatabaseIfAbsent(database);
-      needToCreateDatabase = false;
+      createdDatabases.add(database);
     }
     final org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema fileSchema =
         org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema.fromTsFileTableSchema(
@@ -317,7 +332,7 @@ public class LoadTsFileTableSchemaCache {
     return needDecode4DifferentTimeColumn.get();
   }
 
-  private void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
+  public void autoCreateTableDatabaseIfAbsent(final String database) throws LoadAnalyzeException {
     validateDatabaseName(database);
     if (DataNodeTableCache.getInstance().isDatabaseExist(database)) {
       return;

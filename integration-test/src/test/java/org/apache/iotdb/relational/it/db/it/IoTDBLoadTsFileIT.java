@@ -28,6 +28,7 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileTableGenerator;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -61,8 +62,10 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings("SqlSourceToSinkFlow")
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBLoadTsFileIT {
@@ -348,6 +351,7 @@ public class IoTDBLoadTsFileIT {
   }
 
   private void checkSevoResult(Statement statement, int lineCount) throws SQLException {
+    statement.execute("use " + SchemaConfig.DATABASE_0);
     // cannot query using table0
     try (final ResultSet resultSet =
         statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
@@ -400,8 +404,21 @@ public class IoTDBLoadTsFileIT {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("DROP DATABASE IF EXISTS %s", SchemaConfig.DATABASE_0));
       statement.execute(String.format("create database if not exists %s", "another"));
       statement.execute(String.format("use %s", "another"));
+
+      try {
+        statement.execute(
+            String.format("load '%s' WITH ('database'='somedb')", datanodeDir.getAbsolutePath()));
+        fail();
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "Database is not supported when loading from datanode directory, if you wish to use specified database and ignore ones in the datanode directory, please rename the datanode directory to any other one."));
+      }
+
       statement.execute(String.format("load '%s'", datanodeDir.getAbsolutePath()));
 
       checkSevoResult(statement, lineCount);
@@ -410,10 +427,10 @@ public class IoTDBLoadTsFileIT {
 
   @SuppressWarnings({"ResultOfMethodCallIgnored", "SameParameterValue"})
   private File prepareIoTDBDirWithSevo(int lineCount) throws Exception {
-    File datanodeDir = new File(tmpDir, "datanode");
+    File datanodeDir = new File(TestConstant.BASE_OUTPUT_PATH, "datanode");
     File dataDir = new File(datanodeDir, "data");
     File sequenceDir = new File(dataDir, "sequence");
-    File databaseDataDir = new File(sequenceDir, "test_iotdb_dir_with_sevo");
+    File databaseDataDir = new File(sequenceDir, SchemaConfig.DATABASE_0);
     File regionDataDir = new File(databaseDataDir, "0");
     File partitionDataDir = new File(regionDataDir, "0");
     partitionDataDir.mkdirs();
@@ -435,7 +452,7 @@ public class IoTDBLoadTsFileIT {
 
     File systemDir = new File(datanodeDir, "system");
     File databasesDir = new File(systemDir, "databases");
-    File databaseSystemDir = new File(databasesDir, "test_iotdb_dir_with_sevo");
+    File databaseSystemDir = new File(databasesDir, SchemaConfig.DATABASE_0);
     File regionSystemDir = new File(databaseSystemDir, "0");
     File partitionSystemDir = new File(regionSystemDir, "0");
     File fileSetsDir = new File(partitionSystemDir, "filesets");
