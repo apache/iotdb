@@ -32,7 +32,7 @@ import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAut
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -48,13 +48,14 @@ import java.util.Set;
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
 
-    senderEnv
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -63,7 +64,8 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
-    receiverEnv
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -73,11 +75,11 @@ public class IoTDBPipeProcessorIT extends AbstractPipeDualTreeModelAutoIT {
         .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    senderEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+    receiverEnvContainer.get().getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
   @Ignore

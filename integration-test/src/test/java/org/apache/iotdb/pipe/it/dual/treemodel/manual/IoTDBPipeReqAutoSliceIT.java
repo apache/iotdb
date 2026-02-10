@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.treemodel.manual;
 import org.apache.iotdb.commons.utils.function.CheckedTriConsumer;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeManual;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -34,6 +35,7 @@ import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -49,6 +51,16 @@ import java.util.Random;
 @Category({MultiClusterIT2DualTreeManual.class})
 public class IoTDBPipeReqAutoSliceIT extends AbstractPipeDualTreeModelManualIT {
   private static final int generateDataSize = 10;
+
+  @BeforeClass
+  public static void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
+    setupConfig();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
+  }
 
   protected static void setupConfig() {
     AbstractPipeDualTreeModelManualIT.setupConfig();

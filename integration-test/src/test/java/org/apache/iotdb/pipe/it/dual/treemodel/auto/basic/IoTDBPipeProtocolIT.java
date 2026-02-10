@@ -32,8 +32,10 @@ import org.apache.iotdb.itbase.category.MultiClusterIT2DualTreeAutoBasic;
 import org.apache.iotdb.pipe.it.dual.treemodel.auto.AbstractPipeDualTreeModelAutoIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -48,12 +50,21 @@ import java.util.Map;
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
 
-  @Override
+  @BeforeClass
+  public static void setUp() {
+    // Inner setup
+  }
+
   @Before
-  public void setUp() {
-    MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+  @Override
+  public void setEnv() {
+    // Inner set
+  }
+
+  @After
+  @Override
+  public final void cleanEnvironment() {
+    AbstractPipeDualTreeModelAutoIT.tearDown();
   }
 
   private void innerSetUp(
@@ -64,6 +75,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
       final int dataNodesNum,
       int schemaRegionReplicationFactor,
       int dataRegionReplicationFactor) {
+    MultiEnvFactory.createEnv(2);
+    senderEnv = MultiEnvFactory.getEnv(0);
+    receiverEnv = MultiEnvFactory.getEnv(1);
+
     schemaRegionReplicationFactor = Math.min(schemaRegionReplicationFactor, dataNodesNum);
     dataRegionReplicationFactor = Math.min(dataRegionReplicationFactor, dataNodesNum);
 
