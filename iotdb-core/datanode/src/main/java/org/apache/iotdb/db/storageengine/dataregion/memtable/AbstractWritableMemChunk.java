@@ -207,6 +207,23 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
       return;
     }
 
+    /*
+     * Concurrency background:
+     *
+     * A query may start earlier and record the current row count (rows) of the TVList as its visible range.
+     *  After that, new unseq writes may arrive and immediately trigger a flush, which will sort the TVList.
+     *
+     * During sorting, the underlying indices array of the TVList may be reordered.
+     * If the query continues to use the previously recorded rows as its upper bound,
+     * it may convert a logical index to a physical index via the updated indices array.
+     *
+     * In this case, the converted physical index may exceed the previously visible
+     * rows range, leading to invalid access or unexpected behavior.
+     *
+     * To avoid this issue, when there are active queries on the working TVList, we must
+     * clone the times and indices before sorting, so that the flush sort does not mutate
+     * the data structures that concurrent queries rely on.
+     */
     boolean needCloneTimesAndIndicesInWorkingTVList;
     workingList.lockQueryList();
     try {
