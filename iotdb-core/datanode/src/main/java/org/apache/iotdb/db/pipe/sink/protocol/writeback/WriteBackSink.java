@@ -194,14 +194,16 @@ public class WriteBackSink implements PipeConnector {
 
     if (SESSION_MANAGER.getCurrSession() == null) {
       SESSION_MANAGER.registerSession(session);
-      SESSION_MANAGER.login(
-          session,
-          usernameString,
-          passwordString,
-          ZoneId.systemDefault().toString(),
-          SessionManager.CURRENT_RPC_VERSION,
-          IoTDBConstant.ClientVersion.V_1_0);
     }
+
+    // Check the password and its expiration
+    SESSION_MANAGER.login(
+        session,
+        usernameString,
+        passwordString,
+        ZoneId.systemDefault().toString(),
+        SessionManager.CURRENT_RPC_VERSION,
+        IoTDBConstant.ClientVersion.V_1_0);
   }
 
   @Override
