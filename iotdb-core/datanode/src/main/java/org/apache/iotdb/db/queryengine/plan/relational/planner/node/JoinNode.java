@@ -501,14 +501,6 @@ public class JoinNode extends TwoChildProcessNode {
     private final Set<Identifier> rightTables;
     private final Set<Identifier> tables;
 
-    public EquiJoinClause(Symbol left, Symbol right) {
-      this.left = requireNonNull(left, "left is null");
-      this.right = requireNonNull(right, "right is null");
-      this.leftTables = ImmutableSet.of();
-      this.rightTables = ImmutableSet.of();
-      this.tables = ImmutableSet.of();
-    }
-
     public EquiJoinClause(
         Symbol left, Symbol right, Set<Identifier> leftTables, Set<Identifier> rightTables) {
       this.left = requireNonNull(left, "left is null");

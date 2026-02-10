@@ -97,15 +97,14 @@ public class CollectJoinConstraint implements PlanOptimizer {
         Set<Identifier> equiJoinTables = Sets.intersection(leadingTables, equiJoin.getTables());
         totalJoinTables = Sets.union(totalJoinTables, equiJoinTables);
         if (node.getJoinType() == JoinNode.JoinType.LEFT) {
-          /*
-           SELECT *
-           FROM A
-           LEFT JOIN B ON A.id = B.id
-           LEFT JOIN C ON A.id = C.id;
-
-           join conjunction A.id = C.id（A ⋈ B ⋈ C）, and join table set is {A, B, C}.
-          */
-          equiJoinTables = Sets.union(equiJoinTables, leftHand);
+          // leading.getFilters() is used to determine which join the join condition should apply
+          // to.
+          // For LEFT join, we need to add rightHand tables as well. In the getJoinConditions
+          // function,
+          // we ensure that the tables joined by the Join include both the tables in the join
+          // condition
+          // and the right tables of the outer join, so that the join condition can be applied.
+          equiJoinTables = Sets.union(equiJoinTables, rightHand);
         }
         leading.getFilters().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
         leading.putConditionJoinType(equiJoin.toExpression(), node.getJoinType());
@@ -156,14 +155,15 @@ public class CollectJoinConstraint implements PlanOptimizer {
           continue;
         }
 
-        // 当前join的左表包含之前某个join的右表 & join条件包含之前某个join的右表
+        // Current join's left table contains the right table of a previous join & join condition
+        // contains the right table of a previous join
         if (isOverlap(leftHand, other.getRightHand())
             && isOverlap(joinTables, other.getRightHand())) {
           minLeftHand = Sets.union(minLeftHand, other.getLeftHand());
           minLeftHand = Sets.union(minLeftHand, other.getRightHand());
         }
 
-        // 当前join的右表包含之前某个join的右表
+        // Current join's right table contains the right table of a previous join
         if (isOverlap(rightHand, other.getRightHand())) {
           if (isOverlap(joinTables, other.getRightHand())
               || !isOverlap(joinTables, other.getMinLeftHand())) {

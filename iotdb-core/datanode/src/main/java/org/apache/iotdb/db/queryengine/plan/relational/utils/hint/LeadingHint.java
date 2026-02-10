@@ -220,7 +220,7 @@ public class LeadingHint extends JoinOrderHint {
   private PlanNode makeJoinPlan(PlanNode leftChild, PlanNode rightChild) {
     List<Expression> conditions = getJoinConditions(getFilters(), leftChild, rightChild);
     JoinNode.JoinType joinType =
-        computeJoinType(leftChild.getInputTables(), rightChild.getInputTables(), conditions);
+        computeJoinType(leftChild.getInputTables(), rightChild.getInputTables());
     if (joinType == null) {
       return null;
     } else if (!isConditionJoinTypeMatched(conditions, joinType)) {
@@ -238,10 +238,14 @@ public class LeadingHint extends JoinOrderHint {
       Symbol rightSymbol = Symbol.from(equality.getRight());
 
       if (leftOutputSymbols.contains(leftSymbol) && rightOutputSymbols.contains(rightSymbol)) {
-        criteria.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
+        criteria.add(
+            new JoinNode.EquiJoinClause(
+                leftSymbol, rightSymbol, leftChild.getInputTables(), rightChild.getInputTables()));
       } else if (leftOutputSymbols.contains(rightSymbol)
           && rightOutputSymbols.contains(leftSymbol)) {
-        criteria.add(new JoinNode.EquiJoinClause(rightSymbol, leftSymbol));
+        criteria.add(
+            new JoinNode.EquiJoinClause(
+                rightSymbol, leftSymbol, leftChild.getInputTables(), rightChild.getInputTables()));
       } else {
         throw new IllegalArgumentException("Invalid join condition");
       }
@@ -266,7 +270,7 @@ public class LeadingHint extends JoinOrderHint {
     for (int i = filters.size() - 1; i >= 0; i--) {
       Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
       Set<Identifier> tables = Sets.union(left.getInputTables(), right.getInputTables());
-      // left one is smaller set
+      // it should contain all tables in join conjunctions & right tables if it's left join
       if (tables.containsAll(filterPair.left)) {
         joinConditions.add(filterPair.right);
         filters.remove(i);
@@ -290,53 +294,25 @@ public class LeadingHint extends JoinOrderHint {
     return plan;
   }
 
-  //  private Set<Identifier> getTables(PlanNode root) {
-  //    if (root instanceof JoinNode) {
-  //      return Sets.union(((JoinNode) root).getLeftTables(), ((JoinNode) root).getRightTables());
-  //    } else if (root instanceof DeviceTableScanNode) {
-  //      return ImmutableSet.of(
-  //          new Identifier(((DeviceTableScanNode)
-  // root).getQualifiedObjectName().getObjectName()));
-  //    } else if (root instanceof FilterNode) {
-  //      return getTables(((FilterNode) root).getChild());
-  //    } else if (root instanceof ProjectNode) {
-  //      return getTables(((ProjectNode) root).getChild());
-  //    } else {
-  //      return null;
-  //    }
-  //  }
-
-  public JoinNode.JoinType computeJoinType(
-      Set<Identifier> left, Set<Identifier> right, List<Expression> conditions) {
+  public JoinNode.JoinType computeJoinType(Set<Identifier> left, Set<Identifier> right) {
     Pair<JoinConstraint, Boolean> joinConstraintBooleanPair =
         getJoinConstraint(Sets.union(left, right), left, right);
     if (!joinConstraintBooleanPair.right) {
       return null;
-    } else if (joinConstraintBooleanPair.left == null) {
-      return JoinNode.JoinType.INNER;
-    } else {
-      JoinConstraint joinConstraint = joinConstraintBooleanPair.left;
-      if (joinConstraint.isReversed()) {
-        JoinNode.JoinType joinType = joinConstraint.getJoinType();
-        if (joinType == JoinNode.JoinType.LEFT) {
-          return JoinNode.JoinType.RIGHT;
-        } else if (joinType == JoinNode.JoinType.RIGHT) {
-          return JoinNode.JoinType.LEFT;
-        } else {
-          return joinType;
-        }
-      }
     }
-    return JoinNode.JoinType.INNER;
+    if (joinConstraintBooleanPair.left == null) {
+      return JoinNode.JoinType.INNER;
+    }
+
+    JoinConstraint joinConstraint = joinConstraintBooleanPair.left;
+    return joinConstraint.getJoinType();
   }
 
   public boolean isConditionJoinTypeMatched(
       List<Expression> conditions, JoinNode.JoinType joinType) {
     for (Expression condition : conditions) {
       JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
-      if (originalJoinType == joinType
-          || (originalJoinType == JoinNode.JoinType.LEFT && joinType == JoinNode.JoinType.RIGHT)
-          || (originalJoinType == JoinNode.JoinType.RIGHT && joinType == JoinNode.JoinType.LEFT)) {
+      if (originalJoinType == joinType) {
         continue;
       }
       return false;
@@ -344,9 +320,14 @@ public class LeadingHint extends JoinOrderHint {
     return true;
   }
 
+  /**
+   * try to get join constraint. If it can not be found, it means join is inner join
+   *
+   * @return boolean value used for judging whether the join is legal, and should this join need to
+   *     reverse
+   */
   public Pair<JoinConstraint, Boolean> getJoinConstraint(
       Set<Identifier> joinTables, Set<Identifier> leftHand, Set<Identifier> rightHand) {
-    boolean reversed = false;
     boolean mustBeLeftJoin = false;
 
     JoinConstraint matchedJoinConstraint = null;
@@ -360,54 +341,59 @@ public class LeadingHint extends JoinOrderHint {
             return new Pair<>(null, false);
           }
           matchedJoinConstraint = joinConstraint;
-          reversed = false;
           break;
         } else {
           continue;
         }
       }
 
-      if (!isOverlap(joinConstraint.getRightHand(), joinTables)) {
+      // join操作完全不涉及最小右表约束，跳过
+      if (!isOverlap(joinConstraint.getMinRightHand(), joinTables)) {
         continue;
       }
 
-      if (joinTables.containsAll(joinConstraint.getMinRightHand())) {
+      // 如果当前join的所有表都在约束的"右边界"内，说明这个约束当前还没法应用，跳过
+      if (joinConstraint.getMinRightHand().containsAll(joinTables)) {
         continue;
       }
 
-      if ((joinConstraint.getMinLeftHand().containsAll(leftHand))
-          && joinConstraint.getMinRightHand().containsAll(leftHand)) {
+      // 当前join的左表包含最小左右约束，跳过
+      if (leftHand.containsAll(joinConstraint.getMinLeftHand())
+          && leftHand.containsAll(joinConstraint.getMinRightHand())) {
         continue;
       }
 
-      if (joinConstraint.getMinLeftHand().containsAll(rightHand)
-          && joinConstraint.getMinRightHand().containsAll(rightHand)) {
+      // 当前join的右表包含最小左右约束，跳过
+      if (rightHand.containsAll(joinConstraint.getMinLeftHand())
+          && rightHand.containsAll(joinConstraint.getMinRightHand())) {
         continue;
       }
 
-      if (joinConstraint.getMinLeftHand().containsAll(leftHand)
-          && joinConstraint.getMinRightHand().containsAll(rightHand)) {
+      if (leftHand.containsAll(joinConstraint.getMinLeftHand())
+          && rightHand.containsAll(joinConstraint.getMinRightHand())) {
+        // 当前join的左表包含最小左约束，右表包含最小右约束
         if (matchedJoinConstraint != null) {
           return new Pair<>(null, false);
         }
         matchedJoinConstraint = joinConstraint;
-        reversed = false;
-      } else if (joinConstraint.getMinLeftHand().containsAll(rightHand)
-          && joinConstraint.getMinRightHand().containsAll(leftHand)) {
-        if (matchedJoinConstraint != null) {
-          return new Pair<>(null, false);
-        }
-        matchedJoinConstraint = joinConstraint;
-        reversed = true;
+      } else if (rightHand.containsAll(joinConstraint.getMinLeftHand())
+          && leftHand.containsAll(joinConstraint.getMinRightHand())) {
+        // 不支持left join转换为right join
+        return new Pair<>(null, false);
       } else {
+        // 当前join的左右表和最小右约束均有交集，跳过
+        // minRightHand中的表被分散在了join的两边
         if (isOverlap(leftHand, joinConstraint.getMinRightHand())
-            && isOverlap(rightHand, joinConstraint.getRightHand())) {
+            && isOverlap(rightHand, joinConstraint.getMinRightHand())) {
           continue;
         }
-        if (joinConstraint.getJoinType() == JoinNode.JoinType.LEFT
+        // LEFT JOIN且joinTables 与 minLeftHand 有交集。如果当前JOIN执行完毕，再和minRightHand连接，
+        // 无法再满足 "minLeftHand作为左边界"的要求
+        if (joinConstraint.getJoinType() != JoinNode.JoinType.LEFT
             || isOverlap(joinTables, joinConstraint.getMinLeftHand())) {
           return new Pair<>(null, false);
         }
+        // LEFT JOIN 且joinTables 与 minLeftHand 无交集
         mustBeLeftJoin = true;
       }
     }
@@ -420,7 +406,6 @@ public class LeadingHint extends JoinOrderHint {
     if (matchedJoinConstraint == null) {
       return new Pair<>(null, true);
     }
-    matchedJoinConstraint.setReversed(reversed);
     return new Pair<>(matchedJoinConstraint, true);
   }
 
