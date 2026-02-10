@@ -1915,5 +1915,10 @@ public class MergeTreeSortOperatorTest {
     public String getClientHostname() {
       return SessionConfig.DEFAULT_HOST;
     }
+
+    @Override
+    public boolean isDebug() {
+      return false;
+    }
   }
 }

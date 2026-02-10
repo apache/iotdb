@@ -201,6 +201,8 @@ public class Coordinator {
   private static final Logger SAMPLED_QUERIES_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SAMPLED_QUERIES_LOGGER_NAME);
 
+  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       SYNC_INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -816,7 +818,11 @@ public class Coordinator {
       }
       queryExecutionMap.remove(queryId);
       if (isUserQuery) {
-        recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
+        recordQueries(
+            queryExecution::getTotalExecutionTime,
+            contentOfQuerySupplier,
+            t,
+            queryExecution.isDebug());
       }
     }
   }
@@ -838,12 +844,20 @@ public class Coordinator {
   }
 
   public static void recordQueries(
-      LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
+      LongSupplier executionTime,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t,
+      boolean debug) {
 
     long costTime = executionTime.getAsLong();
     // print slow query
     if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
       SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // always print the query when debug is true
+    if (debug) {
+      DEBUG_LOGGER.info(contentOfQuerySupplier.get());
     }
 
     // only sample successful query

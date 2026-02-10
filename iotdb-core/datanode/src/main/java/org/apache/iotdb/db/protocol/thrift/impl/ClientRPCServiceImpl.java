@@ -1246,7 +1246,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           () -> statement,
           clientSession.getUsername(),
           clientSession.getClientAddress());
-      recordQueries(() -> costTime, () -> statement, null);
+      recordQueries(() -> costTime, () -> statement, null, false);
       return resp;
     } catch (final Exception e) {
       return RpcUtils.getTSExecuteStatementResp(

@@ -79,10 +79,11 @@ public class IoTDBDebugQueryIT {
 
     String[] expectedHeader = new String[] {"time", "device", "value"};
     String[] retArray = new String[] {"2020-01-01T00:00:01.000Z,d1,1,"};
-    tableResultSetEqualTest(
-        "debug select time,device,value from table1", expectedHeader, retArray, DATABASE_NAME);
+    String sql = "debug select time,device,value from table1";
+    tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
 
     assertTrue(dataNodeWrapper.logContains("Cache miss: table1.d1"));
+    assertTrue(dataNodeWrapper.logContains(sql));
   }
 
   @Test
@@ -95,11 +96,10 @@ public class IoTDBDebugQueryIT {
           "Time", "root.test.departments.department_id", "root.test.departments.dep_name"
         };
     String[] retArray = new String[] {"1,D001,研发部,"};
-    resultSetEqualTest(
-        "debug select department_id, dep_name from root.test.departments",
-        expectedHeader,
-        retArray);
+    String sql = "debug select department_id, dep_name from root.test.departments";
+    resultSetEqualTest(sql, expectedHeader, retArray);
 
     assertTrue(dataNodeWrapper.logContains("Cache miss: root.test.departments"));
+    assertTrue(dataNodeWrapper.logContains(sql));
   }
 }
