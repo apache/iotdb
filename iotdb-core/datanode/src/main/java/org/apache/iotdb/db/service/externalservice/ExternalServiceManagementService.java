@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -192,20 +191,14 @@ public class ExternalServiceManagementService {
       ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot);
       return (IExternalService)
           Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
-    } catch (IOException
-        | InstantiationException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | IllegalAccessException
-        | ClassNotFoundException
-        | ClassCastException e) {
+    } catch (Throwable t) {
       TSStatus status =
           new TSStatus(TSStatusCode.EXTERNAL_SERVICE_INSTANCE_CREATE_ERROR.getStatusCode());
       status.setMessage(
           String.format(
               "Failed to start External Service %s, because its instance can not be constructed successfully. Exception: %s",
-              serviceName, e));
-      LOGGER.warn(status.getMessage(), e);
+              serviceName, t));
+      LOGGER.warn(status.getMessage(), t);
       throw new ExternalServiceManagementException(status);
     }
   }
@@ -330,20 +323,13 @@ public class ExternalServiceManagementService {
             serviceInfo -> {
               // start services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
-
-                try {
-                  IExternalService serviceInstance =
-                      createExternalServiceInstance(
-                          serviceInfo.getServiceName(), serviceInfo.getClassName());
-                  checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
-                  serviceInfo.setServiceInstance(serviceInstance);
-                  serviceInstance.start();
-                } finally {
-                  // set STOPPED to avoid the case: service is RUNNING, but its instance is null
-                  if (serviceInfo.getServiceInstance() == null) {
-                    serviceInfo.setState(STOPPED);
-                  }
-                }
+                IExternalService serviceInstance =
+                    createExternalServiceInstance(
+                        serviceInfo.getServiceName(), serviceInfo.getClassName());
+                checkState(
+                    serviceInstance != null, INSTANCE_NULL_ERROR_MSG, serviceInfo.getServiceName());
+                serviceInfo.setServiceInstance(serviceInstance);
+                serviceInstance.start();
               }
             });
   }
@@ -356,8 +342,12 @@ public class ExternalServiceManagementService {
               // stop services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
                 IExternalService serviceInstance = serviceInfo.getServiceInstance();
-                checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
-                serviceInstance.stop();
+                // serviceInstance maybe null when an exception occurs during the start of certain
+                // service in restoreRunningServiceInstance method
+                if (serviceInstance != null) {
+                  // only stop the instance successfully started
+                  serviceInstance.stop();
+                }
               }
             });
   }
