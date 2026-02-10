@@ -243,15 +243,7 @@ public class PrimitiveMemTableTest {
       memTable.writeAlignedRow(
           new StringArrayDeviceID("root.test.d1"), measurementSchemas, i, new Object[] {i, i, i});
     }
-    memTable
-        .getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "s1")
-        .sortTvListForFlush();
-    memTable
-        .getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "s2")
-        .sortTvListForFlush();
-    memTable
-        .getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "s3")
-        .sortTvListForFlush();
+    memTable.getWritableMemChunk(new StringArrayDeviceID("root.test.d1"), "").sortTvListForFlush();
 
     readOnlyMemChunk.sortTvLists();
 
