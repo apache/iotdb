@@ -38,7 +38,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,16 +58,15 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManualIT {
-
-  @Override
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     // Override to enable air-gap
     MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
 
-    senderEnv
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -77,8 +76,13 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
-    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
-    receiverEnv
+    senderEnvContainer
+        .get()
+        .getConfig()
+        .getDataNodeConfig()
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -90,8 +94,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
   @Test

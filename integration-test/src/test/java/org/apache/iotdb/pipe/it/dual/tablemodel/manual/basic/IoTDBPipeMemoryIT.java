@@ -22,6 +22,7 @@ package org.apache.iotdb.pipe.it.dual.tablemodel.manual.basic;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.MultiClusterIT2DualTableManualBasic;
@@ -29,7 +30,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -41,22 +42,27 @@ import java.util.Map;
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeMemoryIT extends AbstractPipeTableModelDualManualIT {
 
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
+  @BeforeClass
+  public static void setUp() {
+    MultiEnvFactory.createEnv(2);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
+    setupConfig();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
-  @Override
-  protected void setupConfig() {
-    super.setupConfig();
-    senderEnv
+  protected static void setupConfig() {
+    AbstractPipeTableModelDualManualIT.setupConfig();
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setPipeMemoryManagementEnabled(true)
         .setIsPipeEnableMemoryCheck(true)
         .setDatanodeMemoryProportion("1000:1000:1000:1000:1:1000");
-    receiverEnv
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setPipeMemoryManagementEnabled(true)

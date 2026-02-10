@@ -34,7 +34,7 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,13 +49,14 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT {
 
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
 
-    senderEnv
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -65,7 +66,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .setDnConnectionTimeoutMs(600000)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
-    receiverEnv
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -76,8 +78,8 @@ public class IoTDBPipeAutoConflictIT extends AbstractPipeTableModelDualManualIT 
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment();
-    receiverEnv.initClusterEnvironment();
+    senderEnvContainer.get().initClusterEnvironment();
+    receiverEnvContainer.get().initClusterEnvironment();
   }
 
   @Test

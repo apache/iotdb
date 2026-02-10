@@ -42,7 +42,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,14 +62,14 @@ import static org.junit.Assert.fail;
 @Category({MultiClusterIT2DualTableManualEnhanced.class})
 public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
 
-  @Override
-  @Before
-  public void setUp() {
+  @BeforeClass
+  public static void setUp() {
     MultiEnvFactory.createEnv(2);
-    senderEnv = MultiEnvFactory.getEnv(0);
-    receiverEnv = MultiEnvFactory.getEnv(1);
+    senderEnvContainer.set(MultiEnvFactory.getEnv(0));
+    receiverEnvContainer.set(MultiEnvFactory.getEnv(1));
 
-    senderEnv
+    senderEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -80,7 +80,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    receiverEnv
+    receiverEnvContainer
+        .get()
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
@@ -93,8 +94,8 @@ public class IoTDBPipeClusterIT extends AbstractPipeTableModelDualManualIT {
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false);
 
-    senderEnv.initClusterEnvironment(3, 3, 180);
-    receiverEnv.initClusterEnvironment(3, 3, 180);
+    senderEnvContainer.get().initClusterEnvironment(3, 3, 180);
+    receiverEnvContainer.get().initClusterEnvironment(3, 3, 180);
   }
 
   @Test

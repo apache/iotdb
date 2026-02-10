@@ -33,7 +33,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.external.commons.lang3.SystemUtils;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,12 +52,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTreeAutoBasic.class})
 public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   @Test
   public void testValidPipeName() throws Exception {

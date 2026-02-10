@@ -32,7 +32,6 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -55,12 +54,6 @@ import java.util.function.Consumer;
 @Ignore(
     "Currently this may lose some data because tsFile conversion is banned, and historical transferred is not opened if history.enable = false")
 public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   private static final int generateDataSize = 100;
 

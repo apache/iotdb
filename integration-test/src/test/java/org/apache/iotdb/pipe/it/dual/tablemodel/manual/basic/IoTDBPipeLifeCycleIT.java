@@ -31,7 +31,6 @@ import org.apache.iotdb.pipe.it.dual.tablemodel.manual.AbstractPipeTableModelDua
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -50,12 +49,6 @@ import static org.apache.iotdb.db.it.utils.TestUtils.executeNonQueryWithRetry;
 @RunWith(IoTDBTestRunner.class)
 @Category({MultiClusterIT2DualTableManualBasic.class})
 public class IoTDBPipeLifeCycleIT extends AbstractPipeTableModelDualManualIT {
-
-  @Override
-  @Before
-  public void setUp() {
-    super.setUp();
-  }
 
   @Test
   public void testLifeCycleWithHistoryEnabled() throws Exception {
