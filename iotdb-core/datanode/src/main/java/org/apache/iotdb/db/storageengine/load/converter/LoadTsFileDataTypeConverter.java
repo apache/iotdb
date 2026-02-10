@@ -109,6 +109,7 @@ public class LoadTsFileDataTypeConverter {
               ClusterPartitionFetcher.getInstance(),
               ClusterSchemaFetcher.getInstance(),
               IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+              false,
               false)
           .status;
     } finally {

@@ -335,7 +335,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 partitionFetcher,
                 schemaFetcher,
                 req.getTimeout(),
-                true);
+                true,
+                s.isDebug());
       }
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -431,7 +432,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -522,7 +524,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -612,7 +615,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1059,7 +1063,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               req.getTimeout(),
-              true);
+              true,
+              s.isDebug());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         finished = true;
@@ -1659,7 +1664,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                     partitionFetcher,
                     schemaFetcher,
                     config.getQueryTimeoutThreshold(),
-                    false);
+                    false,
+                    s.isDebug());
           }
           results.add(result.status);
         } catch (Exception e) {
@@ -2515,7 +2521,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               config.getQueryTimeoutThreshold(),
-              true);
+              true,
+              statement.isDebug());
 
       if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && executionResult.status.code != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
@@ -2910,6 +2917,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     ExecutionResult result = null;
     final List<? extends Statement> subStatements = statement.getSubStatements();
     final int totalSubStatements = subStatements.size();
+    boolean debug = statement.isDebug();
 
     LOGGER.info(
         "Start batch executing {} sub-statement(s) in tree model, queryId: {}",
@@ -2934,7 +2942,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               partitionFetcher,
               schemaFetcher,
               timeoutMs,
-              userQuery);
+              userQuery,
+              debug);
 
       // Exit early if any sub-statement execution fails
       if (result != null

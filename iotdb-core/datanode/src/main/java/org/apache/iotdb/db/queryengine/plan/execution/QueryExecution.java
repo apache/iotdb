@@ -708,6 +708,11 @@ public class QueryExecution implements IQueryExecution {
     return analysis.getStatementType();
   }
 
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
+  }
+
   public MPPQueryContext getContext() {
     return context;
   }

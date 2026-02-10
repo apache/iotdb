@@ -767,7 +767,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
+            false,
+            statement.isDebug())
         .status;
   }
 
