@@ -242,8 +242,12 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
         context.getTimePartitionTableSizeQueryContextMap().entrySet()) {
       Map<String, Long> tableSizeResultMap = entry.getValue().getTableSizeResultMap();
       for (Map.Entry<String, Long> tableSizeEntry : tableSizeResultMap.entrySet()) {
-        int i = Integer.parseInt(tableSizeEntry.getKey().substring(5));
-        Assert.assertEquals(Long.valueOf(i * 10000L), tableSizeEntry.getValue());
+        try {
+          int i = Integer.parseInt(tableSizeEntry.getKey().substring(5));
+          Assert.assertEquals(Long.valueOf(i * 10000L), tableSizeEntry.getValue());
+        } catch (NumberFormatException e) {
+          Assert.fail();
+        }
       }
     }
   }
@@ -335,10 +339,10 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
                 + "1"
                 + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
 
-    keyFile1.createNewFile();
-    valueFile1.createNewFile();
-    tempKeyFile2.createNewFile();
-    tempValueFile2.createNewFile();
+    Files.createFile(keyFile1.toPath());
+    Files.createFile(valueFile1.toPath());
+    Files.createFile(tempKeyFile2.toPath());
+    Files.createFile(tempValueFile2.toPath());
     TsFileTableDiskUsageCacheWriter writer =
         new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
@@ -365,10 +369,10 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     File valueFile2 =
         new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
 
-    keyFile1.createNewFile();
-    valueFile1.createNewFile();
-    keyFile2.createNewFile();
-    valueFile2.createNewFile();
+    Files.createFile(keyFile1.toPath());
+    Files.createFile(valueFile1.toPath());
+    Files.createFile(keyFile2.toPath());
+    Files.createFile(valueFile2.toPath());
     TsFileTableDiskUsageCacheWriter writer =
         new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
@@ -401,10 +405,10 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     File valueFile2 =
         new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
 
-    keyFile1.createNewFile();
-    valueFile1.createNewFile();
-    keyFile2.createNewFile();
-    tempValueFile2.createNewFile();
+    Files.createFile(keyFile1.toPath());
+    Files.createFile(valueFile1.toPath());
+    Files.createFile(keyFile2.toPath());
+    Files.createFile(tempValueFile2.toPath());
     TsFileTableDiskUsageCacheWriter writer =
         new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
@@ -440,9 +444,9 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
                 + "2"
                 + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
 
-    keyFile1.createNewFile();
-    tempKeyFile2.createNewFile();
-    tempValueFile2.createNewFile();
+    Files.createFile(keyFile1.toPath());
+    Files.createFile(tempKeyFile2.toPath());
+    Files.createFile(tempValueFile2.toPath());
     TsFileTableDiskUsageCacheWriter writer =
         new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
