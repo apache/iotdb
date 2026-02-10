@@ -95,7 +95,7 @@ public class Cli extends AbstractCli {
           .println(IOTDB_ERROR_PREFIX + ": Input params error because " + e.getMessage());
       ctx.exit(CODE_ERROR);
     } catch (Exception e) {
-      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error " + e.getMessage());
+      ctx.getPrinter().println(IOTDB_ERROR_PREFIX + ": Exit cli with error: " + e.getMessage());
       ctx.exit(CODE_ERROR);
     }
     LineReader lineReader = JlineUtils.getLineReader(ctx, username, host, port);
