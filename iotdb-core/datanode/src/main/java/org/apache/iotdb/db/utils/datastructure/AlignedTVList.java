@@ -166,7 +166,7 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
-  public AlignedTVList cloneForFlushSort() {
+  public synchronized AlignedTVList cloneForFlushSort() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
     cloneList.timeDeletedCnt = this.timeDeletedCnt;

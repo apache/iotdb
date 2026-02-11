@@ -64,7 +64,7 @@ public abstract class BinaryTVList extends TVList {
   }
 
   @Override
-  public TVList cloneForFlushSort() {
+  public synchronized TVList cloneForFlushSort() {
     BinaryTVList cloneList = BinaryTVList.newList();
     cloneAs(cloneList);
     cloneList.bitMap = this.bitMap;

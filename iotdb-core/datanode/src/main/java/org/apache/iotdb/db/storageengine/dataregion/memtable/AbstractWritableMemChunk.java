@@ -47,7 +47,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
 
-  protected TVList listForFlushSort;
+  protected TVList workingListForFlush;
 
   /**
    * Release the TVList if there is no query on it. Otherwise, it should set the first query as the
@@ -200,10 +200,10 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IMeasurementSchema getSchema();
 
   @Override
-  public synchronized void sortTvListForFlush() {
+  public void sortTvListForFlush() {
     TVList workingList = getWorkingTVList();
     if (workingList.isSorted()) {
-      listForFlushSort = workingList;
+      workingListForFlush = workingList;
       return;
     }
 
@@ -231,9 +231,13 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     } finally {
       workingList.unlockQueryList();
     }
-    listForFlushSort =
+    workingListForFlush =
         needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
-    listForFlushSort.sort();
+    workingListForFlush.sort();
+  }
+
+  public void releaseTemporaryTvListForFlush() {
+    workingListForFlush = null;
   }
 
   @Override

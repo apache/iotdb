@@ -63,7 +63,7 @@ public abstract class LongTVList extends TVList {
   }
 
   @Override
-  public TVList cloneForFlushSort() {
+  public synchronized TVList cloneForFlushSort() {
     LongTVList cloneList = LongTVList.newList();
     cloneAs(cloneList);
     cloneList.bitMap = this.bitMap;

@@ -68,6 +68,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   private Map<String, Integer> measurementIndexMap;
   private List<TSDataType> dataTypes;
   private final List<IMeasurementSchema> schemaList;
+  // Note: Use AbstractWritableMemChunk.workingListForFlush instead of list in FlushTask
   private AlignedTVList list;
   private List<AlignedTVList> sortedList;
   private long sortedRowCount = 0;
@@ -550,9 +551,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       long maxNumberOfPointsInChunk,
       int maxNumberOfPointsInPage) {
     BitMap allValueColDeletedMap;
-    AlignedTVList list = (AlignedTVList) listForFlushSort;
+    AlignedTVList alignedWorkingListForFlush = (AlignedTVList) workingListForFlush;
 
-    allValueColDeletedMap = ignoreAllNullRows ? list.getAllValueColDeletedMap() : null;
+    allValueColDeletedMap =
+        ignoreAllNullRows ? alignedWorkingListForFlush.getAllValueColDeletedMap() : null;
 
     boolean[] timeDuplicateInfo = null;
 
@@ -564,8 +566,10 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     int pointNumInPage = 0;
     int pointNumInChunk = 0;
 
-    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
-      long time = list.getTime(sortedRowIndex);
+    for (int sortedRowIndex = 0;
+        sortedRowIndex < alignedWorkingListForFlush.rowCount();
+        sortedRowIndex++) {
+      long time = alignedWorkingListForFlush.getTime(sortedRowIndex);
       if (pointNumInPage == 0) {
         pageRange.add(sortedRowIndex);
       }
@@ -586,15 +590,17 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       }
 
       int nextRowIndex = sortedRowIndex + 1;
-      while (nextRowIndex < list.rowCount()
+      while (nextRowIndex < alignedWorkingListForFlush.rowCount()
           && ((allValueColDeletedMap != null
-                  && allValueColDeletedMap.isMarked(list.getValueIndex(nextRowIndex)))
-              || list.isTimeDeleted(nextRowIndex))) {
+                  && allValueColDeletedMap.isMarked(
+                      alignedWorkingListForFlush.getValueIndex(nextRowIndex)))
+              || alignedWorkingListForFlush.isTimeDeleted(nextRowIndex))) {
         nextRowIndex++;
       }
-      if (nextRowIndex != list.rowCount() && time == list.getTime(nextRowIndex)) {
+      if (nextRowIndex != alignedWorkingListForFlush.rowCount()
+          && time == alignedWorkingListForFlush.getTime(nextRowIndex)) {
         if (Objects.isNull(timeDuplicateInfo)) {
-          timeDuplicateInfo = new boolean[list.rowCount()];
+          timeDuplicateInfo = new boolean[alignedWorkingListForFlush.rowCount()];
         }
         timeDuplicateInfo[sortedRowIndex] = true;
       }
@@ -602,7 +608,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
     }
 
     if (pointNumInPage != 0) {
-      pageRange.add(list.rowCount() - 1);
+      pageRange.add(alignedWorkingListForFlush.rowCount() - 1);
     }
     if (pointNumInChunk != 0) {
       chunkRange.add(pageRange);
@@ -618,7 +624,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
       boolean[] timeDuplicateInfo,
       BitMap allValueColDeletedMap,
       int maxNumberOfPointsInPage) {
-    AlignedTVList list = (AlignedTVList) listForFlushSort;
+    AlignedTVList list = (AlignedTVList) workingListForFlush;
     List<TSDataType> dataTypes = list.getTsDataTypes();
     Pair<Long, Integer>[] lastValidPointIndexForTimeDupCheck = new Pair[dataTypes.size()];
     for (List<Integer> pageRange : chunkRange) {
@@ -748,9 +754,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(
-      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
-    AlignedTVList list = (AlignedTVList) listForFlushSort;
+  public void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     encodeInfo.maxNumberOfPointsInChunk =
         Math.min(
             encodeInfo.maxNumberOfPointsInChunk,
@@ -767,7 +771,7 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
 
     // create MergeSortAlignedTVListIterator.
     List<AlignedTVList> alignedTvLists = new ArrayList<>(sortedList);
-    alignedTvLists.add(list);
+    alignedTvLists.add((AlignedTVList) workingListForFlush);
     List<Integer> columnIndexList = buildColumnIndexList(schemaList);
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
