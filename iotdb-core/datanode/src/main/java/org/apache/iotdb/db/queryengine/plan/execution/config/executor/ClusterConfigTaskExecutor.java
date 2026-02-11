@@ -372,6 +372,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -2353,6 +2354,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    boolean hasSourcePassword = false;
+    boolean hasSinkPassword = false;
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
     final Map<String, String> sourceAttributes;
@@ -2368,6 +2371,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
               new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
+        hasSourcePassword = containsPassword(alterPipeStatement.getSourceAttributes());
         if (alterPipeStatement.isReplaceAllSourceAttributes()) {
           sourceAttributes = alterPipeStatement.getSourceAttributes();
         } else {
@@ -2407,6 +2411,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
+        hasSinkPassword = containsPassword(alterPipeStatement.getSinkAttributes());
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
           sinkAttributes = alterPipeStatement.getSinkAttributes();
         } else {
@@ -2426,8 +2431,22 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
 
+      final Map<String, String> checkedSource = new HashMap<>(sourceAttributes);
+      if (!hasSourcePassword) {
+        checkedSource.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(
+            PipeParameters.KeyReducer.reduce(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+      }
+      final Map<String, String> checkedSink = new HashMap<>(sinkAttributes);
+      if (!hasSinkPassword) {
+        checkedSource.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(
+            PipeParameters.KeyReducer.reduce(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+      }
       PipeDataNodeAgent.plugin()
-          .validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+          .validate(pipeName, checkedSource, processorAttributes, checkedSink);
     } catch (final Exception e) {
       future.setException(
           new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
@@ -2500,16 +2519,20 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
   }
 
-  private static boolean onlyContainsUser(
-      final Map<String, String> extractorOrConnectorAttributes) {
-    final PipeParameters extractorOrConnectorParameters =
-        new PipeParameters(extractorOrConnectorAttributes);
-    return extractorOrConnectorParameters.hasAnyAttributes(
+  private static boolean containsPassword(final Map<String, String> sourceOrSinkAttributes) {
+    final PipeParameters sourceOrSinkParameters = new PipeParameters(sourceOrSinkAttributes);
+    return sourceOrSinkParameters.hasAnyAttributes(
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
+  }
+
+  private static boolean onlyContainsUser(final Map<String, String> sourceOrSinkAttributes) {
+    final PipeParameters sourceOrSinkParameters = new PipeParameters(sourceOrSinkAttributes);
+    return sourceOrSinkParameters.hasAnyAttributes(
             PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
             PipeSinkConstant.SINK_IOTDB_USER_KEY,
             PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
             PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)
-        && !extractorOrConnectorParameters.hasAnyAttributes(
+        && !sourceOrSinkParameters.hasAnyAttributes(
             PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
             PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
   }
