@@ -237,7 +237,7 @@ public class PrimitiveMemTableTest {
                 measurementSchemas));
     ReadOnlyMemChunk readOnlyMemChunk =
         resourcesByPathUtils.getReadOnlyMemChunkFromMemTable(
-            new QueryContext(1), memTable, null, Long.MAX_VALUE, null);
+            new QueryContext(1, false), memTable, null, Long.MAX_VALUE, null);
 
     for (int i = 1; i <= 50; i++) {
       memTable.writeAlignedRow(
