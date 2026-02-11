@@ -47,6 +47,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
 
+  protected TVList workingListForFlush;
+
   /**
    * Release the TVList if there is no query on it. Otherwise, it should set the first query as the
    * owner. TVList is released until all queries finish. If it throws memory-not-enough exception
@@ -198,7 +200,46 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IMeasurementSchema getSchema();
 
   @Override
-  public abstract void sortTvListForFlush();
+  public void sortTvListForFlush() {
+    TVList workingList = getWorkingTVList();
+    if (workingList.isSorted()) {
+      workingListForFlush = workingList;
+      return;
+    }
+
+    /*
+     * Concurrency background:
+     *
+     * A query may start earlier and record the current row count (rows) of the TVList as its visible range.
+     *  After that, new unseq writes may arrive and immediately trigger a flush, which will sort the TVList.
+     *
+     * During sorting, the underlying indices array of the TVList may be reordered.
+     * If the query continues to use the previously recorded rows as its upper bound,
+     * it may convert a logical index to a physical index via the updated indices array.
+     *
+     * In this case, the converted physical index may exceed the previously visible
+     * rows range, leading to invalid access or unexpected behavior.
+     *
+     * To avoid this issue, when there are active queries on the working TVList, we must
+     * clone the times and indices before sorting, so that the flush sort does not mutate
+     * the data structures that concurrent queries rely on.
+     */
+    boolean needCloneTimesAndIndicesInWorkingTVList;
+    workingList.lockQueryList();
+    try {
+      needCloneTimesAndIndicesInWorkingTVList = !workingList.getQueryContextSet().isEmpty();
+    } finally {
+      workingList.unlockQueryList();
+    }
+    workingListForFlush =
+        needCloneTimesAndIndicesInWorkingTVList ? workingList.cloneForFlushSort() : workingList;
+    workingListForFlush.sort();
+  }
+
+  @Override
+  public void releaseTemporaryTvListForFlush() {
+    workingListForFlush = null;
+  }
 
   @Override
   public abstract int delete(long lowerBound, long upperBound);

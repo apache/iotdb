@@ -98,6 +98,8 @@ public interface IWritableMemChunk extends WALEntryValue {
    */
   void sortTvListForFlush();
 
+  void releaseTemporaryTvListForFlush();
+
   default long getMaxTime() {
     return Long.MAX_VALUE;
   }
