@@ -994,7 +994,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
-              TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2175,7 +2175,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format("Failed to create pipe %s, " + pathError, pipeName),
-              TSStatusCode.PIPE_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
