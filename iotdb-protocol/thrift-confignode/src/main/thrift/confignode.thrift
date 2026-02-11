@@ -445,6 +445,7 @@ struct TAuthizedPatternTreeResp {
 struct TLoginReq {
   1: required string userrname
   2: required string password
+  3: optional bool useEncryptedPassword
 }
 
 // reqtype : tree, relational, system

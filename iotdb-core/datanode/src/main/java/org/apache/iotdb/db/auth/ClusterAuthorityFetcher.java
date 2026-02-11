@@ -566,7 +566,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } else {
-      TLoginReq req = new TLoginReq(username, password);
+      TLoginReq req =
+          new TLoginReq(username, password).setUseEncryptedPassword(useEncryptedPassword);
       TPermissionInfoResp status = null;
       try (ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
