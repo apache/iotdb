@@ -42,6 +42,7 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
@@ -160,7 +161,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
                 password,
                 ZoneId.systemDefault().toString(),
                 SessionManager.CURRENT_RPC_VERSION,
-                IoTDBConstant.ClientVersion.V_1_0)
+                IoTDBConstant.ClientVersion.V_1_0,
+                IClientSession.SqlDialect.TREE,
+                regionId >= 0)
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));

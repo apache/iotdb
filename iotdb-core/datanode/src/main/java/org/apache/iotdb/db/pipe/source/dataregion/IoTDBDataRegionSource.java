@@ -40,6 +40,7 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegio
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionLogSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionTsFileSource;
+import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -561,7 +562,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
             password,
             ZoneId.systemDefault().toString(),
             SessionManager.CURRENT_RPC_VERSION,
-            IoTDBConstant.ClientVersion.V_1_0);
+            IoTDBConstant.ClientVersion.V_1_0,
+            IClientSession.SqlDialect.TREE,
+            regionId >= 0);
   }
 
   @Override

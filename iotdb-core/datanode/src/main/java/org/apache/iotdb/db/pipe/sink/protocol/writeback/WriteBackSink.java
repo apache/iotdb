@@ -205,7 +205,9 @@ public class WriteBackSink implements PipeConnector {
                     passwordString,
                     ZoneId.systemDefault().toString(),
                     SessionManager.CURRENT_RPC_VERSION,
-                    IoTDBConstant.ClientVersion.V_1_0)
+                    IoTDBConstant.ClientVersion.V_1_0,
+                    IClientSession.SqlDialect.TREE,
+                    environment.getRegionId() >= 0)
                 .getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(

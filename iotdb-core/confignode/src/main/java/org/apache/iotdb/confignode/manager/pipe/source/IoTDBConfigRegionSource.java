@@ -112,11 +112,13 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
   @Override
   protected void login(final @Nonnull String password) {
-    if (Objects.isNull(
-        ConfigNode.getInstance()
+    if (ConfigNode.getInstance()
             .getConfigManager()
             .getPermissionManager()
-            .login4Pipe(userName, password))) {
+            .login(userName, password, true)
+            .getStatus()
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
     }
   }
