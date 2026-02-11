@@ -138,6 +138,16 @@ public abstract class AlignedTVList extends TVList {
   }
 
   @Override
+  public synchronized AlignedTVList cloneForFlushSort() {
+    AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
+    cloneAs(cloneList);
+    cloneList.memoryBinaryChunkSize = this.memoryBinaryChunkSize;
+    cloneList.values = this.values;
+    cloneList.bitMaps = this.bitMaps;
+    return cloneList;
+  }
+
+  @Override
   public synchronized AlignedTVList clone() {
     AlignedTVList cloneList = AlignedTVList.newAlignedList(new ArrayList<>(dataTypes));
     cloneAs(cloneList);
