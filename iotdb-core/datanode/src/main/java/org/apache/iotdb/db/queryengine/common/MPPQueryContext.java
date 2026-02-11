@@ -125,6 +125,8 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
+  private boolean debug = false;
+
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
@@ -501,6 +503,14 @@ public class MPPQueryContext implements IAuditEntity {
 
   public void setUserQuery(boolean userQuery) {
     this.userQuery = userQuery;
+  }
+
+  public boolean isDebug() {
+    return debug;
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
   }
 
   public boolean isInnerTriggeredQuery() {
