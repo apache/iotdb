@@ -236,6 +236,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
     workingListForFlush.sort();
   }
 
+  @Override
   public void releaseTemporaryTvListForFlush() {
     workingListForFlush = null;
   }
