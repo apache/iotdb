@@ -547,6 +547,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   }
 
   @Override
+  protected void login() {}
+
+  @Override
   public void start() throws Exception {
     if (hasNoExtractionNeed || hasBeenStarted.get()) {
       return;

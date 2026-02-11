@@ -109,6 +109,9 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
+  protected void login() {}
+
+  @Override
   protected AbstractPipeListeningQueue getListeningQueue() {
     return PipeConfigNodeAgent.runtime().listener();
   }

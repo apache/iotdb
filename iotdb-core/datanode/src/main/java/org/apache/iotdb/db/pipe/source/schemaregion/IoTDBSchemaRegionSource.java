@@ -147,6 +147,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
+  protected void login() {}
+
+  @Override
   protected boolean needTransferSnapshot() {
     // Note: the schema region will transfer snapshot if there are table or tree planNode captured.
     // However, the schema region can be only tree model or table model, thus the snapshot can be
