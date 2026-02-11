@@ -57,6 +57,8 @@ import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Collections;
@@ -109,7 +111,15 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
-  protected void login() {}
+  protected void login(final @Nonnull String password) {
+    if (Objects.isNull(
+        ConfigNode.getInstance()
+            .getConfigManager()
+            .getPermissionManager()
+            .login4Pipe(userName, password))) {
+      throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
+    }
+  }
 
   @Override
   protected AbstractPipeListeningQueue getListeningQueue() {

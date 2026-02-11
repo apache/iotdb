@@ -42,6 +42,8 @@ import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEve
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.schema.PipeSchemaRegionSourceMetrics;
 import org.apache.iotdb.db.pipe.receiver.visitor.PipeTreeStatementToBatchVisitor;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
@@ -62,8 +64,11 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 
+import javax.annotation.Nonnull;
+
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -147,7 +152,20 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
   }
 
   @Override
-  protected void login() {}
+  protected void login(final @Nonnull String password) {
+    if (SessionManager.getInstance()
+            .login(
+                new InternalClientSession("Source_login_session_" + regionId),
+                userName,
+                password,
+                ZoneId.systemDefault().toString(),
+                SessionManager.CURRENT_RPC_VERSION,
+                IoTDBConstant.ClientVersion.V_1_0)
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
+    }
+  }
 
   @Override
   protected boolean needTransferSnapshot() {
