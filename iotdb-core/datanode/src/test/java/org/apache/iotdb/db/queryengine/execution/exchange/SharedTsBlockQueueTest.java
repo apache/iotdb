@@ -25,7 +25,10 @@ import org.apache.iotdb.db.queryengine.execution.memory.MemoryPool;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.apache.tsfile.external.commons.lang3.Validate;
+import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -37,12 +40,89 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 public class SharedTsBlockQueueTest {
+
+  /**
+   * Test that when add() goes into the async listener path (memory blocked) and the queue is
+   * aborted before the listener fires, the listener does NOT add the TsBlock to the closed queue.
+   * This reproduces the race condition that caused NPE in MemoryPool.free().
+   */
+  @Test
+  public void testAsyncListenerAfterAbortDoesNotAddTsBlock() {
+    final String queryId = "q0";
+    final long mockTsBlockSize = 1024L;
+    final TFragmentInstanceId fragmentInstanceId = new TFragmentInstanceId(queryId, 0, "0");
+    final String planNodeId = "test";
+
+    // Use a SettableFuture to manually control when the blocked-on-memory future
+    // completes.
+    SettableFuture<Void> manualFuture = SettableFuture.create();
+
+    // Create a mock MemoryPool that returns the manually-controlled future
+    // (simulating blocked).
+    LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
+    MemoryPool mockMemoryPool = Mockito.mock(MemoryPool.class);
+    Mockito.when(mockLocalMemoryManager.getQueryPool()).thenReturn(mockMemoryPool);
+
+    // reserve() returns (manualFuture, false) — simulating memory blocked
+    Mockito.when(
+            mockMemoryPool.reserve(
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyString(),
+                Mockito.anyLong(),
+                Mockito.anyLong()))
+        .thenReturn(new Pair<>(manualFuture, Boolean.FALSE));
+    // tryCancel returns 0 — simulating future already completed (can't cancel)
+    Mockito.when(mockMemoryPool.tryCancel(Mockito.any())).thenReturn(0L);
+
+    // Use a direct executor so that when we complete manualFuture, the listener
+    // runs immediately.
+    SharedTsBlockQueue queue =
+        new SharedTsBlockQueue(
+            fragmentInstanceId, planNodeId, mockLocalMemoryManager, newDirectExecutorService());
+    queue.getCanAddTsBlock().set(null);
+    queue.setMaxBytesCanReserve(Long.MAX_VALUE);
+
+    TsBlock mockTsBlock = Utils.createMockTsBlock(mockTsBlockSize);
+
+    // Step 1: add() goes into async path — listener is registered on manualFuture.
+    // reserve() returns (manualFuture, false), so the TsBlock is NOT yet added to
+    // the queue.
+    ListenableFuture<Void> addFuture;
+    synchronized (queue) {
+      addFuture = queue.add(mockTsBlock);
+    }
+    // The addFuture (channelBlocked) should not be done yet
+    Assert.assertFalse(addFuture.isDone());
+    // Queue should be empty — TsBlock is waiting for memory
+    Assert.assertTrue(queue.isEmpty());
+
+    // Step 2: Abort the queue (simulates upstream FI state change listener calling
+    // abort)
+    synchronized (queue) {
+      queue.abort();
+    }
+    Assert.assertTrue(queue.isClosed());
+
+    // Step 3: Now complete the manualFuture — this triggers the async listener.
+    // Before the fix, this would add the TsBlock to the closed queue.
+    // After the fix, the listener detects closed==true and returns without adding.
+    manualFuture.set(null);
+
+    // Verify: queue should still be empty (TsBlock was NOT added to the closed
+    // queue)
+    Assert.assertTrue(queue.isEmpty());
+    // The channelBlocked future should be completed (no hang)
+    Assert.assertTrue(addFuture.isDone());
+  }
+
   @Test(timeout = 15000L)
   public void concurrencyTest() {
     final String queryId = "q0";
     final long mockTsBlockSize = 1024L * 1024L;
 
-    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per query.
+    // Construct a mock LocalMemoryManager with capacity 5 * mockTsBlockSize per
+    // query.
     LocalMemoryManager mockLocalMemoryManager = Mockito.mock(LocalMemoryManager.class);
     MemoryManager memoryManager = Mockito.spy(new MemoryManager(10 * mockTsBlockSize));
     MemoryPool spyMemoryPool =
