@@ -59,6 +59,7 @@ import static org.apache.iotdb.db.utils.MemUtils.getBinarySize;
 public class WritableMemChunk extends AbstractWritableMemChunk {
 
   private IMeasurementSchema schema;
+  // Note: Use AbstractWritableMemChunk.workingListForFlush instead of list in FlushTask
   private TVList list;
   private List<TVList> sortedList;
   private long sortedRowCount = 0;
@@ -263,13 +264,6 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void sortTvListForFlush() {
-    if (!list.isSorted()) {
-      list.sort();
-    }
-  }
-
-  @Override
   public TVList getWorkingTVList() {
     return list;
   }
@@ -395,50 +389,53 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     ChunkWriterImpl chunkWriterImpl = createIChunkWriter();
     long dataSizeInCurrentChunk = 0;
     int pointNumInCurrentChunk = 0;
-    for (int sortedRowIndex = 0; sortedRowIndex < list.rowCount(); sortedRowIndex++) {
-      if (list.isNullValue(list.getValueIndex(sortedRowIndex))) {
+    for (int sortedRowIndex = 0;
+        sortedRowIndex < workingListForFlush.rowCount();
+        sortedRowIndex++) {
+      if (workingListForFlush.isNullValue(workingListForFlush.getValueIndex(sortedRowIndex))) {
         continue;
       }
 
-      long time = list.getTime(sortedRowIndex);
+      long time = workingListForFlush.getTime(sortedRowIndex);
 
       // skip duplicated data
-      if ((sortedRowIndex + 1 < list.rowCount() && (time == list.getTime(sortedRowIndex + 1)))) {
+      if ((sortedRowIndex + 1 < workingListForFlush.rowCount()
+          && (time == workingListForFlush.getTime(sortedRowIndex + 1)))) {
         continue;
       }
 
       // store last point for SDT
-      if (sortedRowIndex + 1 == list.rowCount()) {
+      if (sortedRowIndex + 1 == workingListForFlush.rowCount()) {
         chunkWriterImpl.setLastPoint(true);
       }
 
       switch (tsDataType) {
         case BOOLEAN:
-          chunkWriterImpl.write(time, list.getBoolean(sortedRowIndex));
+          chunkWriterImpl.write(time, workingListForFlush.getBoolean(sortedRowIndex));
           dataSizeInCurrentChunk += 8L + 1L;
           break;
         case INT32:
         case DATE:
-          chunkWriterImpl.write(time, list.getInt(sortedRowIndex));
+          chunkWriterImpl.write(time, workingListForFlush.getInt(sortedRowIndex));
           dataSizeInCurrentChunk += 8L + 4L;
           break;
         case INT64:
         case TIMESTAMP:
-          chunkWriterImpl.write(time, list.getLong(sortedRowIndex));
+          chunkWriterImpl.write(time, workingListForFlush.getLong(sortedRowIndex));
           dataSizeInCurrentChunk += 8L + 8L;
           break;
         case FLOAT:
-          chunkWriterImpl.write(time, list.getFloat(sortedRowIndex));
+          chunkWriterImpl.write(time, workingListForFlush.getFloat(sortedRowIndex));
           dataSizeInCurrentChunk += 8L + 4L;
           break;
         case DOUBLE:
-          chunkWriterImpl.write(time, list.getDouble(sortedRowIndex));
+          chunkWriterImpl.write(time, workingListForFlush.getDouble(sortedRowIndex));
           dataSizeInCurrentChunk += 8L + 8L;
           break;
         case TEXT:
         case BLOB:
         case STRING:
-          Binary value = list.getBinary(sortedRowIndex);
+          Binary value = workingListForFlush.getBinary(sortedRowIndex);
           chunkWriterImpl.write(time, value);
           dataSizeInCurrentChunk += 8L + getBinarySize(value);
           break;
@@ -473,8 +470,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
   }
 
   @Override
-  public synchronized void encode(
-      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
+  public void encode(BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times) {
     if (TVLIST_SORT_THRESHOLD == 0) {
       encodeWorkingTVList(
           ioTaskQueue, encodeInfo.maxNumberOfPointsInChunk, encodeInfo.targetChunkSize);
@@ -488,7 +484,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
 
     // create MultiTvListIterator. It need not handle float/double precision here.
     List<TVList> tvLists = new ArrayList<>(sortedList);
-    tvLists.add(list);
+    tvLists.add(workingListForFlush);
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
             schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage);

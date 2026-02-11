@@ -63,6 +63,15 @@ public abstract class IntTVList extends TVList {
   }
 
   @Override
+  public synchronized TVList cloneForFlushSort() {
+    IntTVList cloneList = IntTVList.newList(dataType);
+    cloneAs(cloneList);
+    cloneList.bitMap = this.bitMap;
+    cloneList.values = this.values;
+    return cloneList;
+  }
+
+  @Override
   public synchronized IntTVList clone() {
     IntTVList cloneList = IntTVList.newList(dataType);
     cloneAs(cloneList);
