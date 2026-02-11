@@ -506,4 +506,16 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testIllegalPassword() {
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create user `thulab` 'passwd123456'",
+            "create role `admin`",
+            "grant role `admin` to `thulab`",
+            "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
+        null);
+  }
 }
