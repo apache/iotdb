@@ -205,7 +205,8 @@ public class SharedTsBlockQueue {
             localPlanNodeId,
             tsBlock.getSizeInBytes());
     bufferRetainedSizeInBytes -= tsBlock.getSizeInBytes();
-    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event to
+    // Every time LocalSourceHandle consumes a TsBlock, it needs to send the event
+    // to
     // corresponding LocalSinkChannel.
     if (sinkChannel != null) {
       sinkChannel.checkAndInvokeOnFinished();
@@ -257,6 +258,16 @@ public class SharedTsBlockQueue {
       blockedOnMemory.addListener(
           () -> {
             synchronized (this) {
+              // If the queue has been closed or aborted before this listener executes,
+              // we must not add the TsBlock. The memory reserved for this TsBlock has
+              // already been freed by abort()/close() via bufferRetainedSizeInBytes.
+              // Adding it would cause a downstream NPE in MemoryPool.free() when
+              // the consumer calls remove(), because the upstream FI's memory mapping
+              // has already been deregistered.
+              if (closed) {
+                channelBlocked.set(null);
+                return;
+              }
               queue.add(tsBlock);
               if (!blocked.isDone()) {
                 blocked.set(null);
@@ -266,8 +277,10 @@ public class SharedTsBlockQueue {
           },
           // Use directExecutor() here could lead to deadlock. Thread A holds lock of
           // SharedTsBlockQueueA and tries to invoke the listener of
-          // SharedTsBlockQueueB(when freeing memory to complete MemoryReservationFuture) while
-          // Thread B holds lock of SharedTsBlockQueueB and tries to invoke the listener of
+          // SharedTsBlockQueueB(when freeing memory to complete MemoryReservationFuture)
+          // while
+          // Thread B holds lock of SharedTsBlockQueueB and tries to invoke the listener
+          // of
           // SharedTsBlockQueueA
           executorService);
       return channelBlocked;
@@ -307,13 +320,18 @@ public class SharedTsBlockQueue {
       bufferRetainedSizeInBytes = 0;
     }
     if (sinkChannel != null) {
-      // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we close
-      // LocalSourceHandle(with limit clause it's possible) before constructing the corresponding
+      // attention: LocalSinkChannel of this SharedTsBlockQueue could be null when we
+      // close
+      // LocalSourceHandle(with limit clause it's possible) before constructing the
+      // corresponding
       // LocalSinkChannel.
-      // If this close method is invoked by LocalSourceHandle, listener of LocalSourceHandle will
-      // remove the LocalSourceHandle from the map of MppDataExchangeManager and later when
+      // If this close method is invoked by LocalSourceHandle, listener of
+      // LocalSourceHandle will
+      // remove the LocalSourceHandle from the map of MppDataExchangeManager and later
+      // when
       // LocalSinkChannel is initialized, it will construct a new SharedTsBlockQueue.
-      // It is still safe that we let the LocalSourceHandle close successfully in this case. Because
+      // It is still safe that we let the LocalSourceHandle close successfully in this
+      // case. Because
       // the QueryTerminator will do the final cleaning logic.
       sinkChannel.close();
     }
