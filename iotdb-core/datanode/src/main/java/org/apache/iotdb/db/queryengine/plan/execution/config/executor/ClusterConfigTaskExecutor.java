@@ -328,6 +328,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -2190,7 +2191,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createPipeStatement.getSinkAttributes());
     } catch (final Exception e) {
       future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              e.getMessage(),
+              e instanceof PipePasswordCheckException
+                  ? TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode()
+                  : TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2449,7 +2454,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           .validate(pipeName, checkedSource, processorAttributes, checkedSink);
     } catch (final Exception e) {
       future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              e.getMessage(),
+              e instanceof PipePasswordCheckException
+                  ? TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode()
+                  : TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
