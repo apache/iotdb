@@ -32,7 +32,11 @@ public enum BuiltinExternalServices {
   REST(
       "REST",
       "org.apache.iotdb.rest.RestService",
-      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService);
+      IoTDBRestServiceDescriptor.getInstance().getConfig()::isEnableRestService),
+  FLIGHT_SQL(
+      "FLIGHT_SQL",
+      "org.apache.iotdb.flight.FlightSqlService",
+      IoTDBDescriptor.getInstance().getConfig()::isEnableArrowFlightSqlService);
 
   private final String serviceName;
   private final String className;

@@ -170,6 +170,7 @@ public class ClusterConstant {
   public static final String PIPE_LIB_DIR = "pipe_lib_dir";
   public static final String REST_SERVICE_PORT = "rest_service_port";
   public static final String INFLUXDB_RPC_PORT = "influxdb_rpc_port";
+  public static final String ARROW_FLIGHT_SQL_PORT = "arrow_flight_sql_port";
 
   // ConfigNode
   public static final String CN_SYSTEM_DIR = "cn_system_dir";

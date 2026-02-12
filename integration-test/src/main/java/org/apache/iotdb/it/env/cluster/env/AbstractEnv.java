@@ -955,7 +955,8 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   // use this to avoid some runtimeExceptions when try to get jdbc connections.
-  // because it is hard to add retry and handle exception when getting jdbc connections in
+  // because it is hard to add retry and handle exception when getting jdbc
+  // connections in
   // getWriteConnectionWithSpecifiedDataNode and getReadConnections.
   // so use this function to add retry when cluster is ready.
   // after retryCount times, if the jdbc can't connect, throw
@@ -1426,7 +1427,8 @@ public abstract class AbstractEnv implements BaseEnv {
           final String endpoint = nodes.get(j).getIpAndPortString();
           if (!nodeIds.containsKey(endpoint)) {
             // Node not exist
-            // Notice: Never modify this line, since the NodeLocation might be modified in IT
+            // Notice: Never modify this line, since the NodeLocation might be modified in
+            // IT
             errorMessages.add("The node " + nodes.get(j).getIpAndPortString() + " is not found!");
             continue;
           }
@@ -1461,6 +1463,13 @@ public abstract class AbstractEnv implements BaseEnv {
     return dataNodeWrapperList
         .get(new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size()))
         .getMqttPort();
+  }
+
+  @Override
+  public int getArrowFlightSqlPort() {
+    return dataNodeWrapperList
+        .get(new Random(System.currentTimeMillis()).nextInt(dataNodeWrapperList.size()))
+        .getArrowFlightSqlPort();
   }
 
   @Override

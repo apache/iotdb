@@ -102,6 +102,8 @@ public interface CommonConfig {
 
   CommonConfig setEnableMQTTService(boolean enableMQTTService);
 
+  CommonConfig setEnableArrowFlightSqlService(boolean enableArrowFlightSqlService);
+
   CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   CommonConfig setSchemaEngineMode(String schemaEngineMode);

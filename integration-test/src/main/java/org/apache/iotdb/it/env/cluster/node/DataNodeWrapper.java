@@ -30,6 +30,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.consensus.ConsensusFactory.SIMPLE_CONSENSUS;
+import static org.apache.iotdb.it.env.cluster.ClusterConstant.ARROW_FLIGHT_SQL_PORT;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.CONFIG_NODE_CONSENSUS_PROTOCOL_CLASS;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_INIT_HEAP_SIZE;
 import static org.apache.iotdb.it.env.cluster.ClusterConstant.DATANODE_MAX_DIRECT_MEMORY_SIZE;
@@ -78,6 +79,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
   private final int mqttPort;
+  private final int arrowFlightSqlPort;
   private final int restServicePort;
   private final int pipeAirGapReceiverPort;
 
@@ -103,6 +105,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
     this.schemaRegionConsensusPort = portList[4];
     this.mqttPort = portList[5];
     this.pipeAirGapReceiverPort = portList[6];
+    this.arrowFlightSqlPort = portList[7];
     this.restServicePort = portList[10] + 6000;
     this.defaultNodePropertiesFile =
         EnvUtils.getFilePathFromSysVar(DEFAULT_DATA_NODE_PROPERTIES, clusterIndex);
@@ -120,6 +123,8 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         MQTT_DATA_PATH, getNodePath() + File.separator + "mqttData");
     immutableCommonProperties.setProperty(
         PIPE_AIR_GAP_RECEIVER_PORT, String.valueOf(this.pipeAirGapReceiverPort));
+    immutableCommonProperties.setProperty(
+        ARROW_FLIGHT_SQL_PORT, String.valueOf(this.arrowFlightSqlPort));
 
     immutableNodeProperties.setProperty(REST_SERVICE_PORT, String.valueOf(restServicePort));
 
@@ -302,6 +307,10 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   public int getPipeAirGapReceiverPort() {
     return pipeAirGapReceiverPort;
+  }
+
+  public int getArrowFlightSqlPort() {
+    return arrowFlightSqlPort;
   }
 
   public int getRestServicePort() {

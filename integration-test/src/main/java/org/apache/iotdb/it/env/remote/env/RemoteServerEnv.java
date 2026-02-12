@@ -481,6 +481,11 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public int getArrowFlightSqlPort() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public String getIP() {
     return ip_addr;
   }

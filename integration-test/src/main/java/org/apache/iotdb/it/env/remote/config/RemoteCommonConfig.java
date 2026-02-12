@@ -222,6 +222,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableArrowFlightSqlService(boolean enableArrowFlightSqlService) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }
