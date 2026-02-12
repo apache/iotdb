@@ -533,7 +533,15 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
                 receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
         fail();
       } catch (final Exception e) {
-        Assert.assertEquals("", e.getMessage());
+        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+      }
+
+      try {
+        statement.execute(
+            "create pipe a2b ('sink'='write-back-sink', 'user'='admin', 'password'='passwd')");
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
       }
     }
   }
