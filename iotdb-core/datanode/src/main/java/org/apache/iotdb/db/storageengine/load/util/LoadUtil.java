@@ -73,6 +73,26 @@ public class LoadUtil {
     return true;
   }
 
+  public static boolean loadDatanodeDirAsyncToActiveDir(
+      final File datanodeDir,
+      final Map<String, String> loadAttributes,
+      final boolean isDeleteAfterLoad) {
+    if (datanodeDir == null || !datanodeDir.isDirectory()) {
+      return true;
+    }
+
+    try {
+      if (!loadDatanodeDirToActiveDir(loadAttributes, datanodeDir, isDeleteAfterLoad)) {
+        return false;
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Fail to load tsfile to Active dir", e);
+      return false;
+    }
+
+    return true;
+  }
+
   public static String getTsFilePath(final String filePathWithResourceOrModsTail) {
     if (filePathWithResourceOrModsTail.endsWith(TsFileResource.RESOURCE_SUFFIX)) {
       return filePathWithResourceOrModsTail.substring(
@@ -102,6 +122,33 @@ public class LoadUtil {
 
   public static String getTsFileResourcePath(final String tsFilePath) {
     return tsFilePath + TsFileResource.RESOURCE_SUFFIX;
+  }
+
+  private static boolean loadDatanodeDirToActiveDir(final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
+    throws IOException {
+    if (file == null) {
+      return true;
+    }
+
+    final File targetFilePath;
+    try {
+      targetFilePath =
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
+    } catch (Exception e) {
+      LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
+      return false;
+    }
+
+    if (targetFilePath == null) {
+      LOGGER.warn("Load active listening dir is not set.");
+      return false;
+    }
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+
+    loadDatanodeDirAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
+    return true;
   }
 
   private static boolean loadTsFilesToActiveDir(
@@ -169,6 +216,27 @@ public class LoadUtil {
       loadTsFileAsyncToTargetDir(targetDir, new File(file), isDeleteAfterLoad);
     }
     return true;
+  }
+
+  private static void loadDatanodeDirAsyncToTargetDir(
+      final File targetDir, final File file, final boolean isDeleteAfterLoad) throws IOException {
+    if (!file.exists()) {
+      return;
+    }
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      if (!targetDir.exists()) {
+        throw new IOException("Failed to create target directory " + targetDir.getAbsolutePath());
+      }
+    }
+    RetryUtils.retryOnException(
+        () -> {
+          if (isDeleteAfterLoad) {
+            moveFileWithMD5Check(file, targetDir);
+          } else {
+            copyFileWithMD5Check(file, targetDir);
+          }
+          return null;
+        });
   }
 
   private static void loadTsFileAsyncToTargetDir(

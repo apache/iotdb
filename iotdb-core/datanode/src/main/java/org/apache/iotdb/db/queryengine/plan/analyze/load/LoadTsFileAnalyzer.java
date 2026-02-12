@@ -109,6 +109,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final String statementString;
   private final boolean isGeneratedByPipe;
 
+  private final File originalFile;
   private final List<File> tsFiles;
   private final List<Boolean> isMiniTsFile;
   private boolean isMiniTsFileConverted = false;
@@ -145,6 +146,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     this.tsFiles = loadTsFileStatement.getTsFiles();
+    this.originalFile = loadTsFileStatement.getFile();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.schemaEvolutionFile = loadTsFileStatement.getSchemaEvolutionFile();
@@ -170,6 +172,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
+    this.originalFile = new File(loadTsFileTableStatement.getFilePath());
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.schemaEvolutionFile = loadTsFileTableStatement.getSchemaEvolutionFile();
@@ -456,13 +459,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               tabletConversionThresholdBytes,
               isGeneratedByPipe);
 
-      if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
-        analysis.setFinishQueryAfterAnalyze(true);
-        setRealStatement(analysis);
-        return true;
+
+      if (!isLoadingIoTDBDir()) {
+        if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
+          analysis.setFinishQueryAfterAnalyze(true);
+          setRealStatement(analysis);
+          return true;
+        }
+        LOGGER.info("Async Load TsFile has failed, and is now trying to load sync");
+        return false;
+      } else {
+        if (LoadUtil.loadDatanodeDirAsyncToActiveDir(originalFile, activeLoadAttributes, isDeleteAfterLoad)) {
+          analysis.setFinishQueryAfterAnalyze(true);
+          setRealStatement(analysis);
+          return true;
+        }
+        LOGGER.info("Async Load datanode dir has failed, and is now trying to load sync");
+        return false;
       }
-      LOGGER.info("Async Load has failed, and is now trying to load sync");
-      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
