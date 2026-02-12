@@ -2440,10 +2440,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
       final Map<String, String> checkedSink = new HashMap<>(sinkAttributes);
       if (!hasSinkPassword) {
-        checkedSource.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
-        checkedSource.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
-        checkedSource.remove(
-            PipeParameters.KeyReducer.reduce(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+        checkedSink.remove(PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY);
+        checkedSink.remove(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
+        checkedSink.remove(
+            PipeParameters.KeyReducer.reduce(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
       }
       PipeDataNodeAgent.plugin()
           .validate(pipeName, checkedSource, processorAttributes, checkedSink);
