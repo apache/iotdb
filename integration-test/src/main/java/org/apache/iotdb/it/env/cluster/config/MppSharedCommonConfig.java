@@ -317,6 +317,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setEnableArrowFlightSqlService(boolean enableArrowFlightSqlService) {
+    cnConfig.setEnableArrowFlightSqlService(enableArrowFlightSqlService);
+    dnConfig.setEnableArrowFlightSqlService(enableArrowFlightSqlService);
+    return this;
+  }
+
+  @Override
   public CommonConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     cnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);
     dnConfig.setMqttPayloadFormatter(mqttPayloadFormatter);

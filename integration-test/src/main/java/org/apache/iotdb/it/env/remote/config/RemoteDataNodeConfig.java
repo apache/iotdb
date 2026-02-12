@@ -65,6 +65,11 @@ public class RemoteDataNodeConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setEnableArrowFlightSqlService(boolean enableArrowFlightSqlService) {
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     return this;
   }

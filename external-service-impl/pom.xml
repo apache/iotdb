@@ -33,6 +33,7 @@
         <module>mqtt</module>
         <module>rest</module>
         <module>rest-openapi</module>
+        <module>flight-sql</module>
     </modules>
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

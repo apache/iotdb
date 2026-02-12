@@ -40,6 +40,8 @@ public interface DataNodeConfig {
 
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
+  DataNodeConfig setEnableArrowFlightSqlService(boolean enableArrowFlightSqlService);
+
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
 
   DataNodeConfig setLoadLastCacheStrategy(String strategyName);

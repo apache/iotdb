@@ -332,6 +332,8 @@ public interface BaseEnv {
 
   int getMqttPort();
 
+  int getArrowFlightSqlPort();
+
   String getIP();
 
   String getPort();
