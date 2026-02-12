@@ -353,6 +353,7 @@
                                     <inclusion>
                                         <groupId>org.apache.iotdb</groupId>
                                         <artifactId>*</artifactId>
+                                        <filter>!org/apache/iotdb/rest/**,!org/apache/iotdb/mqtt/**</filter>
                                     </inclusion>
                                     <inclusion>
                                         <groupId>com.timecho.iotdb</groupId>
