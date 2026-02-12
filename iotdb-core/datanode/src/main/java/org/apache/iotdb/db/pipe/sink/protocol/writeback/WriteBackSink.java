@@ -64,6 +64,7 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -210,7 +211,7 @@ public class WriteBackSink implements PipeConnector {
                     environment.getRegionId() >= 0)
                 .getCode()
             != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(
+      throw new PipePasswordCheckException(
           String.format("Failed to check password for pipe %s.", environment.getPipeName()));
     }
   }

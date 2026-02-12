@@ -61,6 +61,7 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -168,7 +169,8 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
                 regionId >= 0)
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
+      throw new PipePasswordCheckException(
+          String.format("Failed to check password for pipe %s.", pipeName));
     }
   }
 

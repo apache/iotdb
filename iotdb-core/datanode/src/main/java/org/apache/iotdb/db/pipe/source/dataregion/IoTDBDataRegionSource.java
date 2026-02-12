@@ -54,6 +54,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
@@ -570,7 +571,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
                 regionId >= 0)
             .getCode()
         != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
+      throw new PipePasswordCheckException(
+          String.format("Failed to check password for pipe %s.", pipeName));
     }
   }
 
