@@ -518,31 +518,119 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
         null);
 
-    try (final Connection connection = senderEnv.getConnection();
-        final Statement statement = connection.createStatement()) {
+    TestUtils.executeNonQuery(
+        senderEnv,
+        "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)");
+    TestUtils.executeNonQuery(
+        receiverEnv,
+        "create aligned timeSeries root.vehicle.plane(temperature DOUBLE, pressure INT32)");
 
-      try {
-        statement.execute(
-            String.format(
-                "create pipe a2b"
-                    + " with source ("
-                    + "'user'='admin'"
-                    + ", 'password'='passwd')"
-                    + " with sink ("
-                    + "'node-urls'='%s')",
-                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
-        fail();
-      } catch (final Exception e) {
-        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
-      }
-
-      try {
-        statement.execute(
-            "create pipe a2b ('sink'='write-back-sink', 'user'='admin', 'password'='passwd')");
-        fail();
-      } catch (final Exception e) {
-        Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
-      }
+    Connection connection = senderEnv.getConnection();
+    Statement statement = connection.createStatement();
+    try {
+      statement.execute(
+          String.format(
+              "create pipe a2b"
+                  + " with source ("
+                  + "'user'='thulab'"
+                  + ", 'password'='passwd')"
+                  + " with sink ("
+                  + "'node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+      fail();
+    } catch (final Exception e) {
+      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
+
+    try {
+      statement.execute(
+          "create pipe a2b ('sink'='write-back-sink', 'user'='thulab', 'password'='passwd')");
+      fail();
+    } catch (final Exception e) {
+      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+    }
+
+    statement.execute(
+        String.format(
+            "create pipe a2b"
+                + " with source ("
+                + "'user'='thulab'"
+                + ", 'password'='passwd123456')"
+                + " with sink ("
+                + "'node-urls'='%s')",
+            receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+
+    TestUtils.executeNonQuery(
+        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(pressure) from root.vehicle.plane",
+        "count(root.vehicle.plane.pressure),",
+        Collections.singleton("1,"));
+
+    statement.execute("alter user thulab set password 'newPassword'");
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
+
+    connection = senderEnv.getConnection();
+    statement = connection.createStatement();
+    TestUtils.executeNonQuery(
+        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "select count(pressure) from root.vehicle.plane",
+        "count(root.vehicle.plane.pressure),",
+        Collections.singleton("1,"));
+
+    try {
+      statement.execute("alter pipe a2b modify source ('password'='fake')");
+    } catch (final SQLException e) {
+      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
+    }
+
+    TestUtils.executeNonQuery(
+            senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    statement.execute("alter pipe a2b modify source ('password'='newPassword')");
+
+    // Test empty alter
+    statement.execute("alter pipe a2b");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(pressure) from root.vehicle.plane",
+        "count(root.vehicle.plane.pressure),",
+        Collections.singleton("2,"), 10);
+
+    statement.execute("alter user thulab set password 'anotherPassword'");
+
+    try {
+      TestUtils.restartCluster(senderEnv);
+    } catch (final Throwable e) {
+      e.printStackTrace();
+      return;
+    }
+
+    connection = senderEnv.getConnection();
+    statement = connection.createStatement();
+    TestUtils.executeNonQuery(
+        senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
+    statement.execute("alter user thulab set password 'newPassword'");
+    statement.execute("alter pipe a2b");
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select count(pressure) from root.vehicle.plane",
+        "count(root.vehicle.plane.pressure),",
+        Collections.singleton("3,"));
+
+    statement.close();
+    connection.close();
   }
 }
