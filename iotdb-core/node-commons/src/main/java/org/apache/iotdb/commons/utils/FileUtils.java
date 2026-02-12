@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import static org.apache.tsfile.external.commons.io.FileUtils.moveDirectory;
+
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
@@ -428,12 +430,12 @@ public class FileUtils {
   }
 
   private static void moveFile(File sourceFile, File targetDir) throws IOException {
-    String sourceFileName = sourceFile.getName();
-    final File exitsFile = new File(targetDir, sourceFileName);
+    final String sourceFileName = sourceFile.getName();
+    final File existsFile = new File(targetDir, sourceFileName);
 
     // First check file sizes
     long sourceFileSize = sourceFile.length();
-    long existsFileSize = exitsFile.length();
+    long existsFileSize = existsFile.length();
 
     if (sourceFileSize != existsFileSize) {
       File file = renameWithSize(sourceFile, sourceFileSize, targetDir);
@@ -447,7 +449,7 @@ public class FileUtils {
     String sourceFileMD5;
     String existsFileMD5;
     try (final FileInputStream is1 = new FileInputStream(sourceFile);
-        final FileInputStream is2 = new FileInputStream(exitsFile); ) {
+        final FileInputStream is2 = new FileInputStream(existsFile)) {
       sourceFileMD5 = DigestUtils.md5Hex(is1);
       existsFileMD5 = DigestUtils.md5Hex(is2);
     }
@@ -462,6 +464,126 @@ public class FileUtils {
       File file = renameWithMD5(sourceFile, sourceFileMD5, targetDir);
       moveFileRename(sourceFile, file);
     }
+  }
+
+  public static void moveDirWithMD5Check(final File sourceDir, final File targetParentDir)
+      throws IOException {
+    final String sourceDirName = sourceDir.getName();
+    final File targetDir = new File(targetParentDir, sourceDirName);
+    if (targetDir.exists()) {
+      moveDir(sourceDir, targetParentDir);
+    } else {
+      // Ensure parent exists and move directory
+      try {
+        Files.createDirectories(targetParentDir.toPath());
+      } catch (IOException e) {
+        LOGGER.warn("failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
+        throw e;
+      }
+      moveDirectory(
+          sourceDir, targetDir);
+    }
+  }
+
+  private static void moveDir(File sourceDir, File targetParentDir) throws IOException {
+    final String sourceDirName = sourceDir.getName();
+    final File existsDir = new File(targetParentDir, sourceDirName);
+
+    // First check directory sizes
+    long sourceDirSize = getDirSize(sourceDir.getAbsolutePath());
+    long existsDirSize = getDirSize(existsDir.getAbsolutePath());
+
+    if (sourceDirSize != existsDirSize) {
+      File file = renameDirWithSize(sourceDirName, sourceDirSize, targetParentDir);
+      if (!file.exists()) {
+        moveDirRename(sourceDir, file);
+      }
+      return;
+    }
+
+    // If sizes are equal, check deterministic MD5 of directory contents
+    String sourceDirMD5 = computeDirMD5(sourceDir);
+    String existsDirMD5 = computeDirMD5(existsDir);
+
+    if (sourceDirMD5.equals(existsDirMD5)) {
+      // identical directory contents, delete source dir
+      recursivelyDeleteFolder(sourceDir.getAbsolutePath());
+      LOGGER.info(
+          "Deleted the directory {} because it already exists in the target directory: {}",
+          sourceDir.getName(),
+          targetParentDir.getAbsolutePath());
+    } else {
+      File file = renameDirWithMD5(sourceDirName, sourceDirMD5, targetParentDir);
+      moveDirRename(sourceDir, file);
+    }
+  }
+
+  private static File renameDirWithMD5(
+      final String sourceDirName, final String sourceDirMD5, final File targetParentDir) {
+    final String targetDirName = sourceDirName + "-" + sourceDirMD5.substring(0, 16);
+    return new File(targetParentDir, targetDirName);
+  }
+
+  private static File renameDirWithSize(
+      final String sourceDirName, final long sourceDirSize, final File targetParentDir) {
+    final String newDirName =
+        String.format("%s_%s_%s", sourceDirName, sourceDirSize, System.currentTimeMillis());
+    return new File(targetParentDir, newDirName);
+  }
+
+  private static void moveDirRename(File sourceDir, File targetDir) throws IOException {
+    moveDirectory(sourceDir, targetDir);
+
+    LOGGER.info(
+        RENAME_FILE_MESSAGE,
+        sourceDir.getName(),
+        targetDir.getName(),
+        targetDir.getParentFile().getAbsolutePath());
+  }
+
+  private static String computeDirMD5(final File dir) throws IOException {
+    // Collect all files (not directories) with relative paths
+    final List<File> files = new ArrayList<>();
+    final int basePathLen = dir.getAbsolutePath().length() + 1;
+    Stack<File> stack = new Stack<>();
+    if (dir.exists()) {
+      stack.push(dir);
+    }
+    while (!stack.isEmpty()) {
+      File file = stack.pop();
+      if (file.isDirectory()) {
+        File[] subs = file.listFiles();
+        if (subs != null) {
+          for (File f : subs) {
+            stack.push(f);
+          }
+        }
+      } else {
+        files.add(file);
+      }
+    }
+
+    // Sort by relative path to make deterministic
+    files.sort(
+        (f1, f2) -> {
+          String r1 = f1.getAbsolutePath().substring(basePathLen);
+          String r2 = f2.getAbsolutePath().substring(basePathLen);
+          return r1.compareTo(r2);
+        });
+
+    // Build a combined hash from each file's relative path, size and md5
+    StringBuilder sb = new StringBuilder();
+    for (File f : files) {
+      String relPath = f.getAbsolutePath().substring(basePathLen);
+      long size = f.length();
+      String md5;
+      try (final FileInputStream is = new FileInputStream(f)) {
+        md5 = DigestUtils.md5Hex(is);
+      }
+      sb.append(relPath).append(':').append(size).append(':').append(md5).append(';');
+    }
+
+    return DigestUtils.md5Hex(sb.toString().getBytes());
   }
 
   public static void copyFileWithMD5Check(final File sourceFile, final File targetDir)

@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
+import static org.apache.iotdb.commons.utils.FileUtils.moveDirWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 
 public class LoadUtil {
@@ -231,7 +232,7 @@ public class LoadUtil {
     RetryUtils.retryOnException(
         () -> {
           if (isDeleteAfterLoad) {
-            moveFileWithMD5Check(file, targetDir);
+            moveDirWithMD5Check(file, targetDir);
           } else {
             copyFileWithMD5Check(file, targetDir);
           }
