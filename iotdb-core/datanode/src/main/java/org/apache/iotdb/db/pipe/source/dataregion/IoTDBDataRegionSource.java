@@ -54,6 +54,7 @@ import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -555,16 +556,20 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   @Override
   protected void login(final @Nonnull String password) {
-    SessionManager.getInstance()
-        .login(
-            new InternalClientSession("Source_login_session_" + regionId),
-            userName,
-            password,
-            ZoneId.systemDefault().toString(),
-            SessionManager.CURRENT_RPC_VERSION,
-            IoTDBConstant.ClientVersion.V_1_0,
-            IClientSession.SqlDialect.TREE,
-            regionId >= 0);
+    if (SessionManager.getInstance()
+            .login(
+                new InternalClientSession("Source_login_session_" + regionId),
+                userName,
+                password,
+                ZoneId.systemDefault().toString(),
+                SessionManager.CURRENT_RPC_VERSION,
+                IoTDBConstant.ClientVersion.V_1_0,
+                IClientSession.SqlDialect.TREE,
+                regionId >= 0)
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeException(String.format("Failed to check password for pipe %s.", pipeName));
+    }
   }
 
   @Override

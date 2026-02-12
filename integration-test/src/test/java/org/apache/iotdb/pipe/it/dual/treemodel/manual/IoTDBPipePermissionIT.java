@@ -508,7 +508,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
   }
 
   @Test
-  public void testIllegalPassword() {
+  public void testIllegalPassword() throws Exception {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
@@ -517,5 +517,24 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
         null);
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+
+      try {
+        statement.execute(
+            String.format(
+                "create pipe a2b"
+                    + " with source ("
+                    + "'user'='admin'"
+                    + ", 'password'='passwd')"
+                    + " with sink ("
+                    + "'node-urls'='%s')",
+                receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("", e.getMessage());
+      }
+    }
   }
 }
