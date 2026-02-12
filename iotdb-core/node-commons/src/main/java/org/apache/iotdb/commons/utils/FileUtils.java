@@ -608,6 +608,67 @@ public class FileUtils {
     }
   }
 
+  /**
+   * Copy an entire directory to targetParentDir with MD5 check semantics similar to copyFileWithMD5Check.
+   * If the target directory exists, compare sizes and deterministic MD5; if identical, do nothing;
+   * otherwise copy to a renamed directory (by size or MD5) to avoid overwriting.
+   */
+  public static void copyDirWithMD5Check(final File sourceDir, final File targetParentDir)
+      throws IOException {
+    final String sourceDirName = sourceDir.getName();
+    final File targetDir = new File(targetParentDir, sourceDirName);
+    if (targetDir.exists()) {
+      // First check directory sizes
+      long sourceDirSize = getDirSize(sourceDir.getAbsolutePath());
+      long targetDirSize = getDirSize(targetDir.getAbsolutePath());
+
+      if (sourceDirSize != targetDirSize) {
+        File file = renameDirWithSize(sourceDirName, sourceDirSize, targetParentDir);
+        if (!file.exists()) {
+          copyDirRename(sourceDir, file);
+        }
+        return;
+      }
+
+      // If sizes are equal, check deterministic MD5
+      String sourceDirMD5 = computeDirMD5(sourceDir);
+      String targetDirMD5 = computeDirMD5(targetDir);
+
+      if (sourceDirMD5.equals(targetDirMD5)) {
+        // identical directory contents, nothing to do
+        return;
+      }
+
+      File file = renameDirWithMD5(sourceDirName, sourceDirMD5, targetParentDir);
+      if (!file.exists()) {
+        copyDirRename(sourceDir, file);
+      }
+    } else {
+      try {
+        Files.createDirectories(targetParentDir.toPath());
+      } catch (IOException e) {
+        LOGGER.warn("failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
+        throw e;
+      }
+
+      if (!copyDir(sourceDir, targetDir)) {
+        throw new IOException("copy directory failed: " + sourceDir.getAbsolutePath());
+      }
+    }
+  }
+
+  private static void copyDirRename(File sourceDir, File targetDir) throws IOException {
+    if (!copyDir(sourceDir, targetDir)) {
+      throw new IOException("copy directory failed: " + sourceDir.getAbsolutePath());
+    }
+
+    LOGGER.info(
+        COPY_FILE_MESSAGE,
+        sourceDir.getName(),
+        targetDir,
+        targetDir.getParentFile().getAbsolutePath());
+  }
+
   private static File renameWithMD5(
       final File sourceFile, final String sourceFileMD5, final File targetDir) throws IOException {
     final String sourceFileBaseName = FilenameUtils.getBaseName(sourceFile.getName());

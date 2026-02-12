@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.utils.FileUtils.copyDirWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveDirWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
@@ -234,7 +235,7 @@ public class LoadUtil {
           if (isDeleteAfterLoad) {
             moveDirWithMD5Check(file, targetDir);
           } else {
-            copyFileWithMD5Check(file, targetDir);
+            copyDirWithMD5Check(file, targetDir);
           }
           return null;
         });
