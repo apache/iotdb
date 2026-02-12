@@ -550,8 +550,10 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     // register metric after generating taskID
     PipeDataRegionSourceMetrics.getInstance().register(this);
-    PipeTsFileToTabletsMetrics.getInstance().register(this);
-    PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    if (regionId >= 0) {
+      PipeTsFileToTabletsMetrics.getInstance().register(this);
+      PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    }
   }
 
   @Override

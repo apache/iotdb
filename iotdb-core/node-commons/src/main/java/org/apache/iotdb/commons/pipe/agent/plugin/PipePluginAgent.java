@@ -87,17 +87,20 @@ public abstract class PipePluginAgent {
       final Map<String, String> processorAttributes,
       final Map<String, String> sinkAttributes)
       throws Exception {
-    validateSource(sourceAttributes);
+    validateSource(pipeName, sourceAttributes);
     validateProcessor(processorAttributes);
     validateSink(pipeName, sinkAttributes);
   }
 
-  protected PipeExtractor validateSource(final Map<String, String> sourceAttributes)
-      throws Exception {
+  protected PipeExtractor validateSource(
+      final String pipeName, final Map<String, String> sourceAttributes) throws Exception {
     final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
     final PipeExtractor temporaryExtractor = reflectSource(sourceParameters);
     try {
       temporaryExtractor.validate(new PipeParameterValidator(sourceParameters));
+      temporaryExtractor.customize(
+          sourceParameters,
+          new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
     } finally {
       try {
         temporaryExtractor.close();

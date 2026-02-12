@@ -302,7 +302,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
           pipeName,
           dataRegionId,
           parameters);

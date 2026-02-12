@@ -233,7 +233,7 @@ public class PipeDataNodeSinglePipeMetrics implements IMetricSet {
 
   public void decreaseInsertNodeEventCount(
       final String pipeName, final long creationTime, final long transferTime) {
-    PipeDataNodeRemainingEventAndTimeOperator operator =
+    final PipeDataNodeRemainingEventAndTimeOperator operator =
         remainingEventAndTimeOperatorMap.computeIfAbsent(
             pipeName + "_" + creationTime,
             k -> new PipeDataNodeRemainingEventAndTimeOperator(pipeName, creationTime));

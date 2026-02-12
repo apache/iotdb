@@ -123,7 +123,9 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
     treePrivilegeParseVisitor = new PipePlanTreePrivilegeParseVisitor(skipIfNoPrivileges);
 
     PipeSchemaRegionSourceMetrics.getInstance().register(this);
-    PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    if (regionId >= 0) {
+      PipeDataNodeSinglePipeMetrics.getInstance().register(this);
+    }
   }
 
   @Override
