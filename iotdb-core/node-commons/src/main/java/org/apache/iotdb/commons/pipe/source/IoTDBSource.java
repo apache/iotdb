@@ -30,6 +30,7 @@ import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
@@ -158,13 +159,14 @@ public abstract class IoTDBSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskSourceRuntimeEnvironment environment =
-        ((PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
     regionId = environment.getRegionId();
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
     taskID = pipeName + "_" + regionId + "_" + creationTime;
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+    }
 
     final boolean isDoubleLiving =
         parameters.getBooleanOrDefault(
