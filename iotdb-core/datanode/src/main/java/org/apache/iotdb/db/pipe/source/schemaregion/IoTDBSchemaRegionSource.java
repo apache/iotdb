@@ -113,7 +113,7 @@ public class IoTDBSchemaRegionSource extends IoTDBNonDataRegionSource {
         .getSchemaRegionConsensusProtocolClass()
         .equals(ConsensusFactory.SIMPLE_CONSENSUS)) {
       throw new PipeException(
-          "IoTDBSchemaRegionExtractor does not transferring events under simple consensus");
+          "IoTDBSchemaRegionSource does not support transferring events under simple consensus");
     }
 
     super.customize(parameters, configuration);
