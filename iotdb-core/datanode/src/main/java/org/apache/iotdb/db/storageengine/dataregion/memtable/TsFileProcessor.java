@@ -340,7 +340,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertRowNode,
             tsFileResource);
@@ -437,7 +437,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertRowsNode,
             tsFileResource);
@@ -610,7 +610,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertTabletNode,
             tsFileResource);
@@ -1746,7 +1746,7 @@ public class TsFileProcessor {
     // before resource serialization to avoid missing hardlink after restart
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(
-            dataRegionInfo.getDataRegion().getDataRegionIdString(),
+            dataRegionInfo.getDataRegion().getDataRegionId(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             tsFileResource,
             false);

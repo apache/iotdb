@@ -4157,7 +4157,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionIdString, databaseName, tsFileResource, true);
+        .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
 
     tsFileManager.add(tsFileResource, false);
 
@@ -4336,12 +4336,16 @@ public class DataRegion implements IDataRegionForQuery {
     return dataRegionIdString;
   }
 
+  public int getDataRegionId() {
+    return dataRegionId.getId();
+  }
+
   /**
    * Get the storageGroupPath with dataRegionId.
    *
    * @return data region path, like root.sg1/0
    */
-  public String getStorageGroupPath() {
+  public String getDatabasePath() {
     return databaseName + File.separator + dataRegionIdString;
   }
 

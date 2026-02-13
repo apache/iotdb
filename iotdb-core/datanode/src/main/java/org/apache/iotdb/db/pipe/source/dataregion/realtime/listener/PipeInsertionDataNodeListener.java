@@ -51,8 +51,8 @@ public class PipeInsertionDataNodeListener {
   private final ConcurrentMap<Integer, PipeDataRegionAssigner> dataRegionId2Assigner =
       new ConcurrentHashMap<>();
 
-  private final AtomicInteger listenToTsFileExtractorCount = new AtomicInteger(0);
-  private final AtomicInteger listenToInsertNodeExtractorCount = new AtomicInteger(0);
+  private final AtomicInteger listenToTsFileSourceCount = new AtomicInteger(0);
+  private final AtomicInteger listenToInsertNodeSourceCount = new AtomicInteger(0);
 
   //////////////////////////// start & stop ////////////////////////////
 
@@ -63,10 +63,10 @@ public class PipeInsertionDataNodeListener {
         .startAssignTo(extractor);
 
     if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.incrementAndGet();
+      listenToTsFileSourceCount.incrementAndGet();
     }
     if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.incrementAndGet();
+      listenToInsertNodeSourceCount.incrementAndGet();
     }
   }
 
@@ -80,10 +80,10 @@ public class PipeInsertionDataNodeListener {
     assigner.stopAssignTo(extractor);
 
     if (extractor.isNeedListenToTsFile()) {
-      listenToTsFileExtractorCount.decrementAndGet();
+      listenToTsFileSourceCount.decrementAndGet();
     }
     if (extractor.isNeedListenToInsertNode()) {
-      listenToInsertNodeExtractorCount.decrementAndGet();
+      listenToInsertNodeSourceCount.decrementAndGet();
     }
 
     if (assigner.notMoreExtractorNeededToBeAssigned()) {
@@ -97,7 +97,7 @@ public class PipeInsertionDataNodeListener {
   //////////////////////////// listen to events ////////////////////////////
 
   public void listenToTsFile(
-      final String dataRegionId,
+      final int dataRegionId,
       final String databaseName,
       final TsFileResource tsFileResource,
       final boolean isLoaded) {
@@ -118,11 +118,11 @@ public class PipeInsertionDataNodeListener {
   }
 
   public void listenToInsertNode(
-      final String dataRegionId,
+      final int dataRegionId,
       final String databaseName,
       final InsertNode insertNode,
       final TsFileResource tsFileResource) {
-    if (listenToInsertNodeExtractorCount.get() == 0) {
+    if (listenToInsertNodeSourceCount.get() == 0) {
       return;
     }
 
