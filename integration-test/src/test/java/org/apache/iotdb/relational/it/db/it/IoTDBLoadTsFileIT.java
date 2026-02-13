@@ -36,6 +36,7 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -309,6 +310,15 @@ public class IoTDBLoadTsFileIT {
 
   @Test
   public void testLoadWithSevoFile() throws Exception {
+    testLoadWithSevoFile(false);
+  }
+
+  @Test
+  public void testAsyncLoadWithSevoFile() throws Exception {
+    testLoadWithSevoFile(true);
+  }
+
+  public void testLoadWithSevoFile(boolean async) throws Exception {
     final int lineCount = 10000;
 
     List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
@@ -342,10 +352,27 @@ public class IoTDBLoadTsFileIT {
       statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
       statement.execute(
           String.format(
-              "load '%s' with ('database'='%s', 'sevo-file-path'='%s', 'on-success'='delete')",
-              file.getAbsolutePath(), SchemaConfig.DATABASE_0, schemaEvolutionFile.getFilePath()));
+              "load '%s' with ('database'='%s', 'sevo-file-path'='%s', 'on-success'='delete', 'async'='%s')",
+              file.getAbsolutePath(),
+              SchemaConfig.DATABASE_0,
+              schemaEvolutionFile.getFilePath(),
+              async));
 
-      checkSevoResult(statement, lineCount);
+      if (!async) {
+        checkSevoResult(statement, lineCount);
+      } else {
+        Awaitility.await()
+            .atMost(20, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    checkSevoResult(statement, lineCount);
+                  } catch (SQLException e) {
+                    throw new AssertionError(e);
+                  }
+                });
+      }
     }
     assertFalse(sevoFile.exists());
   }
@@ -399,6 +426,15 @@ public class IoTDBLoadTsFileIT {
 
   @Test
   public void testLoadSevoWithIoTDBDir() throws Exception {
+    testLoadSevoWithIoTDBDir(false);
+  }
+
+  @Test
+  public void testAsyncLoadSevoWithIoTDBDir() throws Exception {
+    testLoadSevoWithIoTDBDir(true);
+  }
+
+  public void testLoadSevoWithIoTDBDir(boolean async) throws Exception {
     final int lineCount = 10000;
     File datanodeDir = prepareIoTDBDirWithSevo(lineCount);
     try (final Connection connection =
@@ -419,9 +455,24 @@ public class IoTDBLoadTsFileIT {
                     "Database is not supported when loading from datanode directory, if you wish to use specified database and ignore ones in the datanode directory, please rename the datanode directory to any other one."));
       }
 
-      statement.execute(String.format("load '%s'", datanodeDir.getAbsolutePath()));
+      statement.execute(
+          String.format("load '%s' WITH ('async'='%s')", datanodeDir.getAbsolutePath(), async));
 
-      checkSevoResult(statement, lineCount);
+      if (!async) {
+        checkSevoResult(statement, lineCount);
+      } else {
+        Awaitility.await()
+            .atMost(20, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    checkSevoResult(statement, lineCount);
+                  } catch (SQLException e) {
+                    throw new AssertionError(e);
+                  }
+                });
+      }
     }
   }
 

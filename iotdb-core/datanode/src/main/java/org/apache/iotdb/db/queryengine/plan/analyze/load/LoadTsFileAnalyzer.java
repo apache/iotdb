@@ -121,7 +121,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   // User specified configs
   private final int databaseLevel;
   private String databaseForTableData;
-  private final boolean isAsyncLoad;
+  private boolean isAsyncLoad;
   private final boolean isVerifySchema;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
@@ -313,6 +313,12 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               "Cannot create database " + database + " when loading datanode directory");
         }
       }
+    }
+
+    if (schemaEvolutionFile != null && isAsyncLoad) {
+      LOGGER.warn(
+          "Cannot use schema evolution file when loading from datanode directory asynchronously, switching to sync load");
+      isAsyncLoad = false;
     }
 
     return true;
@@ -741,7 +747,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         } else {
           loadTsFileTreeStatement.setDatabase(dbName.get());
         }
-      } else {
+      } else if (!isLoadingIoTDBDir()) {
         throw new SemanticException(DATABASE_NOT_SPECIFIED);
       }
     }

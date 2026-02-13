@@ -556,7 +556,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         loadTsFileStatement.getDatabase(),
         loadTsFileStatement.isNeedDecode4TimeColumn(),
         loadTsFileStatement.getSchemaEvolutionFile(),
-        loadTsFileStatement.getDatabaseRegionTsFileManagers());
+        loadTsFileStatement.getDatabaseRegionTsFileManagers(),
+        loadTsFileStatement.getFile());
   }
 
   @Override

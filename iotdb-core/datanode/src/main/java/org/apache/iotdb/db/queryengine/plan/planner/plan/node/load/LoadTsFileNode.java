@@ -52,6 +52,7 @@ public class LoadTsFileNode extends WritePlanNode {
   private final String database;
   private final File schemaEvolutionFile;
   private final boolean needDecode4TimeColumn;
+  private final File originalFile;
 
   // for loading IoTDB datanode dir
   private final Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
@@ -63,7 +64,8 @@ public class LoadTsFileNode extends WritePlanNode {
       final String database,
       final boolean needDecode4TimeColumn,
       final File schemaEvolutionFile,
-      final Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
+      final Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers,
+      final File originalFile) {
     super(id);
     this.resources = resources;
     this.isTableModel = isTableModel;
@@ -71,6 +73,7 @@ public class LoadTsFileNode extends WritePlanNode {
     this.schemaEvolutionFile = schemaEvolutionFile;
     this.needDecode4TimeColumn = needDecode4TimeColumn;
     this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
+    this.originalFile = originalFile;
   }
 
   @Override
@@ -153,7 +156,8 @@ public class LoadTsFileNode extends WritePlanNode {
               needDecode4TimeColumn,
               schemaEvolutionFile,
               i == resources.size() - 1,
-              managerForLoadingIoTDBDir));
+              managerForLoadingIoTDBDir,
+              originalFile));
     }
     return res;
   }
@@ -189,7 +193,8 @@ public class LoadTsFileNode extends WritePlanNode {
                 needDecode4TimeColumn,
                 schemaEvolutionFile,
                 i == resources.size() - 1,
-                managerForLoadingIoTDBDir));
+                managerForLoadingIoTDBDir,
+                originalFile));
       }
     }
     return res;

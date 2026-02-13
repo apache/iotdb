@@ -138,6 +138,7 @@ import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1394,7 +1395,8 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             node.getDatabase(),
             node.isNeedDecode4TimeColumn(),
             node.getSchemaEvolutionFile(),
-            node.getDatabaseRegionTsFileManagers()),
+            node.getDatabaseRegionTsFileManagers(),
+            new File(node.getFilePath())),
         analysis.getRootScope(),
         Collections.emptyList(),
         outerContext);

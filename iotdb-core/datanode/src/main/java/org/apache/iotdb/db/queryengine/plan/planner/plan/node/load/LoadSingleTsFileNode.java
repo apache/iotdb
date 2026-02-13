@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -73,6 +74,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
 
   // for loading IoTDB datanode dir
   private TsFileManager managerForLoadingIoTDBDir = null;
+  private final File originalInputFile;
 
   public LoadSingleTsFileNode(
       final PlanNodeId id,
@@ -84,7 +86,8 @@ public class LoadSingleTsFileNode extends WritePlanNode {
       final boolean needDecodeTsFile,
       File schemaEvolutionFile,
       boolean isLastFile,
-      TsFileManager managerForLoadingIoTDBDir) {
+      TsFileManager managerForLoadingIoTDBDir,
+      File originalInputFile) {
     super(id);
     this.tsFile = resource.getTsFile();
     this.resource = resource;
@@ -96,6 +99,7 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     this.schemaEvolutionFile = schemaEvolutionFile;
     this.isLastFile = isLastFile;
     this.managerForLoadingIoTDBDir = managerForLoadingIoTDBDir;
+    this.originalInputFile = originalInputFile;
   }
 
   public boolean isTsFileEmpty() {
@@ -286,8 +290,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
         Files.deleteIfExists(
             SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFile(tsFile).toPath());
         if (isLastFile) {
+          LOGGER.info("Delete After Loading {}.", tsFile);
           if (schemaEvolutionFile != null) {
             Files.deleteIfExists(schemaEvolutionFile.toPath());
+            LOGGER.info("schemaEvolutionFile {} is deleted.", schemaEvolutionFile);
+          }
+          if (originalInputFile.isDirectory() && originalInputFile.getName().equals("datanode")) {
+            FileUtils.deleteDirectoryAndEmptyParent(originalInputFile);
+            LOGGER.info("datanode dir {} is deleted.", originalInputFile);
           }
         }
       }
