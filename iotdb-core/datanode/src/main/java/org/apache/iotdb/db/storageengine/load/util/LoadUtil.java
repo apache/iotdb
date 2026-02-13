@@ -126,8 +126,9 @@ public class LoadUtil {
     return tsFilePath + TsFileResource.RESOURCE_SUFFIX;
   }
 
-  private static boolean loadDatanodeDirToActiveDir(final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
-    throws IOException {
+  private static boolean loadDatanodeDirToActiveDir(
+      final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
+      throws IOException {
     if (file == null) {
       return true;
     }

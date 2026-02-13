@@ -459,7 +459,6 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               tabletConversionThresholdBytes,
               isGeneratedByPipe);
 
-
       if (!isLoadingIoTDBDir()) {
         if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
           analysis.setFinishQueryAfterAnalyze(true);
@@ -469,7 +468,8 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         LOGGER.info("Async Load TsFile has failed, and is now trying to load sync");
         return false;
       } else {
-        if (LoadUtil.loadDatanodeDirAsyncToActiveDir(originalFile, activeLoadAttributes, isDeleteAfterLoad)) {
+        if (LoadUtil.loadDatanodeDirAsyncToActiveDir(
+            originalFile, activeLoadAttributes, isDeleteAfterLoad)) {
           analysis.setFinishQueryAfterAnalyze(true);
           setRealStatement(analysis);
           return true;

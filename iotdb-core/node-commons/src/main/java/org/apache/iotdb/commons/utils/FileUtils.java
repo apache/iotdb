@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.commons.utils;
 
-import static org.apache.tsfile.external.commons.io.FileUtils.moveDirectory;
-
 import org.apache.iotdb.commons.file.SystemFileFactory;
 
 import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
@@ -49,6 +47,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+
+import static org.apache.tsfile.external.commons.io.FileUtils.moveDirectory;
 
 public class FileUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileUtils.class);
@@ -477,11 +477,11 @@ public class FileUtils {
       try {
         Files.createDirectories(targetParentDir.toPath());
       } catch (IOException e) {
-        LOGGER.warn("failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
+        LOGGER.warn(
+            "failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
         throw e;
       }
-      moveDirectory(
-          sourceDir, targetDir);
+      moveDirectory(sourceDir, targetDir);
     }
   }
 
@@ -609,9 +609,10 @@ public class FileUtils {
   }
 
   /**
-   * Copy an entire directory to targetParentDir with MD5 check semantics similar to copyFileWithMD5Check.
-   * If the target directory exists, compare sizes and deterministic MD5; if identical, do nothing;
-   * otherwise copy to a renamed directory (by size or MD5) to avoid overwriting.
+   * Copy an entire directory to targetParentDir with MD5 check semantics similar to
+   * copyFileWithMD5Check. If the target directory exists, compare sizes and deterministic MD5; if
+   * identical, do nothing; otherwise copy to a renamed directory (by size or MD5) to avoid
+   * overwriting.
    */
   public static void copyDirWithMD5Check(final File sourceDir, final File targetParentDir)
       throws IOException {
@@ -647,7 +648,8 @@ public class FileUtils {
       try {
         Files.createDirectories(targetParentDir.toPath());
       } catch (IOException e) {
-        LOGGER.warn("failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
+        LOGGER.warn(
+            "failed to create target parent directory: {}", targetParentDir.getAbsolutePath());
         throw e;
       }
 
