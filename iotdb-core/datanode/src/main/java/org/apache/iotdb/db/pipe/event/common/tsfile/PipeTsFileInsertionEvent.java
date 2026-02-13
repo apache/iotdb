@@ -45,7 +45,7 @@ import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.tsfile.PipeTsFileResourceManager;
-import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -399,8 +399,9 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
-      PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(resource.getDataRegionId(), pipeName, resource.getTsFilePath());
+      PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
+          .eliminateProgressIndex(
+              Integer.parseInt(resource.getDataRegionId()), pipeName, resource.getTsFilePath());
     }
   }
 

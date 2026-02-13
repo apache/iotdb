@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent {
 
-  private final String dataRegionId;
+  private final int dataRegionId;
   private final Set<String> originFilePaths;
   private final List<Long> commitIds;
 
@@ -70,7 +70,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         anyOfOriginalEvents.getStartTime(),
         anyOfOriginalEvents.getEndTime());
 
-    this.dataRegionId = String.valueOf(committerKey.getRegionId());
+    this.dataRegionId = committerKey.getRegionId();
     this.originFilePaths =
         originalEvents.stream()
             .map(PipeTsFileInsertionEvent::getTsFile)
@@ -186,7 +186,7 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex)) {
       for (final String originFilePath : originFilePaths) {
-        PipeTsFileEpochProgressIndexKeeper.getInstance()
+        PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
             .eliminateProgressIndex(dataRegionId, pipeName, originFilePath);
       }
     }

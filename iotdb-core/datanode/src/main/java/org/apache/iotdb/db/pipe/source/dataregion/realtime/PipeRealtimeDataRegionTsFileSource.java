@@ -25,7 +25,7 @@ import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
-import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
@@ -39,7 +39,9 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
       LoggerFactory.getLogger(PipeRealtimeDataRegionTsFileSource.class);
 
   @Override
-  protected void doExtract(PipeRealtimeEvent event) {
+  protected void doExtract(final PipeRealtimeEvent event) {
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
+
     if (event.getEvent() instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
       return;
@@ -51,8 +53,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
     }
 
     event.getTsFileEpoch().migrateState(this, state -> TsFileEpoch.State.USING_TSFILE);
-    PipeTsFileEpochProgressIndexKeeper.getInstance()
-        .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
+        .registerResource(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
 
     if (!(event.getEvent() instanceof TsFileInsertionEvent)) {
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileSource.class.getName(), false);
@@ -64,7 +66,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
       // Pending is unbounded, so it should never reach capacity.
       final String errorMessage =
           String.format(
-              "extract: pending queue of PipeRealtimeDataRegionTsFileExtractor %s "
+              "extract: pending queue of PipeRealtimeDataRegionTsFileSource %s "
                   + "has reached capacity, discard TsFile event %s, current state %s",
               this, event, event.getTsFileEpoch().getState(this));
       LOGGER.error(errorMessage);
@@ -75,6 +77,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
       event.decreaseReferenceCount(PipeRealtimeDataRegionTsFileSource.class.getName(), false);
     }
 
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
+        .markAsExtracted(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
     event.getTsFileEpoch().clearState(this);
   }
 
@@ -116,7 +120,7 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
         LOGGER.error(errorMessage);
         PipeDataNodeAgent.runtime()
             .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-        PipeTsFileEpochProgressIndexKeeper.getInstance()
+        PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
             .eliminateProgressIndex(
                 dataRegionId, pipeName, realtimeEvent.getTsFileEpoch().getFilePath());
       }

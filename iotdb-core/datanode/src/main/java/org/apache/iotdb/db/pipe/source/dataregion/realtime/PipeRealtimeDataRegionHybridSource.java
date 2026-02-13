@@ -30,7 +30,7 @@ import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeOperator;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
-import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.epoch.TsFileEpoch;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
@@ -65,6 +65,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
               "Unsupported event type %s for hybrid realtime extractor %s",
               eventToExtract.getClass(), this));
     }
+    PipeTsFileEpochProgressIndexAndFlushManager.getInstance().flushAllTimeoutTsFiles();
   }
 
   @Override
@@ -82,8 +83,8 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
 
     if (canNotUseTabletAnymore(event)) {
       event.getTsFileEpoch().migrateState(this, curState -> TsFileEpoch.State.USING_TSFILE);
-      PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .registerProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
+      PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
+          .registerResource(dataRegionId, pipeName, event.getTsFileEpoch().getResource());
     } else {
       event
           .getTsFileEpoch()
@@ -169,13 +170,15 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
     switch (state) {
       case USING_TABLET:
         // If the state is USING_TABLET, discard the event
-        PipeTsFileEpochProgressIndexKeeper.getInstance()
+        PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
             .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
         event.decreaseReferenceCount(PipeRealtimeDataRegionHybridSource.class.getName(), false);
         return;
       case EMPTY:
       case USING_TSFILE:
       case USING_BOTH:
+        PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
+            .markAsExtracted(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
         if (!pendingQueue.waitedOffer(event)) {
           // This would not happen, but just in case.
           // pendingQueue is unbounded, so it should never reach capacity.
@@ -310,7 +313,7 @@ public class PipeRealtimeDataRegionHybridSource extends PipeRealtimeDataRegionSo
       LOGGER.error(errorMessage);
       PipeDataNodeAgent.runtime()
           .report(pipeTaskMeta, new PipeRuntimeNonCriticalException(errorMessage));
-      PipeTsFileEpochProgressIndexKeeper.getInstance()
+      PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
           .eliminateProgressIndex(dataRegionId, pipeName, event.getTsFileEpoch().getFilePath());
       return null;
     }

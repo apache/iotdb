@@ -39,7 +39,7 @@ import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.metric.source.PipeDataRegionEventCounter;
 import org.apache.iotdb.db.pipe.source.dataregion.DataRegionListeningFilter;
-import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexKeeper;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.assigner.PipeTsFileEpochProgressIndexAndFlushManager;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeTimePartitionListener;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -91,7 +91,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeName;
   protected long creationTime;
-  protected String dataRegionId;
+  protected int dataRegionId;
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean shouldExtractInsertion;
@@ -214,7 +214,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     pipeName = environment.getPipeName();
-    dataRegionId = String.valueOf(environment.getRegionId());
+    dataRegionId = environment.getRegionId();
     pipeTaskMeta = environment.getPipeTaskMeta();
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
@@ -555,7 +555,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return skipIfNoPrivileges;
   }
 
-  public final String getDataRegionId() {
+  public final int getDataRegionId() {
     return dataRegionId;
   }
 
@@ -595,7 +595,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   }
 
   private void maySkipProgressIndexForRealtimeEvent(final PipeRealtimeEvent event) {
-    if (PipeTsFileEpochProgressIndexKeeper.getInstance()
+    if (PipeTsFileEpochProgressIndexAndFlushManager.getInstance()
         .isProgressIndexAfterOrEquals(
             dataRegionId,
             pipeName,
