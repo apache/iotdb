@@ -2226,17 +2226,18 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
           getLocation(ctx),
           Optional.empty(),
           new QuerySpecification(
-              getLocation(ctx),
-              query.getSelect(),
-              query.getFrom(),
-              query.getWhere(),
-              query.getGroupBy(),
-              query.getHaving(),
-              fill,
-              query.getWindows(),
-              orderBy,
-              offset,
-              limit),
+                  getLocation(ctx),
+                  query.getSelect(),
+                  query.getFrom(),
+                  query.getWhere(),
+                  query.getGroupBy(),
+                  query.getHaving(),
+                  fill,
+                  query.getWindows(),
+                  orderBy,
+                  offset,
+                  limit)
+              .setLocalQuery(term.isLocalQuery()),
           Optional.empty(),
           Optional.empty(),
           Optional.empty(),
@@ -2352,18 +2353,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
       from = Optional.of(relation);
     }
 
+    boolean isLocalQuery = ctx.LOCALLY() != null;
+
     return new QuerySpecification(
-        getLocation(ctx),
-        new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
-        from,
-        visitIfPresent(ctx.where, Expression.class),
-        visitIfPresent(ctx.groupBy(), GroupBy.class),
-        visitIfPresent(ctx.having, Expression.class),
-        Optional.empty(),
-        visit(ctx.windowDefinition(), WindowDefinition.class),
-        Optional.empty(),
-        Optional.empty(),
-        Optional.empty());
+            getLocation(ctx),
+            new Select(getLocation(ctx.SELECT()), isDistinct(ctx.setQuantifier()), selectItems),
+            from,
+            visitIfPresent(ctx.where, Expression.class),
+            visitIfPresent(ctx.groupBy(), GroupBy.class),
+            visitIfPresent(ctx.having, Expression.class),
+            Optional.empty(),
+            visit(ctx.windowDefinition(), WindowDefinition.class),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.empty())
+        .setLocalQuery(isLocalQuery);
   }
 
   @Override
