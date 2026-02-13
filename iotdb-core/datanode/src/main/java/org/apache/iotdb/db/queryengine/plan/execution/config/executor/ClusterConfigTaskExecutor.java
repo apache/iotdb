@@ -2376,7 +2376,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
               new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
-        hasSourcePassword = containsPassword(alterPipeStatement.getSourceAttributes());
+        hasSourcePassword =
+            !checkSourceType(alterPipeStatement.getSourceAttributes())
+                || containsPassword(alterPipeStatement.getSourceAttributes());
         if (alterPipeStatement.isReplaceAllSourceAttributes()) {
           sourceAttributes = alterPipeStatement.getSourceAttributes();
         } else {
@@ -2390,7 +2392,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           sourceAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSourceType(alterPipeStatement.getPipeName(), sourceAttributes);
+            checkSourceTypeWithException(alterPipeStatement.getPipeName(), sourceAttributes);
           }
         }
       } else {
@@ -2416,7 +2418,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
-        hasSinkPassword = containsPassword(alterPipeStatement.getSinkAttributes());
+        // Do not remove for handshake
+        hasSinkPassword =
+            !checkSinkType(alterPipeStatement.getSinkAttributes())
+                || containsPassword(alterPipeStatement.getSinkAttributes());
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
           sinkAttributes = alterPipeStatement.getSinkAttributes();
         } else {
@@ -2429,7 +2434,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           sinkAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSinkType(alterPipeStatement.getPipeName(), sinkAttributes);
+            checkSinkTypeWithException(alterPipeStatement.getPipeName(), sinkAttributes);
           }
         }
       } else {
@@ -2509,23 +2514,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
   }
 
-  private static void checkSourceType(
-      final String pipeName, final Map<String, String> replacedExtractorAttributes) {
-    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
-    final String pluginName =
-        extractorParameters
-            .getStringOrDefault(
-                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-            .toLowerCase();
-
-    if (pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+  private static void checkSourceTypeWithException(
+      final String pipeName, final Map<String, String> replacedSourceAttributes) {
+    if (checkSourceType(replacedSourceAttributes)) {
       throw new SemanticException(
           String.format(
               "Failed to alter pipe %s, in iotdb-source, password must be set when the username is specified.",
               pipeName));
     }
+  }
+
+  private static boolean checkSourceType(final Map<String, String> replacedSourceAttributes) {
+    final PipeParameters sourceParameters = new PipeParameters(replacedSourceAttributes);
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    return pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
   }
 
   private static boolean containsPassword(final Map<String, String> sourceOrSinkAttributes) {
@@ -2546,23 +2555,27 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
   }
 
-  private static void checkSinkType(
-      final String pipeName, final Map<String, String> connectorAttributes) {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-    final String pluginName =
-        connectorParameters
-            .getStringOrDefault(
-                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
-                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
-            .toLowerCase();
-
-    if (pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
-        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+  private static void checkSinkTypeWithException(
+      final String pipeName, final Map<String, String> sinkAttributes) {
+    if (checkSinkType(sinkAttributes)) {
       throw new SemanticException(
           String.format(
               "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
               pipeName));
     }
+  }
+
+  private static boolean checkSinkType(final Map<String, String> sinkAttributes) {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final String pluginName =
+        sinkParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    return pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName());
   }
 
   @Override
