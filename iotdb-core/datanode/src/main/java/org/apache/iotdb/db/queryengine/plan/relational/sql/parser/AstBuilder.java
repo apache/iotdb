@@ -355,7 +355,9 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitSingleStatement(RelationalSqlParser.SingleStatementContext ctx) {
-    return visit(ctx.statement());
+    Statement statement = (Statement) visit(ctx.statement());
+    statement.setDebug(ctx.DEBUG() != null);
+    return statement;
   }
 
   @Override

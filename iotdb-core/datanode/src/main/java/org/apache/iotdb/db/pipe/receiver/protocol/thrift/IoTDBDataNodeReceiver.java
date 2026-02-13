@@ -1067,7 +1067,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
+            false,
+            statement.isDebug())
         .status;
   }
 
@@ -1092,7 +1093,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false)
+                  false,
+                  statement.isDebug())
               .status;
 
       // Delete data & Update device attribute is itself idempotent
