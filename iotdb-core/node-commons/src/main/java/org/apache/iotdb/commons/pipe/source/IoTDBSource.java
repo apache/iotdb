@@ -62,7 +62,7 @@ public abstract class IoTDBSource implements PipeExtractor {
   protected int regionId;
   protected PipeTaskMeta pipeTaskMeta;
 
-  protected boolean isForwardingPipeRequests;
+  protected boolean isForwardingPipeRequests = true;
 
   // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
@@ -161,22 +161,7 @@ public abstract class IoTDBSource implements PipeExtractor {
     taskID = pipeName + "_" + regionId + "_" + creationTime;
     pipeTaskMeta = environment.getPipeTaskMeta();
 
-    final boolean isDoubleLiving =
-        parameters.getBooleanOrDefault(
-            Arrays.asList(
-                PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_KEY,
-                PipeSourceConstant.SOURCE_MODE_DOUBLE_LIVING_KEY),
-            PipeSourceConstant.EXTRACTOR_MODE_DOUBLE_LIVING_DEFAULT_VALUE);
-    if (isDoubleLiving) {
-      isForwardingPipeRequests = false;
-    } else {
-      isForwardingPipeRequests =
-          parameters.getBooleanOrDefault(
-              Arrays.asList(
-                  PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_KEY,
-                  PipeSourceConstant.SOURCE_FORWARDING_PIPE_REQUESTS_KEY),
-              PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
-    }
+    isForwardingPipeRequests = true;
 
     userId =
         parameters.getStringOrDefault(
