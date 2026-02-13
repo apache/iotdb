@@ -595,8 +595,6 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
-    TestUtils.executeNonQuery(
-            senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
     statement.execute("alter pipe a2b modify source ('password'='newPassword')");
 
     // Test empty alter
@@ -606,7 +604,8 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         receiverEnv,
         "select count(pressure) from root.vehicle.plane",
         "count(root.vehicle.plane.pressure),",
-        Collections.singleton("2,"), 10);
+        Collections.singleton("2,"),
+        10);
 
     statement.execute("alter user thulab set password 'anotherPassword'");
 
