@@ -66,24 +66,24 @@ public class PipeDataRegionAssigner implements Closeable {
   /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
   private final DisruptorQueue disruptor;
 
-  private final String dataRegionId;
+  private final int dataRegionId;
 
   private Boolean isTableModel;
 
   private final PipeEventCounter eventCounter = new PipeDataRegionEventCounter();
 
-  public String getDataRegionId() {
+  public int getDataRegionId() {
     return dataRegionId;
   }
 
-  public PipeDataRegionAssigner(final String dataRegionId) {
+  public PipeDataRegionAssigner(final int dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
     this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
 
     final DataRegion dataRegion =
-        StorageEngine.getInstance().getDataRegion(new DataRegionId(Integer.parseInt(dataRegionId)));
+        StorageEngine.getInstance().getDataRegion(new DataRegionId(dataRegionId));
     if (Objects.nonNull(dataRegion)) {
       final String databaseName = dataRegion.getDatabaseName();
       if (Objects.nonNull(databaseName)) {

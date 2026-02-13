@@ -91,7 +91,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeName;
   protected long creationTime;
-  protected int dataRegionId;
+  protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean shouldExtractInsertion;
@@ -317,7 +317,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(dataRegionId)) {
+    if (dataRegionId >= 0) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
     }

@@ -74,6 +74,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
         .setPipeMemoryManagementEnabled(false)
+        .setPipeTsFileFlushIntervalSeconds(10)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
     senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
@@ -323,7 +324,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testExtractorInvalidParameter() throws Exception {
+  public void testSourceInvalidParameter() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -605,6 +606,56 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"));
+    }
+  }
+
+  @Test
+  public void testSourceAutoFlush() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      final Map<String, String> sourceAttributes = new HashMap<>();
+      final Map<String, String> processorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
+
+      sourceAttributes.put("source.realtime.mode", "batch");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db1.d1 (time, at1) values (1, 10)",
+              "insert into root.db1.d2 (time, at1) values (1, 20)"),
+          null);
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "insert into root.db1.d1 (time, at1) values (2, 10)",
+              "insert into root.db1.d2 (time, at1) values (2, 20)"),
+          null);
+
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "select count(*) from root.db*.**",
+          "count(root.db1.d1.at1),count(root.db2.d1.at1),",
+          Collections.singleton("2,2,"),
+          60);
     }
   }
 

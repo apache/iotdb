@@ -42,7 +42,7 @@ import java.io.File;
 import java.util.Collections;
 
 public class DeletionRecoverTest {
-  private static final String[] FAKE_DATA_REGION_IDS = {"2", "3"};
+  private static final Integer[] FAKE_DATA_REGION_IDS = {2, 3};
   private static final int THIS_DATANODE_ID =
       IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
   private static final String DELETION_BASE_DIR =
@@ -50,7 +50,7 @@ public class DeletionRecoverTest {
   private final int deletionCount = 10;
   private DeletionResourceManager deletionResourceManager;
 
-  public void setUp(boolean isRelational, String FAKE_DATA_REGION_ID) throws Exception {
+  public void setUp(boolean isRelational, int FAKE_DATA_REGION_ID) throws Exception {
     File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
     if (baseDir.exists()) {
       FileUtils.deleteFileOrDirectory(baseDir);
@@ -84,7 +84,7 @@ public class DeletionRecoverTest {
 
   @After
   public void tearDown() throws Exception {
-    for (String FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
+    for (Integer FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
         FileUtils.deleteFileOrDirectory(baseDir);

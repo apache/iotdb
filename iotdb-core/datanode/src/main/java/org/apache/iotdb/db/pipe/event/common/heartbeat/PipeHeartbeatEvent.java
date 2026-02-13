@@ -41,7 +41,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeHeartbeatEvent.class);
 
-  private final String dataRegionId;
+  private final int dataRegionId;
 
   private long timePublished;
   private long timeAssigned;
@@ -62,7 +62,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   private final boolean shouldPrintMessage;
 
-  public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
+  public PipeHeartbeatEvent(final int dataRegionId, final boolean shouldPrintMessage) {
     super(null, 0, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
@@ -72,7 +72,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final String pipeName,
       final long creationTime,
       final PipeTaskMeta pipeTaskMeta,
-      final String dataRegionId,
+      final int dataRegionId,
       final long timePublished,
       final boolean shouldPrintMessage) {
     super(
