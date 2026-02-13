@@ -133,27 +133,7 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
                   .setVersion(ReadWriteIOUtils.readByte(byteBuffer))
                   .setType(ReadWriteIOUtils.readShort(byteBuffer))
                   .setBody(byteBuffer.slice());
-      final TPipeTransferResp resp = agent.receive(req);
-
-      final TSStatus status = resp.getStatus();
-      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        ok();
-      } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
-          || status.getCode()
-              == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-        LOGGER.info(
-            "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
-            receiverId,
-            resp.getStatus());
-        ok();
-      } else {
-        LOGGER.warn(
-            "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
-            receiverId,
-            resp.getStatus(),
-            req);
-        fail();
-      }
+      handleReq(req, System.currentTimeMillis());
     } catch (final PipeConnectionException e) {
       LOGGER.info(
           "Pipe air gap receiver {}: Socket {} closed when listening to data. Because: {}",
@@ -167,6 +147,44 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
           receiverId,
           socket,
           e);
+      fail();
+    }
+  }
+
+  private void handleReq(final AirGapPseudoTPipeTransferRequest req, final long startTime)
+      throws IOException {
+    final TPipeTransferResp resp = agent.receive(req);
+
+    final TSStatus status = resp.getStatus();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      ok();
+    } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
+        || status.getCode()
+            == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
+      LOGGER.info(
+          "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
+          receiverId,
+          resp.getStatus());
+      ok();
+    } else if (status.getCode()
+        == TSStatusCode.PIPE_RECEIVER_TEMPORARY_UNAVAILABLE_EXCEPTION.getStatusCode()) {
+      try {
+        Thread.sleep(PipeConfig.getInstance().getPipeAirGapRetryLocalIntervalMs());
+      } catch (final InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      LOGGER.info(
+          "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
+      if (System.currentTimeMillis() - startTime
+          < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
+        handleReq(req, startTime);
+      }
+    } else {
+      LOGGER.warn(
+          "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
+          receiverId,
+          resp.getStatus(),
+          req);
       fail();
     }
   }
