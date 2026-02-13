@@ -160,6 +160,8 @@ public interface BaseEnv {
       DataNodeWrapper dataNodeWrapper, String username, String password, String sqlDialect)
       throws SQLException;
 
+  Connection getConnection(DataNodeWrapper dataNodeWrapper, String sqlDialect) throws SQLException;
+
   default Connection getConnection(String username, String password) throws SQLException {
     return getConnection(username, password, TREE_SQL_DIALECT);
   }

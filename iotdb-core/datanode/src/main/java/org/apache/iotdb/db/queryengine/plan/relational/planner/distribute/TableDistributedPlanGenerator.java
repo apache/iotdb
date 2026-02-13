@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -810,6 +811,19 @@ public class TableDistributedPlanGenerator
         context.deviceCrossRegion = true;
       }
       for (final TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        if (analysis.isLocalQuery()) {
+          // only query this node in local query mode
+          int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+          boolean containsThisNode =
+              regionReplicaSet.dataNodeLocations.stream()
+                  .anyMatch(dn -> dn.getDataNodeId() == dataNodeId);
+          if (!containsThisNode) {
+            continue;
+          } else {
+            regionReplicaSet.dataNodeLocations.removeIf(dn -> dn.getDataNodeId() != dataNodeId);
+          }
+        }
+
         final DeviceTableScanNode deviceTableScanNode =
             tableScanNodeMap.computeIfAbsent(
                 regionReplicaSet,

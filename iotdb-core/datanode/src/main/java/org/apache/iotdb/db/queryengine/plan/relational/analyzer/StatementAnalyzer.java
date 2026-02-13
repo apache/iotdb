@@ -860,6 +860,8 @@ public class StatementAnalyzer {
     @Override
     protected Scope visitQuery(Query node, Optional<Scope> context) {
       analysis.setQuery(true);
+      analysis.setLocalQuery(node.getQueryBody().isLocalQuery());
+
       Scope withScope = analyzeWith(node, context);
       hasFillInParentScope = node.getFill().isPresent() || hasFillInParentScope;
       Scope queryBodyScope = process(node.getQueryBody(), withScope);
