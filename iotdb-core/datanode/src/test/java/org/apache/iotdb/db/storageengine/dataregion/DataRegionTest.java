@@ -1829,7 +1829,7 @@ public class DataRegionTest {
         dataRegion.query(
             fullPaths,
             deviceID1,
-            new QueryContext(),
+            new QueryContext(false),
             null,
             Collections.singletonList(0L),
             Long.MAX_VALUE);
@@ -1845,7 +1845,7 @@ public class DataRegionTest {
         dataRegion.query(
             fullPaths,
             deviceID2,
-            new QueryContext(),
+            new QueryContext(false),
             null,
             Collections.singletonList(0L),
             Long.MAX_VALUE);
@@ -1882,7 +1882,7 @@ public class DataRegionTest {
         dataRegion.query(
             fullPaths,
             deviceID1,
-            new QueryContext(),
+            new QueryContext(false),
             null,
             Collections.singletonList(0L),
             Long.MAX_VALUE);
@@ -1897,7 +1897,7 @@ public class DataRegionTest {
         dataRegion.query(
             fullPaths,
             deviceID2,
-            new QueryContext(),
+            new QueryContext(false),
             null,
             Collections.singletonList(0L),
             Long.MAX_VALUE);
