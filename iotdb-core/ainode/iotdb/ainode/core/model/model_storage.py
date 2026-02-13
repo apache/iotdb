@@ -273,7 +273,7 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
-                _transformers_registered=False,  # Lazy registration
+                transformers_registered=False,  # Lazy registration
             )
             self._models[ModelCategory.FINE_TUNED.value][model_id] = model_info
 
@@ -577,6 +577,34 @@ class ModelStorage:
                     if model_id in category_dict:
                         return category_dict[model_id]
         raise ModelNotExistException(model_id)
+
+    def get_model_info_via_model_type(
+        self, model_type: str, category: Optional[ModelCategory] = None
+    ) -> Optional[ModelInfo]:
+        """
+        Get specified model information via model_type.
+        Args:
+            model_type (str): The model_type defined in the model's config.json.
+            category (Optional[ModelCategory]): Category of the model (if known).
+        Returns:
+            ModelInfo: Information of the specified model.
+        Raises:
+            ModelNotExistException: If the model_type does not exist.
+        """
+        if category:
+            # Category specified, only need to access specific dictionary, use model_type's lock
+            with self._lock_pool.get_lock(model_type).read_lock():
+                for model_info in self._models[category.value].values():
+                    if model_info.model_type == model_type:
+                        return model_info
+        else:
+            # Category not specified, need to traverse all dictionaries, use global lock
+            with self._lock_pool.get_lock("").read_lock():
+                for category_dict in self._models.values():
+                    for model_info in category_dict.values():
+                        if model_info.model_type == model_type:
+                            return model_info
+        raise ModelNotExistException(model_type)
 
     def is_model_registered(self, model_id: str) -> bool:
         """Check if model is registered (search in _models)"""

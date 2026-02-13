@@ -23,11 +23,13 @@ import torch
 
 from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.log import Logger
+from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.model.model_constants import ModelCategory
 from iotdb.ainode.core.model.model_storage import ModelInfo
 from iotdb.ainode.core.model.utils import import_class_from_path, temporary_sys_path
 
 logger = Logger()
+MODEL_MANAGER = ModelManager()
 
 
 def load_pipeline(model_info: ModelInfo, device: torch.device, **model_kwargs):
@@ -35,13 +37,28 @@ def load_pipeline(model_info: ModelInfo, device: torch.device, **model_kwargs):
         from iotdb.ainode.core.model.sktime.pipeline_sktime import SktimePipeline
 
         pipeline_cls = SktimePipeline
-    elif model_info.category == ModelCategory.BUILTIN:
+    elif (
+        model_info.category == ModelCategory.FINE_TUNED
+        or model_info.category == ModelCategory.BUILTIN
+    ):
+        load_model_info = model_info
+        if model_info.category == ModelCategory.FINE_TUNED:
+            # For fine-tuned models, we employ the corresponding built-in model info
+            load_model_info = MODEL_MANAGER.get_model_info_via_model_type(
+                model_info.model_type, ModelCategory.BUILTIN
+            )
+            model_info.auto_map = (
+                load_model_info.auto_map
+            )  # Inherit auto_map from the built-in model
+            model_info.origin_id = (
+                load_model_info.model_id
+            )  # Record the origin built-in model id for fine-tuned model
         module_name = (
             AINodeDescriptor().get_config().get_ain_models_builtin_dir()
             + "."
-            + model_info.model_id
+            + load_model_info.model_id
         )
-        pipeline_cls = import_class_from_path(module_name, model_info.pipeline_cls)
+        pipeline_cls = import_class_from_path(module_name, load_model_info.pipeline_cls)
     else:
         model_path = os.path.join(
             os.getcwd(),

@@ -92,6 +92,11 @@ class ModelManager:
     ) -> Optional[ModelInfo]:
         return self._model_storage.get_model_info(model_id, category)
 
+    def get_model_info_via_model_type(
+        self, model_type: str, category: Optional[ModelCategory] = None
+    ) -> Optional[ModelInfo]:
+        return self._model_storage.get_model_info_via_model_type(model_type, category)
+
     def _refresh(self):
         """Refresh the model list (re-scan the file system)"""
         self._model_storage.discover_all_models()

@@ -43,6 +43,7 @@ class ModelInfo:
         self.transformers_registered = (
             transformers_registered  # Internal flag: whether registered to Transformers
         )
+        self.origin_id = None
 
     def __repr__(self):
         return (

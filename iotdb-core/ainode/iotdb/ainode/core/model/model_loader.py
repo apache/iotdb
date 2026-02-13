@@ -73,11 +73,18 @@ def load_model_from_transformers(model_info: ModelInfo, **model_kwargs):
     config_str = model_info.auto_map.get("AutoConfig", "")
     model_str = model_info.auto_map.get("AutoModelForCausalLM", "")
 
-    if model_info.category == ModelCategory.BUILTIN:
+    if (
+        model_info.category == ModelCategory.BUILTIN
+        or model_info.category == ModelCategory.FINE_TUNED
+    ):
         module_name = (
             AINodeDescriptor().get_config().get_ain_models_builtin_dir()
             + "."
-            + model_info.model_id
+            + (
+                model_info.model_id
+                if model_info.category == ModelCategory.BUILTIN
+                else model_info.origin_id
+            )
         )
         config_cls = import_class_from_path(module_name, config_str)
         model_cls = import_class_from_path(module_name, model_str)

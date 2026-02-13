@@ -18,9 +18,6 @@ import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelNotOnSpecifiedDevice;
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkModelOnSpecifiedDevice;
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.concurrentInference;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareTableData;
 import static org.junit.Assert.assertEquals;
@@ -31,7 +28,7 @@ import static org.junit.Assert.fail;
 public class AINodeFineTuneIT {
 
   private static final int LINE_COUNT = 6666;
-  private static final int WAITING_COUNT_SECOND = 600;
+  private static final int WAITING_COUNT_SECOND = 888;
   private static final String[] SCHEMA_SQL_IN_TREE =
       new String[] {
         "CREATE DATABASE root.AI", "CREATE TIMESERIES root.AI.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
@@ -77,6 +74,7 @@ public class AINodeFineTuneIT {
       statement.execute(
           "CREATE MODEL sundial_tree WITH HYPERPARAMETERS (train_epochs=2, num_warmup_steps=80, num_training_steps=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (PATH root.AI.s0)");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
+        boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_tree")) {
           int modelCnt = 0;
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -90,28 +88,45 @@ public class AINodeFineTuneIT {
             assertEquals("sundial_tree", modelId);
             assertEquals("sundial", modelType);
             assertEquals("fine_tuned", category);
-            if (state.equals("active")) {
-              return;
-            }
+            isActivated = state.equals("active");
             ++modelCnt;
           }
           assertEquals(1, modelCnt);
+        }
+        if (isActivated) {
+          try (ResultSet resultSet =
+              statement.executeQuery(
+                  "CALL INFERENCE(sundial_tree, \"SELECT s0 FROM root.AI\", outputLength=720)")) {
+            int outputCnt = 0;
+            while (resultSet.next()) {
+              outputCnt++;
+            }
+            if (720 != outputCnt) {
+              fail(
+                  "Output count mismatch for fine tuned model."
+                      + "Expected: "
+                      + 720
+                      + ", but got: "
+                      + outputCnt);
+            }
+          }
+          return;
         }
         TimeUnit.SECONDS.sleep(1); // Wait for 1 second before retrying
       }
       fail(
           String.format(
               "Fine-tuning model did not finish after waiting for %ds.", WAITING_COUNT_SECOND));
-      statement.execute("LOAD MODEL sundial_tree TO DEVICES \"0,1\"");
-      checkModelOnSpecifiedDevice(statement, "sundial_tree", "0,1");
-      concurrentInference(
-          statement,
-          "CALL INFERENCE(sundial_tree, \"SELECT s0 FROM root.AI\", outputLength=720)",
-          10,
-          100,
-          720);
-      statement.execute("UNLOAD MODEL sundial_tree FROM DEVICES \"0,1\"");
-      checkModelNotOnSpecifiedDevice(statement, "sundial_tree", "0,1");
+      //      statement.execute("LOAD MODEL sundial_tree TO DEVICES \"0,1\"");
+      //      checkModelOnSpecifiedDevice(statement, "sundial_tree", "0,1");
+      //      concurrentInference(
+      //          statement,
+      //          "CALL INFERENCE(sundial_tree, \"SELECT s0 FROM root.AI\", outputLength=720)",
+      //          10,
+      //          100,
+      //          720);
+      //      statement.execute("UNLOAD MODEL sundial_tree FROM DEVICES \"0,1\"");
+      //      checkModelNotOnSpecifiedDevice(statement, "sundial_tree", "0,1");
     }
   }
 
@@ -122,6 +137,7 @@ public class AINodeFineTuneIT {
       statement.execute(
           "CREATE MODEL sundial_table WITH HYPERPARAMETERS (train_epochs=2, num_warmup_steps=80, num_training_steps=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (\'SELECT time, s0 FROM root.AI\')");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
+        boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_table")) {
           int modelCnt = 0;
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -135,12 +151,33 @@ public class AINodeFineTuneIT {
             assertEquals("sundial_table", modelId);
             assertEquals("sundial", modelType);
             assertEquals("fine_tuned", category);
-            if (state.equals("active")) {
-              return;
-            }
+            isActivated = state.equals("active");
             ++modelCnt;
           }
           assertEquals(1, modelCnt);
+        }
+        if (isActivated) {
+          final String forecastSQL =
+              "SELECT * FROM FORECAST("
+                  + "model_id=>'sundial_table', "
+                  + "targets=>(SELECT time,s0 FROM root.AI) ORDER BY time, "
+                  + "output_length=>720"
+                  + ")";
+          try (ResultSet resultSet = statement.executeQuery(forecastSQL)) {
+            int outputCnt = 0;
+            while (resultSet.next()) {
+              outputCnt++;
+            }
+            if (720 != outputCnt) {
+              fail(
+                  "Output count mismatch for fine tuned model."
+                      + "Expected: "
+                      + 720
+                      + ", but got: "
+                      + outputCnt);
+            }
+            return;
+          }
         }
         TimeUnit.SECONDS.sleep(1); // Wait for 1 second before retrying
       }
@@ -148,16 +185,16 @@ public class AINodeFineTuneIT {
           String.format(
               "Fine-tuning model did not finish after waiting for %ds.", WAITING_COUNT_SECOND));
       // Ensure the fine-tuned model can be employed
-      statement.execute("LOAD MODEL sundial_table TO DEVICES \"0,1\"");
-      checkModelOnSpecifiedDevice(statement, "sundial_table", "0,1");
-      concurrentInference(
-          statement,
-          "\"SELECT * FROM FORECAST(model_id=>'sundial_table', input=>(SELECT time,s0 FROM root.AI) ORDER BY time), output_length=>720",
-          10,
-          100,
-          720);
-      statement.execute("UNLOAD MODEL sundial_table FROM DEVICES \"0,1\"");
-      checkModelNotOnSpecifiedDevice(statement, "sundial_table", "0,1");
+      //      statement.execute("LOAD MODEL sundial_table TO DEVICES \"0,1\"");
+      //      checkModelOnSpecifiedDevice(statement, "sundial_table", "0,1");
+      //      concurrentInference(
+      //          statement,
+      //          "\"",
+      //          10,
+      //          100,
+      //          720);
+      //      statement.execute("UNLOAD MODEL sundial_table FROM DEVICES \"0,1\"");
+      //      checkModelNotOnSpecifiedDevice(statement, "sundial_table", "0,1");
     }
   }
 }
