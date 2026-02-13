@@ -349,6 +349,10 @@ public class ColumnHeaderConstant {
   public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";
   public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";
 
+  public static final String SIZE_IN_BYTES = "SizeInBytes";
+  public static final String SIZE_IN_BYTES_TABLE_MODEL = "size_in_bytes";
+  public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
+
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(TIMESERIES, TSDataType.TEXT),
@@ -645,6 +649,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showDiskUsageColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(SIZE_IN_BYTES, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
       ImmutableList.of(
