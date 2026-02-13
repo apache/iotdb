@@ -1444,7 +1444,15 @@ public class ClusterSchemaManager {
         return new Pair<>(
             RpcUtils.getStatus(
                 TSStatusCode.COLUMN_NOT_EXISTS,
-                String.format("Column '%s' does not exist", oldNames)),
+                String.format("Column '%s' does not exist", oldName)),
+            null);
+      }
+
+      if (schema.getDataType().equals(TSDataType.OBJECT)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.SEMANTIC_ERROR,
+                String.format("Renaming Object column %s is currently unsupported", oldName)),
             null);
       }
     }
@@ -1454,7 +1462,7 @@ public class ClusterSchemaManager {
         return new Pair<>(
             RpcUtils.getStatus(
                 TSStatusCode.COLUMN_ALREADY_EXISTS,
-                "The new column name " + newNames + " already exists"),
+                "The new column name " + newName + " already exists"),
             null);
       }
     }
@@ -1499,6 +1507,20 @@ public class ClusterSchemaManager {
         checkTable4View(database, originalTable, isTableView);
     if (result.isPresent()) {
       return result.get();
+    }
+
+    for (TsTableColumnSchema tsTableColumnSchema : originalTable.getColumnList()) {
+      if (tsTableColumnSchema.getDataType().equals(TSDataType.OBJECT)) {
+        if (!TreeViewSchema.isTreeViewTable(originalTable)) {
+          return new Pair<>(
+              RpcUtils.getStatus(
+                  TSStatusCode.SEMANTIC_ERROR,
+                  String.format(
+                      "Table '%s.%s' contains Object column, renaming is currently unsupported",
+                      database, tableName)),
+              null);
+        }
+      }
     }
 
     if (getTableIfExists(database, newName).isPresent()) {
