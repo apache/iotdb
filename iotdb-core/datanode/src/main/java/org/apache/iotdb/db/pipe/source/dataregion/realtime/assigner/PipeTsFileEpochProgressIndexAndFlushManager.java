@@ -74,8 +74,7 @@ public class PipeTsFileEpochProgressIndexAndFlushManager {
                                   >= pair.getRight()) {
                                 StorageEngine.getInstance()
                                     .getDataRegion(new DataRegionId(regionId))
-                                    .asyncCloseOneTsFileProcessor(
-                                        pair.getLeft().isSeq(), pair.getLeft().getProcessor());
+                                    .asyncCloseOneTsFileProcessor(pair.getLeft());
                                 pair.setRight(Long.MAX_VALUE);
                               }
                             })));
