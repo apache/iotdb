@@ -1939,6 +1939,11 @@ public class DataRegion implements IDataRegionForQuery {
     return TsFileNameGenerator.generateNewTsFileName(time, version, mergeCnt, unseqCompactionCnt);
   }
 
+  /**
+   * close the TsFile represented by the given resource, thread-safe
+   * @param tsFileResource TsFile to be closed
+   * @return a future related to the close task
+   */
   public Future<?> asyncCloseOneTsFileProcessor(TsFileResource tsFileResource) {
     writeLock("asyncCloseOneTsFileProcessor");
     try {

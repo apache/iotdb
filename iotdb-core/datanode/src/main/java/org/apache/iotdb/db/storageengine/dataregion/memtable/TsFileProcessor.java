@@ -210,7 +210,7 @@ public class TsFileProcessor {
 
   private int walEntryNum = 0;
 
-  private Future<?> closeFuture;
+  private volatile Future<?> closeFuture;
 
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
@@ -1800,6 +1800,9 @@ public class TsFileProcessor {
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
     this.managedByFlushManager = managedByFlushManager;
+    if (!managedByFlushManager) {
+      closeFuture = CompletableFuture.completedFuture(null);
+    }
   }
 
   /** Close this tsfile */
