@@ -210,6 +210,8 @@ public class TsFileProcessor {
 
   private int walEntryNum = 0;
 
+  private volatile Future<?> closeFuture;
+
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
       String dataRegionName,
@@ -1250,10 +1252,13 @@ public class TsFileProcessor {
     logger.info(
         "Sync close file: {}, will firstly async close it",
         tsFileResource.getTsFile().getAbsolutePath());
-    if (shouldClose) {
-      return;
-    }
+
     try {
+      if (closeFuture != null) {
+        closeFuture.get();
+        return;
+      }
+
       asyncClose().get();
       logger.info("Start to wait until file {} is closed", tsFileResource);
       // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
@@ -1273,6 +1278,10 @@ public class TsFileProcessor {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
+      if (closeFuture != null) {
+        return closeFuture;
+      }
+
       if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
           logger.debug(
@@ -1293,10 +1302,6 @@ public class TsFileProcessor {
               tsFileResource.getTsFileSize());
         }
       }
-
-      if (shouldClose) {
-        return CompletableFuture.completedFuture(null);
-      }
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
       // execute other cleanup works if "shouldClose == true and flushingMemTables is empty".
@@ -1315,6 +1320,7 @@ public class TsFileProcessor {
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
+        closeFuture = future;
         return future;
       } catch (Exception e) {
         logger.error(
@@ -1794,6 +1800,9 @@ public class TsFileProcessor {
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
     this.managedByFlushManager = managedByFlushManager;
+    if (!managedByFlushManager) {
+      closeFuture = CompletableFuture.completedFuture(null);
+    }
   }
 
   /** Close this tsfile */
@@ -2383,5 +2392,13 @@ public class TsFileProcessor {
   @Override
   public String toString() {
     return "TsFileProcessor{" + "tsFileResource=" + tsFileResource + '}';
+  }
+
+  public Future<?> getCloseFuture() {
+    return closeFuture;
+  }
+
+  public void setCloseFuture(Future<?> closeFuture) {
+    this.closeFuture = closeFuture;
   }
 }
