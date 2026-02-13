@@ -303,8 +303,8 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
     checkInvalidParameters(validator);
 
-    constructHistoricalExtractor();
-    constructRealtimeExtractor(validator.getParameters());
+    constructHistoricalSource();
+    constructRealtimeSource(validator.getParameters());
 
     historicalSource.validate(validator);
     realtimeSource.validate(validator);
@@ -439,11 +439,11 @@ public class IoTDBDataRegionSource extends IoTDBSource {
     }
   }
 
-  private void constructHistoricalExtractor() {
+  private void constructHistoricalSource() {
     historicalSource = new PipeHistoricalDataRegionTsFileAndDeletionSource();
   }
 
-  private void constructRealtimeExtractor(final PipeParameters parameters) {
+  private void constructRealtimeSource(final PipeParameters parameters) {
     // Use heartbeat only source if disable realtime source
     if (!parameters.getBooleanOrDefault(
         Arrays.asList(EXTRACTOR_REALTIME_ENABLE_KEY, SOURCE_REALTIME_ENABLE_KEY),
