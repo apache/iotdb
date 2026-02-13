@@ -311,8 +311,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
       fail("Shall fail if password is wrong.");
     } catch (final SQLException e) {
-      Assert.assertTrue(
-          e.getMessage().contains("Fail to CREATE_PIPE because Authentication failed."));
+      Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
     // Use current session, user is root
