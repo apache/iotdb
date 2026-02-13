@@ -165,7 +165,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
           ChunkHeader chunkHeader = reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
           IMeasurementSchema schema =
               new MeasurementSchema(
-                  chunkHeader.getMeasurementID(),
+                  chunkMetadata.getMeasurementUid(),
                   chunkHeader.getDataType(),
                   chunkHeader.getEncodingType(),
                   chunkHeader.getCompressionType());
@@ -262,6 +262,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       return new InstantChunkLoader();
     }
     Chunk chunk = reader.readMemChunk(chunkMetadata);
+    // the chunk may be renamed and chunkMetadata contains the final name
+    chunk.getHeader().setMeasurementID(chunkMetadata.getMeasurementUid());
     return new InstantChunkLoader(reader.getFileName(), chunkMetadata, chunk);
   }
 

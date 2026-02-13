@@ -261,6 +261,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.sys.StopRepairDataStatemen
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlBaseVisitor;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlLexer;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser;
+import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlParser.IdentifierContext;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -505,11 +506,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitRenameColumn(final RelationalSqlParser.RenameColumnContext ctx) {
+    List<IdentifierContext> identifiers = ctx.identifier();
+    List<Identifier> oldNames = new ArrayList<>(identifiers.size() / 2);
+    List<Identifier> newNames = new ArrayList<>(identifiers.size() / 2);
+    for (int i = 0; i < identifiers.size(); i++) {
+      if (i % 2 == 0) {
+        oldNames.add((Identifier) visit(identifiers.get(i)));
+      } else {
+        newNames.add((Identifier) visit(identifiers.get(i)));
+      }
+    }
     return new RenameColumn(
         getLocation(ctx),
         getQualifiedName(ctx.tableName),
-        (Identifier) visit(ctx.from),
-        (Identifier) visit(ctx.to),
+        oldNames,
+        newNames,
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->
@@ -650,11 +661,21 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   @Override
   public Node visitRenameViewColumn(final RelationalSqlParser.RenameViewColumnContext ctx) {
+    List<IdentifierContext> identifiers = ctx.identifier();
+    List<Identifier> oldNames = new ArrayList<>(identifiers.size() / 2);
+    List<Identifier> newNames = new ArrayList<>(identifiers.size() / 2);
+    for (int i = 0; i < identifiers.size(); i++) {
+      if (i % 2 == 0) {
+        oldNames.add((Identifier) visit(identifiers.get(i)));
+      } else {
+        newNames.add((Identifier) visit(identifiers.get(i)));
+      }
+    }
     return new RenameColumn(
         getLocation(ctx),
         getQualifiedName(ctx.viewName),
-        (Identifier) visit(ctx.from),
-        (Identifier) visit(ctx.to),
+        oldNames,
+        newNames,
         ctx.EXISTS().stream()
             .anyMatch(
                 node ->

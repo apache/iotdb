@@ -121,9 +121,10 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
   @Override
   protected void calculateSourceFilesAndTargetFiles() throws IOException {
     filesView.sourceFilesInLog = filesView.sourceFilesInCompactionPerformer;
-    filesView.targetFilesInLog =
-        Collections.singletonList(
-            new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING));
+    TsFileResource targetResource =
+        new TsFileResource(generateTargetFile(), TsFileResourceStatus.COMPACTING);
+    targetResource.setTsFileManager(tsFileManager);
+    filesView.targetFilesInLog = Collections.singletonList(targetResource);
     filesView.targetFilesInPerformer = filesView.targetFilesInLog;
   }
 
@@ -137,7 +138,7 @@ public class RepairUnsortedFileCompactionTask extends InnerSpaceCompactionTask {
             sourceFile.isSeq()
                 ? lastAllocatedFileTimestamp.incrementAndGet()
                 : sourceFileName.getTime(),
-            sourceFile.isSeq() ? 0 : sourceFileName.getVersion(),
+            sourceFileName.getVersion(),
             sourceFileName.getInnerCompactionCnt() + 1,
             sourceFileName.getCrossCompactionCnt());
     // if source file is sequence, the sequence data targetFileDir should be replaced to unsequence

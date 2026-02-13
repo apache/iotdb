@@ -524,4 +524,8 @@ public class AuthorityChecker {
       }
     }
   }
+
+  public static void invalidateAllCache() {
+    authorityFetcher.get().getAuthorCache().invalidAllCache();
+  }
 }

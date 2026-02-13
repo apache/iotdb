@@ -113,10 +113,12 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -586,6 +588,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
+    LOGGER.info(
+        "DataNode Receiver starts to load TsFile: {} for database {}",
+        fileAbsolutePath,
+        dataBaseName);
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
@@ -593,6 +599,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
+
+    // add associated sevo file path if exists
+    String sevoFilePath =
+        fileAbsolutePath.replace(
+            TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX);
+    File sevoFile = new File(sevoFilePath);
+    if (sevoFile.exists()) {
+      LOGGER.info("Loading a tsfile with schema evolution, sevo file path: {}", sevoFilePath);
+      statement.setSchemaEvolutionFile(sevoFile);
+    }
 
     return executeStatementAndClassifyExceptions(statement);
   }
@@ -865,6 +881,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
+    LOGGER.info("Receiver id = {}: executing {}", receiverId.get(), statement);
     // Judge which model the statement belongs to
     final boolean isTableModelStatement;
     final String databaseName;

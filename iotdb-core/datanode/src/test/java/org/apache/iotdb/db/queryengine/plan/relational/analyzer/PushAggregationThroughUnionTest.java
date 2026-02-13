@@ -54,7 +54,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.union;
 import static org.junit.Assert.assertEquals;
 
-public class PushAggregationThroughUnionTest {
+public class PushAggregationThroughUnionTest extends BaseAnalyzerTest {
   @Before
   public void setUp() {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);

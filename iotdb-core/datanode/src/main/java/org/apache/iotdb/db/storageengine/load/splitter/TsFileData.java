@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.load.splitter;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -34,6 +35,8 @@ public interface TsFileData {
   TsFileDataType getType();
 
   void serialize(DataOutputStream stream) throws IOException;
+
+  void rewriteToFinal(EvolvedSchema evolvedSchema);
 
   static TsFileData deserialize(InputStream stream)
       throws IOException, PageException, IllegalPathException {

@@ -332,19 +332,55 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // problem of the same file name.
     calculateRenamedTargetFiles(needToAdjustSourceFilesPosition);
 
+    // If there is a schema evolution and not all files have the same schema evolution
+    // we should compact all fils to the last position so that the target will have the least
+    // schema evolution
+    boolean hasDifferentSchemaEvolution =
+        filesView.sortedAllSourceFilesInTask.get(0).getMergedEvolvedSchema() != null
+            && filesView
+                .sortedAllSourceFilesInTask
+                .get(0)
+                .getTsFileSets()
+                .equals(
+                    filesView
+                        .sourceFilesInCompactionPerformer
+                        .get(filesView.sortedAllSourceFilesInTask.size() - 1)
+                        .getTsFileSets());
     if (needToAdjustSourceFilesPosition) {
-      filesView.targetFilesInPerformer =
-          TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
-              filesView.sortedAllSourceFilesInTask.subList(
-                  filesView.renamedTargetFiles.size(),
-                  Math.min(
-                      filesView.renamedTargetFiles.size() + requiredPositionNum,
-                      filesView.sortedAllSourceFilesInTask.size())),
-              filesView.sequence);
+      if (!hasDifferentSchemaEvolution) {
+        filesView.targetFilesInPerformer =
+            TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
+                filesView.sortedAllSourceFilesInTask.subList(
+                    filesView.renamedTargetFiles.size(),
+                    Math.min(
+                        filesView.renamedTargetFiles.size() + requiredPositionNum,
+                        filesView.sortedAllSourceFilesInTask.size())),
+                filesView.sequence);
+      } else {
+        filesView.targetFilesInPerformer =
+            Collections.singletonList(
+                TsFileNameGenerator.getInnerCompactionTargetFileResource(
+                    availablePositionForTargetFiles.subList(
+                        availablePositionForTargetFiles.size() - 1,
+                        availablePositionForTargetFiles.size()),
+                    filesView.sequence));
+      }
+
     } else {
-      filesView.targetFilesInPerformer =
-          TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
-              availablePositionForTargetFiles.subList(0, requiredPositionNum), filesView.sequence);
+      if (!hasDifferentSchemaEvolution) {
+        filesView.targetFilesInPerformer =
+            TsFileNameGenerator.getNewInnerCompactionTargetFileResources(
+                availablePositionForTargetFiles.subList(0, requiredPositionNum),
+                filesView.sequence);
+      } else {
+        filesView.targetFilesInPerformer =
+            Collections.singletonList(
+                TsFileNameGenerator.getInnerCompactionTargetFileResource(
+                    availablePositionForTargetFiles.subList(
+                        availablePositionForTargetFiles.size() - 1,
+                        availablePositionForTargetFiles.size()),
+                    filesView.sequence));
+      }
     }
     filesView.targetFilesInLog =
         new ArrayList<>(
@@ -378,6 +414,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
               new File(skippedSourceFile.getParentFile().getPath() + File.separator + newFileName),
               TsFileResourceStatus.COMPACTING);
       filesView.renamedTargetFiles.add(renamedTargetFile);
+      renamedTargetFile.setTsFileManager(tsFileManager);
     }
   }
 

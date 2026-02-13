@@ -611,7 +611,12 @@ public class ConfigPlanExecutor {
         return clusterSchemaInfo.setTableColumnComment((SetTableColumnCommentPlan) physicalPlan);
       case RenameTable:
       case RenameView:
-        return clusterSchemaInfo.renameTable((RenameTablePlan) physicalPlan);
+        RenameTablePlan renameTablePlan = (RenameTablePlan) physicalPlan;
+        TSStatus tsStatus = clusterSchemaInfo.renameTable(renameTablePlan);
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return tsStatus;
+        }
+        return authorInfo.renameTable(renameTablePlan);
       case CreatePipeV2:
         return pipeInfo.createPipe((CreatePipePlanV2) physicalPlan);
       case SetPipeStatusV2:

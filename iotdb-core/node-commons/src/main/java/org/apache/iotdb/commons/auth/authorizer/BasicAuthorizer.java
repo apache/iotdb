@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.commons.auth.authorizer;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TListUserInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -500,5 +502,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
     userManager.processLoadSnapshot(snapshotDir);
     roleManager.processLoadSnapshot(snapshotDir);
+  }
+
+  @Override
+  public TSStatus renameTable(String databaseName, String tableName, String newName) {
+    userManager.renameTable(databaseName, tableName, newName);
+    roleManager.renameTable(databaseName, tableName, newName);
+    return StatusUtils.OK;
   }
 }

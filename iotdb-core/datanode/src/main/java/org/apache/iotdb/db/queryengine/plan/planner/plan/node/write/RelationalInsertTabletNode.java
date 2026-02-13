@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.Ta
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -207,11 +209,13 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
     for (final Map.Entry<IDeviceID, PartitionSplitInfo> entry : deviceIDSplitInfoMap.entrySet()) {
       final IDeviceID deviceID = entry.getKey();
       final PartitionSplitInfo splitInfo = entry.getValue();
+      SeriesPartitionKey seriesPartitionKey =
+          CommonUtils.getSeriesPartitionKey(deviceID, analysis.getDatabaseName(), true);
       final List<TRegionReplicaSet> replicaSets =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  deviceID, splitInfo.timePartitionSlots, analysis.getDatabaseName());
+                  seriesPartitionKey, splitInfo.timePartitionSlots, analysis.getDatabaseName());
       splitInfo.replicaSets = replicaSets;
       // collect redirectInfo
       endPointMap.put(

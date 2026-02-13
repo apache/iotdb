@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelationalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.RenameTablePlan;
 import org.apache.iotdb.confignode.consensus.response.auth.PermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -272,5 +273,9 @@ public class AuthorInfo implements SnapshotProcessor {
       FileUtils.deleteFileOrDirectory(roleFolder);
     }
     authorizer.reset();
+  }
+
+  public TSStatus renameTable(RenameTablePlan plan) {
+    return authorizer.renameTable(plan.getDatabase(), plan.getTableName(), plan.getNewName());
   }
 }

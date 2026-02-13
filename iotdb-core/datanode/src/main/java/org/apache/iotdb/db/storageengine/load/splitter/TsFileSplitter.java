@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -67,7 +68,7 @@ public class TsFileSplitter {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final File tsFile;
-  private final TsFileDataConsumer consumer;
+  private TsFileDataConsumer consumer;
   private Map<Long, IChunkMetadata> offset2ChunkMetadata = new HashMap<>();
   private List<ModEntry> deletions = new ArrayList<>();
   private Map<Integer, List<AlignedChunkData>> pageIndex2ChunkData = new HashMap<>();
@@ -77,6 +78,7 @@ public class TsFileSplitter {
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
   private Set<TTimePartitionSlot> timePartitionSlots = new HashSet<>();
+  private EvolvedSchema evolvedSchema;
 
   // Maintain the number of times the chunk of each measurement appears.
   private Map<String, Integer> valueColumn2TimeChunkIndex = new HashMap<>();
@@ -87,9 +89,13 @@ public class TsFileSplitter {
   private List<Map<Integer, long[]>> pageIndex2TimesList = null;
   private List<Boolean> isTimeChunkNeedDecodeList = new ArrayList<>();
 
-  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer) {
+  public TsFileSplitter(File tsFile, TsFileDataConsumer consumer, EvolvedSchema evolvedSchema) {
     this.tsFile = tsFile;
     this.consumer = consumer;
+    if (evolvedSchema != null) {
+      this.evolvedSchema = evolvedSchema;
+      this.consumer = new SchemaEvolutionTsFileDataConsumer(this.consumer, evolvedSchema);
+    }
   }
 
   @SuppressWarnings({"squid:S3776", "squid:S6541"})
@@ -587,5 +593,39 @@ public class TsFileSplitter {
   @FunctionalInterface
   public interface TsFileDataConsumer {
     boolean apply(TsFileData tsFileData) throws LoadFileException;
+  }
+
+  public abstract class WrappedTsFileDataConsumer implements TsFileDataConsumer {
+
+    private TsFileDataConsumer delegate;
+
+    public WrappedTsFileDataConsumer(TsFileDataConsumer delegate) {
+      this.delegate = delegate;
+    }
+
+    protected abstract TsFileData rewrite(TsFileData tsFileData);
+
+    @Override
+    public boolean apply(TsFileData tsFileData) throws LoadFileException {
+      tsFileData = rewrite(tsFileData);
+      return delegate.apply(tsFileData);
+    }
+  }
+
+  private class SchemaEvolutionTsFileDataConsumer extends WrappedTsFileDataConsumer {
+
+    private EvolvedSchema evolvedSchema;
+
+    public SchemaEvolutionTsFileDataConsumer(
+        TsFileDataConsumer delegate, EvolvedSchema evolvedSchema) {
+      super(delegate);
+      this.evolvedSchema = evolvedSchema;
+    }
+
+    @Override
+    protected TsFileData rewrite(TsFileData tsFileData) {
+      tsFileData.rewriteToFinal(evolvedSchema);
+      return tsFileData;
+    }
   }
 }

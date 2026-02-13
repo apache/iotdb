@@ -81,7 +81,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -144,7 +144,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -215,7 +215,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -279,7 +279,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -344,7 +344,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -442,7 +442,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -552,7 +552,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -667,7 +667,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -744,7 +744,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -829,7 +829,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 

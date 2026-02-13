@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
@@ -406,41 +407,16 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final PipeTransferFilePieceReq req,
       final boolean isRequestThroughAirGap,
       final boolean isSingleFile) {
+    String fileName = req.getFileName();
+    String suffix = fileName.substring(fileName.lastIndexOf('.'));
+
     try {
-      updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
-
-      // If the request is through air gap, the sender will resend the file piece from the beginning
-      // of the file. So the receiver should reset the offset of the writing file to the beginning
-      // of the file.
-      if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
-        writingFileWriter.setLength(req.getStartWritingOffset());
+      if (suffix.equals(IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX)) {
+        handleTransferSevoFile(req);
+        return PipeTransferFilePieceResp.toTPipeTransferResp(
+            RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
       }
-
-      if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
-        if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
-          // If the file is a tsFile, then the content will not be changed for a specific filename.
-          // However, for other files (mod, snapshot, etc.) the content varies for the same name in
-          // different times, then we must rewrite the file to apply the newest version.
-          writingFileWriter.setLength(0);
-        }
-
-        final TSStatus status =
-            RpcUtils.getStatus(
-                TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
-                String.format(
-                    "Request sender to reset file reader's offset from %s to %s.",
-                    req.getStartWritingOffset(), writingFileWriter.length()));
-        PipeLogger.log(
-            LOGGER::warn,
-            "Receiver id = %s: File offset reset requested by receiver, response status = %s.",
-            receiverId.get(),
-            status);
-        return PipeTransferFilePieceResp.toTPipeTransferResp(status, writingFileWriter.length());
-      }
-
-      writingFileWriter.write(req.getFilePiece());
-      return PipeTransferFilePieceResp.toTPipeTransferResp(
-          RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
+      return handleTsFileOrMods(req, isRequestThroughAirGap, isSingleFile);
     } catch (final Exception e) {
       PipeLogger.log(
           LOGGER::warn,
@@ -459,6 +435,58 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         return PipeTransferFilePieceResp.toTPipeTransferResp(status);
       }
     }
+  }
+
+  private void handleTransferSevoFile(PipeTransferFilePieceReq req) throws IOException {
+    File file = new File(receiverFileDirWithIdSuffix.get(), req.getFileName());
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(file, "rw")) {
+      randomAccessFile.write(req.getFilePiece());
+    }
+    LOGGER.info(
+        "Receiver id = {}: written schema evolution file {} .",
+        receiverId.get(),
+        req.getFileName());
+  }
+
+  private PipeTransferFilePieceResp handleTsFileOrMods(
+      final PipeTransferFilePieceReq req,
+      final boolean isRequestThroughAirGap,
+      final boolean isSingleFile)
+      throws IOException {
+    updateWritingFileIfNeeded(req.getFileName(), isSingleFile);
+
+    // If the request is through air gap, the sender will resend the file piece from the beginning
+    // of the file. So the receiver should reset the offset of the writing file to the beginning
+    // of the file.
+    if (isRequestThroughAirGap && req.getStartWritingOffset() < writingFileWriter.length()) {
+      writingFileWriter.setLength(req.getStartWritingOffset());
+    }
+
+    if (!isWritingFileOffsetCorrect(req.getStartWritingOffset())) {
+      if (!writingFile.getName().endsWith(TsFileConstant.TSFILE_SUFFIX)) {
+        // If the file is a tsFile, then the content will not be changed for a specific filename.
+        // However, for other files (mod, snapshot, etc.) the content varies for the same name in
+        // different times, then we must rewrite the file to apply the newest version.
+        writingFileWriter.setLength(0);
+      }
+
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.PIPE_TRANSFER_FILE_OFFSET_RESET,
+              String.format(
+                  "Request sender to reset file reader's offset from %s to %s.",
+                  req.getStartWritingOffset(), writingFileWriter.length()));
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: File offset reset requested by receiver, response status = %s.",
+          receiverId.get(),
+          status);
+      return PipeTransferFilePieceResp.toTPipeTransferResp(status, writingFileWriter.length());
+    }
+
+    writingFileWriter.write(req.getFilePiece());
+    return PipeTransferFilePieceResp.toTPipeTransferResp(
+        RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
   }
 
   protected final void updateWritingFileIfNeeded(final String fileName, final boolean isSingleFile)
@@ -506,7 +534,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   private boolean isFileExistedAndNameCorrect(final String fileName) {
-    return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
+    return writingFile != null && writingFile.exists() && (writingFile.getName().equals(fileName));
   }
 
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {

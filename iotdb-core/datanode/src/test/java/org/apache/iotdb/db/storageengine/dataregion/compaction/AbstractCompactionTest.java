@@ -183,8 +183,7 @@ public class AbstractCompactionTest {
 
   private int fileCount = 0;
 
-  protected TsFileManager tsFileManager =
-      new TsFileManager(COMPACTION_TEST_SG, "0", STORAGE_GROUP_DIR.getPath());
+  protected TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
 
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
@@ -850,7 +849,8 @@ public class AbstractCompactionTest {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
         boolean isAlign = iDeviceIDBooleanPair.getRight();
-        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        Map<String, MeasurementSchema> schemaMap =
+            deviceIterator.getAllSchemasOfCurrentDevice(new Pair<>(Long.MIN_VALUE, null));
         IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
         List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
         if (measurementSchemas.isEmpty()) {

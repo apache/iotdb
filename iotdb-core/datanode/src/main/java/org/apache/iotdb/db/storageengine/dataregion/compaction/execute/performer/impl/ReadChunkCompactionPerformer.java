@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchemaCollector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.BatchedReadChunkAlignedSeriesCompactionExecutor;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
@@ -71,7 +73,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
   private Schema schema = null;
 
-  private EncryptParameter firstEncryptParameter;
+  private final EncryptParameter firstEncryptParameter;
+  protected Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
@@ -91,6 +94,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(
@@ -100,18 +104,23 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
   }
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = encryptParameter;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
   }
 
   @TestOnly
@@ -120,6 +129,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
@@ -138,7 +148,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           CompactionTableSchemaCollector.collectSchema(
               seqFiles,
               deviceIterator.getReaderMap(),
-              deviceIterator.getDeprecatedTableSchemaMap());
+              deviceIterator.getDeprecatedTableSchemaMap(),
+              maxTsFileSetEndVersionAndMinResource);
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -204,13 +215,26 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void useNewWriter() throws IOException {
+    TsFileResource tsFileResource = targetResources.get(currentTargetFileIndex);
     currentWriter =
         new CompactionTsFileWriter(
-            targetResources.get(currentTargetFileIndex).getTsFile(),
+            tsFileResource,
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
-            firstEncryptParameter);
-    currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
+            firstEncryptParameter,
+            maxTsFileSetEndVersionAndMinResource.getLeft());
+
+    Schema schema = CompactionTableSchemaCollector.copySchema(this.schema);
+    TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+    // only null during test
+    tsFileResource.setTsFileManager(
+        minVersionResource != null ? minVersionResource.getTsFileManager() : null);
+    EvolvedSchema evolvedSchema =
+        tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
+    currentWriter.setSchema(
+        evolvedSchema != null
+            ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new)
+            : schema);
   }
 
   @Override
@@ -248,8 +272,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
       if (chunkMetadata.getMeasurementUid().isEmpty()) {
-        targetResource.updateStartTime(device, chunkMetadata.getStartTime());
-        targetResource.updateEndTime(device, chunkMetadata.getEndTime());
+        targetResource.updateStartTime(
+            writer.getCurrentOriginalDeviceId(), chunkMetadata.getStartTime());
+        targetResource.updateEndTime(
+            writer.getCurrentOriginalDeviceId(), chunkMetadata.getEndTime());
       }
     }
     writer.checkMetadataSizeAndMayFlush();
@@ -352,6 +378,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+    this.maxTsFileSetEndVersionAndMinResource =
+        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(seqFiles);
   }
 
   @Override

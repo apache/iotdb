@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -1985,6 +1986,8 @@ public class ProcedureManager {
 
   public TSStatus alterTableRenameColumn(final TAlterOrDropTableReq req) {
     final boolean isView = req.isSetIsView() && req.isIsView();
+    List<String> oldNames = IOUtils.readStringList(req.updateInfo);
+    List<String> newNames = IOUtils.readStringList(req.updateInfo);
     return executeWithoutDuplicate(
         req.database,
         null,
@@ -1995,19 +1998,9 @@ public class ProcedureManager {
             : ProcedureType.RENAME_TABLE_COLUMN_PROCEDURE,
         isView
             ? new RenameViewColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false)
+                req.database, req.tableName, req.queryId, oldNames, newNames, false)
             : new RenameTableColumnProcedure(
-                req.database,
-                req.tableName,
-                req.queryId,
-                ReadWriteIOUtils.readString(req.updateInfo),
-                ReadWriteIOUtils.readString(req.updateInfo),
-                false));
+                req.database, req.tableName, req.queryId, oldNames, newNames, false));
   }
 
   public TSStatus alterTableDropColumn(final TAlterOrDropTableReq req) {
