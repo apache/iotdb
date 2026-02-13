@@ -396,7 +396,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
                   + "PipePlugin.jar"));
       fail();
     } catch (final SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("1600: Failed to create pipe plugin"));
+      Assert.assertTrue(e.getMessage().contains("701: Failed to create pipe plugin"));
     }
   }
 
