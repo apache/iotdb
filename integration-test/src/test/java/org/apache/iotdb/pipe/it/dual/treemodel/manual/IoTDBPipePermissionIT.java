@@ -512,7 +512,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     TestUtils.executeNonQueries(
         senderEnv,
         Arrays.asList(
-            "create user `thulab` 'passwd123456'",
+            "create user `thulab` 'ST@ongpasswd123456'",
             "create role `admin`",
             "grant role `admin` to `thulab`",
             "grant WRITE, READ, SYSTEM, SECURITY on root.** to role `admin`"),
@@ -555,7 +555,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
             "create pipe a2b"
                 + " with source ("
                 + "'user'='thulab'"
-                + ", 'password'='passwd123456')"
+                + ", 'password'='ST@ongpasswd123456')"
                 + " with sink ("
                 + "'node-urls'='%s')",
             receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
@@ -569,7 +569,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         "count(root.vehicle.plane.pressure),",
         Collections.singleton("1,"));
 
-    statement.execute("alter user thulab set password 'newPassword'");
+    statement.execute("alter user thulab set password 'newST@ongPassword'");
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -595,7 +595,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
       Assert.assertEquals("801: Failed to check password for pipe a2b.", e.getMessage());
     }
 
-    statement.execute("alter pipe a2b modify source ('password'='newPassword')");
+    statement.execute("alter pipe a2b modify source ('password'='newST@ongPassword')");
 
     // Test empty alter
     statement.execute("alter pipe a2b");
@@ -606,7 +606,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         "count(root.vehicle.plane.pressure),",
         Collections.singleton("2,"));
 
-    statement.execute("alter user thulab set password 'anotherPassword'");
+    statement.execute("alter user thulab set password 'anotherST@ongPassword'");
 
     try {
       TestUtils.restartCluster(senderEnv);
@@ -619,7 +619,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
     statement = connection.createStatement();
     TestUtils.executeNonQuery(
         senderEnv, "insert into root.vehicle.plane(temperature, pressure) values (36.5, 1103)");
-    statement.execute("alter user thulab set password 'newPassword'");
+    statement.execute("alter user thulab set password 'newST@ongPassword'");
     statement.execute("alter pipe a2b");
 
     TestUtils.assertDataEventuallyOnEnv(
