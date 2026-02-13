@@ -48,6 +48,7 @@ keyWords
     | ASC
     | ATTRIBUTES
     | AVAILABLE
+    | BALANCE
     | BEFORE
     | BEGIN
     | BETWEEN
