@@ -106,7 +106,7 @@ public class IoTDBUDAFMiscIT {
 
   @Test
   public void UDAFAsOperandTest() throws Exception {
-    String[] expected = new String[] {"6.0"};
+    String[] expected = new String[] {"6"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

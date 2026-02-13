@@ -217,9 +217,9 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         new String[] {"Device,max_time(s1),count(s1),last_value(s2),count(s1) + last_value(s3)"};
     retArray =
         new String[] {
-          "root.sg1.d2,1314000000001,4,false,1319.0,",
-          "root.sg1.d3,1314000000002,2,false,1318.0,",
-          "root.sg1.d4,5,1,false,5556.0,",
+          "root.sg1.d2,1314000000001,4,false,1319,",
+          "root.sg1.d3,1314000000002,2,false,1318,",
+          "root.sg1.d4,5,1,false,5556,",
         };
     resultSetEqualTest(
         "SELECT max_time(s1), count(s1), last_value(s2), count(s1)+last_value(s3) FROM root.sg1.** where s3+1=1316 or s2=false having avg(s1)+sum(s3)>5 align by device;",
@@ -227,9 +227,9 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "root.sg2.d2,1314000000001,4,false,1319.0,",
-          "root.sg2.d3,1314000000002,2,false,1318.0,",
-          "root.sg2.d4,5,1,false,5556.0,",
+          "root.sg2.d2,1314000000001,4,false,1319,",
+          "root.sg2.d3,1314000000002,2,false,1318,",
+          "root.sg2.d4,5,1,false,5556,",
         };
     resultSetEqualTest(
         "SELECT max_time(s1), count(s1), last_value(s2), count(s1)+last_value(s3) FROM root.sg2.** where s3+1=1316 or s2=false having avg(s1)+sum(s3)>5 align by device;",
@@ -650,7 +650,7 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
     expectedHeader = new String[] {"Device,count(s3) + 1,count(s1) + 1,count(s2) + 1"};
     retArray =
         new String[] {
-          "root.sg1.d2,5.0,5.0,5.0,",
+          "root.sg1.d2,5,5,5,",
         };
     resultSetEqualTest(
         "SELECT count(*)+1 FROM root.sg1.** where s2=false having count(s3+s1) > 2 align by device;",
@@ -658,7 +658,7 @@ public class IoTDBAlignByDeviceWithTemplateAggregationIT {
         retArray);
     retArray =
         new String[] {
-          "root.sg2.d2,5.0,5.0,5.0,",
+          "root.sg2.d2,5,5,5,",
         };
     resultSetEqualTest(
         "SELECT count(*)+1 FROM root.sg2.** where s2=false having count(s3+s1) > 2 align by device;",
