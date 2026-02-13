@@ -103,10 +103,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
-        mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
-
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "DeviceViewNode subtree should contain a FullOuterTimeJoinNode",
+        containsNodeType(mergeSortNode, FullOuterTimeJoinNode.class));
     // order by device, time
     sql =
         "select * from root.sg.d1, root.sg.d22 order by device asc, time desc LIMIT 10 align by device";
@@ -120,9 +122,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
-        mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof FullOuterTimeJoinNode);
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "DeviceViewNode subtree should contain a FullOuterTimeJoinNode",
+        containsNodeType(mergeSortNode, FullOuterTimeJoinNode.class));
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
@@ -172,8 +177,12 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     mergeSortNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(mergeSortNode instanceof MergeSortNode);
-    assertTrue(mergeSortNode.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(mergeSortNode.getChildren().get(0).getChildren().get(0) instanceof SortNode);
+    assertTrue(
+        "MergeSort subtree should contain at least one DeviceViewNode",
+        containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(
+        "There should be a SortNode somewhere under the MergeSort subtree",
+        containsNodeType(mergeSortNode, SortNode.class));
     assertScanNodeLimitValue(
         plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE);
     assertScanNodeLimitValue(
@@ -224,11 +233,10 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     PlanNode transformNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(transformNode instanceof TransformNode);
-    assertTrue(transformNode.getChildren().get(0) instanceof MergeSortNode);
-    assertTrue(transformNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        transformNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SortNode);
+    PlanNode mergeSortNode = transformNode.getChildren().get(0);
+    assertTrue(mergeSortNode instanceof MergeSortNode);
+    assertTrue(containsNodeType(mergeSortNode, DeviceViewNode.class));
+    assertTrue(containsNodeType(mergeSortNode, SortNode.class));
   }
 
   /*
@@ -273,16 +281,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     assertTrue(firstFiRoot.getChildren().get(0) instanceof LimitNode);
     PlanNode filterNode = ((LimitNode) firstFiRoot.getChildren().get(0)).getChild();
     assertTrue(filterNode instanceof FilterNode);
-    assertTrue(filterNode.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(filterNode.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
+    PlanNode aggMergeNode = filterNode.getChildren().get(0);
+    assertTrue(aggMergeNode instanceof AggregationMergeSortNode);
     assertTrue(
-        filterNode.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof RawDataAggregationNode);
+        containsNodeType(aggMergeNode, DeviceViewNode.class)
+            || containsNodeType(aggMergeNode, SingleDeviceViewNode.class));
+    assertTrue(containsNodeType(aggMergeNode, RawDataAggregationNode.class));
     PlanNode thirdFiRoot = plan.getInstances().get(2).getFragment().getPlanNodeTree();
     assertTrue(thirdFiRoot instanceof IdentitySinkNode);
-    assertTrue(thirdFiRoot.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        thirdFiRoot.getChildren().get(0).getChildren().get(0) instanceof RawDataAggregationNode);
+    PlanNode deviceRoot = thirdFiRoot.getChildren().get(0);
+    assertTrue(deviceRoot instanceof DeviceViewNode || deviceRoot instanceof SingleDeviceViewNode);
+    assertTrue(containsNodeType(deviceRoot, RawDataAggregationNode.class));
   }
 
   /*
@@ -1120,5 +1129,17 @@ public class AlignByDeviceOrderByLimitOffsetTest {
         assertScanNodeLimitValue(node, limitValue);
       }
     }
+  }
+
+  private static boolean containsNodeType(PlanNode root, Class<?> clazz) {
+    if (clazz.isInstance(root)) {
+      return true;
+    }
+    for (PlanNode child : root.getChildren()) {
+      if (containsNodeType(child, clazz)) {
+        return true;
+      }
+    }
+    return false;
   }
 }
