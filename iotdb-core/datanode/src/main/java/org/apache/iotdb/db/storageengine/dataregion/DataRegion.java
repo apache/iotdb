@@ -1941,6 +1941,7 @@ public class DataRegion implements IDataRegionForQuery {
 
   /**
    * close the TsFile represented by the given resource, thread-safe
+   *
    * @param tsFileResource TsFile to be closed
    * @return a future related to the close task
    */
