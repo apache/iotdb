@@ -604,8 +604,7 @@ public class IoTDBPipePermissionIT extends AbstractPipeDualTreeModelManualIT {
         receiverEnv,
         "select count(pressure) from root.vehicle.plane",
         "count(root.vehicle.plane.pressure),",
-        Collections.singleton("2,"),
-        10);
+        Collections.singleton("2,"));
 
     statement.execute("alter user thulab set password 'anotherPassword'");
 
