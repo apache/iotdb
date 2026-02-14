@@ -830,7 +830,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualAutoIT {
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1603: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
+            "701: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
             e.getMessage());
       }
       try {
