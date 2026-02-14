@@ -74,13 +74,14 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
-  public TPermissionInfoResp login(String username, String password) {
+  public TPermissionInfoResp login(
+      String username, final String password, final boolean useEncryptedPassword) {
     boolean status;
     String loginMessage = null;
     TSStatus tsStatus = new TSStatus();
     TPermissionInfoResp result = new TPermissionInfoResp();
     try {
-      status = authorizer.login(username, password);
+      status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
         // Bring this user's permission information back to the datanode for caching
         if (authorizer instanceof OpenIdAuthorizer) {

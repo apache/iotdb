@@ -142,8 +142,14 @@ public class AuthorityChecker {
     return Optional.ofNullable(user == null ? null : user.getUserId());
   }
 
-  public static TSStatus checkUser(String userName, String password) {
-    TSStatus status = authorityFetcher.get().checkUser(userName, password);
+  public static TSStatus checkUser(final String userName, final String password) {
+    return checkUser(userName, password, false);
+  }
+
+  public static TSStatus checkUser(
+      final String userName, final String password, final boolean useEncryptedPassword) {
+    final TSStatus status =
+        authorityFetcher.get().checkUser(userName, password, useEncryptedPassword);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     }
