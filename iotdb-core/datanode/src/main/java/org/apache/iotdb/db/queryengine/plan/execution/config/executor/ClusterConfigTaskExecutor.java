@@ -2376,9 +2376,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters(),
               new PipeParameters(alterPipeStatement.getSourceAttributes()));
         }
-        hasSourcePassword =
-            !checkSourceType(alterPipeStatement.getSourceAttributes())
-                || containsPassword(alterPipeStatement.getSourceAttributes());
         if (alterPipeStatement.isReplaceAllSourceAttributes()) {
           sourceAttributes = alterPipeStatement.getSourceAttributes();
         } else {
@@ -2395,6 +2392,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             checkSourceTypeWithException(alterPipeStatement.getPipeName(), sourceAttributes);
           }
         }
+        hasSourcePassword =
+            !checkSourceType(sourceAttributes)
+                || containsPassword(alterPipeStatement.getSourceAttributes());
       } else {
         sourceAttributes =
             pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
@@ -2419,9 +2419,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
         // Do not remove for handshake
-        hasSinkPassword =
-            !checkSinkType(alterPipeStatement.getSinkAttributes())
-                || containsPassword(alterPipeStatement.getSinkAttributes());
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
           sinkAttributes = alterPipeStatement.getSinkAttributes();
         } else {
@@ -2437,6 +2434,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             checkSinkTypeWithException(alterPipeStatement.getPipeName(), sinkAttributes);
           }
         }
+        hasSinkPassword =
+            !checkSinkType(sinkAttributes)
+                || containsPassword(alterPipeStatement.getSinkAttributes());
       } else {
         sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
