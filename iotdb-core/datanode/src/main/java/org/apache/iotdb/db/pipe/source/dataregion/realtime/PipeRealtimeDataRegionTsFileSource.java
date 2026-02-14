@@ -89,7 +89,8 @@ public class PipeRealtimeDataRegionTsFileSource extends PipeRealtimeDataRegionSo
 
   @Override
   public boolean isNeedListenToInsertNode() {
-    return false;
+    // Mark the tsFile to flush it
+    return shouldExtractInsertion;
   }
 
   @Override

@@ -653,7 +653,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select count(*) from root.db*.**",
-          "count(root.db1.d1.at1),count(root.db2.d1.at1),",
+          "count(root.db1.d1.at1),count(root.db1.d2.at1),",
           Collections.singleton("2,2,"),
           60);
     }
