@@ -38,10 +38,25 @@
         <dependency>
             <groupId>org.apache.arrow</groupId>
             <artifactId>flight-sql</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.arrow</groupId>
+                    <artifactId>arrow-memory-netty</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.arrow</groupId>
+                    <artifactId>arrow-memory-netty-buffer-patch</artifactId>
+                </exclusion>
+                <!-- Exclude Netty: standalone Netty JARs already on DataNode classpath -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory-netty</artifactId>
+            <artifactId>arrow-memory-unsafe</artifactId>
             <scope>runtime</scope>
         </dependency>
         <!-- IoTDB dependencies (provided at runtime by DataNode classloader) -->

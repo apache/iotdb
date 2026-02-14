@@ -20,9 +20,11 @@
 package org.apache.iotdb.flight;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -31,7 +33,9 @@ import org.apache.arrow.flight.CallHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.UUID;
+import java.security.SecureRandom;
+import java.time.ZoneId;
+import java.util.Base64;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -43,11 +47,15 @@ public class FlightSqlSessionManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(FlightSqlSessionManager.class);
   private static final String AUTHORIZATION_HEADER = "authorization";
   private static final String BEARER_PREFIX = "Bearer ";
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   private final SessionManager sessionManager = SessionManager.getInstance();
 
   /** Cache of Bearer token -> IClientSession with configurable TTL. */
   private final Cache<String, IClientSession> tokenCache;
+
+  /** Cache of username -> Bearer token for session reuse with Basic auth on every call. */
+  private final Cache<String, String> userTokenCache;
 
   public FlightSqlSessionManager(long sessionTimeoutMinutes) {
     this.tokenCache =
@@ -56,17 +64,22 @@ public class FlightSqlSessionManager {
             .removalListener(
                 (String token, IClientSession session, RemovalCause cause) -> {
                   if (session != null && cause != RemovalCause.REPLACED) {
-                    LOGGER.info("Flight SQL session expired, closing: {}", session);
-                    sessionManager.closeSession(
-                        session,
-                        queryId ->
-                            org.apache.iotdb.db.queryengine.plan.Coordinator.getInstance()
-                                .cleanupQueryExecution(queryId),
-                        false);
-                    sessionManager.removeCurrSessionForMqtt(null); // handled via sessions map only
+                    LOGGER.info("Flight SQL session expired: {}, cause: {}", session, cause);
+                    try {
+                      sessionManager.closeSession(
+                          session,
+                          queryId ->
+                              org.apache.iotdb.db.queryengine.plan.Coordinator.getInstance()
+                                  .cleanupQueryExecution(queryId),
+                          false);
+                    } catch (Exception e) {
+                      LOGGER.error("Error closing expired session", e);
+                    }
                   }
                 })
             .build();
+    this.userTokenCache =
+        Caffeine.newBuilder().expireAfterAccess(sessionTimeoutMinutes, TimeUnit.MINUTES).build();
   }
 
   /**
@@ -79,34 +92,42 @@ public class FlightSqlSessionManager {
    * @throws SecurityException if authentication fails
    */
   public String authenticate(String username, String password, String clientAddress) {
-    // Create a session for this client
-    IClientSession session = new InternalClientSession("FlightSQL-" + clientAddress);
-    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-
-    // Register the session before login (MQTT pattern)
-    sessionManager.registerSessionForMqtt(session);
-
-    // Use SessionManager's login method
-    org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp loginResp =
-        sessionManager.login(
-            session,
-            username,
-            password,
-            java.time.ZoneId.systemDefault().getId(),
-            SessionManager.CURRENT_RPC_VERSION,
-            IoTDBConstant.ClientVersion.V_1_0,
-            IClientSession.SqlDialect.TABLE);
-
-    if (loginResp.getCode() != org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // Remove the session if login failed
-      sessionManager.removeCurrSessionForMqtt(null);
-      throw new SecurityException("Authentication failed: " + loginResp.getMessage());
+    // Check if this user already has an active session (reuse it)
+    String existingToken = userTokenCache.getIfPresent(username);
+    if (existingToken != null && tokenCache.getIfPresent(existingToken) != null) {
+      return existingToken;
     }
 
-    // Generate Bearer token and store in cache
-    String token = UUID.randomUUID().toString();
+    // Verify credentials (REST pattern)
+    try {
+      org.apache.iotdb.common.rpc.thrift.TSStatus status =
+          AuthorityChecker.checkUser(username, password);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.warn("Authentication failed for client: {}", clientAddress);
+        throw new SecurityException("Authentication failed: wrong username or password");
+      }
+    } catch (SecurityException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new SecurityException("Authentication failed", e);
+    }
+
+    // Create and register session (REST pattern)
+    IClientSession session = new InternalClientSession("FlightSQL-" + clientAddress);
+    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    sessionManager.registerSession(session);
+
+    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+    sessionManager.supplySession(
+        session, userId, username, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_1_0);
+
+    // Generate cryptographically secure Bearer token (32 bytes = 256 bits)
+    byte[] tokenBytes = new byte[32];
+    SECURE_RANDOM.nextBytes(tokenBytes);
+    String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
     tokenCache.put(token, session);
-    LOGGER.info("Flight SQL user '{}' authenticated, session: {}", username, session);
+    userTokenCache.put(username, token);
+    LOGGER.info("Flight SQL authentication successful for client: {}", clientAddress);
     return token;
   }
 

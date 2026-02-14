@@ -880,6 +880,9 @@ public class IoTDBDescriptor {
     // mqtt
     loadMqttProps(properties);
 
+    // Arrow Flight SQL
+    loadArrowFlightSqlProps(properties);
+
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(
             properties.getProperty(
@@ -1939,6 +1942,24 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
       conf.setMqttMaxMessageSize(
           Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE).trim()));
+    }
+  }
+
+  // Arrow Flight SQL related
+  private void loadArrowFlightSqlProps(TrimProperties properties) {
+    if (properties.getProperty("enable_arrow_flight_sql_service") != null) {
+      conf.setEnableArrowFlightSqlService(
+          Boolean.parseBoolean(properties.getProperty("enable_arrow_flight_sql_service").trim()));
+    }
+
+    if (properties.getProperty("arrow_flight_sql_port") != null) {
+      conf.setArrowFlightSqlPort(
+          Integer.parseInt(properties.getProperty("arrow_flight_sql_port").trim()));
+    }
+
+    if (properties.getProperty("arrow_flight_sql_max_allocator_memory") != null) {
+      conf.setArrowFlightSqlMaxAllocatorMemory(
+          Long.parseLong(properties.getProperty("arrow_flight_sql_max_allocator_memory").trim()));
     }
   }
 

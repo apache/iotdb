@@ -67,7 +67,7 @@ public class IoTDBServicesIT {
   public void testQueryResult() {
     String[] retArray =
         new String[] {
-          "MQTT,1,STOPPED,", "REST,1,STOPPED,",
+          "FLIGHT_SQL,1,STOPPED,", "MQTT,1,STOPPED,", "REST,1,STOPPED,",
         };
 
     // TableModel
