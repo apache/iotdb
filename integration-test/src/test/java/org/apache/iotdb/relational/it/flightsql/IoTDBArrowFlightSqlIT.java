@@ -62,6 +62,7 @@ import static org.junit.Assert.*;
 public class IoTDBArrowFlightSqlIT {
 
   private static final String DATABASE = "flightsql_test_db";
+  private static final String TABLE = DATABASE + ".test_table";
   private static final String USER = "root";
   private static final String PASSWORD = "root";
 
@@ -77,27 +78,17 @@ public class IoTDBArrowFlightSqlIT {
     baseEnv.getConfig().getDataNodeConfig().setEnableArrowFlightSqlService(true);
     baseEnv.initClusterEnvironment();
 
-    // Get the Flight SQL port from the data node
     int port = EnvFactory.getEnv().getArrowFlightSqlPort();
-
-    // Create Arrow allocator and Flight client with Bearer token auth middleware
     allocator = new RootAllocator(Long.MAX_VALUE);
     Location location = Location.forGrpcInsecure("127.0.0.1", port);
 
-    // The ClientIncomingAuthHeaderMiddleware captures the Bearer token from the
-    // auth handshake
     ClientIncomingAuthHeaderMiddleware.Factory authFactory =
         new ClientIncomingAuthHeaderMiddleware.Factory(new ClientBearerHeaderHandler());
-
     flightClient = FlightClient.builder(allocator, location).intercept(authFactory).build();
-
-    // Authenticate: sends Basic credentials, server returns Bearer token
+    flightSqlClient = new FlightSqlClient(flightClient);
     bearerToken = new CredentialCallOption(new BasicAuthCredentialWriter(USER, PASSWORD));
 
-    // Wrap in FlightSqlClient for Flight SQL protocol operations
-    flightSqlClient = new FlightSqlClient(flightClient);
-
-    // Use the standard session to create the test database and table with data
+    // Create test data via native session (not Flight SQL)
     try (ITableSession session = EnvFactory.getEnv().getTableSessionConnection()) {
       session.executeNonQueryStatement("CREATE DATABASE IF NOT EXISTS " + DATABASE);
     }
@@ -146,54 +137,6 @@ public class IoTDBArrowFlightSqlIT {
   }
 
   @Test
-  public void testQueryWithAllDataTypes() throws Exception {
-    FlightInfo flightInfo =
-        flightSqlClient.execute(
-            "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM test_table ORDER BY time", bearerToken);
-
-    // Validate schema
-    Schema schema = flightInfo.getSchema();
-    assertNotNull("Schema should not be null", schema);
-    List<Field> fields = schema.getFields();
-    assertEquals("Should have 8 columns", 8, fields.size());
-
-    // Fetch all data
-    List<List<String>> rows = fetchAllRows(flightInfo);
-    assertEquals("Should have 3 rows", 3, rows.size());
-  }
-
-  @Test
-  public void testQueryWithFilter() throws Exception {
-    FlightInfo flightInfo =
-        flightSqlClient.execute(
-            "SELECT id1, s1 FROM test_table WHERE id1 = 'device1' ORDER BY time", bearerToken);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
-    assertEquals("Should have 2 rows for device1", 2, rows.size());
-  }
-
-  @Test
-  public void testQueryWithAggregation() throws Exception {
-    FlightInfo flightInfo =
-        flightSqlClient.execute(
-            "SELECT id1, COUNT(*) as cnt, SUM(s1) as s1_sum "
-                + "FROM test_table GROUP BY id1 ORDER BY id1",
-            bearerToken);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
-    assertEquals("Should have 2 groups", 2, rows.size());
-  }
-
-  @Test
-  public void testEmptyResult() throws Exception {
-    FlightInfo flightInfo =
-        flightSqlClient.execute("SELECT * FROM test_table WHERE id1 = 'nonexistent'", bearerToken);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
-    assertEquals("Should have 0 rows", 0, rows.size());
-  }
-
-  @Test
   public void testShowDatabases() throws Exception {
     FlightInfo flightInfo = flightSqlClient.execute("SHOW DATABASES", bearerToken);
 
@@ -212,9 +155,62 @@ public class IoTDBArrowFlightSqlIT {
     assertTrue("Should find test database " + DATABASE, found);
   }
 
+  @Test
+  public void testQueryWithAllDataTypes() throws Exception {
+    FlightInfo flightInfo =
+        flightSqlClient.execute(
+            "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM " + TABLE + " ORDER BY time",
+            bearerToken);
+
+    // Validate schema
+    Schema schema = flightInfo.getSchema();
+    assertNotNull("Schema should not be null", schema);
+    List<Field> fields = schema.getFields();
+    assertEquals("Should have 8 columns", 8, fields.size());
+
+    // Fetch all data
+    List<List<String>> rows = fetchAllRows(flightInfo);
+    assertEquals("Should have 3 rows", 3, rows.size());
+  }
+
+  @Test
+  public void testQueryWithFilter() throws Exception {
+    FlightInfo flightInfo =
+        flightSqlClient.execute(
+            "SELECT id1, s1 FROM " + TABLE + " WHERE id1 = 'device1' ORDER BY time",
+            bearerToken);
+
+    List<List<String>> rows = fetchAllRows(flightInfo);
+    assertEquals("Should have 2 rows for device1", 2, rows.size());
+  }
+
+  @Test
+  public void testQueryWithAggregation() throws Exception {
+    FlightInfo flightInfo =
+        flightSqlClient.execute(
+            "SELECT id1, COUNT(*) as cnt, SUM(s1) as s1_sum "
+                + "FROM " + TABLE + " GROUP BY id1 ORDER BY id1",
+            bearerToken);
+
+    List<List<String>> rows = fetchAllRows(flightInfo);
+    assertEquals("Should have 2 groups", 2, rows.size());
+  }
+
+  @Test
+  public void testEmptyResult() throws Exception {
+    FlightInfo flightInfo =
+        flightSqlClient.execute(
+            "SELECT * FROM " + TABLE + " WHERE id1 = 'nonexistent'", bearerToken);
+
+    List<List<String>> rows = fetchAllRows(flightInfo);
+    assertEquals("Should have 0 rows", 0, rows.size());
+  }
+
+  // ===================== Helper Methods =====================
+
   /**
-   * Fetches all rows from all endpoints in a FlightInfo. Each row is a list of string
-   * representations of the column values.
+   * Fetches all rows from all endpoints in a FlightInfo using the shared client. Each row is a list
+   * of string representations of the column values.
    */
   private List<List<String>> fetchAllRows(FlightInfo flightInfo) throws Exception {
     List<List<String>> rows = new ArrayList<>();

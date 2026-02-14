@@ -24,8 +24,6 @@ import org.apache.iotdb.externalservice.api.IExternalService;
 
 import org.apache.arrow.flight.FlightServer;
 import org.apache.arrow.flight.Location;
-import org.apache.arrow.flight.auth2.BasicCallHeaderAuthenticator;
-import org.apache.arrow.flight.auth2.GeneratedBearerTokenAuthenticator;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.slf4j.Logger;
@@ -46,89 +44,122 @@ public class FlightSqlService implements IExternalService {
   private static final Logger LOGGER = LoggerFactory.getLogger(FlightSqlService.class);
   private static final long SESSION_TIMEOUT_MINUTES = 30;
 
+  private final Object lifecycleLock = new Object();
   private FlightServer flightServer;
   private BufferAllocator allocator;
   private FlightSqlSessionManager flightSessionManager;
   private IoTDBFlightSqlProducer producer;
 
   @Override
-  public void start() {
-    int port = IoTDBDescriptor.getInstance().getConfig().getArrowFlightSqlPort();
-    LOGGER.info("Starting Arrow Flight SQL service on port {}", port);
+  public synchronized void start() {
+    synchronized (lifecycleLock) {
+      if (flightServer != null) {
+        LOGGER.warn("Arrow Flight SQL service already started");
+        return;
+      }
 
-    try {
-      // Create the root allocator for Arrow memory management
-      allocator = new RootAllocator(Long.MAX_VALUE);
+      int port = IoTDBDescriptor.getInstance().getConfig().getArrowFlightSqlPort();
+      LOGGER.info("Starting Arrow Flight SQL service on port {}", port);
 
-      // Create session manager with TTL
-      flightSessionManager = new FlightSqlSessionManager(SESSION_TIMEOUT_MINUTES);
+      try {
+        // Create the root allocator for Arrow memory management with memory limit
+        long maxMemory = Runtime.getRuntime().maxMemory();
+        long allocatorLimit =
+            Math.min(
+                IoTDBDescriptor.getInstance().getConfig().getArrowFlightSqlMaxAllocatorMemory(),
+                maxMemory / 4);
+        allocator = new RootAllocator(allocatorLimit);
+        LOGGER.info(
+            "Arrow allocator initialized with limit: {} bytes ({} MB)",
+            allocatorLimit,
+            allocatorLimit / (1024 * 1024));
 
-      // Create the auth handler
-      FlightSqlAuthHandler authHandler = new FlightSqlAuthHandler(flightSessionManager);
+        Location location = Location.forGrpcInsecure("0.0.0.0", port);
 
-      // Create the Flight SQL producer
-      producer = new IoTDBFlightSqlProducer(allocator, flightSessionManager);
+        // Create session manager with TTL
+        flightSessionManager = new FlightSqlSessionManager(SESSION_TIMEOUT_MINUTES);
+        FlightSqlAuthHandler authHandler = new FlightSqlAuthHandler(flightSessionManager);
 
-      // Build the Flight server with auth2 Bearer token authentication
-      Location location = Location.forGrpcInsecure("0.0.0.0", port);
-      flightServer =
-          FlightServer.builder(allocator, location, producer)
-              .headerAuthenticator(
-                  new GeneratedBearerTokenAuthenticator(
-                      new BasicCallHeaderAuthenticator(authHandler)))
-              .build();
+        // Create the Flight SQL producer
+        producer = new IoTDBFlightSqlProducer(allocator, flightSessionManager);
 
-      flightServer.start();
-      LOGGER.info(
-          "Arrow Flight SQL service started successfully on port {}", flightServer.getPort());
-    } catch (IOException e) {
-      LOGGER.error("Failed to start Arrow Flight SQL service", e);
-      stop();
-      throw new RuntimeException("Failed to start Arrow Flight SQL service", e);
+        flightServer =
+            FlightServer.builder(allocator, location, producer)
+                .headerAuthenticator(authHandler)
+                // Configure Netty server for DataNode JVM environment:
+                // - directExecutor: run gRPC handlers in the Netty event loop thread to
+                //   avoid thread scheduling issues with the default executor
+                // - flowControlWindow: explicit HTTP/2 flow control prevents framing errors
+                //   when standalone Netty JARs coexist on the classpath
+                .transportHint(
+                    "grpc.builderConsumer",
+                    (java.util.function.Consumer<io.grpc.netty.NettyServerBuilder>)
+                        nsb -> {
+                          nsb.directExecutor();
+                          nsb.initialFlowControlWindow(1048576);
+                          nsb.flowControlWindow(1048576);
+                        })
+                .build();
+
+        flightServer.start();
+        LOGGER.info(
+            "Arrow Flight SQL service started successfully on port {}", flightServer.getPort());
+      } catch (IOException e) {
+        LOGGER.error("Failed to start Arrow Flight SQL service", e);
+        stop();
+        throw new RuntimeException("Failed to start Arrow Flight SQL service", e);
+      }
     }
   }
 
   @Override
-  public void stop() {
-    LOGGER.info("Stopping Arrow Flight SQL service");
+  public synchronized void stop() {
+    synchronized (lifecycleLock) {
+      if (flightServer == null) {
+        LOGGER.warn("Arrow Flight SQL service not started");
+        return;
+      }
 
-    if (flightServer != null) {
-      try {
-        flightServer.shutdown();
-        flightServer.awaitTermination(10, TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        LOGGER.warn("Interrupted while waiting for Flight server shutdown", e);
-        Thread.currentThread().interrupt();
+      LOGGER.info("Stopping Arrow Flight SQL service");
+
+      if (flightServer != null) {
         try {
-          flightServer.close();
-        } catch (Exception ex) {
-          LOGGER.warn("Error force-closing Flight server", ex);
+          flightServer.shutdown();
+          flightServer.awaitTermination(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+          LOGGER.warn("Interrupted while waiting for Flight server shutdown", e);
+          Thread.currentThread().interrupt();
+          try {
+            flightServer.close();
+          } catch (Exception ex) {
+            LOGGER.warn("Error force-closing Flight server", ex);
+          }
+        } catch (Exception e) {
+          LOGGER.warn("Error shutting down Flight server", e);
         }
-      } catch (Exception e) {
-        LOGGER.warn("Error shutting down Flight server", e);
+        flightServer = null;
       }
-      flightServer = null;
-    }
 
-    if (producer != null) {
-      try {
-        producer.close();
-      } catch (Exception e) {
-        LOGGER.warn("Error closing Flight SQL producer", e);
+      if (producer != null) {
+        try {
+          producer.close();
+        } catch (Exception e) {
+          LOGGER.warn("Error closing Flight SQL producer", e);
+        }
+        producer = null;
       }
-      producer = null;
-    }
 
-    if (flightSessionManager != null) {
-      flightSessionManager.close();
-      flightSessionManager = null;
-    }
+      if (flightSessionManager != null) {
+        flightSessionManager.close();
+        flightSessionManager = null;
+      }
 
-    if (allocator != null) {
-      allocator.close();
-      allocator = null;
-    }
+      if (allocator != null) {
+        allocator.close();
+        allocator = null;
+      }
 
-    LOGGER.info("Arrow Flight SQL service stopped");
+      LOGGER.info("Arrow Flight SQL service stopped");
+    }
   }
 }

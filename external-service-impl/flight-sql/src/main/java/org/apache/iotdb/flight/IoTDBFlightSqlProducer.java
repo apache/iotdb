@@ -34,6 +34,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.google.protobuf.Any;
 import com.google.protobuf.ByteString;
 import org.apache.arrow.flight.CallStatus;
 import org.apache.arrow.flight.Criteria;
@@ -54,11 +58,10 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Apache Arrow Flight SQL producer implementation for IoTDB. Handles SQL query execution via the
@@ -76,8 +79,25 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
   private final SqlParser sqlParser = new SqlParser();
   private final Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
 
-  /** Stores query execution context by queryId for streaming results via getStream. */
-  private final ConcurrentHashMap<Long, QueryContext> activeQueries = new ConcurrentHashMap<>();
+  /**
+   * Stores query execution context by queryId for streaming results via getStream. Uses Caffeine
+   * cache with TTL to prevent resource leaks when clients don't call getStream.
+   */
+  private final Cache<Long, QueryContext> activeQueries =
+      Caffeine.newBuilder()
+          .expireAfterWrite(CONFIG.getQueryTimeoutThreshold(), TimeUnit.MILLISECONDS)
+          .removalListener(
+              (Long queryId, QueryContext ctx, RemovalCause cause) -> {
+                if (ctx != null && cause != RemovalCause.EXPLICIT) {
+                  LOGGER.warn("Query {} evicted due to {}, cleaning up", queryId, cause);
+                  try {
+                    coordinator.cleanupQueryExecution(queryId);
+                  } catch (Exception e) {
+                    LOGGER.error("Error cleaning up evicted query {}", queryId, e);
+                  }
+                }
+              })
+          .build();
 
   public IoTDBFlightSqlProducer(
       BufferAllocator allocator, FlightSqlSessionManager flightSessionManager) {
@@ -105,13 +125,30 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
 
   // ===================== SQL Query Execution =====================
 
+  private static final int MAX_QUERY_LENGTH = 100_000; // 100KB
+
   @Override
   public FlightInfo getFlightInfoStatement(
       FlightSql.CommandStatementQuery command, CallContext context, FlightDescriptor descriptor) {
     String sql = command.getQuery();
-    LOGGER.debug("getFlightInfoStatement: {}", sql);
+
+    // Validate query length
+    if (sql == null || sql.trim().isEmpty()) {
+      throw CallStatus.INVALID_ARGUMENT.withDescription("Empty SQL query").toRuntimeException();
+    }
+    if (sql.length() > MAX_QUERY_LENGTH) {
+      throw CallStatus.INVALID_ARGUMENT
+          .withDescription("Query exceeds maximum length of " + MAX_QUERY_LENGTH + " characters")
+          .toRuntimeException();
+    }
 
     IClientSession session = getSessionFromContext(context);
+
+    // Log query for audit (truncate if too long)
+    LOGGER.info(
+        "Executing query for user {}: {}",
+        session.getUsername(),
+        sql.substring(0, Math.min(sql.length(), 200)));
 
     Long queryId = null;
     try {
@@ -142,9 +179,10 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
 
       IQueryExecution queryExecution = coordinator.getQueryExecution(queryId);
       if (queryExecution == null) {
-        throw CallStatus.INTERNAL
-            .withDescription("Query execution not found after execution")
-            .toRuntimeException();
+        // Non-query statements (USE, CREATE, INSERT, etc.) don't produce a query execution.
+        // Return an empty FlightInfo with no endpoints.
+        return new FlightInfo(
+            new Schema(Collections.emptyList()), descriptor, Collections.emptyList(), 0, 0);
       }
 
       DatasetHeader header = queryExecution.getDatasetHeader();
@@ -153,20 +191,28 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
       // Store the query context for later getStream calls
       activeQueries.put(queryId, new QueryContext(queryExecution, header, session));
 
-      // Build ticket containing the queryId
-      byte[] ticketBytes = Long.toString(queryId).getBytes(StandardCharsets.UTF_8);
-      Ticket ticket = new Ticket(ticketBytes);
+      // Build ticket as a serialized TicketStatementQuery protobuf.
+      // The FlightSqlProducer base class's getStream() unpacks tickets as Any
+      // and dispatches to getStreamStatement().
+      ByteString handle = ByteString.copyFromUtf8(Long.toString(queryId));
+      FlightSql.TicketStatementQuery ticketQuery =
+          FlightSql.TicketStatementQuery.newBuilder().setStatementHandle(handle).build();
+      Ticket ticket = new Ticket(Any.pack(ticketQuery).toByteArray());
       FlightEndpoint endpoint = new FlightEndpoint(ticket);
 
       return new FlightInfo(arrowSchema, descriptor, Collections.singletonList(endpoint), -1, -1);
 
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // Cleanup on error
+      LOGGER.error("Error executing query: {}", sql, e);
       if (queryId != null) {
         coordinator.cleanupQueryExecution(queryId);
-        activeQueries.remove(queryId);
+        activeQueries.invalidate(queryId);
       }
-      throw e;
+      if (e instanceof RuntimeException) {
+        throw (RuntimeException) e;
+      }
+      throw CallStatus.INTERNAL.withDescription(e.getMessage()).toRuntimeException();
     }
   }
 
@@ -184,17 +230,26 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
       CallContext context,
       ServerStreamListener listener) {
     ByteString handle = ticketQuery.getStatementHandle();
-    long queryId = Long.parseLong(handle.toStringUtf8());
+    long queryId;
+    try {
+      queryId = Long.parseLong(handle.toStringUtf8());
+    } catch (NumberFormatException e) {
+      listener.error(
+          CallStatus.INVALID_ARGUMENT
+              .withDescription("Invalid statement handle: " + handle.toStringUtf8())
+              .toRuntimeException());
+      return;
+    }
     streamQueryResults(queryId, listener);
   }
 
   /** Streams query results for a given queryId as Arrow VectorSchemaRoot batches. */
   private void streamQueryResults(long queryId, ServerStreamListener listener) {
-    QueryContext ctx = activeQueries.get(queryId);
+    QueryContext ctx = activeQueries.getIfPresent(queryId);
     if (ctx == null) {
       listener.error(
           CallStatus.NOT_FOUND
-              .withDescription("Query not found for id: " + queryId)
+              .withDescription("Query not found or expired: " + queryId)
               .toRuntimeException());
       return;
     }
@@ -220,9 +275,15 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
     } catch (IoTDBException e) {
       LOGGER.error("Error streaming query results for queryId={}", queryId, e);
       listener.error(CallStatus.INTERNAL.withDescription(e.getMessage()).toRuntimeException());
+    } catch (Exception e) {
+      LOGGER.error("Unexpected error streaming query results for queryId={}", queryId, e);
+      listener.error(
+          CallStatus.INTERNAL
+              .withDescription("Internal error: " + e.getMessage())
+              .toRuntimeException());
     } finally {
       coordinator.cleanupQueryExecution(queryId);
-      activeQueries.remove(queryId);
+      activeQueries.invalidate(queryId);
       if (root != null) {
         root.close();
       }
@@ -503,14 +564,14 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
   @Override
   public void close() throws Exception {
     // Clean up all active queries
-    for (Long queryId : activeQueries.keySet()) {
+    for (Long queryId : activeQueries.asMap().keySet()) {
       try {
         coordinator.cleanupQueryExecution(queryId);
       } catch (Exception e) {
         LOGGER.warn("Error cleaning up query {} during shutdown", queryId, e);
       }
     }
-    activeQueries.clear();
+    activeQueries.invalidateAll();
   }
 
   // ===================== Inner Classes =====================
