@@ -35,8 +35,8 @@ from iotdb.ainode.core.exception import (
 )
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    CONFIG_JSON,
+    MODEL_SAFETENSORS,
     ModelCategory,
     ModelStates,
     UriType,
@@ -155,13 +155,13 @@ class ModelStorage:
         def _download_model_if_necessary() -> bool:
             """Returns: True if the model is existed or downloaded successfully, False otherwise."""
             repo_id = BUILTIN_HF_TRANSFORMERS_MODEL_MAP[model_id].repo_id
-            weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
-            config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+            weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
+            config_path = os.path.join(model_dir, CONFIG_JSON)
             if not os.path.exists(weights_path):
                 try:
                     hf_hub_download(
                         repo_id=repo_id,
-                        filename=MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+                        filename=MODEL_SAFETENSORS,
                         local_dir=model_dir,
                     )
                 except Exception as e:
@@ -173,7 +173,7 @@ class ModelStorage:
                 try:
                     hf_hub_download(
                         repo_id=repo_id,
-                        filename=MODEL_CONFIG_FILE_IN_JSON,
+                        filename=CONFIG_JSON,
                         local_dir=model_dir,
                     )
                 except Exception as e:
@@ -199,7 +199,7 @@ class ModelStorage:
                         self._models_dir,
                         ModelCategory.BUILTIN.value,
                         model_id,
-                        MODEL_CONFIG_FILE_IN_JSON,
+                        CONFIG_JSON,
                     )
                     if os.path.exists(config_path):
                         with open(config_path, "r", encoding="utf-8") as f:
@@ -226,7 +226,7 @@ class ModelStorage:
 
     def _process_user_defined_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a user-defined model directory."""
-        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+        config_path = os.path.join(model_dir, CONFIG_JSON)
         model_type = ""
         auto_map = {}
         pipeline_cls = ""
@@ -255,15 +255,18 @@ class ModelStorage:
 
     def _process_fine_tuned_model_directory(self, model_dir: str, model_id: str):
         """Handling the discovery logic for a fine-tuned model directory."""
-        config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
+        config_path = os.path.join(model_dir, CONFIG_JSON)
         model_type = ""
-        auto_map = {}
+        auto_map = None
         pipeline_cls = ""
+        base_model_id = None
+
         if os.path.exists(config_path):
             config = load_model_config_in_json(config_path)
             model_type = config.get("model_type", "")
             auto_map = config.get("auto_map", None)
             pipeline_cls = config.get("pipeline_cls", "")
+            base_model_id = config.get("base_model_id", None)
 
         with self._lock_pool.get_lock(model_id).write_lock():
             model_info = ModelInfo(
@@ -273,7 +276,8 @@ class ModelStorage:
                 state=ModelStates.ACTIVE,
                 pipeline_cls=pipeline_cls,
                 auto_map=auto_map,
-                transformers_registered=False,  # Lazy registration
+                transformers_registered=False,
+                base_model_id=base_model_id,
             )
             self._models[ModelCategory.FINE_TUNED.value][model_id] = model_info
 
@@ -425,6 +429,31 @@ class ModelStorage:
                 model_info.transformers_registered = True
                 return model_info
 
+            # Fine-tuned models share the same model_type as their base model.
+            # The Python source files (e.g. configuration_sundial.py) only live
+            # in the base model's directory, so attempting to import them from
+            # the fine-tuned directory would fail.  Instead, ensure the *base*
+            # model is registered and piggyback on its registration.
+            if (
+                model_info.category == ModelCategory.FINE_TUNED
+                and model_info.base_model_id
+            ):
+                base_registered = self.ensure_transformers_registered(
+                    model_info.base_model_id
+                )
+                if base_registered is not None:
+                    model_info.transformers_registered = True
+                    return model_info
+                else:
+                    # Base model itself cannot be registered – mark fine-tuned
+                    # model as inactive.
+                    model_info.state = ModelStates.INACTIVE
+                    logger.error(
+                        f"Cannot register fine-tuned model {model_id}: "
+                        f"base model {model_info.base_model_id} registration failed"
+                    )
+                    return None
+
             # Execute registration (under lock protection)
             try:
                 if self._register_transformers_model(model_info):
@@ -447,19 +476,65 @@ class ModelStorage:
                 )
                 return None
 
-    def register_fine_tuned_model(self, model_info: ModelInfo):
-        """
-        Register fine-tuned model
-        Args:
-            model_info (ModelInfo): the model info of the fine-tuned model
-        """
-        if self._models[ModelCategory.FINE_TUNED.value].get(model_info.model_id):
-            raise RuntimeError(
-                f"Model {model_info.model_id} is already registered, cannot fine_tune."
+    def register_finetuned_model(self, model_id: str, base_model_id: str) -> ModelInfo:
+        if self.is_model_registered(model_id):
+            raise ModelExistedException(model_id)
+
+        model_dir = os.path.join(
+            self._models_dir, ModelCategory.FINE_TUNED.value, model_id
+        )
+        os.makedirs(model_dir, exist_ok=True)
+        ensure_init_file(model_dir)
+
+        base_model_info = self.get_model_info(base_model_id)
+        if base_model_info is None:
+            raise ModelNotExistException(base_model_id)
+
+        with self._lock_pool.get_lock(model_id).write_lock():
+            sft_model_info = base_model_info.copy(
+                model_id=model_id,
+                category=ModelCategory.FINE_TUNED,
+                state=ModelStates.TRAINING,
+                base_model_id=base_model_id,
             )
-        self._models[ModelCategory.FINE_TUNED.value][model_info.model_id] = model_info
-        logger.info(f"Successfully registered model {model_info.model_id}.")
-        return True
+            self._models[ModelCategory.FINE_TUNED.value][model_id] = sft_model_info
+
+        logger.info(f"Registered fine-tuned model {model_id} based on {base_model_id}")
+        return base_model_info
+
+    def complete_finetune(self, model_id: str) -> None:
+        """Mark a fine-tuned model as ACTIVE after training completes.
+
+        Note: ``config.json`` (including AINode metadata such as
+        ``base_model_id`` and ``category``) is already written by
+        ``Trainer.save_model()`` during the training worker – no
+        additional file I/O is needed here.
+        """
+        with self._lock_pool.get_lock(model_id).write_lock():
+            model_info = self._models[ModelCategory.FINE_TUNED.value].get(model_id)
+            if model_info is None:
+                raise ModelNotExistException(model_id)
+            model_info.state = ModelStates.ACTIVE
+
+        logger.info(f"Fine-tuned model {model_id} is now ACTIVE")
+
+    def fail_finetune(self, model_id: str, cleanup: bool = False) -> None:
+        with self._lock_pool.get_lock(model_id).write_lock():
+            model_info = self._models[ModelCategory.FINE_TUNED.value].get(model_id)
+            if model_info is None:
+                return
+
+            if cleanup:
+                model_path = os.path.join(
+                    self._models_dir, ModelCategory.FINE_TUNED.value, model_id
+                )
+                if os.path.exists(model_path):
+                    shutil.rmtree(model_path)
+                del self._models[ModelCategory.FINE_TUNED.value][model_id]
+                logger.info(f"Cleaned up failed fine-tuned model {model_id}")
+            else:
+                model_info.state = ModelStates.INACTIVE
+                logger.warning(f"Fine-tuned model {model_id} marked as INACTIVE")
 
     # ==================== Show and Delete Models ====================
 
@@ -572,7 +647,7 @@ class ModelStorage:
                 return self._models[category.value].get(model_id)
         else:
             # Category not specified, need to traverse all dictionaries, use global lock
-            with self._lock_pool.get_lock("").read_lock():
+            with self._lock_pool.get_lock(model_id).read_lock():
                 for category_dict in self._models.values():
                     if model_id in category_dict:
                         return category_dict[model_id]
@@ -617,13 +692,6 @@ class ModelStorage:
                 if model_id in category_dict:
                     return True
             return False
-
-    def get_ckpt_path(self, model_id: str) -> str:
-        if self._models[ModelCategory.BUILTIN.value].get(model_id) is None:
-            return os.path.join(
-                self._models_dir, ModelCategory.FINE_TUNED.value, model_id
-            )
-        return os.path.join(self._models_dir, ModelCategory.BUILTIN.value, model_id)
 
     def update_model_state(self, model_id: str, state: ModelStates):
         self._models[ModelCategory.FINE_TUNED.value][model_id].state = state

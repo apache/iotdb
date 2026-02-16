@@ -1,0 +1,8 @@
+input_token_len: 512
+output_token_lens:
+  - 64
+seq_len: 512
+learning_rate: 1.0e-4
+train_batch_size: 32
+num_train_epochs: 10
+weight_decay: 0.01

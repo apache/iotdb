@@ -35,7 +35,8 @@ public class AINodeFineTuneIT {
       };
   private static final String[] SCHEMA_SQL_IN_TABLE =
       new String[] {
-        "CREATE DATABASE root", "CREATE TABLE root.AI (s0 FLOAT FIELD)",
+        "CREATE DATABASE root",
+        "CREATE TABLE root.AI (s0 FLOAT FIELD, s1 FLOAT FIELD, s2 FLOAT FIELD, s3 FLOAT FIELD, s4 FLOAT FIELD)",
       };
 
   @BeforeClass
@@ -62,7 +63,9 @@ public class AINodeFineTuneIT {
     System.arraycopy(SCHEMA_SQL_IN_TABLE, 0, write_sql_in_table, 0, SCHEMA_SQL_IN_TABLE.length);
     for (int i = 0; i < LINE_COUNT; i++) {
       write_sql_in_table[i + SCHEMA_SQL_IN_TABLE.length] =
-          String.format("INSERT INTO root.AI(time, s0) VALUES(%d, %f)", i, Math.random());
+          String.format(
+              "INSERT INTO root.AI(time, s0, s1, s2, s3, s4) VALUES(%d, %f, %f, %f, %f, %f)",
+              i, Math.random(), Math.random(), Math.random(), Math.random(), Math.random());
     }
     prepareTableData(write_sql_in_table);
   }
@@ -72,7 +75,7 @@ public class AINodeFineTuneIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE MODEL sundial_tree WITH HYPERPARAMETERS (train_epochs=2, num_warmup_steps=80, num_training_steps=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (PATH root.AI.s0)");
+          "CREATE MODEL sundial_tree WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (PATH root.AI.s0)");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
         boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_tree")) {
@@ -135,7 +138,7 @@ public class AINodeFineTuneIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "CREATE MODEL sundial_table WITH HYPERPARAMETERS (train_epochs=2, num_warmup_steps=80, num_training_steps=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (\'SELECT time, s0 FROM root.AI\')");
+          "CREATE MODEL sundial_table WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001) FROM MODEL sundial ON DATASET (\'SELECT time, s0 FROM root.AI\')");
       for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
         boolean isActivated = false;
         try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_table")) {
@@ -195,6 +198,130 @@ public class AINodeFineTuneIT {
       //          720);
       //      statement.execute("UNLOAD MODEL sundial_table FROM DEVICES \"0,1\"");
       //      checkModelNotOnSpecifiedDevice(statement, "sundial_table", "0,1");
+    }
+  }
+
+  @Test
+  public void testWeaverCNNFineTune() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE MODEL sundial_weaver_cnn WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001, "
+              + "finetune_type=weaver_cnn, input_channel=5) FROM MODEL sundial ON DATASET (\'SELECT time, s0, s1, s2, s3, s4 FROM root.AI\')");
+      for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
+        boolean isActivated = false;
+        try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_weaver_cnn")) {
+          int modelCnt = 0;
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
+          while (resultSet.next()) {
+            String modelId = resultSet.getString(1);
+            String modelType = resultSet.getString(2);
+            String category = resultSet.getString(3);
+            String state = resultSet.getString(4);
+
+            assertEquals("sundial_weaver_cnn", modelId);
+            assertEquals("sundial", modelType);
+            assertEquals("fine_tuned", category);
+            isActivated = state.equals("active");
+            ++modelCnt;
+          }
+          assertEquals(1, modelCnt);
+        }
+        if (isActivated) {
+          return;
+          // TODO: Enable forecast test
+          //          final String forecastSQL =
+          //              "SELECT * FROM FORECAST("
+          //                  + "model_id=>'sundial_weaver_cnn', "
+          //                  + "targets=>(SELECT time,s4 FROM root.AI LIMIT 2880) ORDER BY time, "
+          //                  + "history_covs=>\'(SELECT time,s0,s1,s2,s3 FROM root.AI LIMIT 2880)
+          // ORDER BY time\', "
+          //                  + "output_length=>720"
+          //                  + ")";
+          //          try (ResultSet resultSet = statement.executeQuery(forecastSQL)) {
+          //            int outputCnt = 0;
+          //            while (resultSet.next()) {
+          //              outputCnt++;
+          //            }
+          //            if (720 != outputCnt) {
+          //              fail(
+          //                  "Output count mismatch for fine tuned model."
+          //                      + "Expected: "
+          //                      + 720
+          //                      + ", but got: "
+          //                      + outputCnt);
+          //            }
+          //            return;
+          //          }
+        }
+        TimeUnit.SECONDS.sleep(1); // Wait for 1 second before retrying
+      }
+      fail(
+          String.format(
+              "Fine-tuning model did not finish after waiting for %ds.", WAITING_COUNT_SECOND));
+    }
+  }
+
+  @Test
+  public void testWeaverMLPFineTune() throws Exception {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE MODEL sundial_weaver_mlp WITH HYPERPARAMETERS (num_train_epochs=2, warmup_steps=80, iter_per_epoch=3000, learning_rate=0.00001, "
+              + "finetune_type=weaver_mlp, input_channel=5) FROM MODEL sundial ON DATASET (\'SELECT time, s0, s1, s2, s3, s4 FROM root.AI\')");
+      for (int retry = 0; retry < WAITING_COUNT_SECOND; retry++) {
+        boolean isActivated = false;
+        try (ResultSet resultSet = statement.executeQuery("SHOW MODELS sundial_weaver_mlp")) {
+          int modelCnt = 0;
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
+          while (resultSet.next()) {
+            String modelId = resultSet.getString(1);
+            String modelType = resultSet.getString(2);
+            String category = resultSet.getString(3);
+            String state = resultSet.getString(4);
+
+            assertEquals("sundial_weaver_mlp", modelId);
+            assertEquals("sundial", modelType);
+            assertEquals("fine_tuned", category);
+            isActivated = state.equals("active");
+            ++modelCnt;
+          }
+          assertEquals(1, modelCnt);
+        }
+        if (isActivated) {
+          return;
+          // TODO: Enable forecast test
+          //          final String forecastSQL =
+          //              "SELECT * FROM FORECAST("
+          //                  + "model_id=>'sundial_weaver_mlp', "
+          //                  + "targets=>(SELECT time,s4 FROM root.AI LIMIT 2880) ORDER BY time, "
+          //                  + "history_covs=>\'(SELECT time,s0,s1,s2,s3 FROM root.AI LIMIT 2880)
+          // ORDER BY time\', "
+          //                  + "output_length=>720"
+          //                  + ")";
+          //          try (ResultSet resultSet = statement.executeQuery(forecastSQL)) {
+          //            int outputCnt = 0;
+          //            while (resultSet.next()) {
+          //              outputCnt++;
+          //            }
+          //            if (720 != outputCnt) {
+          //              fail(
+          //                  "Output count mismatch for fine tuned model."
+          //                      + "Expected: "
+          //                      + 720
+          //                      + ", but got: "
+          //                      + outputCnt);
+          //            }
+          //            return;
+          //          }
+        }
+        TimeUnit.SECONDS.sleep(1); // Wait for 1 second before retrying
+      }
+      fail(
+          String.format(
+              "Fine-tuning model did not finish after waiting for %ds.", WAITING_COUNT_SECOND));
     }
   }
 }

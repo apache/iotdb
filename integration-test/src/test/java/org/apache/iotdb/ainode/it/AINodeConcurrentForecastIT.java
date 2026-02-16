@@ -50,9 +50,7 @@ public class AINodeConcurrentForecastIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(AINodeConcurrentForecastIT.class);
 
   private static final List<AINodeTestUtils.FakeModelInfo> MODEL_LIST =
-      Arrays.asList(
-          new AINodeTestUtils.FakeModelInfo("sundial", "sundial", "builtin", "active"),
-          new AINodeTestUtils.FakeModelInfo("timer_xl", "timer", "builtin", "active"));
+      Arrays.asList(new AINodeTestUtils.FakeModelInfo("sundial", "sundial", "builtin", "active"));
 
   private static final String FORECAST_TABLE_FUNCTION_SQL_TEMPLATE =
       "SELECT * FROM FORECAST(model_id=>'%s', targets=>(SELECT time,s FROM root.AI) ORDER BY time, output_length=>%d)";

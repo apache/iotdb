@@ -1,0 +1,24 @@
+### model
+model_type: moirai2
+seq_len: 512
+input_token_len: 512
+output_token_lens:
+  - 64
+
+### method
+finetune_type: full
+
+### dataset
+dataset_type: csv
+data_path: /path/to/electricity.csv
+train_ratio: 0.7
+val_ratio: 0.15
+test_ratio: 0.15
+
+### training
+num_train_epochs: 10
+train_batch_size: 32
+learning_rate: 1.0e-4
+weight_decay: 0.01
+warmup_ratio: 0.1
+use_amp: true

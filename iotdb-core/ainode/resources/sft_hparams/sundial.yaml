@@ -1,0 +1,12 @@
+input_token_len: 16
+output_token_lens:
+  - 720
+seq_len: 2880
+n_samples: 10
+learning_rate: 1.0e-4
+train_batch_size: 32
+num_train_epochs: 20
+weight_decay: 0.01
+ddp: True
+finetune_type: "weaver_mlp"
+test_pred_len: 720

@@ -26,8 +26,9 @@ from iotdb.ainode.core.exception import (
     ModelNotExistException,
 )
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_constants import ModelStates
-from iotdb.ainode.core.model.model_storage import ModelCategory, ModelInfo, ModelStorage
+from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates
+from iotdb.ainode.core.model.model_info import ModelInfo
+from iotdb.ainode.core.model.model_storage import ModelStorage
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.decorator import singleton
 from iotdb.thrift.ainode.ttypes import (
@@ -63,13 +64,18 @@ class ModelManager:
                 get_status(TSStatusCode.CREATE_MODEL_ERROR, str(e))
             )
         except Exception as e:
-            # Catch-all for other exceptions (mainly from transformers implementation)
             return TRegisterModelResp(
                 get_status(TSStatusCode.CREATE_MODEL_ERROR, str(e))
             )
 
-    def register_fine_tuned_model(self, model_info: ModelInfo):
-        self._model_storage.register_fine_tuned_model(model_info)
+    def register_fine_tuned_model(self, model_id: str, base_model_id: str) -> ModelInfo:
+        return self._model_storage.register_finetuned_model(model_id, base_model_id)
+
+    def complete_finetune(self, model_id: str) -> None:
+        self._model_storage.complete_finetune(model_id)
+
+    def fail_finetune(self, model_id: str, cleanup: bool = False) -> None:
+        self._model_storage.fail_finetune(model_id, cleanup=cleanup)
 
     def show_models(self, req: TShowModelsReq) -> TShowModelsResp:
         return self._model_storage.show_models(req)
@@ -103,9 +109,6 @@ class ModelManager:
 
     def is_model_registered(self, model_id: str) -> bool:
         return self._model_storage.is_model_registered(model_id)
-
-    def get_ckpt_path(self, model_id: str) -> str:
-        return self._model_storage.get_ckpt_path(model_id)
 
     def update_model_state(self, model_id: str, state: ModelStates):
         self._model_storage.update_model_state(model_id, state)

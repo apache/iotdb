@@ -37,7 +37,18 @@ class FlowLoss(nn.Module):
         )
         self.num_sampling_steps = num_sampling_steps
 
-    def forward(self, target, z, mask=None, mask_y=None):
+    def forward(self, target, z, mask=None, mask_y=None, reduce=True):
+        """
+        Compute flow matching loss.
+
+        Args:
+            target: Ground-truth labels [N, C].
+            z: Conditioning from AR transformer [N, D].
+            mask: Per-element loss mask [N] (loss_masks reshaped).
+            mask_y: Per-channel mask for target [N, C].
+            reduce: If True (default), return scalar loss.
+                    If False, return per-element loss [N] for DualWeaver.
+        """
         noise = torch.randn_like(target)
         t = torch.rand(target.shape[0], device=target.device)
 
@@ -53,9 +64,15 @@ class FlowLoss(nn.Module):
         else:
             loss = (weights * (predict_v - target) ** 2).sum(dim=-1)
 
-        if mask is not None:
-            loss = (loss * mask).sum() / mask.sum()
-        return loss.mean()
+        if reduce:
+            if mask is not None:
+                loss = (loss * mask).sum() / mask.sum()
+            return loss.mean()
+        else:
+            # Per-element loss for DualWeaver (apply mask without reduction)
+            if mask is not None:
+                loss = loss * mask
+            return loss
 
     def sample(self, z, num_samples=1):
         z = z.repeat(num_samples, 1)

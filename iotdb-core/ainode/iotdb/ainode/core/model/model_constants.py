@@ -17,11 +17,42 @@
 #
 from enum import Enum
 
-# Model file constants
-MODEL_WEIGHTS_FILE_IN_SAFETENSORS = "model.safetensors"
-MODEL_CONFIG_FILE_IN_JSON = "config.json"
-MODEL_WEIGHTS_FILE_IN_PT = "model.pt"
-MODEL_CONFIG_FILE_IN_YAML = "config.yaml"
+# ==================== File Name Constants ====================
+#
+# All file names used for model persistence are defined here.
+# Never hard-code these strings elsewhere – always import from
+# this module.
+
+# -- Config files --
+CONFIG_JSON = "config.json"
+CONFIG_YAML = "config.yaml"
+ADAPTER_CONFIG = "adapter_config.json"
+
+# -- Full model weights --
+MODEL_SAFETENSORS = "model.safetensors"
+MODEL_PT = "model.pt"
+MODEL_BIN = "pytorch_model.bin"  # legacy HuggingFace format
+
+# -- Adapter weights (DualWeaver / PEFT / LoRA) --
+ADAPTER_SAFETENSORS = "adapter_model.safetensors"
+ADAPTER_PT = "adapter_model.pt"
+ADAPTER_BIN = "adapter_model.bin"
+
+# -- Training state --
+TRAINING_STATE = "training_state.pt"
+
+# -- Ordered tuples for detection / searching --
+MODEL_WEIGHT_FILES = (MODEL_SAFETENSORS, MODEL_PT, MODEL_BIN)
+ADAPTER_WEIGHT_FILES = (ADAPTER_SAFETENSORS, ADAPTER_PT, ADAPTER_BIN)
+
+# -- Backward-compatible aliases (deprecated, will be removed) --
+MODEL_WEIGHTS_FILE_IN_SAFETENSORS = MODEL_SAFETENSORS
+MODEL_CONFIG_FILE_IN_JSON = CONFIG_JSON
+MODEL_WEIGHTS_FILE_IN_PT = MODEL_PT
+MODEL_CONFIG_FILE_IN_YAML = CONFIG_YAML
+
+
+# ==================== Enumerations ====================
 
 
 class ModelCategory(Enum):
@@ -35,7 +66,7 @@ class ModelStates(Enum):
     ACTIVATING = "activating"
     ACTIVE = "active"
     DROPPING = "dropping"
-    TRAINING = "tuning"
+    TRAINING = "training"
     FAILED = "failed"
 
 

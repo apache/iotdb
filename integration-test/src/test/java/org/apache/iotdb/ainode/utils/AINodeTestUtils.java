@@ -54,8 +54,6 @@ public class AINodeTestUtils {
               new AbstractMap.SimpleEntry<>(
                   "sundial", new FakeModelInfo("sundial", "sundial", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
-                  "timer_xl", new FakeModelInfo("timer_xl", "timer", "builtin", "active")),
-              new AbstractMap.SimpleEntry<>(
                   "chronos2", new FakeModelInfo("chronos2", "t5", "builtin", "active")),
               new AbstractMap.SimpleEntry<>(
                   "moirai2", new FakeModelInfo("moirai2", "moirai", "builtin", "active")))

@@ -1,0 +1,25 @@
+### model
+model_type: chronos2
+seq_len: 2880
+input_token_len: 512
+output_token_lens:
+  - 64
+
+### method
+finetune_type: weaver_cnn
+freeze_backbone: true
+input_channel: 7
+output_channel: 14
+
+### dataset
+dataset_type: csv
+data_path: /path/to/electricity.csv
+multivariate: true
+
+### training
+num_train_epochs: 10
+train_batch_size: 8
+learning_rate: 1.0e-3
+weight_decay: 1.0e-3
+gradient_accumulation_steps: 4
+use_amp: true

@@ -1,0 +1,8 @@
+input_token_len: 96
+output_token_lens:
+  - 96
+seq_len: 672
+learning_rate: 1.0e-5
+train_batch_size: 64
+num_train_epochs: 20
+weight_decay: 0.01

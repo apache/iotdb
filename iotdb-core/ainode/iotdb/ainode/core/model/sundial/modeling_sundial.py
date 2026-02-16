@@ -492,6 +492,7 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
         max_output_length: Optional[int] = None,
         revin: Optional[bool] = False,
         num_samples: Optional[int] = 1,
+        reduction: Optional[str] = "mean",
     ) -> Union[Tuple, MoeCausalLMOutputWithPast]:
 
         output_attentions = (
@@ -557,7 +558,16 @@ class SundialForPrediction(SundialPreTrainedModel, TSGenerationMixin):
             else:
                 mask_y = None
 
-            loss = self.flow_loss(shift_labels, hidden_states, loss_masks, mask_y)
+            if reduction == "none":
+                # Per-sample loss for DualWeaver: [bsz * L * mul] -> [bsz * L]
+                loss = self.flow_loss(
+                    shift_labels, hidden_states, loss_masks, mask_y, reduce=False
+                )
+                loss = torch.stack(
+                    torch.chunk(loss, self.config.diffusion_batch_mul), dim=0
+                ).mean(dim=0)
+            else:
+                loss = self.flow_loss(shift_labels, hidden_states, loss_masks, mask_y)
         else:
             if max_output_length is None:
                 output_token_len = self.config.output_token_lens[0]

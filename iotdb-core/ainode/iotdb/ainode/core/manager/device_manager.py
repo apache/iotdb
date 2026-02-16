@@ -135,6 +135,7 @@ class DeviceManager:
             init_method=f"tcp://{master_addr}:{master_port}",
             world_size=world_size,
             rank=rank,
+            device_id=self.torch_device(rank),
         )
 
     def destroy_process_group(self) -> None:

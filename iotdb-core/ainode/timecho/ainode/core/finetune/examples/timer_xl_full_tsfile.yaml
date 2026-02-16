@@ -1,0 +1,20 @@
+### model
+model_type: timer_xl
+seq_len: 672
+input_token_len: 96
+output_token_lens:
+  - 96
+
+### method
+finetune_type: full
+
+### dataset
+dataset_type: tsfile
+data_path: /path/to/data.tsfile
+tsfile_preload: true
+
+### training
+num_train_epochs: 20
+train_batch_size: 64
+learning_rate: 1.0e-5
+use_amp: true

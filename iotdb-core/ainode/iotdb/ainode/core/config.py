@@ -30,6 +30,7 @@ from iotdb.ainode.core.constant import (
     AINODE_CONF_FILE_NAME,
     AINODE_CONF_GIT_FILE_NAME,
     AINODE_CONF_POM_FILE_NAME,
+    AINODE_EXP_DIR,
     AINODE_INFERENCE_BATCH_INTERVAL_IN_MS,
     AINODE_INFERENCE_EXTRA_MEMORY_RATIO,
     AINODE_INFERENCE_MAX_OUTPUT_LENGTH,
@@ -94,6 +95,9 @@ class AINodeConfig(object):
         self._ain_models_dir = AINODE_MODELS_DIR
         self._ain_models_builtin_dir = AINODE_MODELS_BUILTIN_DIR
         self._ain_system_dir = AINODE_SYSTEM_DIR
+
+        # Directory to save experiments
+        self._ain_exp_dir = AINODE_EXP_DIR
 
         # Whether to enable compression for thrift
         self._ain_thrift_compression_enabled = AINODE_THRIFT_COMPRESSION_ENABLED
@@ -228,6 +232,12 @@ class AINodeConfig(object):
 
     def set_ain_system_dir(self, ain_system_dir: str) -> None:
         self._ain_system_dir = ain_system_dir
+
+    def get_ain_exp_dir(self) -> str:
+        return self._ain_exp_dir
+
+    def set_ain_exp_dir(self, ain_exp_dir: str) -> None:
+        self._ain_exp_dir = ain_exp_dir
 
     def get_ain_thrift_compression_enabled(self) -> bool:
         return self._ain_thrift_compression_enabled
@@ -386,6 +396,9 @@ class AINodeDescriptor(object):
 
             if "ain_system_dir" in config_keys:
                 self._config.set_ain_system_dir(file_configs["ain_system_dir"])
+
+            if "ain_exp_dir" in config_keys:
+                self._config.set_ain_exp_dir(file_configs["ain_exp_dir"])
 
             if "ain_seed_config_node" in config_keys:
                 self._config.set_ain_target_config_node_list(

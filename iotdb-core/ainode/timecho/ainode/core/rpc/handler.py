@@ -1,11 +1,7 @@
 from iotdb.ainode.core.config import AINodeDescriptor
-from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.log import Logger
-from iotdb.ainode.core.model.model_constants import ModelCategory, ModelStates
-from iotdb.ainode.core.model.model_info import ModelInfo
 from iotdb.ainode.core.rpc.handler import AINodeRPCServiceHandler
-from iotdb.ainode.core.rpc.status import get_status
-from iotdb.thrift.ainode import IAINodeRPCService
+from iotdb.ainode.core.rpc.status import TSStatusCode, get_status
 from iotdb.thrift.ainode.ttypes import (
     TDeleteModelReq,
     TForecastReq,
@@ -19,17 +15,22 @@ from iotdb.thrift.ainode.ttypes import (
     TUnloadModelReq,
 )
 from iotdb.thrift.common.ttypes import TSStatus
-from timecho.ainode.core.manager.tuning_manager import TuningManager
-from timecho.ainode.core.tuning.training_parameters import get_default_training_args
+from timecho.ainode.core.manager.finetune_manager import FinetuneManager
 
 logger = Logger()
 AIN_CONFIG = AINodeDescriptor().get_config()
 
 
-class TimechoAINodeRPCServiceHandler(AINodeRPCServiceHandler, IAINodeRPCService.Iface):
+class TimechoAINodeRPCServiceHandler(AINodeRPCServiceHandler):
     def __init__(self, ainode):
         super().__init__(ainode)
-        self._tuning_manager = TuningManager()
+        self._finetune_manager = FinetuneManager()
+        self._finetune_manager.start()
+
+    def stop(self):
+        """Ensure FinetuneManager consumer thread is cleanly shut down."""
+        self._finetune_manager.stop()
+        super().stop()
 
     # ==================== Model Management ====================
 
@@ -91,7 +92,7 @@ class TimechoAINodeRPCServiceHandler(AINodeRPCServiceHandler, IAINodeRPCService.
             )
         return super().forecast(req)
 
-    # ==================== Tuning ====================
+    # ==================== FineTune ====================
 
     def createTuningTask(self, req: TTuningReq) -> TSStatus:
         if not AIN_CONFIG.is_activated():
@@ -99,29 +100,86 @@ class TimechoAINodeRPCServiceHandler(AINodeRPCServiceHandler, IAINodeRPCService.
                 TSStatusCode.AINODE_INTERNAL_ERROR,
                 "Reject tuning task creation because TimechoDB-AINode is unactivated.",
             )
-        args = get_default_training_args()
         try:
-            # Parse the request to set up the tuning parameters
-            args.model_id = req.modelId
-            args.model_type = self._model_manager.get_model_info(
-                req.existingModelId
-            ).model_type
-            args.ckpt_path = self._model_manager.get_ckpt_path(req.existingModelId)
-            args.dataset_type = req.dbType
-            args.data_schema_list = req.targetDataSchema
-            # Parse hyperparameters
-            args.init_from_map(req.parameters)
-            # Initialize GPU configuration
-            args.init_gpu_config()
-            self._model_manager.register_fine_tuned_model(
-                ModelInfo(
-                    model_id=args.model_id,
-                    model_type=args.model_type,
-                    category=ModelCategory.FINE_TUNED,
-                    state=ModelStates.TRAINING,
-                )
+            params = getattr(req, "parameters", {}) or {}
+            params["model_id"] = req.modelId
+            params["base_model_id"] = req.existingModelId
+            if req.targetDataSchema:
+                params["data_schema_list"] = req.targetDataSchema
+            if req.dbType:
+                params["dataset_type"] = req.dbType.lower()
+
+            task = self._finetune_manager.create_task(params)
+
+            return get_status(
+                TSStatusCode.SUCCESS_STATUS,
+                f"Task {task.task_id} created successfully.",
             )
-            return self._tuning_manager.create_tuning_task(args)
         except Exception as e:
-            logger.error(f"Failed to parse tuning configuration: {e}")
+            logger.error(f"Failed to create tuning task: {e}")
             return get_status(TSStatusCode.INVALID_TRAINING_CONFIG, str(e))
+
+    # ------------------------------------------------------------------
+    # The following interfaces are NOT yet defined in the Thrift IDL.
+    # Corresponding Thrift Request/Response types and Processor
+    # registration will be added in a future iteration.
+    # Currently accessible via internal calls or CLI.
+    # SQL semantic mapping:
+    #   SHOW TRAINING TASK <id>  -> getTuningTaskDetail
+    #   SHOW TRAINING TASKS      -> listTuningTasks
+    #   CANCEL TASK <id>         -> cancelTuningTask
+    #   DROP TASK <id>           -> dropTuningTask
+    # ------------------------------------------------------------------
+
+    def getTuningTaskDetail(self, task_id: str) -> TSStatus:
+        """Get full details of a single fine-tuning task."""
+        if not AIN_CONFIG.is_activated():
+            return get_status(
+                TSStatusCode.AINODE_INTERNAL_ERROR, "AINode is unactivated."
+            )
+        task = self._finetune_manager.get_task(task_id)
+        if task is None:
+            return get_status(
+                TSStatusCode.AINODE_INTERNAL_ERROR, f"Task not found: {task_id}"
+            )
+        return get_status(TSStatusCode.SUCCESS_STATUS, task.to_detail())
+
+    def listTuningTasks(
+        self,
+        include_completed: bool = True,
+        limit: int = 100,
+    ) -> TSStatus:
+        """List summaries of all fine-tuning tasks."""
+        if not AIN_CONFIG.is_activated():
+            return get_status(
+                TSStatusCode.AINODE_INTERNAL_ERROR, "AINode is unactivated."
+            )
+        tasks = self._finetune_manager.list_tasks(include_completed)[:limit]
+        body = "\n".join(t.to_summary() for t in tasks) if tasks else "No tasks"
+        return get_status(TSStatusCode.SUCCESS_STATUS, body)
+
+    def cancelTuningTask(self, task_id: str) -> TSStatus:
+        """Cancel a fine-tuning task in PENDING or RUNNING state."""
+        if not AIN_CONFIG.is_activated():
+            return get_status(
+                TSStatusCode.AINODE_INTERNAL_ERROR, "AINode is unactivated."
+            )
+        if self._finetune_manager.cancel_task(task_id):
+            return get_status(
+                TSStatusCode.SUCCESS_STATUS, f"Task {task_id} cancel requested."
+            )
+        return get_status(
+            TSStatusCode.AINODE_INTERNAL_ERROR, f"Cannot cancel task: {task_id}"
+        )
+
+    def dropTuningTask(self, task_id: str, cleanup: bool = True) -> TSStatus:
+        """Drop a task record. When cleanup=True, also remove training artifacts."""
+        if not AIN_CONFIG.is_activated():
+            return get_status(
+                TSStatusCode.AINODE_INTERNAL_ERROR, "AINode is unactivated."
+            )
+        if self._finetune_manager.drop_task(task_id, cleanup):
+            return get_status(TSStatusCode.SUCCESS_STATUS, f"Task {task_id} dropped.")
+        return get_status(
+            TSStatusCode.AINODE_INTERNAL_ERROR, f"Cannot drop task: {task_id}"
+        )

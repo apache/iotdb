@@ -485,6 +485,7 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
         return_dict: Optional[bool] = None,
         max_output_length: Optional[int] = None,
         revin: Optional[bool] = False,
+        reduction: Optional[str] = "mean",
     ) -> Union[Tuple, MoeCausalLMOutputWithPast]:
 
         output_attentions = (
@@ -522,13 +523,18 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
 
         loss = None
         if labels is not None:
+            reduce = reduction != "none"
             ar_loss = 0.0
             for lm_head, output_token_len in zip(
                 self.lm_heads, self.config.output_token_lens
             ):
                 one_predictions = lm_head(hidden_states)
                 one_loss = self.calc_ar_loss(
-                    one_predictions, labels, loss_masks, output_token_len
+                    one_predictions,
+                    labels,
+                    loss_masks,
+                    output_token_len,
+                    reduce=reduce,
                 )
                 ar_loss += one_loss
                 if predictions is None:
@@ -563,7 +569,16 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
             attentions=outputs.attentions,
         )
 
-    def calc_ar_loss(self, predictions, labels, loss_masks, output_token_len):
+    def calc_ar_loss(
+        self, predictions, labels, loss_masks, output_token_len, reduce=True
+    ):
+        """
+        Compute autoregressive loss.
+
+        Args:
+            reduce: If True (default), return scalar loss.
+                    If False, return per-sample loss [bsz, n_tokens] for DualWeaver.
+        """
         seq_len = predictions.shape[1] * self.config.input_token_len
         labels = labels[:, : seq_len - self.config.input_token_len + output_token_len]
         shift_labels = labels.unfold(
@@ -572,13 +587,18 @@ class TimerForPrediction(TimerPreTrainedModel, TSGenerationMixin):
 
         # Calculate loss with mask
         losses = self.loss_function(predictions, shift_labels).mean(dim=-1)
-        if loss_masks is not None:
-            losses = losses * loss_masks
-            loss = losses.sum() / loss_masks.sum()
+        if reduce:
+            if loss_masks is not None:
+                losses = losses * loss_masks
+                loss = losses.sum() / loss_masks.sum()
+            else:
+                loss = torch.mean(losses)
+            return loss
         else:
-            loss = torch.mean(losses)
-
-        return loss
+            # Per-sample loss for DualWeaver
+            if loss_masks is not None:
+                losses = losses * loss_masks
+            return losses
 
     def prepare_inputs_for_generation(
         self,

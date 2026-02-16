@@ -1,0 +1,22 @@
+### model
+model_type: sundial
+seq_len: 2880
+input_token_len: 16
+output_token_lens:
+  - 720
+
+### method
+finetune_type: full
+
+### dataset
+dataset_type: iotdb.table
+data_schema_list:
+  - schemaName: "SELECT time, value, tag FROM root.sg.device1"
+aggregation_interval: 1s
+num_workers: 0
+
+### training
+num_train_epochs: 20
+train_batch_size: 32
+learning_rate: 1.0e-4
+use_amp: true

@@ -625,6 +625,7 @@ class Chronos2Model(PreTrainedModel):
         patched_future_covariates_mask: torch.Tensor,
         loc_scale: tuple[torch.Tensor, torch.Tensor],
         num_output_patches: int,
+        reduce: bool = True,
     ) -> torch.Tensor:
         batch_size = future_target.shape[0]
         output_patch_size = self.chronos_config.output_patch_size
@@ -673,8 +674,12 @@ class Chronos2Model(PreTrainedModel):
         # the first components masks any missing targets and the second component masks known future values
         loss_mask = future_target_mask.float() * inv_future_covariate_mask
         loss = quantile_loss * loss_mask
-        # mean over prediction horizon, sum over quantile levels and mean over batch
-        loss = loss.mean(dim=-1).sum(dim=-1).mean()
+        if reduce:
+            # mean over prediction horizon, sum over quantile levels and mean over batch
+            loss = loss.mean(dim=-1).sum(dim=-1).mean()
+        else:
+            # Per-sample loss for DualWeaver: [batch]
+            loss = loss.mean(dim=-1).sum(dim=-1)
 
         return loss
 
@@ -770,6 +775,7 @@ class Chronos2Model(PreTrainedModel):
         future_target: torch.Tensor | None = None,
         future_target_mask: torch.Tensor | None = None,
         output_attentions: bool = False,
+        reduction: str = "mean",
     ) -> Chronos2Output:
         """Forward pass of the Chronos2 model.
 
@@ -880,6 +886,7 @@ class Chronos2Model(PreTrainedModel):
                 patched_future_covariates_mask=patched_future_covariates_mask,
                 loc_scale=loc_scale,
                 num_output_patches=num_output_patches,
+                reduce=(reduction != "none"),
             )
             if future_target is not None
             else None

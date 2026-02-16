@@ -18,8 +18,8 @@
 import re
 
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_YAML,
-    MODEL_WEIGHTS_FILE_IN_PT,
+    CONFIG_YAML,
+    MODEL_PT,
 )
 
 

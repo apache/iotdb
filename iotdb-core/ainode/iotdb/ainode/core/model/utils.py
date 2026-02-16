@@ -23,16 +23,32 @@ import shutil
 import sys
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from huggingface_hub import snapshot_download
+from transformers import (
+    AutoConfig,
+    AutoModelForCausalLM,
+    AutoModelForNextSentencePrediction,
+    AutoModelForSeq2SeqLM,
+    AutoModelForSequenceClassification,
+    AutoModelForTimeSeriesPrediction,
+    AutoModelForTokenClassification,
+)
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.exception import InvalidModelUriException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.model.model_constants import (
-    MODEL_CONFIG_FILE_IN_JSON,
-    MODEL_WEIGHTS_FILE_IN_SAFETENSORS,
+    CONFIG_JSON,
+    MODEL_SAFETENSORS,
+    MODEL_WEIGHT_FILES,
+    ModelCategory,
     UriType,
+)
+from iotdb.ainode.core.model.model_info import (
+    BUILTIN_HF_TRANSFORMERS_MODEL_MAP,
+    ModelInfo,
 )
 
 logger = Logger()
@@ -69,11 +85,142 @@ def load_model_config_in_json(config_path: str) -> Dict:
         return json.load(f)
 
 
+def get_model_path(model_info: ModelInfo) -> str:
+    return os.path.join(
+        os.getcwd(),
+        AINodeDescriptor().get_config().get_ain_models_dir(),
+        model_info.category.value,
+        model_info.model_id,
+    )
+
+
+def search_model_path(model_id: str) -> Optional[str]:
+    """Locate a model directory by searching all category directories."""
+    models_root = os.path.join(
+        os.getcwd(), AINodeDescriptor().get_config().get_ain_models_dir()
+    )
+    for category in ModelCategory:
+        candidate = os.path.join(models_root, category.value, model_id)
+        if os.path.isdir(candidate):
+            return candidate
+    return None
+
+
+def get_model_and_config_by_native_code(
+    model_info: ModelInfo,
+) -> Tuple[Optional[type], Optional[type]]:
+    """Return model_class and config_instance from the model's native code."""
+    if model_info.auto_map is None:
+        return None, None
+
+    config_str = model_info.auto_map.get("AutoConfig", "")
+    model_str = model_info.auto_map.get("AutoModelForCausalLM", "")
+
+    if not config_str or not model_str:
+        return None, None
+
+    model_path = get_model_path(model_info)
+
+    if model_info.category == ModelCategory.BUILTIN:
+        module_name = (
+            AINodeDescriptor().get_config().get_ain_models_builtin_dir()
+            + "."
+            + model_info.model_id
+        )
+        config_class = import_class_from_path(module_name, config_str)
+        model_class = import_class_from_path(module_name, model_str)
+    else:
+        module_parent = str(Path(model_path).parent.absolute())
+        with temporary_sys_path(module_parent):
+            config_class = import_class_from_path(model_info.model_id, config_str)
+            model_class = import_class_from_path(model_info.model_id, model_str)
+
+    config_instance = config_class.from_pretrained(model_path)
+
+    return model_class, config_instance
+
+
+def get_model_and_config_by_auto_class(model_path: str) -> Tuple[type, Any]:
+    """Return model_class and config_instance from Huggingface Transformers's AutoClass."""
+    config_instance = AutoConfig.from_pretrained(model_path)
+
+    if type(config_instance) in AutoModelForTimeSeriesPrediction._model_mapping.keys():
+        model_class = AutoModelForTimeSeriesPrediction
+    elif (
+        type(config_instance)
+        in AutoModelForNextSentencePrediction._model_mapping.keys()
+    ):
+        model_class = AutoModelForNextSentencePrediction
+    elif type(config_instance) in AutoModelForSeq2SeqLM._model_mapping.keys():
+        model_class = AutoModelForSeq2SeqLM
+    elif (
+        type(config_instance)
+        in AutoModelForSequenceClassification._model_mapping.keys()
+    ):
+        model_class = AutoModelForSequenceClassification
+    elif type(config_instance) in AutoModelForTokenClassification._model_mapping.keys():
+        model_class = AutoModelForTokenClassification
+    else:
+        model_class = AutoModelForCausalLM
+
+    return model_class, config_instance
+
+
+def get_model_and_config_by_base_model(model_info: ModelInfo) -> Tuple[type, Any]:
+    """
+    Return model_class and config_instance from BaseModel's directory.
+
+    Finetuned directories do not contain Python source files (e.g.
+    ``configuration_sundial.py``).  This helper imports them from the
+    base model's directory instead, then loads the config instance from
+    the fine-tuned directory (which may carry modified hyperparameters
+    such as ``output_token_lens``).
+    """
+    finetuned_path = get_model_path(model_info)
+    base_model_id = model_info.base_model_id
+
+    config_str = (model_info.auto_map or {}).get("AutoConfig", "")
+    model_str = (model_info.auto_map or {}).get("AutoModelForCausalLM", "")
+
+    if not config_str or not model_str:
+        return get_model_and_config_by_native_code(finetuned_path)
+
+    config_class = None
+    model_class = None
+
+    if base_model_id in BUILTIN_HF_TRANSFORMERS_MODEL_MAP:
+        # The base model is BUILTIN
+        module_name = (
+            AINodeDescriptor().get_config().get_ain_models_builtin_dir()
+            + "."
+            + base_model_id
+        )
+        config_class = import_class_from_path(module_name, config_str)
+        model_class = import_class_from_path(module_name, model_str)
+    else:
+        # The base model is USER_DEFINED or another FINE_TUNED
+        base_model_path = search_model_path(base_model_id)
+        if base_model_path is not None:
+            module_parent = str(Path(base_model_path).parent.absolute())
+            with temporary_sys_path(module_parent):
+                config_class = import_class_from_path(base_model_id, config_str)
+                model_class = import_class_from_path(base_model_id, model_str)
+
+    # Load config from the fine-tuned directory (may have adjusted params)
+    config_instance = config_class.from_pretrained(finetuned_path)
+    return model_class, config_instance
+
+
+def has_base_weights(model_dir: str) -> bool:
+    """Check whether model_dir contains base-model weight files."""
+    return any(os.path.exists(os.path.join(model_dir, f)) for f in MODEL_WEIGHT_FILES)
+
+
 def validate_model_files(model_dir: str) -> Tuple[str, str]:
     """Validate model files exist, return config and weights file paths"""
 
-    config_path = os.path.join(model_dir, MODEL_CONFIG_FILE_IN_JSON)
-    weights_path = os.path.join(model_dir, MODEL_WEIGHTS_FILE_IN_SAFETENSORS)
+    config_path = os.path.join(model_dir, CONFIG_JSON)
+    weights_path = os.path.join(model_dir, MODEL_SAFETENSORS)
 
     if not os.path.exists(config_path):
         raise InvalidModelUriException(
