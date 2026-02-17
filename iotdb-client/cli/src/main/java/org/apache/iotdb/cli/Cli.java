@@ -193,7 +193,6 @@ public class Cli extends AbstractCli {
       throws java.sql.SQLException, org.apache.thrift.TException {
     connection.setQueryTimeout(queryTimeout);
     properties = connection.getServerProperties();
-    AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
     timestampPrecision = properties.getTimestampPrecision();
   }
 
@@ -291,6 +290,16 @@ public class Cli extends AbstractCli {
                 reconnected = true;
                 break;
               }
+              if (attempt == RECONNECT_RETRY_NUM) {
+                ctx.getErr()
+                    .printf(
+                        "%s: Could not reconnect after %d attempts. Please check that the server is running and try again.%n",
+                        IOTDB_ERROR_PREFIX, RECONNECT_RETRY_NUM);
+                ctx.exit(CODE_ERROR);
+              }
+            } catch (TException e) {
+              // RPC/network failure during reconnect (e.g. getServerProperties); treat as reconnect
+              // failure and retry with backoff.
               if (attempt == RECONNECT_RETRY_NUM) {
                 ctx.getErr()
                     .printf(

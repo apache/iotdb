@@ -42,6 +42,8 @@ import org.slf4j.LoggerFactory;
 import java.sql.SQLException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
 
@@ -200,5 +202,81 @@ public class AbstractCliTest {
         OperationResult.CONTINUE_OPER,
         AbstractCli.handleInputCmd(
             ctx, String.format("%s=111", AbstractCli.SET_FETCH_SIZE), connection));
+  }
+
+  // --- Tests for connection/session failure detection (reconnect feature) ---
+
+  @Test
+  public void testIsConnectionRelatedNull() {
+    assertFalse(AbstractCli.isConnectionRelated(null));
+  }
+
+  @Test
+  public void testIsConnectionRelatedDirectMessage() {
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Connection refused")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Connection reset")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Io exception: Connection reset")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Connection closed")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Read timeout")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Network is unreachable")));
+    assertTrue(AbstractCli.isConnectionRelated(new SQLException("Broken pipe")));
+  }
+
+  @Test
+  public void testIsConnectionRelatedViaCause() {
+    SQLException e = new SQLException("outer");
+    e.initCause(new RuntimeException("Connection refused"));
+    assertTrue(AbstractCli.isConnectionRelated(e));
+  }
+
+  @Test
+  public void testIsConnectionRelatedNoMatch() {
+    assertFalse(AbstractCli.isConnectionRelated(new SQLException("Syntax error")));
+    assertFalse(AbstractCli.isConnectionRelated(new SQLException("Table not found")));
+    assertFalse(AbstractCli.isConnectionRelated(new SQLException((String) null)));
+  }
+
+  @Test
+  public void testIsConnectionRelatedNullMessageWithNonMatchingCause() {
+    SQLException e = new SQLException((String) null);
+    e.initCause(new RuntimeException("Some other error"));
+    assertFalse(AbstractCli.isConnectionRelated(e));
+  }
+
+  @Test
+  public void testIsSessionOrStatementErrorNull() {
+    assertFalse(AbstractCli.isSessionOrStatementError(null));
+  }
+
+  @Test
+  public void testIsSessionOrStatementErrorDirectMessage() {
+    assertTrue(
+        AbstractCli.isSessionOrStatementError(
+            new SQLException("StatementId doesn't exist in this session")));
+    assertTrue(
+        AbstractCli.isSessionOrStatementError(new SQLException("Statement ID 123 is invalid")));
+    assertTrue(
+        AbstractCli.isSessionOrStatementError(new SQLException("something statementid something")));
+  }
+
+  @Test
+  public void testIsSessionOrStatementErrorViaCause() {
+    SQLException e = new SQLException("wrapper");
+    e.initCause(new IllegalStateException("StatementId doesn't exist in this session"));
+    assertTrue(AbstractCli.isSessionOrStatementError(e));
+  }
+
+  @Test
+  public void testIsSessionOrStatementErrorNoMatch() {
+    assertFalse(AbstractCli.isSessionOrStatementError(new SQLException("Connection refused")));
+    assertFalse(AbstractCli.isSessionOrStatementError(new SQLException("Syntax error")));
+    assertFalse(AbstractCli.isSessionOrStatementError(new SQLException((String) null)));
+  }
+
+  @Test
+  public void testIsSessionOrStatementErrorNullMessageWithNonMatchingCause() {
+    SQLException e = new SQLException((String) null);
+    e.initCause(new RuntimeException("Other error"));
+    assertFalse(AbstractCli.isSessionOrStatementError(e));
   }
 }
