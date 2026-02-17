@@ -239,7 +239,7 @@ public class RestApiServiceImpl extends RestApiService {
             contentOfQuerySupplier,
             clientSession.getUsername(),
             clientSession.getClientAddress());
-        recordQueries(() -> costTime, contentOfQuerySupplier, t);
+        recordQueries(() -> costTime, contentOfQuerySupplier, t, false);
       }
     }
   }

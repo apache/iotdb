@@ -86,6 +86,13 @@ public class MemAlignedChunkReader implements IChunkReader {
   }
 
   @Override
+  public void markDataTypeModifiedAndCannotUseStatistics() {
+    for (IPageReader iPageReader : pageReaderList) {
+      iPageReader.setModified(true);
+    }
+  }
+
+  @Override
   public List<IPageReader> loadPageReaderList() {
     return this.pageReaderList;
   }

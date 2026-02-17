@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 public abstract class Statement extends Node {
+  private boolean debug;
 
   protected Statement(final @Nullable NodeLocation location) {
     super(location);
@@ -55,5 +56,13 @@ public abstract class Statement extends Node {
    */
   public List<? extends Statement> getSubStatements() {
     return Collections.emptyList();
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 }

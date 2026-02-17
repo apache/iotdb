@@ -100,7 +100,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) throws TException {
-    final int bodySizeLimit = PipeConfig.getInstance().getPipeConnectorRequestSliceThresholdBytes();
+    final int bodySizeLimit = PipeConfig.getInstance().getPipeSinkRequestSliceThresholdBytes();
     if (req.getVersion() != IoTDBSinkRequestVersion.VERSION_1.getVersion()
         || req.body.limit() < bodySizeLimit) {
       return super.pipeTransfer(req);

@@ -705,6 +705,11 @@ public class QueryExecution implements IQueryExecution {
     return context.getCliHostname();
   }
 
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
+  }
+
   public MPPQueryContext getContext() {
     return context;
   }
