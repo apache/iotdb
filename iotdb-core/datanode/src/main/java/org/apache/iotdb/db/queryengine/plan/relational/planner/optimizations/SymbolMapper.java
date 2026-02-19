@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionRewr
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExpressionTreeRewriter;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ApplyNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -298,6 +299,15 @@ public class SymbolMapper {
         map(node.getRankingSymbol()),
         node.getMaxRankingPerPartition(),
         node.isPartial());
+  }
+
+  public LimitKRankingNode map(LimitKRankingNode node, PlanNode source) {
+    return new LimitKRankingNode(
+        node.getPlanNodeId(),
+        source,
+        mapAndDistinct(node.getSpecification()),
+        map(node.getRankingSymbol()),
+        node.getMaxRowCountPerPartition());
   }
 
   public RowNumberNode map(RowNumberNode node, PlanNode source) {

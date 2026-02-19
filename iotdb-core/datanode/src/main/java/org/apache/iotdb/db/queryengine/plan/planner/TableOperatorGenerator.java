@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.LimitKRankingOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
@@ -198,6 +199,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
@@ -4371,5 +4373,47 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         Optional.empty(),
         1000,
         Optional.empty());
+  }
+
+  @Override
+  public Operator visitLimitKRanking(LimitKRankingNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                LimitKRankingOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    List<TSDataType> partitionTypes =
+        partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+    int channel = inputDataTypes.size();
+    outputMappings.put(node.getRankingSymbol(), channel);
+
+    return new LimitKRankingOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        partitionTypes,
+        node.getMaxRowCountPerPartition(),
+        true,
+        1000);
   }
 }

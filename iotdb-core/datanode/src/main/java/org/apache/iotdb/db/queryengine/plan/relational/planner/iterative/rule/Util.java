@@ -22,7 +22,10 @@ import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
@@ -32,6 +35,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import org.apache.tsfile.read.common.type.TimestampType;
+import org.apache.tsfile.read.common.type.Type;
 
 import java.util.Collection;
 import java.util.List;
@@ -141,5 +146,38 @@ final class Util {
       return Optional.of(RANK);
     }
     return Optional.empty();
+  }
+
+  /**
+   * Returns true when the window is ROW_NUMBER with ORDER BY on a single ascending TIMESTAMP
+   * column. In IoTDB, data is naturally sorted by (device, time), so we can use the streaming
+   * LimitKRankingNode instead of the buffered TopKRankingNode.
+   */
+  public static boolean canUseLimitKRanking(
+      WindowNode windowNode,
+      TopKRankingNode.RankingType rankingType,
+      SymbolAllocator symbolAllocator) {
+    if (rankingType != ROW_NUMBER) {
+      return false;
+    }
+
+    Optional<OrderingScheme> orderingScheme = windowNode.getSpecification().getOrderingScheme();
+    if (!orderingScheme.isPresent()) {
+      return false;
+    }
+
+    List<Symbol> orderBy = orderingScheme.get().getOrderBy();
+    if (orderBy.size() != 1) {
+      return false;
+    }
+
+    Symbol orderSymbol = orderBy.get(0);
+    SortOrder sortOrder = orderingScheme.get().getOrdering(orderSymbol);
+    if (!sortOrder.isAscending()) {
+      return false;
+    }
+
+    Type type = symbolAllocator.getTypes().getTableModelType(orderSymbol);
+    return type instanceof TimestampType;
   }
 }

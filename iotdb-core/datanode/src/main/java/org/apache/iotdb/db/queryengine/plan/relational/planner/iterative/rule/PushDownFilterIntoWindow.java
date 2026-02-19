@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
@@ -42,6 +44,7 @@ import java.util.OptionalInt;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.lang.Math.toIntExact;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.canUseLimitKRanking;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.Util.toTopNRankingType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patterns.source;
@@ -90,15 +93,26 @@ public class PushDownFilterIntoWindow implements Rule<FilterNode> {
           new ValuesNode(node.getPlanNodeId(), node.getOutputSymbols(), ImmutableList.of()));
     }
 
-    TopKRankingNode newSource =
-        new TopKRankingNode(
-            windowNode.getPlanNodeId(),
-            windowNode.getChild(),
-            windowNode.getSpecification(),
-            rankingType.get(),
-            rankingSymbol,
-            upperBound.getAsInt(),
-            false);
+    PlanNode newSource;
+    if (canUseLimitKRanking(windowNode, rankingType.get(), context.getSymbolAllocator())) {
+      newSource =
+          new LimitKRankingNode(
+              windowNode.getPlanNodeId(),
+              windowNode.getChild(),
+              windowNode.getSpecification(),
+              rankingSymbol,
+              upperBound.getAsInt());
+    } else {
+      newSource =
+          new TopKRankingNode(
+              windowNode.getPlanNodeId(),
+              windowNode.getChild(),
+              windowNode.getSpecification(),
+              rankingType.get(),
+              rankingSymbol,
+              upperBound.getAsInt(),
+              false);
+    }
 
     if (needToKeepFilter(node.getPredicate(), rankingSymbol, upperBound.getAsInt())) {
       return Result.ofPlanNode(
