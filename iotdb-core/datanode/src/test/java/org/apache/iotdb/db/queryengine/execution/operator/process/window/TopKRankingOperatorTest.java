@@ -233,10 +233,7 @@ public class TopKRankingOperatorTest {
             int numColumns = tsBlock.getValueColumnCount();
             for (int i = 0; i < tsBlock.getPositionCount(); i++, count++) {
               String device =
-                  tsBlock
-                      .getColumn(1)
-                      .getBinary(i)
-                      .getStringValue(TSFileConfig.STRING_CHARSET);
+                  tsBlock.getColumn(1).getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
               int value = tsBlock.getColumn(2).getInt(i);
               long rowNumber = tsBlock.getColumn(numColumns - 1).getLong(i);
               actualByDevice
@@ -315,8 +312,7 @@ public class TopKRankingOperatorTest {
       }
       assertEquals(expectedTotalCount, count);
       for (int i = 0; i < expectedValueAndRn.length; i++) {
-        assertEquals(
-            "Value mismatch at row " + i, expectedValueAndRn[i][0], results.get(i)[0]);
+        assertEquals("Value mismatch at row " + i, expectedValueAndRn[i][0], results.get(i)[0]);
         assertEquals(
             "Row number mismatch at row " + i, expectedValueAndRn[i][1], results.get(i)[1]);
       }
@@ -336,8 +332,7 @@ public class TopKRankingOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNode = new PlanNodeId("1");
-    driverContext.addOperatorContext(
-        1, planNode, TreeLinearFillOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNode, TreeLinearFillOperator.class.getSimpleName());
     return driverContext;
   }
 

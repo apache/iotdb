@@ -51,8 +51,7 @@ import static org.junit.Assert.fail;
 
 public class ValuesOperatorTest {
   private static final ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          1, "valuesOperator-test-instance-notification");
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "valuesOperator-test-instance-notification");
 
   @Test
   public void testEmptyValues() {
@@ -103,8 +102,7 @@ public class ValuesOperatorTest {
     TsBlock block2 = createIntTsBlock(values2);
     TsBlock block3 = createIntTsBlock(values3);
 
-    try (ValuesOperator operator =
-        genValuesOperator(Arrays.asList(block1, block2, block3))) {
+    try (ValuesOperator operator = genValuesOperator(Arrays.asList(block1, block2, block3))) {
       assertFalse(operator.isFinished());
       assertTrue(operator.hasNext());
 
@@ -202,8 +200,7 @@ public class ValuesOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNode = new PlanNodeId("1");
-    driverContext.addOperatorContext(
-        1, planNode, TreeLinearFillOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNode, TreeLinearFillOperator.class.getSimpleName());
 
     return new ValuesOperator(driverContext.getOperatorContexts().get(0), tsBlocks);
   }

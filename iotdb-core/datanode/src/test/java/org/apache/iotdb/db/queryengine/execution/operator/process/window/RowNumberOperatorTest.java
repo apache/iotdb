@@ -56,8 +56,7 @@ import static org.junit.Assert.fail;
 
 public class RowNumberOperatorTest {
   private static final ExecutorService instanceNotificationExecutor =
-      IoTDBThreadPoolFactory.newFixedThreadPool(
-          1, "rowNumberOperator-test-instance-notification");
+      IoTDBThreadPoolFactory.newFixedThreadPool(1, "rowNumberOperator-test-instance-notification");
 
   @Test
   public void testRowNumberWithPartition() {
@@ -248,8 +247,7 @@ public class RowNumberOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNode = new PlanNodeId("1");
-    driverContext.addOperatorContext(
-        1, planNode, TreeLinearFillOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNode, TreeLinearFillOperator.class.getSimpleName());
     return driverContext;
   }
 
