@@ -244,4 +244,160 @@ public class IoTDBLimitKRankingIT {
         retArray,
         DATABASE_NAME);
   }
+
+  // ==================== ORDER BY time DESC tests ====================
+
+  @Test
+  public void testFilterPushDownOrderByTimeDesc() {
+    // ROW_NUMBER() OVER (PARTITION BY device ORDER BY time DESC) WHERE rn <= 2
+    // Should use LimitKRankingOperator: take latest 2 rows per device
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,1,",
+          "2021-01-01T09:04:00.000Z,d3,40.0,2,",
+          "2021-01-01T09:06:00.000Z,d3,50.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn <= 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFilterPushDownOrderByTimeDescK1() {
+    // K=1: only the latest row per device
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,1,",
+          "2021-01-01T09:06:00.000Z,d3,50.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn <= 1 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFilterPushDownOrderByTimeDescKLargerThanData() {
+    // K=100: larger than any partition, so all rows are returned
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,4,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,3,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,1,",
+          "2021-01-01T09:01:00.000Z,d3,10.0,5,",
+          "2021-01-01T09:02:00.000Z,d3,20.0,4,",
+          "2021-01-01T09:03:00.000Z,d3,30.0,3,",
+          "2021-01-01T09:04:00.000Z,d3,40.0,2,",
+          "2021-01-01T09:06:00.000Z,d3,50.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn <= 100 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testLimitPushDownOrderByTimeDesc() {
+    // LIMIT pushdown: row_number() OVER (PARTITION BY device ORDER BY time DESC) LIMIT 4
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,3,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,4,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") ORDER BY device, time DESC LIMIT 4",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFilterPushDownOrderByTimeDescWithLessThan() {
+    // Use rn < 3 instead of rn <= 2 (should give same result as rn <= 2)
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,1,",
+          "2021-01-01T09:04:00.000Z,d3,40.0,2,",
+          "2021-01-01T09:06:00.000Z,d3,50.0,1,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn < 3 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFilterPushDownOrderByTimeDescSelectSubsetColumns() {
+    // Only select time, device, value (not the ranking column)
+    String[] expectedHeader = new String[] {"time", "device", "value"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:07:00.000Z,d1,5.0,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,",
+          "2021-01-01T09:03:00.000Z,d3,30.0,",
+          "2021-01-01T09:04:00.000Z,d3,40.0,",
+          "2021-01-01T09:06:00.000Z,d3,50.0,",
+        };
+    tableResultSetEqualTest(
+        "SELECT time, device, value FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn <= 3 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testFilterPushDownOrderByTimeDescEqual() {
+    // rn = 2: only the second-latest row per device
+    String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,2,",
+          "2021-01-01T09:04:00.000Z,d3,40.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM ("
+            + "SELECT *, row_number() OVER (PARTITION BY device ORDER BY time DESC) as rn FROM demo"
+            + ") WHERE rn = 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
 }

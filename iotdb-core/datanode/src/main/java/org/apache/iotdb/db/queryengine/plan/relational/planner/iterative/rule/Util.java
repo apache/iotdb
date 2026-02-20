@@ -23,7 +23,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
@@ -149,9 +148,10 @@ final class Util {
   }
 
   /**
-   * Returns true when the window is ROW_NUMBER with ORDER BY on a single ascending TIMESTAMP
-   * column. In IoTDB, data is naturally sorted by (device, time), so we can use the streaming
-   * LimitKRankingNode instead of the buffered TopKRankingNode.
+   * Returns true when the window is ROW_NUMBER with ORDER BY on a single TIMESTAMP column (ASC or
+   * DESC). In IoTDB, data is naturally sorted by (device, time) and table scans support both
+   * forward and reverse iteration, so we can use the streaming LimitKRankingNode instead of the
+   * buffered TopKRankingNode for both ASC (earliest K) and DESC (latest K).
    */
   public static boolean canUseLimitKRanking(
       WindowNode windowNode,
@@ -172,10 +172,6 @@ final class Util {
     }
 
     Symbol orderSymbol = orderBy.get(0);
-    SortOrder sortOrder = orderingScheme.get().getOrdering(orderSymbol);
-    if (!sortOrder.isAscending()) {
-      return false;
-    }
 
     Type type = symbolAllocator.getTypes().getTableModelType(orderSymbol);
     return type instanceof TimestampType;

@@ -384,6 +384,121 @@ public class WindowFunctionOptimizationTest {
   }
 
   @Test
+  public void testLimitKRankingPushDownFilterOrderByTimeDesc() {
+    PlanTester planTester = new PlanTester();
+
+    // ORDER BY time DESC triggers LimitKRankingNode instead of TopKRankingNode
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY time DESC) as rn FROM table1) WHERE rn <= 3";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    /*
+     *   └──OutputNode
+     *         └──LimitKRankingNode
+     *              └──SortNode
+     *                   └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(limitKRanking(sort(tableScan))));
+
+    /*  OutputNode
+     *     └──LimitKRankingNode
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                        └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(limitKRanking(collect(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
+  }
+
+  @Test
+  public void testLimitKRankingPushDownFilterOrderByTimeDescWithAllTags() {
+    PlanTester planTester = new PlanTester();
+
+    // All tag columns in PARTITION BY + ORDER BY time DESC → LimitKRankingNode with GroupNode push
+    // down
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY time DESC) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    /*
+     *   └──OutputNode
+     *        └──LimitKRankingNode
+     *              └──GroupNode
+     *                   └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(limitKRanking(group(tableScan))));
+
+    /*  OutputNode
+     *         └──CollectNode
+     *               ├──ExchangeNode
+     *               │    └──LimitKRankingNode
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │    └──LimitKRankingNode
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                    └──LimitKRankingNode
+     *                        └──SortNode
+     *                            └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
+    assertPlan(planTester.getFragmentPlan(1), limitKRanking(tableScan));
+    assertPlan(planTester.getFragmentPlan(2), limitKRanking(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), limitKRanking(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
+  }
+
+  @Test
+  public void testLimitKRankingPushDownLimitOrderByTimeDesc() {
+    PlanTester planTester = new PlanTester();
+
+    // LIMIT pushdown + ORDER BY time DESC → LimitKRankingNode
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY time DESC) as rn FROM table1) LIMIT 5";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    /*
+     *   └──OutputNode
+     *        └──LimitNode
+     *            └──LimitKRankingNode
+     *                └──SortNode
+     *                    └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(limit(5, limitKRanking(sort(tableScan)))));
+
+    /*  OutputNode
+     *    └──LimitNode
+     *      └──LimitKRankingNode
+     *          └──CollectNode
+     *               ├──ExchangeNode
+     *               │        └──TableScan
+     *               ├──ExchangeNode
+     *               │        └──TableScan
+     *               └──ExchangeNode
+     *                        └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(limit(5, limitKRanking(collect(exchange(), exchange(), exchange())))));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
+    assertPlan(planTester.getFragmentPlan(2), tableScan);
+    assertPlan(planTester.getFragmentPlan(3), tableScan);
+  }
+
+  @Test
   public void testLimitKRankingPushDownLimitOrderByTime() {
     PlanTester planTester = new PlanTester();
 
