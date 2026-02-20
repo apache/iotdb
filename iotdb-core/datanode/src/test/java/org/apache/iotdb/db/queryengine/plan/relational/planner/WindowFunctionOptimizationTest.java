@@ -293,12 +293,18 @@ public class WindowFunctionOptimizationTest {
      *               │        └──TableScan
      *               └──ExchangeNode
      *                    └──RowNumberNode
-     *                        └──TableScan
+     *                        └──MergeSortNode
+     *                            ├──ExchangeNode
+     *                            │     └──TableScan
+     *                            └──ExchangeNode
+     *                                  └──TableScan
      */
     assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(1), rowNumber(tableScan));
     assertPlan(planTester.getFragmentPlan(2), rowNumber(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), rowNumber(tableScan));
+    assertPlan(planTester.getFragmentPlan(3), rowNumber(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), tableScan);
+    assertPlan(planTester.getFragmentPlan(5), tableScan);
   }
 
   @Test
