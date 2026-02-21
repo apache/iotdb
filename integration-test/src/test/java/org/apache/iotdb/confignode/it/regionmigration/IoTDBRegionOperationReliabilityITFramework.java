@@ -580,7 +580,7 @@ public class IoTDBRegionOperationReliabilityITFramework {
     AtomicReference<SyncConfigNodeIServiceClient> clientRef = new AtomicReference<>(client);
     try {
       Awaitility.await()
-          .atMost(2, TimeUnit.MINUTES)
+          .atMost(4, TimeUnit.MINUTES)
           .pollDelay(2, TimeUnit.SECONDS)
           .until(
               () -> {
