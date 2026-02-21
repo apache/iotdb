@@ -157,7 +157,7 @@ final class Util {
       WindowNode windowNode,
       TopKRankingNode.RankingType rankingType,
       SymbolAllocator symbolAllocator) {
-    if (rankingType != ROW_NUMBER) {
+    if (rankingType != ROW_NUMBER && rankingType != RANK) {
       return false;
     }
 
