@@ -121,8 +121,8 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
           "2021-01-01T09:08:00.000Z,d2,2.0,1,",
           "2021-01-01T09:15:00.000Z,d2,4.0,2,",
         };
@@ -161,6 +161,84 @@ public class IoTDBWindowFunction3IT {
         };
     tableResultSetEqualTest(
         "SELECT *, row_number() OVER (PARTITION BY device) AS rn FROM demo ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPushDownFilterIntoWindowWithRank() {
+    // Data: d1 values {3,5,3,1}, d2 values {2,4}
+    // rank(PARTITION BY device ORDER BY value):
+    //   d1: 1.0→rank=1, 3.0→rank=2, 3.0→rank=2, 5.0→rank=4
+    //   d2: 2.0→rank=1, 4.0→rank=2
+    // WHERE rk <= 2: keeps d1 rows with rank≤2 (3 rows due to tie), d2 all (2 rows)
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) WHERE rk <= 2 ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPushDownLimitIntoWindowWithRank() {
+    // TopKRanking(RANK, topN=2) keeps rank≤2 per partition, then LIMIT 2 on final result
+    // d1 rank≤2: 1.0(r=1), 3.0(r=2), 3.0(r=2) → 3 rows sorted by time: 09:05,09:09,09:10
+    // d2 rank≤2: 2.0(r=1), 4.0(r=2) → 2 rows
+    // ORDER BY device, time LIMIT 2 → first 2 from d1
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,", "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) ORDER BY device, time LIMIT 2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testRankBasic() {
+    // Verifies rank computation: ties get the same rank, gaps after ties
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:07:00.000Z,d1,5.0,4,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:10:00.000Z,d1,1.0,1,",
+          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo ORDER BY device, time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testRankWithFilterEquals() {
+    // WHERE rk = 2 keeps only rows with rank exactly 2 (both d1 rows with value=3)
+    String[] expectedHeader = new String[] {"time", "device", "value", "rk"};
+    String[] retArray =
+        new String[] {
+          "2021-01-01T09:05:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:09:00.000Z,d1,3.0,2,",
+          "2021-01-01T09:15:00.000Z,d2,4.0,2,",
+        };
+    tableResultSetEqualTest(
+        "SELECT * FROM (SELECT *, rank() OVER (PARTITION BY device ORDER BY value) as rk FROM demo) WHERE rk = 2 ORDER BY device, time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
