@@ -217,8 +217,9 @@ public class SystemMetrics implements IMetricSet {
     long time = System.currentTimeMillis();
     if (time - lastUpdateTime > MetricConstant.UPDATE_INTERVAL) {
       lastUpdateTime = time;
+      Process process = null;
       try {
-        Process process = runtime.exec(getSystemMemoryCommand);
+        process = runtime.exec(getSystemMemoryCommand);
         StringBuilder result = new StringBuilder();
         try (BufferedReader input =
             new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -227,6 +228,7 @@ public class SystemMetrics implements IMetricSet {
             result.append(line).append("\n");
           }
         }
+        process.waitFor();
         String[] lines = result.toString().trim().split("\n");
         // if failed to get result
         if (lines.length >= 2) {
@@ -240,6 +242,13 @@ public class SystemMetrics implements IMetricSet {
         }
       } catch (IOException e) {
         logger.debug("Failed to get memory, because ", e);
+      } catch (InterruptedException e) {
+        logger.debug("Interrupted while waiting for memory command", e);
+        Thread.currentThread().interrupt();
+      } finally {
+        if (process != null) {
+          process.destroyForcibly();
+        }
       }
     }
   }
