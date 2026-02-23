@@ -759,6 +759,16 @@
                 <artifactId>arrow-memory-netty</artifactId>
                 <version>${arrow.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.arrow</groupId>
+                <artifactId>flight-sql-jdbc-driver</artifactId>
+                <version>${arrow.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.arrow.adbc</groupId>
+                <artifactId>adbc-driver-flight-sql</artifactId>
+                <version>0.22.0</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <build>
