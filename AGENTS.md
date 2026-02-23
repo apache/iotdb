@@ -105,6 +105,10 @@ mvn spotless:apply -P with-integration-tests
 mvn checkstyle:check -P with-integration-tests
 ```
 
+# Integration Test Rules
+
+- When writing integration tests, always use `SessionConfig.DEFAULT_USER` and `SessionConfig.DEFAULT_PASSWORD` for the user and password instead of hardcoding values.
+
 # Build Commands
 
 ```bash
