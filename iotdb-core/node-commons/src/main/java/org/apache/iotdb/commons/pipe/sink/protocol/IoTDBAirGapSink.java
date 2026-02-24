@@ -188,7 +188,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-
       try {
         final int finalI = i;
         IoTDBSinkPortBinder.bindPort(
@@ -203,7 +202,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
                 socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
                 socket.setKeepAlive(true);
                 sockets.set(finalI, socket);
-              } catch (final Exception e){
+              } catch (final Exception e) {
                 socket.close();
                 throw e;
               }
