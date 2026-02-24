@@ -1004,7 +1004,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               "Failed to create pipe plugin, because the URI is empty.",
-              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1021,7 +1021,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "The scheme of URI is not set, please specify the scheme of URI.",
-                  TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
           return future;
         }
         if (!uri.getScheme().equals("file")) {
@@ -1061,7 +1061,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to get executable for PipePlugin "
                     + createPipePluginStatement.getPluginName()
                     + ", please check the URI.",
-                TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+                TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
         return future;
       }
 
