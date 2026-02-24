@@ -32,11 +32,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PipeTsFileEpochProgressIndexKeeper {
 
   // data region id -> pipeName -> tsFile path -> max progress index
-  private final Map<String, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
+  private final Map<Integer, Map<String, Map<String, TsFileResource>>> progressIndexKeeper =
       new ConcurrentHashMap<>();
 
   public synchronized void registerProgressIndex(
-      final String dataRegionId, final String pipeName, final TsFileResource resource) {
+      final int dataRegionId, final String pipeName, final TsFileResource resource) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
@@ -44,7 +44,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
   }
 
   public synchronized void eliminateProgressIndex(
-      final String dataRegionId, final @Nonnull String pipeName, final String filePath) {
+      final int dataRegionId, final @Nonnull String pipeName, final String filePath) {
     progressIndexKeeper
         .computeIfAbsent(dataRegionId, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(pipeName, k -> new ConcurrentHashMap<>())
@@ -52,7 +52,7 @@ public class PipeTsFileEpochProgressIndexKeeper {
   }
 
   public synchronized boolean isProgressIndexAfterOrEquals(
-      final String dataRegionId,
+      final int dataRegionId,
       final String pipeName,
       final String tsFilePath,
       final ProgressIndex progressIndex) {
