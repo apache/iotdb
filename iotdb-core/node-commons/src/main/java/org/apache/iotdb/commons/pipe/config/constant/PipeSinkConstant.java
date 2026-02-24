@@ -60,8 +60,8 @@ public class PipeSinkConstant {
       "sink.send-port.restriction-strategy";
   public static final int CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE = 0;
   public static final int CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE = 65535;
-  public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE = "";
-  public static final String SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY = "range";
+  public static final String CONNECTOR_IOTDB_SEND_PORTS_CANDIDATE_VALUE = "";
+  public static final String SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY = " ";
   public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_CANDIDATE_STRATEGY = "candidate";
   public static final Set<String> CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET =
       Collections.unmodifiableSet(
