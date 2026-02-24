@@ -58,16 +58,16 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   private final TEndPoint endPoint;
 
   public IoTDBSyncClient(
-      ThriftClientProperty property,
-      String ipAddress,
-      int port,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd,
-      String customSendPortStrategy,
-      int minSendPortRange,
-      int maxSendPortRange,
-      List<Integer> candidatePorts)
+      final ThriftClientProperty property,
+      final String ipAddress,
+      final int port,
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd,
+      final String customSendPortStrategy,
+      final int minSendPortRange,
+      final int maxSendPortRange,
+      final List<Integer> candidatePorts)
       throws TTransportException {
     super(
         property
