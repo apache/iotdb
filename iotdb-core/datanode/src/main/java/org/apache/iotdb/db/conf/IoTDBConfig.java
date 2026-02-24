@@ -112,6 +112,9 @@ public class IoTDBConfig {
   /** The Arrow Flight SQL service binding port. */
   private int arrowFlightSqlPort = 8904;
 
+  /** The Arrow Flight SQL max allocator memory in bytes (default: 4GB). */
+  private long arrowFlightSqlMaxAllocatorMemory = 4L * 1024 * 1024 * 1024;
+
   /** The mqtt service binding host. */
   private String mqttHost = "127.0.0.1";
 
@@ -2562,6 +2565,14 @@ public class IoTDBConfig {
 
   public void setArrowFlightSqlPort(int arrowFlightSqlPort) {
     this.arrowFlightSqlPort = arrowFlightSqlPort;
+  }
+
+  public long getArrowFlightSqlMaxAllocatorMemory() {
+    return arrowFlightSqlMaxAllocatorMemory;
+  }
+
+  public void setArrowFlightSqlMaxAllocatorMemory(long arrowFlightSqlMaxAllocatorMemory) {
+    this.arrowFlightSqlMaxAllocatorMemory = arrowFlightSqlMaxAllocatorMemory;
   }
 
   public String getMqttHost() {

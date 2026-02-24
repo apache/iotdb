@@ -122,7 +122,8 @@ public class TsBlockToArrowConverter {
 
     for (int colIdx = 0; colIdx < columnNames.size(); colIdx++) {
       String colName = columnNames.get(colIdx);
-      Integer sourceIdx = headerMap.get(colName);
+      int sourceIdx =
+          (headerMap != null && headerMap.containsKey(colName)) ? headerMap.get(colName) : colIdx;
       Column column = tsBlock.getColumn(sourceIdx);
       TSDataType dataType = dataTypes.get(colIdx);
       FieldVector fieldVector = root.getVector(colIdx);
