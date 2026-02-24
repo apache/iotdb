@@ -47,12 +47,11 @@ public class PipeSinkConstant {
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
 
-  public static final String CONNECTOR_IOTDB_SEND_PORT_MIN_KEY = "connector.send-port.range.min";
-  public static final String SINK_IOTDB_SEND_PORT_MIN_KEY = "sink.send-port.range.min";
-  public static final String CONNECTOR_IOTDB_SEND_PORT_MAX_KEY = "connector.send-port.range.max";
-  public static final String SINK_IOTDB_SEND_PORT_MAX_KEY = "sink.send-port.range.max";
-  public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY =
-      "connector.send-port.candidate";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_MIN_KEY = "connector.send-port.min";
+  public static final String SINK_IOTDB_SEND_PORT_MIN_KEY = "sink.send-port.min";
+  public static final String CONNECTOR_IOTDB_SEND_PORT_MAX_KEY = "connector.send-port.max";
+  public static final String SINK_IOTDB_SEND_PORT_MAX_KEY = "sink.send-port.max";
+  public static final String CONNECTOR_IOTDB_SEND_PORTS_KEY = "connector.send-ports";
   public static final String SINK_IOTDB_SEND_PORT_CANDIDATE_KEY = "sink.send-ports";
   public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY =
       "connector.send-port.restriction-strategy";

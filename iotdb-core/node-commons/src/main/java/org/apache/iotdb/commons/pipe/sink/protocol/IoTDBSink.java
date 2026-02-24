@@ -97,7 +97,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PLAIN_BATCH_SIZE_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_CANDIDATE_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MAX_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MIN_KEY;
@@ -350,8 +350,7 @@ public abstract class IoTDBSink implements PipeConnector {
       this.candidatePorts =
           parseCandidatePorts(
               parameters.getStringOrDefault(
-                  Arrays.asList(
-                      CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_KEY, SINK_IOTDB_SEND_PORT_CANDIDATE_KEY),
+                  Arrays.asList(CONNECTOR_IOTDB_SEND_PORTS_KEY, SINK_IOTDB_SEND_PORT_CANDIDATE_KEY),
                   CONNECTOR_IOTDB_SEND_PORTS_CANDIDATE_VALUE));
       validator.validate(
           arg -> (int) arg > 0,
