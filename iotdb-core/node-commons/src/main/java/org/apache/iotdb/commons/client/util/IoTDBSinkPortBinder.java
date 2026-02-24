@@ -52,7 +52,8 @@ public class IoTDBSinkPortBinder {
         consumer.accept(port);
         portFound = true;
         break;
-      } catch (final Exception ignored) {
+      } catch (final Exception e) {
+        System.currentTimeMillis();
       }
       index++;
       searching = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;

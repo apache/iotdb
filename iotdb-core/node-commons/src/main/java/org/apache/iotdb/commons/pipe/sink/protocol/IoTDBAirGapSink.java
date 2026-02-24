@@ -188,18 +188,27 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
         }
       }
 
-      final AirGapSocket socket = new AirGapSocket(ip, port);
-      IoTDBSinkPortBinder.bindPort(
-          customSendPortStrategy,
-          minSendPortRange,
-          maxSendPortRange,
-          candidatePorts,
-          (sendPort) -> socket.bind(new InetSocketAddress(sendPort)));
 
       try {
-        socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
-        socket.setKeepAlive(true);
-        sockets.set(i, socket);
+        final int finalI = i;
+        IoTDBSinkPortBinder.bindPort(
+            customSendPortStrategy,
+            minSendPortRange,
+            maxSendPortRange,
+            candidatePorts,
+            (sendPort) -> {
+              final AirGapSocket socket = new AirGapSocket(ip, port);
+              try {
+                socket.bind(new InetSocketAddress(sendPort));
+                socket.connect(new InetSocketAddress(ip, port), handshakeTimeoutMs);
+                socket.setKeepAlive(true);
+                sockets.set(finalI, socket);
+              } catch (final Exception e){
+                socket.close();
+                throw e;
+              }
+            });
+
         LOGGER.info("Successfully connected to target server ip: {}, port: {}.", ip, port);
         failLogTimes.remove(nodeUrls.get(i));
       } catch (final Exception e) {
@@ -218,7 +227,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       }
 
       try {
-        sendHandshakeReq(socket);
+        sendHandshakeReq(sockets.get(i));
         isSocketAlive.set(i, true);
       } catch (Exception e) {
         LOGGER.warn(

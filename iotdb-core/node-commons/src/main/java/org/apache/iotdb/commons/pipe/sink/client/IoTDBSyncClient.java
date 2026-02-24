@@ -97,8 +97,8 @@ public class IoTDBSyncClient extends IClientRPCService.Client
             ((TSocket) ((TimeoutChangeableTFastFramedTransport) transport).getSocket())
                 .getSocket()
                 .bind(isa);
+            transport.open();
           });
-      transport.open();
     }
   }
 
