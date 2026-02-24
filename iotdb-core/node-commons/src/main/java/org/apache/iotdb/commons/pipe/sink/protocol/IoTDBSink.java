@@ -102,7 +102,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MIN_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
@@ -148,6 +147,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_CANDIDATE_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_MAX_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_MIN_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
@@ -302,7 +302,7 @@ public abstract class IoTDBSink implements PipeConnector {
                 Arrays.asList(
                     CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY,
                     SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY),
-                CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)
+                SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)
             .trim()
             .toLowerCase();
 
@@ -313,7 +313,7 @@ public abstract class IoTDBSink implements PipeConnector {
             CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET, customSendPortStrategy),
         customSendPortStrategy);
 
-    if (CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(customSendPortStrategy)) {
+    if (SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(customSendPortStrategy)) {
       minSendPortRange =
           parameters.getIntOrDefault(
               Arrays.asList(CONNECTOR_IOTDB_SEND_PORT_MIN_KEY, SINK_IOTDB_SEND_PORT_MIN_KEY),

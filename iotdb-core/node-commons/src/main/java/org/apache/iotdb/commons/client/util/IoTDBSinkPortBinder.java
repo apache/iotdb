@@ -41,24 +41,24 @@ public class IoTDBSinkPortBinder {
       final List<Integer> candidatePorts,
       final Consumer<Integer, Exception> consumer) {
     final boolean isRange =
-        PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
+        PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
             customSendPortStrategy);
     boolean portFound = false;
     int index = 0;
     boolean searching = isRange || !candidatePorts.isEmpty();
     while (searching) {
-      int port = isRange ? minSendPortRange + index : candidatePorts.get(index);
+      final int port = isRange ? minSendPortRange + index : candidatePorts.get(index);
       try {
         consumer.accept(port);
         portFound = true;
         break;
-      } catch (Exception ignored) {
+      } catch (final Exception ignored) {
       }
       index++;
       searching = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;
     }
     if (!portFound) {
-      String exceptionMessage =
+      final String exceptionMessage =
           isRange
               ? String.format(
                   "Failed to find an available send port within the range %d to %d.",

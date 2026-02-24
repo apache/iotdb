@@ -67,25 +67,23 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
       final TEndPoint endpoint,
       final TAsyncClientManager tClientManager,
       final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager,
-      String customSendPortStrategy,
-      int minSendPortRange,
-      int maxSendPortRange,
-      List<Integer> candidatePorts)
+      final String customSendPortStrategy,
+      final int minSendPortRange,
+      final int maxSendPortRange,
+      final List<Integer> candidatePorts)
       throws IOException {
     super(
         property.getProtocolFactory(),
         tClientManager,
         TNonblockingTransportWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
-    SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
+    final SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
     IoTDBSinkPortBinder.bindPort(
         customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
         candidatePorts,
-        (sendPort) -> {
-          socketChannel.bind(new InetSocketAddress(sendPort));
-        });
+        (sendPort) -> socketChannel.bind(new InetSocketAddress(sendPort)));
     setTimeout(property.getConnectionTimeoutMs());
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endpoint;

@@ -61,14 +61,14 @@ public class PipeSinkConstant {
   public static final int CONNECTOR_IOTDB_SEND_PORT_MIN_VALUE = 0;
   public static final int CONNECTOR_IOTDB_SEND_PORT_MAX_VALUE = 65535;
   public static final String CONNECTOR_IOTDB_SEND_PORT_CANDIDATE_VALUE = "";
-  public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY = "range";
+  public static final String SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY = "range";
   public static final String CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_CANDIDATE_STRATEGY = "candidate";
   public static final Set<String> CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET =
       Collections.unmodifiableSet(
           new HashSet<>(
               Arrays.asList(
                   CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_CANDIDATE_STRATEGY,
-                  CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)));
+                  SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)));
 
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";
