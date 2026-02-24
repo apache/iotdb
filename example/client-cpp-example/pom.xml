@@ -140,7 +140,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
-                            <targetPath>${project.build.directory}</targetPath>
+                            <projectDirectory>${project.build.directory}</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                             </options>

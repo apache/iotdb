@@ -215,7 +215,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/main</sourcePath>
-                            <targetPath>${project.build.directory}/build/main</targetPath>
+                            <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
@@ -232,7 +232,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
-                            <targetPath>${project.build.directory}/build/test</targetPath>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
@@ -273,7 +273,7 @@
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
-                            <buildDirectory>${project.build.directory}/build/test</buildDirectory>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                             <skipTests>${ctest.skip.tests}</skipTests>
                         </configuration>
                     </execution>
