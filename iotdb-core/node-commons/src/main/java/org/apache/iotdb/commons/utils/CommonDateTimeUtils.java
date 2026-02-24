@@ -55,6 +55,18 @@ public class CommonDateTimeUtils {
     return result;
   }
 
+  public static long convertIoTDBTimeToMillis(long time) {
+    String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        return time / 1000_000;
+      case "us":
+        return time / 1000;
+      default:
+        return time;
+    }
+  }
+
   public static long currentTime() {
     long startupNano = CommonDescriptor.getInstance().getConfig().getStartUpNanosecond();
     String timePrecision = CommonDescriptor.getInstance().getConfig().getTimestampPrecision();

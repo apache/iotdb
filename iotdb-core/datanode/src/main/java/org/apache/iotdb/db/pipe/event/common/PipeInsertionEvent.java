@@ -56,6 +56,7 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
 
   protected String treeModelDatabaseName; // lazy initialization
   protected String tableModelDatabaseName; // lazy initialization
+  protected boolean shouldParse4Privilege = false;
 
   protected PipeInsertionEvent(
       final String pipeName,
@@ -63,7 +64,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String clientHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
@@ -77,7 +80,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        clientHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -95,7 +100,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String clientHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime,
@@ -107,7 +114,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        clientHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -115,14 +124,6 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
         databaseNameFromDataRegion,
         null,
         null);
-  }
-
-  public void markAsTableModelEvent() {
-    isTableModelEvent = Boolean.TRUE;
-  }
-
-  public void markAsTreeModelEvent() {
-    isTableModelEvent = Boolean.FALSE;
   }
 
   public boolean isTableModelEvent() {
@@ -168,5 +169,9 @@ public abstract class PipeInsertionEvent extends EnrichedEvent {
     // rename TreeModelDatabaseName as well.
     this.tableModelDatabaseName = tableModelDatabaseName.toLowerCase();
     this.treeModelDatabaseName = PathUtils.qualifyDatabaseName(tableModelDatabaseName);
+  }
+
+  public boolean shouldParse4Privilege() {
+    return shouldParse4Privilege;
   }
 }

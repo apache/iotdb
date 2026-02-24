@@ -183,8 +183,7 @@ public class TsFileAndModSettleTool {
         successCount++;
       } catch (Exception e) {
         logger.info(
-            "Meet error while settling the tsFile : {}", resourceToBeSettled.getTsFilePath());
-        e.printStackTrace();
+            "Meet error while settling the tsFile : {}", resourceToBeSettled.getTsFilePath(), e);
       }
     }
     if (resourcesToBeSettled.size() == successCount) {
@@ -352,7 +351,7 @@ public class TsFileAndModSettleTool {
         try {
           newTsFileResource.serialize();
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.error("fail to serialize new tsfile resource.", e);
         }
         File tmpResourceFile =
             fsFactory.getFile(

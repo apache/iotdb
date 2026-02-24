@@ -28,7 +28,7 @@
 ![](https://github-size-badge.herokuapp.com/apache/iotdb.svg)
 ![](https://img.shields.io/github/downloads/apache/iotdb/total.svg)
 ![](https://img.shields.io/badge/platform-win%20%7C%20macos%20%7C%20linux-yellow.svg)
-![](https://img.shields.io/badge/java--language-1.8%20%7C%2011%20%7C%2017-blue.svg)
+![](https://img.shields.io/badge/java--language-1.8+-blue.svg)
 [![Language grade: Java](https://img.shields.io/lgtm/grade/java/g/apache/iotdb.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/apache/iotdb/context:java)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
@@ -81,12 +81,12 @@ IoTDB的主要特点如下:
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ## 环境准备
 
 要使用IoTDB，您需要:
-1. Java >= 1.8 (目前 1.8、11 到 17 已经被验证可用。请确保环变量境路径已正确设置)。
+1. Java >= 1.8 (目前 1.8 到 25 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
 4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
@@ -108,7 +108,7 @@ IoTDB提供了三种安装方法，您可以参考以下建议，选择最适合
 
 * 使用Docker: dockerfile的路径是https://github.com/apache/iotdb/tree/master/docker/src/main
 
-在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+在这篇《快速入门》中，我们简要介绍如何使用源代码安装IoTDB。如需进一步资料，请参阅官网[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ## 从源码构建
 
@@ -182,10 +182,10 @@ git checkout rel/x.x
 
 配置文件在"conf"文件夹下
 * 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
-* 系统配置模块(`iotdb-datanode.properties`)
+* 系统配置模块(`iotdb-system.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)。
+有关详细信息，请参见[配置参数](https://iotdb.apache.org/zh/UserGuide/latest/Reference/DataNode-Config-Manual.html)。
 
 ## 开始
 
@@ -209,7 +209,7 @@ git checkout rel/x.x
 
 IoTDB提供了与服务器交互的不同方式，这里我们将介绍使用 Cli 工具插入和查询数据的基本步骤。
 
-安装 IoTDB 后，有一个默认的用户`root`，它的默认密码也是`root`。用户可以使用这个
+安装 IoTDB 后，有一个默认的用户`root`，它的默认密码是`root`。用户可以使用这个
 默认用户登录 Cli 并使用 IoTDB。Cli 的启动脚本是 sbin 文件夹中的 start-cli 脚本。
 在执行脚本时，用户应该指定 IP，端口，USER_NAME 和 密码。默认参数为`-h 127.0.0.1 -p 6667 -u root -pw root`。
 
@@ -364,7 +364,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/Master/QuickStart/QuickStart.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[用户指南](https://iotdb.apache.org/zh/UserGuide/latest/QuickStart/QuickStart.html)。
 
 ### 停止 IoTDB
 
@@ -378,12 +378,13 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 > sbin\stop-standalone.bat
 ```
 
-# 导入导出CSV工具
+# 数据导入导出工具
 
-查看 [导入导出CSV工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Import-Export-Tool.html)
+查看 [数据导入工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Data-Import-Tool.html)
+查看 [数据导出工具](https://iotdb.apache.org/zh/UserGuide/latest/Tools-System/Data-Export-Tool.html)
 
 # 常见编译错误
-查看 [常见编译错误](https://iotdb.apache.org/zh/Community/Development-Guide.html)
+查看 [常见编译错误](https://iotdb.apache.org/zh/Community/Development-Guide.html#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98)
 
 # 联系我们
 ### QQ群

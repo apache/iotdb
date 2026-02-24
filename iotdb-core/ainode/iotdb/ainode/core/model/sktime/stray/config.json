@@ -1,0 +1,11 @@
+{
+  "model_type": "sktime",
+  "model_id": "stray",
+  "alpha": 0.01,
+  "k": 10,
+  "knn_algorithm": "brute",
+  "p": 0.5,
+  "size_threshold": 50,
+  "outlier_tail": "max"
+}
+

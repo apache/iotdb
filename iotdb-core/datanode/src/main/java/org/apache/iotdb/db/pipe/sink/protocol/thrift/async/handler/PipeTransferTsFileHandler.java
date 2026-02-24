@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
@@ -41,8 +42,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,7 +90,6 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final AtomicBoolean isSealSignalSent;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
-  private volatile AsyncPipeDataTransferServiceClient client;
 
   public PipeTransferTsFileHandler(
       final IoTDBDataRegionAsyncSink connector,
@@ -126,11 +126,15 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     readFileBufferSize =
         (int)
             Math.min(
-                PipeConfig.getInstance().getPipeConnectorReadFileBufferSize(),
+                PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
                 transferMod ? Math.max(tsFile.length(), modFile.length()) : tsFile.length());
     position = 0;
 
     isSealSignalSent = new AtomicBoolean(false);
+  }
+
+  public File getTsFile() {
+    return tsFile;
   }
 
   public void transfer(
@@ -142,7 +146,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       memoryBlock =
           PipeDataNodeResourceManager.memory()
               .forceAllocateForTsFileWithRetry(
-                  PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()
+                  PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()
                       ? readFileBufferSize
                       : 0);
       readBuffer = new byte[readFileBufferSize];
@@ -365,17 +369,19 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   protected void onErrorInternal(final Exception exception) {
     try {
       if (events.size() <= 1 || LOGGER.isDebugEnabled()) {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (committer key {}, commit id {}).",
+        PipeLogger.log(
+            LOGGER::warn,
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (committer key %s, commit id %s).",
             tsFile,
             events.stream().map(EnrichedEvent::getCommitterKey).collect(Collectors.toList()),
-            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()),
-            exception);
+            events.stream().map(EnrichedEvent::getCommitIds).collect(Collectors.toList()));
       } else {
-        LOGGER.warn(
-            "Failed to transfer TsFileInsertionEvent {} (batched TableInsertionEvents)",
-            tsFile,
-            exception);
+        PipeLogger.log(
+            LOGGER::warn,
+            exception,
+            "Failed to transfer TsFileInsertionEvent %s (batched TableInsertionEvents).",
+            tsFile);
       }
     } catch (final Exception e) {
       LOGGER.warn("Failed to log error when failed to transfer file.", e);
@@ -409,7 +415,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          connector.addFailureEventsToRetryQueue(events);
+          connector.addFailureEventsToRetryQueue(events, exception);
         }
       }
     }
@@ -421,19 +427,19 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     }
 
     if (connector.isClosed()) {
-      try {
-        client.close();
-        client.invalidateAll();
-      } catch (final Exception e) {
-        LOGGER.warn(
-            "Failed to close or invalidate client when connector is closed. Client: {}, Exception: {}",
-            client,
-            e.getMessage(),
-            e);
-      }
+      closeClient();
     }
+
     client.setShouldReturnSelf(true);
-    client.returnSelf();
+    client.returnSelf(
+        (e) -> {
+          if (e instanceof IllegalStateException) {
+            LOGGER.info(
+                "Illegal state when return the client to object pool, maybe the pool is already cleared. Will ignore.");
+            return true;
+          }
+          return false;
+        });
     client = null;
   }
 
@@ -460,8 +466,10 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   @Override
   public void close() {
     super.close();
+
     if (memoryBlock != null) {
       memoryBlock.close();
+      memoryBlock = null;
     }
   }
 
@@ -469,7 +477,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
    * @param timeoutMs CAN NOT BE UNLIMITED, otherwise it may cause deadlock.
    */
   private void waitForResourceEnough4Slicing(final long timeoutMs) throws InterruptedException {
-    if (!PipeConfig.getInstance().isPipeConnectorReadFileBufferMemoryControlEnabled()) {
+    if (!PipeConfig.getInstance().isPipeSinkReadFileBufferMemoryControlEnabled()) {
       return;
     }
 

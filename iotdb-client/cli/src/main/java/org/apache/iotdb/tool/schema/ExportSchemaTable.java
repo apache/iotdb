@@ -28,9 +28,9 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 import org.apache.iotdb.tool.common.Constants;
 
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.collections4.MapUtils;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 
@@ -52,17 +52,21 @@ public class ExportSchemaTable extends AbstractExportSchema {
   private static Map<String, String> tableCommentList = new HashMap<>();
 
   public void init() throws InterruptedException {
-    sessionPool =
+    TableSessionPoolBuilder tableSessionPoolBuilder =
         new TableSessionPoolBuilder()
             .nodeUrls(Collections.singletonList(host + ":" + port))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableThriftCompression(false)
             .enableRedirection(false)
             .enableAutoFetch(false)
-            .database(database)
-            .build();
+            .database(database);
+    if (useSsl) {
+      tableSessionPoolBuilder =
+          tableSessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = tableSessionPoolBuilder.build();
     checkDatabase();
     try {
       parseTablesBySelectSchema(String.format(Constants.EXPORT_SCHEMA_TABLES_SELECT, database));
@@ -176,6 +180,16 @@ public class ExportSchemaTable extends AbstractExportSchema {
     }
   }
 
+  private String escapeSqlIdentifer(String identifier) {
+    if (StringUtils.isBlank(identifier)) {
+      return identifier;
+    }
+    if (identifier.contains("\"")) {
+      identifier = identifier.replace("\"", "\"\"");
+    }
+    return "\"" + identifier + "\"";
+  }
+
   @Override
   protected void exportSchemaToSqlFile() {
     File file = new File(targetDirectory);
@@ -191,17 +205,13 @@ public class ExportSchemaTable extends AbstractExportSchema {
       try (ITableSession session = sessionPool.getSession()) {
         sessionDataSet =
             session.executeQueryStatement(
-                String.format(Constants.EXPORT_SCHEMA_COLUMNS_SELECT, database, tableName));
-        exportSchemaBySelect(sessionDataSet, fileName, tableName, comment);
+                String.format(
+                    Constants.SHOW_CREATE_TABLE,
+                    escapeSqlIdentifer(database),
+                    escapeSqlIdentifer(tableName)));
+        exportSchemaByShowCreate(sessionDataSet, fileName, tableName);
       } catch (IoTDBConnectionException | StatementExecutionException | IOException e) {
-        try (ITableSession session = sessionPool.getSession()) {
-          sessionDataSet =
-              session.executeQueryStatement(
-                  String.format(Constants.EXPORT_SCHEMA_COLUMNS_DESC, database, tableName));
-          exportSchemaByDesc(sessionDataSet, fileName, tableName, comment);
-        } catch (IoTDBConnectionException | StatementExecutionException | IOException e1) {
-          ioTPrinter.println(Constants.COLUMN_SQL_MEET_ERROR_MSG + e.getMessage());
-        }
+        ioTPrinter.println(Constants.COLUMN_SQL_MEET_ERROR_MSG + e.getMessage());
       } finally {
         if (ObjectUtils.isNotEmpty(sessionDataSet)) {
           try {
@@ -211,6 +221,24 @@ public class ExportSchemaTable extends AbstractExportSchema {
           }
         }
       }
+    }
+  }
+
+  private void exportSchemaByShowCreate(
+      SessionDataSet sessionDataSet, String fileName, String tableName)
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    String dropSql =
+        String.format(Constants.DROP_TABLE_IF_EXIST, escapeSqlIdentifer(tableName)) + ";\n";
+    StringBuilder sb = new StringBuilder(dropSql);
+    try (FileWriter writer = new FileWriter(fileName, true)) {
+      while (sessionDataSet.hasNext()) {
+        RowRecord rowRecord = sessionDataSet.next();
+        String res = rowRecord.getField(1).getStringValue();
+        sb.append(res);
+        sb.append(";\n");
+      }
+      writer.append(sb.toString());
+      writer.flush();
     }
   }
 

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionHybridSource;
@@ -150,28 +150,28 @@ public class PipeRealtimeExtractTest {
 
       final PipeTaskRuntimeConfiguration configuration0 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion1),
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration1 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion1),
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration2 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion2),
                   new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1)));
       final PipeTaskRuntimeConfiguration configuration3 =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   "1",
                   1,
                   Integer.parseInt(dataRegion2),

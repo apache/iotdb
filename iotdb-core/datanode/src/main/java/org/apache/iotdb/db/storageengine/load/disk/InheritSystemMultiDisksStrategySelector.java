@@ -21,56 +21,28 @@ package org.apache.iotdb.db.storageengine.load.disk;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
 public class InheritSystemMultiDisksStrategySelector implements ILoadDiskSelector {
 
-  protected final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-  private static final Logger logger =
-      LoggerFactory.getLogger(InheritSystemMultiDisksStrategySelector.class);
+  protected static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  public InheritSystemMultiDisksStrategySelector() {
-    // empty body
+  protected final DiskDirectorySelector directorySelector;
+
+  public InheritSystemMultiDisksStrategySelector(final DiskDirectorySelector selector) {
+    this.directorySelector = selector;
   }
 
-  public File getTargetFile(
-      File fileToLoad,
-      String databaseName,
-      String dataRegionId,
-      long filePartitionId,
-      String tsfileName,
-      int tierLevel)
+  public File selectTargetDirectory(
+      final File sourceDirectory,
+      final String FileName,
+      final boolean appendFileName,
+      final int tierLevel)
       throws DiskSpaceInsufficientException, LoadFileException {
-    try {
-      return TierManager.getInstance()
-          .getFolderManager(tierLevel, false)
-          .getNextWithRetry(
-              folder -> {
-                return fsFactory.getFile(
-                    folder,
-                    databaseName
-                        + File.separatorChar
-                        + dataRegionId
-                        + File.separatorChar
-                        + filePartitionId
-                        + File.separator
-                        + tsfileName);
-              });
-    } catch (DiskSpaceInsufficientException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new LoadFileException(
-          String.format(
-              "Storage allocation failed for %s/%s/%s (tier %d)",
-              databaseName, dataRegionId, filePartitionId, tierLevel),
-          e);
-    }
+    return directorySelector.selectDirectory(sourceDirectory, FileName, tierLevel);
   }
 }

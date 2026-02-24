@@ -23,6 +23,10 @@
 #include <vector>
 #include <string>
 #include <thrift/transport/TTransport.h>
+#if WITH_SSL
+#include <thrift/transport/TSSLSocket.h>
+#endif
+
 #include "IClientRPCService.h"
 #include "common_types.h"
 #include "NodesSupplier.h"
@@ -37,8 +41,9 @@ public:
                       const std::string& zoneId,
                       std::shared_ptr<INodesSupplier> nodeSupplier,
                       int fetchSize = 10000,
-                      int maxRetries = 60,
+                      int maxRetries = 3,
                       int64_t retryInterval = 500,
+                      int64_t connectionTimeoutMs = 3 * 1000,
                       std::string dialect = "tree",
                       std::string db = "");
 
@@ -49,7 +54,7 @@ public:
 
     const TEndPoint& getEndPoint();
 
-    void init(const TEndPoint& endpoint);
+    void init(const TEndPoint& endpoint, bool useSSL, const std::string& trustCertFilePath);
 
     void insertStringRecord(const TSInsertStringRecordReq& request);
 
@@ -177,7 +182,10 @@ private:
     TSStatus insertTabletsInternal(TSInsertTabletsReq request);
 
     TSStatus deleteDataInternal(TSDeleteDataReq request);
-
+#if WITH_SSL
+    std::shared_ptr<apache::thrift::transport::TSSLSocketFactory> socketFactory_ =
+        std::make_shared<apache::thrift::transport::TSSLSocketFactory>();
+#endif
     std::shared_ptr<TTransport> transport;
     std::shared_ptr<IClientRPCServiceClient> client;
     Session* session;

@@ -46,7 +46,6 @@ import org.apache.iotdb.session.subscription.util.PollTimer;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -420,7 +419,7 @@ public abstract class SubscriptionPrefetchingQueue {
     }
   }
 
-  public void prefetchEvent(@NonNull final SubscriptionEvent thisEvent) {
+  public void prefetchEvent(final SubscriptionEvent thisEvent) {
     final SubscriptionEvent thatEvent = prefetchingQueue.peek();
     if (Objects.nonNull(thatEvent)) {
       if (thisEvent.compareTo(thatEvent) < 0) {
@@ -499,11 +498,7 @@ public abstract class SubscriptionPrefetchingQueue {
       if (event instanceof PipeTerminateEvent) {
         final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
         // add mark completed hook
-        terminateEvent.addOnCommittedHook(
-            () -> {
-              markCompleted();
-              return null;
-            });
+        terminateEvent.addOnCommittedHook(this::markCompleted);
         // commit directly
         ((PipeTerminateEvent) event)
             .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
@@ -619,11 +614,7 @@ public abstract class SubscriptionPrefetchingQueue {
     if (event instanceof PipeTerminateEvent) {
       final PipeTerminateEvent terminateEvent = (PipeTerminateEvent) event;
       // add mark completed hook
-      terminateEvent.addOnCommittedHook(
-          () -> {
-            markCompleted();
-            return null;
-          });
+      terminateEvent.addOnCommittedHook(this::markCompleted);
       // commit directly
       ((PipeTerminateEvent) event)
           .decreaseReferenceCount(SubscriptionPrefetchingQueue.class.getName(), true);
@@ -998,8 +989,8 @@ public abstract class SubscriptionPrefetchingQueue {
   }
 
   @SafeVarargs
-  private static @NonNull RemappingFunction<SubscriptionEvent> COMBINER(
-      final @NonNull RemappingFunction<SubscriptionEvent>... functions) {
+  private static RemappingFunction<SubscriptionEvent> COMBINER(
+      final RemappingFunction<SubscriptionEvent>... functions) {
     return (ev) -> {
       if (Objects.isNull(ev)) {
         return null;

@@ -539,7 +539,8 @@ public abstract class AbstractEnv implements BaseEnv {
       if (statusCode != 0) {
         logger.info("Node {} is not running due to {}", nodeWrapper.getId(), statusCode);
       }
-      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode()) {
+      if (statusCode == TSStatusCode.PORT_OCCUPIED.getStatusCode() || statusCode == 1) {
+        // the occupation of jmx port may return 1
         try {
           Map<Integer, Long> portOccupationMap =
               EnvUtils.listPortOccupation(
@@ -620,6 +621,14 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getAvailableConnection(String username, String password, String sqlDialect)
+      throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnection(null, username, password, sqlDialect),
+        getOneAvailableReadConnection(null, username, password, sqlDialect));
+  }
+
+  @Override
   public Connection getConnection(
       final DataNodeWrapper dataNodeWrapper,
       final String username,
@@ -670,7 +679,7 @@ public abstract class AbstractEnv implements BaseEnv {
         ? new ClusterTestConnection(
             getWriteConnection(version, username, password, sqlDialect),
             getReadConnections(version, username, password, sqlDialect))
-        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnecton();
+        : getWriteConnection(version, username, password, sqlDialect).getUnderlyingConnection();
   }
 
   @Override
@@ -819,15 +828,6 @@ public abstract class AbstractEnv implements BaseEnv {
   protected NodeConnection getWriteConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
-    DataNodeWrapper dataNode;
-
-    if (System.getProperty("RandomSelectWriteNode", "true").equalsIgnoreCase("true")) {
-      // Randomly choose a node for handling write requests
-      dataNode = this.dataNodeWrapperList.get(rand.nextInt(this.dataNodeWrapperList.size()));
-    } else {
-      dataNode = this.dataNodeWrapperList.get(0);
-    }
-
     return getWriteConnectionFromDataNodeList(
         this.dataNodeWrapperList, version, username, password, sqlDialect);
   }
@@ -905,6 +905,26 @@ public abstract class AbstractEnv implements BaseEnv {
                               BaseEnv.constructProperties(username, password, sqlDialect))));
             });
     return readConnRequestDelegate.requestAll();
+  }
+
+  protected List<NodeConnection> getOneAvailableReadConnection(
+      final Constant.Version version,
+      final String username,
+      final String password,
+      final String sqlDialect)
+      throws SQLException {
+    final List<DataNodeWrapper> dataNodeWrapperListCopy = new ArrayList<>(dataNodeWrapperList);
+    Collections.shuffle(dataNodeWrapperListCopy);
+    SQLException lastException = null;
+    for (final DataNodeWrapper dataNode : dataNodeWrapperListCopy) {
+      try {
+        return getReadConnections(version, dataNode, username, password, sqlDialect);
+      } catch (final SQLException e) {
+        lastException = e;
+      }
+    }
+    logger.error("Failed to get connection from any DataNode, last exception is ", lastException);
+    throw lastException;
   }
 
   protected List<NodeConnection> getReadConnections(

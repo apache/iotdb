@@ -26,10 +26,13 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,12 +41,12 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
-import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler.LoadCommand;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.MemTableFlushTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadAgent;
@@ -54,8 +57,11 @@ import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.strategy.DirectoryStrategyType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -74,19 +80,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static org.apache.iotdb.db.utils.constant.SqlConstant.ROOT;
-import static org.apache.iotdb.db.utils.constant.SqlConstant.TREE_MODEL_DATABASE_PREFIX;
 
 /**
  * {@link LoadTsFileManager} is used for dealing with {@link LoadTsFilePieceNode} and {@link
@@ -107,6 +112,12 @@ public class LoadTsFileManager {
   private static final AtomicReference<String[]> LOAD_BASE_DIRS =
       new AtomicReference<>(CONFIG.getLoadTsFileDirs());
   private static final AtomicReference<FolderManager> FOLDER_MANAGER = new AtomicReference<>();
+
+  public static final Cache<String, String> MEASUREMENT_ID_CACHE =
+      Caffeine.newBuilder()
+          .maximumWeight(CONFIG.getLoadMeasurementIdCacheSizeInBytes())
+          .weigher((String k, String v) -> v.length())
+          .build();
 
   private final Map<String, TsFileWriterManager> uuid2WriterManager = new ConcurrentHashMap<>();
 
@@ -203,7 +214,7 @@ public class LoadTsFileManager {
   }
 
   public void writeToDataRegion(DataRegion dataRegion, LoadTsFilePieceNode pieceNode, String uuid)
-      throws IOException {
+      throws IOException, PageException {
     if (!uuid2WriterManager.containsKey(uuid)) {
       synchronized (uuid2CleanupTask) {
         final CleanupTask cleanupTask =
@@ -337,7 +348,7 @@ public class LoadTsFileManager {
       final long writePointCount,
       final boolean isGeneratedByPipeConsensusLeader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
-        writePointCount, databaseName, dataRegion.getDataRegionId());
+        writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
         .count(
             writePointCount,
@@ -348,7 +359,7 @@ public class LoadTsFileManager {
             Tag.DATABASE.toString(),
             databaseName,
             Tag.REGION.toString(),
-            dataRegion.getDataRegionId(),
+            dataRegion.getDataRegionIdString(),
             Tag.TYPE.toString(),
             Metric.LOAD_POINT_COUNT.toString());
     // Because we cannot accurately judge who is the leader here,
@@ -359,7 +370,7 @@ public class LoadTsFileManager {
             .getReplicationNum(
                 ConsensusGroupId.Factory.create(
                     TConsensusGroupType.DataRegion.getValue(),
-                    Integer.parseInt(dataRegion.getDataRegionId())));
+                    Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
     if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
@@ -373,9 +384,22 @@ public class LoadTsFileManager {
               Tag.DATABASE.toString(),
               databaseName,
               Tag.REGION.toString(),
-              dataRegion.getDataRegionId(),
+              dataRegion.getDataRegionIdString(),
               Tag.TYPE.toString(),
               Metric.LOAD_POINT_COUNT.toString());
+    }
+  }
+
+  public static void cleanTsFile(final File tsFile) {
+    try {
+      Files.deleteIfExists(tsFile.toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).toPath());
+      Files.deleteIfExists(ModificationFile.getExclusiveMods(tsFile).toPath());
+      Files.deleteIfExists(
+          new File(tsFile.getAbsolutePath() + ModificationFileV1.FILE_SUFFIX).toPath());
+    } catch (final IOException e) {
+      LOGGER.warn("Delete After Loading {} error.", tsFile, e);
     }
   }
 
@@ -386,6 +410,7 @@ public class LoadTsFileManager {
     private Map<DataPartitionInfo, TsFileResource> dataPartition2Resource;
     private Map<DataPartitionInfo, IDeviceID> dataPartition2LastDevice;
     private Map<DataPartitionInfo, ModificationFile> dataPartition2ModificationFile;
+    private Map<IDeviceID, Set<DataPartitionInfo>> device2Partition;
     private boolean isClosed;
 
     private TsFileWriterManager(File taskDir) {
@@ -394,6 +419,7 @@ public class LoadTsFileManager {
       this.dataPartition2Resource = new HashMap<>();
       this.dataPartition2LastDevice = new HashMap<>();
       this.dataPartition2ModificationFile = new HashMap<>();
+      device2Partition = new HashMap<>();
       this.isClosed = false;
 
       clearDir(taskDir);
@@ -414,7 +440,8 @@ public class LoadTsFileManager {
      * BatchedAlignedChunkData, it may result in no data for the time column in the new file.
      */
     @SuppressWarnings("squid:S3824")
-    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData) throws IOException {
+    private void write(DataPartitionInfo partitionInfo, ChunkData chunkData)
+        throws IOException, PageException {
       if (isClosed) {
         throw new IOException(String.format(MESSAGE_WRITER_MANAGER_HAS_BEEN_CLOSED, taskDir));
       }
@@ -460,27 +487,48 @@ public class LoadTsFileManager {
       final String tableName =
           chunkData.getDevice() != null ? chunkData.getDevice().getTableName() : null;
       if (tableName != null
-          && !(tableName.startsWith(TREE_MODEL_DATABASE_PREFIX) || tableName.equals(ROOT))) {
-        writer
-            .getSchema()
-            .getTableSchemaMap()
-            .computeIfAbsent(
-                tableName,
-                t ->
-                    TableSchema.of(
-                            DataNodeTableCache.getInstance()
-                                .getTable(partitionInfo.getDataRegion().getDatabaseName(), t))
-                        .toTsFileTableSchemaNoAttribute());
+          && PathUtils.isTableModelDatabase(partitionInfo.getDataRegion().getDatabaseName())) {
+        // If the table does not exist, it means that the table is all deleted by mods
+        final TsTable table =
+            DataNodeTableCache.getInstance()
+                .getTable(partitionInfo.getDataRegion().getDatabaseName(), tableName, false);
+        if (Objects.nonNull(table)) {
+          writer
+              .getSchema()
+              .getTableSchemaMap()
+              .computeIfAbsent(
+                  tableName, t -> TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(table));
+        }
       }
 
-      if (!Objects.equals(chunkData.getDevice(), dataPartition2LastDevice.get(partitionInfo))) {
-        if (dataPartition2LastDevice.containsKey(partitionInfo)) {
-          writer.endChunkGroup();
-          writer.checkMetadataSizeAndMayFlush();
+      IDeviceID device = chunkData.getDevice();
+      IDeviceID lastDevice = dataPartition2LastDevice.get(partitionInfo);
+
+      if (!Objects.equals(device, lastDevice)) {
+        if (lastDevice != null && device2Partition.containsKey(lastDevice)) {
+          Set<DataPartitionInfo> partitions = device2Partition.get(lastDevice);
+          for (DataPartitionInfo partition : partitions) {
+            TsFileIOWriter w = dataPartition2Writer.get(partition);
+            if (dataPartition2LastDevice.containsKey(partition) && w != null) {
+              w.endChunkGroup();
+              w.checkMetadataSizeAndMayFlush();
+            }
+          }
+          device2Partition.remove(lastDevice);
         }
-        writer.startChunkGroup(chunkData.getDevice());
-        dataPartition2LastDevice.put(partitionInfo, chunkData.getDevice());
+        if (writer.isWritingChunkGroup()) {
+          LOGGER.warn(
+              "Writer {} for partition {} is already writing chunk group for device {}, but the last device is {}. ",
+              writer.getFile().getAbsolutePath(),
+              partitionInfo,
+              device,
+              lastDevice);
+        }
+        writer.startChunkGroup(device);
+        dataPartition2LastDevice.put(partitionInfo, device);
+        device2Partition.computeIfAbsent(device, k -> new HashSet<>()).add(partitionInfo);
       }
+
       chunkData.writeToFileWriter(writer);
     }
 
@@ -697,8 +745,10 @@ public class LoadTsFileManager {
         LOGGER.warn(MESSAGE_DELETE_FAIL, taskDir.getPath(), e);
       }
       dataPartition2Writer = null;
+      dataPartition2Resource = null;
       dataPartition2LastDevice = null;
       dataPartition2ModificationFile = null;
+      device2Partition = null;
       isClosed = true;
     }
   }
@@ -780,7 +830,7 @@ public class LoadTsFileManager {
       return String.join(
           IoTDBConstant.FILE_NAME_SEPARATOR,
           dataRegion.getDatabaseName(),
-          dataRegion.getDataRegionId(),
+          dataRegion.getDataRegionIdString(),
           Long.toString(timePartitionSlot.getStartTime()));
     }
 

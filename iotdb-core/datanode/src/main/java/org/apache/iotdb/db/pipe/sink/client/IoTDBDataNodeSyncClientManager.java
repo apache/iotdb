@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
@@ -51,7 +52,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -60,7 +61,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
       final String customSendPortStrategy,
       final int minSendPortRange,
       final int maxSendPortRange,
-      final List<Integer> candidatePorts) {
+      final List<Integer> candidatePorts,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useSSL,
@@ -68,7 +70,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         trustStorePwd,
         useLeaderCache,
         loadBalanceStrategy,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
@@ -77,7 +79,8 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
         customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
-        candidatePorts);
+        candidatePorts,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -103,6 +106,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
             && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+            && endPoint2ClientAndStatus.get(endPoint).getLeft() != null
         ? endPoint2ClientAndStatus.get(endPoint)
         : getClient();
   }
@@ -112,6 +116,7 @@ public class IoTDBDataNodeSyncClientManager extends IoTDBSyncClientManager
             && endPoint != null
             && endPoint2ClientAndStatus.containsKey(endPoint)
             && Boolean.TRUE.equals(endPoint2ClientAndStatus.get(endPoint).getRight())
+            && endPoint2ClientAndStatus.get(endPoint).getLeft() != null
         ? endPoint2ClientAndStatus.get(endPoint)
         : getClient();
   }

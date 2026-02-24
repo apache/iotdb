@@ -39,9 +39,9 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
   protected int registeredTaskCount;
 
   public PipeSinkSubtaskLifeCycle(
-      PipeSinkSubtaskExecutor executor,
-      PipeSinkSubtask subtask,
-      UnboundedBlockingPendingQueue<Event> pendingQueue) {
+      final PipeSinkSubtaskExecutor executor,
+      final PipeSinkSubtask subtask,
+      final UnboundedBlockingPendingQueue<Event> pendingQueue) {
     this.executor = executor;
     this.subtask = subtask;
     this.pendingQueue = pendingQueue;
@@ -123,7 +123,12 @@ public class PipeSinkSubtaskLifeCycle implements AutoCloseable {
     }
 
     if (runningTaskCount == 0) {
-      executor.start(subtask.getTaskID());
+      try {
+        subtask.increaseHighPriorityTaskCount();
+        executor.start(subtask.getTaskID());
+      } finally {
+        subtask.decreaseHighPriorityTaskCount();
+      }
     }
 
     runningTaskCount++;

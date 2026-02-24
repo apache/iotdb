@@ -58,7 +58,8 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final String templateFileName,
       final long templateFileLength,
       final CNSnapshotFileType fileType,
-      final String typeString)
+      final String typeString,
+      final String authUserName)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
     parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
@@ -72,6 +73,7 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
     }
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
+    parameters.put("authUserName", authUserName);
 
     return (PipeTransferConfigSnapshotSealReq)
         new PipeTransferConfigSnapshotSealReq()
@@ -103,7 +105,8 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
       final String templateFileName,
       final long templateFileLength,
       final CNSnapshotFileType fileType,
-      final String typeString)
+      final String typeString,
+      final String authUserName)
       throws IOException {
     final Map<String, String> parameters = new HashMap<>();
     parameters.put(ColumnHeaderConstant.PATH_PATTERN, treePattern);
@@ -117,6 +120,7 @@ public class PipeTransferConfigSnapshotSealReq extends PipeTransferFileSealReqV2
     }
     parameters.put(FILE_TYPE, Byte.toString(fileType.getType()));
     parameters.put(ColumnHeaderConstant.TYPE, typeString);
+    parameters.put("authUserName", authUserName);
     return new PipeTransferConfigSnapshotSealReq()
         .convertToTPipeTransferSnapshotSealBytes(
             Objects.nonNull(templateFileName)

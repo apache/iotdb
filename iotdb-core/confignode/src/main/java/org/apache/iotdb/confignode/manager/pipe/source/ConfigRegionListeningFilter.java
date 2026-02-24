@@ -23,8 +23,11 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
+import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -89,6 +92,12 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.UnsetTemplate, ConfigPhysicalPlanType.PipeUnsetTemplate)));
 
       OPTION_PLAN_MAP.put(
+          new PartialPath("schema.timeseries.ordinary.alter"),
+          Collections.unmodifiableList(
+              Arrays.asList(
+                  ConfigPhysicalPlanType.PipeAlterEncodingCompressor,
+                  ConfigPhysicalPlanType.PipeAlterTimeSeries)));
+      OPTION_PLAN_MAP.put(
           new PartialPath("schema.timeseries.ordinary.drop"),
           Collections.singletonList(ConfigPhysicalPlanType.PipeDeleteTimeSeries));
       OPTION_PLAN_MAP.put(
@@ -119,7 +128,8 @@ public class ConfigRegionListeningFilter {
                   ConfigPhysicalPlanType.RenameTable,
                   ConfigPhysicalPlanType.RenameView,
                   ConfigPhysicalPlanType.RenameTableColumn,
-                  ConfigPhysicalPlanType.RenameViewColumn)));
+                  ConfigPhysicalPlanType.RenameViewColumn,
+                  ConfigPhysicalPlanType.AlterColumnDataType)));
       OPTION_PLAN_MAP.put(
           new PartialPath("schema.table.drop"),
           Collections.unmodifiableList(
@@ -186,11 +196,18 @@ public class ConfigRegionListeningFilter {
           new PartialPath("auth.user.alter"),
           Collections.unmodifiableList(
               Arrays.asList(
-                  ConfigPhysicalPlanType.UpdateUser, ConfigPhysicalPlanType.RUpdateUser)));
+                  ConfigPhysicalPlanType.UpdateUser,
+                  ConfigPhysicalPlanType.UpdateUserV2,
+                  ConfigPhysicalPlanType.RUpdateUser,
+                  ConfigPhysicalPlanType.RUpdateUserV2)));
       OPTION_PLAN_MAP.put(
           new PartialPath("auth.user.drop"),
           Collections.unmodifiableList(
-              Arrays.asList(ConfigPhysicalPlanType.DropUser, ConfigPhysicalPlanType.RDropUser)));
+              Arrays.asList(
+                  ConfigPhysicalPlanType.DropUser,
+                  ConfigPhysicalPlanType.DropUserV2,
+                  ConfigPhysicalPlanType.RDropUser,
+                  ConfigPhysicalPlanType.RDropUserV2)));
 
       // Both
       OPTION_PLAN_MAP.put(
@@ -238,6 +255,23 @@ public class ConfigRegionListeningFilter {
     // Do not transfer roll back set template plan
     if (type.equals(ConfigPhysicalPlanType.CommitSetSchemaTemplate)
         && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
+      return false;
+    }
+
+    // system / audit DB
+    if (type.equals(ConfigPhysicalPlanType.DeleteDatabase)
+            && (((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.AUDIT_DATABASE)
+                || ((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.SYSTEM_DATABASE))
+        || (type.equals(ConfigPhysicalPlanType.CreateDatabase)
+                || type.equals(ConfigPhysicalPlanType.AlterDatabase))
+            && (((DatabaseSchemaPlan) plan)
+                    .getSchema()
+                    .getName()
+                    .equals(SchemaConstant.SYSTEM_DATABASE)
+                || ((DatabaseSchemaPlan) plan)
+                    .getSchema()
+                    .getName()
+                    .equals(SchemaConstant.AUDIT_DATABASE))) {
       return false;
     }
 

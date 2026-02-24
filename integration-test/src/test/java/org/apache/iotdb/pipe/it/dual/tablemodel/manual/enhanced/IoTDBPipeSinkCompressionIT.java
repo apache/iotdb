@@ -27,6 +27,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -71,18 +72,23 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    senderEnv.getConfig().getDataNodeConfig().setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setPipeAirGapReceiverEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -140,14 +146,13 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (2010-01-01T10:00:00+08:00, 1)",
               "insert into root.db.d1(time, s1) values (2010-01-02T10:00:00+08:00, 2)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
       final Map<String, String> extractorAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
       final Map<String, String> connectorAttributes = new HashMap<>();
@@ -180,12 +185,12 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("2,"),
           handleFailure);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (3, 3)",
@@ -194,15 +199,14 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s1) values (6, 6)",
               "insert into root.db.d1(time, s1) values (7, 7)",
               "insert into root.db.d1(time, s1) values (8, 8)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TableModelUtils.insertData("test", "test", 50, 100, senderEnv, true);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.s1),",
           Collections.singleton("8,"),
           handleFailure);
@@ -226,7 +230,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1(time, s1) values (1, 1)",
@@ -234,9 +238,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
               "insert into root.db.d1(time, s3) values (1, 1)",
               "insert into root.db.d1(time, s4) values (1, 1)",
               "insert into root.db.d1(time, s5) values (1, 1)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       // Create 5 pipes with different zstd compression levels, p4 and p5 should fail.
 
@@ -250,8 +253,7 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
                     + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='3',"
-                    + "'connector.rate-limit-bytes-per-second'='2048.0')",
+                    + "'connector.compressor.zstd.level'='3')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -268,7 +270,8 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
                     + "'connector.ip'='%s',"
                     + "'connector.port'='%s',"
                     + "'connector.compressor'='zstd, zstd',"
-                    + "'connector.compressor.zstd.level'='22')",
+                    + "'connector.compressor.zstd.level'='22',"
+                    + "'connector.rate-limit-bytes-per-second'='2048.0')",
                 receiverIp, receiverPort));
       } catch (SQLException e) {
         e.printStackTrace();
@@ -328,7 +331,9 @@ public class IoTDBPipeSinkCompressionIT extends AbstractPipeTableModelDualManual
         Assert.assertTrue(e.getMessage().contains("Zstd compression level should be in the range"));
       }
 
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(
           3,
           showPipeResult.stream()

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSslSyncSink;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,7 +47,7 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -55,7 +56,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
       final String customSendPortStrategy,
       final int minSendPortRange,
       final int maxSendPortRange,
-      List<Integer> candidatePorts) {
+      List<Integer> candidatePorts,
+      final boolean skipIfNoPrivileges) {
     clientManager =
         new IoTDBDataNodeSyncClientManager(
             nodeUrls,
@@ -64,7 +66,7 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
             trustStorePwd,
             useLeaderCache,
             loadBalanceStrategy,
-            username,
+            userEntity,
             password,
             shouldReceiverConvertOnTypeMismatch,
             loadTsFileStrategy,
@@ -73,7 +75,8 @@ public abstract class IoTDBDataNodeSyncSink extends IoTDBSslSyncSink {
             customSendPortStrategy,
             minSendPortRange,
             maxSendPortRange,
-            candidatePorts);
+            candidatePorts,
+            skipIfNoPrivileges);
     return clientManager;
   }
 }

@@ -19,33 +19,20 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.progress;
 
+import org.apache.iotdb.commons.pipe.agent.task.progress.interval.PipeCommitQueue;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Comparator;
-import java.util.Objects;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 /** Used to queue {@link Event}s for one pipe of one region to commit in order. */
 public class PipeEventCommitter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PipeEventCommitter.class);
-
   private final CommitterKey committerKey;
 
   private final AtomicLong commitIdGenerator = new AtomicLong(0);
-  private final AtomicLong lastCommitId = new AtomicLong(0);
 
-  private final PriorityBlockingQueue<EnrichedEvent> commitQueue =
-      new PriorityBlockingQueue<>(
-          11,
-          Comparator.comparing(
-              event ->
-                  Objects.requireNonNull(event, "committable event cannot be null").getCommitId()));
+  private final PipeCommitQueue commitQueue = new PipeCommitQueue();
 
   PipeEventCommitter(final CommitterKey committerKey) {
     // make it package-private
@@ -64,55 +51,6 @@ public class PipeEventCommitter {
       }
     }
     commitQueue.offer(event);
-
-    final int commitQueueSizeBeforeCommit = commitQueue.size();
-    if (LOGGER.isDebugEnabled()) {
-      if (commitQueueSizeBeforeCommit != 0 && commitQueueSizeBeforeCommit % 100 == 0) {
-        LOGGER.info(
-            "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
-            committerKey,
-            event.getCommitId(),
-            lastCommitId.get(),
-            commitQueueSizeBeforeCommit);
-      } else {
-        LOGGER.debug(
-            "COMMIT QUEUE OFFER: committer key {}, event commit id {}, last commit id {}, commit queue size {}",
-            committerKey,
-            event.getCommitId(),
-            lastCommitId.get(),
-            commitQueueSizeBeforeCommit);
-      }
-    }
-
-    while (!commitQueue.isEmpty()) {
-      final EnrichedEvent e = commitQueue.peek();
-
-      if (e.getCommitId() <= lastCommitId.get()) {
-        LOGGER.info(
-            "commit id is not monotonically increasing, current commit id: {}, last commit id: {}, event: {}, may be because the tsFile has been compacted",
-            e.getCommitId(),
-            lastCommitId.get(),
-            e.coreReportMessage());
-        commitQueue.poll();
-        continue;
-      }
-
-      if (e.getCommitId() != lastCommitId.get() + 1) {
-        break;
-      }
-
-      e.onCommitted();
-      lastCommitId.incrementAndGet();
-      commitQueue.poll();
-
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug(
-            "COMMIT QUEUE POLL: committer key {}, last commit id {}, commit queue size after commit {}",
-            committerKey,
-            lastCommitId.get(),
-            commitQueue.size());
-      }
-    }
   }
 
   //////////////////////////// APIs provided for metric framework ////////////////////////////
@@ -132,9 +70,5 @@ public class PipeEventCommitter {
 
   public long commitQueueSize() {
     return commitQueue.size();
-  }
-
-  public long getCurrentCommitId() {
-    return commitIdGenerator.get();
   }
 }

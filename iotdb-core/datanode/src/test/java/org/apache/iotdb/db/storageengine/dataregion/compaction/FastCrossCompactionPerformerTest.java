@@ -95,10 +95,10 @@ public class FastCrossCompactionPerformerTest extends AbstractCompactionTest {
     validateSeqFiles();
     super.tearDown();
     for (TsFileResource tsFileResource : seqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     targetResources.clear();
   }

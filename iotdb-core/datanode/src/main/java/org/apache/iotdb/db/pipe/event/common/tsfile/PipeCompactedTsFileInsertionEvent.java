@@ -56,12 +56,16 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         bindIsWithMod(originalEvents),
         bindIsLoaded(originalEvents),
         bindIsGeneratedByHistoricalExtractor(originalEvents),
+        // The table name shall not be used anymore when compacted
+        null,
         committerKey.getPipeName(),
         committerKey.getCreationTime(),
         anyOfOriginalEvents.getPipeTaskMeta(),
         anyOfOriginalEvents.getTreePattern(),
         anyOfOriginalEvents.getTablePattern(),
+        anyOfOriginalEvents.getUserId(),
         anyOfOriginalEvents.getUserName(),
+        anyOfOriginalEvents.getCliHostname(),
         anyOfOriginalEvents.isSkipIfNoPrivileges(),
         anyOfOriginalEvents.getStartTime(),
         anyOfOriginalEvents.getEndTime());
@@ -200,6 +204,8 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
           null, // PipePattern is not needed for dummy event
           null,
           null,
+          null,
+          null,
           true,
           Long.MIN_VALUE,
           Long.MAX_VALUE);
@@ -234,7 +240,9 @@ public class PipeCompactedTsFileInsertionEvent extends PipeTsFileInsertionEvent 
         final PipeTaskMeta pipeTaskMeta,
         final TreePattern treePattern,
         final TablePattern tablePattern,
+        final String userId,
         final String userName,
+        final String cliHostname,
         final boolean skipIfNoPrivileges,
         final long startTime,
         final long endTime) {

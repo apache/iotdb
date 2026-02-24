@@ -30,7 +30,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.File;
 

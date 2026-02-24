@@ -61,20 +61,22 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeDualTreeModelAutoIT {
     final Set<String> expectedResSet = new HashSet<>();
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.parallel.tasks", "3");
+      sourceAttributes.put("user", "root");
+
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.parallel.tasks", "3");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -82,23 +84,22 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.sg1.d1(time, s1) values (0, 1)",
               "insert into root.sg1.d1(time, s1) values (1, 2)",
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       expectedResSet.add("0,1.0,");
       expectedResSet.add("1,2.0,");
       expectedResSet.add("2,3.0,");
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "select * from root.**", "Time,root.sg1.d1.s1,", expectedResSet);
+          receiverEnv, "select * from root.sg1.**", "Time,root.sg1.d1.s1,", expectedResSet);
     }
   }
 }

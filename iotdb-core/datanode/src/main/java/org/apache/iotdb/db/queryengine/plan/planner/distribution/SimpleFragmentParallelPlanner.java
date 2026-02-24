@@ -144,6 +144,7 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
+            queryContext.isDebug(),
             fragment.isRoot());
 
     selectExecutorAndHost(
@@ -157,7 +158,9 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
         || analysis.getTreeStatement() instanceof ExplainAnalyzeStatement
         || analysis.getTreeStatement() instanceof ShowQueriesStatement
         || (analysis.getTreeStatement() instanceof ShowTimeSeriesStatement
-            && ((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat())) {
+            && (((ShowTimeSeriesStatement) analysis.getTreeStatement()).isOrderByHeat()
+                || ((ShowTimeSeriesStatement) analysis.getTreeStatement())
+                    .isOrderByTimeseries()))) {
       fragmentInstance.getFragment().generateTypeProvider(queryContext.getTypeProvider());
     }
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);

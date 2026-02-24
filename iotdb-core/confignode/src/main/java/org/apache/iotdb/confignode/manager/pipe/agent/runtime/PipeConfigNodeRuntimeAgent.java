@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.manager.pipe.agent.runtime;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalJobExecutor;
 import org.apache.iotdb.commons.pipe.agent.runtime.PipePeriodicalPhantomReferenceCleaner;
@@ -156,17 +155,11 @@ public class PipeConfigNodeRuntimeAgent implements IService {
 
     pipeTaskMeta.trackExceptionMessage(pipeRuntimeException);
 
-    // Stop all pipes locally if critical exception occurs
-    if (pipeRuntimeException instanceof PipeRuntimeCriticalException) {
-      PipeConfigNodeAgent.task().stopAllPipesWithCriticalException();
-    }
+    // Do not call "stopAllPipesWithCriticalException" because the sinks are not reused in
+    // ConfigNodeSubtask
   }
 
   /////////////////////////// Periodical Job Executor ///////////////////////////
-
-  public void registerPeriodicalJob(String id, Runnable periodicalJob, long intervalInSeconds) {
-    pipePeriodicalJobExecutor.register(id, periodicalJob, intervalInSeconds);
-  }
 
   public void registerPhantomReferenceCleanJob(
       String id, Runnable periodicalJob, long intervalInSeconds) {

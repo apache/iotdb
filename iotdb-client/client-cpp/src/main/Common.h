@@ -95,7 +95,8 @@ enum TSDataType {
     TIMESTAMP = (char)8,
     DATE = (char)9,
     BLOB = (char)10,
-    STRING = (char)11
+    STRING = (char)11,
+    OBJECT = (char)12
 };
 }
 
@@ -481,5 +482,23 @@ public:
     static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus& status);
 };
 
+class UrlUtils {
+private:
+    static const std::string PORT_SEPARATOR;
+    static const std::string ABB_COLON;
+
+    UrlUtils() = delete;
+    ~UrlUtils() = delete;
+
+public:
+    /**
+     * Parse TEndPoint from a given TEndPointUrl
+     * example:[D80:0000:0000:0000:ABAA:0000:00C2:0002]:22227
+     *
+     * @param endPointUrl ip:port
+     * @return TEndPoint with default values if parse error
+     */
+    static TEndPoint parseTEndPointIpv4AndIpv6Url(const std::string& endPointUrl);
+};
 
 #endif

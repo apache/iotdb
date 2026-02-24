@@ -24,11 +24,12 @@ import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskProcessorRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
@@ -39,7 +40,6 @@ import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   private final PipeTaskMeta pipeTaskMeta;
 
   // Pipe plugins for this subtask
-  private PipeExtractor extractor;
+  private PipeExtractor source;
 
   // TODO: currently unused
   @SuppressWarnings("unused")
@@ -65,9 +65,9 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
   public PipeConfigNodeSubtask(
       final String pipeName,
       final long creationTime,
-      final Map<String, String> extractorAttributes,
+      final Map<String, String> sourceAttributes,
       final Map<String, String> processorAttributes,
-      final Map<String, String> connectorAttributes,
+      final Map<String, String> sinkAttributes,
       final PipeTaskMeta pipeTaskMeta)
       throws Exception {
     // We initialize outputPipeConnector by initConnector()
@@ -75,34 +75,34 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     this.pipeName = pipeName;
     this.pipeTaskMeta = pipeTaskMeta;
 
-    initExtractor(extractorAttributes);
+    initSource(sourceAttributes);
     initProcessor(processorAttributes);
-    initConnector(connectorAttributes);
+    initSink(sinkAttributes);
 
     PipeConfigRegionSinkMetrics.getInstance().register(this);
     PipeEventCommitManager.getInstance()
         .register(pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeName + "_" + creationTime);
   }
 
-  private void initExtractor(final Map<String, String> extractorAttributes) throws Exception {
-    final PipeParameters extractorParameters = new PipeParameters(extractorAttributes);
+  private void initSource(final Map<String, String> sourceAttributes) throws Exception {
+    final PipeParameters sourceParameters = new PipeParameters(sourceAttributes);
 
     // 1. Construct extractor
-    extractor = PipeConfigNodeAgent.plugin().reflectExtractor(extractorParameters);
+    source = PipeConfigNodeAgent.plugin().reflectSource(sourceParameters);
 
     try {
       // 2. Validate extractor parameters
-      extractor.validate(new PipeParameterValidator(extractorParameters));
+      source.validate(new PipeParameterValidator(sourceParameters));
 
       // 3. Customize extractor
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
-              new PipeTaskExtractorRuntimeEnvironment(
+              new PipeTaskSourceRuntimeEnvironment(
                   pipeName, creationTime, CONFIG_REGION_ID.getId(), pipeTaskMeta));
-      extractor.customize(extractorParameters, runtimeConfiguration);
+      source.customize(sourceParameters, runtimeConfiguration);
     } catch (final Exception e) {
       try {
-        extractor.close();
+        source.close();
       } catch (Exception closeException) {
         LOGGER.warn(
             "Failed to close extractor after failed to initialize extractor. "
@@ -131,31 +131,30 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
                 runtimeConfiguration);
   }
 
-  private void initConnector(final Map<String, String> connectorAttributes) throws Exception {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
+  private void initSink(final Map<String, String> sinkAttributes) throws Exception {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
 
     // 1. Construct connector
-    outputPipeConnector = PipeConfigNodeAgent.plugin().reflectConnector(connectorParameters);
+    outputPipeSink = PipeConfigNodeAgent.plugin().reflectSink(sinkParameters);
 
     try {
       // 2. Validate connector parameters
-      outputPipeConnector.validate(new PipeParameterValidator(connectorParameters));
+      outputPipeSink.validate(new PipeParameterValidator(sinkParameters));
 
       // 3. Customize connector
       final PipeTaskRuntimeConfiguration runtimeConfiguration =
           new PipeTaskRuntimeConfiguration(
               new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, CONFIG_REGION_ID.getId()));
-      outputPipeConnector.customize(connectorParameters, runtimeConfiguration);
+      outputPipeSink.customize(sinkParameters, runtimeConfiguration);
 
       // 4. Handshake
-      outputPipeConnector.handshake();
+      outputPipeSink.handshake();
     } catch (final Exception e) {
       try {
-        outputPipeConnector.close();
+        outputPipeSink.close();
       } catch (final Exception closeException) {
         LOGGER.warn(
-            "Failed to close connector after failed to initialize connector. "
-                + "Ignore this exception.",
+            "Failed to close sink after failed to initialize it. Ignore this exception.",
             closeException);
       }
       throw e;
@@ -175,7 +174,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       return false;
     }
 
-    final Event event = lastEvent != null ? lastEvent : extractor.supply();
+    final Event event = lastEvent != null ? lastEvent : source.supply();
     // Record the last event for retry when exception occurs
     setLastEvent(event);
 
@@ -185,33 +184,13 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
       }
 
       if (!(event instanceof ProgressReportEvent)) {
-        outputPipeConnector.transfer(event);
+        outputPipeSink.transfer(event);
         PipeConfigRegionSinkMetrics.getInstance().markConfigEvent(taskID);
       }
       decreaseReferenceCountAndReleaseLastEvent(event, true);
-
-    } catch (final PipeException e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because pipe is dropped.",
-            e.getClass().getSimpleName(),
-            e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
     } catch (final Exception e) {
-      setLastExceptionEvent(event);
-      if (!isClosed.get()) {
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s", taskID, lastEvent),
-            e);
-      } else {
-        LOGGER.info("Exception in pipe transfer, ignored because pipe is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      handleException(event, e);
     }
 
     return true;
@@ -226,7 +205,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     PipeConfigRegionSinkMetrics.getInstance().deregister(taskID);
 
     try {
-      extractor.close();
+      source.close();
     } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeExtractor.", e);
     }
@@ -238,7 +217,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
     }
 
     try {
-      outputPipeConnector.close();
+      outputPipeSink.close();
     } catch (final Exception e) {
       LOGGER.info("Error occurred during closing PipeConnector.", e);
     } finally {
@@ -256,6 +235,7 @@ public class PipeConfigNodeSubtask extends PipeAbstractSinkSubtask {
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MAX_VALUE;
     PipeConfigNodeAgent.runtime().report(event, exception);
   }
 

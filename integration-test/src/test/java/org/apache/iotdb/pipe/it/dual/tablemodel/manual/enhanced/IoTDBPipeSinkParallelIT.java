@@ -93,16 +93,15 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("testPipe").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.sg1.d1(time, s1) values (0, 1)",
               "insert into root.sg1.d1(time, s1) values (1, 2)",
               "insert into root.sg1.d1(time, s1) values (2, 3)",
               "insert into root.sg1.d1(time, s1) values (3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
       TableModelUtils.insertData("test", "test", 100, 200, senderEnv);
       expectedResSet.add("0,1.0,");
       expectedResSet.add("1,2.0,");
@@ -110,7 +109,7 @@ public class IoTDBPipeSinkParallelIT extends AbstractPipeTableModelDualManualIT 
       expectedResSet.add("3,4.0,");
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select * from root.**",
+          "select * from root.sg1.**",
           "Time,root.sg1.d1.s1,",
           expectedResSet,
           handleFailure);

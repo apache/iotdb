@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -110,7 +111,8 @@ public class RepairDataFileScanUtil {
             tsfile.getPath(),
             resource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION)) {
+                : CompactionType.INNER_UNSEQ_COMPACTION,
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsfile.getAbsolutePath()))) {
       TsFileDeviceIterator deviceInFileIterator = reader.getAllDevicesIteratorWithIsAligned();
       Set<IDeviceID> deviceIdsInTimeIndex =
           checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();
@@ -281,7 +283,7 @@ public class RepairDataFileScanUtil {
       throws IOException {
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     reader.getDeviceTimeseriesMetadata(
-        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true);
+        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true, null);
     long actualDeviceStartTime = Long.MAX_VALUE;
     long actualDeviceEndTime = Long.MIN_VALUE;
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {

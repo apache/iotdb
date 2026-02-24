@@ -19,27 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
-import org.apache.iotdb.db.queryengine.plan.analyze.IModelFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.function.Exclude;
 import org.apache.iotdb.db.queryengine.plan.function.Repeat;
 import org.apache.iotdb.db.queryengine.plan.function.Split;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.db.queryengine.plan.relational.function.OperatorType;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.function.arithmetic.SubtractionResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnMetadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
@@ -51,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFound
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TreeDeviceViewSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -60,6 +58,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignature;
+import org.apache.iotdb.db.queryengine.plan.udf.BuiltinAggregationFunction;
 import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -81,6 +80,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.schema.table.InformationSchema.INFORMATION_DATABASE;
@@ -133,6 +133,7 @@ public class TestMetadata implements Metadata {
 
   public static final String DB2 = "db2";
   public static final String TABLE2 = "table2";
+  public static final String TABLE3 = "table3";
   private static final String S4 = "s4";
   private static final ColumnMetadata S4_CM = new ColumnMetadata(S4, TIMESTAMP);
 
@@ -142,7 +143,9 @@ public class TestMetadata implements Metadata {
   @Override
   public boolean tableExists(final QualifiedObjectName name) {
     return name.getDatabaseName().equalsIgnoreCase(DB1)
-        && name.getObjectName().equalsIgnoreCase(TABLE1);
+        && (name.getObjectName().equalsIgnoreCase(TABLE1)
+            || name.getObjectName().equalsIgnoreCase(TABLE2)
+            || name.getObjectName().equalsIgnoreCase(TABLE3));
   }
 
   @Override
@@ -229,7 +232,7 @@ public class TestMetadata implements Metadata {
               ColumnSchema.builder(S3_CM).setColumnCategory(TsTableColumnCategory.FIELD).build(),
               ColumnSchema.builder(S4_CM).setColumnCategory(TsTableColumnCategory.FIELD).build());
 
-      return Optional.of(new TableSchema(TABLE2, columnSchemas));
+      return Optional.of(new TableSchema(name.getObjectName(), columnSchemas));
     }
   }
 
@@ -239,8 +242,16 @@ public class TestMetadata implements Metadata {
       throws OperatorNotFoundException {
 
     switch (operatorType) {
-      case ADD:
       case SUBTRACT:
+        Optional<Type> resolvedType = SubtractionResolver.checkConditions(argumentTypes);
+        return resolvedType.orElseThrow(
+            () ->
+                new OperatorNotFoundException(
+                    operatorType,
+                    argumentTypes,
+                    new IllegalArgumentException(
+                        "The combination of argument types is not supported for this operator.")));
+      case ADD:
       case MULTIPLY:
       case DIVIDE:
       case MODULUS:
@@ -471,12 +482,25 @@ public class TestMetadata implements Metadata {
   }
 
   @Override
-  public Optional<TableSchema> validateTableHeaderSchema(
+  public Optional<TableSchema> validateTableHeaderSchema4TsFile(
       final String database,
       final TableSchema tableSchema,
       final MPPQueryContext context,
       final boolean allowCreateTable,
-      final boolean isStrictIdColumn) {
+      final boolean isStrictTagColumn,
+      final AtomicBoolean needDecode4DifferentTimeColumn) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void validateInsertNodeMeasurements(
+      final String database,
+      final InsertNodeMeasurementInfo measurementInfo,
+      final MPPQueryContext context,
+      final boolean allowCreateTable,
+      final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+      final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+
     throw new UnsupportedOperationException();
   }
 
@@ -534,21 +558,6 @@ public class TestMetadata implements Metadata {
     }
   }
 
-  @Override
-  public IModelFetcher getModelFetcher() {
-    String modelId = "timer_xl";
-    IModelFetcher fetcher = Mockito.mock(IModelFetcher.class);
-    ModelInferenceDescriptor descriptor = Mockito.mock(ModelInferenceDescriptor.class);
-    Mockito.when(descriptor.getTargetAINode()).thenReturn(new TEndPoint("127.0.0.1", 10810));
-    ModelInformation modelInformation = Mockito.mock(ModelInformation.class);
-    Mockito.when(modelInformation.available()).thenReturn(true);
-    Mockito.when(modelInformation.getInputShape()).thenReturn(new int[] {1440, 96});
-    Mockito.when(descriptor.getModelInformation()).thenReturn(modelInformation);
-    Mockito.when(descriptor.getModelName()).thenReturn(modelId);
-    Mockito.when(fetcher.fetchModel(modelId)).thenReturn(descriptor);
-    return fetcher;
-  }
-
   private static final DataPartition TABLE_DATA_PARTITION =
       MockTableModelDataPartition.constructDataPartition(DB1);
 
@@ -567,6 +576,11 @@ public class TestMetadata implements Metadata {
 
       @Override
       public SchemaPartition getSchemaPartition(PathPatternTree patternTree) {
+        return TABLE_SCHEMA_PARTITION;
+      }
+
+      @Override
+      public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
         return TABLE_SCHEMA_PARTITION;
       }
 
@@ -606,7 +620,10 @@ public class TestMetadata implements Metadata {
 
       @Override
       public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-          PathPatternTree patternTree, PathPatternTree scope, Integer level) {
+          PathPatternTree patternTree,
+          PathPatternTree scope,
+          Integer level,
+          boolean canSeeAuditDB) {
         return null;
       }
 

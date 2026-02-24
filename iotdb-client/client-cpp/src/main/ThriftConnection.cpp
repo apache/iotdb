@@ -64,11 +64,27 @@ void ThriftConnection::initZoneId() {
 void ThriftConnection::init(const std::string& username,
                             const std::string& password,
                             bool enableRPCCompression,
+                            bool useSSL,
+                            const std::string& trustCertFilePath,
                             const std::string& zoneId,
                             const std::string& version) {
-    std::shared_ptr<TSocket> socket(new TSocket(endPoint_.ip, endPoint_.port));
-    socket->setConnTimeout(connectionTimeoutInMs_);
-    transport_ = std::make_shared<TFramedTransport>(socket);
+    if (useSSL) {
+#if WITH_SSL
+        socketFactory_->loadTrustedCertificates(trustCertFilePath.c_str());
+        socketFactory_->authenticate(false);
+        auto sslSocket = socketFactory_->createSocket(endPoint_.ip, endPoint_.port);
+        sslSocket->setConnTimeout(connectionTimeoutInMs_);
+        transport_ = std::make_shared<TFramedTransport>(sslSocket);
+#else
+        throw IoTDBException("SSL/TLS support is not enabled in this build. "
+                    "Please rebuild with -DWITH_SSL=ON flag "
+                    "or use non-SSL connection.");
+#endif
+    } else {
+        auto socket = std::make_shared<TSocket>(endPoint_.ip, endPoint_.port);
+        socket->setConnTimeout(connectionTimeoutInMs_);
+        transport_ = std::make_shared<TFramedTransport>(socket);
+    }
     if (!transport_->isOpen()) {
         try {
             transport_->open();

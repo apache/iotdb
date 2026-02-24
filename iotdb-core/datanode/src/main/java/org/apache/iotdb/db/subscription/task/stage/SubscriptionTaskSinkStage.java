@@ -31,12 +31,12 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
 
   public SubscriptionTaskSinkStage(
-      String pipeName,
-      long creationTime,
-      PipeParameters pipeConnectorParameters,
-      int regionId,
-      PipeSinkSubtaskExecutor executor) {
-    super(pipeName, creationTime, pipeConnectorParameters, regionId, () -> executor);
+      final String pipeName,
+      final long creationTime,
+      final PipeParameters pipeSinkParameters,
+      final int regionId,
+      final PipeSinkSubtaskExecutor executor) {
+    super(pipeName, creationTime, pipeSinkParameters, regionId, () -> executor);
   }
 
   @Override
@@ -45,7 +45,7 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
         SubscriptionSinkSubtaskManager.instance()
             .register(
                 executor.get(),
-                pipeConnectorParameters,
+                pipeSinkParameters,
                 new PipeTaskSinkRuntimeEnvironment(pipeName, creationTime, regionId));
   }
 
@@ -70,7 +70,7 @@ public class SubscriptionTaskSinkStage extends PipeTaskSinkStage {
         .deregister(pipeName, creationTime, regionId, connectorSubtaskId);
   }
 
-  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue() {
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue() {
     return SubscriptionSinkSubtaskManager.instance()
         .getPipeConnectorPendingQueue(connectorSubtaskId);
   }

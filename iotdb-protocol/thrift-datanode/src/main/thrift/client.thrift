@@ -164,6 +164,35 @@ struct TSCloseOperationReq {
   1: required i64 sessionId
   2: optional i64 queryId
   3: optional i64 statementId
+  4: optional string preparedStatementName
+}
+
+// PREPARE
+struct TSPrepareReq {
+  1: required i64 sessionId
+  2: required string sql
+  3: required string statementName
+}
+
+struct TSPrepareResp {
+  1: required common.TSStatus status
+  2: optional i32 parameterCount
+}
+
+// EXECUTE
+struct TSExecutePreparedReq {
+  1: required i64 sessionId
+  2: required string statementName
+  3: required binary parameters
+  4: optional i32 fetchSize
+  5: optional i64 timeout
+  6: required i64 statementId
+}
+
+// DEALLOCATE
+struct TSDeallocatePreparedReq {
+  1: required i64 sessionId
+  2: required string statementName
 }
 
 struct TSFetchResultsReq{
@@ -242,6 +271,9 @@ struct TSInsertTabletReq {
   8: optional bool isAligned
   9: optional bool writeToTable
   10: optional list<byte> columnCategories
+  11: optional bool isCompressed
+  12: optional list<byte> encodingTypes
+  13: optional byte compressType
 }
 
 struct TSInsertTabletsReq {
@@ -382,22 +414,6 @@ struct TSAggregationQueryReq {
   9: optional i32 fetchSize
   10: optional i64 timeout
   11: optional bool legalPathNodes
-}
-
-struct TSGroupByQueryIntervalReq {
-  1: required i64 sessionId
-  2: required i64 statementId
-  3: required string device
-  4: required string measurement
-  5: required i32 dataType
-  6: required common.TAggregationType aggregationType
-  7: optional string database
-  8: optional i64 startTime
-  9: optional i64 endTime
-  10: optional i64 interval
-  11: optional i32 fetchSize
-  12: optional i64 timeout
-  13: optional bool isAligned
 }
 
 struct TSCreateMultiTimeseriesReq {
@@ -566,8 +582,6 @@ service IClientRPCService {
 
   TSExecuteStatementResp executeAggregationQueryV2(1:TSAggregationQueryReq req);
 
-  TSExecuteStatementResp executeGroupByQueryIntervalQuery(1:TSGroupByQueryIntervalReq req);
-
   TSFetchResultsResp fetchResultsV2(1:TSFetchResultsReq req);
 
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
@@ -589,6 +603,13 @@ service IClientRPCService {
   common.TSStatus cancelOperation(1:TSCancelOperationReq req);
 
   common.TSStatus closeOperation(1:TSCloseOperationReq req);
+
+  // PreparedStatement operations
+  TSPrepareResp prepareStatement(1:TSPrepareReq req);
+
+  TSExecuteStatementResp executePreparedStatement(1:TSExecutePreparedReq req);
+
+  common.TSStatus deallocatePreparedStatement(1:TSDeallocatePreparedReq req);
 
   TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 
@@ -683,5 +704,5 @@ service IClientRPCService {
   TSConnectionInfoResp fetchAllConnectionsInfo();
 
   /** For other node's call */
-  common.TSStatus testConnectionEmptyRPC()
+  common.TSStatus testConnectionEmptyRPC();
 }

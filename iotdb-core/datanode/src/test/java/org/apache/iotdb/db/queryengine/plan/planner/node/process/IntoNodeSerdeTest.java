@@ -21,13 +21,20 @@ package org.apache.iotdb.db.queryengine.plan.planner.node.process;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.plan.planner.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.DeviceViewIntoPathDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.IntoPathDescriptor;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 
+import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.read.common.type.FloatType;
+import org.apache.tsfile.read.common.type.StringType;
+import org.apache.tsfile.read.common.type.TimestampType;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,6 +42,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class IntoNodeSerdeTest {
 
@@ -79,5 +87,39 @@ public class IntoNodeSerdeTest {
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
     Assert.assertEquals(expectedNode, PlanNodeDeserializeHelper.deserialize(buffer));
+  }
+
+  @Test
+  public void testTableIntoSerde() throws IllegalPathException, IOException {
+    org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode expectedNode =
+        getRelationIntoNode();
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(baos);
+    expectedNode.serialize(dataOutputStream);
+    byte[] byteArray = baos.toByteArray();
+    ByteBuffer buffer = ByteBuffer.wrap(byteArray);
+    Assert.assertEquals(expectedNode, PlanNodeDeserializeHelper.deserialize(buffer));
+  }
+
+  private static org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode
+      getRelationIntoNode() {
+    List<ColumnSchema> sourceColumns =
+        ImmutableList.of(
+            new ColumnSchema("time", TimestampType.TIMESTAMP, false, TsTableColumnCategory.TIME),
+            new ColumnSchema("id", StringType.STRING, false, TsTableColumnCategory.TAG),
+            new ColumnSchema("voltage", FloatType.FLOAT, false, TsTableColumnCategory.FIELD));
+
+    List<Symbol> neededInputColumnNames =
+        ImmutableList.of(new Symbol("time"), new Symbol("voltage"), new Symbol("id"));
+
+    return new org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode(
+        new PlanNodeId("TestIntoNode"),
+        null,
+        "testdb",
+        "testtb",
+        sourceColumns,
+        neededInputColumnNames,
+        new Symbol("rows"));
   }
 }

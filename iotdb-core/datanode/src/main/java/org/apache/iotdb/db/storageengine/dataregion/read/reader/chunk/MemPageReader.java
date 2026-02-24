@@ -57,6 +57,9 @@ public class MemPageReader implements IPageReader {
 
   private PaginationController paginationController = UNLIMITED_PAGINATION_CONTROLLER;
 
+  // data type is modified in query and statistics cannot be used
+  private boolean modified;
+
   public MemPageReader(
       Supplier<TsBlock> tsBlockSupplier,
       int pageIndex,
@@ -105,6 +108,7 @@ public class MemPageReader implements IPageReader {
           case TEXT:
           case STRING:
           case BLOB:
+          case OBJECT:
             batchData.putBinary(
                 tsBlock.getTimeColumn().getLong(i), tsBlock.getColumn(0).getBinary(i));
             break;
@@ -222,7 +226,12 @@ public class MemPageReader implements IPageReader {
 
   @Override
   public boolean isModified() {
-    return false;
+    return modified;
+  }
+
+  @Override
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 
   @Override
@@ -266,6 +275,7 @@ public class MemPageReader implements IPageReader {
         case TEXT:
         case BLOB:
         case STRING:
+        case OBJECT:
           for (int i = 0; i < tsBlock.getPositionCount(); i++) {
             statistics.update(tsBlock.getTimeByIndex(i), tsBlock.getColumn(0).getBinary(i));
           }

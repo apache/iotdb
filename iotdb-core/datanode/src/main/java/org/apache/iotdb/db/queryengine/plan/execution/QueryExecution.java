@@ -71,9 +71,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     stateMachine.transitionToPlanned();
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
@@ -464,7 +464,7 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.transitionToFailed(t);
     TSStatus status = stateMachine.getFailureStatus();
     if (status != null) {
-      throw new IoTDBException(status.getMessage(), status.code);
+      throw new IoTDBException(status);
     } else {
       Throwable rootCause = stateMachine.getFailureException();
       if (rootCause != null) {
@@ -647,7 +647,12 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override
@@ -693,6 +698,16 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getUser() {
     return context.getSession().getUserName();
+  }
+
+  @Override
+  public String getClientHostname() {
+    return context.getCliHostname();
+  }
+
+  @Override
+  public boolean isDebug() {
+    return context.isDebug();
   }
 
   public MPPQueryContext getContext() {

@@ -18,11 +18,21 @@
  */
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+import org.apache.iotdb.commons.utils.AuthUtils;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.HashSet;
 import java.util.List;
@@ -31,6 +41,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class RelationalAuthorStatement extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(RelationalAuthorStatement.class);
 
   private final AuthorRType authorType;
 
@@ -40,10 +52,17 @@ public class RelationalAuthorStatement extends Statement {
   private String roleName;
 
   private String password;
+  private String oldPassword;
 
   private Set<PrivilegeType> privilegeType;
 
   private boolean grantOption;
+  private long executedByUserId;
+  private String newUsername = "";
+  private String loginAddr;
+
+  // the id of userName
+  private long associatedUserId = -1;
 
   public RelationalAuthorStatement(
       AuthorRType authorType,
@@ -140,12 +159,19 @@ public class RelationalAuthorStatement extends Statement {
     return privilegeIds;
   }
 
+  public long getExecutedByUserId() {
+    return executedByUserId;
+  }
+
   public void setDatabase(String database) {
     this.database = database;
   }
 
   public void setUserName(String userName) {
     this.userName = userName;
+    if (authorType != AuthorRType.CREATE_USER) {
+      this.associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    }
   }
 
   public void setRoleName(String roleName) {
@@ -156,6 +182,26 @@ public class RelationalAuthorStatement extends Statement {
     this.password = password;
   }
 
+  public void setExecutedByUserId(long executedByUserId) {
+    this.executedByUserId = executedByUserId;
+  }
+
+  public String getNewUsername() {
+    return newUsername;
+  }
+
+  public void setNewUsername(String newUsername) {
+    this.newUsername = newUsername;
+  }
+
+  public String getLoginAddr() {
+    return loginAddr;
+  }
+
+  public void setLoginAddr(String loginAddr) {
+    this.loginAddr = loginAddr;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
@@ -163,6 +209,7 @@ public class RelationalAuthorStatement extends Statement {
     RelationalAuthorStatement that = (RelationalAuthorStatement) o;
     return grantOption == that.grantOption
         && authorType == that.authorType
+        && Objects.equals(loginAddr, that.loginAddr)
         && Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(userName, that.userName)
@@ -216,6 +263,8 @@ public class RelationalAuthorStatement extends Statement {
       case REVOKE_ROLE_SYS:
       case REVOKE_USER_SYS:
       case REVOKE_USER_ROLE:
+      case RENAME_USER:
+      case ACCOUNT_UNLOCK:
         return QueryType.WRITE;
       case LIST_ROLE:
       case LIST_USER:
@@ -243,5 +292,188 @@ public class RelationalAuthorStatement extends Statement {
         + privilegeType
         + ", grantOption:"
         + grantOption;
+  }
+
+  /**
+   * Post-process when the statement is successfully executed.
+   *
+   * @return null if the post-process succeeds, a status otherwise.
+   */
+  public TSStatus onSuccess() {
+    if (authorType == AuthorRType.CREATE_USER) {
+      return onCreateUserSuccess();
+    } else if (authorType == AuthorRType.UPDATE_USER) {
+      return onUpdateUserSuccess();
+    } else if (authorType == AuthorRType.DROP_USER) {
+      return onDropUserSuccess();
+    }
+    return null;
+  }
+
+  private TSStatus onCreateUserSuccess() {
+    associatedUserId = AuthorityChecker.getUserId(userName).orElse(-1L);
+    // the old password is expected to be encrypted during updates, so we also encrypt it here to
+    // keep consistency
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPasswordHistory(
+            associatedUserId,
+            password,
+            AuthUtils.encryptPassword(password),
+            CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onUpdateUserSuccess() {
+    TSStatus tsStatus =
+        DataNodeAuthUtils.recordPasswordHistory(
+            associatedUserId, password, oldPassword, CommonDateTimeUtils.currentTime());
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  private TSStatus onDropUserSuccess() {
+    TSStatus tsStatus = DataNodeAuthUtils.deletePasswordHistory(associatedUserId);
+    try {
+      RpcUtils.verifySuccess(tsStatus);
+    } catch (StatementExecutionException e) {
+      return new TSStatus(e.getStatusCode()).setMessage(e.getMessage());
+    }
+    return null;
+  }
+
+  public String getOldPassword() {
+    return oldPassword;
+  }
+
+  public void setOldPassword(String oldPassword) {
+    this.oldPassword = oldPassword;
+  }
+
+  public TSStatus checkStatementIsValid(String currentUser) {
+    switch (authorType) {
+      case ACCOUNT_UNLOCK:
+        break;
+      case CREATE_USER:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create user has same name with admin user");
+        }
+        break;
+      case CREATE_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(roleName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot create role has same name with admin user");
+        }
+        break;
+      case DROP_USER:
+        if (AuthorityChecker.SUPER_USER.equals(userName) || userName.equals(currentUser)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop admin user or yourself");
+        }
+        break;
+      case DROP_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot drop role with admin name");
+        }
+        break;
+      case GRANT_ROLE_ANY:
+      case GRANT_USER_ANY:
+      case REVOKE_ROLE_ANY:
+      case REVOKE_USER_ANY:
+      case GRANT_USER_SYS:
+      case GRANT_ROLE_SYS:
+      case REVOKE_USER_SYS:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        break;
+      case GRANT_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot grant role to admin");
+        }
+        break;
+      case REVOKE_USER_ROLE:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(false, "Cannot revoke role from admin");
+        }
+        break;
+      case GRANT_ROLE_ALL:
+      case REVOKE_ROLE_ALL:
+      case GRANT_USER_ALL:
+      case REVOKE_USER_ALL:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke all privileges of admin user");
+        }
+        break;
+      case GRANT_USER_DB:
+      case GRANT_ROLE_DB:
+      case REVOKE_USER_DB:
+      case REVOKE_ROLE_DB:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to information_schema");
+        }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+        }
+        break;
+      case GRANT_USER_TB:
+      case GRANT_ROLE_TB:
+      case REVOKE_USER_TB:
+      case REVOKE_ROLE_TB:
+        if (AuthorityChecker.SUPER_USER.equals(userName)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant/revoke privileges of admin user");
+        }
+        if (InformationSchema.INFORMATION_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false, "Cannot grant or revoke any privileges to information_schema");
+        }
+        if (Audit.TABLE_MODEL_AUDIT_DATABASE.equals(database)) {
+          return AuthorityChecker.getTSStatus(
+              false,
+              "Cannot grant or revoke any privileges to " + Audit.TABLE_MODEL_AUDIT_DATABASE);
+        }
+        break;
+      default:
+        break;
+    }
+    return RpcUtils.SUCCESS_STATUS;
+  }
+
+  public long getAssociatedUserId() {
+    return associatedUserId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(tableName);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(userName);
+    size += RamUsageEstimator.sizeOf(roleName);
+    size += RamUsageEstimator.sizeOf(password);
+    size += RamUsageEstimator.sizeOf(oldPassword);
+    size += RamUsageEstimator.sizeOf(newUsername);
+    size += RamUsageEstimator.sizeOf(loginAddr);
+    size += RamUsageEstimator.sizeOfCollection(privilegeType);
+    return size;
   }
 }

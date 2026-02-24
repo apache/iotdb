@@ -20,13 +20,13 @@
 package org.apache.iotdb.commons.pipe.event;
 
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
-import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.agent.task.progress.CommitterKey;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.pipe.api.event.Event;
 
 import org.slf4j.Logger;
@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 
 /**
  * {@link EnrichedEvent} is an {@link Event} that can be enriched with additional runtime
@@ -78,8 +77,10 @@ public abstract class EnrichedEvent implements Event {
   protected boolean isTimeParsed;
 
   protected volatile boolean shouldReportOnCommit = true;
-  protected List<Supplier<Void>> onCommittedHooks = new ArrayList<>();
+  protected List<Runnable> onCommittedHooks = new ArrayList<>();
+  protected String userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges;
 
   protected EnrichedEvent(
@@ -88,7 +89,9 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -100,7 +103,9 @@ public abstract class EnrichedEvent implements Event {
     this.pipeTaskMeta = pipeTaskMeta;
     this.treePattern = treePattern;
     this.tablePattern = tablePattern;
+    this.userId = userId;
     this.userName = userName;
+    this.cliHostname = cliHostname;
     this.skipIfNoPrivileges = skipIfNoPrivileges;
     this.startTime = startTime;
     this.endTime = endTime;
@@ -110,14 +115,6 @@ public abstract class EnrichedEvent implements Event {
             && (tablePattern == null
                 || !tablePattern.hasUserSpecifiedDatabasePatternOrTablePattern());
     isTimeParsed = Long.MIN_VALUE == startTime && Long.MAX_VALUE == endTime;
-
-    addOnCommittedHook(
-        () -> {
-          if (shouldReportOnCommit) {
-            reportProgress();
-          }
-          return null;
-        });
   }
 
   protected void trackResource() {
@@ -283,14 +280,6 @@ public abstract class EnrichedEvent implements Event {
    */
   public abstract boolean internallyDecreaseResourceReferenceCount(final String holderMessage);
 
-  protected void reportProgress() {
-    if (pipeTaskMeta != null) {
-      final ProgressIndex progressIndex = getProgressIndex();
-      pipeTaskMeta.updateProgressIndex(
-          progressIndex == null ? MinimumProgressIndex.INSTANCE : progressIndex);
-    }
-  }
-
   /**
    * Externally skip the report of the processing {@link ProgressIndex} of this {@link
    * EnrichedEvent} when committed. Report by generated events are still allowed.
@@ -349,8 +338,16 @@ public abstract class EnrichedEvent implements Event {
     return tablePattern;
   }
 
+  public String getUserId() {
+    return userId;
+  }
+
   public String getUserName() {
     return userName;
+  }
+
+  public String getCliHostname() {
+    return cliHostname;
   }
 
   public boolean isSkipIfNoPrivileges() {
@@ -395,10 +392,25 @@ public abstract class EnrichedEvent implements Event {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime);
+
+  @TestOnly
+  public void setShouldReportOnCommit(final boolean shouldReportOnCommit) {
+    this.shouldReportOnCommit = shouldReportOnCommit;
+  }
+
+  public boolean isShouldReportOnCommit() {
+    return shouldReportOnCommit;
+  }
+
+  public List<Runnable> getOnCommittedHooks() {
+    return onCommittedHooks;
+  }
 
   public PipeTaskMeta getPipeTaskMeta() {
     return pipeTaskMeta;
@@ -411,6 +423,11 @@ public abstract class EnrichedEvent implements Event {
     return true;
   }
 
+  // If user has privilege: Do nothing
+  // If user doesn't have privilege, and skip if == true: set shouldParse4Privilege = true
+  // (The DeleteDataEvent will be parsed regardless of the flag, while insert node and tsFile will
+  // be parsed iff this flag == true)
+  // If user doesn't have privilege, and skip if == false: throw exception
   public void throwIfNoPrivilege() throws Exception {
     // Do nothing by default
   }
@@ -468,11 +485,7 @@ public abstract class EnrichedEvent implements Event {
     this.replicateIndexForIoTV2 = replicateIndexForIoTV2;
   }
 
-  public void onCommitted() {
-    onCommittedHooks.forEach(Supplier::get);
-  }
-
-  public void addOnCommittedHook(final Supplier<Void> hook) {
+  public void addOnCommittedHook(final Runnable hook) {
     onCommittedHooks.add(hook);
   }
 

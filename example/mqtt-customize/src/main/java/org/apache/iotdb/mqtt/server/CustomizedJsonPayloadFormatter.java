@@ -19,12 +19,12 @@
 
 package org.apache.iotdb.mqtt.server;
 
-import org.apache.iotdb.db.protocol.mqtt.Message;
-import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
-import org.apache.iotdb.db.protocol.mqtt.TreeMessage;
+import org.apache.iotdb.mqtt.Message;
+import org.apache.iotdb.mqtt.PayloadFormatter;
+import org.apache.iotdb.mqtt.TreeMessage;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;

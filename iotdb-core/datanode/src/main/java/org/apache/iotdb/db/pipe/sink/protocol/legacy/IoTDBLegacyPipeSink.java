@@ -37,6 +37,7 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.payload.legacy.TsFilePipeData;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeConnectorRuntimeConfiguration;
@@ -54,8 +55,8 @@ import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.session.pool.SessionPool;
 
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +89,7 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SYNC_CONNECTOR_VERSION_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
+import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
 @TreeModel
 public class IoTDBLegacyPipeSink implements PipeConnector {
@@ -109,7 +111,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   private String syncConnectorVersion;
 
   private String pipeName;
-  private String databaseName;
+  private String databaseName = "";
 
   private IoTDBSyncClient client;
 
@@ -202,10 +204,12 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     trustStore = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY);
     trustStorePwd = parameters.getString(SINK_IOTDB_SSL_TRUST_STORE_PWD_KEY);
 
-    databaseName =
+    final DataRegion dataRegion =
         StorageEngine.getInstance()
-            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()))
-            .getDatabaseName();
+            .getDataRegion(new DataRegionId(configuration.getRuntimeEnvironment().getRegionId()));
+    if (Objects.nonNull(dataRegion)) {
+      databaseName = dataRegion.getDatabaseName();
+    }
   }
 
   @Override
@@ -325,7 +329,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     final List<Tablet> tablets = pipeInsertNodeInsertionEvent.convertToTablets();
     for (int i = 0; i < tablets.size(); ++i) {
       final Tablet tablet = tablets.get(i);
-      if (Objects.isNull(tablet) || tablet.getRowSize() == 0) {
+      if (Objects.isNull(tablet) || isTabletEmpty(tablet)) {
         continue;
       }
       if (pipeInsertNodeInsertionEvent.isAligned(i)) {
@@ -337,7 +341,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransferWrapper(final PipeRawTabletInsertionEvent pipeRawTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     // We increase the reference count for this event to determine if the event may be released.
     if (!pipeRawTabletInsertionEvent.increaseReferenceCount(IoTDBLegacyPipeSink.class.getName())) {
       return;
@@ -351,7 +355,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
   }
 
   private void doTransfer(final PipeRawTabletInsertionEvent pipeTabletInsertionEvent)
-      throws PipeException, IoTDBConnectionException, StatementExecutionException {
+      throws Exception {
     final Tablet tablet = pipeTabletInsertionEvent.convertToTablet();
     if (pipeTabletInsertionEvent.isAligned()) {
       sessionPool.insertAlignedTablet(tablet);
@@ -385,7 +389,7 @@ public class IoTDBLegacyPipeSink implements PipeConnector {
     long position = 0;
 
     // Try small piece to rebase the file position.
-    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeConnectorReadFileBufferSize()];
+    final byte[] buffer = new byte[PipeConfig.getInstance().getPipeSinkReadFileBufferSize()];
     try (final RandomAccessFile randomAccessFile = new RandomAccessFile(file, "r")) {
       while (true) {
         final int dataLength = randomAccessFile.read(buffer);

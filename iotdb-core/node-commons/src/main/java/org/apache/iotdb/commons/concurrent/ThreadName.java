@@ -35,6 +35,7 @@ public enum ThreadName {
   FRAGMENT_INSTANCE_NOTIFICATION("Fragment-Instance-Notification"),
   FRAGMENT_INSTANCE_DISPATCH("Fragment-Instance-Dispatch"),
   DRIVER_TASK_SCHEDULER_NOTIFICATION("Driver-Task-Scheduler-Notification"),
+  EXPIRED_QUERIES_INFO_CLEAR("Expired-Queries-Info-Clear"),
   // -------------------------- MPP --------------------------
   MPP_COORDINATOR_SCHEDULED_EXECUTOR("MPP-Coordinator-Scheduled-Executor"),
   MPP_DATA_EXCHANGE_TASK_EXECUTOR("MPP-Data-Exchange-Task-Executors"),
@@ -152,6 +153,7 @@ public enum ThreadName {
   PIPE_RECEIVER_AIR_GAP_AGENT("Pipe-Receiver-Air-Gap-Agent"),
   PIPE_AIR_GAP_RECEIVER("Pipe-Air-Gap-Receiver"),
   PIPE_PARALLEL_EXECUTION_POOL("Pipe-Parallel-Execution-Pool"),
+  PIPE_TERMINATE_EXECUTION_POOL("Pipe-Terminate-Execution-Pool"),
   LOAD_DATATYPE_CONVERT_POOL("Load-Datatype-Convert-Pool"),
   SUBSCRIPTION_EXECUTOR_POOL("Subscription-Executor-Pool"),
   SUBSCRIPTION_RUNTIME_META_SYNCER("Subscription-Runtime-Meta-Syncer"),

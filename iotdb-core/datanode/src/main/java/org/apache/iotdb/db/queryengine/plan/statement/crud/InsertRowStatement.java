@@ -234,6 +234,13 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
         // if the type is binary and the value is already binary, do not convert
         if (values[i] != null && !(dataTypes[i].isBinary() && values[i] instanceof Binary)) {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString(), zoneId);
+        } else if (dataTypes[i] == TSDataType.OBJECT && values[i] instanceof Binary) {
+          if (((Binary) values[i]).getValues().length < 9
+              || ((Binary) values[i]).getValues()[0] != 0
+                  && ((Binary) values[i]).getValues()[0] != 1) {
+            throw new IllegalArgumentException(
+                "data type is not consistent, input " + values[i] + ", registered " + dataTypes[i]);
+          }
         }
       } catch (Exception e) {
         LOGGER.warn(
@@ -493,10 +500,10 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
   @TableModel
   public IDeviceID getTableDeviceID() {
     if (deviceID == null) {
-      String[] deviceIdSegments = new String[getIdColumnIndices().size() + 1];
+      String[] deviceIdSegments = new String[getTagColumnIndices().size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < getIdColumnIndices().size(); i++) {
-        final Integer columnIndex = getIdColumnIndices().get(i);
+      for (int i = 0; i < getTagColumnIndices().size(); i++) {
+        final Integer columnIndex = getTagColumnIndices().get(i);
         deviceIdSegments[i + 1] =
             values[columnIndex] != null ? values[columnIndex].toString() : null;
       }
@@ -534,6 +541,48 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     CommonUtils.swapArray(values, src, target);
   }
 
+  @TableModel
+  @Override
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Call parent to rebuild base arrays
+    super.rebuildArraysAfterExpansion(newToOldMapping, newMeasurements);
+
+    // Save old arrays
+    final Object[] oldValues = values;
+    final boolean[] oldMeasurementIsAligned = measurementIsAligned;
+
+    // Create new arrays
+    values = new Object[newLength];
+    final boolean[] newMeasurementIsAligned =
+        oldMeasurementIsAligned != null ? new boolean[newLength] : null;
+
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Missing TAG column, fill with default values
+        values[newIdx] = null; // TAG column values remain null by default
+        if (newMeasurementIsAligned != null) {
+          // Default to false for missing TAG columns
+          newMeasurementIsAligned[newIdx] = false;
+        }
+      } else {
+        // Copy from old array
+        values[newIdx] = oldValues[oldIdx];
+        if (newMeasurementIsAligned != null && oldMeasurementIsAligned != null) {
+          newMeasurementIsAligned[newIdx] = oldMeasurementIsAligned[oldIdx];
+        }
+      }
+    }
+
+    // Replace old array with new array
+    measurementIsAligned = newMeasurementIsAligned;
+  }
+
   @Override
   protected long calculateBytesUsed() {
     return INSTANCE_SIZE
@@ -547,5 +596,29 @@ public class InsertRowStatement extends InsertBaseStatement implements ISchemaVa
     if (values != null) {
       values = columnsToKeep.stream().map(i -> values[i]).toArray();
     }
+  }
+
+  @Override
+  public String getPipeLoggingString() {
+    return "InsertRowNode{"
+        + "deviceID="
+        + deviceID
+        + ", time="
+        + time
+        + ", valueLength="
+        + (Objects.nonNull(values) ? values.length : 0)
+        + '}';
+  }
+
+  @Override
+  public String toString() {
+    return "InsertRowNode{"
+        + "deviceID="
+        + deviceID
+        + ", time="
+        + time
+        + ", values="
+        + Arrays.toString(values)
+        + '}';
   }
 }

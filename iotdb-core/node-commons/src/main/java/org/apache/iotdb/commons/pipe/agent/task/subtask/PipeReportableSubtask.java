@@ -22,8 +22,10 @@ package org.apache.iotdb.commons.pipe.agent.task.subtask;
 import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
+import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkRetryTimesConfigurableException;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +51,11 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
       return;
     }
 
-    if (lastEvent instanceof EnrichedEvent) {
-      onEnrichedEventFailure(throwable);
+    if (lastEvent instanceof EnrichedEvent
+        && !(throwable instanceof PipeRuntimeSinkNonReportTimeConfigurableException)) {
+      onReportEventFailure(throwable);
     } else {
-      onNonEnrichedEventFailure(throwable);
+      onNonReportEventFailure(throwable);
     }
 
     // Although the pipe task will be stopped, we still don't release the last event here
@@ -75,7 +78,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     return sleepInterval;
   }
 
-  private void onEnrichedEventFailure(final Throwable throwable) {
+  private void onReportEventFailure(final Throwable throwable) {
     final int maxRetryTimes =
         throwable instanceof PipeRuntimeSinkRetryTimesConfigurableException
             ? ((PipeRuntimeSinkRetryTimesConfigurableException) throwable).getRetryTimes()
@@ -94,23 +97,18 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
     retryCount.incrementAndGet();
     if (retryCount.get() <= maxRetryTimes) {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
+          throwable,
           "Retry executing subtask {} (creation time: {}, simple class: {}), retry count [{}/{}], last exception: {}",
           taskID,
           creationTime,
           this.getClass().getSimpleName(),
           retryCount.get(),
           maxRetryTimes,
-          throwable.getMessage(),
-          throwable);
+          throwable.getMessage());
       try {
-        synchronized (highPriorityLockTaskCount) {
-          // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-          // no deadlock.
-          if (highPriorityLockTaskCount.get() == 0) {
-            highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
-          }
-        }
+        sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
       } catch (final InterruptedException e) {
         LOGGER.warn(
             "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -155,7 +153,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
 
   protected abstract void report(final EnrichedEvent event, final PipeRuntimeException exception);
 
-  private void onNonEnrichedEventFailure(final Throwable throwable) {
+  private void onNonReportEventFailure(final Throwable throwable) {
     if (retryCount.get() == 0) {
       LOGGER.warn(
           "Failed to execute subtask {} (creation time: {}, simple class: {}), "
@@ -168,7 +166,8 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     retryCount.incrementAndGet();
-    LOGGER.warn(
+    PipeLogger.log(
+        LOGGER::warn,
         "Retry executing subtask {} (creation time: {}, simple class: {}), retry count {}, last exception: {}",
         taskID,
         creationTime,
@@ -177,13 +176,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
         throwable.getMessage(),
         throwable);
     try {
-      synchronized (highPriorityLockTaskCount) {
-        // The wait operation will release the highPriorityLockTaskCount lock, so there will be
-        // no deadlock.
-        if (highPriorityLockTaskCount.get() == 0) {
-          highPriorityLockTaskCount.wait(getSleepIntervalBasedOnThrowable(throwable));
-        }
-      }
+      sleepIfNoHighPriorityTask(getSleepIntervalBasedOnThrowable(throwable));
     } catch (final InterruptedException e) {
       LOGGER.warn(
           "Interrupted when retrying to execute subtask {} (creation time: {}, simple class: {})",
@@ -194,5 +187,39 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     }
 
     submitSelf();
+  }
+
+  protected void preScheduleLowPriorityTask(int maxRetries) {
+    while (highPriorityLockTaskCount.get() != 0L && maxRetries-- > 0) {
+      try {
+        // Introduce a short delay to avoid CPU spinning
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        LOGGER.warn("Interrupted while waiting for the high priority lock task.", e);
+        break;
+      }
+    }
+  }
+
+  protected void sleepIfNoHighPriorityTask(long sleepMillis) throws InterruptedException {
+    synchronized (highPriorityLockTaskCount) {
+      // The wait operation will release the highPriorityLockTaskCount lock, so there will be
+      // no deadlock.
+      if (highPriorityLockTaskCount.get() > 0) {
+        highPriorityLockTaskCount.wait(sleepMillis);
+      }
+    }
+  }
+
+  public void increaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.incrementAndGet();
+    synchronized (highPriorityLockTaskCount) {
+      highPriorityLockTaskCount.notifyAll();
+    }
+  }
+
+  public void decreaseHighPriorityTaskCount() {
+    highPriorityLockTaskCount.decrementAndGet();
   }
 }

@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.exception.pipe.PipeRuntimeNonCriticalException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
@@ -53,7 +53,6 @@ import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.exception.PipeParameterNotValidException;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +62,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -121,6 +121,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   private boolean sloppyTimeRange; // true to disable time range filter after extraction
   private boolean sloppyPattern; // true to disable pattern filter after extraction
 
+  private AtomicLong extractEpochSize = new AtomicLong();
+
   // This queue is used to store pending events extracted by the method extract(). The method
   // supply() will poll events from this queue and send them to the next pipe plugin.
   protected final UnboundedBlockingPendingQueue<Event> pendingQueue =
@@ -130,7 +132,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeID;
   private String taskID;
+  protected long userId;
   protected String userName;
+  protected String cliHostname;
   protected boolean skipIfNoPrivileges = true;
 
   protected PipeRealtimeDataRegionSource() {
@@ -201,8 +205,8 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        (PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeTaskSourceRuntimeEnvironment environment =
+        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
@@ -275,12 +279,24 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
               EXTRACTOR_MODS_ENABLE_DEFAULT_VALUE || shouldExtractDeletion);
     }
 
+    userId =
+        parameters.getLongOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            -1);
+
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
 
@@ -336,7 +352,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public final void extract(final PipeRealtimeEvent event) {
     // The progress report event shall be directly extracted
     if (event.getEvent() instanceof ProgressReportEvent) {
-      extractDirectly(event);
+      extractProgressReportEvent(event);
       return;
     }
 
@@ -420,6 +436,18 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
       // Ignore this event.
       event.decreaseReferenceCount(PipeRealtimeDataRegionSource.class.getName(), false);
     }
+  }
+
+  protected void extractProgressReportEvent(final PipeRealtimeEvent event) {
+    if (pendingQueue.peekLast() instanceof ProgressReportEvent) {
+      final ProgressReportEvent oldEvent = (ProgressReportEvent) pendingQueue.peekLast();
+      oldEvent.bindProgressIndex(
+          oldEvent
+              .getProgressIndex()
+              .updateToMinimumEqualOrIsAfterProgressIndex(event.getProgressIndex()));
+      return;
+    }
+    extractDirectly(event);
   }
 
   protected void extractDirectly(final PipeRealtimeEvent event) {
@@ -511,8 +539,16 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return tablePattern;
   }
 
+  public long getUserId() {
+    return userId;
+  }
+
   public String getUserName() {
     return userName;
+  }
+
+  public String getCliHostname() {
+    return cliHostname;
   }
 
   public boolean isSkipIfNoPrivileges() {
@@ -531,8 +567,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return realtimeDataExtractionEndTime;
   }
 
-  public void setDataRegionTimePartitionIdBound(
-      @NonNull final Pair<Long, Long> timePartitionIdBound) {
+  public void setDataRegionTimePartitionIdBound(final Pair<Long, Long> timePartitionIdBound) {
     LOGGER.info(
         "PipeRealtimeDataRegionExtractor({}) observed data region {} time partition growth, recording time partition id bound: {}.",
         taskID,
@@ -633,5 +668,17 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   public String getTaskID() {
     return taskID;
+  }
+
+  public void increaseExtractEpochSize() {
+    extractEpochSize.incrementAndGet();
+  }
+
+  public void decreaseExtractEpochSize() {
+    extractEpochSize.decrementAndGet();
+  }
+
+  public boolean extractEpochSizeIsEmpty() {
+    return extractEpochSize.get() == 0;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -70,7 +71,7 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       final boolean useLeaderCache,
       final String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -79,14 +80,15 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
       String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
-      List<Integer> candidatePorts) {
+      List<Integer> candidatePorts,
+      final boolean skipIfNoPrivileges) {
     return new IoTDBConfigNodeSyncClientManager(
         nodeUrls,
         useSSL,
         Objects.nonNull(trustStorePath) ? ConfigNodeConfig.addHomeDir(trustStorePath) : null,
         trustStorePwd,
         loadBalanceStrategy,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
@@ -95,7 +97,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
         customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
-        candidatePorts);
+        candidatePorts,
+        skipIfNoPrivileges);
   }
 
   @Override
@@ -193,12 +196,11 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
           String.format(
               "Transfer config region write plan %s error, result status %s.",
               pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().getType(), status),
-          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString());
+          pipeConfigRegionWritePlanEvent.getConfigPhysicalPlan().toString(),
+          true);
     }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
-    }
+    LOGGER.info("Successfully transferred config event {}.", pipeConfigRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent)
@@ -254,7 +256,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
                   Objects.nonNull(templateFile) ? templateFile.getName() : null,
                   Objects.nonNull(templateFile) ? templateFile.length() : 0,
                   snapshotEvent.getFileType(),
-                  snapshotEvent.toSealTypeString()));
+                  snapshotEvent.toSealTypeString(),
+                  snapshotEvent.getAuthUserName()));
       rateLimitIfNeeded(
           snapshotEvent.getPipeName(),
           snapshotEvent.getCreationTime(),
@@ -283,7 +286,8 @@ public class IoTDBConfigRegionSink extends IoTDBSslSyncSink {
           String.format(
               "Seal config region snapshot file %s error, result status %s.",
               snapshotFile, resp.getStatus()),
-          snapshotFile.toString());
+          snapshotFile.toString(),
+          true);
     }
 
     LOGGER.info("Successfully transferred config region snapshot {}.", snapshotFile);

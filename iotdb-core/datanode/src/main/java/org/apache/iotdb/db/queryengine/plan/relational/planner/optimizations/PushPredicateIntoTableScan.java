@@ -56,17 +56,20 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 
@@ -98,6 +101,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.STATE_TABLE_MODEL;
+import static org.apache.iotdb.commons.schema.table.InformationSchema.CURRENT_QUERIES;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.ATTRIBUTE;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
@@ -440,6 +445,102 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitInformationSchemaTableScan(
+        InformationSchemaTableScanNode node, RewriteContext context) {
+      // no predicate or table is not current_queries, just return dierectly
+      if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
+        return node;
+      }
+
+      // push-down for CURRENT_QUERIES
+      if (CURRENT_QUERIES.equals(node.getQualifiedObjectName().getObjectName())) {
+        SplitExpression splitExpression = splitCurrentQueriesPredicate(context.inheritedPredicate);
+        // exist expressions can push down to scan operator
+        if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
+          List<Expression> expressions = splitExpression.getExpressionsCanPushDown();
+          checkState(expressions.size() == 1, "Unexpected number of expressions in table scan");
+          node.setPushDownPredicate(expressions.get(0));
+        }
+
+        // exist expressions cannot push down
+        if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
+          List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
+          return new FilterNode(
+              queryId.genPlanNodeId(),
+              node,
+              expressions.size() == 1
+                  ? expressions.get(0)
+                  : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
+        }
+        return node;
+      }
+
+      FilterNode filterNode =
+          new FilterNode(queryId.genPlanNodeId(), node, context.inheritedPredicate);
+      context.inheritedPredicate = TRUE_LITERAL;
+      return filterNode;
+    }
+
+    private SplitExpression splitCurrentQueriesPredicate(Expression predicate) {
+      List<Expression> expressionsCanPushDown = new ArrayList<>();
+      List<Expression> expressionsCannotPushDown = new ArrayList<>();
+
+      if (predicate instanceof LogicalExpression
+          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
+
+        // predicate like state = 'xxx' can be push down
+        // Note: the optimizer CanonicalizeExpressionRewriter will ensure the predicate like 'xxx' =
+        // state will be canonicalized to state = 'xxx'
+        boolean hasExpressionPushDown = false;
+        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
+          if (isStateComparedWithConstant(expression) && !hasExpressionPushDown) {
+            // if there are more than one state = 'xxx' terms, only add first to push-down candidate
+            expressionsCanPushDown.add(expression);
+            hasExpressionPushDown = true;
+          } else {
+            expressionsCannotPushDown.add(expression);
+          }
+        }
+
+        return new SplitExpression(
+            Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+      }
+
+      if (isStateComparedWithConstant(predicate)) {
+        expressionsCanPushDown.add(predicate);
+      } else {
+        expressionsCannotPushDown.add(predicate);
+      }
+
+      return new SplitExpression(
+          Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+    }
+
+    private boolean isStateComparedWithConstant(Expression expression) {
+      if (!(expression instanceof ComparisonExpression)) {
+        return false;
+      }
+
+      ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+
+      if (ComparisonExpression.Operator.EQUAL != comparisonExpression.getOperator()) {
+        return false;
+      }
+
+      if (!(comparisonExpression.getLeft() instanceof SymbolReference)
+          || !STATE_TABLE_MODEL.equals(
+              ((SymbolReference) comparisonExpression.getLeft()).getName())) {
+        return false;
+      }
+
+      if (!(comparisonExpression.getRight() instanceof StringLiteral)) {
+        return false;
+      }
+
+      return true;
+    }
+
+    @Override
     public PlanNode visitDeviceTableScan(
         DeviceTableScanNode tableScanNode, RewriteContext context) {
 
@@ -580,7 +681,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
               attributeColumns,
               queryContext);
       if (deviceEntriesMap.size() > 1) {
-        throw new SemanticException("Tree device view with multiple databases is unsupported yet.");
+        throw new SemanticException(
+            "Tree device view with multiple databases("
+                + deviceEntriesMap.keySet()
+                + ") is unsupported yet.");
       }
       final String deviceDatabase =
           !deviceEntriesMap.isEmpty() ? deviceEntriesMap.keySet().iterator().next() : null;
@@ -1149,6 +1253,32 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitRelationalInsertTablet(
         RelationalInsertTabletNode node, RewriteContext context) {
+      return node;
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, RewriteContext context) {
+      boolean modified = false;
+      ImmutableList.Builder<PlanNode> builder = ImmutableList.builder();
+      for (int i = 0; i < node.getChildren().size(); i++) {
+        Expression sourcePredicate =
+            inlineSymbols(node.sourceSymbolMap(i), context.inheritedPredicate);
+        PlanNode child = node.getChildren().get(i);
+        PlanNode rewritten = child.accept(this, new RewriteContext(sourcePredicate));
+        if (rewritten != child) {
+          modified = true;
+        }
+        builder.add(rewritten);
+      }
+
+      if (modified) {
+        return new UnionNode(
+            node.getPlanNodeId(),
+            builder.build(),
+            node.getSymbolMapping(),
+            node.getOutputSymbols());
+      }
+
       return node;
     }
 

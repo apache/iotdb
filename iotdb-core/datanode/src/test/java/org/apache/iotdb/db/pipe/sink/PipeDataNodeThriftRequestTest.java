@@ -261,7 +261,7 @@ public class PipeDataNodeThriftRequestTest {
       schemaList.add(new MeasurementSchema("s8", TSDataType.DATE));
       schemaList.add(new MeasurementSchema("s9", TSDataType.BLOB));
       schemaList.add(new MeasurementSchema("s10", TSDataType.STRING));
-      final Tablet t = new Tablet("root.sg.d", schemaList, 1024);
+      final Tablet t = new Tablet("t", schemaList, 1024);
       t.addTimestamp(0, 2000);
       t.addTimestamp(1, 1000);
       t.addValue("s1", 0, 2);
@@ -286,16 +286,16 @@ public class PipeDataNodeThriftRequestTest {
       final InsertBaseStatement statement =
           req.constructStatement(); // will call PipeTransferTabletRawReq.sortTablet() here
       List<PartialPath> paths = new ArrayList<>();
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s1"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s2"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s3"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s4"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s5"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s6"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s7"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s8"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s9"}));
-      paths.add(new PartialPath(new String[] {"root", "sg", "d", "s10"}));
+      paths.add(new PartialPath(new String[] {"t", "s1"}));
+      paths.add(new PartialPath(new String[] {"t", "s2"}));
+      paths.add(new PartialPath(new String[] {"t", "s3"}));
+      paths.add(new PartialPath(new String[] {"t", "s4"}));
+      paths.add(new PartialPath(new String[] {"t", "s5"}));
+      paths.add(new PartialPath(new String[] {"t", "s6"}));
+      paths.add(new PartialPath(new String[] {"t", "s7"}));
+      paths.add(new PartialPath(new String[] {"t", "s8"}));
+      paths.add(new PartialPath(new String[] {"t", "s9"}));
+      paths.add(new PartialPath(new String[] {"t", "s10"}));
       Assert.assertEquals(statement.getPaths(), paths);
 
       Assert.assertTrue(statement.isWriteToTable());
@@ -437,7 +437,7 @@ public class PipeDataNodeThriftRequestTest {
     try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
         final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       t.serialize(outputStream);
-      ReadWriteIOUtils.write(false, outputStream);
+      ReadWriteIOUtils.write(true, outputStream);
       tabletBuffers.add(
           ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size()));
       tabletDataBase.add("test");
@@ -459,7 +459,7 @@ public class PipeDataNodeThriftRequestTest {
         new byte[] {'a', 'b'}, deserializedReq.getBinaryReqs().get(0).getByteBuffer().array());
     Assert.assertEquals(node, deserializedReq.getInsertNodeReqs().get(0).getInsertNode());
     Assert.assertEquals(t, deserializedReq.getTabletReqs().get(0).getTablet());
-    Assert.assertFalse(deserializedReq.getTabletReqs().get(0).getIsAligned());
+    Assert.assertTrue(deserializedReq.getTabletReqs().get(0).getIsAligned());
 
     Assert.assertEquals("test", deserializedReq.getBinaryReqs().get(0).getDataBaseName());
     Assert.assertEquals("test", deserializedReq.getTabletReqs().get(0).getDataBaseName());

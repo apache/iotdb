@@ -29,11 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 
 import java.util.Map;
 
@@ -131,6 +133,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     }
 
     @Override
+    public PlanNode visitCteScan(CteScanNode node, Context context) {
+      context.setCanTransform(false);
+      return node;
+    }
+
+    @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       context.setTableScanNode(node);
       return node;
@@ -153,6 +161,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
       context.setCanTransform(false);
       return visitTableScan(node, context);
+    }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, Context context) {
+      context.setCanTransform(false);
+      return visitMultiChildProcess(node, context);
     }
   }
 

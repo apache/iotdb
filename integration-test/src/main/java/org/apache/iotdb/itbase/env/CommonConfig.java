@@ -38,7 +38,7 @@ public interface CommonConfig {
 
   CommonConfig setEncryptType(String encryptType);
 
-  CommonConfig setEncryptKeyPath(String encryptKeyPath);
+  CommonConfig setEnableGrantOption(boolean enableGrantOption);
 
   CommonConfig setConfigRegionRatisRPCLeaderElectionTimeoutMaxMs(int maxMs);
 
@@ -124,6 +124,8 @@ public interface CommonConfig {
 
   CommonConfig setSeriesSlotNum(int seriesSlotNum);
 
+  CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy);
+
   CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass);
 
   CommonConfig setSchemaMemoryAllocate(String schemaMemoryAllocate);
@@ -145,6 +147,8 @@ public interface CommonConfig {
   CommonConfig setDataRegionPerDataNode(double dataRegionPerDataNode);
 
   CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode);
+
+  CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
@@ -168,7 +172,11 @@ public interface CommonConfig {
   CommonConfig setPipeConnectorRequestSliceThresholdBytes(
       int pipeConnectorRequestSliceThresholdBytes);
 
+  CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled);
+
   CommonConfig setQueryMemoryProportion(String queryMemoryProportion);
+
+  CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
 
   CommonConfig setSubscriptionPrefetchTsFileBatchMaxDelayInMs(
       int subscriptionPrefetchTsFileBatchMaxDelayInMs);
@@ -176,9 +184,35 @@ public interface CommonConfig {
   CommonConfig setSubscriptionPrefetchTsFileBatchMaxSizeInBytes(
       int subscriptionPrefetchTsFileBatchMaxSizeInBytes);
 
-  CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled);
-
-  default CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  default CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
     return this;
   }
+
+  CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword);
+
+  CommonConfig setEnableInternalSSL(boolean enableInternalSSL);
+
+  CommonConfig setKeyStorePath(String keyStorePath);
+
+  CommonConfig setKeyStorePwd(String keyStorePwd);
+
+  CommonConfig setTrustStorePath(String trustStorePath);
+
+  CommonConfig setTrustStorePwd(String trustStorePwd);
+
+  CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion);
+
+  CommonConfig setEnableAuditLog(boolean enableAuditLog);
+
+  CommonConfig setAuditableOperationType(String auditableOperationType);
+
+  CommonConfig setAuditableOperationLevel(String auditableOperationLevel);
+
+  CommonConfig setAuditableOperationResult(String auditableOperationResult);
+
+  CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit);
+
+  CommonConfig setCteBufferSize(long cteBufferSize);
+
+  CommonConfig setMaxRowsInCteBuffer(int maxRows);
 }

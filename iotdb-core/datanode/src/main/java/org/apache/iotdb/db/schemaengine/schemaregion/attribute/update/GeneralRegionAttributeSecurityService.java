@@ -102,9 +102,7 @@ public class GeneralRegionAttributeSecurityService extends AbstractPeriodicalSer
     // UpdateClearContainer and version / TEndPoint are not calculated
     final AtomicInteger limit =
         new AtomicInteger(
-            CommonDescriptor.getInstance()
-                .getConfig()
-                .getPipeConnectorRequestSliceThresholdBytes());
+            CommonDescriptor.getInstance().getConfig().getPipeSinkRequestSliceThresholdBytes());
 
     final AtomicBoolean hasRemaining = new AtomicBoolean(false);
     final Map<SchemaRegionId, Pair<Long, Map<TDataNodeLocation, byte[]>>> attributeUpdateCommitMap =

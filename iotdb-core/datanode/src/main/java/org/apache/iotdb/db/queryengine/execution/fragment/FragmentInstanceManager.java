@@ -159,7 +159,8 @@ public class FragmentInstanceManager {
                                 instance.getSessionInfo(),
                                 dataRegion,
                                 instance.getGlobalTimePredicate(),
-                                dataNodeQueryContextMap));
+                                dataNodeQueryContextMap,
+                                instance.isDebug()));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -205,6 +206,7 @@ public class FragmentInstanceManager {
                   } else if (t instanceof UDFTypeMismatchException) {
                     stateMachine.failed(new SemanticException(t.getMessage()));
                   } else if (t instanceof UDFException) {
+                    logger.warn("Exception happened when executing UDTF: ", t);
                     stateMachine.failed(
                         new IoTDBRuntimeException(
                             t.getMessage(), TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode(), true));
@@ -268,7 +270,10 @@ public class FragmentInstanceManager {
                       instanceId,
                       fragmentInstanceId ->
                           createFragmentInstanceContext(
-                              fragmentInstanceId, stateMachine, instance.getSessionInfo()));
+                              fragmentInstanceId,
+                              stateMachine,
+                              instance.getSessionInfo(),
+                              instance.isDebug()));
 
               try {
                 List<PipelineDriverFactory> driverFactories =

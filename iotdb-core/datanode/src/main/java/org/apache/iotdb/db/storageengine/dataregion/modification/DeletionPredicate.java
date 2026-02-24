@@ -23,6 +23,8 @@ import org.apache.iotdb.db.utils.io.BufferSerializable;
 import org.apache.iotdb.db.utils.io.StreamSerializable;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,8 +37,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class DeletionPredicate implements StreamSerializable, BufferSerializable {
+public class DeletionPredicate implements StreamSerializable, BufferSerializable, Accountable {
 
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DeletionPredicate.class);
   private String tableName;
   private IDPredicate idPredicate = new NOP();
   // an empty list means affecting all columns
@@ -66,6 +70,14 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
 
   public void setIdPredicate(IDPredicate idPredicate) {
     this.idPredicate = idPredicate;
+  }
+
+  public IDPredicate getIdPredicate() {
+    return idPredicate;
+  }
+
+  public IDPredicate.IDPredicateType getIdPredicateType() {
+    return this.idPredicate.type;
   }
 
   public String getTableName() {
@@ -179,5 +191,13 @@ public class DeletionPredicate implements StreamSerializable, BufferSerializable
         + ", measurementNames="
         + measurementNames
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + RamUsageEstimator.sizeOf(tableName)
+        + RamUsageEstimator.sizeOfObject(idPredicate)
+        + RamUsageEstimator.sizeOfArrayList(measurementNames);
   }
 }

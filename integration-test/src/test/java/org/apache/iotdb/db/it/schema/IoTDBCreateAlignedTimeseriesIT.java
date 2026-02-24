@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -34,6 +35,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+
+import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -125,7 +129,7 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
     int count = 0;
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
       while (resultSet.next()) {
         String ActualResult =
             resultSet.getString(ColumnHeaderConstant.TIMESERIES)
@@ -140,5 +144,23 @@ public class IoTDBCreateAlignedTimeseriesIT extends AbstractSchemaIT {
       }
     }
     Assert.assertEquals(timeSeriesArray.length, count);
+  }
+
+  @Test
+  public void testDifferentDeviceAlignment() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // Should ignore the alignment difference
+      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+      // Should use the existing alignment
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      statement.execute("insert into root.sg2.d (time, s4) values (-1, 1)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from root.sg2.d"),
+          "Time,root.sg2.d.s3,root.sg2.d.s4,root.sg2.d.s1,root.sg2.d.s2,",
+          Collections.singleton("-1,null,1.0,null,null,"));
+    } catch (SQLException ignored) {
+      fail();
+    }
   }
 }

@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.pipe.sink.client;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
+import org.apache.iotdb.commons.client.util.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
@@ -87,7 +87,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     this.endPoint = new TEndPoint(ipAddress, port);
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
-      IoTDBConnectorPortBinder.bindPort(
+      IoTDBSinkPortBinder.bindPort(
           customSendPortStrategy,
           minSendPortRange,
           maxSendPortRange,
@@ -150,7 +150,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
 
   @Override
   public TPipeTransferResp pipeTransfer(final TPipeTransferReq req) throws TException {
-    final int bodySizeLimit = PipeConfig.getInstance().getPipeConnectorRequestSliceThresholdBytes();
+    final int bodySizeLimit = PipeConfig.getInstance().getPipeSinkRequestSliceThresholdBytes();
     if (req.getVersion() != IoTDBSinkRequestVersion.VERSION_1.getVersion()
         || req.body.limit() < bodySizeLimit) {
       return super.pipeTransfer(req);

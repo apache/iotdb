@@ -22,11 +22,13 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
@@ -59,10 +61,10 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       deviceIDs = new IDeviceID[getInsertRowNodeList().size()];
     }
     if (deviceIDs[rowIdx] == null) {
-      String[] deviceIdSegments = new String[idColumnIndices.size() + 1];
+      String[] deviceIdSegments = new String[tagColumnIndices.size() + 1];
       deviceIdSegments[0] = this.getTableName();
-      for (int i = 0; i < idColumnIndices.size(); i++) {
-        final Integer columnIndex = idColumnIndices.get(i);
+      for (int i = 0; i < tagColumnIndices.size(); i++) {
+        final Integer columnIndex = tagColumnIndices.get(i);
         deviceIdSegments[i + 1] =
             ((Object[]) getInsertRowNodeList().get(i).getValues()[columnIndex])[rowIdx].toString();
       }
@@ -159,6 +161,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
+    List<WritePlanNode> writePlanNodeList = new ArrayList<>();
     Map<TRegionReplicaSet, RelationalInsertRowsNode> splitMap = new HashMap<>();
     List<TEndPoint> redirectInfo = new ArrayList<>();
     for (int i = 0; i < getInsertRowNodeList().size(); i++) {
@@ -172,6 +175,7 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
                   insertRowNode.getDeviceID(),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
+
       // Collect redirectInfo
       redirectInfo.add(dataRegionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
       RelationalInsertRowsNode tmpNode = splitMap.get(dataRegionReplicaSet);
@@ -185,11 +189,19 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       }
     }
     analysis.setRedirectNodeList(redirectInfo);
+    writePlanNodeList.addAll(splitMap.values());
 
-    return new ArrayList<>(splitMap.values());
+    return writePlanNodeList;
   }
 
   public RelationalInsertRowsNode emptyClone() {
     return new RelationalInsertRowsNode(this.getPlanNodeId());
+  }
+
+  @Override
+  public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
+    for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
+      insertRowNode.checkDataType(memTable);
+    }
   }
 }

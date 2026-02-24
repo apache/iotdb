@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.manager.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
@@ -41,7 +42,7 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       /* The following parameters are used locally. */
       String loadBalanceStrategy,
       /* The following parameters are used to handshake with the receiver. */
-      String username,
+      UserEntity userEntity,
       String password,
       boolean shouldReceiverConvertOnTypeMismatch,
       String loadTsFileStrategy,
@@ -50,7 +51,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
       String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
-      List<Integer> candidatePorts) {
+      List<Integer> candidatePorts,
+      final boolean skipIfNoPrivileges) {
     super(
         endPoints,
         useSSL,
@@ -58,7 +60,7 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         trustStorePwd,
         false,
         loadBalanceStrategy,
-        username,
+        userEntity,
         password,
         shouldReceiverConvertOnTypeMismatch,
         loadTsFileStrategy,
@@ -67,7 +69,8 @@ public class IoTDBConfigNodeSyncClientManager extends IoTDBSyncClientManager {
         customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
-        candidatePorts);
+        candidatePorts,
+        skipIfNoPrivileges);
   }
 
   @Override

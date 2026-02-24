@@ -159,6 +159,10 @@ public class IoTDBCaseWhenThenTableIT {
         "select case when s1<=0 then true else 22 end from table1",
         "701: All CASE results must be the same type or coercible to a common type. Cannot find common type between BOOLEAN and INT32, all types (without duplicates): [BOOLEAN, INT32]",
         DATABASE);
+    tableAssertTestFail(
+        "select case when s1<=0 then 0 when s1>1 then null end from table1",
+        "701: All result types must be the same:",
+        DATABASE);
 
     // TEXT and other types cannot exist at the same time
     retArray = new String[] {"good,", "bad,", "okok,", "okok,"};

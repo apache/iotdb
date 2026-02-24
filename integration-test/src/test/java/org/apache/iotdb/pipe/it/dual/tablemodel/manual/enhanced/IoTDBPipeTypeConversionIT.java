@@ -247,11 +247,12 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
         String.format(
             "create table %s2%s (s1 string tag, status %s field)",
             sourceTypeName, targetTypeName, dataType);
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null,
         BaseEnv.TABLE_SQL_DIALECT,
         env,
-        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery));
+        Arrays.asList("create database if not exists test", "use test", timeSeriesCreationQuery),
+        null);
   }
 
   private void createDataPipe() {
@@ -262,8 +263,8 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='tablet')",
             receiverEnv.getIP(), receiverEnv.getPort());
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
+    TestUtils.executeNonQueries(
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
   private List<Pair> createTestDataForType(String sourceType) {
@@ -298,39 +299,44 @@ public class IoTDBPipeTypeConversionIT extends AbstractPipeTableModelDualManualI
     switch (sourceType) {
       case STRING:
       case TEXT:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForString(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForString(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case TIMESTAMP:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForTimestamp(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case DATE:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForLocalDate(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       case BLOB:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForBlob(testData, sourceType.name(), targetType.name()),
+            null);
         return;
       default:
-        TestUtils.tryExecuteNonQueriesWithRetry(
+        TestUtils.executeNonQueries(
             "test",
             BaseEnv.TABLE_SQL_DIALECT,
             senderEnv,
-            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()));
+            createInsertStatementsForNumeric(testData, sourceType.name(), targetType.name()),
+            null);
     }
   }
 

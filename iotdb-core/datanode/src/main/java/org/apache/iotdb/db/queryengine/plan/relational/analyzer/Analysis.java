@@ -69,6 +69,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -122,6 +124,10 @@ public class Analysis implements IAnalysis {
   private String updateType;
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
+
+  // WITH clause stored during analyze phase. Required for constant folding and CTE materialization
+  // subqueries, which cannot directly access the WITH clause
+  private With with;
 
   // map expandable query to the node being the inner recursive reference
   private final Map<NodeRef<Query>, Node> expandableNamedQueries = new LinkedHashMap<>();
@@ -228,6 +234,8 @@ public class Analysis implements IAnalysis {
   private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions =
       new LinkedHashMap<>();
 
+  private Insert insert;
+
   private DataPartition dataPartition;
 
   // only be used in write plan and won't be used in query
@@ -249,6 +257,11 @@ public class Analysis implements IAnalysis {
   private boolean emptyDataSource = false;
 
   private boolean isQuery = false;
+
+  // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
+  // in advance (predicate folding). The planner needs to parse and execute these subqueries
+  // independently to utilize predicate pushdown optimization.
+  private SqlParser sqlParser;
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -272,8 +285,28 @@ public class Analysis implements IAnalysis {
     this.updateType = updateType;
   }
 
+  public SqlParser getSqlParser() {
+    return sqlParser;
+  }
+
+  public void setSqlParser(SqlParser sqlParser) {
+    this.sqlParser = sqlParser;
+  }
+
   public Query getNamedQuery(Table table) {
     return namedQueries.get(NodeRef.of(table));
+  }
+
+  public Map<NodeRef<Table>, Query> getNamedQueries() {
+    return namedQueries;
+  }
+
+  public With getWith() {
+    return with;
+  }
+
+  public void setWith(With with) {
+    this.with = with;
   }
 
   public boolean isAnalyzed(Expression expression) {
@@ -1513,5 +1546,32 @@ public class Analysis implements IAnalysis {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public void setInsert(Insert insert) {
+    this.insert = insert;
+  }
+
+  public Insert getInsert() {
+    return insert;
+  }
+
+  public static final class Insert {
+    private final Table table;
+    private final List<ColumnSchema> columns;
+
+    public Insert(Table table, List<ColumnSchema> columns) {
+      this.table = requireNonNull(table, "table is null");
+      this.columns = requireNonNull(columns, "columns is null");
+      checkArgument(!columns.isEmpty(), "No columns given to insert");
+    }
+
+    public Table getTable() {
+      return table;
+    }
+
+    public List<ColumnSchema> getColumns() {
+      return columns;
+    }
   }
 }

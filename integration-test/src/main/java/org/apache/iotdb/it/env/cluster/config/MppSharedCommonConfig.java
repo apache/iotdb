@@ -83,9 +83,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setEncryptKeyPath(String encryptKeyPath) {
-    cnConfig.setProperty("encrypt_key_path", encryptKeyPath);
-    dnConfig.setProperty("encrypt_key_path", encryptKeyPath);
+  public CommonConfig setEnableGrantOption(boolean enableGrantOption) {
+    cnConfig.setEnableGrantOption(enableGrantOption);
+    dnConfig.setEnableGrantOption(enableGrantOption);
     return this;
   }
 
@@ -390,6 +390,12 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setDataPartitionAllocationStrategy(String dataPartitionAllocationStrategy) {
+    cnConfig.setDataPartitionAllocationStrategy(dataPartitionAllocationStrategy);
+    return this;
+  }
+
+  @Override
   public CommonConfig setSeriesPartitionExecutorClass(String seriesPartitionExecutorClass) {
     cnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
     dnConfig.setSeriesPartitionExecutorClass(seriesPartitionExecutorClass);
@@ -463,6 +469,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   public CommonConfig setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
     dnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
     cnConfig.setSchemaRegionPerDataNode(schemaRegionPerDataNode);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled) {
+    dnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
+    cnConfig.setPipeMemoryManagementEnabled(pipeMemoryManagementEnabled);
     return this;
   }
 
@@ -542,9 +555,23 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeAutoSplitFullEnabled(boolean pipeAutoSplitFullEnabled) {
+    dnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    cnConfig.setPipeAutoSplitFullEnabled(pipeAutoSplitFullEnabled);
+    return this;
+  }
+
+  @Override
   public CommonConfig setQueryMemoryProportion(String queryMemoryProportion) {
     dnConfig.setQueryMemoryProportion(queryMemoryProportion);
     cnConfig.setQueryMemoryProportion(queryMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    dnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
+    cnConfig.setDataNodeMemoryProportion(dataNodeMemoryProportion);
     return this;
   }
 
@@ -568,16 +595,108 @@ public class MppSharedCommonConfig implements CommonConfig {
     return this;
   }
 
-  public CommonConfig setSubscriptionEnabled(boolean subscriptionEnabled) {
-    dnConfig.setSubscriptionEnabled(subscriptionEnabled);
-    cnConfig.setSubscriptionEnabled(subscriptionEnabled);
+  @Override
+  public CommonConfig setDefaultDatabaseLevel(int defaultDatabaseLevel) {
+    dnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
+    cnConfig.setDefaultDatabaseLevel(defaultDatabaseLevel);
     return this;
   }
 
   @Override
-  public CommonConfig setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
-    dnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
-    cnConfig.setDefaultStorageGroupLevel(defaultStorageGroupLevel);
+  public CommonConfig setEnforceStrongPassword(boolean enforceStrongPassword) {
+    dnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    cnConfig.setEnforceStrongPassword(enforceStrongPassword);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableInternalSSL(boolean enableInternalSSL) {
+    cnConfig.setEnableInternalSSL(enableInternalSSL);
+    dnConfig.setEnableInternalSSL(enableInternalSSL);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePath(String keyStorePath) {
+    cnConfig.setKeyStorePath(keyStorePath);
+    dnConfig.setKeyStorePath(keyStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setKeyStorePwd(String keyStorePwd) {
+    cnConfig.setKeyStorePwd(keyStorePwd);
+    dnConfig.setKeyStorePwd(keyStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePath(String trustStorePath) {
+    cnConfig.setTrustStorePath(trustStorePath);
+    dnConfig.setTrustStorePath(trustStorePath);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setTrustStorePwd(String trustStorePwd) {
+    cnConfig.setTrustStorePwd(trustStorePwd);
+    dnConfig.setTrustStorePwd(trustStorePwd);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setDatanodeMemoryProportion(String datanodeMemoryProportion) {
+    dnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    cnConfig.setDatanodeMemoryProportion(datanodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setEnableAuditLog(boolean enableAuditLog) {
+    dnConfig.setEnableAuditLog(enableAuditLog);
+    cnConfig.setEnableAuditLog(enableAuditLog);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationType(String auditableOperationType) {
+    dnConfig.setAuditableOperationType(auditableOperationType);
+    cnConfig.setAuditableOperationType(auditableOperationType);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationLevel(String auditableOperationLevel) {
+    dnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    cnConfig.setAuditableOperationLevel(auditableOperationLevel);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setAuditableOperationResult(String auditableOperationResult) {
+    dnConfig.setAuditableOperationResult(auditableOperationResult);
+    cnConfig.setAuditableOperationResult(auditableOperationResult);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setRestrictObjectLimit(boolean restrictObjectLimit) {
+    cnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    dnConfig.setRestrictObjectLimit(restrictObjectLimit);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setCteBufferSize(long cteBufferSize) {
+    dnConfig.setCteBufferSize(cteBufferSize);
+    cnConfig.setCteBufferSize(cteBufferSize);
+    return this;
+  }
+
+  @Override
+  public CommonConfig setMaxRowsInCteBuffer(int maxRows) {
+    dnConfig.setMaxRowsInCteBuffer(maxRows);
+    cnConfig.setMaxRowsInCteBuffer(maxRows);
     return this;
   }
 }

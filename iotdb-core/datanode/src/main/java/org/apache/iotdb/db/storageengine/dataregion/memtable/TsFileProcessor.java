@@ -73,6 +73,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.WALFlushL
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
@@ -209,6 +210,8 @@ public class TsFileProcessor {
 
   private int walEntryNum = 0;
 
+  private volatile Future<?> closeFuture;
+
   @SuppressWarnings("squid:S107")
   public TsFileProcessor(
       String dataRegionName,
@@ -224,7 +227,11 @@ public class TsFileProcessor {
     this.sequence = sequence;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.dataRegionInfo = dataRegionInfo;
-    this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.writer =
+        new RestorableTsFileIOWriter(
+            tsfile,
+            EncryptDBUtils.getFirstEncryptParamFromDatabase(
+                dataRegionInfo.getDataRegion().getDatabaseName()));
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.walNode =
         WALManager.getInstance()
@@ -266,7 +273,7 @@ public class TsFileProcessor {
       // recordCreateMemtableBlockCost
       infoForMetrics[0] += System.nanoTime() - startTime;
       WritingMetrics.getInstance()
-          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), 1);
+          .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), 1);
     }
   }
 
@@ -279,6 +286,8 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertRowNode);
+
     long[] memIncrements;
 
     long memControlStartTime = System.nanoTime();
@@ -333,7 +342,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertRowNode,
             tsFileResource);
@@ -364,6 +373,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertRowsNode);
 
     long[] memIncrements;
 
@@ -429,7 +439,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertRowsNode,
             tsFileResource);
@@ -462,7 +472,7 @@ public class TsFileProcessor {
         MemTableManager.getInstance()
             .getAvailableMemTable(
                 dataRegionInfo.getDataRegion().getDatabaseName(),
-                dataRegionInfo.getDataRegion().getDataRegionId());
+                dataRegionInfo.getDataRegion().getDataRegionIdString());
     walNode.onMemTableCreated(workMemTable, tsFileResource.getTsFilePath());
   }
 
@@ -561,6 +571,7 @@ public class TsFileProcessor {
       throws WriteProcessException {
 
     ensureMemTable(infoForMetrics);
+    workMemTable.checkDataType(insertTabletNode);
 
     long[] memIncrements =
         scheduleMemoryBlock(insertTabletNode, rangeList, results, noFailure, infoForMetrics);
@@ -601,7 +612,7 @@ public class TsFileProcessor {
     }
     PipeInsertionDataNodeListener.getInstance()
         .listenToInsertNode(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             insertTabletNode,
             tsFileResource);
@@ -1241,10 +1252,13 @@ public class TsFileProcessor {
     logger.info(
         "Sync close file: {}, will firstly async close it",
         tsFileResource.getTsFile().getAbsolutePath());
-    if (shouldClose) {
-      return;
-    }
+
     try {
+      if (closeFuture != null) {
+        closeFuture.get();
+        return;
+      }
+
       asyncClose().get();
       logger.info("Start to wait until file {} is closed", tsFileResource);
       // if this TsFileProcessor is closing, asyncClose().get() of this thread will return quickly,
@@ -1264,6 +1278,10 @@ public class TsFileProcessor {
     flushQueryLock.writeLock().lock();
     logFlushQueryWriteLocked();
     try {
+      if (closeFuture != null) {
+        return closeFuture;
+      }
+
       if (logger.isDebugEnabled()) {
         if (workMemTable != null) {
           logger.debug(
@@ -1284,10 +1302,6 @@ public class TsFileProcessor {
               tsFileResource.getTsFileSize());
         }
       }
-
-      if (shouldClose) {
-        return CompletableFuture.completedFuture(null);
-      }
       // when a flush thread serves this TsFileProcessor (because the processor is submitted by
       // registerTsFileProcessor()), the thread will seal the corresponding TsFile and
       // execute other cleanup works if "shouldClose == true and flushingMemTables is empty".
@@ -1306,6 +1320,7 @@ public class TsFileProcessor {
         // flushing memTable in System module.
         Future<?> future = addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
+        closeFuture = future;
         return future;
       } catch (Exception e) {
         logger.error(
@@ -1435,7 +1450,7 @@ public class TsFileProcessor {
     WritingMetrics.getInstance()
         .recordMemTableLiveDuration(System.currentTimeMillis() - getWorkMemTableCreatedTime());
     WritingMetrics.getInstance()
-        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionId(), -1);
+        .recordActiveMemTableCount(dataRegionInfo.getDataRegion().getDataRegionIdString(), -1);
     WritingMetrics.getInstance().recordWALEntryNumForOneTsFile(walEntryNum);
     workMemTable = null;
     return FlushManager.getInstance().registerTsFileProcessor(this);
@@ -1531,7 +1546,7 @@ public class TsFileProcessor {
                   memTableToFlush,
                   writer,
                   dataRegionName,
-                  dataRegionInfo.getDataRegion().getDataRegionId());
+                  dataRegionInfo.getDataRegion().getDataRegionIdString());
           flushTask.syncFlushMemTable();
           memTableFlushPointCount = memTableToFlush.getTotalPointsNum();
         } catch (Throwable e) {
@@ -1713,10 +1728,10 @@ public class TsFileProcessor {
           String.format("%.2f", compressionRatio),
           totalMemTableSize,
           writer.getPos());
-      String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionId();
+      String dataRegionId = dataRegionInfo.getDataRegion().getDataRegionIdString();
       WritingMetrics.getInstance()
           .recordTsFileCompressionRatioOfFlushingMemTable(dataRegionId, compressionRatio);
-      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos());
+      CompressionRatio.getInstance().updateRatio(totalMemTableSize, writer.getPos(), dataRegionId);
     } catch (IOException e) {
       logger.error(
           "{}: {} update compression ratio failed",
@@ -1737,7 +1752,7 @@ public class TsFileProcessor {
     // before resource serialization to avoid missing hardlink after restart
     PipeInsertionDataNodeListener.getInstance()
         .listenToTsFile(
-            dataRegionInfo.getDataRegion().getDataRegionId(),
+            dataRegionInfo.getDataRegion().getDataRegionIdString(),
             dataRegionInfo.getDataRegion().getDatabaseName(),
             tsFileResource,
             false);
@@ -1785,13 +1800,16 @@ public class TsFileProcessor {
 
   public void setManagedByFlushManager(boolean managedByFlushManager) {
     this.managedByFlushManager = managedByFlushManager;
+    if (!managedByFlushManager) {
+      closeFuture = CompletableFuture.completedFuture(null);
+    }
   }
 
   /** Close this tsfile */
-  public void close() throws TsFileProcessorException {
+  public void closeWithoutSettingResourceStatus() throws TsFileProcessorException {
     try {
       // When closing resource file, its corresponding mod file is also closed.
-      tsFileResource.close();
+      tsFileResource.closeWithoutSettingStatus();
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
@@ -1825,6 +1843,7 @@ public class TsFileProcessor {
                   deviceID,
                   measurement,
                   filePath,
+                  tsFileResource.getTsFileID(),
                   false,
                   valueChunkMetaData.getOffsetOfChunkHeader(),
                   valueChunkMetaData.getStatistics(),
@@ -1849,6 +1868,7 @@ public class TsFileProcessor {
                 deviceID,
                 measurement,
                 filePath,
+                tsFileResource.getTsFileID(),
                 false,
                 chunkMetadata.getOffsetOfChunkHeader(),
                 chunkMetadata.getStatistics()));
@@ -1964,22 +1984,21 @@ public class TsFileProcessor {
     return new ArrayList<>(alignedChunkMetadataForOneDevice);
   }
 
-  public void queryForSeriesRegionScan(
+  public void queryForSeriesRegionScanWithoutLock(
       List<IFullPath> pathList,
       QueryContext queryContext,
-      List<IFileScanHandle> fileScanHandlesForQuery) {
+      List<IFileScanHandle> fileScanHandlesForQuery,
+      Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (IFullPath seriesPath : pathList) {
           Map<String, List<IChunkMetadata>> measurementToChunkMetaList = new HashMap<>();
           Map<String, List<IChunkHandle>> measurementToChunkHandleList = new HashMap<>();
 
-          // TODO Tien change the way
           long timeLowerBound = getQueryTimeLowerBound(seriesPath.getDeviceId());
           for (IMemTable flushingMemTable : flushingMemTables) {
             if (flushingMemTable.isSignalMemTable()) {
@@ -1990,7 +2009,8 @@ public class TsFileProcessor {
                 timeLowerBound,
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
-                modsToMemtable);
+                modsToMemtable,
+                globalTimeFilter);
           }
           if (workMemTable != null) {
             workMemTable.queryForSeriesRegionScan(
@@ -1998,7 +2018,8 @@ public class TsFileProcessor {
                 timeLowerBound,
                 measurementToChunkMetaList,
                 measurementToChunkHandleList,
-                null);
+                null,
+                globalTimeFilter);
           }
           IDeviceID deviceID = seriesPath.getDeviceId();
           // Some memTable have been flushed already, so we need to get the chunk metadata from
@@ -2030,9 +2051,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
         fileScanHandlesForQuery.add(
@@ -2049,16 +2067,16 @@ public class TsFileProcessor {
    * Construct IFileScanHandle for data in memtable and the other ones in flushing memtables. Then
    * get the related ChunkMetadata of data on disk.
    */
-  public void queryForDeviceRegionScan(
+  public void queryForDeviceRegionScanWithoutLock(
       Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
-      List<IFileScanHandle> fileScanHandlesForQuery) {
+      List<IFileScanHandle> fileScanHandlesForQuery,
+      Filter globalTimeFilter) {
     long startTime = System.nanoTime();
     try {
       Map<IDeviceID, Map<String, List<IChunkHandle>>> deviceToMemChunkHandleMap = new HashMap<>();
       Map<IDeviceID, Map<String, List<IChunkMetadata>>> deviceToChunkMetadataListMap =
           new HashMap<>();
-      flushQueryLock.readLock().lock();
       try {
         for (Map.Entry<IDeviceID, DeviceContext> entry : devicePathsToContext.entrySet()) {
           IDeviceID deviceID = entry.getKey();
@@ -2076,7 +2094,8 @@ public class TsFileProcessor {
                 timeLowerBound,
                 measurementToChunkMetadataList,
                 measurementToMemChunkHandleList,
-                modsToMemtable);
+                modsToMemtable,
+                globalTimeFilter);
           }
           if (workMemTable != null) {
             workMemTable.queryForDeviceRegionScan(
@@ -2085,7 +2104,8 @@ public class TsFileProcessor {
                 timeLowerBound,
                 measurementToChunkMetadataList,
                 measurementToMemChunkHandleList,
-                null);
+                null,
+                globalTimeFilter);
           }
 
           buildChunkHandleForFlushedMemTable(
@@ -2112,9 +2132,6 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
       }
 
       if (!deviceToMemChunkHandleMap.isEmpty() || !deviceToChunkMetadataListMap.isEmpty()) {
@@ -2135,18 +2152,39 @@ public class TsFileProcessor {
    *
    * @param seriesPaths selected paths
    */
+  public void queryWithoutLock(
+      List<IFullPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter)
+      throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, false);
+  }
+
+  @TestOnly
   public void query(
       List<IFullPath> seriesPaths,
       QueryContext context,
       List<TsFileResource> tsfileResourcesForQuery,
       Filter globalTimeFilter)
       throws IOException {
+    query(seriesPaths, context, tsfileResourcesForQuery, globalTimeFilter, true);
+  }
+
+  private void query(
+      List<IFullPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery,
+      Filter globalTimeFilter,
+      boolean needLock)
+      throws IOException {
     long startTime = System.nanoTime();
     try {
       Map<IFullPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
       Map<IFullPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
-
-      flushQueryLock.readLock().lock();
+      if (needLock) {
+        flushQueryLock.readLock().lock();
+      }
       try {
         for (IFullPath seriesPath : seriesPaths) {
           List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
@@ -2191,9 +2229,10 @@ public class TsFileProcessor {
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(FLUSHING_MEMTABLE, flushingMemTables.size());
         QUERY_RESOURCE_METRICS.recordQueryResourceNum(
             WORKING_MEMTABLE, workMemTable != null ? 1 : 0);
-
-        flushQueryLock.readLock().unlock();
-        logFlushQueryReadUnlocked();
+        if (needLock) {
+          flushQueryLock.readLock().unlock();
+          logFlushQueryReadUnlocked();
+        }
       }
 
       if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
@@ -2309,11 +2348,26 @@ public class TsFileProcessor {
 
   public void registerToTsFile(
       String tableName, Function<String, TableSchema> tableSchemaFunction) {
-    getWriter().getSchema().getTableSchemaMap().computeIfAbsent(tableName, tableSchemaFunction);
+    getWriter()
+        .getSchema()
+        .getTableSchemaMap()
+        .put(tableName, tableSchemaFunction.apply(tableName));
   }
 
-  public ReadWriteLock getFlushQueryLock() {
-    return flushQueryLock;
+  public void writeLock() {
+    flushQueryLock.writeLock().lock();
+  }
+
+  public void writeUnlock() {
+    flushQueryLock.writeLock().unlock();
+  }
+
+  public boolean tryReadLock(long waitInMs) throws InterruptedException {
+    return flushQueryLock.readLock().tryLock(waitInMs, TimeUnit.MILLISECONDS);
+  }
+
+  public void readUnLock() {
+    flushQueryLock.readLock().unlock();
   }
 
   private void logFlushQueryWriteLocked() {
@@ -2333,5 +2387,18 @@ public class TsFileProcessor {
       logger.debug(
           "{}: {} release flushQueryLock", dataRegionName, tsFileResource.getTsFile().getName());
     }
+  }
+
+  @Override
+  public String toString() {
+    return "TsFileProcessor{" + "tsFileResource=" + tsFileResource + '}';
+  }
+
+  public Future<?> getCloseFuture() {
+    return closeFuture;
+  }
+
+  public void setCloseFuture(Future<?> closeFuture) {
+    this.closeFuture = closeFuture;
   }
 }

@@ -20,13 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.load;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
@@ -73,7 +72,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -128,7 +126,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
       for (final TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
         try {
-          if (schemaCache.isTimeseriesDeletedByMods(device, timeseriesMetadata)) {
+          if (schemaCache.isTimeSeriesDeletedByMods(device, timeseriesMetadata)) {
             continue;
           }
         } catch (IllegalPathException e) {
@@ -154,26 +152,14 @@ public class TreeSchemaAutoCreatorAndVerifier {
           // check WRITE_DATA permission of timeseries
           long startTime = System.nanoTime();
           try {
-            String userName = loadTsFileAnalyzer.context.getSession().getUserName();
-            if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-              TSStatus status;
-              try {
-                List<PartialPath> paths =
-                    Collections.singletonList(
-                        new MeasurementPath(device, timeseriesMetadata.getMeasurementId()));
-                status =
-                    AuthorityChecker.getTSStatus(
-                        AuthorityChecker.checkFullPathOrPatternListPermission(
-                            userName, paths, PrivilegeType.WRITE_DATA),
-                        paths,
-                        PrivilegeType.WRITE_DATA);
-              } catch (IllegalPathException e) {
-                throw new RuntimeException(e);
-              }
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                throw new AuthException(
-                    TSStatusCode.representOf(status.getCode()), status.getMessage());
-              }
+            UserEntity userEntity = loadTsFileAnalyzer.context.getSession().getUserEntity();
+            TSStatus status =
+                AuthorityChecker.getAccessControl()
+                    .checkFullPathWriteDataPermission(
+                        userEntity, device, timeseriesMetadata.getMeasurementId());
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              throw new AuthException(
+                  TSStatusCode.representOf(status.getCode()), status.getMessage());
             }
           } finally {
             PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -249,6 +235,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
         handleException(e, loadTsFileAnalyzer.getStatementString());
       }
     } catch (Exception e) {
+      if (e.getCause() instanceof LoadAnalyzeTypeMismatchException
+          && loadTsFileAnalyzer.isConvertOnTypeMismatch()) {
+        throw (LoadAnalyzeTypeMismatchException) e.getCause();
+      }
       handleException(e, loadTsFileAnalyzer.getStatementString());
     }
   }
@@ -262,17 +252,41 @@ public class TreeSchemaAutoCreatorAndVerifier {
   }
 
   private void makeSureNoDuplicatedMeasurementsInDevices() throws LoadAnalyzeException {
+    boolean hasDuplicates = false;
+    final Map<IDeviceID, Set<MeasurementSchema>> deduplicatedDevice2TimeSeries = new HashMap<>();
+
     for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
         schemaCache.getDevice2TimeSeries().entrySet()) {
       final IDeviceID device = entry.getKey();
       final Map<String, MeasurementSchema> measurement2Schema = new HashMap<>();
+      boolean deviceHasDuplicates = false;
+
       for (final MeasurementSchema timeseriesSchema : entry.getValue()) {
         final String measurement = timeseriesSchema.getMeasurementName();
-        if (measurement2Schema.containsKey(measurement)) {
-          throw new LoadAnalyzeException(
-              String.format("Duplicated measurements %s in device %s.", measurement, device));
+        final MeasurementSchema existingSchema = measurement2Schema.get(measurement);
+
+        if (existingSchema != null) {
+          if (existingSchema.getType() != timeseriesSchema.getType()) {
+            throw new LoadAnalyzeException(
+                String.format("Duplicated measurements %s in device %s.", measurement, device));
+          }
+          deviceHasDuplicates = true;
+          hasDuplicates = true;
+        } else {
+          measurement2Schema.put(measurement, timeseriesSchema);
         }
-        measurement2Schema.put(measurement, timeseriesSchema);
+      }
+
+      if (deviceHasDuplicates) {
+        deduplicatedDevice2TimeSeries.put(device, new HashSet<>(measurement2Schema.values()));
+      }
+    }
+
+    if (hasDuplicates) {
+      Map<IDeviceID, Set<MeasurementSchema>> device2TimeSeries = schemaCache.getDevice2TimeSeries();
+      for (final Map.Entry<IDeviceID, Set<MeasurementSchema>> entry :
+          deduplicatedDevice2TimeSeries.entrySet()) {
+        device2TimeSeries.put(entry.getKey(), new HashSet<>(entry.getValue()));
       }
     }
   }
@@ -313,6 +327,10 @@ public class TreeSchemaAutoCreatorAndVerifier {
 
         for (final String databaseName : resp.getDatabaseInfoMap().keySet()) {
           schemaCache.addAlreadySetDatabase(new PartialPath(databaseName));
+          databasesNeededToBeSet.removeIf(
+              database ->
+                  database.startsWith(databaseName)
+                      || databaseName.startsWith(database.getFullPath()));
         }
       } catch (IOException | TException | ClientManagerException e) {
         throw new LoadFileException(e);
@@ -338,7 +356,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
     // 1.check Authority
     TSStatus status =
         AuthorityChecker.checkAuthority(
-            statement, loadTsFileAnalyzer.context.getSession().getUserName());
+            statement, loadTsFileAnalyzer.context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new AuthException(TSStatusCode.representOf(status.getCode()), status.getMessage());
     }
@@ -355,6 +373,7 @@ public class TreeSchemaAutoCreatorAndVerifier {
                 loadTsFileAnalyzer.partitionFetcher,
                 loadTsFileAnalyzer.schemaFetcher,
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false,
                 false);
     if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && result.status.code != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()
@@ -439,12 +458,13 @@ public class TreeSchemaAutoCreatorAndVerifier {
       // check device schema: is aligned or not
       final boolean isAlignedInTsFile = schemaCache.getDeviceIsAligned(device);
       final boolean isAlignedInIoTDB = iotdbDeviceSchemaInfo.isAligned();
-      if (LOGGER.isDebugEnabled() && isAlignedInTsFile != isAlignedInIoTDB) {
-        LOGGER.debug(
-            "Device {} in TsFile is {}, but in IoTDB is {}.",
-            device,
-            isAlignedInTsFile ? "aligned" : "not aligned",
-            isAlignedInIoTDB ? "aligned" : "not aligned");
+      if (isAlignedInTsFile != isAlignedInIoTDB) {
+        throw new LoadAnalyzeTypeMismatchException(
+            String.format(
+                "Device %s in TsFile is %s, but in IoTDB is %s.",
+                device,
+                isAlignedInTsFile ? "aligned" : "not aligned",
+                isAlignedInIoTDB ? "aligned" : "not aligned"));
       }
 
       // check timeseries schema

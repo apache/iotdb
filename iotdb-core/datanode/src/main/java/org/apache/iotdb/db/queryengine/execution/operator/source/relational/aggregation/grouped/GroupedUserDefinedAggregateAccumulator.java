@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.MaskedRecordIterator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;

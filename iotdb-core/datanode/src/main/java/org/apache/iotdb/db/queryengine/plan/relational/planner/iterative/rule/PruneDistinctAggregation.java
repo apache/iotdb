@@ -24,6 +24,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Lookup;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern;
 
@@ -94,29 +97,26 @@ public class PruneDistinctAggregation implements Rule<AggregationNode> {
       return rewriteChildren(node, false);
     }
 
-    /*@Override
-    public PlanNode visitUnion(UnionNode node, Boolean context)
-    {
+    @Override
+    public PlanNode visitUnion(UnionNode node, Boolean context) {
+      return rewriteChildren(node, context);
+    }
+
+    @Override
+    public PlanNode visitIntersect(IntersectNode node, Boolean context) {
+      if (node.isDistinct()) {
         return rewriteChildren(node, context);
+      }
+      return visitPlan(node, context);
     }
 
     @Override
-    public PlanNode visitIntersect(IntersectNode node, Boolean context)
-    {
-        if (node.isDistinct()) {
-            return rewriteChildren(node, context);
-        }
-        return visitPlan(node, context);
+    public PlanNode visitExcept(ExceptNode node, Boolean context) {
+      if (node.isDistinct()) {
+        return rewriteChildren(node, context);
+      }
+      return visitPlan(node, context);
     }
-
-    @Override
-    public PlanNode visitExcept(ExceptNode node, Boolean context)
-    {
-        if (node.isDistinct()) {
-            return rewriteChildren(node, context);
-        }
-        return visitPlan(node, context);
-    }*/
 
     @Override
     public PlanNode visitAggregation(AggregationNode node, Boolean context) {

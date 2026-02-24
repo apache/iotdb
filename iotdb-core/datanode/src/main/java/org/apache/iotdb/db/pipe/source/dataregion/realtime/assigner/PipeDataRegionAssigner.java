@@ -150,13 +150,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta(),
-                        extractor.getTreePattern(),
-                        extractor.getTablePattern(),
-                        extractor.getUserName(),
-                        extractor.isSkipIfNoPrivileges(),
-                        extractor.getRealtimeDataExtractionStartTime(),
-                        extractor.getRealtimeDataExtractionEndTime());
+                        extractor.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(
@@ -175,7 +169,9 @@ public class PipeDataRegionAssigner implements Closeable {
                       extractor.getPipeTaskMeta(),
                       extractor.getTreePattern(),
                       extractor.getTablePattern(),
+                      String.valueOf(extractor.getUserId()),
                       extractor.getUserName(),
+                      extractor.getCliHostname(),
                       extractor.isSkipIfNoPrivileges(),
                       extractor.getRealtimeDataExtractionStartTime(),
                       extractor.getRealtimeDataExtractionEndTime());
@@ -186,7 +182,7 @@ public class PipeDataRegionAssigner implements Closeable {
                 innerEvent.setReplicateIndexForIoTV2(
                     ReplicateProgressDataNodeManager.assignReplicateIndexForIoTV2(
                         extractor.getPipeName()));
-                LOGGER.info(
+                LOGGER.debug(
                     "[{}]Set {} for realtime event {}",
                     extractor.getPipeName(),
                     innerEvent.getReplicateIndexForIoTV2(),
@@ -239,13 +235,7 @@ public class PipeDataRegionAssigner implements Closeable {
                     new ProgressReportEvent(
                         extractor.getPipeName(),
                         extractor.getCreationTime(),
-                        extractor.getPipeTaskMeta(),
-                        extractor.getTreePattern(),
-                        extractor.getTablePattern(),
-                        extractor.getUserName(),
-                        extractor.isSkipIfNoPrivileges(),
-                        extractor.getRealtimeDataExtractionStartTime(),
-                        extractor.getRealtimeDataExtractionEndTime());
+                        extractor.getPipeTaskMeta());
                 reportEvent.bindProgressIndex(event.getProgressIndex());
                 if (!reportEvent.increaseReferenceCount(PipeDataRegionAssigner.class.getName())) {
                   LOGGER.warn(

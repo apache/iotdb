@@ -127,12 +127,11 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Transfer data node write plan %s error, result status %s.",
               pipeSchemaRegionWritePlanEvent.getPlanNode().getType(), status),
-          pipeSchemaRegionWritePlanEvent.getPlanNode().toString());
+          pipeSchemaRegionWritePlanEvent.getPlanNode().toString(),
+          true);
     }
 
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
-    }
+    LOGGER.info("Successfully transferred schema event {}.", pipeSchemaRegionWritePlanEvent);
   }
 
   private void doTransferWrapper(final PipeSchemaRegionSnapshotEvent pipeSchemaRegionSnapshotEvent)
@@ -222,7 +221,8 @@ public class IoTDBSchemaRegionSink extends IoTDBDataNodeSyncSink {
           String.format(
               "Seal file %s, %s and %s error, result status %s.",
               mTreeSnapshotFile, tagLogSnapshotFile, attributeSnapshotFile, resp.getStatus()),
-          snapshotEvent.toString());
+          snapshotEvent.toString(),
+          true);
     }
 
     LOGGER.info(

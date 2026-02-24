@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.receiver.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.table.TsFileInsertionEventTableParser;
@@ -36,10 +37,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsOfOneDevice
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +109,10 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
       return Optional.empty();
     }
 
+    if (!PipeConfig.getInstance().isPipeReceiverLoadConversionEnabled()) {
+      return Optional.empty();
+    }
+
     if (status.getCode() != TSStatusCode.LOAD_FILE_ERROR.getStatusCode()
         // Ignore the error if it is caused by insufficient memory
         || (status.getMessage() != null && status.getMessage().contains("memory"))) {
@@ -127,8 +132,9 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
               Long.MIN_VALUE,
               Long.MAX_VALUE,
               null,
-              "root",
-              null)) {
+              null,
+              null,
+              true)) {
         for (final TabletInsertionEvent tabletInsertionEvent : parser.toTabletInsertionEvents()) {
           if (!(tabletInsertionEvent instanceof PipeRawTabletInsertionEvent)) {
             continue;
@@ -148,9 +154,8 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
           TSStatus result;
           try {
             result =
-                statement.accept(
-                    IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                    statementExecutor.execute(statement, databaseName));
+                IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                    statement, statementExecutor.execute(statement, databaseName));
 
             // Retry max 5 times if the write process is rejected
             for (int i = 0;
@@ -161,15 +166,14 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
                 i++) {
               Thread.sleep(100L * (i + 1));
               result =
-                  statement.accept(
-                      IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR,
-                      statementExecutor.execute(statement, databaseName));
+                  IoTDBDataNodeReceiver.STATEMENT_STATUS_VISITOR.process(
+                      statement, statementExecutor.execute(statement, databaseName));
             }
           } catch (final Exception e) {
             if (e instanceof InterruptedException) {
               Thread.currentThread().interrupt();
             }
-            result = statement.accept(IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR, e);
+            result = IoTDBDataNodeReceiver.STATEMENT_EXCEPTION_VISITOR.process(statement, e);
           }
 
           if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
@@ -187,7 +191,7 @@ public class PipeTableStatementDataTypeConvertExecutionVisitor
     }
 
     if (loadTsFileStatement.isDeleteAfterLoad()) {
-      loadTsFileStatement.getTsFiles().forEach(FileUtils::deleteQuietly);
+      loadTsFileStatement.getTsFiles().forEach(LoadTsFileManager::cleanTsFile);
     }
 
     LOGGER.warn(

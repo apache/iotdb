@@ -22,19 +22,15 @@ package org.apache.iotdb.db.pipe.sink.payload.evolvable.request;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.db.pipe.sink.util.TabletStatementConverter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTableModelTabletEventSorter;
 import org.apache.iotdb.db.pipe.sink.util.sorter.PipeTreeModelTabletEventSorter;
-import org.apache.iotdb.db.queryengine.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +38,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent.isTabletEmpty;
 
@@ -58,6 +53,16 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
 
   @Override
   public InsertTabletStatement constructStatement() {
+    if (statement != null) {
+      if (Objects.isNull(dataBaseName)) {
+        new PipeTreeModelTabletEventSorter(statement).deduplicateAndSortTimestampsIfNecessary();
+      } else {
+        new PipeTableModelTabletEventSorter(statement).sortByTimestampIfNecessary();
+      }
+
+      return statement;
+    }
+
     if (Objects.isNull(dataBaseName)) {
       new PipeTreeModelTabletEventSorter(tablet).deduplicateAndSortTimestampsIfNecessary();
     } else {
@@ -70,35 +75,7 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
         return new InsertTabletStatement();
       }
 
-      final TSInsertTabletReq request = new TSInsertTabletReq();
-
-      for (final IMeasurementSchema measurementSchema : tablet.getSchemas()) {
-        request.addToMeasurements(measurementSchema.getMeasurementName());
-        request.addToTypes(measurementSchema.getType().ordinal());
-      }
-
-      request.setPrefixPath(tablet.getDeviceId());
-      request.setIsAligned(isAligned);
-      request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-      request.setValues(SessionUtils.getValueBuffer(tablet));
-      request.setSize(tablet.getRowSize());
-
-      // Tree model
-      if (Objects.isNull(dataBaseName)) {
-        request.setMeasurements(
-            PathUtils.checkIsLegalSingleMeasurementsAndUpdate(request.getMeasurements()));
-        return StatementGenerator.createStatement(request);
-      }
-
-      // Table model
-      request.setWriteToTable(true);
-      request.columnCategories =
-          tablet.getColumnTypes().stream()
-              .map(t -> (byte) t.ordinal())
-              .collect(Collectors.toList());
-      final InsertTabletStatement statement = StatementGenerator.createStatement(request);
-      statement.setDatabaseName(dataBaseName);
-      return statement;
+      return new InsertTabletStatement(tablet, isAligned, dataBaseName);
     } catch (final MetadataException e) {
       LOGGER.warn("Generate Statement from tablet {} error.", tablet, e);
       return null;
@@ -114,6 +91,16 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
     tabletReq.tablet = tablet;
     tabletReq.isAligned = isAligned;
     tabletReq.dataBaseName = dataBaseName;
+    tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
+
+    return tabletReq;
+  }
+
+  public static PipeTransferTabletRawReqV2 toTPipeTransferRawReq(final ByteBuffer buffer) {
+    final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
+
+    tabletReq.deserializeTPipeTransferRawReq(buffer);
     tabletReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
     tabletReq.type = PipeRequestType.TRANSFER_TABLET_RAW_V2.getType();
 
@@ -148,13 +135,11 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
       final TPipeTransferReq transferReq) {
     final PipeTransferTabletRawReqV2 tabletReq = new PipeTransferTabletRawReqV2();
 
-    tabletReq.tablet = Tablet.deserialize(transferReq.body);
-    tabletReq.isAligned = ReadWriteIOUtils.readBool(transferReq.body);
-    tabletReq.dataBaseName = ReadWriteIOUtils.readString(transferReq.body);
+    tabletReq.deserializeTPipeTransferRawReq(transferReq.body);
+    tabletReq.body = transferReq.body;
 
     tabletReq.version = transferReq.version;
     tabletReq.type = transferReq.type;
-    tabletReq.body = transferReq.body;
 
     return tabletReq;
   }
@@ -194,5 +179,28 @@ public class PipeTransferTabletRawReqV2 extends PipeTransferTabletRawReq {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), dataBaseName);
+  }
+
+  /////////////////////////////// Util ///////////////////////////////
+
+  public void deserializeTPipeTransferRawReq(final ByteBuffer buffer) {
+    final int startPosition = buffer.position();
+    try {
+      // V2: read databaseName, readDatabaseName = true
+      final InsertTabletStatement insertTabletStatement =
+          TabletStatementConverter.deserializeStatementFromTabletFormat(buffer, true);
+      this.isAligned = insertTabletStatement.isAligned();
+      // databaseName is already set in deserializeStatementFromTabletFormat when
+      // readDatabaseName=true
+      this.dataBaseName = insertTabletStatement.getDatabaseName().orElse(null);
+      this.statement = insertTabletStatement;
+    } catch (final Exception e) {
+      // If Statement deserialization fails, fallback to Tablet format
+      // Reset buffer position for Tablet deserialization
+      buffer.position(startPosition);
+      this.tablet = Tablet.deserialize(buffer);
+      this.isAligned = ReadWriteIOUtils.readBool(buffer);
+      this.dataBaseName = ReadWriteIOUtils.readString(buffer);
+    }
   }
 }

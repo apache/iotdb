@@ -23,25 +23,27 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -62,7 +64,12 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private boolean isFinished = false;
   private final PathPatternTree authorityScope;
 
-  private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+  private Iterator<SchemaNode> schemaNodeIteratorForSerialize = null;
+  private long schemaTreeMemCost;
+  private PublicBAOS baos = null;
+  // Reserve some bytes to avoid capacity grow
+  private static final int EXTRA_SIZE_TO_AVOID_GROW = 1024;
+  private static int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private static final long INSTANCE_SIZE =
@@ -152,12 +159,33 @@ public class SchemaFetchScanOperator implements SourceOperator {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    isFinished = true;
-    try {
-      return fetchSchema();
-    } catch (MetadataException e) {
-      throw new SchemaExecutionException(e);
+
+    boolean isFirstBatch = schemaNodeIteratorForSerialize == null;
+    prepareSchemaNodeIteratorForSerialize();
+    // to indicate this binary data is a part of schema tree, and the remaining parts will be sent
+    // later
+    ReadWriteIOUtils.write((byte) 2, baos);
+    // the estimated mem cost to deserialize the total schema tree
+    if (isFirstBatch) {
+      ReadWriteIOUtils.write(schemaTreeMemCost, baos);
     }
+    while (schemaNodeIteratorForSerialize.hasNext()
+        && baos.size() < DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES) {
+      SchemaNode node = schemaNodeIteratorForSerialize.next();
+      node.serializeNodeOwnContent(baos);
+    }
+    byte[] currentBatch = baos.toByteArray();
+    baos.reset();
+    isFinished = !schemaNodeIteratorForSerialize.hasNext();
+    if (isFinished) {
+      // indicate all continuous binary data is finished
+      currentBatch[0] = 3;
+      releaseSchemaTree();
+      baos = null;
+    }
+    return new TsBlock(
+        new TimeColumn(1, new long[] {0}),
+        new BinaryColumn(1, Optional.empty(), new Binary[] {new Binary(currentBatch)}));
   }
 
   @Override
@@ -172,7 +200,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    // do nothing
+    releaseSchemaTree();
+    baos = null;
   }
 
   @Override
@@ -180,26 +209,34 @@ public class SchemaFetchScanOperator implements SourceOperator {
     return sourceId;
   }
 
-  private TsBlock fetchSchema() throws MetadataException {
-    ClusterSchemaTree schemaTree =
-        fetchDevice
-            ? schemaRegion.fetchDeviceSchema(patternTree, authorityScope)
-            : schemaRegion.fetchSeriesSchema(
-                patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
-
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try {
-      // to indicate this binary data is database info
-      ReadWriteIOUtils.write((byte) 1, outputStream);
-
-      schemaTree.serialize(outputStream);
-    } catch (IOException e) {
-      // Totally memory operation. This case won't happen.
+  private void prepareSchemaNodeIteratorForSerialize() {
+    if (schemaNodeIteratorForSerialize != null) {
+      return;
     }
-    return new TsBlock(
-        new TimeColumn(1, new long[] {0}),
-        new BinaryColumn(
-            1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
+    try {
+      ClusterSchemaTree schemaTree =
+          fetchDevice
+              ? schemaRegion.fetchDeviceSchema(patternTree, authorityScope)
+              : schemaRegion.fetchSeriesSchema(
+                  patternTree, templateMap, withTags, withAttributes, withTemplate, withAliasForce);
+      schemaNodeIteratorForSerialize = schemaTree.getIteratorForSerialize();
+      baos = new PublicBAOS(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + EXTRA_SIZE_TO_AVOID_GROW);
+      if (operatorContext != null) {
+        long ramBytesUsed = schemaTree.ramBytesUsed();
+        operatorContext
+            .getInstanceContext()
+            .getMemoryReservationContext()
+            .reserveMemoryCumulatively(ramBytesUsed);
+        // For temporary and independently counted memory, we need process it immediately
+        operatorContext
+            .getInstanceContext()
+            .getMemoryReservationContext()
+            .reserveMemoryImmediately();
+        this.schemaTreeMemCost = ramBytesUsed;
+      }
+    } catch (MetadataException e) {
+      throw new SchemaExecutionException(e);
+    }
   }
 
   @Override
@@ -221,6 +258,25 @@ public class SchemaFetchScanOperator implements SourceOperator {
   public long ramBytesUsed() {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
+        + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES
+        + EXTRA_SIZE_TO_AVOID_GROW
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId);
+  }
+
+  private void releaseSchemaTree() {
+    if (schemaTreeMemCost <= 0 || operatorContext == null) {
+      return;
+    }
+    operatorContext
+        .getInstanceContext()
+        .getMemoryReservationContext()
+        .releaseMemoryCumulatively(schemaTreeMemCost);
+    schemaTreeMemCost = 0;
+    schemaNodeIteratorForSerialize = null;
+  }
+
+  @TestOnly
+  public static void setDefaultMaxTsBlockSizeInBytes(int newSize) {
+    DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES = newSize;
   }
 }

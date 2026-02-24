@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.pipe.sink.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 
 import org.slf4j.Logger;
@@ -39,7 +40,7 @@ public abstract class IoTDBClientManager {
 
   protected final boolean useLeaderCache;
 
-  protected final String username;
+  protected final UserEntity userEntity;
   protected final String password;
 
   protected final boolean validateTsFile;
@@ -48,6 +49,7 @@ public abstract class IoTDBClientManager {
   protected final String loadTsFileStrategy;
 
   protected final boolean shouldMarkAsPipeRequest;
+  protected final boolean skipIfNoPrivileges;
 
   // This flag indicates whether the receiver supports mods transferring if
   // it is a DataNode receiver. The flag is useless for configNode receiver.
@@ -64,14 +66,14 @@ public abstract class IoTDBClientManager {
   private static final int MAX_CONNECTION_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 1 day
   private static final int FIRST_ADJUSTMENT_TIMEOUT_MS = 6 * 60 * 60 * 1000; // 6 hours
   protected static final AtomicInteger CONNECTION_TIMEOUT_MS =
-      new AtomicInteger(PipeConfig.getInstance().getPipeConnectorTransferTimeoutMs());
+      new AtomicInteger(PipeConfig.getInstance().getPipeSinkTransferTimeoutMs());
 
   protected IoTDBClientManager(
       final List<TEndPoint> endPointList,
       /* The following parameters are used locally. */
       final boolean useLeaderCache,
       /* The following parameters are used to handshake with the receiver. */
-      final String username,
+      final UserEntity userEntity,
       final String password,
       final boolean shouldReceiverConvertOnTypeMismatch,
       final String loadTsFileStrategy,
@@ -80,12 +82,13 @@ public abstract class IoTDBClientManager {
       String customSendPortStrategy,
       int minSendPortRange,
       int maxSendPortRange,
-      List<Integer> candidatePorts) {
+      List<Integer> candidatePorts,
+      final boolean skipIfNoPrivileges) {
     this.endPointList = endPointList;
 
     this.useLeaderCache = useLeaderCache;
 
-    this.username = username;
+    this.userEntity = userEntity;
     this.password = password;
     this.shouldReceiverConvertOnTypeMismatch = shouldReceiverConvertOnTypeMismatch;
     this.loadTsFileStrategy = loadTsFileStrategy;
@@ -96,6 +99,7 @@ public abstract class IoTDBClientManager {
     this.minSendPortRange = minSendPortRange;
     this.maxSendPortRange = maxSendPortRange;
     this.candidatePorts = candidatePorts;
+    this.skipIfNoPrivileges = skipIfNoPrivileges;
   }
 
   public boolean supportModsIfIsDataNodeReceiver() {

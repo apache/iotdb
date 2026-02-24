@@ -47,6 +47,7 @@ public class PipeRealtimeDataRegionLogSource extends PipeRealtimeDataRegionSourc
       extractTabletInsertion(event);
     } else if (eventToExtract instanceof TsFileInsertionEvent) {
       extractTsFileInsertion(event);
+      event.getTsFileEpoch().clearState(this);
     } else if (eventToExtract instanceof PipeHeartbeatEvent) {
       extractHeartbeat(event);
     } else if (eventToExtract instanceof PipeDeleteDataNodeEvent) {

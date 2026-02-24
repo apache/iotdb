@@ -185,6 +185,18 @@ public final class Patterns {
     return typeOf(PatternRecognitionNode.class);
   }
 
+  public static Pattern<UnionNode> union() {
+    return typeOf(UnionNode.class);
+  }
+
+  public static Pattern<IntersectNode> intersect() {
+    return typeOf(IntersectNode.class);
+  }
+
+  public static Pattern<ExceptNode> except() {
+    return typeOf(ExceptNode.class);
+  }
+
   /*public static Pattern<TableWriterNode> tableWriterNode()
   {
       return typeOf(TableWriterNode.class);
@@ -209,11 +221,6 @@ public final class Patterns {
   {
       return typeOf(UnnestNode.class);
   }
-
-  public static Pattern<WindowNode> window()
-  {
-      return typeOf(WindowNode.class);
-  }
   */
 
   public static Pattern<TableFunctionNode> tableFunction() {
@@ -228,27 +235,24 @@ public final class Patterns {
     return typeOf(WindowNode.class);
   }
 
+  public static Pattern<GroupNode> groupNode() {
+    return typeOf(GroupNode.class);
+  }
+
+  public static Pattern<RowNumberNode> rowNumber() {
+    return typeOf(RowNumberNode.class);
+  }
+
+  public static Pattern<TopKRankingNode> topNRanking() {
+    return typeOf(TopKRankingNode.class);
+  }
+
   /*
-
-  public static Pattern<RowNumberNode> rowNumber()
-  {
-      return typeOf(RowNumberNode.class);
-  }
-
-  public static Pattern<TopNRankingNode> topNRanking()
-  {
-      return typeOf(TopNRankingNode.class);
-  }
-
   public static Pattern<DistinctLimitNode> distinctLimit()
   {
       return typeOf(DistinctLimitNode.class);
   }
 
-  public static Pattern<IntersectNode> intersect()
-  {
-      return typeOf(IntersectNode.class);
-  }
 
   public static Pattern<ExceptNode> except()
   {
@@ -355,6 +359,18 @@ public final class Patterns {
     }
   }
 
+  public static final class Intersect {
+    public static Property<IntersectNode, Lookup, Boolean> distinct() {
+      return property("distinct", IntersectNode::isDistinct);
+    }
+  }
+
+  public static final class Except {
+    public static Property<ExceptNode, Lookup, Boolean> distinct() {
+      return property("distinct", ExceptNode::isDistinct);
+    }
+  }
+
   /*public static final class Sample
   {
       public static Property<SampleNode, Lookup, Double> sampleRatio()
@@ -411,22 +427,6 @@ public final class Patterns {
       }
   }*/
 
-  /*public static final class Intersect
-  {
-      public static Property<IntersectNode, Lookup, Boolean> distinct()
-      {
-          return property("distinct", IntersectNode::isDistinct);
-      }
-  }
-
-  public static final class Except
-  {
-      public static Property<ExceptNode, Lookup, Boolean> distinct()
-      {
-          return property("distinct", ExceptNode::isDistinct);
-      }
-  }
-  */
   public static final class PatternRecognition {
     public static Property<PatternRecognitionNode, Lookup, RowsPerMatch> rowsPerMatch() {
       return property("rowsPerMatch", PatternRecognitionNode::getRowsPerMatch);

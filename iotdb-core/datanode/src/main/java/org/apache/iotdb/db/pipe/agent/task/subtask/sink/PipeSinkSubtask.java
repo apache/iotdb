@@ -22,8 +22,10 @@ package org.apache.iotdb.db.pipe.agent.task.subtask.sink;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.subtask.PipeAbstractSinkSubtask;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.protocol.IoTDBSink;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.pipe.event.UserDefinedEnrichedEvent;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
@@ -33,13 +35,12 @@ import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.sync.IoTDBDataRegionSyncSink;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.utils.ErrorHandlingUtils;
+import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.pipe.api.PipeConnector;
 import org.apache.iotdb.pipe.api.event.Event;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TsFileInsertionEvent;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
-import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,13 +108,13 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       }
 
       if (event instanceof TabletInsertionEvent) {
-        outputPipeConnector.transfer((TabletInsertionEvent) event);
+        outputPipeSink.transfer((TabletInsertionEvent) event);
         PipeDataRegionSinkMetrics.getInstance().markTabletEvent(taskID);
       } else if (event instanceof TsFileInsertionEvent) {
-        outputPipeConnector.transfer((TsFileInsertionEvent) event);
+        outputPipeSink.transfer((TsFileInsertionEvent) event);
         PipeDataRegionSinkMetrics.getInstance().markTsFileEvent(taskID);
       } else if (event instanceof PipeSchemaRegionWritePlanEvent) {
-        outputPipeConnector.transfer(event);
+        outputPipeSink.transfer(event);
         if (((PipeSchemaRegionWritePlanEvent) event).getPlanNode().getType()
             != PlanNodeType.DELETE_DATA) {
           // Only plan nodes in schema region will be marked, delete data node is currently not
@@ -123,41 +124,16 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       } else if (event instanceof PipeHeartbeatEvent) {
         transferHeartbeatEvent((PipeHeartbeatEvent) event);
       } else {
-        outputPipeConnector.transfer(
+        outputPipeSink.transfer(
             event instanceof UserDefinedEnrichedEvent
                 ? ((UserDefinedEnrichedEvent) event).getUserDefinedEvent()
                 : event);
       }
 
       decreaseReferenceCountAndReleaseLastEvent(event, true);
-    } catch (final PipeException e) {
-      if (!isClosed.get()) {
-        setLastExceptionEvent(event);
-        throw e;
-      } else {
-        LOGGER.info(
-            "{} in pipe transfer, ignored because the connector subtask is dropped.",
-            e.getClass().getSimpleName(),
-            e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      sleepInterval = PipeConfig.getInstance().getPipeSinkSubtaskSleepIntervalInitMs();
     } catch (final Exception e) {
-      if (!isClosed.get()) {
-        setLastExceptionEvent(event);
-        throw new PipeException(
-            String.format(
-                "Exception in pipe transfer, subtask: %s, last event: %s, root cause: %s",
-                taskID,
-                event instanceof EnrichedEvent
-                    ? ((EnrichedEvent) event).coreReportMessage()
-                    : event,
-                ErrorHandlingUtils.getRootCause(e).getMessage()),
-            e);
-      } else {
-        LOGGER.info(
-            "Exception in pipe transfer, ignored because the connector subtask is dropped.", e);
-        clearReferenceCountAndReleaseLastEvent(event);
-      }
+      handleException(event, e);
     }
 
     return true;
@@ -170,12 +146,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     }
 
     try {
-      outputPipeConnector.heartbeat();
-      outputPipeConnector.transfer(event);
+      outputPipeSink.heartbeat();
+      outputPipeSink.transfer(event);
     } catch (final Exception e) {
       throw new PipeConnectionException(
           "PipeConnector: "
-              + outputPipeConnector.getClass().getName()
+              + outputPipeSink.getClass().getName()
               + "(id: "
               + taskID
               + ")"
@@ -199,17 +175,17 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     isClosed.set(true);
     try {
       final long startTime = System.currentTimeMillis();
-      outputPipeConnector.close();
+      outputPipeSink.close();
       LOGGER.info(
           "Pipe: connector subtask {} ({}) was closed within {} ms",
           taskID,
-          outputPipeConnector,
+          outputPipeSink,
           System.currentTimeMillis() - startTime);
     } catch (final Exception e) {
       LOGGER.info(
           "Exception occurred when closing pipe connector subtask {}, root cause: {}",
           taskID,
-          ErrorHandlingUtils.getRootCause(e).getMessage(),
+          ErrorHandlingCommonUtils.getRootCause(e).getMessage(),
           e);
     } finally {
       inputPendingQueue.discardAllEvents();
@@ -227,11 +203,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     // Try to remove the events as much as possible
     inputPendingQueue.discardEventsOfPipe(pipeNameToDrop, regionId);
 
-    highPriorityLockTaskCount.incrementAndGet();
     try {
-      synchronized (highPriorityLockTaskCount) {
-        highPriorityLockTaskCount.notifyAll();
-      }
+      increaseHighPriorityTaskCount();
 
       // synchronized to use the lastEvent & lastExceptionEvent
       synchronized (this) {
@@ -270,11 +243,11 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         }
       }
     } finally {
-      highPriorityLockTaskCount.decrementAndGet();
+      decreaseHighPriorityTaskCount();
     }
 
-    if (outputPipeConnector instanceof IoTDBSink) {
-      ((IoTDBSink) outputPipeConnector).discardEventsOfPipe(pipeNameToDrop, regionId);
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).discardEventsOfPipe(pipeNameToDrop, regionId);
     }
   }
 
@@ -304,48 +277,81 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   }
 
   public int getAsyncConnectorRetryEventQueueSize() {
-    return outputPipeConnector instanceof IoTDBDataRegionAsyncSink
-        ? ((IoTDBDataRegionAsyncSink) outputPipeConnector).getRetryEventQueueSize()
+    return outputPipeSink instanceof IoTDBDataRegionAsyncSink
+        ? ((IoTDBDataRegionAsyncSink) outputPipeSink).getRetryEventQueueSize()
         : 0;
   }
 
   public int getPendingHandlersSize() {
-    return outputPipeConnector instanceof IoTDBDataRegionAsyncSink
-        ? ((IoTDBDataRegionAsyncSink) outputPipeConnector).getPendingHandlersSize()
+    return outputPipeSink instanceof IoTDBDataRegionAsyncSink
+        ? ((IoTDBDataRegionAsyncSink) outputPipeSink).getPendingHandlersSize()
         : 0;
   }
 
   public int getBatchSize() {
-    if (outputPipeConnector instanceof IoTDBDataRegionAsyncSink) {
-      return ((IoTDBDataRegionAsyncSink) outputPipeConnector).getBatchSize();
+    if (outputPipeSink instanceof IoTDBDataRegionAsyncSink) {
+      return ((IoTDBDataRegionAsyncSink) outputPipeSink).getBatchSize();
     }
-    if (outputPipeConnector instanceof IoTDBDataRegionSyncSink) {
-      return ((IoTDBDataRegionSyncSink) outputPipeConnector).getBatchSize();
+    if (outputPipeSink instanceof IoTDBDataRegionSyncSink) {
+      return ((IoTDBDataRegionSyncSink) outputPipeSink).getBatchSize();
     }
     return 0;
   }
 
   public double getTotalUncompressedSize() {
-    return outputPipeConnector instanceof IoTDBSink
-        ? ((IoTDBSink) outputPipeConnector).getTotalUncompressedSize()
+    return outputPipeSink instanceof IoTDBSink
+        ? ((IoTDBSink) outputPipeSink).getTotalUncompressedSize()
         : 0;
   }
 
   public double getTotalCompressedSize() {
-    return outputPipeConnector instanceof IoTDBSink
-        ? ((IoTDBSink) outputPipeConnector).getTotalCompressedSize()
+    return outputPipeSink instanceof IoTDBSink
+        ? ((IoTDBSink) outputPipeSink).getTotalCompressedSize()
         : 0;
+  }
+
+  public void setTabletBatchSizeHistogram(Histogram tabletBatchSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setTabletBatchSizeHistogram(tabletBatchSizeHistogram);
+    }
+  }
+
+  public void setTsFileBatchSizeHistogram(Histogram tsFileBatchSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setTsFileBatchSizeHistogram(tsFileBatchSizeHistogram);
+    }
+  }
+
+  public void setTabletBatchTimeIntervalHistogram(Histogram tabletBatchTimeIntervalHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
+          .setTabletBatchTimeIntervalHistogram(tabletBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setTsFileBatchTimeIntervalHistogram(Histogram tsFileBatchTimeIntervalHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink)
+          .setTsFileBatchTimeIntervalHistogram(tsFileBatchTimeIntervalHistogram);
+    }
+  }
+
+  public void setEventSizeHistogram(Histogram eventSizeHistogram) {
+    if (outputPipeSink instanceof IoTDBSink) {
+      ((IoTDBSink) outputPipeSink).setBatchEventSizeHistogram(eventSizeHistogram);
+    }
   }
 
   //////////////////////////// Error report ////////////////////////////
 
   @Override
   protected String getRootCause(final Throwable throwable) {
-    return ErrorHandlingUtils.getRootCause(throwable).getMessage();
+    return ErrorHandlingCommonUtils.getRootCause(throwable).getMessage();
   }
 
   @Override
   protected void report(final EnrichedEvent event, final PipeRuntimeException exception) {
+    lastExceptionTime = Long.MAX_VALUE;
     PipeDataNodeAgent.runtime().report(event, exception);
   }
 }

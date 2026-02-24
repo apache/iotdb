@@ -20,14 +20,14 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.io.IOUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -156,7 +156,7 @@ public class TemplateTable {
               dataTypeList.get(i),
               encodingList == null ? getDefaultEncoding(dataTypeList.get(i)) : encodingList.get(i),
               compressionTypeList == null
-                  ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                  ? TSFileDescriptor.getInstance().getConfig().getCompressor(dataTypeList.get(i))
                   : compressionTypeList.get(i));
         } else {
           if (!measurementSchema.getType().equals(dataTypeList.get(i))
@@ -185,12 +185,8 @@ public class TemplateTable {
     }
   }
 
-  private void serializeTemplate(Template template, OutputStream outputStream) {
-    try {
-      template.serialize(outputStream);
-    } catch (IOException e) {
-      e.printStackTrace();
-    }
+  private void serializeTemplate(Template template, OutputStream outputStream) throws IOException {
+    template.serialize(outputStream);
   }
 
   private void deserialize(InputStream inputStream) throws IOException {

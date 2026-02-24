@@ -24,15 +24,15 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.AsyncThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
-import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
+import org.apache.iotdb.commons.client.util.IoTDBSinkPortBinder;
+import org.apache.iotdb.rpc.TNonblockingTransportWrapper;
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +42,7 @@ import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
 public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncClient
     implements ThriftClient {
@@ -52,7 +53,7 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   private static final AtomicInteger idGenerator = new AtomicInteger(0);
   private final int id = idGenerator.incrementAndGet();
 
-  private final boolean printLogWhenEncounterException;
+  private boolean printLogWhenEncounterException;
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> clientManager;
@@ -74,10 +75,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     super(
         property.getProtocolFactory(),
         tClientManager,
-        TNonblockingSocketWrapper.wrap(
+        TNonblockingTransportWrapper.wrap(
             endpoint.getIp(), endpoint.getPort(), property.getConnectionTimeoutMs()));
     SocketChannel socketChannel = ((TNonblockingSocket) ___transport).getSocketChannel();
-    IoTDBConnectorPortBinder.bindPort(
+    IoTDBSinkPortBinder.bindPort(
         customSendPortStrategy,
         minSendPortRange,
         maxSendPortRange,
@@ -101,7 +102,9 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void onError(final Exception e) {
     super.onError(e);
     ThriftClient.resolveException(e, this);
-    returnSelf();
+    setPrintLogWhenEncounterException(false);
+    returnSelf(
+        (i) -> i instanceof IllegalStateException && "Client has an error!".equals(i.getMessage()));
   }
 
   @Override
@@ -121,6 +124,10 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
     return printLogWhenEncounterException;
   }
 
+  public void setPrintLogWhenEncounterException(final boolean printLogWhenEncounterException) {
+    this.printLogWhenEncounterException = printLogWhenEncounterException;
+  }
+
   /**
    * return self, the method doesn't need to be called by the user and will be triggered after the
    * RPC is finished.
@@ -128,6 +135,16 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
   public void returnSelf() {
     if (shouldReturnSelf.get()) {
       clientManager.returnClient(endpoint, this);
+    }
+  }
+
+  /**
+   * return self, the method doesn't need to be called by the user and will be triggered after the
+   * RPC is finished.
+   */
+  public void returnSelf(Function<Exception, Boolean> ignoreError) {
+    if (shouldReturnSelf.get()) {
+      clientManager.returnClient(endpoint, this, ignoreError);
     }
   }
 

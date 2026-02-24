@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
@@ -30,7 +31,6 @@ import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaMeasurementN
 import org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputationWithAutoCreation;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -48,29 +48,41 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchRawSchemaInMeasurementLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     schemaTree.setDatabases(Collections.singleton("root.sg"));
     return schemaTree;
   }
 
   @Override
   public ISchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
-    return fetchSchema(patternTree, withTemplate, context);
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
+    return fetchSchema(patternTree, withTemplate, context, canSeeAuditDB);
   }
 
   @Override

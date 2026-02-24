@@ -50,6 +50,7 @@ public class ShowQueriesOperator implements SourceOperator {
   private boolean hasConsumed;
 
   private final Coordinator coordinator;
+  private final String allowedUsername;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -58,10 +59,14 @@ public class ShowQueriesOperator implements SourceOperator {
       RamUsageEstimator.shallowSizeOfInstance(ShowQueriesOperator.class);
 
   public ShowQueriesOperator(
-      OperatorContext operatorContext, PlanNodeId sourceId, Coordinator coordinator) {
+      OperatorContext operatorContext,
+      PlanNodeId sourceId,
+      Coordinator coordinator,
+      String allowedUsername) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.coordinator = coordinator;
+    this.allowedUsername = allowedUsername;
   }
 
   @Override
@@ -132,6 +137,9 @@ public class ShowQueriesOperator implements SourceOperator {
       int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
 
       for (IQueryExecution queryExecution : queryExecutions) {
+        if (allowedUsername != null && !allowedUsername.equals(queryExecution.getUser())) {
+          continue;
+        }
         if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TREE)) {
           timeColumnBuilder.writeLong(
               TimestampPrecisionUtils.convertToCurrPrecision(

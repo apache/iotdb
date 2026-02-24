@@ -216,6 +216,9 @@ public class IoTDBConstant {
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
+  public static final String CTE_QUERY = "CTE Query";
+  public static final String MAIN_QUERY = "Main Query";
+
   // sdt parameters
   public static final String LOSS = "loss";
   public static final String SDT = "sdt";
@@ -248,6 +251,7 @@ public class IoTDBConstant {
   public static final String DATA_FOLDER_NAME = "data";
   public static final String SEQUENCE_FOLDER_NAME = "sequence";
   public static final String UNSEQUENCE_FOLDER_NAME = "unsequence";
+  public static final String OBJECT_FOLDER_NAME = "object";
   public static final String FILE_NAME_SEPARATOR = "-";
   public static final String CONSENSUS_FOLDER_NAME = "consensus";
   public static final String DATA_REGION_FOLDER_NAME = "data_region";
@@ -266,7 +270,9 @@ public class IoTDBConstant {
   public static final String EXT_FOLDER_NAME = "ext";
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
+  public static final String EXTERNAL_SERVICE_FOLDER_NAME = "external_service";
   public static final String PIPE_FOLDER_NAME = "pipe";
+  public static final String CTE_FOLDER_NAME = "cte";
   public static final String TMP_FOLDER_NAME = "tmp";
   public static final String DELETION_FOLDER_NAME = "deletion";
 
@@ -284,7 +290,6 @@ public class IoTDBConstant {
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
   // thrift
-  public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
@@ -300,6 +305,7 @@ public class IoTDBConstant {
   public static final String SETTLE_SUFFIX = ".settle";
   public static final String MODS_SETTLE_FILE_SUFFIX = ".mods.settle";
   public static final String BLANK = "";
+  public static final String SPACE = " ";
 
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";
@@ -368,4 +374,10 @@ public class IoTDBConstant {
   public static final String TTL_INFINITE = "INF";
 
   public static final String INTEGRATION_TEST_KILL_POINTS = "integrationTestKillPoints";
+
+  // Class Name
+  public static final String STRING_2D_ARRAY_CLASS_NAME = String[][].class.getName();
+  public static final String STRING_ARRAY_CLASS_NAME = String[].class.getName();
+
+  public static final int SUPER_USER_ID = 0;
 }

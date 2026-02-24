@@ -32,8 +32,8 @@ import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScal
 import org.apache.iotdb.db.queryengine.plan.expression.multi.builtin.BuiltInScalarFunctionHelperFactory;
 import org.apache.iotdb.db.utils.constant.SqlConstant;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -325,6 +325,7 @@ public class TypeInferenceUtils {
       case DATE:
       case TIMESTAMP:
       case BLOB:
+      case OBJECT:
       case STRING:
         return false;
       default:

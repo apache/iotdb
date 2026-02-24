@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 public class IoTDBSyntaxConventionIdentifierIT {
   @Before
   public void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -115,7 +116,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -273,7 +274,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
         statement.execute(insertSql);
       }
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES root.sg1.**")) {
         Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
 
         while (resultSet.next()) {
@@ -387,7 +388,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
   }
 
   @Test
-  public void testCreateIllegalStorageGroup() {
+  public void testCreateIllegalDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -609,7 +610,7 @@ public class IoTDBSyntaxConventionIdentifierIT {
       String[] resultNames =
           new String[] {"root", "userid", "userid0", "user_id", "user0id", "a22233"};
 
-      String createUsersSql = "create user %s 'pwd123' ";
+      String createUsersSql = "create user %s 'pwd123123456' ";
       for (String userName : userNames) {
         statement.execute(String.format(createUsersSql, userName));
       }
@@ -630,31 +631,31 @@ public class IoTDBSyntaxConventionIdentifierIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("create user `abcd`` 'pwd123'");
+        statement.execute("create user `abcd`` 'pwd123123456'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create user `abcd 'pwd123'");
+        statement.execute("create user `abcd 'pwd123123456'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create user 12345 'pwd123'");
+        statement.execute("create user 12345 'pwd123123456'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create user a.b.c 'pwd123'");
+        statement.execute("create user a.b.c 'pwd123123456'");
         fail();
       } catch (Exception ignored) {
       }
 
       try {
-        statement.execute("create user a!@bc 'pwd123'");
+        statement.execute("create user a!@bc 'pwd123123456'");
         fail();
       } catch (Exception ignored) {
       }

@@ -50,6 +50,11 @@ public enum Metric {
   THRIFT_CONNECTIONS("thrift_connections"),
   THRIFT_ACTIVE_THREADS("thrift_active_threads"),
   CLIENT_MANAGER("client_manager"),
+  THRIFT_RPC_UNCOMPRESS_SIZE("thrift_rpc_uncompress_size"),
+  THRIFT_RPC_COMPRESS_SIZE("thrift_rpc_compress_size"),
+  THRIFT_RPC_UNCOMPRESS("thrift_rpc_uncompress"),
+  THRIFT_RPC_DECODE("thrift_rpc_decode"),
+  THRIFT_RPC_MEMORY_USAGE("thrift_rpc_memory_usage"),
   // consensus related
   STAGE("stage"),
   IOT_CONSENSUS("iot_consensus"),
@@ -193,6 +198,9 @@ public enum Metric {
   PIPE_GLOBAL_REMAINING_TIME("pipe_global_remaining_time"),
   PIPE_TSFILE_TO_TABLETS_TIME("pipe_tsfile_to_tablets_time"),
   PIPE_TSFILE_TO_TABLETS_RATE("pipe_tsfile_to_tablets_rate"),
+  PIPE_TSFILE_TO_TABLETS_COUNT("pipe_tsfile_to_tablets_count"),
+  PIPE_TSFILE_TO_TABLETS_TOTAL_MEMORY("pipe_tsfile_to_tablets_total_memory"),
+  PIPE_TSFILE_PARSE_FILE_COUNT("pipe_tsfile_parse_file_count"),
   // subscription related
   SUBSCRIPTION_UNCOMMITTED_EVENT_COUNT("subscription_uncommitted_event_count"),
   SUBSCRIPTION_CURRENT_COMMIT_ID("subscription_current_commit_id"),

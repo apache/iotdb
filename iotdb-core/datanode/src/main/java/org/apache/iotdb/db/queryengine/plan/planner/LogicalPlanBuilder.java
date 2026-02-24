@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.TimeseriesContext;
@@ -101,12 +102,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaUtils;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.columngenerator.parameter.SlidingTimeColumnGeneratorParameter;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -253,12 +253,23 @@ public class LogicalPlanBuilder {
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
-          String outputViewPath =
-              sourceExpression.isViewExpression()
-                  ? sourceExpression.getViewPath().getFullPath()
-                  : null;
-          TSDataType outputViewPathType =
-              outputViewPath == null ? null : selectedPath.getSeriesType();
+          String outputPath;
+          TSDataType outputViewPathType = null;
+          // the path is view, use the view path as the output path
+          if (sourceExpression.isViewExpression()) {
+            outputPath = sourceExpression.getViewPath().getFullPath();
+            outputViewPathType = selectedPath.getSeriesType();
+          } else {
+            outputPath = selectedPath.getFullPath();
+          }
+          // the path has alias, use alias as the output path
+          if (selectedPath.isMeasurementAliasExists()) {
+            outputPath =
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString();
+          }
 
           PartialPath devicePath = selectedPath.getDevicePath();
           // For expression with view path, we do not use the deviceId in Map.Entry because it is a
@@ -270,7 +281,8 @@ public class LogicalPlanBuilder {
                   devicePath,
                   selectedPath.isUnderAlignedEntity(),
                   Collections.singletonList(selectedPath.getMeasurementSchema()),
-                  outputViewPath,
+                  Collections.singletonList(outputPath),
+                  outputViewPathType != null,
                   outputViewPathType);
           this.context.reserveMemoryForFrontEnd(memCost);
         }
@@ -279,12 +291,31 @@ public class LogicalPlanBuilder {
         List<IMeasurementSchema> measurementSchemas =
             new ArrayList<>(measurementToExpressionsOfDevice.size());
         PartialPath devicePath = null;
+        List<String> outputPaths = null;
+        int i = 0;
         for (Expression sourceExpression : measurementToExpressionsOfDevice.values()) {
           MeasurementPath selectedPath =
               (MeasurementPath) ((TimeSeriesOperand) sourceExpression).getPath();
           aligned = selectedPath.isUnderAlignedEntity();
           devicePath = devicePath == null ? selectedPath.getDevicePath() : devicePath;
           measurementSchemas.add(selectedPath.getMeasurementSchema());
+
+          // series has alias and use alias to SELECT
+          if (selectedPath.isMeasurementAliasExists()) {
+            if (outputPaths == null) {
+              // fill null as default value
+              outputPaths =
+                  new ArrayList<>(
+                      Collections.nCopies(measurementToExpressionsOfDevice.size(), null));
+            }
+            outputPaths.set(
+                i,
+                selectedPath
+                    .getDevicePath()
+                    .concatAsMeasurementPath(selectedPath.getMeasurementAlias())
+                    .toString());
+          }
+          i++;
         }
         // DeviceId is needed in the distribution plan stage
         devicePath.setIDeviceID(deviceId);
@@ -294,7 +325,8 @@ public class LogicalPlanBuilder {
                 devicePath,
                 aligned,
                 measurementSchemas,
-                null,
+                outputPaths,
+                false,
                 null);
         this.context.reserveMemoryForFrontEnd(memCost);
       }
@@ -905,7 +937,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLimit(long rowLimit) {
-    if (rowLimit == 0) {
+    if (rowLimit <= 0) {
       return this;
     }
 
@@ -995,7 +1027,8 @@ public class LogicalPlanBuilder {
       boolean orderByHeat,
       boolean prefixPath,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
@@ -1006,7 +1039,8 @@ public class LogicalPlanBuilder {
             orderByHeat,
             prefixPath,
             templateMap,
-            scope);
+            scope,
+            timeseriesOrdering);
     return this;
   }
 
@@ -1062,21 +1096,21 @@ public class LogicalPlanBuilder {
       boolean withAttributes,
       boolean withTemplate,
       boolean withAliasForce) {
-    PartialPath storageGroupPath;
+    PartialPath databasePath;
     for (String storageGroup : storageGroupList) {
       try {
-        storageGroupPath = new PartialPath(storageGroup);
+        databasePath = new PartialPath(storageGroup);
         PathPatternTree overlappedPatternTree = new PathPatternTree();
         for (PartialPath pathPattern :
             patternTree.getOverlappedPathPatterns(
-                storageGroupPath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+                databasePath.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
           // pathPattern has been deduplicated, no need to deduplicate again
           overlappedPatternTree.appendFullPath(pathPattern);
         }
         this.root.addChild(
             new SeriesSchemaFetchScanNode(
                 context.getQueryId().genPlanNodeId(),
-                storageGroupPath,
+                databasePath,
                 overlappedPatternTree,
                 templateMap,
                 withTags,
@@ -1230,11 +1264,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planShowQueries(Analysis analysis) {
+  public LogicalPlanBuilder planShowQueries(Analysis analysis, String allowedUsername) {
     List<TDataNodeLocation> dataNodeLocations = analysis.getReadableDataNodeLocations();
     if (dataNodeLocations.size() == 1) {
       this.root =
-          planSingleShowQueries(dataNodeLocations.get(0))
+          planSingleShowQueries(dataNodeLocations.get(0), allowedUsername)
               .planFilterAndTransform(
                   analysis.getWhereExpression(),
                   analysis.getSourceExpressions(),
@@ -1254,7 +1288,7 @@ public class LogicalPlanBuilder {
       dataNodeLocations.forEach(
           dataNodeLocation ->
               mergeSortNode.addChild(
-                  this.planSingleShowQueries(dataNodeLocation)
+                  this.planSingleShowQueries(dataNodeLocation, allowedUsername)
                       .planFilterAndTransform(
                           analysis.getWhereExpression(),
                           analysis.getSourceExpressions(),
@@ -1275,8 +1309,11 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  private LogicalPlanBuilder planSingleShowQueries(TDataNodeLocation dataNodeLocation) {
-    this.root = new ShowQueriesNode(context.getQueryId().genPlanNodeId(), dataNodeLocation);
+  private LogicalPlanBuilder planSingleShowQueries(
+      TDataNodeLocation dataNodeLocation, String allowedUsername) {
+    this.root =
+        new ShowQueriesNode(
+            context.getQueryId().genPlanNodeId(), dataNodeLocation, allowedUsername);
     return this;
   }
 

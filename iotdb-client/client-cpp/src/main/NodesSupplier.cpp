@@ -23,7 +23,8 @@
 #include <iostream>
 #include <utility>
 
-const std::string NodesSupplier::SHOW_DATA_NODES_COMMAND = "SHOW DATANODES";
+const std::string NodesSupplier::SHOW_AVAILABLE_URLS_COMMAND = "SHOW AVAILABLE URLS";
+const std::string NodesSupplier::RUNNING_STATUS = "Running";
 const std::string NodesSupplier::STATUS_COLUMN_NAME = "Status";
 const std::string NodesSupplier::IP_COLUMN_NAME = "RpcAddress";
 const std::string NodesSupplier::PORT_COLUMN_NAME = "RpcPort";
@@ -67,32 +68,57 @@ std::vector<TEndPoint> StaticNodesSupplier::getEndPointList() {
 StaticNodesSupplier::~StaticNodesSupplier() = default;
 
 std::shared_ptr<NodesSupplier> NodesSupplier::create(
-    std::vector<TEndPoint> endpoints,
-    std::string userName, std::string password, std::string zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-    int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-    std::string version, std::chrono::milliseconds refreshInterval,
+    const std::vector<TEndPoint>& endpoints,
+    const std::string& userName,
+    const std::string& password,
+    bool useSSL,
+    const std::string& trustCertFilePath,
+    const std::string& zoneId,
+    int32_t thriftDefaultBufferSize,
+    int32_t thriftMaxFrameSize,
+    int32_t connectionTimeoutInMs,
+    bool enableRPCCompression,
+    const std::string& version,
+    std::chrono::milliseconds refreshInterval,
     NodeSelectionPolicy policy) {
     if (endpoints.empty()) {
         return nullptr;
     }
     auto supplier = std::make_shared<NodesSupplier>(
-        userName, password, zoneId, thriftDefaultBufferSize,
-        thriftMaxFrameSize, connectionTimeoutInMs, useSSL,
-        enableRPCCompression, version, std::move(endpoints), std::move(policy)
+        userName, password, useSSL, trustCertFilePath, zoneId,
+        thriftDefaultBufferSize, thriftMaxFrameSize, connectionTimeoutInMs,
+        enableRPCCompression,
+        version, endpoints, policy
     );
     supplier->startBackgroundRefresh(refreshInterval);
     return supplier;
 }
 
 NodesSupplier::NodesSupplier(
-    std::string userName, std::string password, const std::string& zoneId,
-    int32_t thriftDefaultBufferSize, int32_t thriftMaxFrameSize,
-    int32_t connectionTimeoutInMs, bool useSSL, bool enableRPCCompression,
-    std::string version, std::vector<TEndPoint> endpoints, NodeSelectionPolicy policy) : userName_(std::move(userName)), password_(std::move(password)), zoneId_(zoneId),
-    thriftDefaultBufferSize_(thriftDefaultBufferSize), thriftMaxFrameSize_(thriftMaxFrameSize),
-    connectionTimeoutInMs_(connectionTimeoutInMs), useSSL_(useSSL), enableRPCCompression_(enableRPCCompression), version(version), endpoints_(std::move(endpoints)),
-    selectionPolicy_(std::move(policy)) {
+    const std::string& userName,
+    const std::string& password,
+    bool useSSL,
+    const std::string& trustCertFilePath,
+    const std::string& zoneId,
+    int32_t thriftDefaultBufferSize,
+    int32_t thriftMaxFrameSize,
+    int32_t connectionTimeoutInMs,
+    bool enableRPCCompression,
+    const std::string& version,
+    const std::vector<TEndPoint>& endpoints,
+    NodeSelectionPolicy policy)
+    : userName_(userName)
+      , password_(password)
+      , zoneId_(zoneId)
+      , thriftDefaultBufferSize_(thriftDefaultBufferSize)
+      , thriftMaxFrameSize_(thriftMaxFrameSize)
+      , connectionTimeoutInMs_(connectionTimeoutInMs)
+      , useSSL_(useSSL)
+      , trustCertFilePath_(trustCertFilePath)
+      , enableRPCCompression_(enableRPCCompression)
+      , version_(version)
+      , endpoints_(endpoints)
+      , selectionPolicy_(policy) {
     deduplicateEndpoints();
 }
 
@@ -121,7 +147,9 @@ boost::optional<TEndPoint> NodesSupplier::getQueryEndPoint() {
 
 NodesSupplier::~NodesSupplier() {
     stopBackgroundRefresh();
-    client_->close();
+    if (client_ != nullptr) {
+        client_->close();
+    }
 }
 
 void NodesSupplier::deduplicateEndpoints() {
@@ -137,6 +165,7 @@ void NodesSupplier::deduplicateEndpoints() {
 
 void NodesSupplier::startBackgroundRefresh(std::chrono::milliseconds interval) {
     isRunning_ = true;
+    refreshEndpointList();
     refreshThread_ = std::thread([this, interval] {
         while (isRunning_) {
             refreshEndpointList();
@@ -149,60 +178,60 @@ void NodesSupplier::startBackgroundRefresh(std::chrono::milliseconds interval) {
 }
 
 std::vector<TEndPoint> NodesSupplier::fetchLatestEndpoints() {
+  for (const auto& endpoint : endpoints_) {
     try {
-        if (client_ == nullptr) {
-            client_ = std::make_shared<ThriftConnection>(selectionPolicy_(endpoints_));
-            client_->init(userName_, password_, enableRPCCompression_, zoneId_, version);
+      if (client_ == nullptr) {
+        client_ = std::make_shared<ThriftConnection>(endpoint);
+        client_->init(userName_, password_, enableRPCCompression_, useSSL_, trustCertFilePath_, zoneId_, version_);
+      }
+
+      auto sessionDataSet = client_->executeQueryStatement(SHOW_AVAILABLE_URLS_COMMAND);
+
+      uint32_t columnAddrIdx = -1, columnPortIdx = -1;
+      auto columnNames = sessionDataSet->getColumnNames();
+      for (uint32_t i = 0; i < columnNames.size(); i++) {
+        if (columnNames[i] == IP_COLUMN_NAME) {
+          columnAddrIdx = i;
+        } else if (columnNames[i] == PORT_COLUMN_NAME) {
+          columnPortIdx = i;
+        }
+      }
+
+      if (columnAddrIdx == -1 || columnPortIdx == -1) {
+        throw IoTDBException("Required columns not found in query result.");
+      }
+
+      std::vector<TEndPoint> ret;
+      while (sessionDataSet->hasNext()) {
+        auto record = sessionDataSet->next();
+        std::string ip;
+        int32_t port = 0;
+
+        if (record->fields.at(columnAddrIdx).stringV.is_initialized()) {
+          ip = record->fields.at(columnAddrIdx).stringV.value();
+        }
+        if (record->fields.at(columnPortIdx).intV.is_initialized()) {
+          port = record->fields.at(columnPortIdx).intV.value();
         }
 
-        auto sessionDataSet = client_->executeQueryStatement(SHOW_DATA_NODES_COMMAND);
-
-        uint32_t columnAddrIdx = -1, columnPortIdx = -1, columnStatusIdx = -1;
-        auto columnNames = sessionDataSet->getColumnNames();
-        for (uint32_t i = 0; i < columnNames.size(); i++) {
-            if (columnNames[i] == IP_COLUMN_NAME) {
-                columnAddrIdx = i;
-            } else if (columnNames[i] == PORT_COLUMN_NAME) {
-                columnPortIdx = i;
-            } else if (columnNames[i] == STATUS_COLUMN_NAME) {
-                columnStatusIdx = i;
-            }
+        if (ip == "0.0.0.0") {
+          log_warn("Skipping invalid node: " + ip + ":" + std::to_string(port));
+          continue;
         }
-
-        if (columnAddrIdx == -1 || columnPortIdx == -1 || columnStatusIdx == -1) {
-            throw IoTDBException("Required columns not found in query result.");
-        }
-
-        std::vector<TEndPoint> ret;
-        while (sessionDataSet->hasNext()) {
-            auto record = sessionDataSet->next();
-            std::string ip;
-            int32_t port;
-            std::string status;
-            if (record->fields.at(columnAddrIdx).stringV.is_initialized()) {
-                ip = record->fields.at(columnAddrIdx).stringV.value();
-            }
-            if (record->fields.at(columnPortIdx).intV.is_initialized()) {
-                port = record->fields.at(columnPortIdx).intV.value();
-            }
-            if (record->fields.at(columnStatusIdx).stringV.is_initialized()) {
-                status = record->fields.at(columnStatusIdx).stringV.value();
-            }
-            if (ip == "0.0.0.0" || status == REMOVING_STATUS) {
-                log_warn("Skipping invalid node: " + ip + ":" + to_string(port));
-                continue;
-            }
-            TEndPoint endpoint;
-            endpoint.ip = ip;
-            endpoint.port = port;
-            ret.emplace_back(endpoint);
-        }
-
-        return ret;
-    } catch (const IoTDBException& e) {
-        client_.reset();
-        throw IoTDBException(std::string("NodesSupplier::fetchLatestEndpoints failed: ") + e.what());
+        TEndPoint newEndpoint;
+        newEndpoint.ip = ip;
+        newEndpoint.port = port;
+        ret.emplace_back(newEndpoint);
+      }
+      return ret;  // success
+    } catch (const std::exception& e) {
+      log_warn("Failed to fetch endpoints from " + endpoint.ip + ":" +
+               std::to_string(endpoint.port) + " , error=" + e.what());
+      client_.reset();  // reset client before retrying next endpoint
+      continue;         // try next endpoint
     }
+  }
+  throw IoTDBException("NodesSupplier::fetchLatestEndpoints failed: all nodes unreachable.");
 }
 
 void NodesSupplier::refreshEndpointList() {

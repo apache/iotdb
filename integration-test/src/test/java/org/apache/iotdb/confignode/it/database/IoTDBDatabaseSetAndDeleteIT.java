@@ -74,23 +74,23 @@ public class IoTDBDatabaseSetAndDeleteIT {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       // set Database0 by default values
-      TDatabaseSchema storageGroupSchema0 = new TDatabaseSchema(sg0);
-      status = client.setDatabase(storageGroupSchema0);
+      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(sg0);
+      status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // set Database1 by specific values
-      TDatabaseSchema storageGroupSchema1 =
+      TDatabaseSchema databaseSchema1 =
           new TDatabaseSchema(sg1)
               .setSchemaReplicationFactor(5)
               .setDataReplicationFactor(5)
               .setTimePartitionInterval(2048L);
-      status = client.setDatabase(storageGroupSchema1);
+      status = client.setDatabase(databaseSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // test count all Databases
       TCountDatabaseResp countResp =
           client.countMatchedDatabases(
-              new TGetDatabaseReq(Arrays.asList("root", "**"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
       Assert.assertEquals(2, countResp.getCount());
@@ -106,26 +106,26 @@ public class IoTDBDatabaseSetAndDeleteIT {
       // test query all DatabaseSchemas
       TDatabaseSchemaResp getResp =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "**"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       Map<String, TDatabaseSchema> schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(2, schemaMap.size());
-      TDatabaseSchema storageGroupSchema = schemaMap.get(sg0);
-      Assert.assertNotNull(storageGroupSchema);
-      Assert.assertEquals(sg0, storageGroupSchema.getName());
-      Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
-      Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
-      Assert.assertEquals(604800000, storageGroupSchema.getTimePartitionInterval());
-      storageGroupSchema = schemaMap.get(sg1);
-      Assert.assertNotNull(storageGroupSchema);
-      Assert.assertEquals(sg1, storageGroupSchema.getName());
-      Assert.assertEquals(5, storageGroupSchema.getSchemaReplicationFactor());
-      Assert.assertEquals(5, storageGroupSchema.getDataReplicationFactor());
-      Assert.assertEquals(2048L, storageGroupSchema.getTimePartitionInterval());
+      TDatabaseSchema databaseSchema = schemaMap.get(sg0);
+      Assert.assertNotNull(databaseSchema);
+      Assert.assertEquals(sg0, databaseSchema.getName());
+      Assert.assertEquals(1, databaseSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(1, databaseSchema.getDataReplicationFactor());
+      Assert.assertEquals(604800000, databaseSchema.getTimePartitionInterval());
+      databaseSchema = schemaMap.get(sg1);
+      Assert.assertNotNull(databaseSchema);
+      Assert.assertEquals(sg1, databaseSchema.getName());
+      Assert.assertEquals(5, databaseSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(5, databaseSchema.getDataReplicationFactor());
+      Assert.assertEquals(2048L, databaseSchema.getTimePartitionInterval());
 
       // test fail by re-register
-      status = client.setDatabase(storageGroupSchema0);
+      status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode(), status.getCode());
 
       // test Database setter interfaces
@@ -149,38 +149,38 @@ public class IoTDBDatabaseSetAndDeleteIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), getResp.getStatus().getCode());
       schemaMap = getResp.getDatabaseSchemaMap();
       Assert.assertEquals(1, schemaMap.size());
-      storageGroupSchema = schemaMap.get(sg1);
-      Assert.assertNotNull(storageGroupSchema);
-      Assert.assertEquals(sg1, storageGroupSchema.getName());
-      Assert.assertEquals(1, storageGroupSchema.getSchemaReplicationFactor());
-      Assert.assertEquals(1, storageGroupSchema.getDataReplicationFactor());
-      Assert.assertEquals(604800, storageGroupSchema.getTimePartitionInterval());
+      databaseSchema = schemaMap.get(sg1);
+      Assert.assertNotNull(databaseSchema);
+      Assert.assertEquals(sg1, databaseSchema.getName());
+      Assert.assertEquals(1, databaseSchema.getSchemaReplicationFactor());
+      Assert.assertEquals(1, databaseSchema.getDataReplicationFactor());
+      Assert.assertEquals(604800, databaseSchema.getTimePartitionInterval());
     }
   }
 
   @Test
-  public void testDeleteStorageGroup() throws Exception {
+  public void testDeleteDatabase() throws Exception {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
-      TDatabaseSchema storageGroupSchema0 = new TDatabaseSchema(sg0);
-      // set StorageGroup0 by default values
-      status = client.setDatabase(storageGroupSchema0);
+      TDatabaseSchema databaseSchema0 = new TDatabaseSchema(sg0);
+      // set Database0 by default values
+      status = client.setDatabase(databaseSchema0);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      // set StorageGroup1 by specific values
-      TDatabaseSchema storageGroupSchema1 = new TDatabaseSchema(sg1);
-      status = client.setDatabase(storageGroupSchema1);
+      // set Database1 by specific values
+      TDatabaseSchema databaseSchema1 = new TDatabaseSchema(sg1);
+      status = client.setDatabase(databaseSchema1);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      TDeleteDatabasesReq deleteStorageGroupsReq = new TDeleteDatabasesReq();
+      TDeleteDatabasesReq deleteDatabasesReq = new TDeleteDatabasesReq();
       List<String> sgs = Arrays.asList(sg0, sg1);
-      deleteStorageGroupsReq.setPrefixPathList(sgs);
-      TSStatus deleteSgStatus = client.deleteDatabases(deleteStorageGroupsReq);
+      deleteDatabasesReq.setPrefixPathList(sgs);
+      TSStatus deleteSgStatus = client.deleteDatabases(deleteDatabasesReq);
       TDatabaseSchemaResp root =
           client.getMatchedDatabaseSchemas(
-              new TGetDatabaseReq(Arrays.asList("root", "*"), ALL_MATCH_SCOPE_BINARY));
+              new TGetDatabaseReq(Arrays.asList("root", "sg*"), ALL_MATCH_SCOPE_BINARY));
       Assert.assertTrue(root.getDatabaseSchemaMap().isEmpty());
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), deleteSgStatus.getCode());
     }

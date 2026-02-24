@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,12 +65,19 @@ public class DeletionLoader implements ILoader {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  new SessionInfo(
+                      0,
+                      new UserEntity(
+                          AuthorityChecker.SUPER_USER_ID,
+                          AuthorityChecker.SUPER_USER,
+                          IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+                      ZoneId.systemDefault()),
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false);
+                  false,
+                  statement.isDebug());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.error("Delete {} error, statement: {}.", deletion, statement);
         LOGGER.error("Delete result status : {}.", result.status);

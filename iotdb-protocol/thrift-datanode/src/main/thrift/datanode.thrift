@@ -17,6 +17,7 @@
  * under the License.
  */
 include "common.thrift"
+include "client.thrift"
 namespace java org.apache.iotdb.mpp.rpc.thrift
 namespace py iotdb.thrift.datanode
 
@@ -245,7 +246,7 @@ struct TUpdateTriggerLocationReq {
 struct TFireTriggerReq {
   1: required string triggerName
   2: required binary tablet
-  3: required byte triggerEvent
+  3: required i8 triggerEvent
 }
 
 struct TFireTriggerResp {
@@ -266,6 +267,7 @@ struct TDropPipePluginInstanceReq {
 struct TInvalidatePermissionCacheReq {
   1: required string username
   2: required string roleName
+  3: optional bool needDisconnect
 }
 
 struct TDataNodeHeartbeatReq {
@@ -284,6 +286,9 @@ struct TDataNodeHeartbeatReq {
   13: optional map<i32, set<i32>> topology
   14: required i64 logicalClock
   15: optional list<common.TConsensusGroupId> currentRegionOperations
+  // Using 8 bit to represent 8 bool
+  // lowest bit: enable separation of admin powers
+  16: optional byte booleanVariables1
 }
 
 struct TDataNodeActivation {
@@ -310,6 +315,7 @@ struct TDataNodeHeartbeatResp {
   14: optional list<bool> pipeCompletedList
   15: optional list<i64> pipeRemainingEventCountList
   16: optional list<double> pipeRemainingTimeList
+  17: optional map<i32, i64> dataRegionRawDataSize
 }
 
 struct TPipeHeartbeatReq {
@@ -434,6 +440,7 @@ struct TRollbackSchemaBlackListReq {
 
 struct TInvalidateMatchedSchemaCacheReq {
   1: required binary pathPatternTree
+  2: optional bool needLock
 }
 
 struct TFetchSchemaBlackListReq {
@@ -456,6 +463,22 @@ struct TDeleteTimeSeriesReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
   3: optional bool isGeneratedByPipe
+}
+
+struct TAlterEncodingCompressorReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required binary pathPatternTree
+  3: required bool ifExists
+  4: optional byte encoding
+  5: optional byte compressor
+}
+
+struct TAlterTimeSeriesReq {
+  1: required list<common.TConsensusGroupId> schemaRegionIdList
+  2: required string queryId
+  3: required binary measurementPath
+  4: required byte operationType
+  5: required binary updateInfo
 }
 
 struct TConstructSchemaBlackListWithTemplateReq {
@@ -640,6 +663,21 @@ struct TFetchTimeseriesResp {
   6: optional list<binary> tsDataset
   7: optional bool hasMoreData
 }
+
+struct TAuditLogReq {
+  1: required string username
+  2: required i64 userId
+  3: required string cliHostname
+  4: required string auditEventType
+  5: required string operationType
+  6: required string privilegeType
+  7: required bool result
+  8: required string database
+  9: required string sqlString
+  10: required string log
+  11: required i32 cnId
+}
+
 /**
 * BEGIN: Used for EXPLAIN ANALYZE
 **/
@@ -711,6 +749,8 @@ struct TQueryStatistics {
   45: i64 loadChunkFromCacheCount
   46: i64 loadChunkFromDiskCount
   47: i64 loadChunkActualIOSize
+
+  48: i64 chunkWithMetadataErrorsCount
 }
 
 
@@ -735,6 +775,12 @@ struct TFetchFragmentInstanceStatisticsResp {
   14: optional i64 blockQueuedTime
   15: optional string ip
   16: optional string state
+  17: optional i32 initDataQuerySourceRetryCount
+}
+
+struct TKillQueryInstanceReq {
+  1: optional string queryId
+  2: optional string allowedUsername
 }
 
 /**
@@ -957,6 +1003,11 @@ service IDataNodeRPCService {
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
   /**
+   * Enable separation of admin powers in datanode
+   **/
+  common.TSStatus enableSeparationOfAdminPower()
+
+  /**
    * Config node will create a pipe plugin on a list of data nodes.
    *
    * @param function name, function class name, and executable uris
@@ -969,6 +1020,11 @@ service IDataNodeRPCService {
    * @param function name
    **/
   common.TSStatus dropPipePlugin(TDropPipePluginInstanceReq req)
+
+  /**
+   * Config node will get built-in services info from data nodes.
+   **/
+  common.TExternalServiceListResp getBuiltInService()
 
   /* Maintenance Tools */
 
@@ -986,13 +1042,15 @@ service IDataNodeRPCService {
 
   common.TShowConfigurationResp showConfiguration()
 
+  common.TShowAppliedConfigurationsResp showAppliedConfigurations()
+
   common.TSStatus setConfiguration(common.TSetConfigurationReq req)
 
   common.TSStatus loadConfiguration()
 
   common.TSStatus setSystemStatus(string status)
 
-  common.TSStatus killQueryInstance(string queryId)
+  common.TSStatus killQueryInstance(TKillQueryInstanceReq req)
 
   /**
      * Config node will Set the TTL for the database on a list of data nodes.
@@ -1037,6 +1095,16 @@ service IDataNodeRPCService {
    * Delete matched timeseries and remove according schema black list in target schemRegion
    */
   common.TSStatus deleteTimeSeries(TDeleteTimeSeriesReq req)
+
+  /**
+   * Alter matched timeseries to specific encoding and compressor in target schemaRegions
+   */
+  common.TSStatus alterEncodingCompressor(TAlterEncodingCompressorReq req)
+
+  /**
+   * Alter timeseries measurement
+   **/
+  common.TSStatus alterTimeSeriesDataType(TAlterTimeSeriesReq req)
 
   /**
    * Construct schema black list in target schemaRegion to block R/W on matched timeseries represent by template
@@ -1163,7 +1231,6 @@ service IDataNodeRPCService {
    */
   common.TSStatus deleteColumnData(TDeleteColumnDataReq req)
 
-
   /**
    * Construct table device black list
    */
@@ -1201,6 +1268,14 @@ service IDataNodeRPCService {
 
   /** Empty rpc, only for connection test */
   common.TSStatus testConnectionEmptyRPC()
+
+  /** to write audit log or other events as time series **/
+  common.TSStatus insertRecord(1:client.TSInsertRecordReq req);
+
+  /**
+   * Write an audit log entry to the DataNode's AuditEventLogger
+   */
+  common.TSStatus writeAuditLog(TAuditLogReq req);
 }
 
 service MPPDataExchangeService {

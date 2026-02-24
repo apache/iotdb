@@ -59,6 +59,8 @@ TSDataType::TSDataType getTSDataTypeFromString(const string& str) {
         return TSDataType::BLOB;
     } else if (str == "STRING") {
         return TSDataType::STRING;
+    } else if (str == "OBJECT") {
+        return TSDataType::OBJECT;
     }
     return TSDataType::UNKNOWN;
 }
@@ -88,6 +90,7 @@ void Tablet::createColumns() {
             break;
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT:
             values[i] = new string[maxRowNumber];
             break;
@@ -135,6 +138,7 @@ void Tablet::deleteColumns() {
         }
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT: {
             string* valueBuf = (string*)(values[i]);
             delete[] valueBuf;
@@ -182,6 +186,7 @@ void Tablet::deepCopyTabletColValue(void* const* srcPtr, void** destPtr, TSDataT
     }
     case TSDataType::STRING:
     case TSDataType::TEXT:
+    case TSDataType::OBJECT:
     case TSDataType::BLOB: {
         *destPtr = new std::string[maxRowNumber];
         std::string* srcStr = static_cast<std::string*>(src);
@@ -232,6 +237,7 @@ size_t Tablet::getValueByteSize() {
             break;
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT: {
             valueOccupation += rowSize * 4;
             string* valueBuf = (string*)(values[i]);
@@ -361,6 +367,7 @@ string SessionUtils::getValue(const Tablet& tablet) {
         }
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT: {
             string* valueBuf = (string*)(tablet.values[i]);
             for (size_t index = 0; index < tablet.rowSize; index++) {
@@ -582,6 +589,7 @@ void Session::sortTablet(Tablet& tablet) {
         }
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT: {
             sortValuesList((string*)(tablet.values[i]), index, tablet.rowSize);
             break;
@@ -654,6 +662,7 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType>& types, const 
             break;
         case TSDataType::STRING:
         case TSDataType::BLOB:
+        case TSDataType::OBJECT:
         case TSDataType::TEXT: {
             int32_t len = (uint32_t)strlen(values[i]);
             appendValues(buf, (char*)(&len), sizeof(uint32_t));
@@ -689,6 +698,8 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
         return 10;
     case TSDataType::STRING:
         return 11;
+    case TSDataType::OBJECT:
+        return 12;
     default:
         return -1;
     }
@@ -725,14 +736,45 @@ void Session::initZoneId() {
     zoneId_ = zoneStr;
 }
 
-void Session::initNodesSupplier() {
+void Session::initNodesSupplier(const std::vector<std::string>& nodeUrls) {
     std::vector<TEndPoint> endPoints;
-    TEndPoint endPoint;
-    endPoint.__set_ip(host_);
-    endPoint.__set_port(rpcPort_);
-    endPoints.emplace_back(endPoint);
+    std::unordered_set<std::string> uniqueEndpoints;
+
+    if (nodeUrls.empty() && host_.empty()) {
+        throw IoTDBException("No available nodes");
+    }
+
+    // Process provided node URLs
+    if (!nodeUrls.empty()) {
+        for (auto& url : nodeUrls) {
+            try {
+                TEndPoint endPoint = UrlUtils::parseTEndPointIpv4AndIpv6Url(url);
+                if (endPoint.port == 0) continue; // Skip invalid endpoints
+
+                std::string endpointKey = endPoint.ip + ":" + std::to_string(endPoint.port);
+                if (uniqueEndpoints.find(endpointKey) == uniqueEndpoints.end()) {
+                    endPoints.emplace_back(std::move(endPoint));
+                    uniqueEndpoints.insert(std::move(endpointKey));
+                }
+            } catch (...) {
+                continue; // Skip malformed URLs
+            }
+        }
+    }
+
+    // Fallback to local endpoint if no valid endpoints found
+    if (endPoints.empty()) {
+        if (host_.empty() || rpcPort_ == 0) {
+            throw IoTDBException("No valid endpoints available");
+        }
+        TEndPoint endPoint;
+        endPoint.__set_ip(host_);
+        endPoint.__set_port(rpcPort_);
+        endPoints.emplace_back(std::move(endPoint));
+    }
+
     if (enableAutoFetch_) {
-        nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_);
+        nodesSupplier_ = NodesSupplier::create(endPoints, username_, password_, useSSL_, trustCertFilePath_);
     }
     else {
         nodesSupplier_ = make_shared<StaticNodesSupplier>(endPoints);
@@ -740,11 +782,37 @@ void Session::initNodesSupplier() {
 }
 
 void Session::initDefaultSessionConnection() {
-    defaultEndPoint_.__set_ip(host_);
-    defaultEndPoint_.__set_port(rpcPort_);
-    defaultSessionConnection_ = make_shared<SessionConnection>(this, defaultEndPoint_, zoneId_, nodesSupplier_, fetchSize_,
-                                                              60, 500,
-                                                              sqlDialect_, database_);
+    // Try all endpoints from supplier until a connection is established.
+    auto endpoints = nodesSupplier_->getEndPointList();
+    bool connected = false;
+
+    for (const auto& endpoint : endpoints) {
+        try {
+            host_ = endpoint.ip;
+            rpcPort_ = endpoint.port;
+
+            defaultEndPoint_.__set_ip(host_);
+            defaultEndPoint_.__set_port(rpcPort_);
+
+            defaultSessionConnection_ = std::make_shared<SessionConnection>(
+                this, defaultEndPoint_, zoneId_, nodesSupplier_, fetchSize_,
+                3,
+                500, connectTimeoutMs_,
+                sqlDialect_, database_);
+
+            connected = true;
+            break;
+        } catch (const IoTDBException& e) {
+            log_debug(e.what());
+            throw;
+        } catch (const std::exception& e) {
+            log_warn(e.what());
+        }
+    }
+
+    if (!connected) {
+        throw std::runtime_error("No available node to establish SessionConnection.");
+    }
 }
 
 void Session::insertStringRecordsWithLeaderCache(vector<string> deviceIds, vector<int64_t> times,
@@ -1295,16 +1363,20 @@ void Session::buildInsertTabletReq(TSInsertTabletReq& request, Tablet& tablet, b
         sortTablet(tablet);
     }
 
-    request.prefixPath = tablet.deviceId;
+    request.__set_prefixPath(tablet.deviceId);
 
-    request.measurements.reserve(tablet.schemas.size());
-    request.types.reserve(tablet.schemas.size());
+    std::vector<std::string> reqMeasurements;
+    reqMeasurements.reserve(tablet.schemas.size());
+    std::vector<int32_t> types;
+    types.reserve(tablet.schemas.size());
     for (pair<string, TSDataType::TSDataType> schema : tablet.schemas) {
-        request.measurements.push_back(schema.first);
-        request.types.push_back(schema.second);
+        reqMeasurements.push_back(schema.first);
+        types.push_back(schema.second);
     }
-    request.values = move(SessionUtils::getValue(tablet));
-    request.timestamps = move(SessionUtils::getTime(tablet));
+    request.__set_measurements(reqMeasurements);
+    request.__set_types(types);
+    request.__set_values(SessionUtils::getValue(tablet));
+    request.__set_timestamps(SessionUtils::getTime(tablet));
     request.__set_size(tablet.rowSize);
     request.__set_isAligned(tablet.isAligned);
 }
@@ -1389,6 +1461,7 @@ void Session::insertRelationalTablet(Tablet& tablet, bool sorted) {
                 }
                 case TSDataType::STRING:
                 case TSDataType::TEXT:
+                case TSDataType::OBJECT:
                 case TSDataType::BLOB: {
                     currentTablet.addValue(tablet.schemas[col].first, rowIndex,
                         *(string*)tablet.getValue(col, row, tablet.schemas[col].second));
@@ -1855,6 +1928,9 @@ void Session::createAlignedTimeseries(const std::string& deviceId,
 bool Session::checkTimeseriesExists(const string& path) {
     try {
         std::unique_ptr<SessionDataSet> dataset = executeQueryStatement("SHOW TIMESERIES " + path);
+        if (dataset == nullptr) {
+            throw IoTDBException("executeQueryStatement failed");
+        }
         bool isExisted = dataset->hasNext();
         dataset->closeOperationHandle();
         return isExisted;
@@ -1879,7 +1955,7 @@ shared_ptr<SessionConnection> Session::getQuerySessionConnection() {
     shared_ptr<SessionConnection> newConnection;
     try {
         newConnection = make_shared<SessionConnection>(this, endPoint.value(), zoneId_, nodesSupplier_,
-                                                       fetchSize_, 60, 500, sqlDialect_, database_);
+                                                       fetchSize_, 60, 500, connectTimeoutMs_, sqlDialect_, database_);
         endPointToSessionConnection.emplace(endPoint.value(), newConnection);
         return newConnection;
     }
@@ -1937,7 +2013,7 @@ void Session::handleQueryRedirection(TEndPoint endPoint) {
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 60, 500, connectTimeoutMs_, sqlDialect_, database_);
 
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
@@ -1961,7 +2037,7 @@ void Session::handleRedirection(const std::string& deviceId, TEndPoint endPoint)
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 60, 500, 1000, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {
@@ -1984,7 +2060,7 @@ void Session::handleRedirection(const std::shared_ptr<storage::IDeviceID>& devic
     else {
         try {
             newConnection = make_shared<SessionConnection>(this, endPoint, zoneId_, nodesSupplier_,
-                                                           fetchSize_, 60, 500, sqlDialect_, database_);
+                                                           fetchSize_, 3, 500, connectTimeoutMs_, sqlDialect_, database_);
             endPointToSessionConnection.emplace(endPoint, newConnection);
         }
         catch (exception& e) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.common.schematree;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -36,10 +37,10 @@ import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisit
 import org.apache.iotdb.db.queryengine.common.schematree.visitor.SchemaTreeVisitorWithLimitOffsetWrapper;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaComputation;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -50,8 +51,10 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
@@ -61,6 +64,8 @@ import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.
 import static org.apache.iotdb.db.queryengine.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
 public class ClusterSchemaTree implements ISchemaTree {
+  private static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ClusterSchemaTree.class);
   private static final ClusterTemplateManager templateManager =
       ClusterTemplateManager.getInstance();
 
@@ -75,6 +80,8 @@ public class ClusterSchemaTree implements ISchemaTree {
   private boolean hasNormalTimeSeries = false;
 
   private Map<Integer, Template> templateMap = new HashMap<>();
+
+  private long ramBytesUsed;
 
   public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
@@ -485,59 +492,158 @@ public class ClusterSchemaTree implements ISchemaTree {
     root.serialize(outputStream);
   }
 
-  public static ClusterSchemaTree deserialize(InputStream inputStream) throws IOException {
+  public Iterator<SchemaNode> getIteratorForSerialize() {
+    return new SchemaNodePostOrderIterator(root);
+  }
 
-    byte nodeType;
-    int childNum;
-    Deque<SchemaNode> stack = new ArrayDeque<>();
-    SchemaNode child;
-    boolean hasLogicalView = false;
-    boolean hasNormalTimeSeries = false;
-    Map<Integer, Template> templateMap = new HashMap<>();
+  @Override
+  public long ramBytesUsed() {
+    if (ramBytesUsed > 0) {
+      return ramBytesUsed;
+    }
+    ramBytesUsed =
+        root.ramBytesUsed()
+            + SHALLOW_SIZE
+            + RamUsageEstimator.sizeOfMapWithKnownShallowSize(
+                templateMap,
+                RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP,
+                RamUsageEstimator.SHALLOW_SIZE_OF_HASHMAP_ENTRY);
+    return ramBytesUsed;
+  }
 
-    while (inputStream.available() > 0) {
-      nodeType = ReadWriteIOUtils.readByte(inputStream);
-      if (nodeType == SCHEMA_MEASUREMENT_NODE) {
-        SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
-        stack.push(measurementNode);
-        if (measurementNode.isLogicalView()) {
-          hasLogicalView = true;
-        }
-        hasNormalTimeSeries = true;
-      } else {
-        SchemaInternalNode internalNode;
-        if (nodeType == SCHEMA_ENTITY_NODE) {
-          internalNode = SchemaEntityNode.deserialize(inputStream);
-          int templateId = internalNode.getAsEntityNode().getTemplateId();
-          if (templateId != NON_TEMPLATE) {
-            templateMap.putIfAbsent(templateId, templateManager.getTemplate(templateId));
-          }
+  public void setRamBytesUsed(long ramBytesUsed) {
+    this.ramBytesUsed = ramBytesUsed;
+  }
+
+  private static class SchemaNodePostOrderIterator implements Iterator<SchemaNode> {
+    // This class is likely to be faster than Stack when used as a stack
+    private final Deque<Pair<SchemaNode, Iterator<SchemaNode>>> stack = new ArrayDeque<>();
+    private SchemaNode nextNode;
+
+    public SchemaNodePostOrderIterator(SchemaNode root) {
+      stack.push(new Pair<>(root, root.getChildrenIterator()));
+      prepareNext();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextNode != null;
+    }
+
+    @Override
+    public SchemaNode next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException();
+      }
+      SchemaNode result = nextNode;
+      prepareNext();
+      return result;
+    }
+
+    private void prepareNext() {
+      nextNode = null;
+      while (!stack.isEmpty()) {
+        Pair<SchemaNode, Iterator<SchemaNode>> pair = stack.peek();
+        SchemaNode currentNode = pair.getLeft();
+        Iterator<SchemaNode> childrenIterator = pair.getRight();
+        if (childrenIterator.hasNext()) {
+          SchemaNode child = childrenIterator.next();
+          stack.push(new Pair<>(child, child.getChildrenIterator()));
         } else {
-          internalNode = SchemaInternalNode.deserialize(inputStream);
+          stack.pop();
+          nextNode = currentNode;
+          return;
         }
-
-        childNum = ReadWriteIOUtils.readInt(inputStream);
-        while (childNum > 0) {
-          child = stack.pop();
-          internalNode.addChild(child.getName(), child);
-          if (child.isMeasurement()) {
-            SchemaMeasurementNode measurementNode = child.getAsMeasurementNode();
-            if (measurementNode.getAlias() != null) {
-              internalNode
-                  .getAsEntityNode()
-                  .addAliasChild(measurementNode.getAlias(), measurementNode);
-            }
-          }
-          childNum--;
-        }
-        stack.push(internalNode);
       }
     }
-    ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
-    result.templateMap = templateMap;
-    result.hasLogicalMeasurementPath = hasLogicalView;
-    result.hasNormalTimeSeries = hasNormalTimeSeries;
-    return result;
+  }
+
+  public static class SchemaNodeBatchDeserializer {
+    private byte nodeType;
+    private int childNum;
+    // This class is likely to be faster than Stack when used as a stack
+    private final Deque<SchemaNode> stack = new ArrayDeque<>();
+    private SchemaNode child;
+    private boolean hasLogicalView = false;
+    private boolean hasNormalTimeSeries = false;
+    private Map<Integer, Template> templateMap = new HashMap<>();
+    private boolean isFirstBatch = true;
+
+    public boolean isFirstBatch() {
+      return isFirstBatch;
+    }
+
+    public void deserializeFromBatch(InputStream inputStream) throws IOException {
+      isFirstBatch = false;
+      while (inputStream.available() > 0) {
+        nodeType = ReadWriteIOUtils.readByte(inputStream);
+        if (nodeType == SCHEMA_MEASUREMENT_NODE) {
+          SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
+          stack.push(measurementNode);
+          if (measurementNode.isLogicalView()) {
+            hasLogicalView = true;
+          }
+          hasNormalTimeSeries = true;
+        } else {
+          SchemaInternalNode internalNode;
+          if (nodeType == SCHEMA_ENTITY_NODE) {
+            internalNode = SchemaEntityNode.deserialize(inputStream);
+            int templateId = internalNode.getAsEntityNode().getTemplateId();
+            if (templateId != NON_TEMPLATE) {
+              templateMap.putIfAbsent(templateId, templateManager.getTemplate(templateId));
+            }
+          } else {
+            internalNode = SchemaInternalNode.deserialize(inputStream);
+          }
+
+          childNum = ReadWriteIOUtils.readInt(inputStream);
+          while (childNum > 0) {
+            child = stack.pop();
+            internalNode.addChild(child.getName(), child);
+            if (child.isMeasurement()) {
+              SchemaMeasurementNode measurementNode = child.getAsMeasurementNode();
+              if (measurementNode.getAlias() != null) {
+                internalNode
+                    .getAsEntityNode()
+                    .addAliasChild(measurementNode.getAlias(), measurementNode);
+              }
+            }
+            childNum--;
+          }
+          stack.push(internalNode);
+        }
+      }
+    }
+
+    public ClusterSchemaTree finish() {
+      try {
+        ClusterSchemaTree result = new ClusterSchemaTree(stack.poll());
+        result.templateMap = templateMap;
+        result.hasLogicalMeasurementPath = hasLogicalView;
+        result.hasNormalTimeSeries = hasNormalTimeSeries;
+        return result;
+      } finally {
+        reset();
+      }
+    }
+
+    private void reset() {
+      nodeType = 0;
+      childNum = 0;
+      stack.clear();
+      child = null;
+      hasLogicalView = false;
+      hasNormalTimeSeries = false;
+      // templateMap is set to the returned schema tree, so we should create a new one
+      templateMap = new HashMap<>();
+      isFirstBatch = true;
+    }
+  }
+
+  public static ClusterSchemaTree deserialize(InputStream inputStream) throws IOException {
+    SchemaNodeBatchDeserializer schemaNodeBatchDeserializer = new SchemaNodeBatchDeserializer();
+    schemaNodeBatchDeserializer.deserializeFromBatch(inputStream);
+    return schemaNodeBatchDeserializer.finish();
   }
 
   /**

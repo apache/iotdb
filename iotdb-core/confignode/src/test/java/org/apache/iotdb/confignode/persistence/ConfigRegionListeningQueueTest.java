@@ -30,8 +30,8 @@ import org.apache.iotdb.confignode.manager.pipe.event.PipeConfigRegionWritePlanE
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -75,7 +75,7 @@ public class ConfigRegionListeningQueueTest {
                 ConfigPhysicalPlanType.CreateUser,
                 "user0",
                 "",
-                "passwd",
+                "passwd123456",
                 "",
                 new HashSet<>(),
                 false,

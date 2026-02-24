@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.pipe.agent.task.connection;
 
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.connection.UnboundedBlockingPendingQueue;
 import org.apache.iotdb.commons.pipe.agent.task.progress.PipeEventCommitManager;
-import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
+import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.event.ProgressReportEvent;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
@@ -31,6 +33,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.source.schemaregion.IoTDBSchemaRegionSource;
+import org.apache.iotdb.db.pipe.source.schemaregion.PipePlanTreePrivilegeParseVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.AbstractDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.pipe.api.collector.EventCollector;
@@ -114,7 +117,8 @@ public class PipeEventCollector implements EventCollector {
     }
   }
 
-  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent) {
+  private void parseAndCollectEvent(final PipeRawTabletInsertionEvent sourceEvent)
+      throws IllegalPathException {
     if (sourceEvent.shouldParseTimeOrPattern()) {
       collectParsedRawTableEvent(sourceEvent.parseEventWithPatternOrTime());
     } else {
@@ -130,12 +134,7 @@ public class PipeEventCollector implements EventCollector {
       return;
     }
 
-    if (skipParsing) {
-      collectEvent(sourceEvent);
-      return;
-    }
-
-    if (!forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
+    if (skipParsing || !forceTabletFormat && canSkipParsing4TsFileEvent(sourceEvent)) {
       collectEvent(sourceEvent);
       return;
     }
@@ -174,15 +173,30 @@ public class PipeEventCollector implements EventCollector {
     // Only used by events containing delete data node, no need to bind progress index here since
     // delete data event does not have progress index currently
     (deleteDataEvent.getDeleteDataNode() instanceof DeleteDataNode
-            ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR.process(
-                deleteDataEvent.getDeleteDataNode(),
-                (IoTDBTreePattern) deleteDataEvent.getTreePattern())
+            ? IoTDBSchemaRegionSource.TREE_PATTERN_PARSE_VISITOR
+                .process(
+                    deleteDataEvent.getDeleteDataNode(),
+                    (IoTDBTreePatternOperations) deleteDataEvent.getTreePattern())
+                .flatMap(
+                    planNode ->
+                        new PipePlanTreePrivilegeParseVisitor(
+                                deleteDataEvent.isSkipIfNoPrivileges())
+                            .process(
+                                planNode,
+                                new UserEntity(
+                                    Long.parseLong(deleteDataEvent.getUserId()),
+                                    deleteDataEvent.getUserName(),
+                                    deleteDataEvent.getCliHostname())))
             : IoTDBSchemaRegionSource.TABLE_PATTERN_PARSE_VISITOR
                 .process(deleteDataEvent.getDeleteDataNode(), deleteDataEvent.getTablePattern())
                 .flatMap(
                     planNode ->
                         IoTDBSchemaRegionSource.TABLE_PRIVILEGE_PARSE_VISITOR.process(
-                            planNode, deleteDataEvent.getUserName())))
+                            planNode,
+                            new UserEntity(
+                                Long.parseLong(deleteDataEvent.getUserId()),
+                                deleteDataEvent.getUserName(),
+                                deleteDataEvent.getCliHostname()))))
         .map(
             planNode ->
                 new PipeDeleteDataNodeEvent(
@@ -192,7 +206,9 @@ public class PipeEventCollector implements EventCollector {
                     deleteDataEvent.getPipeTaskMeta(),
                     deleteDataEvent.getTreePattern(),
                     deleteDataEvent.getTablePattern(),
+                    deleteDataEvent.getUserId(),
                     deleteDataEvent.getUserName(),
+                    deleteDataEvent.getCliHostname(),
                     deleteDataEvent.isSkipIfNoPrivileges(),
                     deleteDataEvent.isGeneratedByPipe()))
         .ifPresent(

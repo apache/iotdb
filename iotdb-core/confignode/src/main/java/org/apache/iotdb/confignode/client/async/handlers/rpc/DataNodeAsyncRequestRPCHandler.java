@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.client.async.handlers.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
 import org.apache.iotdb.common.rpc.thrift.TPipeHeartbeatResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTestConnectionResp;
@@ -83,6 +84,8 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
       case ROLLBACK_SCHEMA_BLACK_LIST:
       case DELETE_DATA_FOR_DELETE_SCHEMA:
       case DELETE_TIMESERIES:
+      case ALTER_ENCODING_COMPRESSOR:
+      case ALTER_TIMESERIES_DATATYPE:
       case CONSTRUCT_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case ROLLBACK_SCHEMA_BLACK_LIST_WITH_TEMPLATE:
       case DEACTIVATE_TEMPLATE:
@@ -190,6 +193,14 @@ public abstract class DataNodeAsyncRequestRPCHandler<Response>
             targetDataNode,
             dataNodeLocationMap,
             (Map<Integer, TDeviceViewResp>) responseMap,
+            countDownLatch);
+      case GET_BUILTIN_SERVICE:
+        return new GetBuiltInExternalServiceRPCHandler(
+            requestType,
+            requestId,
+            targetDataNode,
+            dataNodeLocationMap,
+            (Map<Integer, TExternalServiceListResp>) responseMap,
             countDownLatch);
       case SET_TTL:
       case CREATE_DATA_REGION:

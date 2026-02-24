@@ -38,6 +38,7 @@ struct TSyncLogEntriesReq {
 
 struct TSyncLogEntriesRes {
   1: required list<common.TSStatus> statuses
+  2: optional i64 receiverMemSize
 }
 
 struct TInactivatePeerReq {

@@ -82,6 +82,8 @@ public enum TsTableColumnCategory {
         return ColumnCategory.ATTRIBUTE;
       case FIELD:
         return ColumnCategory.FIELD;
+      case TIME:
+        return ColumnCategory.TIME;
       default:
         throw new IllegalArgumentException("Unsupported column type in TsFile: " + this);
     }
@@ -95,6 +97,8 @@ public enum TsTableColumnCategory {
         return TAG;
       case ATTRIBUTE:
         return ATTRIBUTE;
+      case TIME:
+        return TIME;
       default:
         throw new IllegalArgumentException("Unknown column type: " + columnType);
     }

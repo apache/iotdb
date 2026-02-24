@@ -51,7 +51,7 @@ public class ClusterTestStatement implements Statement {
   public ClusterTestStatement(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
     try {
-      this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
+      this.writeStatement = writeConnection.getUnderlyingConnection().createStatement();
       updateConfig(writeStatement, 0);
       writEndpoint = writeConnection.toString();
     } catch (SQLException e) {
@@ -60,7 +60,7 @@ public class ClusterTestStatement implements Statement {
 
     for (NodeConnection readConnection : readConnections) {
       try {
-        Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
+        Statement readStatement = readConnection.getUnderlyingConnection().createStatement();
         this.readStatements.add(readStatement);
         this.readEndpoints.add(readConnection.toString());
         updateConfig(readStatement, queryTimeout);
@@ -78,6 +78,13 @@ public class ClusterTestStatement implements Statement {
     statement.setQueryTimeout(timeout);
   }
 
+  /**
+   * Executes a SQL query on all read statements in parallel.
+   *
+   * <p>Note: For PreparedStatement EXECUTE queries, use the write connection directly instead,
+   * because PreparedStatements are session-scoped and this method may route queries to different
+   * nodes where the PreparedStatement doesn't exist.
+   */
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
     return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);

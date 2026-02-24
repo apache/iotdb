@@ -69,7 +69,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
 
     // start stopwatch, reset leftRuntimeOfOneNextCall
     long start = System.nanoTime();
-    leftRuntimeOfOneNextCall = 1000 * operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    leftRuntimeOfOneNextCall = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long maxRuntime = leftRuntimeOfOneNextCall;
 
     while (System.nanoTime() - start < maxRuntime

@@ -61,17 +61,21 @@ public class ImportDataTree extends AbstractImportData {
 
   public void init()
       throws InterruptedException, IoTDBConnectionException, StatementExecutionException {
-    sessionPool =
+    SessionPool.Builder sessionPoolBuilder =
         new SessionPool.Builder()
             .host(host)
             .port(Integer.parseInt(port))
             .user(username)
             .password(password)
             .maxSize(threadNum + 1)
-            .enableCompression(false)
+            .enableIoTDBRpcCompression(false)
             .enableRedirection(false)
-            .enableAutoFetch(false)
-            .build();
+            .enableAutoFetch(false);
+    if (useSsl) {
+      sessionPoolBuilder =
+          sessionPoolBuilder.useSSL(true).trustStore(trustStore).trustStorePwd(trustStorePwd);
+    }
+    sessionPool = sessionPoolBuilder.build();
     sessionPool.setEnableQueryRedirection(false);
     if (timeZoneID != null) {
       sessionPool.setTimeZone(timeZoneID);

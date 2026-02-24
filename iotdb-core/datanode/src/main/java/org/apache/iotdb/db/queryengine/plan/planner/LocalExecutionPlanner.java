@@ -273,11 +273,14 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized long tryAllocateFreeMemory4Load(final long memoryInBytes) {
     if (OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - memoryInBytes
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
-      long result =
+      final long result =
           OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      if (result <= 0) {
+        return 0;
+      }
       OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
       return result;
     } else {
@@ -291,6 +294,10 @@ public class LocalExecutionPlanner {
       final long reservedBytes,
       final String queryId,
       final String contextHolder) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to reserve from free memory for operators should be larger than 0");
+    }
     if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -314,6 +321,10 @@ public class LocalExecutionPlanner {
   }
 
   public void releaseToFreeMemoryForOperators(final long memoryInBytes) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to release to free memory for operators should be larger than 0");
+    }
     OPERATORS_MEMORY_BLOCK.release(memoryInBytes);
   }
 

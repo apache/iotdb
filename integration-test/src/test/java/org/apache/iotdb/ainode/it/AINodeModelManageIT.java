@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.ainode.it;
 
+import org.apache.iotdb.ainode.utils.AINodeTestUtils;
 import org.apache.iotdb.ainode.utils.AINodeTestUtils.FakeModelInfo;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -36,15 +37,16 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.AbstractMap;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.ainode.utils.AINodeTestUtils.EXAMPLE_MODEL_PATH;
+import static org.apache.iotdb.ainode.it.AINodeCallInferenceIT.callInferenceTest;
+import static org.apache.iotdb.ainode.it.AINodeForecastIT.forecastTableFunctionTest;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.checkHeader;
 import static org.apache.iotdb.ainode.utils.AINodeTestUtils.errorTest;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTable;
+import static org.apache.iotdb.ainode.utils.AINodeTestUtils.prepareDataInTree;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -52,42 +54,12 @@ import static org.junit.Assert.fail;
 @Category({AIClusterIT.class})
 public class AINodeModelManageIT {
 
-  private static final Map<String, FakeModelInfo> BUILT_IN_MACHINE_LEARNING_MODEL_MAP =
-      Stream.of(
-              new AbstractMap.SimpleEntry<>(
-                  "arima", new FakeModelInfo("arima", "Arima", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "holtwinters",
-                  new FakeModelInfo("holtwinters", "HoltWinters", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "exponential_smoothing",
-                  new FakeModelInfo(
-                      "exponential_smoothing", "ExponentialSmoothing", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "naive_forecaster",
-                  new FakeModelInfo("naive_forecaster", "NaiveForecaster", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "stl_forecaster",
-                  new FakeModelInfo("stl_forecaster", "StlForecaster", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "gaussian_hmm",
-                  new FakeModelInfo("gaussian_hmm", "GaussianHmm", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "gmm_hmm", new FakeModelInfo("gmm_hmm", "GmmHmm", "BUILT-IN", "ACTIVE")),
-              new AbstractMap.SimpleEntry<>(
-                  "stray", new FakeModelInfo("stray", "Stray", "BUILT-IN", "ACTIVE")))
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "sundial", new FakeModelInfo("sundial", "Timer-Sundial", "BUILT-IN",
-          // "ACTIVE")),
-          //              new AbstractMap.SimpleEntry<>(
-          //                  "timer_xl", new FakeModelInfo("timer_xl", "Timer-XL", "BUILT-IN",
-          // "ACTIVE")))
-          .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
   @BeforeClass
   public static void setUp() throws Exception {
     // Init 1C1D1A cluster environment
     EnvFactory.getEnv().initClusterEnvironment(1, 1);
+    prepareDataInTree();
+    prepareDataInTable();
   }
 
   @AfterClass
@@ -96,60 +68,82 @@ public class AINodeModelManageIT {
   }
 
   @Test
-  public void userDefinedModelManagementTestInTree() throws SQLException {
+  public void userDefinedModelManagementTestInTree() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      userDefinedModelManagementTest(statement);
+      registerUserDefinedModel(statement);
+      callInferenceTest(
+          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
+      dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
   @Test
-  public void userDefinedModelManagementTestInTable() throws SQLException {
+  public void userDefinedModelManagementTestInTable() throws SQLException, InterruptedException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      userDefinedModelManagementTest(statement);
+      registerUserDefinedModel(statement);
+      forecastTableFunctionTest(
+          statement, new FakeModelInfo("user_chronos", "custom_t5", "user_defined", "active"));
+      dropUserDefinedModel(statement);
+      errorTest(
+          statement,
+          "create model origin_chronos using uri \"file:///data/chronos2_origin\"",
+          "1505: 't5' is already used by a Transformers config, pick another name.");
+      statement.execute("drop model origin_chronos");
     }
   }
 
-  private void userDefinedModelManagementTest(Statement statement) throws SQLException {
+  private void registerUserDefinedModel(Statement statement)
+      throws SQLException, InterruptedException {
     final String alterConfigSQL = "set configuration \"trusted_uri_pattern\"='.*'";
-    final String registerSql =
-        "create model operationTest using uri \"" + EXAMPLE_MODEL_PATH + "\"";
-    final String showSql = "SHOW MODELS operationTest";
-    final String dropSql = "DROP MODEL operationTest";
-
+    final String registerSql = "create model user_chronos using uri \"file:///data/chronos2\"";
+    final String showSql = "SHOW MODELS user_chronos";
     statement.execute(alterConfigSQL);
     statement.execute(registerSql);
     boolean loading = true;
-    int count = 0;
-    while (loading) {
+    for (int retryCnt = 0; retryCnt < 100; retryCnt++) {
       try (ResultSet resultSet = statement.executeQuery(showSql)) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
         while (resultSet.next()) {
           String modelId = resultSet.getString(1);
+          String modelType = resultSet.getString(2);
           String category = resultSet.getString(3);
           String state = resultSet.getString(4);
-
-          assertEquals("operationTest", modelId);
-          assertEquals("USER-DEFINED", category);
-          if (state.equals("ACTIVE")) {
+          assertEquals("user_chronos", modelId);
+          assertEquals("custom_t5", modelType);
+          assertEquals("user_defined", category);
+          if (state.equals("active")) {
             loading = false;
-            count++;
-          } else if (state.equals("LOADING")) {
+          } else if (state.equals("loading")) {
             break;
           } else {
             fail("Unexpected status of model: " + state);
           }
         }
       }
+      if (!loading) {
+        break; // Model is loaded successfully
+      }
+      TimeUnit.SECONDS.sleep(1);
     }
-    assertEquals(1, count);
+    assertFalse(loading);
+  }
+
+  private void dropUserDefinedModel(Statement statement) throws SQLException {
+    final String showSql = "SHOW MODELS user_chronos";
+    final String dropSql = "DROP MODEL user_chronos";
     statement.execute(dropSql);
     try (ResultSet resultSet = statement.executeQuery(showSql)) {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
-      count = 0;
+      int count = 0;
       while (resultSet.next()) {
         count++;
       }
@@ -161,7 +155,7 @@ public class AINodeModelManageIT {
   public void dropBuiltInModelErrorTestInTree() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TREE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1501: Built-in model sundial can't be removed");
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
     }
   }
 
@@ -169,7 +163,7 @@ public class AINodeModelManageIT {
   public void dropBuiltInModelErrorTestInTable() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
-      errorTest(statement, "drop model sundial", "1501: Built-in model sundial can't be removed");
+      errorTest(statement, "drop model sundial", "1506: Cannot delete built-in model: sundial");
     }
   }
 
@@ -196,20 +190,17 @@ public class AINodeModelManageIT {
       ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
       checkHeader(resultSetMetaData, "ModelId,ModelType,Category,State");
       while (resultSet.next()) {
-        String modelId = resultSet.getString(1);
-        if (!modelId.equals("sundial") && !modelId.equals("timer_xl")) {
-          built_in_model_count++;
-          FakeModelInfo modelInfo =
-              new FakeModelInfo(
-                  resultSet.getString(1),
-                  resultSet.getString(2),
-                  resultSet.getString(3),
-                  resultSet.getString(4));
-          assertTrue(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.containsKey(modelInfo.getModelId()));
-          assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
-        }
+        built_in_model_count++;
+        FakeModelInfo modelInfo =
+            new FakeModelInfo(
+                resultSet.getString(1),
+                resultSet.getString(2),
+                resultSet.getString(3),
+                resultSet.getString(4));
+        assertTrue(AINodeTestUtils.BUILTIN_MODEL_MAP.containsKey(modelInfo.getModelId()));
+        assertEquals(AINodeTestUtils.BUILTIN_MODEL_MAP.get(modelInfo.getModelId()), modelInfo);
       }
     }
-    assertEquals(BUILT_IN_MACHINE_LEARNING_MODEL_MAP.size(), built_in_model_count);
+    assertEquals(AINodeTestUtils.BUILTIN_MODEL_MAP.size(), built_in_model_count);
   }
 }

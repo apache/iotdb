@@ -106,8 +106,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                   database, tableName, newName, this instanceof RenameViewProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -133,7 +132,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                     : new RenameTablePlan(database, tableName, newName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(RenameTableState.COMMIT_RELEASE);
     }
@@ -175,7 +174,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
                     : new RenameTablePlan(database, newName, tableName),
                 isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

@@ -114,7 +114,6 @@ public class PipeSinkSubtaskManager {
 
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
-
       final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
           new ArrayList<>(connectorNum);
 
@@ -132,10 +131,8 @@ public class PipeSinkSubtaskManager {
       for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
         final PipeConnector pipeConnector =
             isDataRegionConnector
-                ? PipeDataNodeAgent.plugin().dataRegion().reflectConnector(pipeConnectorParameters)
-                : PipeDataNodeAgent.plugin()
-                    .schemaRegion()
-                    .reflectConnector(pipeConnectorParameters);
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeConnectorParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
@@ -246,7 +243,7 @@ public class PipeSinkSubtaskManager {
     }
   }
 
-  public UnboundedBlockingPendingQueue<Event> getPipeConnectorPendingQueue(
+  public UnboundedBlockingPendingQueue<Event> getPipeSinkPendingQueue(
       final String attributeSortedString) {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       throw new PipeException(
@@ -263,7 +260,7 @@ public class PipeSinkSubtaskManager {
   private String generateAttributeSortedString(final PipeParameters pipeConnectorParameters) {
     final TreeMap<String, String> sortedStringSourceMap =
         new TreeMap<>(pipeConnectorParameters.getAttribute());
-    sortedStringSourceMap.remove(SystemConstant.RESTART_KEY);
+    sortedStringSourceMap.remove(SystemConstant.RESTART_OR_NEWLY_ADDED_KEY);
     return sortedStringSourceMap.toString();
   }
 

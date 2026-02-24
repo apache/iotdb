@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.it.selectinto;
 
+import org.apache.iotdb.db.it.utils.TSDataTypeTestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -104,13 +105,11 @@ public class IoTDBSelectIntoIT {
   static {
     SELECT_INTO_SQL_LIST.add("CREATE DATABASE root.sg_type");
     for (int deviceId = 0; deviceId < 6; deviceId++) {
-      for (TSDataType dataType : TSDataType.values()) {
-        if (!dataType.equals(TSDataType.VECTOR) && !dataType.equals(TSDataType.UNKNOWN)) {
-          SELECT_INTO_SQL_LIST.add(
-              String.format(
-                  "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
-                  deviceId, dataType.name().toLowerCase(), dataType));
-        }
+      for (TSDataType dataType : TSDataTypeTestUtils.getSupportedTypes()) {
+        SELECT_INTO_SQL_LIST.add(
+            String.format(
+                "CREATE TIMESERIES root.sg_type.d_%d.s_%s %s",
+                deviceId, dataType.name().toLowerCase(), dataType));
       }
     }
     for (int time = 0; time < 12; time++) {
@@ -151,6 +150,7 @@ public class IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv().getConfig().getCommonConfig().setQueryThreadCount(1);
     // if we don't change this configuration, we may get an error like: Cannot reserve XXXX bytes of
     // direct buffer memory
@@ -597,11 +597,11 @@ public class IoTDBSelectIntoIT {
   public void testPermission1() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser1 'temppw1'");
+      adminStmt.execute("CREATE USER tempuser1 'temppw1123456'");
       adminStmt.execute("GRANT WRITE_DATA on root.sg_bk.** TO USER tempuser1;");
       ResultSet resultSet;
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser1", "temppw1123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
@@ -620,10 +620,10 @@ public class IoTDBSelectIntoIT {
   public void testPermission2() throws SQLException {
     try (Connection adminCon = EnvFactory.getEnv().getConnection();
         Statement adminStmt = adminCon.createStatement()) {
-      adminStmt.execute("CREATE USER tempuser2 'temppw2'");
+      adminStmt.execute("CREATE USER tempuser2 'temppw2123456'");
       adminStmt.execute("GRANT WRITE_DATA on root.sg.** TO USER tempuser2;");
 
-      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2");
+      try (Connection userCon = EnvFactory.getEnv().getConnection("tempuser2", "temppw2123456");
           Statement userStmt = userCon.createStatement()) {
         userStmt.executeQuery(
             "select s1, s2 into root.sg_bk.new_d(t1, t2, t3, t4) from root.sg.*;");
@@ -644,89 +644,74 @@ public class IoTDBSelectIntoIT {
     // test INT32
     assertTestFail(
         "select s_int32 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
-    assertTestFail(
-        "select s_int32 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int32[INT32]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_boolean] caused by [data type of root.sg_type.d_1.s_boolean is not consistent, registered type BOOLEAN, inserting type INT32, timestamp 0, value 0]");
 
     // test INT64
     assertTestFail(
         "select s_int64 into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int32] caused by [data type of root.sg_type.d_1.s_int32 is not consistent, registered type INT32, inserting type INT64, timestamp 0, value 0]");
     assertTestFail(
         "select s_int64 into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_float] caused by [data type of root.sg_type.d_1.s_float is not consistent, registered type FLOAT, inserting type INT64, timestamp 0, value 0]");
     assertTestFail(
         "select s_int64 into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
-    assertTestFail(
-        "select s_int64 into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_int64[INT64]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_boolean] caused by [data type of root.sg_type.d_1.s_boolean is not consistent, registered type BOOLEAN, inserting type INT64, timestamp 0, value 0]");
 
     // test FLOAT
     assertTestFail(
         "select s_float into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int32] caused by [data type of root.sg_type.d_1.s_int32 is not consistent, registered type INT32, inserting type FLOAT, timestamp 0, value 0.0]");
     assertTestFail(
         "select s_float into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int64] caused by [data type of root.sg_type.d_1.s_int64 is not consistent, registered type INT64, inserting type FLOAT, timestamp 0, value 0.0]");
     assertTestFail(
         "select s_float into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
-    assertTestFail(
-        "select s_float into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_float[FLOAT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_boolean] caused by [data type of root.sg_type.d_1.s_boolean is not consistent, registered type BOOLEAN, inserting type FLOAT, timestamp 0, value 0.0]");
 
     // test DOUBLE
     assertTestFail(
         "select s_double into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int32] caused by [data type of root.sg_type.d_1.s_int32 is not consistent, registered type INT32, inserting type DOUBLE, timestamp 0, value 0.0]");
     assertTestFail(
         "select s_double into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int64] caused by [data type of root.sg_type.d_1.s_int64 is not consistent, registered type INT64, inserting type DOUBLE, timestamp 0, value 0.0]");
     assertTestFail(
         "select s_double into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_float] caused by [data type of root.sg_type.d_1.s_float is not consistent, registered type FLOAT, inserting type DOUBLE, timestamp 0, value 0.0]");
     assertTestFail(
         "select s_double into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
-    assertTestFail(
-        "select s_double into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_double[DOUBLE]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_boolean] caused by [data type of root.sg_type.d_1.s_boolean is not consistent, registered type BOOLEAN, inserting type DOUBLE, timestamp 0, value 0.0]");
 
     // test BOOLEAN
     assertTestFail(
         "select s_boolean into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int32] caused by [data type of root.sg_type.d_1.s_int32 is not consistent, registered type INT32, inserting type BOOLEAN, timestamp 0, value true]");
     assertTestFail(
         "select s_boolean into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int64] caused by [data type of root.sg_type.d_1.s_int64 is not consistent, registered type INT64, inserting type BOOLEAN, timestamp 0, value true]");
     assertTestFail(
         "select s_boolean into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_float] caused by [data type of root.sg_type.d_1.s_float is not consistent, registered type FLOAT, inserting type BOOLEAN, timestamp 0, value true]");
     assertTestFail(
         "select s_boolean into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
-    assertTestFail(
-        "select s_boolean into root.sg_type.d_1(s_text) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_text[TEXT]) is not compatible with the data type of source column (root.sg_type.d_0.s_boolean[BOOLEAN]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_double] caused by [data type of root.sg_type.d_1.s_double is not consistent, registered type DOUBLE, inserting type BOOLEAN, timestamp 0, value true]");
 
     // test TEXT
     assertTestFail(
         "select s_text into root.sg_type.d_1(s_int32) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int32[INT32]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int32] caused by [data type of root.sg_type.d_1.s_int32 is not consistent, registered type INT32, inserting type TEXT, timestamp 0, value text0]");
     assertTestFail(
         "select s_text into root.sg_type.d_1(s_int64) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_int64[INT64]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_int64] caused by [data type of root.sg_type.d_1.s_int64 is not consistent, registered type INT64, inserting type TEXT, timestamp 0, value text0]");
     assertTestFail(
         "select s_text into root.sg_type.d_1(s_float) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_float[FLOAT]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_float] caused by [data type of root.sg_type.d_1.s_float is not consistent, registered type FLOAT, inserting type TEXT, timestamp 0, value text0]");
     assertTestFail(
         "select s_text into root.sg_type.d_1(s_double) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_double[DOUBLE]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_double] caused by [data type of root.sg_type.d_1.s_double is not consistent, registered type DOUBLE, inserting type TEXT, timestamp 0, value text0]");
     assertTestFail(
         "select s_text into root.sg_type.d_1(s_boolean) from root.sg_type.d_0;",
-        "The data type of target path (root.sg_type.d_1.s_boolean[BOOLEAN]) is not compatible with the data type of source column (root.sg_type.d_0.s_text[TEXT]).");
+        "Error occurred while inserting tablets in SELECT INTO: Fail to insert measurements [s_boolean] caused by [data type of root.sg_type.d_1.s_boolean is not consistent, registered type BOOLEAN, inserting type TEXT, timestamp 0, value text0]");
   }
 
   @Test

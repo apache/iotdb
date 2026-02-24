@@ -72,8 +72,19 @@ public class MQTTClient {
 
   // The database must be created in advance
   private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
+    // myTable,tag1=t1,tag2=t2 fieldKey1="1,2,3" 1740109006001
+    String payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006001";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
 
-    String payload =
+    payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006002";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+
+    payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006003";
+    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    Thread.sleep(10);
+    payload =
         "test1,tag1=t1,tag2=t2 attr3=a5,attr4=a4 field1=\"fieldValue1\",field2=1i,field3=1u 1";
     connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);

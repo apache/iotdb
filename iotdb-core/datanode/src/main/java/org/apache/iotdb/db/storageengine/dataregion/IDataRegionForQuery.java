@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
@@ -34,12 +35,12 @@ import java.util.Map;
 /** It's an interface that storage engine must provide for query engine */
 public interface IDataRegionForQuery {
 
-  /** lock the read lock for thread-safe */
-  void readLock();
+  boolean tryReadLock(long waitMillis);
 
   void readUnlock();
 
   /** Get satisfied QueryDataSource from DataRegion for seriesScan */
+  @TestOnly
   QueryDataSource query(
       List<IFullPath> pathList,
       IDeviceID singleDeviceId,
@@ -48,21 +49,37 @@ public interface IDataRegionForQuery {
       List<Long> timePartitions)
       throws QueryProcessException;
 
+  /**
+   * Get satisfied QueryDataSource from DataRegion for seriesScan
+   *
+   * @return null means that failed to acquire lock within the specific time
+   */
+  QueryDataSource query(
+      List<IFullPath> pathList,
+      IDeviceID singleDeviceId,
+      QueryContext context,
+      Filter globalTimeFilter,
+      List<Long> timePartitions,
+      long waitForLockTimeInMs)
+      throws QueryProcessException;
+
   /** Get satisfied QueryDataSource from DataRegion for regionScan */
   IQueryDataSource queryForDeviceRegionScan(
       Map<IDeviceID, DeviceContext> devicePathsToContext,
       QueryContext queryContext,
       Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException;
+      List<Long> timePartitions,
+      long waitForLockTimeInMs);
 
   IQueryDataSource queryForSeriesRegionScan(
       List<IFullPath> pathList,
       QueryContext queryContext,
       Filter globalTimeFilter,
-      List<Long> timePartitions)
-      throws QueryProcessException;
+      List<Long> timePartitions,
+      long waitForLockTimeInMs);
 
   /** Get database name of this DataRegion */
   String getDatabaseName();
+
+  String getDataRegionIdString();
 }

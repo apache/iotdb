@@ -21,7 +21,7 @@ package org.apache.iotdb.commons.pipe.sink.protocol;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.util.IoTDBConnectorPortBinder;
+import org.apache.iotdb.commons.client.util.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
@@ -189,7 +189,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       }
 
       final AirGapSocket socket = new AirGapSocket(ip, port);
-      IoTDBConnectorPortBinder.bindPort(
+      IoTDBSinkPortBinder.bindPort(
           customSendPortStrategy,
           minSendPortRange,
           maxSendPortRange,
@@ -249,7 +249,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
-    socket.setSoTimeout(PIPE_CONFIG.getPipeConnectorTransferTimeoutMs());
+    socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
     LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
@@ -276,7 +276,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       final AirGapSocket socket,
       final boolean isMultiFile)
       throws PipeException, IOException {
-    final int readFileBufferSize = PipeConfig.getInstance().getPipeConnectorReadFileBufferSize();
+    final int readFileBufferSize = PipeConfig.getInstance().getPipeSinkReadFileBufferSize();
     final byte[] readBuffer = new byte[readFileBufferSize];
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {

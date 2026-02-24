@@ -59,6 +59,7 @@ public class IoTDBRestServiceIT {
   public void setUp() throws Exception {
     BaseEnv baseEnv = EnvFactory.getEnv();
     baseEnv.getConfig().getDataNodeConfig().setEnableRestService(true);
+    baseEnv.getConfig().getCommonConfig().setEnforceStrongPassword(false);
     baseEnv.initClusterEnvironment();
     DataNodeWrapper portConflictDataNodeWrapper = EnvFactory.getEnv().getDataNodeWrapper(0);
     port = portConflictDataNodeWrapper.getRestServicePort();

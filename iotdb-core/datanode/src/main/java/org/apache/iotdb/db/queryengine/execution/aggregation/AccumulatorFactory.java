@@ -149,20 +149,21 @@ public class AccumulatorFactory {
     switch (tsDataType) {
       case BOOLEAN:
         return new BooleanModeAccumulator();
+      case BLOB:
+      case STRING:
       case TEXT:
         return new BinaryModeAccumulator();
+      case DATE:
       case INT32:
         return new IntModeAccumulator();
+      case TIMESTAMP:
       case INT64:
         return new LongModeAccumulator();
       case FLOAT:
         return new FloatModeAccumulator();
       case DOUBLE:
         return new DoubleModeAccumulator();
-      case BLOB:
-      case STRING:
-      case TIMESTAMP:
-      case DATE:
+      case OBJECT:
       default:
         throw new IllegalArgumentException("Unknown data type: " + tsDataType);
     }

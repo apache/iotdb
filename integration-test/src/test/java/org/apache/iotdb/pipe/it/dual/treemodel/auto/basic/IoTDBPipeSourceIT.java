@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.MultiEnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
@@ -62,7 +63,6 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -73,14 +73,20 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
         .setEnableCrossSpaceCompaction(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setIsPipeEnableMemoryCheck(false);
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeAutoSplitFullEnabled(false);
+    receiverEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
@@ -98,21 +104,21 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     final int receiverPort = receiverDataNode.getPort();
 
     // ---------------------------------------------------------- //
-    // Scenario 1: when 'extractor.history.enable' is set to true //
+    // Scenario 1: when 'source.history.enable' is set to true //
     // ---------------------------------------------------------- //
 
-    // Scenario 1.1: test when 'extractor.history.start-time' and 'extractor.history.end-time' are
+    // Scenario 1.1: test when 'source.history.start-time' and 'source.history.end-time' are
     // not set
     final String p1_1 =
         String.format(
             "create pipe p1_1"
-                + " with extractor ("
-                + "'extractor.history.enable'='true')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -121,18 +127,18 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       fail(e.getMessage());
     }
 
-    // Scenario 1.2: test when only 'extractor.history.start-time' is set
+    // Scenario 1.2: test when only 'source.history.start-time' is set
     final String p1_2 =
         String.format(
             "create pipe p1_2"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.start-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.start-time'='2000.01.01T08:00:00')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -141,18 +147,18 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       fail(e.getMessage());
     }
 
-    // Scenario 1.3: test when only 'extractor.history.end-time' is set
+    // Scenario 1.3: test when only 'source.history.end-time' is set
     final String p1_3 =
         String.format(
             "create pipe p1_3"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.end-time'='2000.01.01T08:00:00')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -161,19 +167,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       fail(e.getMessage());
     }
 
-    // Scenario 1.4: test when 'extractor.history.start-time' equals 'extractor.history.end-time'
+    // Scenario 1.4: test when 'source.history.start-time' equals 'source.history.end-time'
     final String p1_4 =
         String.format(
             "create pipe p1_4"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.start-time'='2000.01.01T08:00:00',"
-                + "'extractor.history.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.start-time'='2000.01.01T08:00:00',"
+                + "'source.history.end-time'='2000.01.01T08:00:00')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -182,19 +188,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       fail(e.getMessage());
     }
 
-    // Scenario 1.5: test when 'extractor.history.end-time' is future time
+    // Scenario 1.5: test when 'source.history.end-time' is future time
     final String p1_5 =
         String.format(
             "create pipe p1_5"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.start-time'='2000.01.01T08:00:00',"
-                + "'extractor.history.end-time'='2100.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.start-time'='2000.01.01T08:00:00',"
+                + "'source.history.end-time'='2100.01.01T08:00:00')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -215,11 +221,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
             "create pipe p2_1"
                 + " with source ("
                 + "'source.start-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -234,11 +240,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
             "create pipe p2_2"
                 + " with source ("
                 + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -254,11 +260,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                 + " with source ("
                 + "'source.start-time'='2000.01.01T08:00:00',"
                 + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -274,11 +280,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                 + " with source ("
                 + "'source.start-time'='2000.01.01T08:00:00',"
                 + "'source.end-time'='2100.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -300,11 +306,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                 + " with source ("
                 + "'source.start-time'='1000',"
                 + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -323,18 +329,18 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    // Scenario 1: invalid 'extractor.history.start-time'
+    // Scenario 1: invalid 'source.history.start-time'
     final String formatString =
         String.format(
             "create pipe p1"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.start-time'=%s)"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.start-time'=%s)"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             "%s", receiverIp, receiverPort);
 
     final List<String> invalidStartTimes =
@@ -349,19 +355,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     }
     assertPipeCount(0);
 
-    // Scenario 2: can not set 'extractor.history.enable' and 'extractor.realtime.enable' both to
+    // Scenario 2: can not set 'source.history.enable' and 'source.realtime.enable' both to
     // false
     final String p2 =
         String.format(
             "create pipe p2"
-                + " with extractor ("
-                + "'extractor.history.enable'='false',"
-                + "'extractor.realtime.enable'='false')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='false',"
+                + "'source.realtime.enable'='false')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -371,20 +377,20 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     }
     assertPipeCount(0);
 
-    // Scenario 3: test when 'extractor.history.start-time' is greater than
-    // 'extractor.history.end-time'
+    // Scenario 3: test when 'source.history.start-time' is greater than
+    // 'source.history.end-time'
     final String p3 =
         String.format(
             "create pipe p3"
-                + " with extractor ("
-                + "'extractor.history.enable'='true',"
-                + "'extractor.history.start-time'='2001.01.01T08:00:00',"
-                + "'extractor.history.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with source ("
+                + "'source.history.enable'='true',"
+                + "'source.history.start-time'='2001.01.01T08:00:00',"
+                + "'source.history.end-time'='2000.01.01T08:00:00')"
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -401,11 +407,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                 + " with source ("
                 + "'source.start-time'='2001.01.01T08:00:00',"
                 + "'source.end-time'='2000.01.01T08:00:00')"
-                + " with connector ("
-                + "'connector'='iotdb-thrift-connector',"
-                + "'connector.ip'='%s',"
-                + "'connector.port'='%s',"
-                + "'connector.batch.enable'='false')",
+                + " with sink ("
+                + "'sink'='iotdb-thrift-sink',"
+                + "'sink.ip'='%s',"
+                + "'sink.port'='%s',"
+                + "'sink.batch.enable'='false')",
             receiverIp, receiverPort);
     try (final Connection connection = senderEnv.getConnection();
         final Statement statement = connection.createStatement()) {
@@ -425,7 +431,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.nonAligned.1TS (time, s_float) values (now(), 0.5)",
@@ -441,21 +447,21 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
               "insert into root.aligned.`1(TS)` (time, s_float) aligned values (now(), 0.5)",
               "insert into root.aligned.6TS.`6` ("
                   + "time, `s_float(1)`, `s_int(1)`, `s_double(1)`, `s_long(1)`, `s_text(1)`, `s_bool(1)`) "
-                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"))) {
-        return;
-      }
+                  + "aligned values (now(), 0.5, 1, 1.5, 2, \"text1\", true)"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", null);
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", null);
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       final List<String> patterns =
           Arrays.asList(
@@ -477,11 +483,11 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
           Arrays.asList(0, 1, 2, 3, 4, 5, 6, 11, 16, 16, 18, 20);
 
       for (int i = 0; i < patterns.size(); ++i) {
-        extractorAttributes.replace("extractor.pattern", patterns.get(i));
+        sourceAttributes.replace("source.pattern", patterns.get(i));
         final TSStatus status =
             client.createPipe(
-                new TCreatePipeReq("p" + i, connectorAttributes)
-                    .setExtractorAttributes(extractorAttributes)
+                new TCreatePipeReq("p" + i, sinkAttributes)
+                    .setExtractorAttributes(sourceAttributes)
                     .setProcessorAttributes(processorAttributes));
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
         Assert.assertEquals(
@@ -491,15 +497,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         // and is skipped flush when the pipe starts. In this case, the "waitForTsFileClose()"
         // may not return until a flush is executed, namely the data transfer relies
         // on a flush operation.
-        if (!TestUtils.tryExecuteNonQueryWithRetry(senderEnv, "flush")) {
-          return;
-        }
+        TestUtils.executeNonQuery(senderEnv, "flush", null);
         assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
       }
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "show devices",
+          "show devices root.nonAligned.**",
           "Device,IsAligned,Template,TTL(ms),",
           new HashSet<>(
               Arrays.asList(
@@ -507,7 +511,13 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
                   "root.nonAligned.100TS,false,null,INF,",
                   "root.nonAligned.1000TS,false,null,INF,",
                   "root.nonAligned.`1(TS)`,false,null,INF,",
-                  "root.nonAligned.6TS.`6`,false,null,INF,",
+                  "root.nonAligned.6TS.`6`,false,null,INF,")));
+      TestUtils.assertDataEventuallyOnEnv(
+          receiverEnv,
+          "show devices root.aligned.**",
+          "Device,IsAligned,Template,TTL(ms),",
+          new HashSet<>(
+              Arrays.asList(
                   "root.aligned.1TS,true,null,INF,",
                   "root.aligned.100TS,true,null,INF,",
                   "root.aligned.1000TS,true,null,INF,",
@@ -525,42 +535,42 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db1");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.db1");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
       assertTimeseriesCountOnReceiver(receiverEnv, 0);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (1, 10)",
               "insert into root.db2.d1 (time, at1) values (1, 20)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      extractorAttributes.replace("extractor.pattern", "root.db2");
+      sourceAttributes.replace("source.pattern", "root.db2");
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -572,20 +582,19 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p2").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1) values (2, 11)",
               "insert into root.db2.d1 (time, at1) values (2, 21)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      extractorAttributes.remove("extractor.pattern"); // no pattern, will match all databases
+      sourceAttributes.remove("source.pattern"); // no pattern, will match all databases
       status =
           client.createPipe(
-              new TCreatePipeReq("p3", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p3", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -593,7 +602,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db*.**",
           "count(root.db1.d1.at1),count(root.db2.d1.at1),",
           Collections.singleton("2,2,"));
     }
@@ -608,81 +617,80 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (1, 10)",
               "insert into root.db.d2 (time, at1) values (1, 20)",
               "insert into root.db.d3 (time, at1) values (1, 30)",
               "insert into root.db.d4 (time, at1) values (1, 40)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("extractor.inclusion", "data.insert");
-      extractorAttributes.put("extractor.pattern", "root.db.d2");
-      extractorAttributes.put("extractor.history.enable", "false");
-      extractorAttributes.put("extractor.realtime.enable", "true");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("source.pattern", "root.db.d2");
+      sourceAttributes.put("source.history.enable", "false");
+      sourceAttributes.put("source.realtime.enable", "true");
+      sourceAttributes.put("user", "root");
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
 
-      extractorAttributes.replace("extractor.pattern", "root.db.d3");
-      extractorAttributes.replace("extractor.history.enable", "true");
-      extractorAttributes.replace("extractor.realtime.enable", "false");
+      sourceAttributes.replace("source.pattern", "root.db.d3");
+      sourceAttributes.replace("source.history.enable", "true");
+      sourceAttributes.replace("source.realtime.enable", "false");
       status =
           client.createPipe(
-              new TCreatePipeReq("p3", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p3", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p3").getCode());
 
-      extractorAttributes.replace("extractor.pattern", "root.db.d4");
-      extractorAttributes.replace("extractor.history.enable", "true");
-      extractorAttributes.replace("extractor.realtime.enable", "true");
+      sourceAttributes.replace("source.pattern", "root.db.d4");
+      sourceAttributes.replace("source.history.enable", "true");
+      sourceAttributes.replace("source.realtime.enable", "true");
       status =
           client.createPipe(
-              new TCreatePipeReq("p4", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p4", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p4").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1) values (2, 11)",
               "insert into root.db.d2 (time, at1) values (2, 21)",
               "insert into root.db.d3 (time, at1) values (2, 31)",
-              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"))) {
-        return;
-      }
+              "insert into root.db.d4 (time, at1) values (2, 41), (3, 51)"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time <= 1",
+          "select count(*) from root.db.** where time <= 1",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("1,0,1,"));
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** where time >= 2",
+          "select count(*) from root.db.** where time >= 2",
           "count(root.db.d4.at1),count(root.db.d2.at1),count(root.db.d3.at1),",
           Collections.singleton("2,1,0,"));
     }
@@ -697,37 +705,37 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.pattern", "root.db.d1");
-      extractorAttributes.put("extractor.inclusion", "data.insert");
-      extractorAttributes.put("extractor.history.enable", "true");
+      sourceAttributes.put("source.pattern", "root.db.d1");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("source.history.enable", "true");
       // 1970-01-01T08:00:02+08:00
-      extractorAttributes.put("extractor.history.start-time", "2000");
-      extractorAttributes.put("extractor.history.end-time", "1970-01-01T08:00:04+08:00");
+      sourceAttributes.put("source.history.start-time", "2000");
+      sourceAttributes.put("source.history.end-time", "1970-01-01T08:00:04+08:00");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -735,15 +743,15 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
-      extractorAttributes.remove("extractor.pattern");
+      sourceAttributes.remove("source.pattern");
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -751,7 +759,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -767,72 +775,70 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // insert history data
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
-      extractorAttributes.put("source.inclusion", "data");
-      extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
-      extractorAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
+      sourceAttributes.put("source.inclusion", "data");
+      sourceAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
+      sourceAttributes.put("source.end-time", "1970-01-01T08:00:04+08:00");
+      sourceAttributes.put("user", "root");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
       // Insert realtime data that overlapped with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d3 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
 
       // Insert realtime data that does not overlap with time range
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d4 (time, at1)"
                   + " values (6000, 6), (7000, 7), (8000, 8), (9000, 9), (10000, 10)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TestUtils.assertDataAlwaysOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d3.at1),",
           Collections.singleton("3,3,"));
     }
@@ -847,36 +853,36 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
               "insert into root.db.d2 (time, at1)"
                   + " values (1000, 1), (2000, 2), (3000, 3), (4000, 4), (5000, 5)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.pattern", "root.db.d1");
-      extractorAttributes.put("source.inclusion", "data.insert");
-      extractorAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
+      sourceAttributes.put("source.pattern", "root.db.d1");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("source.start-time", "1970-01-01T08:00:02+08:00");
       // 1970-01-01T08:00:04+08:00
-      extractorAttributes.put("source.end-time", "4000");
+      sourceAttributes.put("source.end-time", "4000");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -884,15 +890,15 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),",
           Collections.singleton("3,"));
 
-      extractorAttributes.remove("source.pattern");
+      sourceAttributes.remove("source.pattern");
       status =
           client.createPipe(
-              new TCreatePipeReq("p2", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p2", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -900,7 +906,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.**",
+          "select count(*) from root.db.**",
           "count(root.db.d1.at1),count(root.db.d2.at1),",
           Collections.singleton("3,3,"));
     }
@@ -915,45 +921,44 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 1, extracted without parse
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
               // TsFile 2, not extracted because pattern not overlapped
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (2000, 3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               // TsFile 3, not extracted because time range not overlapped
               "insert into root.db.d1 (time, at1, at2)" + " values (3000, 1, 2), (4000, 3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("source.path", "root.db.d1.at1");
-      extractorAttributes.put("source.inclusion", "data.insert");
-      extractorAttributes.put("source.history.start-time", "1500");
-      extractorAttributes.put("source.history.end-time", "2500");
-      extractorAttributes.put("source.history.loose-range", "time, path");
+      sourceAttributes.put("source.path", "root.db.d1.at1");
+      sourceAttributes.put("source.inclusion", "data.insert");
+      sourceAttributes.put("source.history.start-time", "1500");
+      sourceAttributes.put("source.history.end-time", "2500");
+      sourceAttributes.put("source.history.loose-range", "time, path");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
@@ -961,7 +966,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
-          "select count(*) from root.** group by level=0",
+          "select count(*) from root.db.** group by level=0",
           "count(root.*.*.*),",
           Collections.singleton("4,"));
     }
@@ -973,57 +978,55 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
 
-    extractorAttributes.put("source.path", "root.db.d1.at1");
-    extractorAttributes.put("source.inclusion", "data.insert");
-    extractorAttributes.put("source.realtime.loose-range", "time, path");
-    extractorAttributes.put("source.start-time", "2000");
-    extractorAttributes.put("source.end-time", "10000");
-    extractorAttributes.put("source.realtime.mode", "batch");
+    sourceAttributes.put("source.path", "root.db.d1.at1");
+    sourceAttributes.put("source.inclusion", "data.insert");
+    sourceAttributes.put("source.realtime.loose-range", "time, path");
+    sourceAttributes.put("source.start-time", "2000");
+    sourceAttributes.put("source.end-time", "10000");
+    sourceAttributes.put("source.realtime.mode", "batch");
+    sourceAttributes.put("user", "root");
 
-    connectorAttributes.put("connector", "iotdb-thrift-connector");
-    connectorAttributes.put("connector.batch.enable", "false");
-    connectorAttributes.put("connector.ip", receiverIp);
-    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    sinkAttributes.put("sink", "iotdb-thrift-sink");
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db1.d1 (time, at1, at2)" + " values (1000, 1, 2), (3000, 3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, at1)" + " values (5000, 1), (16000, 3)",
               "insert into root.db.d1 (time, at1, at2)" + " values (5001, 1, 2), (6001, 3, 4)",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
@@ -1037,14 +1040,21 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
+    // for system password history
+    count += 2;
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton(count + ","));
+        receiverEnv,
+        "count timeseries root.**",
+        "count(timeseries),",
+        Collections.singleton(count + ","));
   }
 
   private void assertPipeCount(int count) throws Exception {
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final List<TShowPipeInfo> showPipeResult = client.showPipe(new TShowPipeReq()).pipeInfoList;
+      final List<TShowPipeInfo> showPipeResult =
+          client.showPipe(new TShowPipeReq().setUserName(SessionConfig.DEFAULT_USER)).pipeInfoList;
+      showPipeResult.removeIf(i -> i.getId().startsWith("__consensus"));
       Assert.assertEquals(count, showPipeResult.size());
       // for (TShowPipeInfo showPipeInfo : showPipeResult) {
       //   System.out.println(showPipeInfo);

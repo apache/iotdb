@@ -45,6 +45,16 @@ public:
         AbstractSessionBuilder::rpcPort = rpcPort;
         return this;
     }
+    TableSessionBuilder* useSSL(bool useSSL) {
+        AbstractSessionBuilder::useSSL = useSSL;
+        return this;
+    }
+
+    TableSessionBuilder* trustCertFilePath(const std::string &trustCertFilePath) {
+        AbstractSessionBuilder::trustCertFilePath = trustCertFilePath;
+        return this;
+    }
+
     TableSessionBuilder* username(const std::string &username) {
         AbstractSessionBuilder::username = username;
         return this;
@@ -65,11 +75,20 @@ public:
         AbstractSessionBuilder::database = database;
         return this;
     }
-    TableSession* build() {
+    TableSessionBuilder* nodeUrls(const std::vector<string>& nodeUrls) {
+        AbstractSessionBuilder::nodeUrls = nodeUrls;
+        return this;
+    }
+    std::shared_ptr<TableSession> build() {
+        if (!AbstractSessionBuilder::nodeUrls.empty() &&
+            (AbstractSessionBuilder::host != DEFAULT_HOST ||
+                AbstractSessionBuilder::rpcPort != DEFAULT_RPC_PORT)) {
+            throw IoTDBException("Session builder does not support setting node urls and host/rpcPort at the same time.");
+        }
         sqlDialect = "table";
-        Session* newSession = new Session(this);
+        auto newSession = std::make_shared<Session>(this);
         newSession->open(false);
-        return new TableSession(newSession);
+        return std::make_shared<TableSession>(newSession);
     }
 };
 

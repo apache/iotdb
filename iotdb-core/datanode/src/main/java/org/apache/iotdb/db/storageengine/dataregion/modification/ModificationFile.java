@@ -304,10 +304,6 @@ public class ModificationFile implements AutoCloseable {
       }
       if (nextEntry == null) {
         try {
-          if (inputStream.available() == 0) {
-            close();
-            return false;
-          }
           nextEntry = ModEntry.createFrom(inputStream);
         } catch (EOFException e) {
           close();
@@ -352,9 +348,17 @@ public class ModificationFile implements AutoCloseable {
 
   public static ModificationFile getExclusiveMods(TsFileResource tsFileResource) {
     String tsFilePath = tsFileResource.getTsFilePath();
+    File tsfile = tsFileResource.getTsFile();
+    String tsFileName = tsfile.getName();
+    int index = tsFileName.indexOf(IoTDBConstant.PATH_SEPARATOR);
     // replace the temp suffix with the final name
-    tsFilePath = tsFilePath.replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
-    tsFilePath = tsFilePath.replace(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+    if (index != -1) {
+      String parent = tsfile.getParent();
+      tsFilePath =
+          (parent != null ? (parent + File.separator) : "")
+              + tsFileName.substring(0, index)
+              + TSFILE_SUFFIX;
+    }
     return new ModificationFile(tsFilePath + FILE_SUFFIX, true);
   }
 
@@ -394,7 +398,6 @@ public class ModificationFile implements AutoCloseable {
         Map<PartialPath, List<ModEntry>> pathModificationMap =
             getAllMods().stream().collect(Collectors.groupingBy(ModEntry::keyOfPatternTree));
         String newModsFileName = getFile().getPath() + COMPACT_SUFFIX;
-        List<ModEntry> allSettledModifications = new ArrayList<>();
         try (ModificationFile compactedModificationFile =
             new ModificationFile(newModsFileName, false)) {
           Set<Entry<PartialPath, List<ModEntry>>> modificationsEntrySet =
@@ -402,7 +405,6 @@ public class ModificationFile implements AutoCloseable {
           for (Map.Entry<PartialPath, List<ModEntry>> modificationEntry : modificationsEntrySet) {
             List<ModEntry> settledModifications = sortAndMerge(modificationEntry.getValue());
             compactedModificationFile.write(settledModifications);
-            allSettledModifications.addAll(settledModifications);
           }
         } catch (IOException e) {
           LOGGER.error("compact mods file exception of {}", file, e);

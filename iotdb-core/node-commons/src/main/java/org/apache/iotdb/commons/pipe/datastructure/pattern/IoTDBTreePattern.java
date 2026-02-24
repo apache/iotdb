@@ -31,18 +31,25 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
+import javax.annotation.Nullable;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-public class IoTDBTreePattern extends TreePattern {
+public class IoTDBTreePattern extends IoTDBTreePatternOperations {
 
+  private final String pattern;
   private final PartialPath patternPartialPath;
 
+  private static volatile DevicePathGetter devicePathGetter = PartialPath::new;
+  private static volatile MeasurementPathGetter measurementPathGetter = MeasurementPath::new;
+
   public IoTDBTreePattern(final boolean isTreeModelDataAllowedToBeCaptured, final String pattern) {
-    super(isTreeModelDataAllowedToBeCaptured, pattern);
+    super(isTreeModelDataAllowedToBeCaptured);
+    this.pattern = pattern != null ? pattern : getDefaultPattern();
 
     try {
       patternPartialPath = new PartialPath(getPattern());
@@ -55,16 +62,53 @@ public class IoTDBTreePattern extends TreePattern {
     this(true, pattern);
   }
 
-  public static <T> List<T> applyIndexesOnList(
-      final int[] filteredIndexes, final List<T> originalList) {
-    return Objects.nonNull(originalList)
-        ? Arrays.stream(filteredIndexes).mapToObj(originalList::get).collect(Collectors.toList())
-        : null;
+  private String getDefaultPattern() {
+    return PipeSourceConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
+  }
+
+  //////////////////////////// Tree Pattern Operations ////////////////////////////
+
+  public static <T> List<T> applyReversedIndexesOnList(
+      final List<Integer> filteredIndexes, final @Nullable List<T> originalList) {
+    if (Objects.isNull(originalList)) {
+      return null;
+    }
+    // No need to sort, the caller guarantees that the filtered sequence == original sequence
+    final List<T> filteredList = new ArrayList<>(originalList.size() - filteredIndexes.size());
+    int filteredIndexPos = 0;
+    int processingIndex = 0;
+    for (; processingIndex < originalList.size(); processingIndex++) {
+      if (filteredIndexPos >= filteredIndexes.size()) {
+        // all filteredIndexes processed, add remaining to the filteredList
+        filteredList.addAll(originalList.subList(processingIndex, originalList.size()));
+        break;
+      } else {
+        int filteredIndex = filteredIndexes.get(filteredIndexPos);
+        if (filteredIndex == processingIndex) {
+          // the index is filtered, move to the next filtered pos
+          filteredIndexPos++;
+        } else {
+          // the index is not filtered, add to the filteredList
+          filteredList.add(originalList.get(processingIndex));
+        }
+      }
+    }
+    return filteredList;
   }
 
   @Override
-  public String getDefaultPattern() {
-    return PipeSourceConstant.EXTRACTOR_PATTERN_IOTDB_DEFAULT_VALUE;
+  public String getPattern() {
+    return pattern;
+  }
+
+  @Override
+  public boolean isRoot() {
+    return Objects.isNull(pattern) || this.pattern.equals(this.getDefaultPattern());
+  }
+
+  @Override
+  public boolean isSingle() {
+    return true;
   }
 
   @Override
@@ -115,7 +159,7 @@ public class IoTDBTreePattern extends TreePattern {
     try {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
-      return patternPartialPath.matchPrefixPath(new PartialPath(device));
+      return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -129,11 +173,18 @@ public class IoTDBTreePattern extends TreePattern {
     }
 
     try {
-      return patternPartialPath.matchFullPath(new MeasurementPath(device, measurement));
+      return patternPartialPath.matchFullPath(measurementPathGetter.apply(device, measurement));
     } catch (final IllegalPathException e) {
       return false;
     }
   }
+
+  @Override
+  public List<PartialPath> getBaseInclusionPaths() {
+    return Collections.singletonList(patternPartialPath);
+  }
+
+  //////////////////////////// IoTDB Tree Pattern Operations ////////////////////////////
 
   /**
    * Check if the {@link TreePattern} matches the given prefix path. In schema transmission, this
@@ -141,6 +192,7 @@ public class IoTDBTreePattern extends TreePattern {
    * TreePattern}, and to transmit possibly used schemas like database creation and template
    * setting.
    */
+  @Override
   public boolean matchPrefixPath(final String path) {
     try {
       return patternPartialPath.matchPrefixPath(new PartialPath(path));
@@ -152,6 +204,7 @@ public class IoTDBTreePattern extends TreePattern {
   /**
    * This is the precise form of the device overlap and is used only be device template transfer.
    */
+  @Override
   public boolean matchDevice(final String devicePath) {
     try {
       return patternPartialPath.overlapWith(new MeasurementPath(devicePath, "*"));
@@ -164,6 +217,7 @@ public class IoTDBTreePattern extends TreePattern {
    * Return if the given tail node matches the pattern's tail node. Caller shall ensure that it is a
    * prefix or full path pattern.
    */
+  @Override
   public boolean matchTailNode(final String tailNode) {
     return !isFullPath() || patternPartialPath.getTailNode().equals(tailNode);
   }
@@ -172,6 +226,7 @@ public class IoTDBTreePattern extends TreePattern {
    * Get the intersection of the given {@link PartialPath} and the {@link TreePattern}, Only used by
    * schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
+  @Override
   public List<PartialPath> getIntersection(final PartialPath partialPath) {
     if (isFullPath()) {
       return partialPath.matchFullPath(patternPartialPath)
@@ -185,6 +240,7 @@ public class IoTDBTreePattern extends TreePattern {
    * Get the intersection of the given {@link PathPatternTree} and the {@link TreePattern}. Only
    * used by schema transmission. Caller shall ensure that it is a prefix or full path pattern.
    */
+  @Override
   public PathPatternTree getIntersection(final PathPatternTree patternTree) {
     final PathPatternTree thisPatternTree = new PathPatternTree();
     thisPatternTree.appendPathPattern(patternPartialPath);
@@ -192,7 +248,17 @@ public class IoTDBTreePattern extends TreePattern {
     return patternTree.intersectWithFullPathPrefixTree(thisPatternTree);
   }
 
-  public boolean isPrefix() {
+  @Override
+  public boolean isPrefixOrFullPath() {
+    return isPrefix() || isFullPath();
+  }
+
+  @Override
+  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
+    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
+  }
+
+  private boolean isPrefix() {
     return PathPatternUtil.isMultiLevelMatchWildcard(patternPartialPath.getTailNode())
         && !new PartialPath(
                 Arrays.copyOfRange(
@@ -200,16 +266,37 @@ public class IoTDBTreePattern extends TreePattern {
             .hasWildcard();
   }
 
-  public boolean isFullPath() {
+  private boolean isFullPath() {
     return !patternPartialPath.hasWildcard();
   }
 
-  public boolean mayMatchMultipleTimeSeriesInOneDevice() {
-    return PathPatternUtil.hasWildcard(patternPartialPath.getTailNode());
+  //////////////////////////// Getter ////////////////////////////
+
+  public static void setDevicePathGetter(final DevicePathGetter devicePathGetter) {
+    IoTDBTreePattern.devicePathGetter = devicePathGetter;
   }
+
+  public static void setMeasurementPathGetter(final MeasurementPathGetter measurementPathGetter) {
+    IoTDBTreePattern.measurementPathGetter = measurementPathGetter;
+  }
+
+  public interface DevicePathGetter {
+    PartialPath apply(final IDeviceID deviceId) throws IllegalPathException;
+  }
+
+  public interface MeasurementPathGetter {
+    MeasurementPath apply(final IDeviceID deviceId, final String measurement)
+        throws IllegalPathException;
+  }
+
+  //////////////////////////// Object ////////////////////////////
 
   @Override
   public String toString() {
-    return "IoTDBPipePattern" + super.toString();
+    return "IoTDBTreePattern{pattern='"
+        + pattern
+        + "', isTreeModelDataAllowedToBeCaptured="
+        + isTreeModelDataAllowedToBeCaptured
+        + '}';
   }
 }

@@ -112,7 +112,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
-              // coordinator crashed and lost its task table
+            // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
               return warnAndRollBackAndNoMoreState(

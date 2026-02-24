@@ -24,7 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
+import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
+import org.apache.iotdb.commons.audit.UserEntity;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
@@ -49,8 +54,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowModelResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -59,21 +62,32 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TTableInfo;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.SessionManager;
+import org.apache.iotdb.db.queryengine.common.ConnectionInfo;
+import org.apache.iotdb.db.queryengine.common.QueryId;
+import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.relational.ShowCreateViewTask;
 import org.apache.iotdb.db.queryengine.plan.relational.function.TableBuiltinTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.util.ReservedIdentifiers;
 import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
+import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
@@ -114,51 +128,66 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.Sho
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask.getFunctionType;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_BUILTIN;
 import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask.PIPE_PLUGIN_TYPE_EXTERNAL;
+import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.externalservice.ShowExternalServiceTask.appendServiceEntry;
 
 public class InformationSchemaContentSupplierFactory {
+
+  private static final SessionManager sessionManager = SessionManager.getInstance();
+
   private InformationSchemaContentSupplierFactory() {}
 
-  private static final AccessControl accessControl = Coordinator.getInstance().getAccessControl();
-
   public static Iterator<TsBlock> getSupplier(
-      final String tableName, final List<TSDataType> dataTypes, final String userName) {
-    switch (tableName) {
-      case InformationSchema.QUERIES:
-        return new QueriesSupplier(dataTypes, userName);
-      case InformationSchema.DATABASES:
-        return new DatabaseSupplier(dataTypes, userName);
-      case InformationSchema.TABLES:
-        return new TableSupplier(dataTypes, userName);
-      case InformationSchema.COLUMNS:
-        return new ColumnSupplier(dataTypes, userName);
-      case InformationSchema.REGIONS:
-        return new RegionSupplier(dataTypes, userName);
-      case InformationSchema.PIPES:
-        return new PipeSupplier(dataTypes, userName);
-      case InformationSchema.PIPE_PLUGINS:
-        return new PipePluginSupplier(dataTypes);
-      case InformationSchema.TOPICS:
-        return new TopicSupplier(dataTypes, userName);
-      case InformationSchema.SUBSCRIPTIONS:
-        return new SubscriptionSupplier(dataTypes, userName);
-      case InformationSchema.VIEWS:
-        return new ViewsSupplier(dataTypes, userName);
-      case InformationSchema.MODELS:
-        return new ModelsSupplier(dataTypes);
-      case InformationSchema.FUNCTIONS:
-        return new FunctionsSupplier(dataTypes);
-      case InformationSchema.CONFIGURATIONS:
-        return new ConfigurationsSupplier(dataTypes, userName);
-      case InformationSchema.KEYWORDS:
-        return new KeywordsSupplier(dataTypes);
-      case InformationSchema.NODES:
-        return new NodesSupplier(dataTypes, userName);
-      case InformationSchema.CONFIG_NODES:
-        return new ConfigNodesSupplier(dataTypes, userName);
-      case InformationSchema.DATA_NODES:
-        return new DataNodesSupplier(dataTypes, userName);
-      default:
-        throw new UnsupportedOperationException("Unknown table: " + tableName);
+      final String tableName,
+      final List<TSDataType> dataTypes,
+      Expression predicate,
+      final UserEntity userEntity) {
+    try {
+      switch (tableName) {
+        case InformationSchema.QUERIES:
+          return new QueriesSupplier(dataTypes, userEntity);
+        case InformationSchema.DATABASES:
+          return new DatabaseSupplier(dataTypes, userEntity);
+        case InformationSchema.TABLES:
+          return new TableSupplier(dataTypes, userEntity);
+        case InformationSchema.COLUMNS:
+          return new ColumnSupplier(dataTypes, userEntity);
+        case InformationSchema.REGIONS:
+          return new RegionSupplier(dataTypes, userEntity);
+        case InformationSchema.PIPES:
+          return new PipeSupplier(dataTypes, userEntity.getUsername());
+        case InformationSchema.PIPE_PLUGINS:
+          return new PipePluginSupplier(dataTypes, userEntity);
+        case InformationSchema.TOPICS:
+          return new TopicSupplier(dataTypes, userEntity);
+        case InformationSchema.SUBSCRIPTIONS:
+          return new SubscriptionSupplier(dataTypes, userEntity);
+        case InformationSchema.VIEWS:
+          return new ViewsSupplier(dataTypes, userEntity);
+        case InformationSchema.FUNCTIONS:
+          return new FunctionsSupplier(dataTypes);
+        case InformationSchema.CONFIGURATIONS:
+          return new ConfigurationsSupplier(dataTypes, userEntity);
+        case InformationSchema.KEYWORDS:
+          return new KeywordsSupplier(dataTypes);
+        case InformationSchema.NODES:
+          return new NodesSupplier(dataTypes, userEntity);
+        case InformationSchema.CONFIG_NODES:
+          return new ConfigNodesSupplier(dataTypes, userEntity);
+        case InformationSchema.DATA_NODES:
+          return new DataNodesSupplier(dataTypes, userEntity);
+        case InformationSchema.CONNECTIONS:
+          return new ConnectionsSupplier(dataTypes, userEntity);
+        case InformationSchema.CURRENT_QUERIES:
+          return new CurrentQueriesSupplier(dataTypes, predicate, userEntity);
+        case InformationSchema.QUERIES_COSTS_HISTOGRAM:
+          return new QueriesCostsHistogramSupplier(dataTypes, userEntity);
+        case InformationSchema.SERVICES:
+          return new ServicesSupplier(dataTypes, userEntity);
+        default:
+          throw new UnsupportedOperationException("Unknown table: " + tableName);
+      }
+    } catch (final Exception e) {
+      throw new IoTDBRuntimeException(e, TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
   }
 
@@ -169,15 +198,16 @@ public class InformationSchemaContentSupplierFactory {
     protected int nextConsumedIndex;
     private List<IQueryExecution> queryExecutions;
 
-    private QueriesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private QueriesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
       super(dataTypes);
       queryExecutions = Coordinator.getInstance().getAllQueryExecutions();
       try {
-        accessControl.checkUserIsAdmin(userName);
+        accessControl.checkUserGlobalSysPrivilege(userEntity);
       } catch (final AccessDeniedException e) {
         queryExecutions =
             queryExecutions.stream()
-                .filter(iQueryExecution -> userName.equals(iQueryExecution.getUser()))
+                .filter(
+                    iQueryExecution -> userEntity.getUsername().equals(iQueryExecution.getUser()))
                 .collect(Collectors.toList());
       }
       this.totalSize = queryExecutions.size();
@@ -188,14 +218,11 @@ public class InformationSchemaContentSupplierFactory {
       final IQueryExecution queryExecution = queryExecutions.get(nextConsumedIndex);
 
       if (queryExecution.getSQLDialect().equals(IClientSession.SqlDialect.TABLE)) {
-        final String[] splits = queryExecution.getQueryId().split("_");
-        final int dataNodeId = Integer.parseInt(splits[splits.length - 1]);
-
         columnBuilders[0].writeBinary(BytesUtils.valueOf(queryExecution.getQueryId()));
         columnBuilders[1].writeLong(
             TimestampPrecisionUtils.convertToCurrPrecision(
                 queryExecution.getStartExecutionTime(), TimeUnit.MILLISECONDS));
-        columnBuilders[2].writeInt(dataNodeId);
+        columnBuilders[2].writeInt(QueryId.getDataNodeId());
         columnBuilders[3].writeFloat(
             (float) (currTime - queryExecution.getStartExecutionTime()) / 1000);
         columnBuilders[4].writeBinary(
@@ -213,14 +240,15 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class DatabaseSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
+    private final Iterator<Map.Entry<String, TDatabaseInfo>> iterator;
     private TDatabaseInfo currentDatabase;
     private boolean hasShownInformationSchema;
-    private final String userName;
+    private final UserEntity userEntity;
 
-    private DatabaseSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private DatabaseSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      this.userName = userName;
+      this.userEntity = userEntity;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -232,8 +260,6 @@ public class InformationSchemaContentSupplierFactory {
                 .getDatabaseInfoMap()
                 .entrySet()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -266,7 +292,11 @@ public class InformationSchemaContentSupplierFactory {
     @Override
     public boolean hasNext() {
       if (!hasShownInformationSchema) {
-        if (!canShowDB(accessControl, userName, InformationSchema.INFORMATION_DATABASE)) {
+        if (!canShowDB(
+            accessControl,
+            userEntity.getUsername(),
+            InformationSchema.INFORMATION_DATABASE,
+            userEntity)) {
           hasShownInformationSchema = true;
         } else {
           return true;
@@ -274,7 +304,7 @@ public class InformationSchemaContentSupplierFactory {
       }
       while (iterator.hasNext()) {
         final Map.Entry<String, TDatabaseInfo> result = iterator.next();
-        if (!canShowDB(accessControl, userName, result.getKey())) {
+        if (!canShowDB(accessControl, userEntity.getUsername(), result.getKey(), userEntity)) {
           continue;
         }
         currentDatabase = result.getValue();
@@ -285,15 +315,16 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class TableSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
+    private final Iterator<Map.Entry<String, List<TTableInfo>>> dbIterator;
     private Iterator<TTableInfo> tableInfoIterator = null;
     private TTableInfo currentTable;
     private String dbName;
-    private final String userName;
+    private final UserEntity userEntity;
 
-    private TableSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private TableSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      this.userName = userName;
+      this.userEntity = userEntity;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final Map<String, List<TTableInfo>> databaseTableInfoMap =
@@ -312,8 +343,6 @@ public class InformationSchemaContentSupplierFactory {
                     })
                 .collect(Collectors.toList()));
         dbIterator = databaseTableInfoMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -354,7 +383,8 @@ public class InformationSchemaContentSupplierFactory {
       while (Objects.isNull(currentTable)) {
         while (Objects.nonNull(tableInfoIterator) && tableInfoIterator.hasNext()) {
           final TTableInfo info = tableInfoIterator.next();
-          if (canShowTable(accessControl, userName, dbName, info.getTableName())) {
+          if (canShowTable(
+              accessControl, userEntity.getUsername(), dbName, info.getTableName(), userEntity)) {
             currentTable = info;
             return true;
           }
@@ -364,7 +394,7 @@ public class InformationSchemaContentSupplierFactory {
         }
         final Map.Entry<String, List<TTableInfo>> entry = dbIterator.next();
         dbName = entry.getKey();
-        if (!canShowDB(accessControl, userName, dbName)) {
+        if (!canShowDB(accessControl, userEntity.getUsername(), dbName, userEntity)) {
           continue;
         }
         tableInfoIterator = entry.getValue().iterator();
@@ -374,17 +404,18 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ColumnSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private final Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private Iterator<TsTableColumnSchema> columnSchemaIterator;
     private String dbName;
     private String tableName;
     private Set<String> preDeletedColumns;
-    private final String userName;
+    private final UserEntity userEntity;
 
-    private ColumnSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ColumnSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      this.userName = userName;
+      this.userEntity = userEntity;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
@@ -411,8 +442,6 @@ public class InformationSchemaContentSupplierFactory {
                         TsTable::getTableName,
                         table -> new Pair<>(table, Collections.emptySet()))));
         dbIterator = resultMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -451,7 +480,7 @@ public class InformationSchemaContentSupplierFactory {
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
           dbName = entry.getKey();
-          if (!canShowDB(accessControl, userName, dbName)) {
+          if (!canShowDB(accessControl, userEntity.getUsername(), dbName, userEntity)) {
             continue;
           }
           tableInfoIterator = entry.getValue().entrySet().iterator();
@@ -460,7 +489,8 @@ public class InformationSchemaContentSupplierFactory {
         Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry;
         while (tableInfoIterator.hasNext()) {
           tableEntry = tableInfoIterator.next();
-          if (canShowTable(accessControl, userName, dbName, tableEntry.getKey())) {
+          if (canShowTable(
+              accessControl, userEntity.getUsername(), dbName, tableEntry.getKey(), userEntity)) {
             tableName = tableEntry.getKey();
             preDeletedColumns = tableEntry.getValue().getRight();
             columnSchemaIterator = tableEntry.getValue().getLeft().getColumnList().iterator();
@@ -473,19 +503,18 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class RegionSupplier extends TsBlockSupplier {
-    private Iterator<TRegionInfo> iterator;
+    private final Iterator<TRegionInfo> iterator;
 
-    private RegionSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private RegionSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
             client
                 .showRegion(new TShowRegionReq().setIsTableModel(true).setDatabases(null))
                 .getRegionInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -516,8 +545,12 @@ public class InformationSchemaContentSupplierFactory {
       if (regionInfo.getConsensusGroupId().getType().ordinal()
           == TConsensusGroupType.DataRegion.ordinal()) {
         columnBuilders[12].writeLong(regionInfo.getTsFileSize());
+        columnBuilders[13].writeDouble(
+            MathUtils.roundWithGivenPrecision(
+                (double) regionInfo.getRawDataSize() / regionInfo.getTsFileSize(), 2));
       } else {
         columnBuilders[12].appendNull();
+        columnBuilders[13].appendNull();
       }
       resultBuilder.declarePosition();
     }
@@ -529,17 +562,16 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class PipeSupplier extends TsBlockSupplier {
-    private Iterator<TShowPipeInfo> iterator;
+    private final Iterator<TShowPipeInfo> iterator;
 
-    private PipeSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private PipeSupplier(final List<TSDataType> dataTypes, final String userName) throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
-            client.showPipe(new TShowPipeReq().setIsTableModel(true)).getPipeInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
+            client
+                .showPipe(new TShowPipeReq().setIsTableModel(true).setUserName(userName))
+                .getPipeInfoListIterator();
       }
     }
 
@@ -585,10 +617,12 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class PipePluginSupplier extends TsBlockSupplier {
-    private Iterator<PipePluginMeta> iterator;
+    private final Iterator<PipePluginMeta> iterator;
 
-    private PipePluginSupplier(final List<TSDataType> dataTypes) {
+    private PipePluginSupplier(final List<TSDataType> dataTypes, final UserEntity entity)
+        throws ClientManagerException, TException {
       super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(entity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -599,8 +633,6 @@ public class InformationSchemaContentSupplierFactory {
                         !BuiltinPipePlugin.SHOW_PIPE_PLUGINS_BLACKLIST.contains(
                             pipePluginMeta.getPluginName()))
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -626,11 +658,12 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class TopicSupplier extends TsBlockSupplier {
-    private Iterator<TShowTopicInfo> iterator;
+    private final Iterator<TShowTopicInfo> iterator;
 
-    private TopicSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private TopicSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -638,8 +671,6 @@ public class InformationSchemaContentSupplierFactory {
                 .showTopic(new TShowTopicReq().setIsTableModel(true))
                 .getTopicInfoList()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -660,11 +691,12 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class SubscriptionSupplier extends TsBlockSupplier {
-    private Iterator<TShowSubscriptionInfo> iterator;
+    private final Iterator<TShowSubscriptionInfo> iterator;
 
-    private SubscriptionSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private SubscriptionSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         iterator =
@@ -672,8 +704,6 @@ public class InformationSchemaContentSupplierFactory {
                 .showSubscription(new TShowSubscriptionReq().setIsTableModel(true))
                 .getSubscriptionInfoList()
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -696,15 +726,16 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ViewsSupplier extends TsBlockSupplier {
-    private Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
+    private final Iterator<Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>>> dbIterator;
     private Iterator<Map.Entry<String, Pair<TsTable, Set<String>>>> tableInfoIterator;
     private String dbName;
     private TsTable currentTable;
-    private final String userName;
+    private final UserEntity userEntity;
 
-    private ViewsSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ViewsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      this.userName = userName;
+      this.userEntity = userEntity;
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TDescTable4InformationSchemaResp resp = client.descTables4InformationSchema();
@@ -724,8 +755,6 @@ public class InformationSchemaContentSupplierFactory {
                                                     tableEntry.getValue().getTableInfo()),
                                                 tableEntry.getValue().getPreDeletedColumns())))));
         dbIterator = resultMap.entrySet().iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -751,7 +780,7 @@ public class InformationSchemaContentSupplierFactory {
           final Map.Entry<String, Map<String, Pair<TsTable, Set<String>>>> entry =
               dbIterator.next();
           dbName = entry.getKey();
-          if (!canShowDB(accessControl, userName, dbName)) {
+          if (!canShowDB(accessControl, userEntity.getUsername(), dbName, userEntity)) {
             continue;
           }
           tableInfoIterator = entry.getValue().entrySet().iterator();
@@ -760,7 +789,12 @@ public class InformationSchemaContentSupplierFactory {
         while (tableInfoIterator.hasNext()) {
           final Map.Entry<String, Pair<TsTable, Set<String>>> tableEntry = tableInfoIterator.next();
           if (!TreeViewSchema.isTreeViewTable(tableEntry.getValue().getLeft())
-              || !canShowTable(accessControl, userName, dbName, tableEntry.getKey())) {
+              || !canShowTable(
+                  accessControl,
+                  userEntity.getUsername(),
+                  dbName,
+                  tableEntry.getKey(),
+                  userEntity)) {
             continue;
           }
           currentTable = tableEntry.getValue().getLeft();
@@ -771,122 +805,14 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private static class ModelsSupplier extends TsBlockSupplier {
-    private ModelIterator iterator;
-
-    private ModelsSupplier(final List<TSDataType> dataTypes) {
-      super(dataTypes);
-      try (final ConfigNodeClient client =
-          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-        iterator = new ModelIterator(client.showModel(new TShowModelReq()));
-      } catch (final Exception e) {
-        lastException = e;
-      }
-    }
-
-    private static class ModelIterator implements Iterator<ModelInfoInString> {
-
-      private int index = 0;
-      private final TShowModelResp resp;
-
-      private ModelIterator(TShowModelResp resp) {
-        this.resp = resp;
-      }
-
-      @Override
-      public boolean hasNext() {
-        return index < resp.getModelIdListSize();
-      }
-
-      @Override
-      public ModelInfoInString next() {
-        String modelId = resp.getModelIdList().get(index++);
-        return new ModelInfoInString(
-            modelId,
-            resp.getModelTypeMap().get(modelId),
-            resp.getCategoryMap().get(modelId),
-            resp.getStateMap().get(modelId));
-      }
-    }
-
-    private static class ModelInfoInString {
-
-      private final String modelId;
-      private final String modelType;
-      private final String category;
-      private final String state;
-
-      public ModelInfoInString(String modelId, String modelType, String category, String state) {
-        this.modelId = modelId;
-        this.modelType = modelType;
-        this.category = category;
-        this.state = state;
-      }
-
-      public String getModelId() {
-        return modelId;
-      }
-
-      public String getModelType() {
-        return modelType;
-      }
-
-      public String getCategory() {
-        return category;
-      }
-
-      public String getState() {
-        return state;
-      }
-    }
-
-    @Override
-    protected void constructLine() {
-      final ModelInfoInString modelInfo = iterator.next();
-      columnBuilders[0].writeBinary(
-          new Binary(modelInfo.getModelId(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[1].writeBinary(
-          new Binary(modelInfo.getModelType(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[2].writeBinary(
-          new Binary(modelInfo.getCategory(), TSFileConfig.STRING_CHARSET));
-      columnBuilders[3].writeBinary(new Binary(modelInfo.getState(), TSFileConfig.STRING_CHARSET));
-      //      if (Objects.equals(modelType, ModelType.USER_DEFINED.toString())) {
-      //        columnBuilders[3].writeBinary(
-      //            new Binary(
-      //                INPUT_SHAPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + OUTPUT_SHAPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + INPUT_DATA_TYPE
-      //                    + ReadWriteIOUtils.readString(modelInfo)
-      //                    + OUTPUT_DATA_TYPE
-      //                    + ReadWriteIOUtils.readString(modelInfo),
-      //                TSFileConfig.STRING_CHARSET));
-      //        columnBuilders[4].writeBinary(
-      //            new Binary(ReadWriteIOUtils.readString(modelInfo),
-      // TSFileConfig.STRING_CHARSET));
-      //      } else {
-      //        columnBuilders[3].appendNull();
-      //        columnBuilders[4].writeBinary(
-      //            new Binary("Built-in model in IoTDB", TSFileConfig.STRING_CHARSET));
-      //      }
-      resultBuilder.declarePosition();
-    }
-
-    @Override
-    public boolean hasNext() {
-      return iterator.hasNext();
-    }
-  }
-
   private static class FunctionsSupplier extends TsBlockSupplier {
 
-    private Iterator<UDFInformation> udfIterator;
+    private final Iterator<UDFInformation> udfIterator;
     private Iterator<String> nameIterator;
     private Binary functionType;
-    private Binary functionState;
+    private final Binary functionState;
 
-    private FunctionsSupplier(final List<TSDataType> dataTypes) {
+    private FunctionsSupplier(final List<TSDataType> dataTypes) throws Exception {
       super(dataTypes);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -898,8 +824,6 @@ public class InformationSchemaContentSupplierFactory {
         nameIterator = TableBuiltinScalarFunction.getBuiltInScalarFunctionName().iterator();
         functionType = BINARY_MAP.get(FUNCTION_TYPE_BUILTIN_SCALAR_FUNC);
         functionState = BINARY_MAP.get(FUNCTION_STATE_AVAILABLE);
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -942,12 +866,45 @@ public class InformationSchemaContentSupplierFactory {
     }
   }
 
-  private static class ConfigurationsSupplier extends TsBlockSupplier {
-    private Iterator<Pair<Binary, Binary>> resultIterator;
+  private static class ServicesSupplier extends TsBlockSupplier {
 
-    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private final Iterator<TExternalServiceEntry> serviceEntryIterator;
+
+    private ServicesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // -1 means get all services
+        TExternalServiceListResp resp = client.showExternalService(-1);
+        if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new IoTDBRuntimeException(resp.getStatus());
+        }
+
+        serviceEntryIterator = resp.getExternalServiceInfosIterator();
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      appendServiceEntry(serviceEntryIterator.next(), columnBuilders);
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return serviceEntryIterator.hasNext();
+    }
+  }
+
+  private static class ConfigurationsSupplier extends TsBlockSupplier {
+    private final Iterator<Pair<Binary, Binary>> resultIterator;
+
+    private ConfigurationsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TClusterParameters parameters = client.showVariables().getClusterParameters();
@@ -1005,8 +962,6 @@ public class InformationSchemaContentSupplierFactory {
                         BytesUtils.valueOf(ColumnHeaderConstant.TIMESTAMP_PRECISION),
                         BytesUtils.valueOf(parameters.getTimestampPrecision())))
                 .iterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1048,22 +1003,21 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class NodesSupplier extends TsBlockSupplier {
-    private TShowClusterResp showClusterResp;
-    private Iterator<TConfigNodeLocation> configNodeIterator;
-    private Iterator<TDataNodeLocation> dataNodeIterator;
-    private Iterator<TAINodeLocation> aiNodeIterator;
+    private final TShowClusterResp showClusterResp;
+    private final Iterator<TConfigNodeLocation> configNodeIterator;
+    private final Iterator<TDataNodeLocation> dataNodeIterator;
+    private final Iterator<TAINodeLocation> aiNodeIterator;
 
-    private NodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private NodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         showClusterResp = client.showCluster();
         configNodeIterator = showClusterResp.getConfigNodeListIterator();
         dataNodeIterator = showClusterResp.getDataNodeListIterator();
         aiNodeIterator = showClusterResp.getAiNodeListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1146,17 +1100,16 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class ConfigNodesSupplier extends TsBlockSupplier {
-    private Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
+    private final Iterator<TConfigNodeInfo4InformationSchema> configNodeIterator;
 
-    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private ConfigNodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         configNodeIterator =
             client.showConfigNodes4InformationSchema().getConfigNodesInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1178,16 +1131,15 @@ public class InformationSchemaContentSupplierFactory {
   }
 
   private static class DataNodesSupplier extends TsBlockSupplier {
-    private Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
+    private final Iterator<TDataNodeInfo4InformationSchema> dataNodeIterator;
 
-    private DataNodesSupplier(final List<TSDataType> dataTypes, final String userName) {
+    private DataNodesSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
       super(dataTypes);
-      accessControl.checkUserIsAdmin(userName);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
       try (final ConfigNodeClient client =
           ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         dataNodeIterator = client.showDataNodes4InformationSchema().getDataNodesInfoListIterator();
-      } catch (final Exception e) {
-        lastException = e;
       }
     }
 
@@ -1217,7 +1169,7 @@ public class InformationSchemaContentSupplierFactory {
 
     protected final TsBlockBuilder resultBuilder;
     protected final ColumnBuilder[] columnBuilders;
-    protected Exception lastException;
+    protected final AccessControl accessControl = AuthorityChecker.getAccessControl();
 
     private TsBlockSupplier(final List<TSDataType> dataTypes) {
       this.resultBuilder = new TsBlockBuilder(dataTypes);
@@ -1226,9 +1178,6 @@ public class InformationSchemaContentSupplierFactory {
 
     @Override
     public TsBlock next() {
-      if (Objects.nonNull(lastException)) {
-        throw new NoSuchElementException(lastException.getMessage());
-      }
       if (!hasNext()) {
         throw new NoSuchElementException();
       }
@@ -1238,11 +1187,196 @@ public class InformationSchemaContentSupplierFactory {
       final TsBlock result =
           resultBuilder.build(
               new RunLengthEncodedColumn(
-                  TableScanOperator.TIME_COLUMN_TEMPLATE, resultBuilder.getPositionCount()));
+                  AbstractTableScanOperator.TIME_COLUMN_TEMPLATE,
+                  resultBuilder.getPositionCount()));
       resultBuilder.reset();
       return result;
     }
 
     protected abstract void constructLine();
+  }
+
+  private static class ConnectionsSupplier extends TsBlockSupplier {
+    private Iterator<ConnectionInfo> sessionConnectionIterator;
+
+    private ConnectionsSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      sessionConnectionIterator = sessionManager.getAllSessionConnectionInfo().iterator();
+    }
+
+    @Override
+    protected void constructLine() {
+      ConnectionInfo connectionInfo = sessionConnectionIterator.next();
+      columnBuilders[0].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getDataNodeId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[1].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getUserId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[2].writeBinary(
+          new Binary(String.valueOf(connectionInfo.getSessionId()), TSFileConfig.STRING_CHARSET));
+      columnBuilders[3].writeBinary(
+          new Binary(connectionInfo.getUserName(), TSFileConfig.STRING_CHARSET));
+      columnBuilders[4].writeLong(connectionInfo.getLastActiveTime());
+      columnBuilders[5].writeBinary(
+          new Binary(connectionInfo.getClientAddress(), TSFileConfig.STRING_CHARSET));
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return sessionConnectionIterator.hasNext();
+    }
+  }
+
+  private static class CurrentQueriesSupplier extends TsBlockSupplier {
+    private int nextConsumedIndex;
+    private List<Coordinator.StatedQueriesInfo> queriesInfo;
+
+    private CurrentQueriesSupplier(
+        final List<TSDataType> dataTypes, Expression predicate, final UserEntity userEntity) {
+      super(dataTypes);
+
+      if (predicate == null) {
+        queriesInfo = Coordinator.getInstance().getCurrentQueriesInfo();
+      } else if (QueryState.RUNNING
+          .toString()
+          .equals(((StringLiteral) ((ComparisonExpression) predicate).getRight()).getValue())) {
+        queriesInfo = Coordinator.getInstance().getRunningQueriesInfos();
+      } else if (QueryState.FINISHED
+          .toString()
+          .equals(((StringLiteral) ((ComparisonExpression) predicate).getRight()).getValue())) {
+        queriesInfo = Coordinator.getInstance().getFinishedQueriesInfos();
+      } else {
+        queriesInfo = Collections.emptyList();
+      }
+
+      try {
+        accessControl.checkUserGlobalSysPrivilege(userEntity);
+      } catch (final AccessDeniedException e) {
+        queriesInfo =
+            queriesInfo.stream()
+                .filter(iQueryInfo -> userEntity.getUsername().equals(iQueryInfo.getUser()))
+                .collect(Collectors.toList());
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final Coordinator.StatedQueriesInfo queryInfo = queriesInfo.get(nextConsumedIndex);
+      columnBuilders[0].writeBinary(BytesUtils.valueOf(queryInfo.getQueryId()));
+      columnBuilders[1].writeBinary(BytesUtils.valueOf(queryInfo.getQueryState()));
+      columnBuilders[2].writeLong(
+          TimestampPrecisionUtils.convertToCurrPrecision(
+              queryInfo.getStartTime(), TimeUnit.MILLISECONDS));
+      if (queryInfo.getEndTime() == Coordinator.QueryInfo.DEFAULT_END_TIME) {
+        columnBuilders[3].appendNull();
+      } else {
+        columnBuilders[3].writeLong(
+            TimestampPrecisionUtils.convertToCurrPrecision(
+                queryInfo.getEndTime(), TimeUnit.MILLISECONDS));
+      }
+      columnBuilders[4].writeInt(QueryId.getDataNodeId());
+      columnBuilders[5].writeFloat(queryInfo.getCostTime());
+      columnBuilders[6].writeBinary(BytesUtils.valueOf(queryInfo.getStatement()));
+      columnBuilders[7].writeBinary(BytesUtils.valueOf(queryInfo.getUser()));
+      columnBuilders[8].writeBinary(BytesUtils.valueOf(queryInfo.getClientHost()));
+      resultBuilder.declarePosition();
+      nextConsumedIndex++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < queriesInfo.size();
+    }
+  }
+
+  private static class QueriesCostsHistogramSupplier extends TsBlockSupplier {
+    private int nextConsumedIndex;
+    private static final Binary[] BUCKETS =
+        new Binary[] {
+          BytesUtils.valueOf("[0,1)"),
+          BytesUtils.valueOf("[1,2)"),
+          BytesUtils.valueOf("[2,3)"),
+          BytesUtils.valueOf("[3,4)"),
+          BytesUtils.valueOf("[4,5)"),
+          BytesUtils.valueOf("[5,6)"),
+          BytesUtils.valueOf("[6,7)"),
+          BytesUtils.valueOf("[7,8)"),
+          BytesUtils.valueOf("[8,9)"),
+          BytesUtils.valueOf("[9,10)"),
+          BytesUtils.valueOf("[10,11)"),
+          BytesUtils.valueOf("[11,12)"),
+          BytesUtils.valueOf("[12,13)"),
+          BytesUtils.valueOf("[13,14)"),
+          BytesUtils.valueOf("[14,15)"),
+          BytesUtils.valueOf("[15,16)"),
+          BytesUtils.valueOf("[16,17)"),
+          BytesUtils.valueOf("[17,18)"),
+          BytesUtils.valueOf("[18,19)"),
+          BytesUtils.valueOf("[19,20)"),
+          BytesUtils.valueOf("[20,21)"),
+          BytesUtils.valueOf("[21,22)"),
+          BytesUtils.valueOf("[22,23)"),
+          BytesUtils.valueOf("[23,24)"),
+          BytesUtils.valueOf("[24,25)"),
+          BytesUtils.valueOf("[25,26)"),
+          BytesUtils.valueOf("[26,27)"),
+          BytesUtils.valueOf("[27,28)"),
+          BytesUtils.valueOf("[28,29)"),
+          BytesUtils.valueOf("[29,30)"),
+          BytesUtils.valueOf("[30,31)"),
+          BytesUtils.valueOf("[31,32)"),
+          BytesUtils.valueOf("[32,33)"),
+          BytesUtils.valueOf("[33,34)"),
+          BytesUtils.valueOf("[34,35)"),
+          BytesUtils.valueOf("[35,36)"),
+          BytesUtils.valueOf("[36,37)"),
+          BytesUtils.valueOf("[37,38)"),
+          BytesUtils.valueOf("[38,39)"),
+          BytesUtils.valueOf("[39,40)"),
+          BytesUtils.valueOf("[40,41)"),
+          BytesUtils.valueOf("[41,42)"),
+          BytesUtils.valueOf("[42,43)"),
+          BytesUtils.valueOf("[43,44)"),
+          BytesUtils.valueOf("[44,45)"),
+          BytesUtils.valueOf("[45,46)"),
+          BytesUtils.valueOf("[46,47)"),
+          BytesUtils.valueOf("[47,48)"),
+          BytesUtils.valueOf("[48,49)"),
+          BytesUtils.valueOf("[49,50)"),
+          BytesUtils.valueOf("[50,51)"),
+          BytesUtils.valueOf("[51,52)"),
+          BytesUtils.valueOf("[52,53)"),
+          BytesUtils.valueOf("[53,54)"),
+          BytesUtils.valueOf("[54,55)"),
+          BytesUtils.valueOf("[55,56)"),
+          BytesUtils.valueOf("[56,57)"),
+          BytesUtils.valueOf("[57,58)"),
+          BytesUtils.valueOf("[58,59)"),
+          BytesUtils.valueOf("[59,60)"),
+          BytesUtils.valueOf("60+")
+        };
+    private final int[] currentQueriesCostHistogram;
+
+    private QueriesCostsHistogramSupplier(
+        final List<TSDataType> dataTypes, final UserEntity userEntity) {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      currentQueriesCostHistogram = Coordinator.getInstance().getCurrentQueriesCostHistogram();
+    }
+
+    @Override
+    protected void constructLine() {
+      columnBuilders[0].writeBinary(BUCKETS[nextConsumedIndex]);
+      columnBuilders[1].writeInt(currentQueriesCostHistogram[nextConsumedIndex]);
+      columnBuilders[2].writeInt(QueryId.getDataNodeId());
+      resultBuilder.declarePosition();
+      nextConsumedIndex++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return nextConsumedIndex < 61;
+    }
   }
 }

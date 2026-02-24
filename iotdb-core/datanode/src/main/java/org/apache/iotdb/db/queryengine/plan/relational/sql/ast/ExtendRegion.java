@@ -20,18 +20,21 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 public class ExtendRegion extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ExtendRegion.class);
 
-  private final int regionId;
+  private final List<Integer> regionIds;
   private final int dataNodeId;
 
-  public ExtendRegion(int regionId, int dataNodeId) {
+  public ExtendRegion(List<Integer> regionIds, int dataNodeId) {
     super(null);
-    this.regionId = regionId;
+    this.regionIds = regionIds;
     this.dataNodeId = dataNodeId;
   }
 
@@ -42,7 +45,7 @@ public class ExtendRegion extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(ExtendRegion.class, regionId, dataNodeId);
+    return Objects.hash(ExtendRegion.class, regionIds, dataNodeId);
   }
 
   @Override
@@ -54,12 +57,12 @@ public class ExtendRegion extends Statement {
       return false;
     }
     ExtendRegion another = (ExtendRegion) obj;
-    return regionId == another.regionId && dataNodeId == another.dataNodeId;
+    return regionIds.equals(another.regionIds) && dataNodeId == another.dataNodeId;
   }
 
   @Override
   public String toString() {
-    return String.format("extend region %d to datanode %d", regionId, dataNodeId);
+    return String.format("extend region %s to datanode %d", regionIds, dataNodeId);
   }
 
   @Override
@@ -67,11 +70,19 @@ public class ExtendRegion extends Statement {
     return visitor.visitExtendRegion(this, context);
   }
 
-  public int getRegionId() {
-    return regionId;
+  public List<Integer> getRegionIds() {
+    return regionIds;
   }
 
   public int getDataNodeId() {
     return dataNodeId;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfIntegerList(regionIds);
+    return size;
   }
 }

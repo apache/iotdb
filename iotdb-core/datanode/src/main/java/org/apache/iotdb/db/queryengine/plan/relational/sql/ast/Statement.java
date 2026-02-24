@@ -21,7 +21,11 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import javax.annotation.Nullable;
 
+import java.util.Collections;
+import java.util.List;
+
 public abstract class Statement extends Node {
+  private boolean debug;
 
   protected Statement(final @Nullable NodeLocation location) {
     super(location);
@@ -30,5 +34,35 @@ public abstract class Statement extends Node {
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitStatement(this, context);
+  }
+
+  /**
+   * Checks whether this statement should be split into multiple sub-statements based on the given
+   * async requirement. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @param requireAsync whether async execution is required
+   * @return true if the statement should be split, false otherwise. Default implementation returns
+   *     false.
+   */
+  public boolean shouldSplit() {
+    return false;
+  }
+
+  /**
+   * Splits the current statement into multiple sub-statements. Used to limit resource consumption
+   * during statement analysis, etc.
+   *
+   * @return the list of sub-statements. Default implementation returns empty list.
+   */
+  public List<? extends Statement> getSubStatements() {
+    return Collections.emptyList();
+  }
+
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
+
+  public boolean isDebug() {
+    return debug;
   }
 }

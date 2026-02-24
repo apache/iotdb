@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.commons.pipe.source;
 
+import org.apache.iotdb.commons.audit.AuditLogOperation;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
-import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskExtractorRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSourceRuntimeEnvironment;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.pipe.api.PipeExtractor;
@@ -65,7 +67,10 @@ public abstract class IoTDBSource implements PipeExtractor {
 
   // The value is always true after the first start even the extractor is closed
   protected final AtomicBoolean hasBeenStarted = new AtomicBoolean(false);
+  protected String userId;
   protected String userName;
+  protected String cliHostname;
+  protected UserEntity userEntity;
   protected boolean skipIfNoPrivileges = true;
 
   @Override
@@ -149,8 +154,8 @@ public abstract class IoTDBSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskExtractorRuntimeEnvironment environment =
-        ((PipeTaskExtractorRuntimeEnvironment) configuration.getRuntimeEnvironment());
+    final PipeTaskSourceRuntimeEnvironment environment =
+        ((PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment());
     regionId = environment.getRegionId();
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
@@ -174,12 +179,24 @@ public abstract class IoTDBSource implements PipeExtractor {
               PipeSourceConstant.EXTRACTOR_FORWARDING_PIPE_REQUESTS_DEFAULT_VALUE);
     }
 
+    userId =
+        parameters.getStringOrDefault(
+            Arrays.asList(
+                PipeSourceConstant.EXTRACTOR_IOTDB_USER_ID,
+                PipeSourceConstant.SOURCE_IOTDB_USER_ID),
+            "-1");
     userName =
         parameters.getStringByKeys(
             PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
             PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
             PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+    cliHostname =
+        parameters.getStringByKeys(
+            PipeSourceConstant.EXTRACTOR_IOTDB_CLI_HOSTNAME,
+            PipeSourceConstant.SOURCE_IOTDB_CLI_HOSTNAME);
+    userEntity = new UserEntity(Long.parseLong(userId), userName, cliHostname);
+    userEntity.setAuditLogOperation(AuditLogOperation.QUERY);
 
     skipIfNoPrivileges = getSkipIfNoPrivileges(parameters);
   }

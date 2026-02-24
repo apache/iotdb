@@ -30,6 +30,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TQueryStatistics;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class FragmentInstanceStatisticsDrawer {
   private int maxLineLength = 0;
@@ -83,14 +84,21 @@ public class FragmentInstanceStatisticsDrawer {
       Map<FragmentInstanceId, TFetchFragmentInstanceStatisticsResp> allStatistics,
       boolean verbose) {
     List<StatisticLine> table = new ArrayList<>(planHeader);
-    addLine(
-        table, 0, String.format("Fragment Instances Count: %s", instancesToBeRendered.size() - 1));
-    for (FragmentInstance instance : instancesToBeRendered) {
+    List<FragmentInstance> validInstances =
+        instancesToBeRendered.stream()
+            .filter(
+                instance -> {
+                  TFetchFragmentInstanceStatisticsResp statistics =
+                      allStatistics.get(instance.getId());
+                  return statistics != null && statistics.getDataRegion() != null;
+                })
+            .collect(Collectors.toList());
+
+    addLine(table, 0, String.format("Fragment Instances Count: %s", validInstances.size()));
+    for (FragmentInstance instance : validInstances) {
       List<StatisticLine> singleFragmentInstanceArea = new ArrayList<>();
       TFetchFragmentInstanceStatisticsResp statistics = allStatistics.get(instance.getId());
-      if (statistics == null || statistics.getDataRegion() == null) {
-        continue;
-      }
+
       addBlankLine(singleFragmentInstanceArea);
       addLine(
           singleFragmentInstanceArea,
@@ -113,6 +121,17 @@ public class FragmentInstanceStatisticsDrawer {
           String.format(
               "Cost of initDataQuerySource: %.3f ms",
               statistics.getInitDataQuerySourceCost() * NS_TO_MS_FACTOR));
+
+      if (statistics.isSetInitDataQuerySourceRetryCount()
+          && statistics.getInitDataQuerySourceRetryCount() > 0) {
+        addLine(
+            singleFragmentInstanceArea,
+            1,
+            String.format(
+                "Retry count of initDataQuerySource: %d",
+                statistics.getInitDataQuerySourceRetryCount()));
+      }
+
       addLine(
           singleFragmentInstanceArea,
           1,
@@ -420,6 +439,12 @@ public class FragmentInstanceStatisticsDrawer {
         2,
         "pageReaderMaxUsedMemorySize",
         queryStatistics.pageReaderMaxUsedMemorySize);
+
+    addLineWithValueCheck(
+        singleFragmentInstanceArea,
+        2,
+        "chunkWithMetadataErrorsCount",
+        queryStatistics.chunkWithMetadataErrorsCount);
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {
@@ -473,7 +498,7 @@ public class FragmentInstanceStatisticsDrawer {
       addLineWithValueCheck(
           singleFragmentInstanceArea,
           indentNum + 2,
-          "Estimated Memory Size: ",
+          "Estimated Memory Size",
           operatorStatistic.getMemoryUsage());
 
       if (operatorStatistic.getSpecifiedInfoSize() != 0) {

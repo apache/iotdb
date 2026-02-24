@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -29,7 +28,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -50,6 +48,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_DELETE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
@@ -65,16 +64,15 @@ public class LoadTsFileStatement extends Statement {
   private boolean isGeneratedByPipe = false;
   private boolean isAsyncLoad = false;
 
-  private Map<String, String> loadAttributes;
-
   private List<File> tsFiles;
   private List<Boolean> isTableModel;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
+  private boolean needDecode4TimeColumn;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
-    this.file = new File(filePath);
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.file = new File(filePath).getAbsoluteFile();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
@@ -108,7 +106,7 @@ public class LoadTsFileStatement extends Statement {
 
   protected LoadTsFileStatement() {
     this.file = null;
-    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
+    this.databaseLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultDatabaseLevel();
     this.verifySchema = true;
     this.deleteAfterLoad = false;
     this.convertOnTypeMismatch = true;
@@ -226,6 +224,14 @@ public class LoadTsFileStatement extends Statement {
     return isGeneratedByPipe;
   }
 
+  public boolean isNeedDecode4TimeColumn() {
+    return needDecode4TimeColumn;
+  }
+
+  public void enableNeedDecode4TimeColumn() {
+    this.needDecode4TimeColumn = true;
+  }
+
   public List<File> getTsFiles() {
     return tsFiles;
   }
@@ -247,15 +253,14 @@ public class LoadTsFileStatement extends Statement {
   }
 
   public void setLoadAttributes(final Map<String, String> loadAttributes) {
-    this.loadAttributes = loadAttributes;
-    initAttributes();
+    initAttributes(loadAttributes);
   }
 
   public boolean isAsyncLoad() {
     return isAsyncLoad;
   }
 
-  private void initAttributes() {
+  private void initAttributes(final Map<String, String> loadAttributes) {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
     this.deleteAfterLoad = LoadTsFileConfigurator.parseOrGetDefaultOnSuccess(loadAttributes);
@@ -265,6 +270,9 @@ public class LoadTsFileStatement extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verifySchema = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
+      markIsGeneratedByPipe();
+    }
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -308,21 +316,63 @@ public class LoadTsFileStatement extends Statement {
   }
 
   @Override
-  public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+  public boolean shouldSplit() {
+    final int splitThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileStatementSplitThreshold();
+    return tsFiles.size() > splitThreshold && !isAsyncLoad;
+  }
+
+  /**
+   * Splits the current LoadTsFileStatement into multiple sub-statements, each handling a batch of
+   * TsFiles. Used to limit resource consumption during statement analysis, etc.
+   *
+   * @return the list of sub-statements
+   */
+  @Override
+  public List<LoadTsFileStatement> getSubStatements() {
+    final int batchSize =
+        IoTDBDescriptor.getInstance().getConfig().getLoadTsFileSubStatementBatchSize();
+    final int totalBatches = (tsFiles.size() + batchSize - 1) / batchSize; // Ceiling division
+    final List<LoadTsFileStatement> subStatements = new ArrayList<>(totalBatches);
+
+    for (int i = 0; i < tsFiles.size(); i += batchSize) {
+      final int endIndex = Math.min(i + batchSize, tsFiles.size());
+      final List<File> batchFiles = tsFiles.subList(i, endIndex);
+
+      final LoadTsFileStatement statement = new LoadTsFileStatement();
+      statement.databaseLevel = this.databaseLevel;
+      statement.verifySchema = this.verifySchema;
+      statement.deleteAfterLoad = this.deleteAfterLoad;
+      statement.convertOnTypeMismatch = this.convertOnTypeMismatch;
+      statement.tabletConversionThresholdBytes = this.tabletConversionThresholdBytes;
+      statement.autoCreateDatabase = this.autoCreateDatabase;
+      statement.isAsyncLoad = this.isAsyncLoad;
+      statement.isGeneratedByPipe = this.isGeneratedByPipe;
+
+      statement.tsFiles = new ArrayList<>(batchFiles);
+      statement.resources = new ArrayList<>(batchFiles.size());
+      statement.writePointCountList = new ArrayList<>(batchFiles.size());
+      statement.isTableModel = new ArrayList<>(batchFiles.size());
+      for (int j = 0; j < batchFiles.size(); j++) {
+        statement.isTableModel.add(false);
+      }
+
+      subStatements.add(statement);
+    }
+
+    return subStatements;
   }
 
   @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    // no need to check here, it will be checked in process phase
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @TableModel
   @Override
   public org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement toRelationalStatement(
       MPPQueryContext context) {
-    loadAttributes = new HashMap<>();
+    final Map<String, String> loadAttributes = new HashMap<>();
 
     loadAttributes.put(DATABASE_LEVEL_KEY, String.valueOf(databaseLevel));
     if (database != null) {
@@ -334,6 +384,9 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(
         TABLET_CONVERSION_THRESHOLD_KEY, String.valueOf(tabletConversionThresholdBytes));
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
+    if (isGeneratedByPipe) {
+      loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
+    }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
   }

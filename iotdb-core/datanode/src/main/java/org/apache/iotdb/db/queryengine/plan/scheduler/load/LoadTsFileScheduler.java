@@ -347,7 +347,8 @@ public class LoadTsFileScheduler implements IScheduler {
             null,
             queryContext.getQueryType(),
             queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
-            queryContext.getSession());
+            queryContext.getSession(),
+            queryContext.isDebug());
     instance.setExecutorAndHost(new StorageExecutor(replicaSet));
     Future<FragInstanceDispatchResult> dispatchResultFuture =
         dispatcher.dispatch(null, Collections.singletonList(instance));
@@ -500,7 +501,8 @@ public class LoadTsFileScheduler implements IScheduler {
               queryContext.getQueryType(),
               queryContext.getTimeOut()
                   - (System.currentTimeMillis() - queryContext.getStartTime()),
-              queryContext.getSession());
+              queryContext.getSession(),
+              queryContext.isDebug());
       instance.setExecutorAndHost(new StorageExecutor(node.getLocalRegionReplicaSet()));
       dispatcher.dispatchLocally(instance);
     } catch (FragmentInstanceDispatchException e) {
@@ -531,7 +533,7 @@ public class LoadTsFileScheduler implements IScheduler {
                           MemTableFlushTask.recordFlushPointsMetricInternal(
                               node.getWritePointCount(),
                               databaseName,
-                              dataRegion.getDataRegionId());
+                              dataRegion.getDataRegionIdString());
 
                           MetricService.getInstance()
                               .count(
@@ -543,7 +545,7 @@ public class LoadTsFileScheduler implements IScheduler {
                                   Tag.DATABASE.toString(),
                                   databaseName,
                                   Tag.REGION.toString(),
-                                  dataRegion.getDataRegionId(),
+                                  dataRegion.getDataRegionIdString(),
                                   Tag.TYPE.toString(),
                                   Metric.LOAD_POINT_COUNT.toString());
                           MetricService.getInstance()
@@ -556,7 +558,7 @@ public class LoadTsFileScheduler implements IScheduler {
                                   Tag.DATABASE.toString(),
                                   databaseName,
                                   Tag.REGION.toString(),
-                                  dataRegion.getDataRegionId(),
+                                  dataRegion.getDataRegionIdString(),
                                   Tag.TYPE.toString(),
                                   Metric.LOAD_POINT_COUNT.toString());
                         }));
