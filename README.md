@@ -99,6 +99,29 @@ To use IoTDB, you need to have:
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
+> ⚠️ **Important: System Resource Limits**
+>
+> IoTDB requires sufficient system resource limits to start correctly.
+> If these limits are not configured, IoTDB may fail to start or emit warnings such as
+> `"too many open files"` or `"connection reset"` in the logs.
+>
+> **Linux / macOS**
+> ```bash
+> ulimit -n 65535
+> sudo sysctl -w net.core.somaxconn=65535
+> ```
+>
+> **Docker Users**
+> When running IoTDB in Docker, these limits must be applied on the **host machine**
+> or explicitly passed to the container:
+> ```bash
+> docker run --ulimit nofile=65535:65535 ...
+> ```
+>
+> **Windows Users**
+> These commands are not applicable on Windows.
+> Please follow the Windows installation steps below and ensure sufficient system resources.
+
 ## Installation
 
 IoTDB provides two installation methods, you can refer to the following suggestions, choose the one fits you best:
