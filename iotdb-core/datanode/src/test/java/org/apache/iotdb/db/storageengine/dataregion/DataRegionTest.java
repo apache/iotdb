@@ -106,6 +106,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
@@ -1413,10 +1416,10 @@ public class DataRegionTest {
       TsFileResource resource = dataRegion.getSequenceFileList().get(i);
       if (i == 1) {
         assertTrue(resource.anyModFileExists());
-        assertEquals(2, resource.getAllModEntries().size());
+        Assert.assertEquals(2, resource.getAllModEntries().size());
       } else if (i == 3) {
         assertTrue(resource.anyModFileExists());
-        assertEquals(1, resource.getAllModEntries().size());
+        Assert.assertEquals(1, resource.getAllModEntries().size());
       } else {
         Assert.assertFalse(resource.anyModFileExists());
       }
@@ -1510,7 +1513,7 @@ public class DataRegionTest {
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     assertTrue(tsFileResource.anyModFileExists());
-    assertEquals(3, tsFileResource.getAllModEntries().size());
+    Assert.assertEquals(3, tsFileResource.getAllModEntries().size());
   }
 
   @Test
@@ -1605,7 +1608,7 @@ public class DataRegionTest {
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     assertTrue(tsFileResource.anyModFileExists());
-    assertEquals(3, tsFileResource.getAllModEntries().size());
+    Assert.assertEquals(3, tsFileResource.getAllModEntries().size());
   }
 
   @Test
@@ -1789,6 +1792,23 @@ public class DataRegionTest {
     Assert.assertFalse(tsFileResourceUnSeq.getTsFile().exists());
     Assert.assertFalse(tsFileResourceSeq.anyModFileExists());
     Assert.assertFalse(tsFileResourceUnSeq.anyModFileExists());
+  }
+
+  @Test
+  public void testFlushSpecifiedResource()
+      throws IllegalPathException, WriteProcessException, ExecutionException, InterruptedException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(deviceId, j);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResourceSeq = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    Future<?> future = dataRegion.asyncCloseOneTsFileProcessor(tsFileResourceSeq);
+    Future<?> future2 = dataRegion.asyncCloseOneTsFileProcessor(tsFileResourceSeq);
+    assertTrue(future == future2 || future2 instanceof CompletableFuture);
+
+    future.get();
+    assertTrue(tsFileResourceSeq.isClosed());
   }
 
   @Test
