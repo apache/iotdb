@@ -620,6 +620,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public IDeviceID toOriginalDeviceID(long maxTsFileSetEndVersion, IDeviceID deviceID) {
+    if (maxTsFileSetEndVersion == Long.MIN_VALUE) {
+      // already the original deviceID
+      return deviceID;
+    }
     EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
     if (evolvedSchema != null) {
       return evolvedSchema.rewriteToOriginal(deviceID);

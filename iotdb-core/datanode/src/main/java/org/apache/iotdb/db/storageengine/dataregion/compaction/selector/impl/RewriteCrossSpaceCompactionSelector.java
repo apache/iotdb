@@ -41,6 +41,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.In
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils.TsFileResourceCandidate;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -481,18 +482,30 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       boolean hasPreviousSeqFile = false;
       for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
         DeviceInfo unseqDeviceInfo = it.next();
-        IDeviceID deviceId = unseqDeviceInfo.deviceId;
+        IDeviceID deviceIdInUnseq = unseqDeviceInfo.deviceId;
+        IDeviceID finalDeviceId = deviceIdInUnseq;
+        EvolvedSchema unseqEvolvedSchema = unseqFile.resource.getMergedEvolvedSchema();
+        if (unseqEvolvedSchema != null) {
+          finalDeviceId = unseqEvolvedSchema.rewriteToFinal(deviceIdInUnseq);
+        }
+
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
         for (int i = 0; i < seqFiles.size(); i++) {
           TsFileResourceCandidate seqFile = seqFiles.get(i);
+          EvolvedSchema seqEvolvedSchema = seqFile.resource.getMergedEvolvedSchema();
+          IDeviceID deviceIdInSeq = finalDeviceId;
+          if (seqEvolvedSchema != null) {
+            deviceIdInSeq = seqEvolvedSchema.rewriteToOriginal(finalDeviceId);
+          }
+
           if (seqFile.unsealed()) {
             nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
           }
-          if (!seqFile.containsDevice(deviceId)) {
+          if (!seqFile.containsDevice(deviceIdInSeq)) {
             continue;
           }
-          DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
+          DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceIdInSeq);
           long startTimeOfSeqDevice = seqDeviceInfo.startTime;
           long endTimeOfSeqDevice = seqDeviceInfo.endTime;
 
@@ -596,6 +609,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       selectedUnseqFile.resource.setInsertionCompactionTaskCandidate(
           InsertionCompactionCandidateStatus.VALID);
+      if (selectedUnseqFileIndex == 0) {}
+
       return true;
     }
 
@@ -629,12 +644,23 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       for (Iterator<DeviceInfo> it = candidate2.getDeviceInfoIterator(); it.hasNext(); ) {
         DeviceInfo device = it.next();
-        IDeviceID deviceId = device.deviceId;
-        if (!candidate1.containsDevice(deviceId)) {
+        IDeviceID cand2OriginalDeviceId = device.deviceId;
+        IDeviceID finalDeviceId = device.deviceId;
+        EvolvedSchema cand2EvolvedSchema = candidate2.resource.getMergedEvolvedSchema();
+        if (cand2EvolvedSchema != null) {
+          finalDeviceId = cand2EvolvedSchema.rewriteToFinal(finalDeviceId);
+        }
+        IDeviceID cand1OriginalDeviceId = finalDeviceId;
+        EvolvedSchema cand1EvolvedSchema = candidate1.resource.getMergedEvolvedSchema();
+        if (cand1EvolvedSchema != null) {
+          cand1OriginalDeviceId = cand1EvolvedSchema.rewriteToOriginal(finalDeviceId);
+        }
+
+        if (!candidate1.containsDevice(cand1OriginalDeviceId)) {
           continue;
         }
-        DeviceInfo deviceInfoOfFile1 = candidate1.getDeviceInfoById(deviceId);
-        DeviceInfo deviceInfoOfFile2 = candidate2.getDeviceInfoById(deviceId);
+        DeviceInfo deviceInfoOfFile1 = candidate1.getDeviceInfoById(cand1OriginalDeviceId);
+        DeviceInfo deviceInfoOfFile2 = candidate2.getDeviceInfoById(cand2OriginalDeviceId);
 
         if (new TimeRange(deviceInfoOfFile1.startTime, deviceInfoOfFile1.endTime)
             .overlaps(new TimeRange(deviceInfoOfFile2.startTime, deviceInfoOfFile2.endTime))) {

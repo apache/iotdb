@@ -812,9 +812,11 @@ public class DataRegion implements IDataRegionForQuery {
     EvolvedSchema mergedEvolvedSchema = resource.getMergedEvolvedSchema();
     for (IDeviceID deviceId : resource.getDevices()) {
       @SuppressWarnings("OptionalGetWithoutIsPresent") // checked above
-      long endTime = resource.getEndTime(deviceId).get();
+      // the device in the resource is the original one that is not affected by any schema
+      // evolution, use Long.MIN_VALUE to avoid calculating schema evolution
+      long endTime = resource.getEndTime(deviceId, Long.MIN_VALUE).get();
       if (mergedEvolvedSchema != null) {
-        deviceId = mergedEvolvedSchema.rewriteToOriginal(deviceId);
+        deviceId = mergedEvolvedSchema.rewriteToFinal(deviceId);
       }
       endTimeMap.put(deviceId, endTime);
     }
@@ -833,8 +835,10 @@ public class DataRegion implements IDataRegionForQuery {
       EvolvedSchema mergedEvolvedSchema = resource.getMergedEvolvedSchema();
       for (IDeviceID deviceId : resource.getDevices()) {
         // checked above
+        // the device in the resource is the original one that is not affected by any schema
+        // evolution, use Long.MIN_VALUE to avoid calculating schema evolution
         //noinspection OptionalGetWithoutIsPresent
-        long endTime = resource.getEndTime(deviceId).get();
+        long endTime = resource.getEndTime(deviceId, Long.MIN_VALUE).get();
         if (mergedEvolvedSchema != null) {
           deviceId = mergedEvolvedSchema.rewriteToOriginal(deviceId);
         }
@@ -1798,10 +1802,7 @@ public class DataRegion implements IDataRegionForQuery {
                   return null; // unreachable, throwTableNotExistsException always throws
                 }
               } else {
-                // Here may be invoked by leader node, the table is very unexpected not exist in the
-                // DataNodeTableCache
-                logger.error(
-                    "Due tsTable is null, table schema can't be got, leader node occur special situation need to resolve.");
+                // maybe there is a concurrent schema modification
                 throw new TableLostRuntimeException(getDatabaseName(), tableName);
               }
             }

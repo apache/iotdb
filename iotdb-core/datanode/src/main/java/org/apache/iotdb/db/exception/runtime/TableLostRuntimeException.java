@@ -26,7 +26,10 @@ public class TableLostRuntimeException extends IoTDBRuntimeException {
 
   public TableLostRuntimeException(final String databaseName, final String tableName) {
     super(
-        String.format("Table %s in the database %s is lost unexpected.", tableName, databaseName),
+        String.format(
+            "Table %s in the database %s is lost unexpected. Maybe there is a concurrent "
+                + "schema modification, please retry later.",
+            tableName, databaseName),
         TSStatusCode.TABLE_IS_LOST.getStatusCode());
   }
 

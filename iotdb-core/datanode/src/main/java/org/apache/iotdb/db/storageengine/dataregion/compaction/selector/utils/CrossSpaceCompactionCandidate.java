@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 
@@ -101,7 +102,13 @@ public class CrossSpaceCompactionCandidate {
     }
     for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
       DeviceInfo unseqDeviceInfo = it.next();
-      IDeviceID deviceId = unseqDeviceInfo.deviceId;
+      IDeviceID deviceIdInUnseq = unseqDeviceInfo.deviceId;
+      IDeviceID finalDeviceId = deviceIdInUnseq;
+      EvolvedSchema unseqEvolvedSchema = unseqFile.resource.getMergedEvolvedSchema();
+      if (unseqEvolvedSchema != null) {
+        finalDeviceId = unseqEvolvedSchema.rewriteToOriginal(deviceIdInUnseq);
+      }
+
       boolean atLeastOneSeqFileSelected = false;
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
       // be smaller than startTime of the device in unseqFile
@@ -109,14 +116,23 @@ public class CrossSpaceCompactionCandidate {
       for (TsFileResourceCandidate seqFile : seqFiles) {
         // If the seqFile may need to be selected but its invalid, the selection should be
         // terminated.
+        EvolvedSchema seqEvolvedSchema = seqFile.resource.getMergedEvolvedSchema();
+        IDeviceID deviceIdInSeq = finalDeviceId;
+        if (seqEvolvedSchema != null) {
+          deviceIdInSeq = seqEvolvedSchema.rewriteToOriginal(finalDeviceId);
+        }
+
         if ((!seqFile.isValidCandidate || !seqFile.hasDetailedDeviceInfo())
-            && seqFile.mayHasOverlapWithUnseqFile(unseqDeviceInfo)) {
+            && seqFile.mayHasOverlapWithUnseqFile(
+                new DeviceInfo(
+                    deviceIdInSeq, unseqDeviceInfo.startTime, unseqDeviceInfo.endTime))) {
           return false;
         }
-        if (!seqFile.containsDevice(deviceId)) {
+
+        if (!seqFile.containsDevice(deviceIdInSeq)) {
           continue;
         }
-        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
+        DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceIdInSeq);
 
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
         // is larger than endTime of unseqFile. Or, the selection should be terminated.
