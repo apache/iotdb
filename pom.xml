@@ -896,9 +896,9 @@
                     <version>1.7.1</version>
                 </plugin>
                 <plugin>
-                    <groupId>com.googlecode.cmake-maven-project</groupId>
+                    <groupId>io.github.cmake-maven-plugin</groupId>
                     <artifactId>cmake-maven-plugin</artifactId>
-                    <version>3.29.3-b2</version>
+                    <version>4.2.3-b1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
