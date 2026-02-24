@@ -1548,16 +1548,17 @@ public class StatementAnalyzer {
                   .filter(entry -> !analysis.isAliased(entry.getKey().getNode()))
                   .map(entry -> entry.getValue().getSuffix())
                   .collect(toImmutableList());
-          for (String table : parameters) {
-            if (!existingTables.contains(table)) {
-              continue;
-            }
-            Hint hint = definition.createHint(ImmutableList.of(table));
-            String hintKey = hint.getKey();
-            if (!hintMap.containsKey(hintKey)) {
-              hintMap.put(hintKey, hint);
-            }
-          }
+
+          List<String> tablesToProcess = parameters == null ? existingTables : parameters;
+
+          tablesToProcess.stream()
+              .filter(table -> parameters == null || existingTables.contains(table))
+              .forEach(
+                  table -> {
+                    Hint hint = definition.createHint(ImmutableList.of(table));
+                    String hintKey = hint.getKey();
+                    hintMap.putIfAbsent(hintKey, hint);
+                  });
         } else {
           Hint hint = definition.createHint(parameters);
           String hintKey = hint.getKey();

@@ -108,7 +108,7 @@ public class AddExchangeNodes
     ReplicaHint hint = findReplicaHint(node, context.hintMap);
 
     // Early return for simple cases
-    if (context.hintMap == null || regionReplicaSet == null || hint == null) {
+    if (regionReplicaSet == null || hint == null) {
       context.nodeDistributionMap.put(
           node.getPlanNodeId(), new NodeDistribution(SAME_WITH_ALL_CHILDREN, regionReplicaSet));
       return node;
