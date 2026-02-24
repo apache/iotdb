@@ -157,62 +157,50 @@ public class IoTDBArrowFlightSqlIT {
   }
 
   @Test
-  public void testQueryWithAllDataTypes() throws Exception {
-    FlightInfo flightInfo =
+  public void testFlightSqlQueries() throws Exception {
+    FlightInfo flightInfo;
+    List<List<String>> rows;
+    Schema schema;
+    List<Field> fields;
+    // 1. Query with all data types
+    flightInfo =
         flightSqlClient.execute(
             "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM " + TABLE + " ORDER BY time",
             credentials);
-
-    // Validate schema
-    Schema schema = flightInfo.getSchemaOptional().orElse(null);
+    schema = flightInfo.getSchemaOptional().orElse(null);
     assertNotNull("Schema should not be null", schema);
-    List<Field> fields = schema.getFields();
+    fields = schema.getFields();
     assertEquals("Should have 8 columns", 8, fields.size());
-
-    // Fetch all data
-    List<List<String>> rows = fetchAllRows(flightInfo);
+    rows = fetchAllRows(flightInfo);
     assertEquals("Should have 3 rows", 3, rows.size());
-  }
-
-  @Test
-  public void testQueryWithFilter() throws Exception {
-    FlightInfo flightInfo =
+    // 2. Query with filter
+    flightInfo =
         flightSqlClient.execute(
             "SELECT id1, s1 FROM " + TABLE + " WHERE id1 = 'device1' ORDER BY time", credentials);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
+    rows = fetchAllRows(flightInfo);
     assertEquals("Should have 2 rows for device1", 2, rows.size());
-  }
 
-  @Test
-  public void testQueryWithAggregation() throws Exception {
-    FlightInfo flightInfo =
+    // 3. Query with aggregation
+    flightInfo =
         flightSqlClient.execute(
             "SELECT id1, COUNT(*) as cnt, SUM(s1) as s1_sum "
                 + "FROM "
                 + TABLE
                 + " GROUP BY id1 ORDER BY id1",
             credentials);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
+    rows = fetchAllRows(flightInfo);
     assertEquals("Should have 2 groups", 2, rows.size());
-  }
 
-  @Test
-  public void testEmptyResult() throws Exception {
-    FlightInfo flightInfo =
+    // 4. Empty result query
+    flightInfo =
         flightSqlClient.execute(
             "SELECT * FROM " + TABLE + " WHERE id1 = 'nonexistent'", credentials);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
+    rows = fetchAllRows(flightInfo);
     assertEquals("Should have 0 rows", 0, rows.size());
-  }
 
-  @Test
-  public void testShowDatabases() throws Exception {
-    FlightInfo flightInfo = flightSqlClient.execute("SHOW DATABASES", credentials);
-
-    List<List<String>> rows = fetchAllRows(flightInfo);
+    // 5. Show databases
+    flightInfo = flightSqlClient.execute("SHOW DATABASES", credentials);
+    rows = fetchAllRows(flightInfo);
     assertTrue("Should have at least 1 database", rows.size() >= 1);
 
     boolean found = false;
@@ -224,7 +212,7 @@ public class IoTDBArrowFlightSqlIT {
         }
       }
     }
-    assertTrue("Should find test database " + DATABASE, found);
+    assertTrue("Should find the created database", found);
   }
 
   /**
@@ -234,17 +222,17 @@ public class IoTDBArrowFlightSqlIT {
   private List<List<String>> fetchAllRows(FlightInfo flightInfo) throws Exception {
     List<List<String>> rows = new ArrayList<>();
     for (FlightEndpoint endpoint : flightInfo.getEndpoints()) {
-      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket(), credentials)) {
+      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket())) {
         while (stream.next()) {
-          VectorSchemaRoot root = stream.getRoot();
-          int rowCount = root.getRowCount();
-          for (int i = 0; i < rowCount; i++) {
-            List<String> row = new ArrayList<>();
-            for (FieldVector vector : root.getFieldVectors()) {
-              Object value = vector.getObject(i);
-              row.add(value == null ? "null" : value.toString());
+          try (VectorSchemaRoot root = stream.getRoot()) {
+            for (int i = 0; i < root.getRowCount(); i++) {
+              List<String> row = new ArrayList<>();
+              for (FieldVector vector : root.getFieldVectors()) {
+                Object value = vector.getObject(i);
+                row.add(value == null ? "null" : value.toString());
+              }
+              rows.add(row);
             }
-            rows.add(row);
           }
         }
       }

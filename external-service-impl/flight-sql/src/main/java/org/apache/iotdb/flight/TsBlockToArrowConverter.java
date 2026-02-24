@@ -121,8 +121,17 @@ public class TsBlockToArrowConverter {
     root.allocateNew();
 
     for (int colIdx = 0; colIdx < columnNames.size(); colIdx++) {
-      String colName = columnNames.get(colIdx);
-      Integer sourceIdx = headerMap.get(colName);
+      // Use headerMap for column index mapping when available; fall back to
+      // sequential index
+      // for queries like SHOW DATABASES where getColumnNameIndexMap() returns null.
+      int sourceIdx;
+      if (headerMap != null) {
+        String colName = columnNames.get(colIdx);
+        Integer idx = headerMap.get(colName);
+        sourceIdx = (idx != null) ? idx : colIdx;
+      } else {
+        sourceIdx = colIdx;
+      }
       Column column = tsBlock.getColumn(sourceIdx);
       TSDataType dataType = dataTypes.get(colIdx);
       FieldVector fieldVector = root.getVector(colIdx);

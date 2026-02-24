@@ -113,6 +113,14 @@
                 <configuration>
                     <ignoredDependencies>
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-commons</ignoredDependency>
+                        <ignoredDependency>com.google.protobuf:protobuf-java</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:iotdb-thrift</ignoredDependency>
+                        <ignoredDependency>org.apache.arrow:flight-core</ignoredDependency>
+                        <ignoredDependency>org.apache.arrow:arrow-vector</ignoredDependency>
+                        <ignoredDependency>org.apache.arrow:arrow-memory-core</ignoredDependency>
+                        <ignoredDependency>org.apache.iotdb:service-rpc</ignoredDependency>
+                        <ignoredDependency>org.apache.arrow:arrow-memory-netty</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
             </plugin>
