@@ -58,12 +58,12 @@ public class PipeDataRegionAssigner implements Closeable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeDataRegionAssigner.class);
 
   /**
-   * The {@link PipeDataRegionMatcher} is used to match the event with the extractor based on the
+   * The {@link PipeDataRegionMatcher} is used to match the event with the source based on the
    * pattern.
    */
   private final PipeDataRegionMatcher matcher;
 
-  /** The {@link DisruptorQueue} is used to assign the event to the extractor. */
+  /** The {@link DisruptorQueue} is used to assign the event to the source. */
   private final DisruptorQueue disruptor;
 
   private final int dataRegionId;
@@ -78,7 +78,7 @@ public class PipeDataRegionAssigner implements Closeable {
 
   public PipeDataRegionAssigner(final int dataRegionId) {
     this.matcher = new CachedSchemaPatternMatcher();
-    this.disruptor = new DisruptorQueue(this::assignToExtractor, this::onAssignedHook);
+    this.disruptor = new DisruptorQueue(this::assignToSource, this::onAssignedHook);
     this.dataRegionId = dataRegionId;
     PipeAssignerMetrics.getInstance().register(this);
 
@@ -128,7 +128,7 @@ public class PipeDataRegionAssigner implements Closeable {
     eventCounter.decreaseEventCount(innerEvent);
   }
 
-  private void assignToExtractor(
+  private void assignToSource(
       final PipeRealtimeEvent event, final long sequence, final boolean endOfBatch) {
     if (disruptor.isClosed()) {
       return;
@@ -243,12 +243,12 @@ public class PipeDataRegionAssigner implements Closeable {
             });
   }
 
-  public void startAssignTo(final PipeRealtimeDataRegionSource extractor) {
-    matcher.register(extractor);
+  public void startAssignTo(final PipeRealtimeDataRegionSource source) {
+    matcher.register(source);
   }
 
-  public void stopAssignTo(final PipeRealtimeDataRegionSource extractor) {
-    matcher.deregister(extractor);
+  public void stopAssignTo(final PipeRealtimeDataRegionSource source) {
+    matcher.deregister(source);
   }
 
   public void invalidateCache() {

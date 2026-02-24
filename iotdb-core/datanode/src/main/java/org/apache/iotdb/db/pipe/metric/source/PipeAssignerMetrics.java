@@ -49,7 +49,7 @@ public class PipeAssignerMetrics implements IMetricSet {
   public void bindTo(AbstractMetricService metricService) {
     this.metricService = metricService;
     synchronized (this) {
-      for (Integer dataRegionId : assignerMap.keySet()) {
+      for (int dataRegionId : assignerMap.keySet()) {
         createMetrics(dataRegionId);
       }
     }
@@ -128,7 +128,7 @@ public class PipeAssignerMetrics implements IMetricSet {
     }
   }
 
-  public void deregister(int dataRegionId) {
+  public void deregister(final int dataRegionId) {
     synchronized (this) {
       if (!assignerMap.containsKey(dataRegionId)) {
         LOGGER.warn(

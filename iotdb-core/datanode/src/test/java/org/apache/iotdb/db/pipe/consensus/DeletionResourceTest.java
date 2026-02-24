@@ -66,7 +66,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class DeletionResourceTest {
-  private static final Integer[] FAKE_DATA_REGION_IDS = {2, 3, 4, 5, 6};
+  private static final int[] FAKE_DATA_REGION_IDS = {2, 3, 4, 5, 6};
   private static final String DELETION_BASE_DIR =
       IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2DeletionFileDir();
   private static final int THIS_DATANODE_ID = 0;
@@ -84,7 +84,7 @@ public class DeletionResourceTest {
   @After
   public void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setDataNodeId(previousDataNodeId);
-    for (Integer FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
+    for (int FAKE_DATA_REGION_ID : FAKE_DATA_REGION_IDS) {
       File baseDir = new File(DELETION_BASE_DIR + File.separator + FAKE_DATA_REGION_ID);
       if (baseDir.exists()) {
         FileUtils.deleteFileOrDirectory(baseDir);
@@ -265,6 +265,7 @@ public class DeletionResourceTest {
     final PipeTaskRuntimeConfiguration configuration =
         new PipeTaskRuntimeConfiguration(
             new PipeTaskSourceRuntimeEnvironment("1", 1, FAKE_DATA_REGION_IDS[4], null));
+
     source.customize(parameters, configuration);
     Assert.assertTrue(source.shouldExtractDeletion());
 
