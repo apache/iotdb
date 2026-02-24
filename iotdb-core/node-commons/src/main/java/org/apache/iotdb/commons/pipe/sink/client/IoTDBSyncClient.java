@@ -103,12 +103,12 @@ public class IoTDBSyncClient extends IClientRPCService.Client
   }
 
   public IoTDBSyncClient(
-      ThriftClientProperty property,
-      String ipAddress,
-      int port,
-      boolean useSSL,
-      String trustStore,
-      String trustStorePwd)
+      final ThriftClientProperty property,
+      final String ipAddress,
+      final int port,
+      final boolean useSSL,
+      final String trustStore,
+      final String trustStorePwd)
       throws TTransportException {
     super(
         property
