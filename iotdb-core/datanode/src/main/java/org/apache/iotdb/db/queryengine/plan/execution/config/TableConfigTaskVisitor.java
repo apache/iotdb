@@ -722,6 +722,9 @@ public class TableConfigTaskVisitor extends AstVisitor<IConfigTask, MPPQueryCont
         context.getSession().getUserName(), new QualifiedObjectName(database, tableName), context);
 
     final ColumnDefinition definition = node.getColumn();
+    if (definition.getColumnCategory() == TsTableColumnCategory.TIME) {
+      throw new SemanticException("Adding TIME column is not supported.");
+    }
     return new AlterTableAddColumnTask(
         database,
         tableName,
