@@ -150,6 +150,8 @@ public interface CommonConfig {
 
   CommonConfig setPipeMemoryManagementEnabled(boolean pipeMemoryManagementEnabled);
 
+  CommonConfig setPipeTsFileFlushIntervalSeconds(long pipeTsFileFlushIntervalSeconds);
+
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);

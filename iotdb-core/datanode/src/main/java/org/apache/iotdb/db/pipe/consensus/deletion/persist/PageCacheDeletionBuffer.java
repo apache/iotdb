@@ -75,7 +75,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
                   ? 0
                   : (o1.getProgressIndex().isAfter(o2.getProgressIndex()) ? 1 : -1));
   // Data region id
-  private final String dataRegionId;
+  private final int dataRegionId;
   // directory to store .deletion files
   private final String baseDirectory;
   // single thread to serialize WALEntry to workingBuffer
@@ -99,7 +99,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
   // maxProgressIndex of each batch increases in the same order as the physical time.
   private ProgressIndex maxProgressIndexInCurrentFile = MinimumProgressIndex.INSTANCE;
 
-  public PageCacheDeletionBuffer(String dataRegionId, String baseDirectory) {
+  public PageCacheDeletionBuffer(int dataRegionId, String baseDirectory) {
     this.dataRegionId = dataRegionId;
     this.baseDirectory = baseDirectory;
     allocateBuffers();

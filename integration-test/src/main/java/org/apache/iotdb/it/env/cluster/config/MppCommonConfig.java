@@ -466,6 +466,13 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeTsFileFlushIntervalSeconds(long pipeTsFileFlushIntervalSeconds) {
+    setProperty(
+        "pipe_tsfile_flush_interval_seconds", String.valueOf(pipeTsFileFlushIntervalSeconds));
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     setProperty("pipe_enable_memory_checked", String.valueOf(isPipeEnableMemoryCheck));
     return this;

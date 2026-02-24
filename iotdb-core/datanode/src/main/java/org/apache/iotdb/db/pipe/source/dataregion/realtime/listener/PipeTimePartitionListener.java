@@ -30,47 +30,50 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class PipeTimePartitionListener {
 
-  private final Map<String, Map<String, PipeRealtimeDataRegionSource>> dataRegionId2Extractors =
+  private final Map<Integer, Map<String, PipeRealtimeDataRegionSource>> dataRegionId2Sources =
       new ConcurrentHashMap<>();
 
   // This variable is used to record the upper and lower bounds that each data region's time
   // partition ID has ever reached.
-  private final Map<String, Pair<Long, Long>> dataRegionId2TimePartitionIdBound =
+  private final Map<Integer, Pair<Long, Long>> dataRegionId2TimePartitionIdBound =
       new ConcurrentHashMap<>();
 
   //////////////////////////// start & stop ////////////////////////////
 
   public synchronized void startListen(
-      String dataRegionId, PipeRealtimeDataRegionSource extractor) {
-    dataRegionId2Extractors
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    dataRegionId2Sources
         .computeIfAbsent(dataRegionId, o -> new HashMap<>())
-        .put(extractor.getTaskID(), extractor);
-    // Assign the previously recorded upper and lower bounds of time partition to the extractor that
+        .put(source.getTaskID(), source);
+    // Assign the previously recorded upper and lower bounds of time partition to the source that
     // has just started listening to the growth of time partition.
-    Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    final Pair<Long, Long> timePartitionIdBound =
+        dataRegionId2TimePartitionIdBound.get(dataRegionId);
     if (Objects.nonNull(timePartitionIdBound)) {
-      extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound);
+      source.setDataRegionTimePartitionIdBound(timePartitionIdBound);
     }
   }
 
-  public synchronized void stopListen(String dataRegionId, PipeRealtimeDataRegionSource extractor) {
-    Map<String, PipeRealtimeDataRegionSource> extractors =
-        dataRegionId2Extractors.get(dataRegionId);
-    if (Objects.isNull(extractors)) {
+  public synchronized void stopListen(
+      final int dataRegionId, final PipeRealtimeDataRegionSource source) {
+    final Map<String, PipeRealtimeDataRegionSource> sources =
+        dataRegionId2Sources.get(dataRegionId);
+    if (Objects.isNull(sources)) {
       return;
     }
-    extractors.remove(extractor.getTaskID());
-    if (extractors.isEmpty()) {
-      dataRegionId2Extractors.remove(dataRegionId);
+    sources.remove(source.getTaskID());
+    if (sources.isEmpty()) {
+      dataRegionId2Sources.remove(dataRegionId);
     }
   }
 
   //////////////////////////// listen to changes ////////////////////////////
 
   public synchronized void listenToTimePartitionGrow(
-      String dataRegionId, Pair<Long, Long> newTimePartitionIdBound) {
+      final int dataRegionId, final Pair<Long, Long> newTimePartitionIdBound) {
     boolean shouldBroadcastTimePartitionChange = false;
-    Pair<Long, Long> oldTimePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
+    final Pair<Long, Long> oldTimePartitionIdBound =
+        dataRegionId2TimePartitionIdBound.get(dataRegionId);
 
     if (Objects.isNull(oldTimePartitionIdBound)) {
       dataRegionId2TimePartitionIdBound.put(dataRegionId, newTimePartitionIdBound);
@@ -86,14 +89,15 @@ public class PipeTimePartitionListener {
     }
 
     if (shouldBroadcastTimePartitionChange) {
-      Map<String, PipeRealtimeDataRegionSource> extractors =
-          dataRegionId2Extractors.get(dataRegionId);
-      if (Objects.isNull(extractors)) {
+      final Map<String, PipeRealtimeDataRegionSource> sources =
+          dataRegionId2Sources.get(dataRegionId);
+      if (Objects.isNull(sources)) {
         return;
       }
-      Pair<Long, Long> timePartitionIdBound = dataRegionId2TimePartitionIdBound.get(dataRegionId);
-      extractors.forEach(
-          (id, extractor) -> extractor.setDataRegionTimePartitionIdBound(timePartitionIdBound));
+      final Pair<Long, Long> timePartitionIdBound =
+          dataRegionId2TimePartitionIdBound.get(dataRegionId);
+      sources.forEach(
+          (id, source) -> source.setDataRegionTimePartitionIdBound(timePartitionIdBound));
     }
   }
 

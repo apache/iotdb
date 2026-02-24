@@ -339,6 +339,11 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeTsFileFlushIntervalSeconds(long pipeTsFileFlushIntervalSeconds) {
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     return this;
   }

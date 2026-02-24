@@ -325,6 +325,9 @@ public class CommonConfig {
   private volatile int pipeTsFilePinMaxLogNumPerRound = 10;
   private volatile int pipeTsFilePinMaxLogIntervalRounds = 90;
 
+  // <= 0 means disabled
+  private volatile long pipeTsFileFlushIntervalSeconds = 5 * 60L;
+
   private volatile boolean pipeMemoryManagementEnabled = true;
   private volatile long pipeMemoryAllocateRetryIntervalMs = 50;
   private volatile int pipeMemoryAllocateMaxRetries = 10;
@@ -1861,6 +1864,18 @@ public class CommonConfig {
     this.pipeTsFilePinMaxLogIntervalRounds = pipeTsFilePinMaxLogIntervalRounds;
     logger.info(
         "pipeTsFilePinMaxLogIntervalRounds is set to {}", pipeTsFilePinMaxLogIntervalRounds);
+  }
+
+  public long getPipeTsFileFlushIntervalSeconds() {
+    return pipeTsFileFlushIntervalSeconds;
+  }
+
+  public void setPipeTsFileFlushIntervalSeconds(long pipeTsFileFlushIntervalSeconds) {
+    if (this.pipeTsFileFlushIntervalSeconds == pipeTsFileFlushIntervalSeconds) {
+      return;
+    }
+    this.pipeTsFileFlushIntervalSeconds = pipeTsFileFlushIntervalSeconds;
+    logger.info("pipeTsFileFlushIntervalSeconds is set to {}", pipeTsFileFlushIntervalSeconds);
   }
 
   public boolean getPipeMemoryManagementEnabled() {

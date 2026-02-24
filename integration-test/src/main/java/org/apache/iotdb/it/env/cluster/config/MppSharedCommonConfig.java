@@ -480,6 +480,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeTsFileFlushIntervalSeconds(long pipeTsFileFlushIntervalSeconds) {
+    dnConfig.setPipeTsFileFlushIntervalSeconds(pipeTsFileFlushIntervalSeconds);
+    cnConfig.setPipeTsFileFlushIntervalSeconds(pipeTsFileFlushIntervalSeconds);
+    return this;
+  }
+
+  @Override
   public CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck) {
     dnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);
     cnConfig.setIsPipeEnableMemoryCheck(isPipeEnableMemoryCheck);

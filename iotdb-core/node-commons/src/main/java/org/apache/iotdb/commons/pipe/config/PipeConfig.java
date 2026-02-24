@@ -387,6 +387,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeTsFilePinMaxLogIntervalRounds();
   }
 
+  public long getPipeTsFileFlushIntervalSeconds() {
+    return COMMON_CONFIG.getPipeTsFileFlushIntervalSeconds();
+  }
+
   public long getPipeLoggerCacheMaxSizeInBytes() {
     return COMMON_CONFIG.getPipeLoggerCacheMaxSizeInBytes();
   }

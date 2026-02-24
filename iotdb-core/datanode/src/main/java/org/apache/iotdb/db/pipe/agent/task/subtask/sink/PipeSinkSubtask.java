@@ -62,8 +62,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
   // to trigger the general event transfer function, causing potentially such as
   // the random delay of the batch transmission. Therefore, here we inject cron events
   // when no event can be pulled.
-  public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT =
-      new PipeHeartbeatEvent("cron", false);
+  public static final PipeHeartbeatEvent CRON_HEARTBEAT_EVENT = new PipeHeartbeatEvent(-1, false);
 
   public PipeSinkSubtask(
       final String taskID,

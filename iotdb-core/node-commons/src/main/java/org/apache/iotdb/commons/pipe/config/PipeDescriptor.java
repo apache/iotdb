@@ -131,6 +131,11 @@ public class PipeDescriptor {
             properties.getProperty(
                 "pipe_tsfile_pin_max_log_interval_rounds",
                 String.valueOf(config.getPipeTsFilePinMaxLogIntervalRounds()))));
+    config.setPipeTsFileFlushIntervalSeconds(
+        Long.parseLong(
+            properties.getProperty(
+                "pipe_tsfile_flush_interval_seconds",
+                String.valueOf(config.getPipeTsFileFlushIntervalSeconds()))));
     config.setPipeMemoryManagementEnabled(
         Boolean.parseBoolean(
             properties.getProperty(

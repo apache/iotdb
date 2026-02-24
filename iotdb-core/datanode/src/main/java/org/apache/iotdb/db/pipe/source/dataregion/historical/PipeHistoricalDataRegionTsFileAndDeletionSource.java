@@ -498,7 +498,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         extractTsFiles(dataRegion, startHistoricalExtractionTime, originalResourceList);
       }
       if (shouldExtractDeletion) {
-        Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+        Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
             .ifPresent(manager -> extractDeletions(manager, originalResourceList));
       }
 
@@ -946,7 +946,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           dataRegionId,
           event);
     } else {
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+      Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
           .ifPresent(
               manager ->
                   event.setDeletionResource(

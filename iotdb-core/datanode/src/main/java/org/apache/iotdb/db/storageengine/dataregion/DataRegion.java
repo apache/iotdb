@@ -2095,7 +2095,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDALFolderAndClose() {
-    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionIdString))
+    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId.getId()))
         .ifPresent(
             manager -> {
               manager.close();
@@ -2909,7 +2909,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -3013,7 +3014,8 @@ public class DataRegion implements IDataRegionForQuery {
 
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -3070,7 +3072,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -4314,7 +4317,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionIdString, databaseName, tsFileResource, true);
+        .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
 
     tsFileManager.add(tsFileResource, false);
 
@@ -4498,12 +4501,16 @@ public class DataRegion implements IDataRegionForQuery {
     return dataRegionIdString;
   }
 
+  public int getDataRegionId() {
+    return dataRegionId.getId();
+  }
+
   /**
    * Get the storageGroupPath with dataRegionId.
    *
    * @return data region path, like root.sg1/0
    */
-  public String getStorageGroupPath() {
+  public String getDatabasePath() {
     return databaseName + File.separator + dataRegionIdString;
   }
 
