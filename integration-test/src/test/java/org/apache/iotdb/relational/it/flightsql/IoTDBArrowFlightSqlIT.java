@@ -16,9 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.relational.it.flightsql;
 
 import org.apache.iotdb.isession.ITableSession;
+import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -41,8 +43,8 @@ import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,49 +52,58 @@ import org.junit.runner.RunWith;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Integration tests for Arrow Flight SQL service in IoTDB. Tests the end-to-end flow: client
- * connects via Flight SQL protocol, authenticates, executes SQL queries, and receives
- * Arrow-formatted results.
+ * connects via Flight SQL protocol, authenticates via auth2 Bearer token, executes SQL queries, and
+ * receives Arrow-formatted results.
+ *
+ * <p>Uses the standard auth2 pattern: ClientIncomingAuthHeaderMiddleware intercepts the first
+ * call's response to cache the Bearer token, which is then automatically sent on subsequent calls.
+ * All queries use fully qualified table names (database.table) for clarity.
  */
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBArrowFlightSqlIT {
 
   private static final String DATABASE = "flightsql_test_db";
-  private static final String USER = "root";
-  private static final String PASSWORD = "root";
+  private static final String TABLE = DATABASE + ".test_table";
 
-  private BufferAllocator allocator;
-  private FlightClient flightClient;
-  private FlightSqlClient flightSqlClient;
-  private CredentialCallOption bearerToken;
+  private static BufferAllocator allocator;
+  private static FlightClient flightClient;
+  private static FlightSqlClient flightSqlClient;
+  private static CredentialCallOption credentials;
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUpClass() throws Exception {
     // Configure and start the cluster with Arrow Flight SQL enabled
     BaseEnv baseEnv = EnvFactory.getEnv();
-    baseEnv.getConfig().getDataNodeConfig().setEnableArrowFlightSqlService(true);
+    baseEnv.getConfig().getCommonConfig().setEnableArrowFlightSqlService(true);
     baseEnv.initClusterEnvironment();
 
     // Get the Flight SQL port from the data node
     int port = EnvFactory.getEnv().getArrowFlightSqlPort();
 
-    // Create Arrow allocator and Flight client with Bearer token auth middleware
+    // Create Arrow allocator and Flight client with Bearer token auth middleware.
+    // The ClientIncomingAuthHeaderMiddleware captures the Bearer token from the
+    // server's
+    // response on the first authenticated call, and automatically attaches it to
+    // all
+    // subsequent calls — ensuring they reuse the same server-side session.
     allocator = new RootAllocator(Long.MAX_VALUE);
     Location location = Location.forGrpcInsecure("127.0.0.1", port);
-
-    // The ClientIncomingAuthHeaderMiddleware captures the Bearer token from the
-    // auth handshake
     ClientIncomingAuthHeaderMiddleware.Factory authFactory =
         new ClientIncomingAuthHeaderMiddleware.Factory(new ClientBearerHeaderHandler());
-
     flightClient = FlightClient.builder(allocator, location).intercept(authFactory).build();
 
-    // Authenticate: sends Basic credentials, server returns Bearer token
-    bearerToken = new CredentialCallOption(new BasicAuthCredentialWriter(USER, PASSWORD));
+    // Create credentials — passed on every call per the auth2 pattern
+    credentials =
+        new CredentialCallOption(
+            new BasicAuthCredentialWriter(
+                SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD));
 
     // Wrap in FlightSqlClient for Flight SQL protocol operations
     flightSqlClient = new FlightSqlClient(flightClient);
@@ -123,8 +134,8 @@ public class IoTDBArrowFlightSqlIT {
     }
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDownClass() throws Exception {
     if (flightSqlClient != null) {
       try {
         flightSqlClient.close();
@@ -149,10 +160,11 @@ public class IoTDBArrowFlightSqlIT {
   public void testQueryWithAllDataTypes() throws Exception {
     FlightInfo flightInfo =
         flightSqlClient.execute(
-            "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM test_table ORDER BY time", bearerToken);
+            "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM " + TABLE + " ORDER BY time",
+            credentials);
 
     // Validate schema
-    Schema schema = flightInfo.getSchema();
+    Schema schema = flightInfo.getSchemaOptional().orElse(null);
     assertNotNull("Schema should not be null", schema);
     List<Field> fields = schema.getFields();
     assertEquals("Should have 8 columns", 8, fields.size());
@@ -166,7 +178,7 @@ public class IoTDBArrowFlightSqlIT {
   public void testQueryWithFilter() throws Exception {
     FlightInfo flightInfo =
         flightSqlClient.execute(
-            "SELECT id1, s1 FROM test_table WHERE id1 = 'device1' ORDER BY time", bearerToken);
+            "SELECT id1, s1 FROM " + TABLE + " WHERE id1 = 'device1' ORDER BY time", credentials);
 
     List<List<String>> rows = fetchAllRows(flightInfo);
     assertEquals("Should have 2 rows for device1", 2, rows.size());
@@ -177,8 +189,10 @@ public class IoTDBArrowFlightSqlIT {
     FlightInfo flightInfo =
         flightSqlClient.execute(
             "SELECT id1, COUNT(*) as cnt, SUM(s1) as s1_sum "
-                + "FROM test_table GROUP BY id1 ORDER BY id1",
-            bearerToken);
+                + "FROM "
+                + TABLE
+                + " GROUP BY id1 ORDER BY id1",
+            credentials);
 
     List<List<String>> rows = fetchAllRows(flightInfo);
     assertEquals("Should have 2 groups", 2, rows.size());
@@ -187,7 +201,8 @@ public class IoTDBArrowFlightSqlIT {
   @Test
   public void testEmptyResult() throws Exception {
     FlightInfo flightInfo =
-        flightSqlClient.execute("SELECT * FROM test_table WHERE id1 = 'nonexistent'", bearerToken);
+        flightSqlClient.execute(
+            "SELECT * FROM " + TABLE + " WHERE id1 = 'nonexistent'", credentials);
 
     List<List<String>> rows = fetchAllRows(flightInfo);
     assertEquals("Should have 0 rows", 0, rows.size());
@@ -195,7 +210,7 @@ public class IoTDBArrowFlightSqlIT {
 
   @Test
   public void testShowDatabases() throws Exception {
-    FlightInfo flightInfo = flightSqlClient.execute("SHOW DATABASES", bearerToken);
+    FlightInfo flightInfo = flightSqlClient.execute("SHOW DATABASES", credentials);
 
     List<List<String>> rows = fetchAllRows(flightInfo);
     assertTrue("Should have at least 1 database", rows.size() >= 1);
@@ -219,7 +234,7 @@ public class IoTDBArrowFlightSqlIT {
   private List<List<String>> fetchAllRows(FlightInfo flightInfo) throws Exception {
     List<List<String>> rows = new ArrayList<>();
     for (FlightEndpoint endpoint : flightInfo.getEndpoints()) {
-      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket(), bearerToken)) {
+      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket(), credentials)) {
         while (stream.next()) {
           VectorSchemaRoot root = stream.getRoot();
           int rowCount = root.getRowCount();

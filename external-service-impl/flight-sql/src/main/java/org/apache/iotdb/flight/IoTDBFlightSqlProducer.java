@@ -54,7 +54,6 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.Optional;
@@ -109,7 +108,7 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
   public FlightInfo getFlightInfoStatement(
       FlightSql.CommandStatementQuery command, CallContext context, FlightDescriptor descriptor) {
     String sql = command.getQuery();
-    LOGGER.debug("getFlightInfoStatement: {}", sql);
+    LOGGER.warn("getFlightInfoStatement called with SQL: {}", sql);
 
     IClientSession session = getSessionFromContext(context);
 
@@ -119,6 +118,18 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
 
       // Parse the SQL statement
       Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), session);
+
+      // Handle USE database statement: set database on session and return empty
+      // result
+      if (statement instanceof org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use) {
+        org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use useStmt =
+            (org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use) statement;
+        String dbName = useStmt.getDatabaseId().getValue();
+        session.setDatabaseName(dbName);
+        LOGGER.info("Flight SQL session database set to: {}", dbName);
+        Schema emptySchema = new Schema(Collections.emptyList());
+        return new FlightInfo(emptySchema, descriptor, Collections.emptyList(), -1, -1);
+      }
 
       // Execute via Coordinator (Table model)
       ExecutionResult result =
@@ -153,20 +164,31 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
       // Store the query context for later getStream calls
       activeQueries.put(queryId, new QueryContext(queryExecution, header, session));
 
-      // Build ticket containing the queryId
-      byte[] ticketBytes = Long.toString(queryId).getBytes(StandardCharsets.UTF_8);
-      Ticket ticket = new Ticket(ticketBytes);
+      // Build ticket containing the queryId as a TicketStatementQuery protobuf.
+      // FlightSqlClient.getStream() expects this format to route DoGet to
+      // getStreamStatement().
+      ByteString handle = ByteString.copyFromUtf8(Long.toString(queryId));
+      FlightSql.TicketStatementQuery ticketQuery =
+          FlightSql.TicketStatementQuery.newBuilder().setStatementHandle(handle).build();
+      Ticket ticket = new Ticket(com.google.protobuf.Any.pack(ticketQuery).toByteArray());
       FlightEndpoint endpoint = new FlightEndpoint(ticket);
 
       return new FlightInfo(arrowSchema, descriptor, Collections.singletonList(endpoint), -1, -1);
 
-    } catch (RuntimeException e) {
+    } catch (Exception e) {
       // Cleanup on error
       if (queryId != null) {
         coordinator.cleanupQueryExecution(queryId);
         activeQueries.remove(queryId);
       }
-      throw e;
+      LOGGER.error("Error executing Flight SQL query: {}", sql, e);
+      if (e instanceof org.apache.arrow.flight.FlightRuntimeException) {
+        throw (org.apache.arrow.flight.FlightRuntimeException) e;
+      }
+      throw CallStatus.INTERNAL
+          .withDescription("Query execution error: " + e.getMessage())
+          .withCause(e)
+          .toRuntimeException();
     }
   }
 
@@ -185,7 +207,16 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
       ServerStreamListener listener) {
     ByteString handle = ticketQuery.getStatementHandle();
     long queryId = Long.parseLong(handle.toStringUtf8());
-    streamQueryResults(queryId, listener);
+    LOGGER.warn("getStreamStatement called for queryId={}", queryId);
+    try {
+      streamQueryResults(queryId, listener);
+    } catch (Exception e) {
+      LOGGER.error("getStreamStatement failed for queryId={}", queryId, e);
+      listener.error(
+          CallStatus.INTERNAL
+              .withDescription("getStreamStatement error: " + e.getMessage())
+              .toRuntimeException());
+    }
   }
 
   /** Streams query results for a given queryId as Arrow VectorSchemaRoot batches. */
@@ -220,6 +251,12 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
     } catch (IoTDBException e) {
       LOGGER.error("Error streaming query results for queryId={}", queryId, e);
       listener.error(CallStatus.INTERNAL.withDescription(e.getMessage()).toRuntimeException());
+    } catch (Exception e) {
+      LOGGER.error("Unexpected error streaming query results for queryId={}", queryId, e);
+      listener.error(
+          CallStatus.INTERNAL
+              .withDescription("Streaming error: " + e.getMessage())
+              .toRuntimeException());
     } finally {
       coordinator.cleanupQueryExecution(queryId);
       activeQueries.remove(queryId);

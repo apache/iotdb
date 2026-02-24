@@ -48,7 +48,7 @@ public class FlightSqlAuthHandler implements BasicCallHeaderAuthenticator.Creden
     LOGGER.debug("Validating credentials for user: {}", username);
 
     try {
-      String token = sessionManager.authenticate(username, password, "unknown");
+      String token = sessionManager.authenticate(username, password, "127.0.0.1");
       // Return the token as the peer identity; GeneratedBearerTokenAuthenticator
       // wraps it in a Bearer token and sets it in the response header.
       return () -> token;

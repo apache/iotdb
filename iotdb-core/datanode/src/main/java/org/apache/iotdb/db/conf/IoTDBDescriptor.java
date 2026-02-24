@@ -185,7 +185,8 @@ public class IoTDBDescriptor {
   public static URL getPropsUrl(String configFileName) {
     String urlString = commonDescriptor.getConfDir();
     if (urlString == null) {
-      // If urlString wasn't provided, try to find a default config in the root of the classpath.
+      // If urlString wasn't provided, try to find a default config in the root of the
+      // classpath.
       URL uri = IoTDBConfig.class.getResource("/" + configFileName);
       if (uri != null) {
         return uri;
@@ -204,7 +205,8 @@ public class IoTDBDescriptor {
       urlString += (File.separatorChar + configFileName);
     }
 
-    // If the url doesn't start with "file:" or "classpath:", it's provided as a no path.
+    // If the url doesn't start with "file:" or "classpath:", it's provided as a no
+    // path.
     // So we need to add it to make it a real URL.
     if (!urlString.startsWith("file:") && !urlString.startsWith("classpath:")) {
       urlString = "file:" + urlString;
@@ -879,6 +881,9 @@ public class IoTDBDescriptor {
 
     // mqtt
     loadMqttProps(properties);
+
+    // arrow flight sql
+    loadArrowFlightSqlProps(properties);
 
     conf.setIntoOperationBufferSizeInByte(
         Long.parseLong(
@@ -1724,7 +1729,8 @@ public class IoTDBDescriptor {
       }
     }
     newThrottleThreshold = (long) (newThrottleThreshold * dirUseProportion * walFileStores.size());
-    // the new throttle threshold should between MIN_THROTTLE_THRESHOLD and MAX_THROTTLE_THRESHOLD
+    // the new throttle threshold should between MIN_THROTTLE_THRESHOLD and
+    // MAX_THROTTLE_THRESHOLD
     return Math.max(Math.min(newThrottleThreshold, MAX_THROTTLE_THRESHOLD), MIN_THROTTLE_THRESHOLD);
   }
 
@@ -1939,6 +1945,20 @@ public class IoTDBDescriptor {
     if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
       conf.setMqttMaxMessageSize(
           Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE).trim()));
+    }
+  }
+
+  // Arrow Flight SQL related
+  private void loadArrowFlightSqlProps(TrimProperties properties) {
+    if (properties.getProperty(IoTDBConstant.ENABLE_ARROW_FLIGHT_SQL) != null) {
+      conf.setEnableArrowFlightSqlService(
+          Boolean.parseBoolean(
+              properties.getProperty(IoTDBConstant.ENABLE_ARROW_FLIGHT_SQL).trim()));
+    }
+
+    if (properties.getProperty(IoTDBConstant.ARROW_FLIGHT_SQL_PORT) != null) {
+      conf.setArrowFlightSqlPort(
+          Integer.parseInt(properties.getProperty(IoTDBConstant.ARROW_FLIGHT_SQL_PORT).trim()));
     }
   }
 

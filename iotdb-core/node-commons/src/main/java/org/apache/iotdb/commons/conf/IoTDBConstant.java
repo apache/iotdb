@@ -289,6 +289,10 @@ public class IoTDBConstant {
   public static final String MQTT_DATA_PATH = "mqtt_data_path";
   public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 
+  // arrow flight sql
+  public static final String ENABLE_ARROW_FLIGHT_SQL = "enable_arrow_flight_sql_service";
+  public static final String ARROW_FLIGHT_SQL_PORT = "arrow_flight_sql_port";
+
   // thrift
   public static final int DEFAULT_FETCH_SIZE = 5000;
   public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
