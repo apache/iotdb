@@ -93,9 +93,10 @@ public class FlightSqlAuthHandler implements CallHeaderAuthenticator {
       String username = decoded.substring(0, colonIdx);
       String password = decoded.substring(colonIdx + 1);
 
-      LOGGER.debug("Validating credentials for user: {}", username);
+      String clientId = headers.get("x-flight-sql-client-id");
+      LOGGER.debug("Validating credentials for user: {}, clientId: {}", username, clientId);
       try {
-        String token = sessionManager.authenticate(username, password, "unknown");
+        String token = sessionManager.authenticate(username, password, "unknown", clientId);
         return bearerResult(token);
       } catch (SecurityException e) {
         throw CallStatus.UNAUTHENTICATED.withDescription(e.getMessage()).toRuntimeException();

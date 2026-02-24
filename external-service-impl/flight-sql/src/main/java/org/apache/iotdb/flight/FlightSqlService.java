@@ -86,11 +86,9 @@ public class FlightSqlService implements IExternalService {
         flightServer =
             FlightServer.builder(allocator, location, producer)
                 .headerAuthenticator(authHandler)
-                // Configure Netty server for DataNode JVM environment:
-                // - directExecutor: run gRPC handlers in the Netty event loop thread to
-                //   avoid thread scheduling issues with the default executor
-                // - flowControlWindow: explicit HTTP/2 flow control prevents framing errors
-                //   when standalone Netty JARs coexist on the classpath
+                // directExecutor: run gRPC handlers in the Netty event loop thread to
+                // avoid thread scheduling issues with the default executor that cause
+                // "end-of-stream mid-frame" errors on subsequent RPCs.
                 .transportHint(
                     "grpc.builderConsumer",
                     (java.util.function.Consumer<io.grpc.netty.NettyServerBuilder>)
