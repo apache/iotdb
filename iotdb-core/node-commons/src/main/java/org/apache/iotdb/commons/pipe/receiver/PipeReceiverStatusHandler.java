@@ -135,8 +135,9 @@ public class PipeReceiverStatusHandler {
         {
           PipeLogger.log(
               LOGGER::info,
-              "Temporary unavailable exception: will retry forever. status: %s",
-              status);
+              "Temporary unavailable exception: will retry forever. status: %s, message: %s",
+              status,
+              exceptionMessage);
           throw new PipeRuntimeSinkNonReportTimeConfigurableException(
               exceptionMessage, Long.MAX_VALUE);
         }
@@ -243,9 +244,10 @@ public class PipeReceiverStatusHandler {
     if (retryMaxMillisWhenOtherExceptionsOccur == Long.MAX_VALUE) {
       PipeLogger.log(
           LOGGER::warn,
-          "%s: will retry forever. status: %s",
+          "%s: will retry forever. status: %s, message: %s",
           getNoPermission(noPermission),
-          status);
+          status,
+          exceptionMessage);
     } else {
       LOGGER.warn(
           "{}: will retry for at least {} seconds. status: {}",

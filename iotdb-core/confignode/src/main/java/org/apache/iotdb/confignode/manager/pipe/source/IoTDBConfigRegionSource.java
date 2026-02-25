@@ -344,7 +344,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
-    return listenedTypeSet.contains(plan.getType())
+    return ConfigRegionListeningFilter.shouldPlanBeListened(plan)
+        && listenedTypeSet.contains(plan.getType())
         && (Objects.isNull(isTableDatabasePlan)
             || Boolean.TRUE.equals(isTableDatabasePlan)
                 && tablePattern.isTableModelDataAllowedToBeCaptured()

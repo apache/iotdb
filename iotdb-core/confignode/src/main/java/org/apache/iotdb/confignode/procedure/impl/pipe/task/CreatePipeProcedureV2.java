@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeType;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.CreatePipePlanV2;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -313,7 +314,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.equals(SchemaConstant.SYSTEM_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
-                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")) {
+                    && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
+                    && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
+                    && !databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE + ".")) {
                   // Pipe only collect user's data, filter out metric database here.
                   consensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
