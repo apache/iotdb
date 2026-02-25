@@ -98,7 +98,7 @@ public abstract class PipeSubtaskExecutor {
 
   public final synchronized void register(final PipeSubtask subtask) {
     if (registeredIdSubtaskMapper.containsKey(subtask.getTaskID())) {
-      LOGGER.warn("The subtask {} is already registered.", subtask.getTaskID());
+      LOGGER.warn("The subtask {} is already registered.", getSafeSubtaskStr(subtask.getTaskID()));
       return;
     }
 
@@ -107,32 +107,36 @@ public abstract class PipeSubtaskExecutor {
         subtaskWorkerThreadPoolExecutor, subtaskCallbackListeningExecutor, schedulerSupplier(this));
   }
 
+  private static String getSafeSubtaskStr(final String subtaskID) {
+    return subtaskID.replaceAll("password=[^,}]*", "password=******");
+  }
+
   protected PipeSubtaskScheduler schedulerSupplier(final PipeSubtaskExecutor executor) {
     return new PipeSubtaskScheduler(executor);
   }
 
   public final synchronized void start(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn("The subtask {} is not registered.", getSafeSubtaskStr(subTaskID));
       return;
     }
 
     final PipeSubtask subtask = registeredIdSubtaskMapper.get(subTaskID);
     if (subtask.isSubmittingSelf()) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("The subtask {} is already running.", subTaskID);
+        LOGGER.debug("The subtask {} is already running.", getSafeSubtaskStr(subTaskID));
       }
     } else {
       subtask.allowSubmittingSelf();
       subtask.submitSelf();
       ++runningSubtaskNumber;
-      LOGGER.info("The subtask {} is started to submit self.", subTaskID);
+      LOGGER.info("The subtask {} is started to submit self.", getSafeSubtaskStr(subTaskID));
     }
   }
 
   public final synchronized void stop(final String subTaskID) {
     if (!registeredIdSubtaskMapper.containsKey(subTaskID)) {
-      LOGGER.warn("The subtask {} is not registered.", subTaskID);
+      LOGGER.warn("The subtask {} is not registered.", getSafeSubtaskStr(subTaskID));
       return;
     }
 
@@ -149,9 +153,9 @@ public abstract class PipeSubtaskExecutor {
     if (subtask != null) {
       try {
         subtask.close();
-        LOGGER.info("The subtask {} is closed successfully.", subTaskID);
+        LOGGER.info("The subtask {} is closed successfully.", getSafeSubtaskStr(subTaskID));
       } catch (final Exception e) {
-        LOGGER.error("Failed to close the subtask {}.", subTaskID, e);
+        LOGGER.error("Failed to close the subtask {}.", getSafeSubtaskStr(subTaskID), e);
       }
     }
   }

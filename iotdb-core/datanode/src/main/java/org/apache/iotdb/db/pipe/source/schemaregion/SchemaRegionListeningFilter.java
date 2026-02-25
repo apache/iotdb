@@ -121,7 +121,12 @@ public class SchemaRegionListeningFilter {
                 .getDatabaseFullPath());
     return (TreePattern.isTreeModelDataAllowToBeCaptured(parameters) && !isTableModel
             || TablePattern.isTableModelDataAllowToBeCaptured(parameters) && isTableModel)
-        && !parseListeningPlanTypeSet(parameters).isEmpty();
+        && shouldSchemaRegionBeListened(parameters);
+  }
+
+  public static boolean shouldSchemaRegionBeListened(final PipeParameters parameters)
+      throws IllegalPathException {
+    return !parseListeningPlanTypeSet(parameters).isEmpty();
   }
 
   public static Set<PlanNodeType> parseListeningPlanTypeSet(final PipeParameters parameters)

@@ -761,7 +761,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TPermissionInfoResp login(TLoginReq req) {
-    return configManager.login(req.getUserrname(), req.getPassword());
+    return configManager.login(
+        req.getUserrname(),
+        req.getPassword(),
+        req.isSetUseEncryptedPassword() && req.isUseEncryptedPassword());
   }
 
   @Override

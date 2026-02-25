@@ -37,7 +37,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import java.util.Map;
 
 public interface IAuthorPlanExecutor {
-  TPermissionInfoResp login(String username, String password);
+  TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   TSStatus checkSessionNumOnAlter(
       String username, int newSessionPerUser, ConfigManager configManager);

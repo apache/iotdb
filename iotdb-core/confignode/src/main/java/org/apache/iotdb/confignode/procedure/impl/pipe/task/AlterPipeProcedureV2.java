@@ -107,14 +107,18 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                 PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY,
                 PipeSourceConstant.SOURCE_IOTDB_USER_KEY,
                 PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY,
-                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY);
+                PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY,
+                PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY,
+                PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
     final boolean checkSink =
         new PipeParameters(alterPipeRequest.getConnectorAttributes())
             .hasAnyAttributes(
                 PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
                 PipeSinkConstant.SINK_IOTDB_USER_KEY,
                 PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
-                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY);
+                PipeSinkConstant.SINK_IOTDB_USERNAME_KEY,
+                PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
+                PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
 
     pipeTaskInfo.get().checkAndUpdateRequestBeforeAlterPipe(alterPipeRequest);
 

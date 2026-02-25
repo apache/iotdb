@@ -38,7 +38,8 @@ import java.util.Map;
 
 public interface IAuthorityFetcher {
 
-  TSStatus checkUser(String username, String password);
+  TSStatus checkUser(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   TSStatus checkSessionNumOnConnect(Map<String, Integer> currentSessionInfo);
 

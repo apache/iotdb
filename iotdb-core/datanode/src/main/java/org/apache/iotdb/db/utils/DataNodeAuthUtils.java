@@ -283,7 +283,12 @@ public class DataNodeAuthUtils {
    *     current value Null if the password history cannot be found. Both timestamps are in
    *     millis-seconds.
    */
-  public static Pair<Long, Long> checkPasswordExpiration(long userId, String password) {
+  public static Pair<Long, Long> checkPasswordExpiration(
+      final long userId, final String password, final boolean useEncryptedPassword) {
+    if (userId == -1) {
+      return null;
+    }
+
     // check password expiration
     long passwordExpirationDays =
         CommonDescriptor.getInstance().getConfig().getPasswordExpirationDays();
@@ -339,7 +344,8 @@ public class DataNodeAuthUtils {
             CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
-        if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
+        if (oldPassword.equals(
+            useEncryptedPassword ? password : AuthUtils.encryptPassword(password))) {
           if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 <= lastPasswordTime) {
             // overflow or passwordExpirationDays <= 0
             return new Pair<>(Long.MAX_VALUE, lastPasswordTime);

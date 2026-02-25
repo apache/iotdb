@@ -107,11 +107,16 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean login(String username, String password) throws AuthException {
+  public boolean login(
+      final String username, final String password, final boolean useEncryptedPassword)
+      throws AuthException {
     User user = userManager.getEntity(username);
     if (user == null || password == null) {
       throw new AuthException(
           TSStatusCode.USER_NOT_EXIST, String.format("The user %s does not exist.", username));
+    }
+    if (useEncryptedPassword) {
+      return password.equals(user.getPassword());
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {

@@ -69,8 +69,8 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testLogin() throws AuthException {
-    Assert.assertTrue(authorizer.login("root", "TimechoDB@2021"));
-    Assert.assertThrows(AuthException.class, () -> authorizer.login("root", "error"));
+    Assert.assertTrue(authorizer.login("root", "root", false));
+    Assert.assertThrows(AuthException.class, () -> authorizer.login("root", "error", false));
   }
 
   @Test
@@ -81,7 +81,7 @@ public class LocalFileAuthorizerTest {
     } catch (AuthException e) {
       assertEquals("User user already exists", e.getMessage());
     }
-    Assert.assertTrue(authorizer.login(userName, password));
+    Assert.assertTrue(authorizer.login(userName, password, false));
     authorizer.deleteUser(userName);
     try {
       authorizer.deleteUser(userName);
@@ -235,7 +235,7 @@ public class LocalFileAuthorizerTest {
   public void testUpdatePassword() throws AuthException {
     authorizer.createUser(userName, password);
     authorizer.updateUserPassword(userName, "newPassword123456");
-    Assert.assertTrue(authorizer.login(userName, "newPassword123456"));
+    Assert.assertTrue(authorizer.login(userName, "newPassword123456", false));
   }
 
   @Test

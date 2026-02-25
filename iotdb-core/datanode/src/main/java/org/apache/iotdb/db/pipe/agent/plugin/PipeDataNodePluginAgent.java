@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.pipe.agent.plugin.service.PipePluginExecutableMa
 import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.db.pipe.agent.plugin.dataregion.PipeDataRegionPluginAgent;
 import org.apache.iotdb.db.pipe.agent.plugin.schemaregion.PipeSchemaRegionPluginAgent;
+import org.apache.iotdb.db.pipe.source.schemaregion.SchemaRegionListeningFilter;
 import org.apache.iotdb.pipe.api.PipePlugin;
+import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.slf4j.Logger;
@@ -70,7 +72,7 @@ public class PipeDataNodePluginAgent {
 
   /////////////////////////////// Pipe Plugin Management ///////////////////////////////
 
-  public void register(PipePluginMeta pipePluginMeta, ByteBuffer jarFile)
+  public void register(final PipePluginMeta pipePluginMeta, final ByteBuffer jarFile)
       throws IOException, PipeException {
     lock.lock();
     try {
@@ -86,7 +88,7 @@ public class PipeDataNodePluginAgent {
     }
   }
 
-  private void checkIfRegistered(PipePluginMeta pipePluginMeta) throws PipeException {
+  private void checkIfRegistered(final PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
     if (information == null) {
@@ -121,7 +123,8 @@ public class PipeDataNodePluginAgent {
     // we allow users to register the same pipe plugin multiple times without any error
   }
 
-  private void saveJarFileIfNeeded(String pluginName, String jarName, ByteBuffer byteBuffer)
+  private void saveJarFileIfNeeded(
+      final String pluginName, final String jarName, final ByteBuffer byteBuffer)
       throws IOException {
     if (byteBuffer != null) {
       PipePluginExecutableManager.getInstance()
@@ -136,7 +139,7 @@ public class PipeDataNodePluginAgent {
    * @param pipePluginMeta the meta information of the PipePlugin
    * @throws PipeException if the PipePlugin can not be loaded or its instance can not be created
    */
-  public void doRegister(PipePluginMeta pipePluginMeta) throws PipeException {
+  public void doRegister(final PipePluginMeta pipePluginMeta) throws PipeException {
     final String pluginName = pipePluginMeta.getPluginName();
     final String className = pipePluginMeta.getClassName();
 
@@ -156,7 +159,7 @@ public class PipeDataNodePluginAgent {
       pipePluginMetaKeeper.addPipePluginVisibility(
           pluginName, VisibilityUtils.calculateFromPluginClass(pluginClass));
       classLoaderManager.addPluginAndClassLoader(pluginName, pipePluginClassLoader);
-    } catch (IOException
+    } catch (final IOException
         | InstantiationException
         | InvocationTargetException
         | NoSuchMethodException
@@ -173,7 +176,8 @@ public class PipeDataNodePluginAgent {
     }
   }
 
-  public void deregister(String pluginName, boolean needToDeleteJar) throws PipeException {
+  public void deregister(final String pluginName, final boolean needToDeleteJar)
+      throws PipeException {
     lock.lock();
     try {
       final PipePluginMeta information = pipePluginMetaKeeper.getPipePluginMeta(pluginName);
@@ -197,7 +201,7 @@ public class PipeDataNodePluginAgent {
         PipePluginExecutableManager.getInstance()
             .removeFileUnderTemporaryRoot(pluginName.toUpperCase() + ".txt");
       }
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new PipeException(e.getMessage(), e);
     } finally {
       lock.unlock();
@@ -206,20 +210,22 @@ public class PipeDataNodePluginAgent {
 
   // TODO: validate pipe plugin attributes for config node
   public void validate(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes)
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
       throws Exception {
-    dataRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
-    schemaRegionAgent.validate(
-        pipeName, extractorAttributes, processorAttributes, connectorAttributes);
+    dataRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+
+    if (SchemaRegionListeningFilter.shouldSchemaRegionBeListened(
+        new PipeParameters(sinkAttributes))) {
+      schemaRegionAgent.validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+    }
   }
 
   public boolean checkIfPluginSameType(final String oldPluginName, final String newPluginName) {
-    PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
-    PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
+    final PipePluginMeta oldPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(oldPluginName);
+    final PipePluginMeta newPipePluginMeta = pipePluginMetaKeeper.getPipePluginMeta(newPluginName);
 
     if (oldPipePluginMeta == null) {
       throw new PipeException(String.format("plugin %s is not registered.", oldPluginName));

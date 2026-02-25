@@ -1239,7 +1239,7 @@ public class IoTDBConfigNodeReceiver extends IoTDBFileReceiver {
 
   @Override
   protected TSStatus login() {
-    return configManager.login(username, password).getStatus();
+    return configManager.login(username, password, false).getStatus();
   }
 
   @Override

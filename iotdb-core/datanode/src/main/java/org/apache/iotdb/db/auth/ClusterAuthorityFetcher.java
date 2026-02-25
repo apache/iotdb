@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckMaxClientNumResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckSessionNumReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPathPrivilege;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRoleResp;
@@ -546,21 +547,53 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUser(String username, String password) {
-    User user = getUser(username);
-    if (user == null) {
-      return RpcUtils.getStatus(TSStatusCode.USER_NOT_EXIST, "Authentication failed.");
-    }
-    if (user.isOpenIdUser()) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-    } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-    } else if (password != null
-        && AuthUtils.validatePassword(
-            password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
-      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-    } else {
-      return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+    public TSStatus checkUser(
+    final String username, final String password, final boolean useEncryptedPassword) {
+      checkCacheAvailable();
+      final User user = iAuthorCache.getUserCache(username);
+      if (user != null) {
+        if (user.isOpenIdUser()) {
+          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+        } else if (password != null) {
+          if (useEncryptedPassword) {
+            return password.equals(user.getPassword())
+                    ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+                    : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+          } else {
+            return AuthUtils.validatePassword(password, user.getPassword())
+                    || AuthUtils.validatePassword(
+                    password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
+                    ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+                    : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+          }
+        } else {
+          return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+        }
+      } else {
+        TLoginReq req =
+                new TLoginReq(username, password).setUseEncryptedPassword(useEncryptedPassword);
+        TPermissionInfoResp status = null;
+        try (ConfigNodeClient configNodeClient =
+                     CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+          // Send request to some API server
+          status = configNodeClient.login(req);
+        } catch (ClientManagerException | TException e) {
+          LOGGER.error(CONNECTERROR);
+          status = new TPermissionInfoResp();
+          status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+        } finally {
+          if (status == null) {
+            status = new TPermissionInfoResp();
+          }
+        }
+        if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (acceptCache) {
+            iAuthorCache.putUserCache(username, cacheUser(status));
+          }
+          return status.getStatus();
+        } else {
+          return status.getStatus();
+        }
     }
   }
 

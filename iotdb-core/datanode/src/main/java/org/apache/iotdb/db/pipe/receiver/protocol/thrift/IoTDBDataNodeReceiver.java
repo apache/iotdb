@@ -954,7 +954,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
     long userId = AuthorityChecker.getUserId(username).orElse(-1L);
     Pair<Long, Long> expirationAndModifiedTime =
-        DataNodeAuthUtils.checkPasswordExpiration(userId, password);
+        DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
     if (expirationAndModifiedTime != null
         && expirationAndModifiedTime.getLeft() <= System.currentTimeMillis()) {
       return RpcUtils.getStatus(
