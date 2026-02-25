@@ -20,6 +20,7 @@
 package org.apache.iotdb.commons.client.util;
 
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.function.Consumer;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 
@@ -67,7 +68,7 @@ public class IoTDBSinkPortBinder {
               : String.format(
                   "Failed to find an available send port in the candidate list [%s].",
                   candidatePorts);
-      LOGGER.warn(exceptionMessage);
+      PipeLogger.log(LOGGER::warn, exceptionMessage);
       throw new PipeConnectionException(exceptionMessage);
     }
   }
