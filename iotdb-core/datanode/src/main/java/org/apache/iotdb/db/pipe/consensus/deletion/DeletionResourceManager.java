@@ -61,7 +61,7 @@ public class DeletionResourceManager implements AutoCloseable {
       String.format(
           "^_(?<%s>\\d+)-(?<%s>\\d+)\\%s$",
           REBOOT_TIME, MEM_TABLE_FLUSH_ORDER, DELETION_FILE_SUFFIX);
-  private final String dataRegionId;
+  private final int dataRegionId;
   private final DeletionBuffer deletionBuffer;
   private final File storageDir;
   private final Map<AbstractDeleteDataNode, DeletionResource> deleteNode2ResourcesMap =
@@ -70,7 +70,7 @@ public class DeletionResourceManager implements AutoCloseable {
   private final Condition recoveryReadyCondition = recoverLock.newCondition();
   private volatile boolean hasCompletedRecovery = false;
 
-  private DeletionResourceManager(String dataRegionId) throws IOException {
+  private DeletionResourceManager(int dataRegionId) throws IOException {
     this.dataRegionId = dataRegionId;
     this.storageDir =
         new File(
@@ -269,23 +269,23 @@ public class DeletionResourceManager implements AutoCloseable {
 
   //////////////////////////// singleton ////////////////////////////
   private static class DeletionResourceManagerHolder {
-    private static Map<String, DeletionResourceManager> CONSENSU_GROUP_ID_2_INSTANCE_MAP;
+    private static Map<Integer, DeletionResourceManager> CONSENSUS_GROUP_ID_2_INSTANCE_MAP;
 
     private DeletionResourceManagerHolder() {}
 
     public static void build() {
-      if (CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
-        CONSENSU_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
+      if (CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
+        CONSENSUS_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
       }
     }
   }
 
-  public static DeletionResourceManager getInstance(String groupId) {
+  public static DeletionResourceManager getInstance(int groupId) {
     // If consensusImpl is not PipeConsensus.
-    if (DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
       return null;
     }
-    return DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
+    return DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
         groupId,
         key -> {
           try {
@@ -305,10 +305,10 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   public static void exit() {
-    if (DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
+    if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
       return;
     }
-    DeletionResourceManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.forEach(
+    DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.forEach(
         (groupId, resourceManager) -> {
           resourceManager.close();
         });
