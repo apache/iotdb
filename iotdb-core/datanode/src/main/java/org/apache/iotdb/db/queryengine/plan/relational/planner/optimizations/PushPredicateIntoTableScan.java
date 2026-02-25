@@ -858,7 +858,22 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
 
           equiJoinClauses.add(
               new JoinNode.EquiJoinClause(
-                  leftSymbol, rightSymbol, node.getLeftTables(), node.getRightTables()));
+                  leftSymbol,
+                  rightSymbol,
+                  JoinUtils.findSourceTable(node.getLeftChild(), leftSymbol)
+                      .orElseThrow(
+                          () ->
+                              new IllegalStateException(
+                                  String.format(
+                                      "Cannot find source table for symbol %s in join left child",
+                                      leftSymbol))),
+                  JoinUtils.findSourceTable(node.getRightChild(), rightSymbol)
+                      .orElseThrow(
+                          () ->
+                              new IllegalStateException(
+                                  String.format(
+                                      "Cannot find source table for symbol %s in join right child",
+                                      rightSymbol)))));
         } else {
           if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
             continue;

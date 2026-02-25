@@ -815,8 +815,8 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
             new JoinNode.EquiJoinClause(
                 mapper.map(clause.getLeft()),
                 mapper.map(clause.getRight()),
-                ImmutableSet.copyOf(clause.getLeftTables()),
-                ImmutableSet.copyOf(clause.getRightTables())));
+                clause.getLeftTable(),
+                clause.getRightTable()));
       }
       List<JoinNode.EquiJoinClause> newCriteria = builder.build();
 

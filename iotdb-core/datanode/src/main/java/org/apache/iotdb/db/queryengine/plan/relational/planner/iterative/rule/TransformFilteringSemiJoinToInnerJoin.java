@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Captures;
@@ -132,8 +133,21 @@ public class TransformFilteringSemiJoinToInnerJoin implements Rule<FilterNode> {
                 new JoinNode.EquiJoinClause(
                     semiJoin.getSourceJoinSymbol(),
                     semiJoin.getFilteringSourceJoinSymbol(),
-                    semiJoin.getSource().getInputTables(),
-                    semiJoin.getFilteringSource().getInputTables())),
+                    JoinUtils.findSourceTable(semiJoin.getSource(), semiJoin.getSourceJoinSymbol())
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in semi-join source",
+                                        semiJoin.getSourceJoinSymbol()))),
+                    JoinUtils.findSourceTable(
+                            semiJoin.getFilteringSource(), semiJoin.getFilteringSourceJoinSymbol())
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in semi-join filtering source",
+                                        semiJoin.getFilteringSourceJoinSymbol()))))),
             Optional.empty(),
             semiJoin.getSource().getOutputSymbols(),
             ImmutableList.of(),
