@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
@@ -300,6 +301,8 @@ public class PartitionCache {
             databaseNamesNeedCreated.add(SchemaConstant.SYSTEM_DATABASE);
           } else if (PathUtils.isStartWith(deviceID, SchemaConstant.AUDIT_DATABASE)) {
             databaseNamesNeedCreated.add(SchemaConstant.AUDIT_DATABASE);
+          } else if (PathUtils.isStartWith(deviceID, Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+            databaseNamesNeedCreated.add(Audit.TABLE_MODEL_AUDIT_DATABASE);
           } else {
             final PartialPath databaseNameNeedCreated =
                 MetaUtils.getDatabasePathByLevel(

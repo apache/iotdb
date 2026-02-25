@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.AlterPipePlanV2;
@@ -187,6 +188,8 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                     && !databaseName.startsWith(SchemaConstant.SYSTEM_DATABASE + ".")
                     && !databaseName.equals(SchemaConstant.AUDIT_DATABASE)
                     && !databaseName.startsWith(SchemaConstant.AUDIT_DATABASE + ".")
+                    && !databaseName.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)
+                    && !databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE + ".")
                     && !Objects.isNull(currentPipeTaskMeta)
                     && !(PipeTaskAgent.isHistoryOnlyPipe(
                             currentPipeStaticMeta.getSourceParameters())

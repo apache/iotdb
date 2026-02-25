@@ -24,10 +24,12 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 
@@ -252,34 +254,58 @@ public class ConfigRegionListeningFilter {
   static boolean shouldPlanBeListened(final ConfigPhysicalPlan plan) {
     final ConfigPhysicalPlanType type = plan.getType();
 
-    // Do not transfer roll back set template plan
-    if (type.equals(ConfigPhysicalPlanType.CommitSetSchemaTemplate)
-        && ((CommitSetSchemaTemplatePlan) plan).isRollback()) {
-      return false;
+    switch (type) {
+      // Do not transfer roll back set template plan
+      case CommitSetSchemaTemplate:
+        return !((CommitSetSchemaTemplatePlan) plan).isRollback();
+      // system / audit DB
+      case DeleteDatabase:
+        return !((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.AUDIT_DATABASE)
+            && !((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.SYSTEM_DATABASE)
+            && !((DeleteDatabasePlan) plan).getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
+      case CreateDatabase:
+      case AlterDatabase:
+        return !(((DatabaseSchemaPlan) plan)
+                .getSchema()
+                .getName()
+                .equals(SchemaConstant.SYSTEM_DATABASE)
+            && !((DatabaseSchemaPlan) plan)
+                .getSchema()
+                .getName()
+                .equals(SchemaConstant.AUDIT_DATABASE)
+            && !((DatabaseSchemaPlan) plan)
+                .getSchema()
+                .getName()
+                .equals(Audit.TABLE_MODEL_AUDIT_DATABASE));
+      // Table under audit db
+      case CommitCreateTable:
+      case PipeCreateTableOrView:
+      case AddTableColumn:
+      case AddViewColumn:
+      case SetTableProperties:
+      case SetViewProperties:
+      case SetTableComment:
+      case SetViewComment:
+      case SetTableColumnComment:
+      case RenameTable:
+      case RenameView:
+      case RenameTableColumn:
+      case RenameViewColumn:
+      case AlterColumnDataType:
+      case CommitDeleteTable:
+      case CommitDeleteView:
+      case CommitDeleteColumn:
+      case CommitDeleteViewColumn:
+      case PipeDeleteDevices:
+        return !((AbstractTablePlan) plan).getDatabase().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
+      // PipeEnriched & UnsetTemplate are not listened directly,
+      // but their inner plan or converted plan are listened.
+      case PipeEnriched:
+      case UnsetTemplate:
+        return true;
+      default:
+        return OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
     }
-
-    // system / audit DB
-    if (type.equals(ConfigPhysicalPlanType.DeleteDatabase)
-            && (((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.AUDIT_DATABASE)
-                || ((DeleteDatabasePlan) plan).getName().equals(SchemaConstant.SYSTEM_DATABASE))
-        || (type.equals(ConfigPhysicalPlanType.CreateDatabase)
-                || type.equals(ConfigPhysicalPlanType.AlterDatabase))
-            && (((DatabaseSchemaPlan) plan)
-                    .getSchema()
-                    .getName()
-                    .equals(SchemaConstant.SYSTEM_DATABASE)
-                || ((DatabaseSchemaPlan) plan)
-                    .getSchema()
-                    .getName()
-                    .equals(SchemaConstant.AUDIT_DATABASE))) {
-      return false;
-    }
-
-    // PipeEnriched & UnsetTemplate are not listened directly,
-    // but their inner plan or converted plan are listened.
-    return type.equals(ConfigPhysicalPlanType.PipeEnriched)
-        || type.equals(ConfigPhysicalPlanType.UnsetTemplate)
-        || OPTION_PLAN_MAP.values().stream().anyMatch(types -> types.contains(type));
   }
 
   public static Set<ConfigPhysicalPlanType> parseListeningPlanTypeSet(

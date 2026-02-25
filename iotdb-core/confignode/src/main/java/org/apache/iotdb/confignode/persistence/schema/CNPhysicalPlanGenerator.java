@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.AuthUtils;
@@ -552,7 +553,8 @@ public class CNPhysicalPlanGenerator
 
     final TDatabaseSchema schema = databaseMNode.getAsMNode().getDatabaseSchema();
     if (!schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
-        && !schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+        && !schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
+        && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
       final DatabaseSchemaPlan createDBPlan =
           new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, schema);
       planDeque.add(createDBPlan);
