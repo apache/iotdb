@@ -38,7 +38,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.awaitility.Awaitility;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -61,6 +60,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -212,9 +212,9 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           adminStmt.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
     }
@@ -254,9 +254,9 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
     }
@@ -295,14 +295,14 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
 
       try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
+        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
     }
@@ -391,9 +391,9 @@ public class IoTDBLoadTsFileIT {
     try (final ResultSet resultSet =
         statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_1))) {
       if (resultSet.next()) {
-        Assert.assertEquals(lineCount, resultSet.getLong(1));
+        assertEquals(lineCount, resultSet.getLong(1));
       } else {
-        Assert.fail("This ResultSet is empty.");
+        fail("This ResultSet is empty.");
       }
     }
 
@@ -411,14 +411,14 @@ public class IoTDBLoadTsFileIT {
         statement.executeQuery(
             String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
       if (resultSet.next()) {
-        Assert.assertEquals(lineCount, resultSet.getLong(1));
+        assertEquals(lineCount, resultSet.getLong(1));
       } else {
-        Assert.fail("This ResultSet is empty.");
+        fail("This ResultSet is empty.");
       }
     }
 
     try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-      Assert.assertTrue(resultSet.next());
+      assertTrue(resultSet.next());
       assertEquals(SchemaConfig.TABLE_1, resultSet.getString(1));
       assertFalse(resultSet.next());
     }
@@ -645,27 +645,27 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
 
       try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertFalse(resultSet.next());
+        assertTrue(resultSet.next());
+        assertFalse(resultSet.next());
       }
 
       // Time column's difference shall not affect the old column
       if (Objects.nonNull(resultSetOld)) {
         try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
           while (resultSet.next() && resultSetOld.next()) {
-            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
-            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
-            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
+            assertEquals(resultSet.getString(1), resultSetOld.getString(1));
+            assertEquals(resultSet.getString(2), resultSetOld.getString(2));
+            assertEquals(resultSet.getString(3), resultSetOld.getString(3));
           }
           if (resultSet.next() || resultSetOld.next()) {
-            Assert.fail("The table schema has changed after load.");
+            fail("The table schema has changed after load.");
           }
         }
       }

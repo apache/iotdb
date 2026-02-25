@@ -150,7 +150,7 @@ public class IoTDBPipeAlterTableColumnNameIT {
         senderSession.executeNonQueryStatement(
             "INSERT INTO t1 (time, s1, s2, s3) VALUES (1, 1, 1.0, true)");
         senderSession.executeNonQueryStatement("FLUSH");
-        // rename table t1 to t2
+        // rename column s1 to s4
         senderSession.executeNonQueryStatement("ALTER TABLE t1 RENAME COLUMN s1 TO s4");
 
         // create a pipe

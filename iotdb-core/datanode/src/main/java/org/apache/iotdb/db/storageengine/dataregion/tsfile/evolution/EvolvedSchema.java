@@ -78,17 +78,16 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
   private Map<String, Map<String, String>> originalToFinalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
-    if (!finalToOriginalTableNames.containsKey(oldTableName)) {
+    if (!finalToOriginalTableNames.containsKey(oldTableName)
+        || finalToOriginalTableNames.get(oldTableName).isEmpty()) {
       finalToOriginalTableNames.put(newTableName, oldTableName);
+      finalToOriginalTableNames.put(oldTableName, "");
       originalToFinalTableNames.put(oldTableName, newTableName);
     } else {
-      String originalName = finalToOriginalTableNames.remove(oldTableName);
-      if (!originalName.equals(newTableName)) {
-        finalToOriginalTableNames.put(newTableName, originalName);
-        originalToFinalTableNames.put(originalName, newTableName);
-      } else {
-        originalToFinalTableNames.remove(originalName);
-      }
+      // mark the old table name as non-exists (empty)
+      String originalName = finalToOriginalTableNames.put(oldTableName, "");
+      finalToOriginalTableNames.put(newTableName, originalName);
+      originalToFinalTableNames.put(originalName, newTableName);
     }
 
     if (finalToOriginalColumnNames.containsKey(oldTableName)) {
@@ -101,14 +100,16 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
     Map<String, String> finalToOriginalMap =
         finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
     String originalTableName = getOriginalTableName(newTableName);
-    if (!finalToOriginalMap.containsKey(oldColumnName)) {
+    if (!finalToOriginalMap.containsKey(oldColumnName)
+        || finalToOriginalMap.get(oldColumnName).isEmpty()) {
       finalToOriginalMap.put(newColumnName, oldColumnName);
-      finalToOriginalMap.remove(oldColumnName);
+      finalToOriginalMap.put(oldColumnName, "");
       originalToFinalColumnNames
           .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
           .put(oldColumnName, newColumnName);
     } else {
-      String originalName = finalToOriginalMap.remove(oldColumnName);
+      // mark the old column name as non-exists
+      String originalName = finalToOriginalMap.put(oldColumnName, "");
       if (!newColumnName.equals(originalName)) {
         finalToOriginalMap.put(newColumnName, originalName);
         originalToFinalColumnNames

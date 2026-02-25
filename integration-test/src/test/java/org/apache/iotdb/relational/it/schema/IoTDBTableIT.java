@@ -1242,6 +1242,56 @@ public class IoTDBTableIT {
   }
 
   @Test
+  public void testAlterTableNameAndUseOldName() throws Exception {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS testdb");
+      statement.execute("CREATE DATABASE IF NOT EXISTS testdb");
+      statement.execute("USE testdb");
+
+      // alter to a new name
+      statement.execute("CREATE TABLE IF NOT EXISTS alter_table_name (s1 int32)");
+      statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (1, 1)");
+      statement.execute("ALTER TABLE alter_table_name RENAME TO alter_table_named");
+      // create a new table with the old name
+      statement.execute("CREATE TABLE IF NOT EXISTS alter_table_name (s1 int32)");
+      statement.execute("INSERT INTO alter_table_name (time, s1) VALUES (0, 0)");
+      statement.execute("INSERT INTO alter_table_named (time, s1) VALUES (2, 2)");
+
+      // query the renamed table
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM alter_table_named");
+      for (int i = 1; i <= 2; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getLong(2));
+      }
+      assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_table_named");
+      assertTrue(resultSet.next());
+      assertEquals(2, resultSet.getLong(1));
+      assertEquals(2, resultSet.getLong(2));
+      assertFalse(resultSet.next());
+
+      // query the new table with the old name
+      resultSet = statement.executeQuery("SELECT * FROM alter_table_name");
+      for (int i = 0; i <= 0; i++) {
+        assertTrue(resultSet.next());
+        assertEquals(i, resultSet.getLong(1));
+        assertEquals(i, resultSet.getLong(2));
+      }
+      assertFalse(resultSet.next());
+      resultSet =
+          statement.executeQuery("SELECT last(time), last_by(s1,time) FROM alter_table_name");
+      assertTrue(resultSet.next());
+      assertEquals(0, resultSet.getLong(1));
+      assertEquals(0, resultSet.getLong(2));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
   public void testAlterColumnName() throws Exception {
     try (final Connection connection =
             EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
