@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSinkConstructo
 import org.apache.iotdb.commons.pipe.agent.plugin.constructor.PipeSourceConstructor;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMetaKeeper;
 import org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.configuraion.PipeTaskRuntimeConfiguration;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskTemporaryRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.PipeConnector;
@@ -37,6 +38,7 @@ import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -124,8 +126,8 @@ public abstract class PipePluginAgent {
     return temporaryProcessor;
   }
 
-  protected PipeConnector validateSink(String pipeName, Map<String, String> sinkAttributes)
-      throws Exception {
+  protected PipeConnector validateSink(
+      final String pipeName, final Map<String, String> sinkAttributes) throws Exception {
     final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
     final PipeConnector temporarySink = reflectSink(sinkParameters);
     try {
@@ -133,7 +135,22 @@ public abstract class PipePluginAgent {
       temporarySink.customize(
           sinkParameters,
           new PipeTaskRuntimeConfiguration(new PipeTaskTemporaryRuntimeEnvironment(pipeName)));
-      temporarySink.handshake();
+      // We do not handshake when send-ports is configured because:
+      // 1. If handshaking without port configuration, the potentially existing firewall may fail
+      //    the validation
+      // 2. The TCP will be in "TIME_WAIT" after close and will be occupied when the pipe task is
+      //    created
+      // 3. When you alter pipe with the old ports, the ports are still being used by the old pipe
+      if (sinkParameters
+          .getStringOrDefault(
+              Arrays.asList(
+                  PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_KEY,
+                  PipeSinkConstant.SINK_IOTDB_SEND_PORTS_KEY),
+              PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE)
+          .trim()
+          .isEmpty()) {
+        temporarySink.handshake();
+      }
     } finally {
       try {
         temporarySink.close();
