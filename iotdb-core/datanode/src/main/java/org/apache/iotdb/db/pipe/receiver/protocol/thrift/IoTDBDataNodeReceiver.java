@@ -953,7 +953,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     long userId = AuthorityChecker.getUserId(username).orElse(-1L);
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
+    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       return RpcUtils.getStatus(
           TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),

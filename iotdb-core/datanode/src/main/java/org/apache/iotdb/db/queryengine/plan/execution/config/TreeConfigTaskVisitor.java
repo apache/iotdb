@@ -683,16 +683,15 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
     alterPipeStatement.setUserName(userName);
 
     final String pipeName = alterPipeStatement.getPipeName();
-    final Map<String, String> extractorAttributes = alterPipeStatement.getSourceAttributes();
+    final Map<String, String> sourceAttributes = alterPipeStatement.getSourceAttributes();
 
     // If the source is replaced, sql-dialect uses the current Alter Pipe sql-dialect. If it is
     // modified, the original sql-dialect is used.
     if (alterPipeStatement.isReplaceAllSourceAttributes()) {
-      extractorAttributes.put(
-          SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
+      sourceAttributes.put(SystemConstant.SQL_DIALECT_KEY, SystemConstant.SQL_DIALECT_TREE_VALUE);
       checkAndEnrichSourceUser(
           pipeName,
-          extractorAttributes,
+          sourceAttributes,
           new UserEntity(context.getUserId(), context.getUsername(), context.getCliHostname()),
           true);
     }

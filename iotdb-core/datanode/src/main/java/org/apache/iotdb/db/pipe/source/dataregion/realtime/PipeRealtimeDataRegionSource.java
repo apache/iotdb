@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -205,8 +206,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskSourceRuntimeEnvironment environment =
-        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
@@ -215,7 +215,9 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     pipeName = environment.getPipeName();
     dataRegionId = environment.getRegionId();
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+    }
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
@@ -302,7 +304,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
           pipeName,
           dataRegionId,
           parameters);

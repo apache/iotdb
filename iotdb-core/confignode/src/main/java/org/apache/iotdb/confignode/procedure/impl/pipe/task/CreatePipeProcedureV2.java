@@ -174,7 +174,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY)
         || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USER_KEY)
         || sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_USERNAME_KEY)
-        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)) {
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_USERNAME_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY)
+        || sourceParameters.hasAttribute(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()
@@ -216,7 +218,9 @@ public class CreatePipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
     if (sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY)
         || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USER_KEY)
         || sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY)
-        || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)) {
+        || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)
+        || sinkParameters.hasAttribute(PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY)
+        || sinkParameters.hasAttribute(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY)) {
       final String hashedPassword =
           env.getConfigManager()
               .getPermissionManager()

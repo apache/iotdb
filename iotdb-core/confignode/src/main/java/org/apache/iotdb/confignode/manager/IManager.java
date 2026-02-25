@@ -501,7 +501,8 @@ public interface IManager {
   DataSet queryPermission(final AuthorPlan authorPlan);
 
   /** login. */
-  TPermissionInfoResp login(String username, String password);
+  TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   /** Check User Privileges. */
   TPermissionInfoResp checkUserPrivileges(String username, PrivilegeUnion union);

@@ -124,8 +124,9 @@ public class AuthorInfo implements SnapshotProcessor {
     this.authorPlanExecutor = authorPlanExecutor;
   }
 
-  public TPermissionInfoResp login(String username, String password) {
-    return authorPlanExecutor.login(username, password);
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorPlanExecutor.login(username, password, useEncryptedPassword);
   }
 
   public String login4Pipe(final String username, final String password) {
