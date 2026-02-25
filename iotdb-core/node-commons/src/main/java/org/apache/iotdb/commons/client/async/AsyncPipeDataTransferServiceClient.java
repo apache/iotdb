@@ -87,6 +87,9 @@ public class AsyncPipeDataTransferServiceClient extends IClientRPCService.AsyncC
           (sendPort) -> {
             socketChannel.bind(new InetSocketAddress(sendPort));
             socketChannel.connect(new InetSocketAddress(endpoint.getIp(), endpoint.getPort()));
+            while (!socketChannel.finishConnect()) {
+              // Empty body, the error is thrown at "finishConnect()"
+            }
           });
     }
     setTimeout(property.getConnectionTimeoutMs());
