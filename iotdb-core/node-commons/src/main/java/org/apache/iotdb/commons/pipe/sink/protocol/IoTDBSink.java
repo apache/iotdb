@@ -99,8 +99,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CON
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORTS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_SKIP_IF_NO_PRIVILEGES;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
@@ -142,8 +140,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_PORT_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORTS_KEY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USERNAME_KEY;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_ID;
 import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SINK_IOTDB_USER_KEY;
@@ -177,8 +173,6 @@ public abstract class IoTDBSink implements PipeConnector {
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
   protected IntervalManager<PlainInterval> candidatePorts;
-
-  protected String customSendPortStrategy;
 
   protected String loadBalanceStrategy;
 
@@ -285,23 +279,6 @@ public abstract class IoTDBSink implements PipeConnector {
         parameters.getStringOrDefault(
             Arrays.asList(CONNECTOR_IOTDB_PASSWORD_KEY, SINK_IOTDB_PASSWORD_KEY),
             CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE);
-
-    this.customSendPortStrategy =
-        parameters
-            .getStringOrDefault(
-                Arrays.asList(
-                    CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY,
-                    SINK_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_KEY),
-                SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY)
-            .trim()
-            .toLowerCase();
-
-    validator.validate(
-        arg -> CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET.contains(customSendPortStrategy),
-        String.format(
-            "send port restriction strategy should be one of %s, but got %s.",
-            CONNECTOR_IOTDB_SEND_PORT_RESTRICTION_STRATEGY_SET, customSendPortStrategy),
-        customSendPortStrategy);
 
     this.candidatePorts =
         parsePorts(
