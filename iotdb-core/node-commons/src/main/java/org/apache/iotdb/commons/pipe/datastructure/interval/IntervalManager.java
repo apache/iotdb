@@ -105,6 +105,10 @@ public class IntervalManager<T extends Interval<T>> {
     return intervals.size();
   }
 
+  public boolean isEmpty() {
+    return intervals.isEmpty();
+  }
+
   @Override
   public String toString() {
     return "IntervalManager{" + "intervals=" + intervals + '}';

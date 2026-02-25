@@ -36,9 +36,24 @@ public class IoTDBSinkPortBinder {
 
   // ===========================bind================================
 
+  /**
+   * Find an available port in the configured ports.
+   *
+   * @param candidatePorts the ports
+   * @param consumer the binding process, must be called when successfully find a port
+   */
   public static void bindPort(
       final IntervalManager<PlainInterval> candidatePorts,
       final Consumer<Integer, Exception> consumer) {
+    // Bind random port when the ports are not configured
+    if (candidatePorts.isEmpty()) {
+      try {
+        consumer.accept(0);
+      } catch (final Exception e) {
+        throw new PipeConnectionException(e.getMessage(), e);
+      }
+      return;
+    }
     final Iterator<Long> iterator = candidatePorts.iterator();
     boolean portFound = false;
     while (iterator.hasNext()) {
