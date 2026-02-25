@@ -591,7 +591,7 @@ public abstract class IoTDBSink implements PipeConnector {
   private static IntervalManager<PlainInterval> parsePorts(final String ports)
       throws PipeParameterNotValidException {
     final IntervalManager<PlainInterval> result = new IntervalManager<>();
-    if (ports == null || ports.isEmpty()) {
+    if (ports == null || ports.trim().isEmpty()) {
       return result;
     }
     String[] range;
