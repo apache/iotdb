@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
 import org.apache.iotdb.commons.pipe.config.plugin.env.PipeTaskSinkRuntimeEnvironment;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.receiver.PipeReceiverStatusHandler;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressor;
 import org.apache.iotdb.commons.pipe.sink.compressor.PipeCompressorConfig;
@@ -50,7 +52,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -157,9 +158,6 @@ import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.SIN
 @TreeModel
 @TableModel
 public abstract class IoTDBSink implements PipeConnector {
-
-  protected int minSendPortRange;
-  protected int maxSendPortRange;
   private static final String PARSE_URL_ERROR_FORMATTER =
       "Exception occurred while parsing node urls from target servers: {}";
   private static final String PARSE_URL_ERROR_MESSAGE =
@@ -178,7 +176,7 @@ public abstract class IoTDBSink implements PipeConnector {
   protected UserEntity userEntity;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
 
-  protected List<Integer> candidatePorts;
+  protected IntervalManager<PlainInterval> candidatePorts;
 
   protected String customSendPortStrategy;
 
@@ -306,21 +304,10 @@ public abstract class IoTDBSink implements PipeConnector {
         customSendPortStrategy);
 
     this.candidatePorts =
-        parseCandidatePorts(
+        parsePorts(
             parameters.getStringOrDefault(
                 Arrays.asList(CONNECTOR_IOTDB_SEND_PORTS_KEY, SINK_IOTDB_SEND_PORTS_KEY),
                 CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE));
-    validator.validate(
-        arg -> (int) arg > 0,
-        "The number of candidate ports must be greater than 0.",
-        candidatePorts.size());
-    validator.validate(
-        arg -> (int) arg[0] >= MIN_PORT && (int) arg[1] <= MAX_PORT,
-        String.format(
-            "Candidate port range is invalid: Ports must be between 0 and 65535, but got minimum port: %d and maximum port: %d",
-            candidatePorts.get(0), candidatePorts.get(candidatePorts.size() - 1)),
-        candidatePorts.get(0),
-        candidatePorts.get(candidatePorts.size() - 1));
 
     loadBalanceStrategy =
         parameters
@@ -628,15 +615,41 @@ public abstract class IoTDBSink implements PipeConnector {
     }
   }
 
-  private static List<Integer> parseCandidatePorts(final String candidate) {
-    if (candidate == null || candidate.isEmpty()) {
-      return Collections.emptyList();
+  private static IntervalManager<PlainInterval> parsePorts(final String ports)
+      throws PipeParameterNotValidException {
+    final IntervalManager<PlainInterval> result = new IntervalManager<>();
+    if (ports == null || ports.isEmpty()) {
+      return result;
     }
-    return Arrays.stream(candidate.split(","))
-        .map(String::trim)
-        .map(Integer::parseInt)
-        .sorted()
-        .collect(Collectors.toList());
+    String[] range;
+    for (String port : ports.split(",")) {
+      range = port.trim().split("-");
+      if (range.length > 2 || range.length == 0) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "The port %s is not valid, a port shall either be 'port' or 'minPort-maxPort'.",
+                port));
+      }
+      for (final String singlePort : range) {
+        final long portNum;
+        try {
+          portNum = Long.parseLong(singlePort);
+        } catch (final Exception e) {
+          throw new PipeParameterNotValidException(
+              String.format("The port %s is not valid, the port must be an integer", singlePort));
+        }
+        if (portNum < 0 || portNum > 65535) {
+          throw new PipeParameterNotValidException(
+              String.format(
+                  "The port %s is not valid, the port must be >= 0 and <= 65535", singlePort));
+        }
+      }
+      result.addInterval(
+          new PlainInterval(
+              Long.parseLong(range[0]),
+              range.length > 1 ? Long.parseLong(range[1]) : Long.parseLong(range[0])));
+    }
+    return result;
   }
 
   @Override
