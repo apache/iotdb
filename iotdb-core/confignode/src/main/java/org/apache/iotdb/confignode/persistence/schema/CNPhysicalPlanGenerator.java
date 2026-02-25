@@ -482,8 +482,10 @@ public class CNPhysicalPlanGenerator
             }
             stack.push(new Pair<>(databaseMNode, true));
             name = databaseMNode.getName();
-            for (final TsTable table : tableSet) {
-              planDeque.add(new PipeCreateTableOrViewPlan(name, table));
+            if (!name.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+              for (final TsTable table : tableSet) {
+                planDeque.add(new PipeCreateTableOrViewPlan(name, table));
+              }
             }
             tableSet.clear();
             break;
