@@ -66,7 +66,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
@@ -834,15 +833,6 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
           node.getRightChild().getOutputSymbols().stream()
               .collect(toImmutableMap(key -> key, Symbol::toSymbolReference)));
 
-      // Build a map from (left, right) symbols to their (leftTables, rightTables)
-      // This preserves table info when rebuilding EquiJoinClause
-      Map<Pair<Symbol, Symbol>, Pair<Set<Identifier>, Set<Identifier>>> symbolToTablesMap =
-          node.getCriteria().stream()
-              .collect(
-                  toImmutableMap(
-                      clause -> new Pair<>(clause.getLeft(), clause.getRight()),
-                      clause -> new Pair<>(clause.getLeftTables(), clause.getRightTables())));
-
       // Create new projections for the new join clauses
       List<JoinNode.EquiJoinClause> equiJoinClauses = new ArrayList<>();
       ImmutableList.Builder<Expression> joinFilterBuilder = ImmutableList.builder();
@@ -866,14 +856,9 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
             rightProjections.put(rightSymbol, rightExpression);
           }
 
-          // Retrieve leftTables and rightTables from original criteria
-          Pair<Set<Identifier>, Set<Identifier>> tables =
-              symbolToTablesMap.getOrDefault(
-                  new Pair<>(leftSymbol, rightSymbol),
-                  new Pair<>(ImmutableSet.of(), ImmutableSet.of()));
-
           equiJoinClauses.add(
-              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, tables.left, tables.right));
+              new JoinNode.EquiJoinClause(
+                  leftSymbol, rightSymbol, node.getLeftTables(), node.getRightTables()));
         } else {
           if (conjunct.equals(TRUE_LITERAL) && node.getAsofCriteria().isPresent()) {
             continue;

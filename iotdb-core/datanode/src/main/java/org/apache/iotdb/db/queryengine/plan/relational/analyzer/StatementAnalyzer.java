@@ -1542,15 +1542,13 @@ public class StatementAnalyzer {
     private void addHint(String hintName, List<String> parameters, Map<String, Hint> hintMap) {
       HintFactory definition = HINT_DEFINITIONS.get(hintName);
       if (definition != null) {
+        List<String> existingTables =
+            analysis.getRelationNames().values().stream()
+                .map(QualifiedName::getSuffix)
+                .collect(toImmutableList());
+
         if (definition.shouldExpandParameters()) {
-          List<String> existingTables =
-              analysis.getRelationNames().entrySet().stream()
-                  .filter(entry -> !analysis.isAliased(entry.getKey().getNode()))
-                  .map(entry -> entry.getValue().getSuffix())
-                  .collect(toImmutableList());
-
           List<String> tablesToProcess = parameters == null ? existingTables : parameters;
-
           tablesToProcess.stream()
               .filter(table -> parameters == null || existingTables.contains(table))
               .forEach(
@@ -1560,6 +1558,15 @@ public class StatementAnalyzer {
                     hintMap.putIfAbsent(hintKey, hint);
                   });
         } else {
+          // Skip if parameters contain tables that don't exist in the query
+          if (parameters != null) {
+            boolean hasInvalidTable =
+                parameters.stream().anyMatch(table -> !existingTables.contains(table));
+            if (hasInvalidTable) {
+              return;
+            }
+          }
+
           Hint hint = definition.createHint(parameters);
           String hintKey = hint.getKey();
           if (!hintMap.containsKey(hintKey)) {

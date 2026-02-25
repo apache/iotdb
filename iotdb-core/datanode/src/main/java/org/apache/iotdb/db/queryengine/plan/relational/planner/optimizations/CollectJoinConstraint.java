@@ -25,7 +25,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.JoinConstraint;
@@ -71,9 +74,35 @@ public class CollectJoinConstraint implements PlanOptimizer {
 
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
-      String tableName = node.getQualifiedObjectName().getObjectName();
+      Identifier alias = node.getAlias();
+      String tableName =
+          alias != null ? alias.getValue() : node.getQualifiedObjectName().getObjectName();
       LeadingHint leading = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
       leading.getRelationToScanMap().put(tableName, node);
+      return node;
+    }
+
+    @Override
+    public PlanNode visitMergeSort(MergeSortNode node, Context context) {
+      return visitSingleTableNode(node, context);
+    }
+
+    public PlanNode visitFilter(FilterNode node, Context context) {
+      return visitSingleTableNode(node, context);
+    }
+
+    public PlanNode visitSort(SortNode node, Context context) {
+      return visitSingleTableNode(node, context);
+    }
+
+    private PlanNode visitSingleTableNode(PlanNode node, Context context) {
+      visitPlan(node, context);
+      Set<Identifier> tables = node.getInputTables();
+      if (tables != null && tables.size() == 1) {
+        Identifier tableName = tables.iterator().next();
+        LeadingHint leading = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
+        leading.getRelationToScanMap().put(tableName.getValue(), node);
+      }
       return node;
     }
 
@@ -98,12 +127,10 @@ public class CollectJoinConstraint implements PlanOptimizer {
         totalJoinTables = Sets.union(totalJoinTables, equiJoinTables);
         if (node.getJoinType() == JoinNode.JoinType.LEFT) {
           // leading.getFilters() is used to determine which join the join condition should apply
-          // to.
-          // For LEFT join, we need to add rightHand tables as well. In the getJoinConditions
-          // function,
-          // we ensure that the tables joined by the Join include both the tables in the join
-          // condition
-          // and the right tables of the outer join, so that the join condition can be applied.
+          // to. For LEFT join, we need to add rightHand tables as well. In the getJoinConditions
+          // function, we ensure that the tables joined by the Join include both the tables in the
+          // join condition and the right tables of the outer join, so that the join condition
+          // can be applied.
           equiJoinTables = Sets.union(equiJoinTables, rightHand);
         }
         leading.getFilters().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
