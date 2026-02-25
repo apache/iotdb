@@ -191,9 +191,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
       try {
         final int finalI = i;
         IoTDBSinkPortBinder.bindPort(
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
             candidatePorts,
             (sendPort) -> {
               final AirGapSocket socket = new AirGapSocket(ip, port);

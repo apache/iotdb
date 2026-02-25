@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
@@ -103,10 +105,7 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
       final boolean isTSFileUsed,
-      final String customSendPortStrategy,
-      final int minSendPortRange,
-      final int maxSendPortRange,
-      List<Integer> candidatePorts,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges) {
     super(
         endPoints,
@@ -117,9 +116,6 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
         loadTsFileStrategy,
         validateTsFile,
         shouldMarkAsPipeRequest,
-        customSendPortStrategy,
-        minSendPortRange,
-        maxSendPortRange,
         candidatePorts,
         skipIfNoPrivileges);
 
@@ -143,14 +139,8 @@ public class IoTDBDataNodeAsyncClientManager extends IoTDBClientManager
                 .createClientManager(
                     isTSFileUsed
                         ? new ClientPoolFactory.AsyncPipeTsFileDataTransferServiceClientPoolFactory(
-                            customSendPortStrategy,
-                            minSendPortRange,
-                            maxSendPortRange,
                             candidatePorts)
                         : new ClientPoolFactory.AsyncPipeDataTransferServiceClientPoolFactory(
-                            customSendPortStrategy,
-                            minSendPortRange,
-                            maxSendPortRange,
                             candidatePorts)));
       }
       endPoint2Client = ASYNC_PIPE_DATA_TRANSFER_CLIENT_MANAGER_HOLDER.get(receiverAttributes);

@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClientManager;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
@@ -141,9 +143,6 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
             loadTsFileStrategy,
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
             candidatePorts,
             skipIfNoPrivileges);
   }
@@ -163,10 +162,7 @@ public abstract class IoTDBSslSyncSink extends IoTDBSink {
       final String loadTsFileStrategy,
       final boolean validateTsFile,
       final boolean shouldMarkAsPipeRequest,
-      final String customSendPortStrategy,
-      final int minSendPortRange,
-      final int maxSendPortRange,
-      final List<Integer> candidatePorts,
+      final IntervalManager<PlainInterval> candidatePorts,
       final boolean skipIfNoPrivileges);
 
   @Override

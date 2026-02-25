@@ -23,6 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.sink.client.port.IoTDBSinkPortBinder;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferSliceReq;
@@ -43,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class IoTDBSyncClient extends IClientRPCService.Client
@@ -64,10 +65,7 @@ public class IoTDBSyncClient extends IClientRPCService.Client
       final boolean useSSL,
       final String trustStore,
       final String trustStorePwd,
-      final String customSendPortStrategy,
-      final int minSendPortRange,
-      final int maxSendPortRange,
-      final List<Integer> candidatePorts)
+      final IntervalManager<PlainInterval> candidatePorts)
       throws TTransportException {
     super(
         property
@@ -88,9 +86,6 @@ public class IoTDBSyncClient extends IClientRPCService.Client
     final TTransport transport = getInputProtocol().getTransport();
     if (!transport.isOpen()) {
       IoTDBSinkPortBinder.bindPort(
-          customSendPortStrategy,
-          minSendPortRange,
-          maxSendPortRange,
           candidatePorts,
           (sendPort) -> {
             final InetSocketAddress isa = new InetSocketAddress(sendPort);

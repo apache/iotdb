@@ -167,9 +167,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             false,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
             candidatePorts,
             skipIfNoPrivileges);
 
@@ -187,9 +184,6 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             isSplitTSFileBatchModeEnabled,
-            customSendPortStrategy,
-            minSendPortRange,
-            maxSendPortRange,
             candidatePorts,
             skipIfNoPrivileges);
 

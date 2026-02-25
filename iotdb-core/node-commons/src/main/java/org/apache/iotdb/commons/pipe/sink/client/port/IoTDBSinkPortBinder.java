@@ -19,7 +19,8 @@
 
 package org.apache.iotdb.commons.pipe.sink.client.port;
 
-import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.utils.function.Consumer;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
@@ -27,7 +28,7 @@ import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Iterator;
 
 public class IoTDBSinkPortBinder {
 
@@ -36,38 +37,22 @@ public class IoTDBSinkPortBinder {
   // ===========================bind================================
 
   public static void bindPort(
-      final String customSendPortStrategy,
-      final int minSendPortRange,
-      final int maxSendPortRange,
-      final List<Integer> candidatePorts,
+      final IntervalManager<PlainInterval> candidatePorts,
       final Consumer<Integer, Exception> consumer) {
-    final boolean isRange =
-        PipeSinkConstant.SINK_IOTDB_SEND_PORT_RESTRICTION_RANGE_STRATEGY.equals(
-            customSendPortStrategy);
+    final Iterator<Long> iterator = candidatePorts.iterator();
     boolean portFound = false;
-    int index = 0;
-    boolean searching = isRange || !candidatePorts.isEmpty();
-    while (searching) {
-      final int port = isRange ? minSendPortRange + index : candidatePorts.get(index);
+    while (iterator.hasNext()) {
+      final int port = Math.toIntExact(iterator.next());
       try {
         consumer.accept(port);
         portFound = true;
         break;
-      } catch (final Exception e) {
-        System.currentTimeMillis();
+      } catch (final Exception ignore) {
       }
-      index++;
-      searching = isRange ? port <= maxSendPortRange : candidatePorts.size() > index;
     }
     if (!portFound) {
       final String exceptionMessage =
-          isRange
-              ? String.format(
-                  "Failed to find an available send port within the range %d to %d.",
-                  minSendPortRange, maxSendPortRange)
-              : String.format(
-                  "Failed to find an available send port in the candidate list [%s].",
-                  candidatePorts);
+          String.format("Failed to find an available sending ports in %s.", candidatePorts);
       PipeLogger.log(LOGGER::warn, exceptionMessage);
       throw new PipeConnectionException(exceptionMessage);
     }
