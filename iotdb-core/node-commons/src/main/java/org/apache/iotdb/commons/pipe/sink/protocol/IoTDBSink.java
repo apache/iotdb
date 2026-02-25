@@ -618,7 +618,7 @@ public abstract class IoTDBSink implements PipeConnector {
         }
       }
       final long min = Long.parseLong(range[0]);
-      final long max = range.length > 1 ? Long.parseLong(range[1]) : Long.parseLong(range[0]);
+      final long max = range.length > 1 ? Long.parseLong(range[1]) : min;
       if (min > max) {
         throw new PipeParameterNotValidException(
             String.format(
