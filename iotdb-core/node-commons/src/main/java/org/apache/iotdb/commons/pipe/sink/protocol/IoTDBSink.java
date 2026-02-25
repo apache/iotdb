@@ -621,10 +621,15 @@ public abstract class IoTDBSink implements PipeConnector {
                   "The port %s is not valid, the port must be >= 0 and <= 65535", singlePort));
         }
       }
-      result.addInterval(
-          new PlainInterval(
-              Long.parseLong(range[0]),
-              range.length > 1 ? Long.parseLong(range[1]) : Long.parseLong(range[0])));
+      final long min = Long.parseLong(range[0]);
+      final long max = range.length > 1 ? Long.parseLong(range[1]) : Long.parseLong(range[0]);
+      if (min > max) {
+        throw new PipeParameterNotValidException(
+            String.format(
+                "The port %s-%s is not valid, the min value shall be smaller than the max value in the port range",
+                min, max));
+      }
+      result.addInterval(new PlainInterval(min, max));
     }
     return result;
   }
