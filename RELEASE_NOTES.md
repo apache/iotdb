@@ -18,6 +18,20 @@
     under the License.
 
 -->
+# Apache IoTDB 2.0.7
+
+## Features & Improvements
+
+- System Management: Updated Jetty dependency version.
+- Others: Remove risky RPC interfaces.
+- Others: Remove JEXL functions.
+- Others: Check naming when creating a Pipe.
+- Others: Change the default client RPC service address to 127.0.0.1.
+- Others: Modify code to make internal services bind to the value specified by `dn_internal_address`instead of the default address.
+
+## Bugs
+- Fixed an issue in the partition table automatic deletion logic: Only TTL configured at the DB level takes effect, using the maximum TTL value within the DB.
+- ...
 
 # Apache IoTDB 2.0.6
 
