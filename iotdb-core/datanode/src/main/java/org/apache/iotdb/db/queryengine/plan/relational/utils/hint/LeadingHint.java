@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
@@ -240,12 +241,42 @@ public class LeadingHint extends JoinOrderHint {
       if (leftOutputSymbols.contains(leftSymbol) && rightOutputSymbols.contains(rightSymbol)) {
         criteria.add(
             new JoinNode.EquiJoinClause(
-                leftSymbol, rightSymbol, leftChild.getInputTables(), rightChild.getInputTables()));
+                leftSymbol,
+                rightSymbol,
+                JoinUtils.findSourceTable(leftChild, leftSymbol)
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                String.format(
+                                    "Cannot find source table for symbol %s in leading hint join left child",
+                                    leftSymbol))),
+                JoinUtils.findSourceTable(rightChild, rightSymbol)
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                String.format(
+                                    "Cannot find source table for symbol %s in leading hint join right child",
+                                    rightSymbol)))));
       } else if (leftOutputSymbols.contains(rightSymbol)
           && rightOutputSymbols.contains(leftSymbol)) {
         criteria.add(
             new JoinNode.EquiJoinClause(
-                rightSymbol, leftSymbol, leftChild.getInputTables(), rightChild.getInputTables()));
+                rightSymbol,
+                leftSymbol,
+                JoinUtils.findSourceTable(leftChild, rightSymbol)
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                String.format(
+                                    "Cannot find source table for symbol %s in leading hint join left child",
+                                    rightSymbol))),
+                JoinUtils.findSourceTable(rightChild, leftSymbol)
+                    .orElseThrow(
+                        () ->
+                            new IllegalStateException(
+                                String.format(
+                                    "Cannot find source table for symbol %s in leading hint join right child",
+                                    leftSymbol)))));
       } else {
         throw new IllegalArgumentException("Invalid join condition");
       }
