@@ -20,11 +20,16 @@
 package org.apache.iotdb.db.utils.io;
 
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 // TODO: move to TsFile
 public class IOUtils {
@@ -48,5 +53,44 @@ public class IOUtils {
       size += item.serialize(stream);
     }
     return size;
+  }
+
+  public static long writeStringMap(Map<String, String> map, ByteBuffer byteBuffer) {
+    long size = ReadWriteForEncodingUtils.writeVarInt(map.size(), byteBuffer);
+    for (Entry<String, String> entry : map.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(entry.getKey(), byteBuffer);
+      size += ReadWriteIOUtils.writeVar(entry.getValue(), byteBuffer);
+    }
+    return size;
+  }
+
+  public static long writeStringMap(Map<String, String> map, OutputStream stream)
+      throws IOException {
+    long size = ReadWriteForEncodingUtils.writeVarInt(map.size(), stream);
+    for (Entry<String, String> entry : map.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(entry.getKey(), stream);
+      size += ReadWriteIOUtils.writeVar(entry.getValue(), stream);
+    }
+    return size;
+  }
+
+  public static Map<String, String> readLinkedStringMap(ByteBuffer byteBuffer) {
+    int size = ReadWriteForEncodingUtils.readVarInt(byteBuffer);
+    Map<String, String> map = new LinkedHashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      map.put(
+          ReadWriteIOUtils.readVarIntString(byteBuffer),
+          ReadWriteIOUtils.readVarIntString(byteBuffer));
+    }
+    return map;
+  }
+
+  public static Map<String, String> readLinkedStringMap(InputStream stream) throws IOException {
+    int size = ReadWriteForEncodingUtils.readVarInt(stream);
+    Map<String, String> map = new LinkedHashMap<>(size);
+    for (int i = 0; i < size; i++) {
+      map.put(ReadWriteIOUtils.readVarIntString(stream), ReadWriteIOUtils.readVarIntString(stream));
+    }
+    return map;
   }
 }

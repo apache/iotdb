@@ -90,9 +90,8 @@ public class EvolvedSchemaTest {
     EvolvedSchema oldSchema = new EvolvedSchema();
     schemaEvolutionList.forEach(schemaEvolution -> schemaEvolution.applyTo(oldSchema));
 
-    List<SchemaEvolution> convertedSchemaEvolutions = oldSchema.toSchemaEvolutions();
     EvolvedSchema newSchema = new EvolvedSchema();
-    convertedSchemaEvolutions.forEach(schemaEvolution -> schemaEvolution.applyTo(newSchema));
+    oldSchema.applyTo(newSchema);
 
     assertEquals(oldSchema, newSchema);
   }
@@ -104,21 +103,21 @@ public class EvolvedSchemaTest {
     SchemaEvolution schemaEvolution = new TableRename("t1", "t2");
     schemaEvolution.applyTo(schema);
     assertEquals("t1", schema.getOriginalTableName("t2"));
-    assertEquals("", schema.getOriginalTableName("t1"));
+    assertEquals("t1", schema.getOriginalTableName("t1"));
     assertEquals("t2", schema.getFinalTableName("t1"));
     assertEquals("t2", schema.getFinalTableName("t2"));
     // t1 -> t2 -> t3
     schemaEvolution = new TableRename("t2", "t3");
     schemaEvolution.applyTo(schema);
     assertEquals("t1", schema.getOriginalTableName("t3"));
-    assertEquals("", schema.getOriginalTableName("t2"));
+    assertEquals("t2", schema.getOriginalTableName("t2"));
     assertEquals("t3", schema.getFinalTableName("t1"));
     assertEquals("t2", schema.getFinalTableName("t2"));
     // t1 -> t2 -> t3 -> t1
     schemaEvolution = new TableRename("t3", "t1");
     schemaEvolution.applyTo(schema);
     assertEquals("t1", schema.getOriginalTableName("t1"));
-    assertEquals("", schema.getOriginalTableName("t3"));
+    assertEquals("t3", schema.getOriginalTableName("t3"));
     assertEquals("t1", schema.getFinalTableName("t1"));
     assertEquals("t3", schema.getFinalTableName("t3"));
   }
@@ -130,14 +129,14 @@ public class EvolvedSchemaTest {
     SchemaEvolution schemaEvolution = new ColumnRename("t1", "s1", "s2");
     schemaEvolution.applyTo(schema);
     assertEquals("s1", schema.getOriginalColumnName("t1", "s2"));
-    assertEquals("", schema.getOriginalColumnName("t1", "s1"));
+    assertEquals("s1", schema.getOriginalColumnName("t1", "s1"));
     assertEquals("s2", schema.getFinalColumnName("t1", "s1"));
     assertEquals("s2", schema.getFinalColumnName("t1", "s2"));
     // s1 -> s2 -> s3
     schemaEvolution = new ColumnRename("t1", "s2", "s3");
     schemaEvolution.applyTo(schema);
     assertEquals("s1", schema.getOriginalColumnName("t1", "s3"));
-    assertEquals("", schema.getOriginalColumnName("t1", "s2"));
+    assertEquals("s2", schema.getOriginalColumnName("t1", "s2"));
     assertEquals("s3", schema.getFinalColumnName("t1", "s1"));
     assertEquals("s2", schema.getFinalColumnName("t1", "s2"));
     // s1 -> s2 -> s3 -> s1

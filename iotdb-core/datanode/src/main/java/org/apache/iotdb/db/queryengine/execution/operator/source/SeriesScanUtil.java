@@ -664,63 +664,73 @@ public class SeriesScanUtil implements Accountable {
   }
 
   private void unpackOneChunkMetaData(IChunkMetadata chunkMetaData) throws IOException {
-    long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
+    try {
+      long timestampInFileName = FileLoaderUtils.getTimestampInFileName(chunkMetaData);
 
-    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
-    if ((chunkLoader instanceof MemChunkLoader)
-        && ((MemChunkLoader) chunkLoader).isStreamingQueryMemChunk()) {
-      unpackOneFakeMemChunkMetaData(
-          chunkMetaData, (MemChunkLoader) chunkLoader, timestampInFileName);
-      return;
-    }
-    List<IPageReader> pageReaderList =
-        FileLoaderUtils.loadPageReaderList(
-            chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
+      IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+      if ((chunkLoader instanceof MemChunkLoader)
+          && ((MemChunkLoader) chunkLoader).isStreamingQueryMemChunk()) {
+        unpackOneFakeMemChunkMetaData(
+            chunkMetaData, (MemChunkLoader) chunkLoader, timestampInFileName);
+        return;
+      }
+      List<IPageReader> pageReaderList =
+          FileLoaderUtils.loadPageReaderList(
+              chunkMetaData, scanOptions.getGlobalTimeFilter(), getTsDataTypeList());
 
-    // init TsBlockBuilder for each page reader
-    pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
+      // init TsBlockBuilder for each page reader
+      pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
 
-    if (chunkMetaData.isSeq()) {
-      if (orderUtils.getAscending()) {
-        for (IPageReader iPageReader : pageReaderList) {
-          seqPageReaders.add(
-              new VersionPageReader(
-                  context,
-                  timestampInFileName,
-                  chunkMetaData.getVersion(),
-                  chunkMetaData.getOffsetOfChunkHeader(),
-                  iPageReader,
-                  true));
+      if (chunkMetaData.isSeq()) {
+        if (orderUtils.getAscending()) {
+          for (IPageReader iPageReader : pageReaderList) {
+            seqPageReaders.add(
+                new VersionPageReader(
+                    context,
+                    timestampInFileName,
+                    chunkMetaData.getVersion(),
+                    chunkMetaData.getOffsetOfChunkHeader(),
+                    iPageReader,
+                    true));
+          }
+        } else {
+          for (int i = pageReaderList.size() - 1; i >= 0; i--) {
+            seqPageReaders.add(
+                new VersionPageReader(
+                    context,
+                    timestampInFileName,
+                    chunkMetaData.getVersion(),
+                    chunkMetaData.getOffsetOfChunkHeader(),
+                    pageReaderList.get(i),
+                    true));
+          }
         }
       } else {
-        for (int i = pageReaderList.size() - 1; i >= 0; i--) {
-          seqPageReaders.add(
-              new VersionPageReader(
-                  context,
-                  timestampInFileName,
-                  chunkMetaData.getVersion(),
-                  chunkMetaData.getOffsetOfChunkHeader(),
-                  pageReaderList.get(i),
-                  true));
+        pageReaderList.forEach(
+            pageReader ->
+                unSeqPageReaders.add(
+                    new VersionPageReader(
+                        context,
+                        timestampInFileName,
+                        chunkMetaData.getVersion(),
+                        chunkMetaData.getOffsetOfChunkHeader(),
+                        pageReader,
+                        false)));
+      }
+
+      if (LOGGER.isDebugEnabled()) {
+        for (IPageReader pageReader : pageReaderList) {
+          LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
         }
       }
-    } else {
-      pageReaderList.forEach(
-          pageReader ->
-              unSeqPageReaders.add(
-                  new VersionPageReader(
-                      context,
-                      timestampInFileName,
-                      chunkMetaData.getVersion(),
-                      chunkMetaData.getOffsetOfChunkHeader(),
-                      pageReader,
-                      false)));
-    }
-
-    if (LOGGER.isDebugEnabled()) {
-      for (IPageReader pageReader : pageReaderList) {
-        LOGGER.debug("[SeriesScanUtil] pageReader.isModified() is {}", pageReader.isModified());
-      }
+    } catch (Exception e) {
+      LOGGER.error(
+          "[SeriesScanUtil] unpackOneChunkMetaData {}-{} failed on {}: ",
+          deviceID,
+          chunkMetaData,
+          chunkMetaData.getChunkLoader(),
+          e);
+      throw e;
     }
   }
 

@@ -332,8 +332,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // problem of the same file name.
     calculateRenamedTargetFiles(needToAdjustSourceFilesPosition);
 
-    // If there is a schema evolution and not all files have the same schema evolution
-    // we should compact all fils to the last position so that the target will have the least
+    // If there is a schema evolution and not all files have the same schema evolution,
+    // we should compact all files to the last position so that the target will have the least
     // schema evolution
     boolean hasDifferentSchemaEvolution =
         filesView.sortedAllSourceFilesInTask.get(0).getMergedEvolvedSchema() != null
@@ -343,7 +343,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 .getTsFileSets()
                 .equals(
                     filesView
-                        .sourceFilesInCompactionPerformer
+                        .sortedAllSourceFilesInTask
                         .get(filesView.sortedAllSourceFilesInTask.size() - 1)
                         .getTsFileSets());
     if (needToAdjustSourceFilesPosition) {

@@ -482,18 +482,24 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       boolean hasPreviousSeqFile = false;
       for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
         DeviceInfo unseqDeviceInfo = it.next();
-        IDeviceID deviceIdInUnseq = unseqDeviceInfo.deviceId;
-        IDeviceID finalDeviceId = deviceIdInUnseq;
-        EvolvedSchema unseqEvolvedSchema = unseqFile.resource.getMergedEvolvedSchema();
-        if (unseqEvolvedSchema != null) {
-          finalDeviceId = unseqEvolvedSchema.rewriteToFinal(deviceIdInUnseq);
-        }
 
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
         for (int i = 0; i < seqFiles.size(); i++) {
           TsFileResourceCandidate seqFile = seqFiles.get(i);
-          EvolvedSchema seqEvolvedSchema = seqFile.resource.getMergedEvolvedSchema();
+          long maxFileVersion =
+              Math.max(seqFile.resource.getVersion(), unseqFile.resource.getVersion());
+
+          // convert the DeviceIDs consistently to the schema with a larger version
+          IDeviceID deviceIdInUnseq = unseqDeviceInfo.deviceId;
+          IDeviceID finalDeviceId = deviceIdInUnseq;
+          EvolvedSchema unseqEvolvedSchema =
+              unseqFile.resource.getMergedEvolvedSchema(maxFileVersion);
+          if (unseqEvolvedSchema != null) {
+            finalDeviceId = unseqEvolvedSchema.rewriteToFinal(deviceIdInUnseq);
+          }
+
+          EvolvedSchema seqEvolvedSchema = seqFile.resource.getMergedEvolvedSchema(maxFileVersion);
           IDeviceID deviceIdInSeq = finalDeviceId;
           if (seqEvolvedSchema != null) {
             deviceIdInSeq = seqEvolvedSchema.rewriteToOriginal(finalDeviceId);
@@ -503,6 +509,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
           }
           if (!seqFile.containsDevice(deviceIdInSeq)) {
+            LOGGER.warn(
+                "seqFile {} does not contain device {}, it has {}",
+                seqFile.resource.getTsFile(),
+                deviceIdInSeq,
+                seqFile.getDevices());
+            LOGGER.warn("seq schema evolution {}", seqEvolvedSchema);
+            LOGGER.warn(
+                "unseqFile {} has {}", unseqFile.resource.getTsFile(), unseqFile.getDevices());
+            LOGGER.warn("unseq schema evolution {}", unseqEvolvedSchema);
             continue;
           }
           DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceIdInSeq);
@@ -609,7 +624,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       }
       selectedUnseqFile.resource.setInsertionCompactionTaskCandidate(
           InsertionCompactionCandidateStatus.VALID);
-      if (selectedUnseqFileIndex == 0) {}
 
       return true;
     }
@@ -630,6 +644,9 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         return false;
       }
 
+      long maxFileVersion =
+          Math.max(candidate1.resource.getVersion(), candidate2.resource.getVersion());
+
       // TimeIndex may be degraded after this check, but it will not affect the correctness of task
       // selection
       boolean candidate1NeedDeserialize =
@@ -644,14 +661,17 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
 
       for (Iterator<DeviceInfo> it = candidate2.getDeviceInfoIterator(); it.hasNext(); ) {
         DeviceInfo device = it.next();
+        // convert the DeviceIDs consistently to the schema with a larger version
         IDeviceID cand2OriginalDeviceId = device.deviceId;
         IDeviceID finalDeviceId = device.deviceId;
-        EvolvedSchema cand2EvolvedSchema = candidate2.resource.getMergedEvolvedSchema();
+        EvolvedSchema cand2EvolvedSchema =
+            candidate2.resource.getMergedEvolvedSchema(maxFileVersion);
         if (cand2EvolvedSchema != null) {
           finalDeviceId = cand2EvolvedSchema.rewriteToFinal(finalDeviceId);
         }
         IDeviceID cand1OriginalDeviceId = finalDeviceId;
-        EvolvedSchema cand1EvolvedSchema = candidate1.resource.getMergedEvolvedSchema();
+        EvolvedSchema cand1EvolvedSchema =
+            candidate1.resource.getMergedEvolvedSchema(maxFileVersion);
         if (cand1EvolvedSchema != null) {
           cand1OriginalDeviceId = cand1EvolvedSchema.rewriteToOriginal(finalDeviceId);
         }

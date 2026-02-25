@@ -24,6 +24,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+import org.apache.iotdb.db.utils.io.IOUtils;
 
 import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -35,6 +36,7 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -43,6 +45,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,7 +59,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class EvolvedSchema implements Accountable {
+public class EvolvedSchema implements Accountable, SchemaEvolution {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(EvolvedSchema.class);
   // the evolved table names after applying all schema evolution operations
@@ -74,16 +78,17 @@ public class EvolvedSchema implements Accountable {
   private Map<String, Map<String, String>> originalToFinalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
-    if (!finalToOriginalTableNames.containsKey(oldTableName)
-        || finalToOriginalTableNames.get(oldTableName).isEmpty()) {
+    if (!finalToOriginalTableNames.containsKey(oldTableName)) {
       finalToOriginalTableNames.put(newTableName, oldTableName);
-      finalToOriginalTableNames.put(oldTableName, "");
       originalToFinalTableNames.put(oldTableName, newTableName);
     } else {
-      // mark the old table name as non-exists (empty)
-      String originalName = finalToOriginalTableNames.put(oldTableName, "");
-      finalToOriginalTableNames.put(newTableName, originalName);
-      originalToFinalTableNames.put(originalName, newTableName);
+      String originalName = finalToOriginalTableNames.remove(oldTableName);
+      if (!originalName.equals(newTableName)) {
+        finalToOriginalTableNames.put(newTableName, originalName);
+        originalToFinalTableNames.put(originalName, newTableName);
+      } else {
+        originalToFinalTableNames.remove(originalName);
+      }
     }
 
     if (finalToOriginalColumnNames.containsKey(oldTableName)) {
@@ -96,16 +101,14 @@ public class EvolvedSchema implements Accountable {
     Map<String, String> finalToOriginalMap =
         finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
     String originalTableName = getOriginalTableName(newTableName);
-    if (!finalToOriginalMap.containsKey(oldColumnName)
-        || finalToOriginalMap.get(oldColumnName).isEmpty()) {
+    if (!finalToOriginalMap.containsKey(oldColumnName)) {
       finalToOriginalMap.put(newColumnName, oldColumnName);
-      finalToOriginalMap.put(oldColumnName, "");
+      finalToOriginalMap.remove(oldColumnName);
       originalToFinalColumnNames
           .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
           .put(oldColumnName, newColumnName);
     } else {
-      // mark the old column name as non-exists
-      String originalName = finalToOriginalMap.put(oldColumnName, "");
+      String originalName = finalToOriginalMap.remove(oldColumnName);
       if (!newColumnName.equals(originalName)) {
         finalToOriginalMap.put(newColumnName, originalName);
         originalToFinalColumnNames
@@ -181,35 +184,11 @@ public class EvolvedSchema implements Accountable {
         + '}';
   }
 
-  public List<SchemaEvolution> toSchemaEvolutions() {
-    List<SchemaEvolution> schemaEvolutions = new ArrayList<>();
-    finalToOriginalTableNames.forEach(
-        (finalTableName, originalTableName) -> {
-          if (!originalTableName.isEmpty()) {
-            schemaEvolutions.add(new TableRename(originalTableName, finalTableName));
-          }
-        });
-    finalToOriginalColumnNames.forEach(
-        (finalTableName, originalColumnNameMap) -> {
-          originalColumnNameMap.forEach(
-              (finalColumnName, originalColumnName) -> {
-                if (!originalColumnName.isEmpty()) {
-                  schemaEvolutions.add(
-                      new ColumnRename(finalTableName, originalColumnName, finalColumnName, null));
-                }
-              });
-        });
-    return schemaEvolutions;
-  }
-
   public ByteBuffer toSchemaEvolutionFileBuffer() {
     PublicBAOS publicBAOS = new PublicBAOS();
     try {
       ReadWriteIOUtils.write(0L, publicBAOS);
-      List<SchemaEvolution> schemaEvolutions = toSchemaEvolutions();
-      for (SchemaEvolution evolution : schemaEvolutions) {
-        evolution.serialize(publicBAOS);
-      }
+      this.serialize(publicBAOS);
     } catch (IOException e) {
       // ignored
     }
@@ -459,5 +438,96 @@ public class EvolvedSchema implements Accountable {
         + RamUsageEstimator.sizeOfMap(this.finalToOriginalColumnNames)
         + RamUsageEstimator.sizeOfMap(this.originalToFinalTableNames)
         + RamUsageEstimator.sizeOfMap(this.originalToFinalColumnNames);
+  }
+
+  @Override
+  public void applyTo(EvolvedSchema schema) {
+    schema.finalToOriginalTableNames = finalToOriginalTableNames;
+    schema.finalToOriginalColumnNames = finalToOriginalColumnNames;
+    schema.originalToFinalTableNames = originalToFinalTableNames;
+    schema.originalToFinalColumnNames = originalToFinalColumnNames;
+  }
+
+  @Override
+  public SchemaEvolutionType getEvolutionType() {
+    return SchemaEvolutionType.FULL_EVOLUTION;
+  }
+
+  @Override
+  public String getAffectedTableName() {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public long serialize(ByteBuffer buffer) {
+    long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), buffer);
+    size += IOUtils.writeStringMap(finalToOriginalTableNames, buffer);
+
+    size += ReadWriteForEncodingUtils.writeVarInt(finalToOriginalColumnNames.size(), buffer);
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(tableEntry.getKey(), buffer);
+      size += IOUtils.writeStringMap(tableEntry.getValue(), buffer);
+    }
+    return size;
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    finalToOriginalTableNames = IOUtils.readLinkedStringMap(buffer);
+
+    int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+    for (int i = 0; i < size; i++) {
+      String tableName = ReadWriteIOUtils.readVarIntString(buffer);
+      finalToOriginalColumnNames.put(tableName, IOUtils.readLinkedStringMap(buffer));
+    }
+
+    buildOriginalToFinalMap();
+  }
+
+  private void buildOriginalToFinalMap() {
+    originalToFinalTableNames = new HashMap<>(finalToOriginalTableNames.size());
+    for (Entry<String, String> entry : finalToOriginalTableNames.entrySet()) {
+      originalToFinalTableNames.put(entry.getValue(), entry.getKey());
+    }
+
+    originalToFinalColumnNames = new HashMap<>(finalToOriginalColumnNames.size());
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      String finalTableName = tableEntry.getKey();
+      String originalTableName = getOriginalTableName(finalTableName);
+      Map<String, String> columnMap = tableEntry.getValue();
+      for (Entry<String, String> columnEntry : columnMap.entrySet()) {
+        String finalColumnName = columnEntry.getKey();
+        String originalColumnName = getOriginalColumnName(originalTableName, finalColumnName);
+        originalToFinalColumnNames
+            .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+            .put(originalColumnName, finalColumnName);
+      }
+    }
+  }
+
+  @Override
+  public long serialize(OutputStream stream) throws IOException {
+    long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), stream);
+    size += IOUtils.writeStringMap(finalToOriginalTableNames, stream);
+
+    size += ReadWriteForEncodingUtils.writeVarInt(finalToOriginalColumnNames.size(), stream);
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(tableEntry.getKey(), stream);
+      size += IOUtils.writeStringMap(tableEntry.getValue(), stream);
+    }
+    return size;
+  }
+
+  @Override
+  public void deserialize(InputStream stream) throws IOException {
+    finalToOriginalTableNames = IOUtils.readLinkedStringMap(stream);
+
+    int size = ReadWriteForEncodingUtils.readVarInt(stream);
+    for (int i = 0; i < size; i++) {
+      String tableName = ReadWriteIOUtils.readVarIntString(stream);
+      finalToOriginalColumnNames.put(tableName, IOUtils.readLinkedStringMap(stream));
+    }
+
+    buildOriginalToFinalMap();
   }
 }

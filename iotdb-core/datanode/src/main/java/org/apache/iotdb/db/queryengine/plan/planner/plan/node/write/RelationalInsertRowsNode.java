@@ -34,6 +34,7 @@ import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.TableSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -207,6 +208,13 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
   public void checkDataType(AbstractMemTable memTable) throws DataTypeInconsistentException {
     for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
       insertRowNode.checkDataType(memTable);
+    }
+  }
+
+  @Override
+  public void filterNonExistsColumn(TableSchema tableSchema) {
+    for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
+      insertRowNode.filterNonExistsColumn(tableSchema);
     }
   }
 }

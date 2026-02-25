@@ -43,9 +43,12 @@ public interface SchemaEvolution extends StreamSerializable, BufferSerializable 
 
   SchemaEvolutionType getEvolutionType();
 
+  String getAffectedTableName();
+
   enum SchemaEvolutionType {
     TABLE_RENAME,
-    COLUMN_RENAME
+    COLUMN_RENAME,
+    FULL_EVOLUTION
   }
 
   static SchemaEvolution createFrom(int type) {
@@ -60,6 +63,9 @@ public interface SchemaEvolution extends StreamSerializable, BufferSerializable 
         break;
       case COLUMN_RENAME:
         evolution = new ColumnRename();
+        break;
+      case FULL_EVOLUTION:
+        evolution = new EvolvedSchema();
         break;
       default:
         throw new IllegalArgumentException("Invalid evolution type: " + evolutionType);

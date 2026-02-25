@@ -1263,8 +1263,11 @@ public class DataRegion implements IDataRegionForQuery {
         return;
       }
 
+      for (SchemaEvolution schemaEvolution : schemaEvolutions) {
+        TABLE_SCHEMA_CACHE.invalidate(
+            new TableSchemaCacheKey(databaseName, schemaEvolution.getAffectedTableName()));
+      }
       syncCloseAllWorkingTsFileProcessors();
-
       // may update table names in deviceIds
       schemaEvolutions.forEach(lastFlushTimeMap::accept);
 
@@ -1774,6 +1777,7 @@ public class DataRegion implements IDataRegionForQuery {
             final String database = getDatabaseName();
 
             TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, t, false);
+            TableSchema tableSchema = null;
             if (tsTable == null) {
               // There is a high probability that the leader node has been executed and is currently
               // located in the follower node.
@@ -1790,16 +1794,14 @@ public class DataRegion implements IDataRegionForQuery {
                   }
                   // For table schema from ConfigNode, we cannot get version info,
                   // so we don't cache it to avoid version mismatch
-                  final TableSchema schema =
+                  tableSchema =
                       TsFileTableSchemaUtil.tsTableBufferToTableSchemaNoAttribute(
                           ByteBuffer.wrap(resp.getTableInfo()));
-                  return schema;
                 } catch (TException | ClientManagerException e) {
                   logger.error(
                       "Remote request config node failed that judgment if table is exist, occur exception. {}",
                       e.getMessage());
                   TableMetadataImpl.throwTableNotExistsException(getDatabaseName(), tableName);
-                  return null; // unreachable, throwTableNotExistsException always throws
                 }
               } else {
                 // maybe there is a concurrent schema modification
@@ -1807,16 +1809,22 @@ public class DataRegion implements IDataRegionForQuery {
               }
             }
 
-            final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
-            final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
-            if (cachedSchema != null) {
-              return cachedSchema;
+            if (tableSchema == null) {
+              final Pair<Long, Long> currentVersion = tsTable.getInstanceVersion();
+              final TableSchema cachedSchema = getTableSchemaFromCache(database, t, currentVersion);
+              if (cachedSchema != null) {
+                tableSchema = cachedSchema;
+              } else {
+                tableSchema = TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
+                cacheTableSchema(database, t, currentVersion, tableSchema);
+              }
             }
 
-            final TableSchema schema =
-                TsFileTableSchemaUtil.toTsFileTableSchemaNoAttribute(tsTable);
-            cacheTableSchema(database, t, currentVersion, schema);
-            return schema;
+            // the table schema may be renewed after the node passes the schema validation,
+            // remove columns that no longer exist in the schema
+            node.filterNonExistsColumn(tableSchema);
+
+            return tableSchema;
           });
     }
   }

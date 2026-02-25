@@ -62,6 +62,11 @@ public class ColumnRename implements SchemaEvolution {
   }
 
   @Override
+  public String getAffectedTableName() {
+    return tableName;
+  }
+
+  @Override
   public long serialize(OutputStream stream) throws IOException {
     int size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), stream);
     size += ReadWriteIOUtils.writeVar(tableName, stream);
@@ -121,5 +126,22 @@ public class ColumnRename implements SchemaEvolution {
 
   public String getNameAfter() {
     return nameAfter;
+  }
+
+  @Override
+  public String toString() {
+    return "ColumnRename{"
+        + "tableName='"
+        + tableName
+        + '\''
+        + ", nameBefore='"
+        + nameBefore
+        + '\''
+        + ", nameAfter='"
+        + nameAfter
+        + '\''
+        + ", dataType="
+        + dataType
+        + '}';
   }
 }

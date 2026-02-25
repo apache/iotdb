@@ -57,6 +57,11 @@ public class TableRename implements SchemaEvolution {
   }
 
   @Override
+  public String getAffectedTableName() {
+    return nameBefore;
+  }
+
+  @Override
   public long serialize(OutputStream stream) throws IOException {
     long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), stream);
     size += ReadWriteIOUtils.writeVar(nameBefore, stream);
@@ -115,5 +120,17 @@ public class TableRename implements SchemaEvolution {
       T removed = map.remove(deviceID);
       map.put(newDeviceId, removed);
     }
+  }
+
+  @Override
+  public String toString() {
+    return "TableRename{"
+        + "nameBefore='"
+        + nameBefore
+        + '\''
+        + ", nameAfter='"
+        + nameAfter
+        + '\''
+        + '}';
   }
 }

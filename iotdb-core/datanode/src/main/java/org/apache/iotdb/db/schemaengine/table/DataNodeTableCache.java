@@ -344,28 +344,32 @@ public class DataNodeTableCache implements ITableCache {
       final String database, final String tableName) {
     readWriteLock.readLock().lock();
     try {
-      return preUpdateTableMap.containsKey(database)
-              && preUpdateTableMap.get(database).containsKey(tableName)
-              && Objects.nonNull(preUpdateTableMap.get(database).get(tableName).getLeft())
-          ? preUpdateTableMap.entrySet().stream()
-              .filter(
-                  entry -> {
-                    entry
-                        .getValue()
-                        .entrySet()
-                        .removeIf(tableEntry -> Objects.isNull(tableEntry.getValue().getLeft()));
-                    return !entry.getValue().isEmpty();
-                  })
-              .collect(
-                  Collectors.toMap(
-                      Map.Entry::getKey,
-                      entry ->
-                          entry.getValue().entrySet().stream()
-                              .collect(
-                                  Collectors.toMap(
-                                      Map.Entry::getKey,
-                                      innerEntry -> innerEntry.getValue().getRight()))))
-          : null;
+      Map<String, Pair<TsTable, Long>> tablesMap = preUpdateTableMap.get(database);
+      if (tablesMap == null) {
+        return null;
+      }
+      Pair<TsTable, Long> tableVersionPair = tablesMap.get(tableName);
+      if (tableVersionPair == null || tableVersionPair.getLeft() == null) {
+        return null;
+      }
+      return preUpdateTableMap.entrySet().stream()
+          .filter(
+              entry -> {
+                entry
+                    .getValue()
+                    .entrySet()
+                    .removeIf(tableEntry -> Objects.isNull(tableEntry.getValue().getLeft()));
+                return !entry.getValue().isEmpty();
+              })
+          .collect(
+              Collectors.toMap(
+                  Map.Entry::getKey,
+                  entry ->
+                      entry.getValue().entrySet().stream()
+                          .collect(
+                              Collectors.toMap(
+                                  Map.Entry::getKey,
+                                  innerEntry -> innerEntry.getValue().getRight()))));
     } finally {
       readWriteLock.readLock().unlock();
     }
