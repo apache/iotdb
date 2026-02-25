@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DeleteDatabasePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.AbstractTablePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
@@ -278,8 +279,11 @@ public class ConfigRegionListeningFilter {
                 .getName()
                 .equals(Audit.TABLE_MODEL_AUDIT_DATABASE));
       // Table under audit db
-      case CommitCreateTable:
       case PipeCreateTableOrView:
+        return !((PipeCreateTableOrViewPlan) plan)
+            .getDatabase()
+            .equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
+      case CommitCreateTable:
       case AddTableColumn:
       case AddViewColumn:
       case SetTableProperties:
