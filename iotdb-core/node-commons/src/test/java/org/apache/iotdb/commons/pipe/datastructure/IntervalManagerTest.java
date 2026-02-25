@@ -20,20 +20,20 @@
 package org.apache.iotdb.commons.pipe.datastructure;
 
 import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
-import org.apache.iotdb.commons.pipe.sink.client.port.SinkPortInterval;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Iterator;
 
-public class SinkPortQueueTest {
+public class IntervalManagerTest {
   @Test
-  public void testSinkPortQueue() {
-    final IntervalManager<SinkPortInterval> sinkPortManager = new IntervalManager<>();
-    sinkPortManager.addInterval(new SinkPortInterval(3, 3));
-    sinkPortManager.addInterval(new SinkPortInterval(2, 4));
-    sinkPortManager.addInterval(new SinkPortInterval(60000, 60000));
+  public void testIntervalManager() {
+    final IntervalManager<PlainInterval> sinkPortManager = new IntervalManager<>();
+    sinkPortManager.addInterval(new PlainInterval(3, 3));
+    sinkPortManager.addInterval(new PlainInterval(2, 4));
+    sinkPortManager.addInterval(new PlainInterval(60000, 60000));
     final Iterator<Long> iterator = sinkPortManager.iterator();
     Assert.assertEquals(2L, (long) iterator.next());
     Assert.assertEquals(3L, (long) iterator.next());

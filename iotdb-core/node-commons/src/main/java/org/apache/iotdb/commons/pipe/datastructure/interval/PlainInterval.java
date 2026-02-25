@@ -17,12 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.pipe.sink.client.port;
+package org.apache.iotdb.commons.pipe.datastructure.interval;
 
-import org.apache.iotdb.commons.pipe.datastructure.interval.Interval;
-
-public class SinkPortInterval extends Interval<SinkPortInterval> {
-  public SinkPortInterval(final long start, final long end) {
+public class PlainInterval extends Interval<PlainInterval> {
+  public PlainInterval(final long start, final long end) {
     super(start, end);
   }
 }
