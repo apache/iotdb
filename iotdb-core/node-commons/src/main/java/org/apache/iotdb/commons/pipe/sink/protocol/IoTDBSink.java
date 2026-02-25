@@ -158,10 +158,6 @@ public abstract class IoTDBSink implements PipeConnector {
       "Exception occurred while parsing node urls from target servers: {}";
   private static final String PARSE_URL_ERROR_MESSAGE =
       "Error occurred while parsing node urls from target servers, please check the specified 'host':'port' or 'node-urls'";
-  public static final int MIN_PORT =
-      0; // The minimum port number allocated to user processes by the operating system
-  public static final int MAX_PORT = 65535; // The maximum value for port numbers
-
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSink.class);
 
   protected final List<TEndPoint> nodeUrls = new ArrayList<>();
