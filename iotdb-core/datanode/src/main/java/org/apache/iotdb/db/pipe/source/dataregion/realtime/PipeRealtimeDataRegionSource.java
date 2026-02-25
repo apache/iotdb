@@ -92,7 +92,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeName;
   protected long creationTime;
-  protected String dataRegionId;
+  protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean shouldExtractInsertion;
@@ -214,7 +214,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     pipeName = environment.getPipeName();
-    dataRegionId = String.valueOf(environment.getRegionId());
+    dataRegionId = environment.getRegionId();
     if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
       pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
     }
@@ -319,7 +319,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(dataRegionId)) {
+    if (dataRegionId >= 0) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
     }
@@ -557,7 +557,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return skipIfNoPrivileges;
   }
 
-  public final String getDataRegionId() {
+  public final int getDataRegionId() {
     return dataRegionId;
   }
 
