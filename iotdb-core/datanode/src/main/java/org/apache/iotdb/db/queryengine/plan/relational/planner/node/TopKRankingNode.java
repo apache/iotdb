@@ -90,13 +90,15 @@ public class TopKRankingNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode clone() {
-    return new TopKRankingNode(
+    TopKRankingNode topKRankingNode = new TopKRankingNode(
         getPlanNodeId(),
         specification,
         rankingType,
         rankingSymbol,
         maxRankingPerPartition,
         partial);
+    topKRankingNode.setDataPreSortedAndLimited(dataPreSortedAndLimited);
+    return topKRankingNode;
   }
 
   @Override
@@ -186,7 +188,7 @@ public class TopKRankingNode extends SingleChildProcessNode {
 
   @Override
   public PlanNode replaceChildren(List<PlanNode> newChildren) {
-    return new TopKRankingNode(
+    TopKRankingNode topKRankingNode = new TopKRankingNode(
         id,
         Iterables.getOnlyElement(newChildren),
         specification,
@@ -194,6 +196,8 @@ public class TopKRankingNode extends SingleChildProcessNode {
         rankingSymbol,
         maxRankingPerPartition,
         partial);
+    topKRankingNode.setDataPreSortedAndLimited(dataPreSortedAndLimited);
+    return topKRankingNode;
   }
 
   @Override
@@ -217,7 +221,8 @@ public class TopKRankingNode extends SingleChildProcessNode {
         rankingType,
         rankingSymbol,
         maxRankingPerPartition,
-        partial);
+        partial,
+        dataPreSortedAndLimited);
   }
 
   @Override
