@@ -67,7 +67,7 @@ public class TimePartitionManager {
       // PipeInsertionDataNodeListener.listenToInsertNode.
       PipeTimePartitionListener.getInstance()
           .listenToTimePartitionGrow(
-              String.valueOf(timePartitionInfo.dataRegionId.getId()),
+              timePartitionInfo.dataRegionId.getId(),
               new Pair<>(
                   timePartitionInfoMapForRegion.firstKey(),
                   timePartitionInfoMapForRegion.lastKey()));

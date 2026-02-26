@@ -543,23 +543,31 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUser(String username, String password) {
+  public TSStatus checkUser(
+      final String username, final String password, final boolean useEncryptedPassword) {
     checkCacheAvailable();
-    User user = iAuthorCache.getUserCache(username);
+    final User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (user.isOpenIdUser()) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else if (password != null
-          && AuthUtils.validatePassword(
-              password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null) {
+        if (useEncryptedPassword) {
+          return password.equals(user.getPassword())
+              ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+        } else {
+          return AuthUtils.validatePassword(password, user.getPassword())
+                  || AuthUtils.validatePassword(
+                      password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
+              ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+        }
       } else {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
     } else {
-      TLoginReq req = new TLoginReq(username, password);
+      TLoginReq req =
+          new TLoginReq(username, password).setUseEncryptedPassword(useEncryptedPassword);
       TPermissionInfoResp status = null;
       try (ConfigNodeClient configNodeClient =
           CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {

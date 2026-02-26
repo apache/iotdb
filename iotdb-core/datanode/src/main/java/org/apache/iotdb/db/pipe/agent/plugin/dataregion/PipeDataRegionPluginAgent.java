@@ -62,24 +62,24 @@ public class PipeDataRegionPluginAgent extends PipePluginAgent {
 
   @Override
   public void validate(
-      String pipeName,
-      Map<String, String> sourceAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> sinkAttributes)
+      final String pipeName,
+      final Map<String, String> sourceAttributes,
+      final Map<String, String> processorAttributes,
+      final Map<String, String> sinkAttributes)
       throws Exception {
-    PipeExtractor temporaryExtractor = validateSource(sourceAttributes);
-    PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
-    PipeConnector temporaryConnector = validateSink(pipeName, sinkAttributes);
+    final PipeExtractor temporaryExtractor = validateSource(pipeName, sourceAttributes);
+    final PipeProcessor temporaryProcessor = validateProcessor(processorAttributes);
+    final PipeConnector temporaryConnector = validateSink(pipeName, sinkAttributes);
 
     // validate visibility
     // TODO: validate visibility for schema region and config region
-    Visibility pipeVisibility =
+    final Visibility pipeVisibility =
         VisibilityUtils.calculateFromExtractorParameters(new PipeParameters(sourceAttributes));
-    Visibility extractorVisibility =
+    final Visibility extractorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryExtractor.getClass());
-    Visibility processorVisibility =
+    final Visibility processorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryProcessor.getClass());
-    Visibility connectorVisibility =
+    final Visibility connectorVisibility =
         VisibilityUtils.calculateFromPluginClass(temporaryConnector.getClass());
     if (!VisibilityUtils.isCompatible(
         pipeVisibility, extractorVisibility, processorVisibility, connectorVisibility)) {

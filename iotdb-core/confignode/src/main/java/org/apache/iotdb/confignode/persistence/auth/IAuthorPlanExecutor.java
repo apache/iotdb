@@ -33,7 +33,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 
 public interface IAuthorPlanExecutor {
-  TPermissionInfoResp login(String username, String password);
+  TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword);
 
   String login4Pipe(final String username, final String password);
 

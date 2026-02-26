@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -655,12 +656,13 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
           .getSchemaPartitionInfo()
           .getSchemaPartitionMap()
           .forEach(
-              (storageGroup, deviceGroup) -> {
-                if (storageGroup.equals(SchemaConstant.SYSTEM_DATABASE)) {
+              (database, deviceGroup) -> {
+                if (database.equals(SchemaConstant.SYSTEM_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfSystemDatabase.add(schemaRegionReplicaSet));
-                } else if (storageGroup.equals(SchemaConstant.AUDIT_DATABASE)) {
+                } else if (database.equals(SchemaConstant.AUDIT_DATABASE)
+                    || database.equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
                   deviceGroup.forEach(
                       (deviceGroupId, schemaRegionReplicaSet) ->
                           regionsOfAuditDatabase.add(schemaRegionReplicaSet));

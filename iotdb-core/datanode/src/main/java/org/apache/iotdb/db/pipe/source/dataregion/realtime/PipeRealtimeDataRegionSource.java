@@ -47,6 +47,7 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.PipeExtractor;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -91,7 +92,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   protected String pipeName;
   protected long creationTime;
-  protected String dataRegionId;
+  protected int dataRegionId = -1;
   protected PipeTaskMeta pipeTaskMeta;
 
   protected boolean shouldExtractInsertion;
@@ -205,8 +206,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
   public void customize(
       final PipeParameters parameters, final PipeExtractorRuntimeConfiguration configuration)
       throws Exception {
-    final PipeTaskSourceRuntimeEnvironment environment =
-        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     final Pair<Boolean, Boolean> insertionDeletionListeningOptionPair =
         DataRegionListeningFilter.parseInsertionDeletionListeningOptionPair(parameters);
@@ -214,8 +214,10 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     shouldExtractDeletion = insertionDeletionListeningOptionPair.getRight();
 
     pipeName = environment.getPipeName();
-    dataRegionId = String.valueOf(environment.getRegionId());
-    pipeTaskMeta = environment.getPipeTaskMeta();
+    dataRegionId = environment.getRegionId();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+    }
 
     // Metrics related to TsFileEpoch are managed in PipeExtractorMetrics. These metrics are
     // indexed by the taskID of IoTDBDataRegionExtractor. To avoid PipeRealtimeDataRegionExtractor
@@ -302,7 +304,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
     if (LOGGER.isInfoEnabled()) {
       LOGGER.info(
-          "Pipe {}@{}: realtime data region extractor is initialized with parameters: {}.",
+          "Pipe {}@{}: realtime data region source is initialized with parameters: {}.",
           pipeName,
           dataRegionId,
           parameters);
@@ -317,7 +319,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
 
   @Override
   public void close() throws Exception {
-    if (Objects.nonNull(dataRegionId)) {
+    if (dataRegionId >= 0) {
       PipeInsertionDataNodeListener.getInstance().stopListenAndAssign(dataRegionId, this);
       PipeTimePartitionListener.getInstance().stopListen(dataRegionId, this);
     }
@@ -555,7 +557,7 @@ public abstract class PipeRealtimeDataRegionSource implements PipeExtractor {
     return skipIfNoPrivileges;
   }
 
-  public final String getDataRegionId() {
+  public final int getDataRegionId() {
     return dataRegionId;
   }
 

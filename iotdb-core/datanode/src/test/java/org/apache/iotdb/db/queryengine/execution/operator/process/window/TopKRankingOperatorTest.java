@@ -498,7 +498,6 @@ public class TopKRankingOperatorTest {
       TopKRankingNode.RankingType rankingType,
       int[][] expectedValueAndRn,
       int expectedTotalCount) {
-
     List<int[]> results = new ArrayList<>();
     int count = 0;
 

@@ -291,6 +291,9 @@ public abstract class IoTDBNonDataRegionSource extends IoTDBSource {
   //////////////////////////// APIs provided for metric framework ////////////////////////////
 
   public long getUnTransferredEventCount() {
+    if (Objects.isNull(pipeTaskMeta)) {
+      return 0L;
+    }
     return !(pipeTaskMeta.getProgressIndex() instanceof MinimumProgressIndex)
         ? getListeningQueue().getTailIndex()
             - ((MetaProgressIndex) pipeTaskMeta.getProgressIndex()).getIndex()
