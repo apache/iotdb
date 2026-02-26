@@ -532,8 +532,46 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
                 receiverIp, receiverPort));
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1107: The port 22221-2220 is not valid, the min value shall be smaller than the max value in the port range",
+            "1107: The port 22221-2220 is invalid, the min value shall be smaller than the max value in the port range",
             e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='xxx')",
+                receiverIp, receiverPort));
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1107: The port xxx is invalid, the port must be an integer", e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='10-20-30')",
+                receiverIp, receiverPort));
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1107: The port 10-20-30 is invalid, a port shall either be 'port' or 'minPort-maxPort'",
+            e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='10, ,30')",
+                receiverIp, receiverPort));
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1107: The port  is invalid, a port shall either be 'port' or 'minPort-maxPort'",
+            e.getMessage());
+      }
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='100000')",
+                receiverIp, receiverPort));
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1107: The port 100000 is invalid, the port must be >= 0 and <= 65535", e.getMessage());
       }
     }
   }
