@@ -166,10 +166,11 @@ public class SortElimination implements PlanOptimizer {
   private static class Context {
     private int totalDeviceEntrySize = 0;
 
-    // There are 3 situations where sort cannot be eliminated
+    // There are 4 situations where sort cannot be eliminated
     // 1. Query plan has linear fill, previous fill or gapfill
     // 2. Query plan has window function and it has ordering scheme
     // 3. Query plan has pattern recognition and it has ordering scheme
+    // 4. Query plan has row number node or topk ranking node
     private boolean cannotEliminateSort = false;
 
     private String timeColumnName = null;

@@ -71,15 +71,15 @@ public class GroupedTopNRankAccumulator {
   }
 
   public int findFirstPositionToAdd(
-      TsBlock newPage,
+      TsBlock newTsBlock,
       int groupCount,
       int[] groupIds,
       TsBlockWithPositionComparator comparator,
-      RowReferenceTsBlockManager pageManager) {
+      RowReferenceTsBlockManager tsBlockManager) {
     int currentGroups = groupIdToHeapBuffer.getTotalGroups();
     groupIdToHeapBuffer.allocateGroupIfNeeded(groupCount);
 
-    for (int position = 0; position < newPage.getPositionCount(); position++) {
+    for (int position = 0; position < newTsBlock.getPositionCount(); position++) {
       int groupId = groupIds[position];
       if (groupId >= currentGroups || groupIdToHeapBuffer.getHeapValueCount(groupId) < topN) {
         return position;
@@ -88,12 +88,12 @@ public class GroupedTopNRankAccumulator {
       if (heapRootNodeIndex == UNKNOWN_INDEX) {
         return position;
       }
-      long rightPageRowId = peekRootRowIdByHeapNodeIndex(heapRootNodeIndex);
-      TsBlock rightPage = pageManager.getTsBlock(rightPageRowId);
-      int rightPosition = pageManager.getPosition(rightPageRowId);
+      long rightTsBlockRowId = peekRootRowIdByHeapNodeIndex(heapRootNodeIndex);
+      TsBlock rightTsBlock = tsBlockManager.getTsBlock(rightTsBlockRowId);
+      int rightPosition = tsBlockManager.getPosition(rightTsBlockRowId);
       // If the current position is equal to or less than the current heap root index, then we may
       // need to insert it
-      if (comparator.compareTo(newPage, position, rightPage, rightPosition) <= 0) {
+      if (comparator.compareTo(newTsBlock, position, rightTsBlock, rightPosition) <= 0) {
         return position;
       }
     }

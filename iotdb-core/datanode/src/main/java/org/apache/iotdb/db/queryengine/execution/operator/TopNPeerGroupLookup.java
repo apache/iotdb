@@ -386,7 +386,7 @@ public class TopNPeerGroupLookup {
   }
 
   public static long nextPowerOfTwo(long x) {
-    return 1L << 64 - Long.numberOfLeadingZeros(x - 1L);
+    return 1L << (64 - Long.numberOfLeadingZeros(x - 1L));
   }
 
   public static long bigArraySize(long expected, float f) {
