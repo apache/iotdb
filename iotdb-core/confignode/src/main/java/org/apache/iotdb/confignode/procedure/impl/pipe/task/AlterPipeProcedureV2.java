@@ -212,10 +212,10 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                       new PipeTaskMeta(
                           PipeTaskAgent.isRealtimeOnlyPipe(
                                       currentPipeStaticMeta.getSourceParameters())
-                                  && PipeTaskAgent.isHistoryOnlyPipe(
+                                  && !PipeTaskAgent.isRealtimeOnlyPipe(
                                       updatedPipeStaticMeta.getSourceParameters())
-                              ? currentPipeTaskMeta.getProgressIndex()
-                              : MinimumProgressIndex.INSTANCE,
+                              ? MinimumProgressIndex.INSTANCE
+                              : currentPipeTaskMeta.getProgressIndex(),
                           PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
                                   && !(!PipeTaskAgent.isHistoryOnlyPipe(
                                           currentPipeStaticMeta.getSourceParameters())
