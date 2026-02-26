@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.assertions;
 
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 
 import static java.lang.String.format;
@@ -29,13 +30,21 @@ import static java.util.Objects.requireNonNull;
 public class AsofJoinClauseProvider implements ExpectedValueProvider<JoinNode.AsofJoinClause> {
   private final SymbolAlias left;
   private final SymbolAlias right;
+  private final Identifier leftTable;
+  private final Identifier rightTable;
   private final ComparisonExpression.Operator operator;
 
   public AsofJoinClauseProvider(
-      ComparisonExpression.Operator operator, SymbolAlias left, SymbolAlias right) {
+      ComparisonExpression.Operator operator,
+      SymbolAlias left,
+      SymbolAlias right,
+      Identifier leftTable,
+      Identifier rightTable) {
     this.operator = requireNonNull(operator, "operator is null");
     this.left = requireNonNull(left, "left is null");
     this.right = requireNonNull(right, "right is null");
+    this.leftTable = requireNonNull(leftTable, "leftTable is null");
+    this.rightTable = requireNonNull(rightTable, "rightTable is null");
   }
 
   public ComparisonExpression toExpression() {
@@ -45,7 +54,8 @@ public class AsofJoinClauseProvider implements ExpectedValueProvider<JoinNode.As
 
   @Override
   public JoinNode.AsofJoinClause getExpectedValue(SymbolAliases aliases) {
-    return new JoinNode.AsofJoinClause(operator, left.toSymbol(aliases), right.toSymbol(aliases));
+    return new JoinNode.AsofJoinClause(
+        operator, left.toSymbol(aliases), right.toSymbol(aliases), leftTable, rightTable);
   }
 
   @Override
