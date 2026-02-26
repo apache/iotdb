@@ -112,7 +112,7 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
     }
     // account was locked
     String lockedMsg =
-        "ErrorCan't execute sql because822: Account is blocked due to consecutive failed logins.";
+        "Error: Can't execute sql because 822: Account is blocked due to consecutive failed logins.";
     login("test", "tesT@12345678", new String[] {lockedMsg}, 1);
     // unlock user-lock manual
     session.executeNonQueryStatement("ALTER USER test ACCOUNT UNLOCK");
