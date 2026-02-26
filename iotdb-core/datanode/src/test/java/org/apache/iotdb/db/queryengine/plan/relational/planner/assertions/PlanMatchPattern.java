@@ -687,13 +687,22 @@ public final class PlanMatchPattern {
     return new EquiJoinClauseProvider(
         new SymbolAlias(left),
         new SymbolAlias(right),
-        ImmutableSet.of(new Identifier(leftTable)),
-        ImmutableSet.of(new Identifier(rightTable)));
+        new Identifier(leftTable),
+        new Identifier(rightTable));
   }
 
   public static AsofJoinClauseProvider asofJoinClause(
-      ComparisonExpression.Operator operator, String left, String right) {
-    return new AsofJoinClauseProvider(operator, new SymbolAlias(left), new SymbolAlias(right));
+      ComparisonExpression.Operator operator,
+      String left,
+      String right,
+      String leftTable,
+      String rightTable) {
+    return new AsofJoinClauseProvider(
+        operator,
+        new SymbolAlias(left),
+        new SymbolAlias(right),
+        new Identifier(leftTable),
+        new Identifier(rightTable));
   }
 
   public static SymbolAlias symbol(String alias) {

@@ -295,6 +295,8 @@ public class JoinNode extends TwoChildProcessNode {
       ReadWriteIOUtils.write(asofJoinClause.getOperator().ordinal(), byteBuffer);
       Symbol.serialize(asofJoinClause.getLeft(), byteBuffer);
       Symbol.serialize(asofJoinClause.getRight(), byteBuffer);
+      asofJoinClause.getLeftTable().serialize(byteBuffer);
+      asofJoinClause.getRightTable().serialize(byteBuffer);
     } else {
       ReadWriteIOUtils.write(false, byteBuffer);
     }
@@ -339,6 +341,8 @@ public class JoinNode extends TwoChildProcessNode {
       ReadWriteIOUtils.write(asofJoinClause.getOperator().ordinal(), stream);
       Symbol.serialize(asofJoinClause.getLeft(), stream);
       Symbol.serialize(asofJoinClause.getRight(), stream);
+      asofJoinClause.getLeftTable().serialize(stream);
+      asofJoinClause.getRightTable().serialize(stream);
     } else {
       ReadWriteIOUtils.write(false, stream);
     }
@@ -382,7 +386,9 @@ public class JoinNode extends TwoChildProcessNode {
               new AsofJoinClause(
                   ComparisonExpression.Operator.values()[ReadWriteIOUtils.readInt(byteBuffer)],
                   Symbol.deserialize(byteBuffer),
-                  Symbol.deserialize(byteBuffer)));
+                  Symbol.deserialize(byteBuffer),
+                  new Identifier(byteBuffer),
+                  new Identifier(byteBuffer)));
     }
 
     size = ReadWriteIOUtils.readInt(byteBuffer);
@@ -551,12 +557,23 @@ public class JoinNode extends TwoChildProcessNode {
   public static class AsofJoinClause {
     private final Symbol left;
     private final Symbol right;
+    private final Identifier leftTable;
+    private final Identifier rightTable;
+    private final Set<Identifier> tables;
     private final ComparisonExpression.Operator operator;
 
-    public AsofJoinClause(ComparisonExpression.Operator operator, Symbol left, Symbol right) {
+    public AsofJoinClause(
+        ComparisonExpression.Operator operator,
+        Symbol left,
+        Symbol right,
+        Identifier leftTable,
+        Identifier rightTable) {
       this.operator = operator;
       this.left = requireNonNull(left, "left is null");
       this.right = requireNonNull(right, "right is null");
+      this.leftTable = requireNonNull(leftTable, "leftTable is null");
+      this.rightTable = requireNonNull(rightTable, "rightTable is null");
+      this.tables = ImmutableSet.of(leftTable, rightTable);
     }
 
     public Symbol getLeft() {
@@ -565,6 +582,18 @@ public class JoinNode extends TwoChildProcessNode {
 
     public Symbol getRight() {
       return right;
+    }
+
+    public Identifier getLeftTable() {
+      return leftTable;
+    }
+
+    public Identifier getRightTable() {
+      return rightTable;
+    }
+
+    public Set<Identifier> getTables() {
+      return tables;
     }
 
     public ComparisonExpression.Operator getOperator() {
@@ -577,7 +606,7 @@ public class JoinNode extends TwoChildProcessNode {
     }
 
     public AsofJoinClause flip() {
-      return new AsofJoinClause(operator.flip(), right, left);
+      return new AsofJoinClause(operator.flip(), right, left, rightTable, leftTable);
     }
 
     public boolean isOperatorContainsGreater() {
@@ -607,12 +636,14 @@ public class JoinNode extends TwoChildProcessNode {
 
       return Objects.equals(this.operator, other.operator)
           && Objects.equals(this.left, other.left)
-          && Objects.equals(this.right, other.right);
+          && Objects.equals(this.right, other.right)
+          && Objects.equals(this.leftTable, other.leftTable)
+          && Objects.equals(this.rightTable, other.rightTable);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(operator, left, right);
+      return Objects.hash(operator, left, right, leftTable, rightTable);
     }
 
     @Override

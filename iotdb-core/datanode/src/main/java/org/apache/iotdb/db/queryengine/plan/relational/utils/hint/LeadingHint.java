@@ -54,7 +54,8 @@ public class LeadingHint extends JoinOrderHint {
   private List<String> addJoinParameters;
   private List<String> normalizedParameters;
 
-  private final List<Pair<Set<Identifier>, Expression>> filters = new ArrayList<>();
+  private final List<Pair<Set<Identifier>, Expression>> equiJoins = new ArrayList<>();
+  private Pair<Set<Identifier>, Expression> asofJoin;
   private final Map<String, PlanNode> relationToScanMap = new HashMap<>();
 
   private Set<Identifier> innerJoinTables = ImmutableSet.of();
@@ -91,8 +92,16 @@ public class LeadingHint extends JoinOrderHint {
     return joinConstraintList;
   }
 
-  public List<Pair<Set<Identifier>, Expression>> getFilters() {
-    return filters;
+  public List<Pair<Set<Identifier>, Expression>> getEquiJoins() {
+    return equiJoins;
+  }
+
+  public Pair<Set<Identifier>, Expression> getAsofJoin() {
+    return asofJoin;
+  }
+
+  public void setAsofJoin(Pair<Set<Identifier>, Expression> asofJoin) {
+    this.asofJoin = asofJoin;
   }
 
   public void putConditionJoinType(Expression filter, JoinNode.JoinType joinType) {
@@ -127,16 +136,16 @@ public class LeadingHint extends JoinOrderHint {
         if (logicalPlan == null) {
           return null;
         }
-        logicalPlan = makeFilterPlanIfExist(getFilters(), logicalPlan);
+        logicalPlan = makeFilterPlanIfExist(getEquiJoins(), logicalPlan);
         stack.push(logicalPlan);
       }
     }
 
     PlanNode finalJoin = stack.pop();
     // we want all filters been removed
-    if (!filters.isEmpty()) {
+    if (!equiJoins.isEmpty()) {
       throw new IllegalStateException(
-          "Leading hint process failed: filter should be empty, but meet: " + filters);
+          "Leading hint process failed: filter should be empty, but meet: " + equiJoins);
     }
     if (finalJoin == null) {
       throw new IoTDBRuntimeException(
@@ -219,12 +228,14 @@ public class LeadingHint extends JoinOrderHint {
   }
 
   private PlanNode makeJoinPlan(PlanNode leftChild, PlanNode rightChild) {
-    List<Expression> conditions = getJoinConditions(getFilters(), leftChild, rightChild);
     JoinNode.JoinType joinType =
         computeJoinType(leftChild.getInputTables(), rightChild.getInputTables());
     if (joinType == null) {
       return null;
-    } else if (!isConditionJoinTypeMatched(conditions, joinType)) {
+    }
+
+    List<Expression> equiJoins = getEquiJoinConditions(getEquiJoins(), leftChild, rightChild);
+    if (!isConditionJoinTypeMatched(equiJoins, joinType)) {
       return null;
     }
 
@@ -233,8 +244,8 @@ public class LeadingHint extends JoinOrderHint {
     Optional<JoinNode.AsofJoinClause> asofCriteria = Optional.empty();
     List<JoinNode.EquiJoinClause> criteria = new ArrayList<>();
 
-    for (Expression conjunct : conditions) {
-      ComparisonExpression equality = (ComparisonExpression) conjunct;
+    for (Expression equiJoin : equiJoins) {
+      ComparisonExpression equality = (ComparisonExpression) equiJoin;
       Symbol leftSymbol = Symbol.from(equality.getLeft());
       Symbol rightSymbol = Symbol.from(equality.getRight());
 
@@ -282,6 +293,62 @@ public class LeadingHint extends JoinOrderHint {
       }
     }
 
+    Expression asofJoin = getAsofJoinCondition(getAsofJoin(), leftChild, rightChild);
+    if (asofJoin != null) {
+      if (!isConditionJoinTypeMatched(asofJoin, joinType)) {
+        return null;
+      }
+
+      ComparisonExpression asofJoinExpr = (ComparisonExpression) asofJoin;
+      Symbol leftSymbol = Symbol.from(asofJoinExpr.getLeft());
+      Symbol rightSymbol = Symbol.from(asofJoinExpr.getRight());
+
+      if (leftOutputSymbols.contains(leftSymbol) && rightOutputSymbols.contains(rightSymbol)) {
+        asofCriteria =
+            Optional.of(
+                new JoinNode.AsofJoinClause(
+                    asofJoinExpr.getOperator(),
+                    leftSymbol,
+                    rightSymbol,
+                    JoinUtils.findSourceTable(leftChild, leftSymbol)
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in leading hint join left child",
+                                        leftSymbol))),
+                    JoinUtils.findSourceTable(rightChild, rightSymbol)
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in leading hint join right child",
+                                        rightSymbol)))));
+      } else if (leftOutputSymbols.contains(rightSymbol)
+          && rightOutputSymbols.contains(leftSymbol)) {
+        asofCriteria =
+            Optional.of(
+                new JoinNode.AsofJoinClause(
+                    asofJoinExpr.getOperator().flip(),
+                    rightSymbol,
+                    leftSymbol,
+                    JoinUtils.findSourceTable(leftChild, rightSymbol)
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in leading hint join left child",
+                                        rightSymbol))),
+                    JoinUtils.findSourceTable(rightChild, leftSymbol)
+                        .orElseThrow(
+                            () ->
+                                new IllegalStateException(
+                                    String.format(
+                                        "Cannot find source table for symbol %s in leading hint join right child",
+                                        leftSymbol)))));
+      }
+    }
+
     return new JoinNode(
         new PlanNodeId("join"),
         joinType,
@@ -295,7 +362,7 @@ public class LeadingHint extends JoinOrderHint {
         Optional.empty());
   }
 
-  private List<Expression> getJoinConditions(
+  private List<Expression> getEquiJoinConditions(
       List<Pair<Set<Identifier>, Expression>> filters, PlanNode left, PlanNode right) {
     List<Expression> joinConditions = new ArrayList<>();
     for (int i = filters.size() - 1; i >= 0; i--) {
@@ -308,6 +375,20 @@ public class LeadingHint extends JoinOrderHint {
       }
     }
     return joinConditions;
+  }
+
+  private Expression getAsofJoinCondition(
+      Pair<Set<Identifier>, Expression> filterPair, PlanNode left, PlanNode right) {
+    if (filterPair == null) {
+      return null;
+    }
+
+    Set<Identifier> tables = Sets.union(left.getInputTables(), right.getInputTables());
+    // it should contain all tables in join conjunctions & right tables if it's left join
+    if (tables.containsAll(filterPair.left)) {
+      return filterPair.right;
+    }
+    return null;
   }
 
   private PlanNode makeFilterPlanIfExist(
@@ -349,6 +430,11 @@ public class LeadingHint extends JoinOrderHint {
       return false;
     }
     return true;
+  }
+
+  public boolean isConditionJoinTypeMatched(Expression condition, JoinNode.JoinType joinType) {
+    JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
+    return originalJoinType == joinType;
   }
 
   /**

@@ -174,8 +174,14 @@ public final class JoinMatcher implements Matcher {
     }
 
     @CanIgnoreReturnValue
-    public Builder asofCriteria(ComparisonExpression.Operator operator, String left, String right) {
-      this.asofJoinCriteria = Optional.of(asofJoinClause(operator, left, right));
+    public Builder asofCriteria(
+        ComparisonExpression.Operator operator,
+        String left,
+        String right,
+        String leftTable,
+        String rightTable) {
+      this.asofJoinCriteria =
+          Optional.of(asofJoinClause(operator, left, right, leftTable, rightTable));
 
       return this;
     }

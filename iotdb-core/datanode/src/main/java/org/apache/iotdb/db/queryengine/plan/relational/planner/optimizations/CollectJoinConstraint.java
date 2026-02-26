@@ -39,7 +39,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Pair;
 
-import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -121,8 +121,7 @@ public class CollectJoinConstraint implements PlanOptimizer {
       Set<Identifier> totalJoinTables = ImmutableSet.of();
 
       // join conjunctions
-      List<JoinNode.EquiJoinClause> criteria = node.getCriteria();
-      for (JoinNode.EquiJoinClause equiJoin : criteria) {
+      for (JoinNode.EquiJoinClause equiJoin : node.getCriteria()) {
         Set<Identifier> equiJoinTables = Sets.intersection(leadingTables, equiJoin.getTables());
         totalJoinTables = Sets.union(totalJoinTables, equiJoinTables);
         if (node.getJoinType() == JoinNode.JoinType.LEFT) {
@@ -133,9 +132,23 @@ public class CollectJoinConstraint implements PlanOptimizer {
           // can be applied.
           equiJoinTables = Sets.union(equiJoinTables, rightHand);
         }
-        leading.getFilters().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
+        leading.getEquiJoins().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
         leading.putConditionJoinType(equiJoin.toExpression(), node.getJoinType());
       }
+
+      Optional<JoinNode.AsofJoinClause> asofJoin = node.getAsofCriteria();
+      if (asofJoin.isPresent()) {
+        JoinNode.AsofJoinClause asofJoinClause = asofJoin.get();
+        Set<Identifier> asofJoinTables =
+            Sets.intersection(leadingTables, asofJoinClause.getTables());
+        totalJoinTables = Sets.union(totalJoinTables, asofJoinTables);
+        if (node.getJoinType() == JoinNode.JoinType.LEFT) {
+          asofJoinTables = Sets.union(asofJoinTables, rightHand);
+        }
+        leading.setAsofJoin(new Pair<>(asofJoinTables, asofJoinClause.toExpression()));
+        leading.putConditionJoinType(asofJoinClause.toExpression(), node.getJoinType());
+      }
+
       // join constraint
       collectJoinConstraintList(leading, leftHand, rightHand, node, totalJoinTables);
 

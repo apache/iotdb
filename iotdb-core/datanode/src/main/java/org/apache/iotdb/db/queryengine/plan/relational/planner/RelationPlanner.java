@@ -735,6 +735,41 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightPlanBuilder = rightCoercions.getSubPlan();
 
       for (int i = 0; i < leftComparisonExpressions.size(); i++) {
+        // Extract tables from expressions
+        Set<QualifiedName> leftDependencies =
+            SymbolsExtractor.extractNames(
+                leftComparisonExpressions.get(i), analysis.getColumnReferences());
+        Set<QualifiedName> rightDependencies =
+            SymbolsExtractor.extractNames(
+                rightComparisonExpressions.get(i), analysis.getColumnReferences());
+
+        if (leftDependencies.size() != 1 || rightDependencies.size() != 1) {
+          throw new IllegalStateException("Cannot find source table for symbol");
+        }
+
+        QualifiedName leftQualifiedName = leftDependencies.iterator().next();
+        QualifiedName rightQualifiedName = rightDependencies.iterator().next();
+
+        Identifier leftTable =
+            leftQualifiedName
+                .getPrefix()
+                .map(prefix -> new Identifier(prefix.getSuffix()))
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            String.format(
+                                "Cannot find source table for symbol %s in JOIN ON clause")));
+
+        Identifier rightTable =
+            rightQualifiedName
+                .getPrefix()
+                .map(prefix -> new Identifier(prefix.getSuffix()))
+                .orElseThrow(
+                    () ->
+                        new IllegalStateException(
+                            String.format(
+                                "Cannot find source table for symbol %s in JOIN ON clause")));
+
         if (asofCriteria != null && i == 0) {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
@@ -742,50 +777,17 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           asofJoinClause =
               Optional.of(
                   new JoinNode.AsofJoinClause(
-                      joinConditionComparisonOperators.get(i), leftSymbol, rightSymbol));
+                      joinConditionComparisonOperators.get(i),
+                      leftSymbol,
+                      rightSymbol,
+                      leftTable,
+                      rightTable));
           continue;
         }
 
         if (joinConditionComparisonOperators.get(i) == ComparisonExpression.Operator.EQUAL) {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
-
-          // Extract tables from expressions
-          Set<QualifiedName> leftDependencies =
-              SymbolsExtractor.extractNames(
-                  leftComparisonExpressions.get(i), analysis.getColumnReferences());
-          Set<QualifiedName> rightDependencies =
-              SymbolsExtractor.extractNames(
-                  rightComparisonExpressions.get(i), analysis.getColumnReferences());
-
-          if (leftDependencies.size() != 1 || rightDependencies.size() != 1) {
-            throw new IllegalStateException("Cannot find source table for symbol " + leftSymbol);
-          }
-
-          QualifiedName leftQualifiedName = leftDependencies.iterator().next();
-          QualifiedName rightQualifiedName = rightDependencies.iterator().next();
-
-          Identifier leftTable =
-              leftQualifiedName
-                  .getPrefix()
-                  .map(prefix -> new Identifier(prefix.getSuffix()))
-                  .orElseThrow(
-                      () ->
-                          new IllegalStateException(
-                              String.format(
-                                  "Cannot find source table for symbol %s in JOIN ON clause",
-                                  leftSymbol)));
-
-          Identifier rightTable =
-              rightQualifiedName
-                  .getPrefix()
-                  .map(prefix -> new Identifier(prefix.getSuffix()))
-                  .orElseThrow(
-                      () ->
-                          new IllegalStateException(
-                              String.format(
-                                  "Cannot find source table for symbol %s in JOIN ON clause",
-                                  rightSymbol)));
 
           equiClauses.add(
               new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, leftTable, rightTable));
