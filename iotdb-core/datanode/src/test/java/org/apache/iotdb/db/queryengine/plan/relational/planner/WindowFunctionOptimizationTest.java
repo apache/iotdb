@@ -330,6 +330,9 @@ public class WindowFunctionOptimizationTest {
           "Fragment " + i + " root should be TopKRankingNode",
           fragmentRoot instanceof TopKRankingNode);
       TopKRankingNode topKNode = (TopKRankingNode) fragmentRoot;
+      assertTrue(
+          "TopKRankingNode should be marked as dataPreSortedAndLimited",
+          topKNode.isDataPreSortedAndLimited());
 
       PlanNode scanChild = topKNode.getChild();
       assertNotNull("TopKRankingNode should have a child", scanChild);
