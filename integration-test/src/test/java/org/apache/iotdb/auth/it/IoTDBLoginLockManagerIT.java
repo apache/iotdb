@@ -84,7 +84,7 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
     login("root", "TimechoDB@2021", new String[] {loginSuccessMsg}, 1);
 
     /* root will not be locked */
-    String authFailedMsg = "ErrorCan't execute sql because801: Authentication failed.";
+    String authFailedMsg = "Error: Can't execute sql because 801: Authentication failed.";
     for (int i = 0; i < 5; i++) {
       login("root", "wrong", new String[] {authFailedMsg}, 1);
     }
@@ -106,7 +106,7 @@ public class IoTDBLoginLockManagerIT extends AbstractScriptIT {
     login("test", "tesT@12345678", new String[] {loginSuccessMsg}, 1);
 
     /* test unlock user lock */
-    String authFailedMsg = "ErrorCan't execute sql because801: Authentication failed.";
+    String authFailedMsg = "Error: Can't execute sql because 801: Authentication failed.";
     for (int i = 0; i < 5; i++) {
       login("test", "wrong", new String[] {authFailedMsg}, 1);
     }
