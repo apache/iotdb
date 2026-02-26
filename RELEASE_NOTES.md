@@ -22,7 +22,6 @@
 
 ## Features & Improvements
 
-- System Management: Updated Jetty dependency version.
 - Others: Remove risky RPC interfaces.
 - Others: Remove JEXL functions.
 - Others: Check naming when creating a Pipe.
