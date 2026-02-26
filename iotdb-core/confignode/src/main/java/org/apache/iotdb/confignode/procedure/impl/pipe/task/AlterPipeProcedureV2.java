@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.impl.pipe.task;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeRuntimeMeta;
@@ -209,7 +210,12 @@ public class AlterPipeProcedureV2 extends AbstractOperatePipeProcedureV2 {
                   updatedConsensusGroupIdToTaskMetaMap.put(
                       regionGroupId.getId(),
                       new PipeTaskMeta(
-                          currentPipeTaskMeta.getProgressIndex(),
+                          PipeTaskAgent.isRealtimeOnlyPipe(
+                                      currentPipeStaticMeta.getSourceParameters())
+                                  && PipeTaskAgent.isHistoryOnlyPipe(
+                                      updatedPipeStaticMeta.getSourceParameters())
+                              ? currentPipeTaskMeta.getProgressIndex()
+                              : MinimumProgressIndex.INSTANCE,
                           PipeTaskMeta.isNewlyAdded(currentPipeTaskMeta.getLeaderNodeId())
                                   && !(!PipeTaskAgent.isHistoryOnlyPipe(
                                           currentPipeStaticMeta.getSourceParameters())
