@@ -153,11 +153,11 @@ public class DataRegionTest {
     config.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null);
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null, null);
     DataNodeTableCache.getInstance()
         .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(2), null);
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(2), null, null);
     DataNodeTableCache.getInstance()
         .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(2), null);
   }
@@ -1872,7 +1872,7 @@ public class DataRegionTest {
     assertEquals(1, dataSource.getSeqResources().size());
 
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null);
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null, null);
     DataNodeTableCache.getInstance()
         .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
 

@@ -125,7 +125,11 @@ public class DataNodeTableCache implements ITableCache {
   }
 
   @Override
-  public void preUpdateTable(String database, final TsTable table, final String oldName) {
+  public void preUpdateTable(
+      String database,
+      final TsTable table,
+      final String oldName,
+      final List<String> oldColumnNames) {
     database = PathUtils.unQualifyDatabaseName(database);
     readWriteLock.writeLock().lock();
     try {
@@ -161,6 +165,15 @@ public class DataNodeTableCache implements ITableCache {
                   }
                 });
         LOGGER.info("Pre-rename old table {}.{} successfully", database, oldName);
+      }
+
+      if (oldColumnNames != null) {
+        final TsTable oldTable = databaseTableMap.get(database).get(table.getTableName());
+        if (oldTable != null) {
+          TsTable copyTable = new TsTable(oldTable);
+          oldColumnNames.forEach(copyTable::removeColumnSchema);
+          databaseTableMap.get(database).put(table.getTableName(), copyTable);
+        }
       }
     } finally {
       readWriteLock.writeLock().unlock();

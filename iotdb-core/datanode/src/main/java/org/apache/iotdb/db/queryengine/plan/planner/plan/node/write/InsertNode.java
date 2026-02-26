@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -455,11 +456,21 @@ public abstract class InsertNode extends SearchNode {
   public abstract void checkDataType(AbstractMemTable memTable)
       throws DataTypeInconsistentException;
 
-  public void filterNonExistsColumn(TableSchema tableSchema) {
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null && tableSchema.findColumnIndex(measurements[i]) == -1) {
-        markFailedMeasurement(i);
+  @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+  public boolean isSchemaConsistent(TableSchema tableSchema) {
+    for (int i = 0, measurementsLength = measurements.length; i < measurementsLength; i++) {
+      String measurement = measurements[i];
+      if (measurement != null) {
+        int columnIndex = tableSchema.findColumnIndex(measurement);
+        if (columnIndex == -1) {
+          return false;
+        }
+        ColumnCategory columnCategory = tableSchema.getColumnTypes().get(columnIndex);
+        if (columnCategory != columnCategories[i].toTsFileColumnType()) {
+          return false;
+        }
       }
     }
+    return true;
   }
 }

@@ -157,7 +157,7 @@ public class NonAlignedTreeDeviceViewScanOperatorTreeTest {
     tsTable.addProp(
         TreeViewSchema.TREE_PATH_PATTERN,
         NON_ALIGNED_TREE_DEVICE_VIEW_SCAN_OPERATOR_TREE_TEST + ".**");
-    DataNodeTableCache.getInstance().preUpdateTable(tableDbName, tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable(tableDbName, tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable(tableDbName, tableViewName, null);
   }
 

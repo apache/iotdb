@@ -152,7 +152,7 @@ public class CreateTableProcedure
 
   private void preReleaseTable(final ConfigNodeProcedureEnv env) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null);
+        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), null, null);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

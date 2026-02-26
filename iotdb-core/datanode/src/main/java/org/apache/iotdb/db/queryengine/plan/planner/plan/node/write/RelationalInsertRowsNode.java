@@ -212,9 +212,12 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
   }
 
   @Override
-  public void filterNonExistsColumn(TableSchema tableSchema) {
+  public boolean isSchemaConsistent(TableSchema tableSchema) {
     for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
-      insertRowNode.filterNonExistsColumn(tableSchema);
+      if (!insertRowNode.isSchemaConsistent(tableSchema)) {
+        return false;
+      }
     }
+    return true;
   }
 }

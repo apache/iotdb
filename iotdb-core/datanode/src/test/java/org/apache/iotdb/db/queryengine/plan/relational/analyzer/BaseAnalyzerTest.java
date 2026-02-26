@@ -40,7 +40,7 @@ public abstract class BaseAnalyzerTest {
     Map<String, String> properties =
         Collections.singletonMap(TsTable.ALLOW_ALTER_NAME_PROPERTY, "false");
     tsTable.setProps(properties);
-    DataNodeTableCache.getInstance().preUpdateTable(testDb, tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable(testDb, tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable(testDb, testTable, null);
   }
 

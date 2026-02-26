@@ -1674,7 +1674,7 @@ public class IoTDBTableIT {
   }
 
   // Helper: recognize SQLExceptions that mean the target table/device cannot be found.
-  private static boolean isTableNotFound(final SQLException e) {
+  private static boolean isTableNotFoundOrInconsistent(final SQLException e) {
     if (e == null) {
       return false;
     }
@@ -1686,7 +1686,8 @@ public class IoTDBTableIT {
     // code 550 is commonly used for 'does not exist' in this project; also match textual phrases
     return msg.startsWith("550")
         || lm.contains("not exist")
-        || msg.contains("Maybe there is a concurrent schema modification, please retry later.");
+        || msg.contains("Maybe there is a concurrent schema modification, please retry later.")
+        || msg.contains("is inconsistent");
   }
 
   @Test(timeout = 120000)
@@ -1747,7 +1748,7 @@ public class IoTDBTableIT {
                     } catch (final SQLException ex) {
                       // Only ignore if the failure is due to table not existing; otherwise record
                       // the error
-                      if (isTableNotFound(ex)) {
+                      if (isTableNotFoundOrInconsistent(ex)) {
                         // table not found: likely a transient race with concurrent rename — ignore
                         // and log
                         System.out.println(
@@ -1794,7 +1795,7 @@ public class IoTDBTableIT {
                       }
                     } catch (final SQLException ex) {
                       // Only ignore table-not-found; otherwise surface the error to fail the test
-                      if (!isTableNotFound(ex)) {
+                      if (!isTableNotFoundOrInconsistent(ex)) {
                         err.compareAndSet(null, ex);
                         break;
                       }
@@ -1829,7 +1830,7 @@ public class IoTDBTableIT {
                         rs.getLong(1);
                       }
                     } catch (final SQLException ex) {
-                      if (!isTableNotFound(ex)) {
+                      if (!isTableNotFoundOrInconsistent(ex)) {
                         err.compareAndSet(null, ex);
                         break;
                       }
@@ -2221,7 +2222,7 @@ public class IoTDBTableIT {
                     currentTableName.set(newName);
                     Thread.sleep(100);
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2250,7 +2251,7 @@ public class IoTDBTableIT {
                             tname, System.nanoTime(), i, i * 2));
                     successfulInserts.incrementAndGet();
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2278,7 +2279,7 @@ public class IoTDBTableIT {
                       rs.getLong(1);
                     }
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2502,7 +2503,7 @@ public class IoTDBTableIT {
                     currentTableName.set(newName);
                     Thread.sleep(100);
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2533,7 +2534,7 @@ public class IoTDBTableIT {
                       rs.getDouble(3);
                     }
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2564,7 +2565,7 @@ public class IoTDBTableIT {
                       rs.getInt(2);
                     }
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2806,7 +2807,7 @@ public class IoTDBTableIT {
                     tableNames[idx] = newName;
                     Thread.sleep(80);
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2839,7 +2840,7 @@ public class IoTDBTableIT {
                     colNames[idx] = newCol;
                     Thread.sleep(80);
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)
+                    if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("does not exist")
                         && !ex.getMessage().contains("cannot be resolved")) {
                       err.compareAndSet(null, ex);
@@ -2873,7 +2874,7 @@ public class IoTDBTableIT {
                             tname, cname, 100 + i, i, i));
                     successfulInserts[tableIdx].incrementAndGet();
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)
+                    if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("cannot be resolved")
                         && !ex.getMessage().contains("Unknown column")) {
                       err.compareAndSet(null, ex);
@@ -2908,7 +2909,7 @@ public class IoTDBTableIT {
                             tname, cname, 200 + i, i, i));
                     successfulInserts[tableIdx].incrementAndGet();
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)
+                    if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("cannot be resolved")
                         && !ex.getMessage().contains("Unknown column")) {
                       err.compareAndSet(null, ex);
@@ -2940,7 +2941,7 @@ public class IoTDBTableIT {
                       rs.getLong(1);
                     }
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)) {
+                    if (!isTableNotFoundOrInconsistent(ex)) {
                       err.compareAndSet(null, ex);
                     }
                   }
@@ -2974,7 +2975,7 @@ public class IoTDBTableIT {
                       rs.getInt(2);
                     }
                   } catch (final SQLException ex) {
-                    if (!isTableNotFound(ex)
+                    if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("cannot be resolved")
                         && !ex.getMessage().contains("Unknown column")) {
                       err.compareAndSet(null, ex);

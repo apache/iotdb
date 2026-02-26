@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableSchemaInconsistentException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -1822,8 +1823,9 @@ public class DataRegion implements IDataRegionForQuery {
 
             // the table schema may be renewed after the node passes the schema validation,
             // remove columns that no longer exist in the schema
-            node.filterNonExistsColumn(tableSchema);
-
+            if (!node.isSchemaConsistent(tableSchema)) {
+              throw new TableSchemaInconsistentException(node.getTableName());
+            }
             return tableSchema;
           });
     }

@@ -139,7 +139,7 @@ public class RenameTableProcedure extends AbstractAlterOrDropTableProcedure<Rena
 
   @Override
   protected void preRelease(final ConfigNodeProcedureEnv env) {
-    super.preRelease(env, tableName);
+    super.preRelease(env, tableName, null);
     setNextState(RenameTableState.RENAME_TABLE);
   }
 
