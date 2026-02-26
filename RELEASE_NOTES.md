@@ -18,6 +18,85 @@
     under the License.
 
 -->
+# Apache IoTDB 1.3.7
+
+## Features & Improvements
+- Others: Remove risky RPC interfaces.
+- Others: Remove JEXL functions.
+- Others: Check naming when creating a Pipe.
+- Others: Change the default client RPC service address to 127.0.0.1.
+- Others: Modify code to make internal services bind to the value specified by `dn_internal_address` instead of the default address.
+
+## Bugs
+- Fixed an issue in the partition table automatic deletion logic: Only TTL configured at the DB level takes effect, using the maximum TTL value within the DB.
+
+# Apache IoTDB 1.3.6
+
+## Features & Improvements
+- Data Query: Optimized query performance for multiple scenarios, including the multi-series Last query.
+- Data Query: Added the FastLastQuery interface to the Java SDK, supporting more efficient Last query operations.
+- Data Query: Adjusted the tree-model fetchSchema to return data in segmented streaming mode, improving response speed in large-data-volume scenarios.
+- Storage Management: Optimized memory management to avoid memory leak risks and ensure long-term stable system operation.
+- Storage Management: Optimized the file compaction mechanism to enhance compaction efficiency and reduce system storage resource consumption.
+- Data Synchronization: Optimized Pipe SQL parameter configurations to support specifying asynchronous loading methods.
+- Data Synchronization: Added a syntactic sugar feature that automatically splits full-volume Pipe creation SQL into real-time synchronization and historical synchronization.
+- System Management: Added a global configuration item for data type compression methods, supporting on-demand adjustment of storage compression strategies.
+- Others: Fixed security vulnerabilities CVE-2025-12183, CVE-2025-66566 and CVE-2025-11226.
+- ...
+
+## Bugs
+- Fixed the issue where selecting discontinuous sequence files for the settle task from the sequence zone under device-level TTL would trigger an overlap error during execution.
+- Fixed the issue where running the pattern_match custom function in tree-model SQL (3C3D deployment) would throw an error indicating "tsDataType" is null.
+- Fixed the issue where TTL would continuously write data into the modification cache in fast compaction mode, resulting in slow compaction speed.
+- Fixed the stack overflow issue that occurred when performing value filter queries with a large number of devices without adding the align by device clause.
+- Fixed the issue where loading TsFiles with empty value chunks across time partitions would generate TsFiles with misaligned chunks.
+- Fixed the incorrect processing logic of TransformOperator for empty TsBlocks.
+- Fixed the issue where the number of server connections would keep increasing when using a user without MAINTAIN permission  in a Session.
+- Fixed the issue where Load would ignore mods import under certain special circumstances (e.g., mismatched aligned types or inconsistent table schemas).
+- Fixed the issue where data that had been deleted would be resynchronized to the receiver if mod files existed when Pipe pattern was configured.
+- Fixed the issue where info logs related to TTL checks would still be printed during compaction scheduling even when TTL was not configured.
+- ...
+
+# Apache IoTDB 1.3.5
+
+## Improvements
+- Storage Module: Optimize user password encryption by changing the algorithm to SHA-256
+- ...
+
+## Bugs
+- Fixed the array out-of-bounds exception in cross-Region aggregate query with align by device
+- Fixed the error in aggregate queries with `order by time + align by device` for single or multiple devices spanning across Regions
+- Fixed the "out of memory" error in query with large TEXT objects + align by device + order by time
+- Fixed the issue where the last query with where time > X and time < X was not applied to partitioned table fetching, resulting in failure to hit PartitionCache
+- Fixed the error in using change_point function + align by device when single device data spans multiple Regions
+- Fixed the OOM (Out of Memory) issue caused by the asynchronous submission queue of pipeTransferFile
+- Fixed the memory leak issue in pipe password detection
+- For the pipe receiver and during Load, change the behavior of'clear schema cache' to 'update last cache'
+- Optimize the loading speed of TsFile when there are a large number of measuring points and the mods file contains deletions of a large number of measuring points
+- ...
+
+# Apache IoTDB 1.3.4-1
+
+This is a bug-fix version of 1.3.4
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+# Apache IoTDB 1.3.4
+
+## Features & Improvements
+
+- Data Query: Users can now control the loading of JAR packages via URI for UDF, PipePlugin, Trigger, and AINode through configuration items.
+- Data Query:  Added monitoring for TimeIndex cached during the merge process.
+- System Management: Expanded UDF functions with the addition of the pattern_match function for pattern matching.
+- System Management:The Python session SDK now includes a parameter for connection timeout.
+- System Management:Introduced authorization for cluster management-related operations.
+- System Management:ConfigNode/DataNode now supports scaling down using SQL.
+- System Management:ConfigNode automatically cleans up partition information exceeding the TTL (cleans up every 2 hours).
+- Data Synchronization: Supports specifying authorization information for the receiver on the sender's end.
+- Ecosystem Integration: Supports Kubernetes Operator.
+- Scripts and Tools: The import-data/export-data scripts have been expanded to support new data types (strings, large binary objects, dates, timestamps).
+- Scripts and Tools:The import-data/export-data scripts have been iterated to support importing and exporting data in three formats: TsFile, CSV, and SQL.
+  ...
 
 # Apache IoTDB 1.3.3
 
