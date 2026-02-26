@@ -600,7 +600,7 @@ public abstract class IoTDBSink implements PipeConnector {
       if (range.length > 2 || range.length == 0) {
         throw new PipeParameterNotValidException(
             String.format(
-                "The port %s is not valid, a port shall either be 'port' or 'minPort-maxPort'.",
+                "The port %s is invalid, a port shall either be 'port' or 'minPort-maxPort'.",
                 port));
       }
       for (final String singlePort : range) {
@@ -609,12 +609,12 @@ public abstract class IoTDBSink implements PipeConnector {
           portNum = Long.parseLong(singlePort);
         } catch (final Exception e) {
           throw new PipeParameterNotValidException(
-              String.format("The port %s is not valid, the port must be an integer", singlePort));
+              String.format("The port %s is invalid, the port must be an integer", singlePort));
         }
         if (portNum < 0 || portNum > 65535) {
           throw new PipeParameterNotValidException(
               String.format(
-                  "The port %s is not valid, the port must be >= 0 and <= 65535", singlePort));
+                  "The port %s is invalid, the port must be >= 0 and <= 65535", singlePort));
         }
       }
       final long min = Long.parseLong(range[0]);
@@ -622,7 +622,7 @@ public abstract class IoTDBSink implements PipeConnector {
       if (min > max) {
         throw new PipeParameterNotValidException(
             String.format(
-                "The port %s-%s is not valid, the min value shall be smaller than the max value in the port range",
+                "The port %s-%s is invalid, the min value shall be smaller than the max value in the port range",
                 min, max));
       }
       result.addInterval(new PlainInterval(min, max));

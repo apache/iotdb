@@ -36,6 +36,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.Collections;
@@ -512,6 +513,28 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           "select * from root.vehicle.**",
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
+    }
+  }
+
+  @Test
+  public void testSinkPortBinder() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      try {
+        statement.execute(
+            String.format(
+                "create pipe testPipe ('ip'='%s', 'port'='%s', 'send-ports'='22220,22221-2220')",
+                receiverIp, receiverPort));
+      } catch (final SQLException e) {
+        Assert.assertEquals(
+            "1107: The port 22221-2220 is not valid, the min value shall be smaller than the max value in the port range",
+            e.getMessage());
+      }
     }
   }
 }
