@@ -50,6 +50,11 @@ public class TopKRankingNode extends SingleChildProcessNode {
   private final int maxRankingPerPartition;
   private final boolean partial;
 
+  // When true, the child scan already returns pre-sorted, pre-limited data (at most K rows per
+  // partition, ordered correctly). The operator can skip heap-based TopK selection and just assign
+  // sequential row numbers (streaming mode).
+  private boolean dataPreSortedAndLimited = false;
+
   public TopKRankingNode(
       PlanNodeId id,
       DataOrganizationSpecification specification,
@@ -119,6 +124,14 @@ public class TopKRankingNode extends SingleChildProcessNode {
     return rankingType;
   }
 
+  public boolean isDataPreSortedAndLimited() {
+    return dataPreSortedAndLimited;
+  }
+
+  public void setDataPreSortedAndLimited(boolean dataPreSortedAndLimited) {
+    this.dataPreSortedAndLimited = dataPreSortedAndLimited;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
     throw new UnsupportedOperationException();
@@ -132,6 +145,7 @@ public class TopKRankingNode extends SingleChildProcessNode {
     Symbol.serialize(rankingSymbol, byteBuffer);
     ReadWriteIOUtils.write(maxRankingPerPartition, byteBuffer);
     ReadWriteIOUtils.write(partial, byteBuffer);
+    ReadWriteIOUtils.write(dataPreSortedAndLimited, byteBuffer);
   }
 
   @Override
@@ -142,6 +156,7 @@ public class TopKRankingNode extends SingleChildProcessNode {
     Symbol.serialize(rankingSymbol, stream);
     ReadWriteIOUtils.write(maxRankingPerPartition, stream);
     ReadWriteIOUtils.write(partial, stream);
+    ReadWriteIOUtils.write(dataPreSortedAndLimited, stream);
   }
 
   public static TopKRankingNode deserialize(ByteBuffer byteBuffer) {
@@ -151,10 +166,14 @@ public class TopKRankingNode extends SingleChildProcessNode {
     Symbol rankingSymbol = Symbol.deserialize(byteBuffer);
     int maxRankingPerPartition = ReadWriteIOUtils.readInt(byteBuffer);
     boolean partial = ReadWriteIOUtils.readBoolean(byteBuffer);
+    boolean dataPreSortedAndLimited = ReadWriteIOUtils.readBoolean(byteBuffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new TopKRankingNode(
-        planNodeId, specification, rankingType, rankingSymbol, maxRankingPerPartition, partial);
+    TopKRankingNode node =
+        new TopKRankingNode(
+            planNodeId, specification, rankingType, rankingSymbol, maxRankingPerPartition, partial);
+    node.setDataPreSortedAndLimited(dataPreSortedAndLimited);
+    return node;
   }
 
   @Override

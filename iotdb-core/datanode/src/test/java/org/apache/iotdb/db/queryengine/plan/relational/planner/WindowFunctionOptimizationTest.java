@@ -20,11 +20,18 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
@@ -296,5 +303,41 @@ public class WindowFunctionOptimizationTest {
     assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(1), rowNumber(tableScan));
     assertPlan(planTester.getFragmentPlan(2), rowNumber(tableScan));
+  }
+
+  @Test
+  public void testTopKRankingOrderByTimeLimitPushDown() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY time) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: OutputNode -> TopKRankingNode -> GroupNode -> TableScanNode
+    assertPlan(logicalQueryPlan, output(topKRanking(group(tableScan))));
+
+    // Distributed plan: TopKRankingNode pushed down to each partition with limit push-down.
+    // Fragment 0: OutputNode -> CollectNode -> ExchangeNodes
+    assertPlan(
+        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+
+    // Worker fragments: TopKRankingNode -> DeviceTableScanNode
+    // Verify limit is pushed to DeviceTableScanNode and TopKRankingNode is marked for streaming.
+    for (int i = 1; i <= 2; i++) {
+      PlanNode fragmentRoot = planTester.getFragmentPlan(i);
+      assertTrue(
+          "Fragment " + i + " root should be TopKRankingNode",
+          fragmentRoot instanceof TopKRankingNode);
+      TopKRankingNode topKNode = (TopKRankingNode) fragmentRoot;
+
+      PlanNode scanChild = topKNode.getChild();
+      assertNotNull("TopKRankingNode should have a child", scanChild);
+      assertTrue(
+          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
+      assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
+      assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
+    }
   }
 }

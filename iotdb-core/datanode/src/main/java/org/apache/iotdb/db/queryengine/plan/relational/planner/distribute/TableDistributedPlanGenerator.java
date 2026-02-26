@@ -442,6 +442,33 @@ public class TableDistributedPlanGenerator
     return false;
   }
 
+  private boolean tryPushTopKRankingLimitToScan(
+      TopKRankingNode topKRankingNode, List<PlanNode> children, OrderingScheme orderingScheme) {
+    List<Symbol> orderBy = orderingScheme.getOrderBy();
+    if (orderBy.size() != 1) {
+      return false;
+    }
+    Symbol orderSymbol = orderBy.get(0);
+    long limit = topKRankingNode.getMaxRankingPerPartition();
+    boolean pushed = false;
+
+    for (PlanNode child : children) {
+      if (child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode)) {
+        DeviceTableScanNode scanNode = (DeviceTableScanNode) child;
+        if (scanNode.isTimeColumn(orderSymbol)) {
+          scanNode.setPushLimitToEachDevice(true);
+          if (scanNode.getPushDownLimit() <= 0) {
+            scanNode.setPushDownLimit(limit);
+          } else {
+            scanNode.setPushDownLimit(Math.min(limit, scanNode.getPushDownLimit()));
+          }
+          pushed = true;
+        }
+      }
+    }
+    return pushed;
+  }
+
   @Override
   public List<PlanNode> visitGroup(GroupNode node, PlanContext context) {
     context.setExpectedOrderingScheme(node.getOrderingScheme());
@@ -1885,7 +1912,6 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme.get());
     }
 
-    // TODO: per partition topk eliminate
     checkArgument(
         node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
@@ -1894,10 +1920,18 @@ public class TableDistributedPlanGenerator
     }
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (canSplitPushDown) {
+      // visitGroup may return GroupNode-wrapped children (sort not eliminated) or bare
+      // DeviceTableScanNode (sort eliminated). Unwrap GroupNode/SortNode when present.
       childrenNodes =
           childrenNodes.stream()
-              .map(child -> child.getChildren().get(0))
+              .map(child -> child instanceof SortNode ? child.getChildren().get(0) : child)
               .collect(Collectors.toList());
+    }
+
+    if (canSplitPushDown && orderingScheme.isPresent()) {
+      if (tryPushTopKRankingLimitToScan(node, childrenNodes, orderingScheme.get())) {
+        node.setDataPreSortedAndLimited(true);
+      }
     }
 
     if (childrenNodes.size() == 1) {
