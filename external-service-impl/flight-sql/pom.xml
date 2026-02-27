@@ -41,13 +41,41 @@
         </dependency>
         <dependency>
             <groupId>org.apache.arrow</groupId>
-            <artifactId>arrow-memory-netty</artifactId>
-            <scope>runtime</scope>
+            <artifactId>flight-core</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-vector</artifactId>
+            <version>${arrow.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.arrow</groupId>
+            <artifactId>arrow-memory-core</artifactId>
+            <version>${arrow.version}</version>
         </dependency>
         <!-- IoTDB dependencies (provided at runtime by DataNode classloader) -->
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-server</artifactId>
+            <scope>provided</scope>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift</artifactId>
+            <scope>provided</scope>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>service-rpc</artifactId>
+            <scope>provided</scope>
+            <version>2.0.7-SNAPSHOT</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-thrift-commons</artifactId>
             <scope>provided</scope>
             <version>2.0.7-SNAPSHOT</version>
         </dependency>
@@ -68,6 +96,11 @@
             <artifactId>common</artifactId>
             <version>${tsfile.version}</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.25.1</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
@@ -113,14 +146,6 @@
                 <configuration>
                     <ignoredDependencies>
                         <ignoredDependency>org.apache.tsfile:common</ignoredDependency>
-                        <ignoredDependency>org.apache.iotdb:iotdb-thrift-commons</ignoredDependency>
-                        <ignoredDependency>com.google.protobuf:protobuf-java</ignoredDependency>
-                        <ignoredDependency>org.apache.iotdb:iotdb-thrift</ignoredDependency>
-                        <ignoredDependency>org.apache.arrow:flight-core</ignoredDependency>
-                        <ignoredDependency>org.apache.arrow:arrow-vector</ignoredDependency>
-                        <ignoredDependency>org.apache.arrow:arrow-memory-core</ignoredDependency>
-                        <ignoredDependency>org.apache.iotdb:service-rpc</ignoredDependency>
-                        <ignoredDependency>org.apache.arrow:arrow-memory-netty</ignoredDependency>
                     </ignoredDependencies>
                 </configuration>
             </plugin>

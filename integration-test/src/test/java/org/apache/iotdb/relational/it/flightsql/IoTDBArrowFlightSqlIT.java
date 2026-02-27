@@ -163,6 +163,7 @@ public class IoTDBArrowFlightSqlIT {
     Schema schema;
     List<Field> fields;
     // 1. Query with all data types
+    System.out.println("Executing query...");
     flightInfo =
         flightSqlClient.execute(
             "SELECT time, id1, s1, s2, s3, s4, s5, s6 FROM " + TABLE + " ORDER BY time",
@@ -174,6 +175,7 @@ public class IoTDBArrowFlightSqlIT {
     rows = fetchAllRows(flightInfo);
     assertEquals("Should have 3 rows", 3, rows.size());
     // 2. Query with filter
+    System.out.println("Executing query...");
     flightInfo =
         flightSqlClient.execute(
             "SELECT id1, s1 FROM " + TABLE + " WHERE id1 = 'device1' ORDER BY time", credentials);
@@ -181,6 +183,7 @@ public class IoTDBArrowFlightSqlIT {
     assertEquals("Should have 2 rows for device1", 2, rows.size());
 
     // 3. Query with aggregation
+    System.out.println("Executing query...");
     flightInfo =
         flightSqlClient.execute(
             "SELECT id1, COUNT(*) as cnt, SUM(s1) as s1_sum "
@@ -192,6 +195,7 @@ public class IoTDBArrowFlightSqlIT {
     assertEquals("Should have 2 groups", 2, rows.size());
 
     // 4. Empty result query
+    System.out.println("Executing query...");
     flightInfo =
         flightSqlClient.execute(
             "SELECT * FROM " + TABLE + " WHERE id1 = 'nonexistent'", credentials);
@@ -199,6 +203,7 @@ public class IoTDBArrowFlightSqlIT {
     assertEquals("Should have 0 rows", 0, rows.size());
 
     // 5. Show databases
+    System.out.println("Executing query...");
     flightInfo = flightSqlClient.execute("SHOW DATABASES", credentials);
     rows = fetchAllRows(flightInfo);
     assertTrue("Should have at least 1 database", rows.size() >= 1);
@@ -222,17 +227,16 @@ public class IoTDBArrowFlightSqlIT {
   private List<List<String>> fetchAllRows(FlightInfo flightInfo) throws Exception {
     List<List<String>> rows = new ArrayList<>();
     for (FlightEndpoint endpoint : flightInfo.getEndpoints()) {
-      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket())) {
+      try (FlightStream stream = flightSqlClient.getStream(endpoint.getTicket(), credentials)) {
         while (stream.next()) {
-          try (VectorSchemaRoot root = stream.getRoot()) {
-            for (int i = 0; i < root.getRowCount(); i++) {
-              List<String> row = new ArrayList<>();
-              for (FieldVector vector : root.getFieldVectors()) {
-                Object value = vector.getObject(i);
-                row.add(value == null ? "null" : value.toString());
-              }
-              rows.add(row);
+          VectorSchemaRoot root = stream.getRoot();
+          for (int i = 0; i < root.getRowCount(); i++) {
+            List<String> row = new ArrayList<>();
+            for (FieldVector vector : root.getFieldVectors()) {
+              Object value = vector.getObject(i);
+              row.add(value == null ? "null" : value.toString());
             }
+            rows.add(row);
           }
         }
       }

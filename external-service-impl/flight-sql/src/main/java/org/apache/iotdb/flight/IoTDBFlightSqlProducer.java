@@ -210,7 +210,7 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
     LOGGER.warn("getStreamStatement called for queryId={}", queryId);
     try {
       streamQueryResults(queryId, listener);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("getStreamStatement failed for queryId={}", queryId, e);
       listener.error(
           CallStatus.INTERNAL
@@ -230,28 +230,62 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
       return;
     }
 
-    VectorSchemaRoot root = null;
-    try {
-      root = TsBlockToArrowConverter.createVectorSchemaRoot(ctx.header, allocator);
+    try (VectorSchemaRoot root =
+        TsBlockToArrowConverter.createVectorSchemaRoot(ctx.header, allocator)) {
       listener.start(root);
+      LOGGER.warn("streamQueryResults: listener started for queryId={}", queryId);
 
+      int batchCount = 0;
       while (true) {
+        LOGGER.warn("streamQueryResults: fetching batch {} for queryId={}", batchCount, queryId);
         Optional<TsBlock> optionalTsBlock = ctx.queryExecution.getBatchResult();
-        if (!optionalTsBlock.isPresent() || optionalTsBlock.get().isEmpty()) {
+        if (!optionalTsBlock.isPresent()) {
+          LOGGER.warn(
+              "streamQueryResults: optionalTsBlock not present for queryId={}, breaking", queryId);
           break;
         }
 
         TsBlock tsBlock = optionalTsBlock.get();
-        root.clear();
+        if (tsBlock.isEmpty()) {
+          LOGGER.warn("streamQueryResults: tsBlock isEmpty for queryId={}, continuing", queryId);
+          continue;
+        }
+
+        LOGGER.warn(
+            "streamQueryResults: filling root with batch {} ({} rows)",
+            batchCount,
+            tsBlock.getPositionCount());
         TsBlockToArrowConverter.fillVectorSchemaRoot(root, tsBlock, ctx.header);
         listener.putNext();
+        LOGGER.warn("streamQueryResults: putNext done for batch {}", batchCount);
+
+        while (!listener.isReady() && !listener.isCancelled()) {
+          try {
+            Thread.sleep(1);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+        }
+
+        if (listener.isCancelled()) {
+          LOGGER.warn("Flight stream cancelled by client for queryId={}", queryId);
+          break;
+        }
+        batchCount++;
       }
 
+      LOGGER.warn(
+          "streamQueryResults: completing listener for queryId={}, total batches={}",
+          queryId,
+          batchCount);
+      // Detach buffers from root so it's not freed while gRPC sends the last batch
+      root.allocateNew();
       listener.completed();
     } catch (IoTDBException e) {
       LOGGER.error("Error streaming query results for queryId={}", queryId, e);
       listener.error(CallStatus.INTERNAL.withDescription(e.getMessage()).toRuntimeException());
-    } catch (Exception e) {
+    } catch (Throwable e) {
       LOGGER.error("Unexpected error streaming query results for queryId={}", queryId, e);
       listener.error(
           CallStatus.INTERNAL
@@ -260,9 +294,6 @@ public class IoTDBFlightSqlProducer implements FlightSqlProducer {
     } finally {
       coordinator.cleanupQueryExecution(queryId);
       activeQueries.remove(queryId);
-      if (root != null) {
-        root.close();
-      }
     }
   }
 
