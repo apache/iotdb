@@ -542,6 +542,6 @@ public class AuthorityChecker {
   }
 
   public static TSStatus queryMinSessionPerUser(List<String> nameList) {
-    return authorityFetcher.get().checkUser("userName", "password");
+    return authorityFetcher.get().checkUser("userName", "password", false);
   }
 }

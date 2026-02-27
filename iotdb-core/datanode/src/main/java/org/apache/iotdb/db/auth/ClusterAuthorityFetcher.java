@@ -547,53 +547,53 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-    public TSStatus checkUser(
-    final String username, final String password, final boolean useEncryptedPassword) {
-      checkCacheAvailable();
-      final User user = iAuthorCache.getUserCache(username);
-      if (user != null) {
-        if (user.isOpenIdUser()) {
-          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-        } else if (password != null) {
-          if (useEncryptedPassword) {
-            return password.equals(user.getPassword())
-                    ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-                    : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
-          } else {
-            return AuthUtils.validatePassword(password, user.getPassword())
-                    || AuthUtils.validatePassword(
-                    password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
-                    ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
-                    : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
-          }
+  public TSStatus checkUser(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    checkCacheAvailable();
+    final User user = iAuthorCache.getUserCache(username);
+    if (user != null) {
+      if (user.isOpenIdUser()) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null) {
+        if (useEncryptedPassword) {
+          return password.equals(user.getPassword())
+              ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
         } else {
-          return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+          return AuthUtils.validatePassword(password, user.getPassword())
+                  || AuthUtils.validatePassword(
+                      password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)
+              ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+              : RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
         }
       } else {
-        TLoginReq req =
-                new TLoginReq(username, password).setUseEncryptedPassword(useEncryptedPassword);
-        TPermissionInfoResp status = null;
-        try (ConfigNodeClient configNodeClient =
-                     CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-          // Send request to some API server
-          status = configNodeClient.login(req);
-        } catch (ClientManagerException | TException e) {
-          LOGGER.error(CONNECTERROR);
+        return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
+      }
+    } else {
+      TLoginReq req =
+          new TLoginReq(username, password).setUseEncryptedPassword(useEncryptedPassword);
+      TPermissionInfoResp status = null;
+      try (ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        status = configNodeClient.login(req);
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(CONNECTERROR);
+        status = new TPermissionInfoResp();
+        status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
+      } finally {
+        if (status == null) {
           status = new TPermissionInfoResp();
-          status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-        } finally {
-          if (status == null) {
-            status = new TPermissionInfoResp();
-          }
         }
-        if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          if (acceptCache) {
-            iAuthorCache.putUserCache(username, cacheUser(status));
-          }
-          return status.getStatus();
-        } else {
-          return status.getStatus();
+      }
+      if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (acceptCache) {
+          iAuthorCache.putUserCache(username, cacheUser(status));
         }
+        return status.getStatus();
+      } else {
+        return status.getStatus();
+      }
     }
   }
 
