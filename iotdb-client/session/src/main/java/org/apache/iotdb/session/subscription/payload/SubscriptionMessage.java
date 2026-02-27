@@ -26,6 +26,7 @@ import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -105,6 +106,18 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     }
     throw new SubscriptionIncompatibleHandlerException(
         String.format("%s do not support getRecords().", handler.getClass().getSimpleName()));
+  }
+
+  public Iterator<Tablet> getRecordTabletIterator() {
+    if (handler instanceof SubscriptionRecordHandler) {
+      final List<ResultSet> records = ((SubscriptionRecordHandler) handler).getRecords();
+      return records.stream()
+          .map(record -> ((SubscriptionRecordHandler.SubscriptionRecord) record).getTablet())
+          .iterator();
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format(
+            "%s do not support getRecordTabletIterator().", handler.getClass().getSimpleName()));
   }
 
   public SubscriptionTsFileHandler getTsFile() {

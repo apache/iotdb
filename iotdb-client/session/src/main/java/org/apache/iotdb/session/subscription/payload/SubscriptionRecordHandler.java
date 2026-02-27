@@ -138,6 +138,19 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
               .collect(Collectors.toList());
     }
 
+    public Tablet getTablet() {
+      return tablet;
+    }
+
+    public boolean hasNext() {
+      return Objects.nonNull(tablet) && rowIndex + 1 < sortedRowPositions.size();
+    }
+
+    @Nullable
+    public RowRecord nextRecord() throws IOException {
+      return next() ? currentRow : null;
+    }
+
     public int getColumnCount() {
       return tablet.getSchemas().size() + 1;
     }
@@ -233,7 +246,9 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
     }
 
     private static List<TSDataType> generateColumnTypes(final Tablet tablet) {
-      return tablet.getSchemas().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+      return tablet.getSchemas().stream()
+          .map(IMeasurementSchema::getType)
+          .collect(Collectors.toList());
     }
 
     private static List<RowPosition> generateSortedRowPositions(final Tablet tablet) {
@@ -245,7 +260,9 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
       positions.sort(
           (left, right) -> {
             final int timeComparison = Long.compare(left.timestamp, right.timestamp);
-            return timeComparison != 0 ? timeComparison : Integer.compare(left.rowIndex, right.rowIndex);
+            return timeComparison != 0
+                ? timeComparison
+                : Integer.compare(left.rowIndex, right.rowIndex);
           });
       return positions;
     }
@@ -263,7 +280,8 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
           field = new Field(null);
         } else {
           final TSDataType dataType = tablet.getSchemas().get(columnIndex).getType();
-          field = generateFieldFromTabletValue(dataType, tablet.getValues()[columnIndex], rowPosition);
+          field =
+              generateFieldFromTabletValue(dataType, tablet.getValues()[columnIndex], rowPosition);
         }
         fields.add(field);
       }
@@ -285,8 +303,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
           continue;
         }
 
-        final String measurement =
-            currentTablet.getSchemas().get(columnIndex).getMeasurementName();
+        final String measurement = currentTablet.getSchemas().get(columnIndex).getMeasurementName();
         final TSDataType dataType = currentTablet.getSchemas().get(columnIndex).getType();
         final Object value = currentTablet.getValues()[columnIndex];
         switch (dataType) {

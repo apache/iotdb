@@ -28,7 +28,6 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -38,6 +37,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
@@ -308,23 +308,42 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                       continue;
                     }
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
-                          while (dataSet.hasNext()) {
-                            final RowRecord record = dataSet.next();
-                            Assert.assertEquals(type.toString(), dataSet.getColumnTypes().get(1));
+                      case RECORD_HANDLER:
+                        for (final ResultSet dataSet : message.getRecords()) {
+                          while (((org.apache.iotdb.session.subscription.payload
+                                      .SubscriptionRecordHandler.SubscriptionRecord)
+                                  dataSet)
+                              .hasNext()) {
+                            final RowRecord record =
+                                ((org.apache.iotdb.session.subscription.payload
+                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                        dataSet)
+                                    .nextRecord();
+                            Assert.assertEquals(
+                                type.toString(),
+                                ((org.apache.iotdb.session.subscription.payload
+                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                        dataSet)
+                                    .getColumnTypes()
+                                    .get(1));
                             Assert.assertEquals(type, record.getFields().get(0).getDataType());
-                            Assert.assertEquals(expectedData, getValue(type, dataSet.getTablet()));
+                            Assert.assertEquals(
+                                expectedData,
+                                getValue(
+                                    type,
+                                    ((org.apache.iotdb.session.subscription.payload
+                                                .SubscriptionRecordHandler.SubscriptionRecord)
+                                            dataSet)
+                                        .getTablet()));
                             Assert.assertEquals(
                                 expectedData, record.getFields().get(0).getObjectValue(type));
                             rowCount.addAndGet(1);
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try (final TsFileReader tsFileReader =
-                            message.getTsFileHandler().openReader()) {
+                            (TsFileReader) message.getTsFile().openReader()) {
                           final QueryDataSet dataSet =
                               tsFileReader.query(
                                   QueryExpression.create(

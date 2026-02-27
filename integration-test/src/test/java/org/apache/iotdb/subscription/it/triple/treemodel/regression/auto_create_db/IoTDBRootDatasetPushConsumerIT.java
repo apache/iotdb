@@ -26,11 +26,11 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -129,10 +129,13 @@ public class IoTDBRootDatasetPushConsumerIT extends AbstractSubscriptionTreeRegr
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {

@@ -34,7 +34,7 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
 import org.apache.tsfile.read.query.dataset.ResultSet;
-import org.apache.tsfile.read.v4.ITsFileReader;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -209,8 +209,8 @@ public class SubscriptionSessionExample {
                       }
                     }
                     for (final SubscriptionMessage message : messages) {
-                      try (final ITsFileReader reader = message.getTsFile().openReader()) {
-                        reader.getAllTableSchema().forEach(System.out::println);
+                      try (final ITsFileTreeReader reader = message.getTsFile().openReader()) {
+                        reader.getAllDeviceIds().forEach(System.out::println);
                       }
                     }
                     consumer2.commitSync(messages);
@@ -255,8 +255,7 @@ public class SubscriptionSessionExample {
                         .consumeListener(
                             message -> {
                               // do something for SubscriptionTsFileHandler
-                              System.out.println(
-                                  message.getTsFile().getFile().getAbsolutePath());
+                              System.out.println(message.getTsFile().getFile().getAbsolutePath());
                               return ConsumeResult.SUCCESS;
                             })
                         .buildPushConsumer()) {

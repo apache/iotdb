@@ -22,11 +22,12 @@ package org.apache.iotdb.session.subscription.payload;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
 import org.apache.thrift.annotation.Nullable;
-import org.apache.tsfile.read.TsFileReader;
-import org.apache.tsfile.read.TsFileSequenceReader;
-import org.apache.tsfile.read.v4.ITsFileReader;
+import org.apache.tsfile.read.v4.DeviceTableModelReader;
+import org.apache.tsfile.read.v4.TsFileTreeReader;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Objects;
 
 public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
 
@@ -37,8 +38,12 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
     this.databaseName = databaseName;
   }
 
-  public ITsFileReader openReader() throws IOException {
-    return new TsFileReader(new TsFileSequenceReader(absolutePath));
+  @SuppressWarnings("unchecked")
+  public <T extends AutoCloseable> T openReader() throws IOException {
+    return (T)
+        (Objects.isNull(databaseName)
+            ? new TsFileTreeReader(new File(absolutePath))
+            : new DeviceTableModelReader(new File(absolutePath)));
   }
 
   @TableModel
