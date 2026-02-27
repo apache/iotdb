@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandl
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.List;
@@ -40,8 +41,8 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
-    this.handler = new SubscriptionSessionDataSetsHandler(tablets);
+    this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
+    this.handler = new SubscriptionRecordHandler(tablets);
   }
 
   public SubscriptionMessage(
@@ -49,7 +50,7 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
       final String absolutePath,
       @Nullable final String databaseName) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
+    this.messageType = SubscriptionMessageType.TS_FILE.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
   }
 
@@ -98,20 +99,19 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   /////////////////////////////// handlers ///////////////////////////////
 
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    if (handler instanceof SubscriptionSessionDataSetsHandler) {
-      return (SubscriptionSessionDataSetsHandler) handler;
+  public List<ResultSet> getRecords() {
+    if (handler instanceof SubscriptionRecordHandler) {
+      return ((SubscriptionRecordHandler) handler).getRecords();
     }
     throw new SubscriptionIncompatibleHandlerException(
-        String.format(
-            "%s do not support getSessionDataSetsHandler().", handler.getClass().getSimpleName()));
+        String.format("%s do not support getRecords().", handler.getClass().getSimpleName()));
   }
 
-  public SubscriptionTsFileHandler getTsFileHandler() {
+  public SubscriptionTsFileHandler getTsFile() {
     if (handler instanceof SubscriptionTsFileHandler) {
       return (SubscriptionTsFileHandler) handler;
     }
     throw new SubscriptionIncompatibleHandlerException(
-        String.format("%s do not support getTsFileHandler().", handler.getClass().getSimpleName()));
+        String.format("%s do not support getTsFile().", handler.getClass().getSimpleName()));
   }
 }

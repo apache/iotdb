@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.read.v4.ITsFileReader;
 
 import java.io.IOException;
 
@@ -36,7 +37,7 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
     this.databaseName = databaseName;
   }
 
-  public TsFileReader openReader() throws IOException {
+  public ITsFileReader openReader() throws IOException {
     return new TsFileReader(new TsFileSequenceReader(absolutePath));
   }
 

@@ -41,9 +41,15 @@ public class TopicConstant {
   public static final String MODE_DEFAULT_VALUE = MODE_LIVE_VALUE;
 
   public static final String FORMAT_KEY = "format";
-  public static final String FORMAT_SESSION_DATA_SETS_HANDLER_VALUE = "SessionDataSetsHandler";
-  public static final String FORMAT_TS_FILE_HANDLER_VALUE = "TsFileHandler";
-  public static final String FORMAT_DEFAULT_VALUE = FORMAT_SESSION_DATA_SETS_HANDLER_VALUE;
+  public static final String FORMAT_RECORD_HANDLER_VALUE = "SubscriptionRecordHandler";
+  public static final String FORMAT_TS_FILE_VALUE = "SubscriptionTsFileHandler";
+  public static final String FORMAT_DEFAULT_VALUE = FORMAT_RECORD_HANDLER_VALUE;
+
+  @Deprecated
+  public static final String FORMAT_SESSION_DATA_SETS_HANDLER_VALUE = FORMAT_RECORD_HANDLER_VALUE;
+
+  @Deprecated
+  public static final String FORMAT_TS_FILE_HANDLER_VALUE = FORMAT_TS_FILE_VALUE;
 
   public static final String LOOSE_RANGE_KEY = "loose-range";
   public static final String LOOSE_RANGE_TIME_VALUE = "time";

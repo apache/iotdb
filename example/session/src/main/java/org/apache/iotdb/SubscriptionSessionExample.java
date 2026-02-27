@@ -30,19 +30,16 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
-import org.apache.tsfile.read.TsFileReader;
-import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileReader;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
@@ -149,11 +146,13 @@ public class SubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
-          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
-            System.out.println(dataSet.getColumnNames());
-            System.out.println(dataSet.getColumnTypes());
-            while (dataSet.hasNext()) {
-              System.out.println(dataSet.next());
+          for (final ResultSet dataSet : message.getRecords()) {
+            final SubscriptionRecordHandler.SubscriptionRecord record =
+                (SubscriptionRecordHandler.SubscriptionRecord) dataSet;
+            System.out.println(record.getColumnNames());
+            System.out.println(record.getColumnTypes());
+            while (dataSet.next()) {
+              System.out.println("Time=" + dataSet.getLong(1));
             }
           }
         }
@@ -180,7 +179,7 @@ public class SubscriptionSessionExample {
       final Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, CURRENT_TIME + 33);
       config.put(TopicConstant.END_TIME_KEY, CURRENT_TIME + 66);
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       subscriptionSession.createTopic(TOPIC_2, config);
     }
 
@@ -210,17 +209,8 @@ public class SubscriptionSessionExample {
                       }
                     }
                     for (final SubscriptionMessage message : messages) {
-                      try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
-                        final QueryDataSet dataSet =
-                            reader.query(
-                                QueryExpression.create(
-                                    Arrays.asList(
-                                        new Path("root.db.d2", "s2", true),
-                                        new Path("root.sg.d3", "s1", true)),
-                                    null));
-                        while (dataSet.hasNext()) {
-                          System.out.println(dataSet.next());
-                        }
+                      try (final ITsFileReader reader = message.getTsFile().openReader()) {
+                        reader.getAllTableSchema().forEach(System.out::println);
                       }
                     }
                     consumer2.commitSync(messages);
@@ -245,7 +235,7 @@ public class SubscriptionSessionExample {
         new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_3, config);
     }
@@ -266,7 +256,7 @@ public class SubscriptionSessionExample {
                             message -> {
                               // do something for SubscriptionTsFileHandler
                               System.out.println(
-                                  message.getTsFileHandler().getFile().getAbsolutePath());
+                                  message.getTsFile().getFile().getAbsolutePath());
                               return ConsumeResult.SUCCESS;
                             })
                         .buildPushConsumer()) {
@@ -292,7 +282,7 @@ public class SubscriptionSessionExample {
         new SubscriptionTreeSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_4, config);
     }
@@ -316,7 +306,7 @@ public class SubscriptionSessionExample {
                   consumer4.subscribe(TOPIC_4);
                   while (!consumer4.allTopicMessagesHaveBeenConsumed()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
-                      final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                      final SubscriptionTsFileHandler handler = message.getTsFile();
                       handler.moveFile(
                           Paths.get(System.getProperty("user.dir"), "exported-tsfiles")
                               .resolve(
