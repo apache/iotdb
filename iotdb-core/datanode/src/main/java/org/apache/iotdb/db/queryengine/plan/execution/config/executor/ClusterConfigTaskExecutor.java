@@ -328,6 +328,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.trigger.service.TriggerClassLoader;
 import org.apache.iotdb.pipe.api.PipePlugin;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -372,6 +373,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -994,7 +996,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format("Failed to create pipe plugin %s. " + pathError, pluginName),
-              TSStatusCode.CREATE_PIPE_PLUGIN_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1002,7 +1004,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               "Failed to create pipe plugin, because the URI is empty.",
-              TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -1019,7 +1021,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           future.setException(
               new IoTDBException(
                   "The scheme of URI is not set, please specify the scheme of URI.",
-                  TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+                  TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
           return future;
         }
         if (!uri.getScheme().equals("file")) {
@@ -1059,7 +1061,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 "Failed to get executable for PipePlugin "
                     + createPipePluginStatement.getPluginName()
                     + ", please check the URI.",
-                TSStatusCode.PIPE_PLUGIN_DOWNLOAD_ERROR.getStatusCode()));
+                TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
         return future;
       }
 
@@ -2175,7 +2177,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       future.setException(
           new IoTDBException(
               String.format("Failed to create pipe %s, " + pathError, pipeName),
-              TSStatusCode.PIPE_ERROR.getStatusCode()));
+              TSStatusCode.SEMANTIC_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2189,7 +2191,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
               createPipeStatement.getSinkAttributes());
     } catch (final Exception e) {
       future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              e.getMessage(),
+              e instanceof PipePasswordCheckException
+                  ? TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode()
+                  : TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2353,6 +2359,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       return future;
     }
 
+    boolean hasSourcePassword = false;
+    boolean hasSinkPassword = false;
     // Construct temporary pipe static meta for validation
     final String pipeName = alterPipeStatement.getPipeName();
     final Map<String, String> sourceAttributes;
@@ -2381,9 +2389,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           sourceAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSourceType(alterPipeStatement.getPipeName(), sourceAttributes);
+            checkSourceTypeWithException(alterPipeStatement.getPipeName(), sourceAttributes);
           }
         }
+        hasSourcePassword =
+            !checkSourceType(sourceAttributes)
+                || containsPassword(alterPipeStatement.getSourceAttributes());
       } else {
         sourceAttributes =
             pipeMetaFromCoordinator.getStaticMeta().getSourceParameters().getAttribute();
@@ -2407,6 +2418,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       }
 
       if (!alterPipeStatement.getSinkAttributes().isEmpty()) {
+        // Do not remove for handshake
         if (alterPipeStatement.isReplaceAllSinkAttributes()) {
           sinkAttributes = alterPipeStatement.getSinkAttributes();
         } else {
@@ -2419,18 +2431,39 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
           sinkAttributes =
               pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
           if (onlyContainsUser) {
-            checkSinkType(alterPipeStatement.getPipeName(), sinkAttributes);
+            checkSinkTypeWithException(alterPipeStatement.getPipeName(), sinkAttributes);
           }
         }
+        hasSinkPassword =
+            !checkSinkType(sinkAttributes)
+                || containsPassword(alterPipeStatement.getSinkAttributes());
       } else {
         sinkAttributes = pipeMetaFromCoordinator.getStaticMeta().getSinkParameters().getAttribute();
       }
 
+      final Map<String, String> checkedSource = new HashMap<>(sourceAttributes);
+      if (!hasSourcePassword) {
+        checkedSource.remove(PipeSourceConstant.EXTRACTOR_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY);
+        checkedSource.remove(
+            PipeParameters.KeyReducer.reduce(PipeSourceConstant.SOURCE_IOTDB_PASSWORD_KEY));
+      }
+      final Map<String, String> checkedSink = new HashMap<>(sinkAttributes);
+      if (!hasSinkPassword) {
+        checkedSink.remove(PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY);
+        checkedSink.remove(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
+        checkedSink.remove(
+            PipeParameters.KeyReducer.reduce(PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY));
+      }
       PipeDataNodeAgent.plugin()
-          .validate(pipeName, sourceAttributes, processorAttributes, sinkAttributes);
+          .validate(pipeName, checkedSource, processorAttributes, checkedSink);
     } catch (final Exception e) {
       future.setException(
-          new IoTDBException(e.getMessage(), TSStatusCode.PIPE_ERROR.getStatusCode()));
+          new IoTDBException(
+              e.getMessage(),
+              e instanceof PipePasswordCheckException
+                  ? TSStatusCode.WRONG_LOGIN_PASSWORD.getStatusCode()
+                  : TSStatusCode.PIPE_ERROR.getStatusCode()));
       return future;
     }
 
@@ -2481,18 +2514,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
   }
 
-  private static void checkSourceType(
-      final String pipeName, final Map<String, String> replacedExtractorAttributes) {
-    final PipeParameters extractorParameters = new PipeParameters(replacedExtractorAttributes);
-    final String pluginName =
-        extractorParameters
-            .getStringOrDefault(
-                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
-                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-            .toLowerCase();
-
-    if (pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
-        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName())) {
+  private static void checkSourceTypeWithException(
+      final String pipeName, final Map<String, String> replacedSourceAttributes) {
+    if (checkSourceType(replacedSourceAttributes)) {
       throw new SemanticException(
           String.format(
               "Failed to alter pipe %s, in iotdb-source, password must be set when the username is specified.",
@@ -2500,37 +2524,58 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
   }
 
-  private static boolean onlyContainsUser(
-      final Map<String, String> extractorOrConnectorAttributes) {
-    final PipeParameters extractorOrConnectorParameters =
-        new PipeParameters(extractorOrConnectorAttributes);
-    return extractorOrConnectorParameters.hasAnyAttributes(
+  private static boolean checkSourceType(final Map<String, String> replacedSourceAttributes) {
+    final PipeParameters sourceParameters = new PipeParameters(replacedSourceAttributes);
+    final String pluginName =
+        sourceParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSourceConstant.EXTRACTOR_KEY, PipeSourceConstant.SOURCE_KEY),
+                BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+            .toLowerCase();
+
+    return pluginName.equals(BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.IOTDB_SOURCE.getPipePluginName());
+  }
+
+  private static boolean containsPassword(final Map<String, String> sourceOrSinkAttributes) {
+    final PipeParameters sourceOrSinkParameters = new PipeParameters(sourceOrSinkAttributes);
+    return sourceOrSinkParameters.hasAnyAttributes(
+        PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY, PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
+  }
+
+  private static boolean onlyContainsUser(final Map<String, String> sourceOrSinkAttributes) {
+    final PipeParameters sourceOrSinkParameters = new PipeParameters(sourceOrSinkAttributes);
+    return sourceOrSinkParameters.hasAnyAttributes(
             PipeSinkConstant.CONNECTOR_IOTDB_USER_KEY,
             PipeSinkConstant.SINK_IOTDB_USER_KEY,
             PipeSinkConstant.CONNECTOR_IOTDB_USERNAME_KEY,
             PipeSinkConstant.SINK_IOTDB_USERNAME_KEY)
-        && !extractorOrConnectorParameters.hasAnyAttributes(
+        && !sourceOrSinkParameters.hasAnyAttributes(
             PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_KEY,
             PipeSinkConstant.SINK_IOTDB_PASSWORD_KEY);
   }
 
-  private static void checkSinkType(
-      final String pipeName, final Map<String, String> connectorAttributes) {
-    final PipeParameters connectorParameters = new PipeParameters(connectorAttributes);
-    final String pluginName =
-        connectorParameters
-            .getStringOrDefault(
-                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
-                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
-            .toLowerCase();
-
-    if (pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
-        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName())) {
+  private static void checkSinkTypeWithException(
+      final String pipeName, final Map<String, String> sinkAttributes) {
+    if (checkSinkType(sinkAttributes)) {
       throw new SemanticException(
           String.format(
               "Failed to alter pipe %s, in write-back-sink, password must be set when the username is specified.",
               pipeName));
     }
+  }
+
+  private static boolean checkSinkType(final Map<String, String> sinkAttributes) {
+    final PipeParameters sinkParameters = new PipeParameters(sinkAttributes);
+    final String pluginName =
+        sinkParameters
+            .getStringOrDefault(
+                Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+            .toLowerCase();
+
+    return pluginName.equals(BuiltinPipePlugin.WRITE_BACK_CONNECTOR.getPipePluginName())
+        || pluginName.equals(BuiltinPipePlugin.WRITE_BACK_SINK.getPipePluginName());
   }
 
   @Override
@@ -3041,6 +3086,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                 ClusterPartitionFetcher.getInstance(),
                 ClusterSchemaFetcher.getInstance(),
                 IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
+                false,
                 false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.setException(

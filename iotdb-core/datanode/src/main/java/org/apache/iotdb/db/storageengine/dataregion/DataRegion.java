@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -1951,37 +1952,47 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   /**
+   * close the TsFile represented by the given resource, thread-safe
+   *
+   * @param tsFileResource TsFile to be closed
+   * @return a future related to the close task
+   */
+  public Future<?> asyncCloseOneTsFileProcessor(TsFileResource tsFileResource) {
+    writeLock("asyncCloseOneTsFileProcessor");
+    try {
+      return asyncCloseOneTsFileProcessor(tsFileResource.isSeq(), tsFileResource.getProcessor());
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /**
    * close one tsfile processor, thread-safety should be ensured by caller
    *
    * @param sequence whether this tsfile processor is sequence or not
    * @param tsFileProcessor tsfile processor
    */
   public Future<?> asyncCloseOneTsFileProcessor(boolean sequence, TsFileProcessor tsFileProcessor) {
-    // for sequence tsfile, we update the endTimeMap only when the file is prepared to be closed.
-    // for unsequence tsfile, we have maintained the endTimeMap when an insertion comes.
-    if (closingSequenceTsFileProcessor.contains(tsFileProcessor)
-        || closingUnSequenceTsFileProcessor.contains(tsFileProcessor)
-        || tsFileProcessor.alreadyMarkedClosing()) {
+    if (tsFileProcessor == null) {
       return CompletableFuture.completedFuture(null);
     }
-    Future<?> future;
-    if (sequence) {
-      closingSequenceTsFileProcessor.add(tsFileProcessor);
-      future = tsFileProcessor.asyncClose();
-      if (future.isDone()) {
-        closingSequenceTsFileProcessor.remove(tsFileProcessor);
-      }
-
-      workSequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
-    } else {
-      closingUnSequenceTsFileProcessor.add(tsFileProcessor);
-      future = tsFileProcessor.asyncClose();
-      if (future.isDone()) {
-        closingUnSequenceTsFileProcessor.remove(tsFileProcessor);
-      }
-
-      workUnsequenceTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
+    if (tsFileProcessor.getCloseFuture() != null) {
+      return tsFileProcessor.getCloseFuture();
     }
+
+    Future<?> future;
+    Set<TsFileProcessor> closingTsFileProcessors =
+        sequence ? closingSequenceTsFileProcessor : closingUnSequenceTsFileProcessor;
+    TreeMap<Long, TsFileProcessor> workTsFileProcessors =
+        sequence ? workSequenceTsFileProcessors : workUnsequenceTsFileProcessors;
+
+    closingTsFileProcessors.add(tsFileProcessor);
+    future = tsFileProcessor.asyncClose();
+    if (future.isDone()) {
+      closingTsFileProcessors.remove(tsFileProcessor);
+    }
+    workTsFileProcessors.remove(tsFileProcessor.getTimeRangeId());
+
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     logger.info(
         "Async close tsfile: {}, file start time: {}, file end time: {}",
@@ -2021,7 +2032,7 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public void deleteDALFolderAndClose() {
-    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionIdString))
+    Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId.getId()))
         .ifPresent(
             manager -> {
               manager.close();
@@ -2835,7 +2846,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -2938,7 +2950,8 @@ public class DataRegion implements IDataRegionForQuery {
 
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -2995,7 +3008,8 @@ public class DataRegion implements IDataRegionForQuery {
       deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
       // capture deleteDataNode and wait it to be persisted to DAL.
       DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance().listenToDeleteData(dataRegionIdString, node);
+          PipeInsertionDataNodeListener.getInstance()
+              .listenToDeleteData(dataRegionId.getId(), node);
       // just get result. We have already waited for result in `listenToDeleteData`
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
@@ -3798,6 +3812,9 @@ public class DataRegion implements IDataRegionForQuery {
     if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
       return Optional.empty();
     }
+    if (databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
+      return Optional.empty();
+    }
     int lastIndex = databaseName.lastIndexOf("-");
     if (lastIndex == -1) {
       lastIndex = databaseName.length();
@@ -4172,7 +4189,7 @@ public class DataRegion implements IDataRegionForQuery {
 
     // Listen before the tsFile is added into tsFile manager to avoid it being compacted
     PipeInsertionDataNodeListener.getInstance()
-        .listenToTsFile(dataRegionIdString, databaseName, tsFileResource, true);
+        .listenToTsFile(dataRegionId.getId(), databaseName, tsFileResource, true);
 
     tsFileManager.add(tsFileResource, false);
 
@@ -4351,8 +4368,8 @@ public class DataRegion implements IDataRegionForQuery {
     return dataRegionIdString;
   }
 
-  public DataRegionId getDataRegionId() {
-    return dataRegionId;
+  public int getDataRegionId() {
+    return dataRegionId.getId();
   }
 
   /**

@@ -953,7 +953,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     }
 
     long userId = AuthorityChecker.getUserId(username).orElse(-1L);
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
+    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       return RpcUtils.getStatus(
           TSStatusCode.ILLEGAL_PASSWORD.getStatusCode(),
@@ -1050,7 +1050,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             ClusterPartitionFetcher.getInstance(),
             ClusterSchemaFetcher.getInstance(),
             IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-            false)
+            false,
+            statement.isDebug())
         .status;
   }
 
@@ -1075,7 +1076,8 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                   "",
                   LocalExecutionPlanner.getInstance().metadata,
                   IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold(),
-                  false)
+                  false,
+                  statement.isDebug())
               .status;
 
       // Delete data & Update device attribute is itself idempotent

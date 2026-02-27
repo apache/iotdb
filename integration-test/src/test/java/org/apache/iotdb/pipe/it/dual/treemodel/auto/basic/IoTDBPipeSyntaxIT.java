@@ -396,7 +396,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
                   + "PipePlugin.jar"));
       fail();
     } catch (final SQLException e) {
-      Assert.assertTrue(e.getMessage().contains("1600: Failed to create pipe plugin"));
+      Assert.assertTrue(e.getMessage().contains("701: Failed to create pipe plugin"));
     }
   }
 
@@ -860,7 +860,7 @@ public class IoTDBPipeSyntaxIT extends AbstractPipeDualTreeModelAutoIT {
         fail();
       } catch (final SQLException e) {
         Assert.assertEquals(
-            "1603: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
+            "701: Failed to get executable for PipePlugin TestProcessor, please check the URI.",
             e.getMessage());
       }
       try {

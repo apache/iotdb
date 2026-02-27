@@ -63,7 +63,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     TableDiskUsageCache.getInstance().ensureRunning();
     mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("test");
-    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn(new DataRegionId(0));
+    Mockito.when(mockDataRegion.getDataRegionId()).thenReturn(0);
     Mockito.when(mockDataRegion.getDataRegionIdString()).thenReturn("0");
     Mockito.when(mockDataRegion.isTableModel()).thenReturn(true);
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), mockDataRegion);

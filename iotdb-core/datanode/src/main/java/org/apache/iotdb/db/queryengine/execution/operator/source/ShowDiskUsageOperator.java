@@ -81,7 +81,7 @@ public class ShowDiskUsageOperator implements SourceOperator {
                     Object[] row = new Object[4];
                     row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
                     row[1] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-                    row[2] = dataRegion.getDataRegionId().getId();
+                    row[2] = dataRegion.getDataRegionId();
                     row[3] = timePartition;
                     if (!pushDownFilter.satisfyRow(0, row)) {
                       return false;

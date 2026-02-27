@@ -145,6 +145,7 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             queryContext.getTimeOut() - (System.currentTimeMillis() - queryContext.getStartTime()),
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
+            queryContext.isDebug(),
             fragment.isRoot());
 
     selectExecutorAndHost(

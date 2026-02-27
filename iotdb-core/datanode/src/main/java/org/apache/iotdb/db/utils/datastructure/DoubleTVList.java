@@ -64,6 +64,15 @@ public abstract class DoubleTVList extends TVList {
   }
 
   @Override
+  public synchronized TVList cloneForFlushSort() {
+    DoubleTVList cloneList = DoubleTVList.newList();
+    cloneAs(cloneList);
+    cloneList.bitMap = this.bitMap;
+    cloneList.values = this.values;
+    return cloneList;
+  }
+
+  @Override
   public synchronized DoubleTVList clone() {
     DoubleTVList cloneList = DoubleTVList.newList();
     cloneAs(cloneList);

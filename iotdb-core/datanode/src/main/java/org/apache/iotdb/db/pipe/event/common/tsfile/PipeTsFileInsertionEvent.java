@@ -400,7 +400,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public void eliminateProgressIndex() {
     if (Objects.isNull(overridingProgressIndex) && Objects.nonNull(resource)) {
       PipeTsFileEpochProgressIndexKeeper.getInstance()
-          .eliminateProgressIndex(resource.getDataRegionId(), pipeName, resource.getTsFilePath());
+          .eliminateProgressIndex(
+              Integer.parseInt(resource.getDataRegionId()), pipeName, resource.getTsFilePath());
     }
   }
 

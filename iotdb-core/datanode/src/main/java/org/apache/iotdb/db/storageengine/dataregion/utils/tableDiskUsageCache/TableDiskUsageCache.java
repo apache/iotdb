@@ -161,8 +161,7 @@ public class TableDiskUsageCache {
     if (!addOperationToQueue(operation)) {
       operation.future.complete(
           new Pair<>(
-              new TsFileTableSizeCacheReader(
-                  0, null, 0, null, dataRegion.getDataRegionId().getId()),
+              new TsFileTableSizeCacheReader(0, null, 0, null, dataRegion.getDataRegionId()),
               new EmptyObjectTableSizeCacheReader()));
     }
     return operation.future;
@@ -289,7 +288,7 @@ public class TableDiskUsageCache {
 
     public StartReadOperation(
         DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
-      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
       this.region = dataRegion;
       this.readTsFileCache = readTsFileCache;
       this.readObjectFileCache = readObjectFileCache;
@@ -327,7 +326,7 @@ public class TableDiskUsageCache {
     protected final DataRegion region;
 
     public EndReadOperation(DataRegion dataRegion) {
-      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
       this.region = dataRegion;
     }
 
@@ -398,7 +397,7 @@ public class TableDiskUsageCache {
     protected final CompletableFuture<Void> future = new CompletableFuture<>();
 
     public RegisterRegionOperation(DataRegion dataRegion) {
-      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId().getId());
+      super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
       this.dataRegion = dataRegion;
     }
 

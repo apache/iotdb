@@ -79,4 +79,6 @@ public interface IQueryExecution {
   String getUser();
 
   String getClientHostname();
+
+  boolean isDebug();
 }

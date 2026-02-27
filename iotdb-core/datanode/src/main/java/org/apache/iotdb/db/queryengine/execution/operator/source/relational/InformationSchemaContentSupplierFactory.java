@@ -1263,7 +1263,7 @@ public class InformationSchemaContentSupplierFactory {
                     if (tTableInfos == null || tTableInfos.isEmpty()) {
                       return false;
                     }
-                    if (!regions.contains(dataRegion.getDataRegionId().getId())) {
+                    if (!regions.contains(dataRegion.getDataRegionId())) {
                       return false;
                     }
                     currentDataRegionTableSizeQueryContext =
@@ -1370,7 +1370,7 @@ public class InformationSchemaContentSupplierFactory {
           row[0] = new Binary(dataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET);
           row[1] = new Binary(tTableInfo.getTableName(), TSFileConfig.STRING_CHARSET);
           row[2] = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-          row[3] = dataRegion.getDataRegionId().getId();
+          row[3] = dataRegion.getDataRegionId();
           row[4] = timePartition;
           if (!pushDownFilter.satisfyRow(0, row)) {
             continue;
@@ -1478,7 +1478,7 @@ public class InformationSchemaContentSupplierFactory {
               new Binary(currentDataRegion.getDatabaseName(), TSFileConfig.STRING_CHARSET));
           columns[1].writeBinary(new Binary(tableName, TSFileConfig.STRING_CHARSET));
           columns[2].writeInt(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
-          columns[3].writeInt(currentDataRegion.getDataRegionId().getId());
+          columns[3].writeInt(currentDataRegion.getDataRegionId());
           columns[4].writeLong(timePartition);
           columns[5].writeLong(size);
           builder.declarePosition();

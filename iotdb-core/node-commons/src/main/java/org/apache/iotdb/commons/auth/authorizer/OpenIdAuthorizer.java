@@ -145,7 +145,8 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   @Override
-  public boolean login(String token, String password) throws AuthException {
+  public boolean login(String token, String password, final boolean useEncryptedPassword)
+      throws AuthException {
     if (password != null && !password.isEmpty()) {
       logger.error(
           "JWT Login failed as a non-empty Password was given username (token): {}", token);

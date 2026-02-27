@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.concurrent.GuardedBy;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -160,9 +159,9 @@ public class ExternalServiceManagementService {
         if (serviceInfo.getServiceInstance() == null) {
           // lazy create Instance
           serviceInfo.setServiceInstance(
-              createExternalServiceInstance(serviceName, serviceInfo.getClassName()));
+              createExternalServiceInstance(serviceName, serviceInfo.getClassName(), serviceInfo));
         }
-        serviceInfo.getServiceInstance().start();
+        runWithServiceClassLoader(serviceInfo, () -> serviceInfo.getServiceInstance().start());
       }
 
       // 3. persist on CN if service is user-defined, rollback if failed
@@ -171,7 +170,7 @@ public class ExternalServiceManagementService {
             ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
           TSStatus status = client.startExternalService(QueryId.getDataNodeId(), serviceName);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            serviceInfo.getServiceInstance().stop();
+            runWithServiceClassLoader(serviceInfo, () -> serviceInfo.getServiceInstance().stop());
             throw new IoTDBRuntimeException(status.message, status.code);
           }
         }
@@ -184,29 +183,40 @@ public class ExternalServiceManagementService {
     }
   }
 
-  private IExternalService createExternalServiceInstance(String serviceName, String className) {
+  private IExternalService createExternalServiceInstance(
+      String serviceName, String className, ServiceInfo serviceInfo) {
     // close ClassLoader automatically to release the file handle
     try {
       // Remind: this classLoader should be closed when service is dropped after user-defined
       // service supported
       ExternalServiceClassLoader classLoader = new ExternalServiceClassLoader(libRoot);
+      serviceInfo.setServiceClassLoader(classLoader);
       return (IExternalService)
           Class.forName(className, true, classLoader).getDeclaredConstructor().newInstance();
-    } catch (IOException
-        | InstantiationException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | IllegalAccessException
-        | ClassNotFoundException
-        | ClassCastException e) {
+    } catch (Throwable t) {
       TSStatus status =
           new TSStatus(TSStatusCode.EXTERNAL_SERVICE_INSTANCE_CREATE_ERROR.getStatusCode());
       status.setMessage(
           String.format(
               "Failed to start External Service %s, because its instance can not be constructed successfully. Exception: %s",
-              serviceName, e));
-      LOGGER.warn(status.getMessage(), e);
+              serviceName, t));
+      LOGGER.warn(status.getMessage(), t);
       throw new ExternalServiceManagementException(status);
+    }
+  }
+
+  private static void runWithServiceClassLoader(ServiceInfo serviceInfo, Runnable action) {
+    ClassLoader serviceClassLoader = serviceInfo.getServiceClassLoader();
+    if (serviceClassLoader == null) {
+      action.run();
+      return;
+    }
+    ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+    try {
+      Thread.currentThread().setContextClassLoader(serviceClassLoader);
+      action.run();
+    } finally {
+      Thread.currentThread().setContextClassLoader(originalClassLoader);
     }
   }
 
@@ -238,7 +248,7 @@ public class ExternalServiceManagementService {
             ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID); ) {
           TSStatus status = client.stopExternalService(QueryId.getDataNodeId(), serviceName);
           if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            serviceInfo.getServiceInstance().start();
+            runWithServiceClassLoader(serviceInfo, () -> serviceInfo.getServiceInstance().start());
             throw new IoTDBRuntimeException(status.message, status.code);
           }
         }
@@ -256,7 +266,7 @@ public class ExternalServiceManagementService {
         serviceInfo.getServiceInstance() != null,
         INSTANCE_NULL_ERROR_MSG,
         serviceInfo.getServiceName());
-    serviceInfo.getServiceInstance().stop();
+    runWithServiceClassLoader(serviceInfo, () -> serviceInfo.getServiceInstance().stop());
   }
 
   public void dropService(String serviceName, boolean forcedly)
@@ -330,20 +340,13 @@ public class ExternalServiceManagementService {
             serviceInfo -> {
               // start services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
-
-                try {
-                  IExternalService serviceInstance =
-                      createExternalServiceInstance(
-                          serviceInfo.getServiceName(), serviceInfo.getClassName());
-                  checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
-                  serviceInfo.setServiceInstance(serviceInstance);
-                  serviceInstance.start();
-                } finally {
-                  // set STOPPED to avoid the case: service is RUNNING, but its instance is null
-                  if (serviceInfo.getServiceInstance() == null) {
-                    serviceInfo.setState(STOPPED);
-                  }
-                }
+                IExternalService serviceInstance =
+                    createExternalServiceInstance(
+                        serviceInfo.getServiceName(), serviceInfo.getClassName(), serviceInfo);
+                checkState(
+                    serviceInstance != null, INSTANCE_NULL_ERROR_MSG, serviceInfo.getServiceName());
+                serviceInfo.setServiceInstance(serviceInstance);
+                runWithServiceClassLoader(serviceInfo, serviceInstance::start);
               }
             });
   }
@@ -356,8 +359,12 @@ public class ExternalServiceManagementService {
               // stop services with RUNNING state
               if (serviceInfo.getState() == RUNNING) {
                 IExternalService serviceInstance = serviceInfo.getServiceInstance();
-                checkState(serviceInstance != null, INSTANCE_NULL_ERROR_MSG);
-                serviceInstance.stop();
+                // serviceInstance maybe null when an exception occurs during the start of certain
+                // service in restoreRunningServiceInstance method
+                if (serviceInstance != null) {
+                  // only stop the instance successfully started
+                  runWithServiceClassLoader(serviceInfo, serviceInstance::stop);
+                }
               }
             });
   }
