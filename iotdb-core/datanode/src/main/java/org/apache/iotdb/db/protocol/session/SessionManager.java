@@ -156,7 +156,7 @@ public class SessionManager implements SessionManagerMBean {
 
     final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
     Pair<Long, Long> expirationAndModifiedTime =
-        DataNodeAuthUtils.checkPasswordExpiration(userId, password);
+        DataNodeAuthUtils.checkPasswordExpiration(userId, password, false);
     Long timeToExpire = expirationAndModifiedTime != null ? expirationAndModifiedTime.left : null;
 
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {

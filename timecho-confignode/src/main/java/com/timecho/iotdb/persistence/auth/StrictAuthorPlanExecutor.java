@@ -69,8 +69,9 @@ public class StrictAuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
-  public TPermissionInfoResp login(String username, String password) {
-    TPermissionInfoResp resp = commonAuthorPlanExecutor.login(username, password);
+  public TPermissionInfoResp login(String username, String password, boolean useEncryptedPassword) {
+    TPermissionInfoResp resp =
+        commonAuthorPlanExecutor.login(username, password, useEncryptedPassword);
     if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && resp.userInfo.userId == 0) {
       resp = AuthUtils.generateEmptyPermissionInfoResp();
