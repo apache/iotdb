@@ -534,4 +534,49 @@ public class IoTDBPipeAlterIT extends AbstractPipeDualAutoIT {
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv, "count timeSeries", "count(timeseries),", Collections.singleton("3,"));
   }
+
+  @Test
+  public void testAlterPipeRealtime() {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+
+    // Insert data on sender
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "insert into root.db.d1 (time, at1) values (1000, 1), (1500, 2), (2000, 3), (2500, 4), (3000, 5)",
+            "flush"),
+        null);
+
+    // Create pipe
+    final String sql =
+        String.format(
+            "create pipe a2b with source ('history.enable'='false') with sink ('node-urls'='%s')",
+            receiverDataNode.getIpAndPortString());
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    TestUtils.assertDataAlwaysOnEnv(
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("0,"));
+
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute("alter pipe a2b modify source ('history.enable'='true')");
+    } catch (final SQLException e) {
+      fail(e.getMessage());
+    }
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "count timeSeries root.db.**",
+        "count(timeseries),",
+        Collections.singleton("1,"));
+  }
 }
