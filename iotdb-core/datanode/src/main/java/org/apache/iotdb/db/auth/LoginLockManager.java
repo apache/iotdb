@@ -343,7 +343,10 @@ public class LoginLockManager {
     Set<String> ipsForUser = new HashSet<>();
     for (String key : userIpLocks.keySet()) {
       if (key.startsWith(userId + "@")) {
-        ipsForUser.add(key.split("@")[1]);
+        final String[] userIp = key.split("@");
+        if (userIp.length > 1) {
+          ipsForUser.add(key.split("@")[1]);
+        }
       }
     }
 
