@@ -115,9 +115,23 @@ if defined JAVA_HOME (
     set "JAVA=java"
 )
 
-REM JVM options
+REM Detect Java major version (--add-opens only for Java 9+, see JEP 396)
+set "JAVA_MAJOR="
+set "TEMP_VER=%TEMP%\iotdb_cli_java_ver.txt"
+"%JAVA%" -version 2>&1 | findstr /i "version" > "%TEMP_VER%"
+for /f "tokens=3" %%a in ('type "%TEMP_VER%"') do for /f "tokens=1,2 delims=." %%x in ("%%~a") do (
+    if "%%x"=="1" (set "JAVA_MAJOR=%%y") else (set "JAVA_MAJOR=%%x")
+    goto :jvm_opts
+)
+
+:jvm_opts
+del "%TEMP_VER%" 2>nul
+REM JVM options: base options always; --add-opens only for Java 9 and above
 set "IOTDB_CLI_PARAMS=-Dlogback.configurationFile=%IOTDB_CLI_CONF%\logback-cli.xml"
-set "JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang=ALL-UNNAMED"
+set "JVM_OPTS=-Dsun.jnu.encoding=UTF-8 -Dfile.encoding=UTF-8"
+if not "%JAVA_MAJOR%"=="8" if not "%JAVA_MAJOR%"=="" (
+    set "JVM_OPTS=!JVM_OPTS! --add-opens=java.base/java.lang=ALL-UNNAMED"
+)
 
 REM Run CLI
 "%JAVA%" %JVM_OPTS% %IOTDB_CLI_PARAMS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
