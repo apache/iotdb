@@ -167,6 +167,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             false,
+            candidatePorts,
             skipIfNoPrivileges);
 
     transferTsFileClientManager =
@@ -183,6 +184,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
             loadTsFileValidation,
             shouldMarkAsPipeRequest,
             isSplitTSFileBatchModeEnabled,
+            candidatePorts,
             skipIfNoPrivileges);
 
     if (isTabletBatchModeEnabled) {

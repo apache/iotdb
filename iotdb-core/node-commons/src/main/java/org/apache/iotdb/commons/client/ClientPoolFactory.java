@@ -39,6 +39,8 @@ import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.pipe.datastructure.interval.IntervalManager;
+import org.apache.iotdb.commons.pipe.datastructure.interval.PlainInterval;
 
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
@@ -272,6 +274,12 @@ public class ClientPoolFactory {
 
   public static class AsyncPipeDataTransferServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+    final IntervalManager<PlainInterval> candidatePorts;
+
+    public AsyncPipeDataTransferServiceClientPoolFactory(
+        IntervalManager<PlainInterval> candidatePorts) {
+      this.candidatePorts = candidatePorts;
+    }
 
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
@@ -285,7 +293,8 @@ public class ClientPoolFactory {
                       .setRpcThriftCompressionEnabled(conf.isPipeSinkRPCThriftCompressionEnabled())
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxClientNumber())
                   .build()
@@ -298,6 +307,13 @@ public class ClientPoolFactory {
 
   public static class AsyncPipeTsFileDataTransferServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, AsyncPipeDataTransferServiceClient> {
+    final IntervalManager<PlainInterval> candidatePorts;
+
+    public AsyncPipeTsFileDataTransferServiceClientPoolFactory(
+        IntervalManager<PlainInterval> candidatePorts) {
+      this.candidatePorts = candidatePorts;
+    }
+
     @Override
     public GenericKeyedObjectPool<TEndPoint, AsyncPipeDataTransferServiceClient> createClientPool(
         ClientManager<TEndPoint, AsyncPipeDataTransferServiceClient> manager) {
@@ -311,7 +327,8 @@ public class ClientPoolFactory {
                       .setSelectorNumOfAsyncClientManager(conf.getPipeAsyncSinkSelectorNumber())
                       .setPrintLogWhenEncounterException(conf.isPrintLogWhenEncounterException())
                       .build(),
-                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName()),
+                  ThreadName.PIPE_ASYNC_CONNECTOR_CLIENT_POOL.getName(),
+                  this.candidatePorts),
               new ClientPoolProperty.Builder<AsyncPipeDataTransferServiceClient>()
                   .setMaxClientNumForEachNode(conf.getPipeAsyncSinkMaxTsFileClientNumber())
                   .build()
