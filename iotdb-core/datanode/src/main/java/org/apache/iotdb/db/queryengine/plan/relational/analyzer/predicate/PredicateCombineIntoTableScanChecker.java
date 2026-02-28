@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate;
 
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BetweenPredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
@@ -33,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SearchedCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
@@ -141,6 +143,16 @@ public class PredicateCombineIntoTableScanChecker extends PredicateVisitor<Boole
   @Override
   protected Boolean visitIsNotNullPredicate(IsNotNullPredicate node, Void context) {
     return isTimeOrMeasurementColumn(node.getValue());
+  }
+
+  @Override
+  protected Boolean visitCast(Cast node, Void context) {
+    return process(node.getExpression(), context);
+  }
+
+  @Override
+  protected Boolean visitNullLiteral(NullLiteral node, Void context) {
+    return Boolean.TRUE;
   }
 
   // expression below will be supported later
