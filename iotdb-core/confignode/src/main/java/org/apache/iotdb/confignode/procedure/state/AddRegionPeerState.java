@@ -23,4 +23,6 @@ public enum AddRegionPeerState {
   CREATE_NEW_REGION_PEER,
   DO_ADD_REGION_PEER,
   UPDATE_REGION_LOCATION_CACHE,
+  // Appended at the end to preserve ordinal compatibility with persisted procedures
+  CREATE_CONSENSUS_PIPES,
 }

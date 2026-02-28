@@ -116,18 +116,12 @@ public class PipeConsensusServerImpl {
     this.pipeConsensusServerMetrics = new PipeConsensusServerMetrics(this);
     this.replicateMode = config.getReplicateMode();
 
-    // if peers is empty, the `resetPeerList` will automatically fetch correct peers' info from CN.
-    if (!peers.isEmpty()) {
-      // create consensus pipes
-      Set<Peer> deepCopyPeersWithoutSelf =
-          peers.stream().filter(peer -> !peer.equals(thisNode)).collect(Collectors.toSet());
-      final List<Peer> successfulPipes = createConsensusPipes(deepCopyPeersWithoutSelf);
-      if (successfulPipes.size() < deepCopyPeersWithoutSelf.size()) {
-        // roll back
-        updateConsensusPipesStatus(successfulPipes, PipeStatus.DROPPED);
-        throw new IOException(String.format("%s cannot create all consensus pipes", thisNode));
-      }
-    }
+    // Consensus pipe creation is fully delegated to ConfigNode to avoid deadlocks between
+    // DataNode RPC handlers and ConfigNode's PipeTaskCoordinatorLock. ConfigNode proactively
+    // creates consensus pipes at key lifecycle points:
+    //   1. New DataRegion creation: via CreatePipeProcedureV2 in CreateRegionGroupsProcedure
+    //   2. Region migration addPeer: via CREATE_CONSENSUS_PIPES state in AddRegionPeerProcedure
+    // The async dispatcher and checkConsensusPipe guardian serve as backup repair mechanisms.
   }
 
   @SuppressWarnings("java:S2276")

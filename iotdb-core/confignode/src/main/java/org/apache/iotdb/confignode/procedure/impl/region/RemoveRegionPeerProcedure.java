@@ -45,6 +45,7 @@ import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DROP_CONSENSUS_PIPES;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
@@ -133,7 +134,7 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
                 regionId);
-            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            setNextState(DROP_CONSENSUS_PIPES);
             return Flow.HAS_MORE_STATE;
           }
           TRegionMigrateResult deleteOldRegionPeerResult =
@@ -143,9 +144,14 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
                 "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
                 regionId);
-            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            setNextState(DROP_CONSENSUS_PIPES);
             return Flow.HAS_MORE_STATE;
           }
+          setNextState(DROP_CONSENSUS_PIPES);
+          break;
+        case DROP_CONSENSUS_PIPES:
+          handler.dropConsensusPipesForRemovePeer(regionId, targetDataNode);
+          setKillPoint(state);
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;
         case REMOVE_REGION_LOCATION_CACHE:

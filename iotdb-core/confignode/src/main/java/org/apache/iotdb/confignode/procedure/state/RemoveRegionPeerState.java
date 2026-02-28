@@ -24,4 +24,6 @@ public enum RemoveRegionPeerState {
   REMOVE_REGION_PEER,
   DELETE_OLD_REGION_PEER,
   REMOVE_REGION_LOCATION_CACHE,
+  // Appended at the end to preserve ordinal compatibility with persisted procedures
+  DROP_CONSENSUS_PIPES,
 }

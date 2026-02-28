@@ -19,32 +19,29 @@
 
 package org.apache.iotdb.db.pipe.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.consensus.ConfigRegionId;
-import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
-import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
-import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
-import org.apache.iotdb.pipe.api.exception.PipeException;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_ALREADY_EXIST_MSG;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeRPCMessageConstant.PIPE_NOT_EXIST_MSG;
-
+/**
+ * No-op dispatcher. Consensus pipe lifecycle is fully managed by ConfigNode:
+ *
+ * <ul>
+ *   <li>New DataRegion: ConfigNode creates pipes via CreatePipeProcedureV2
+ *   <li>Region migration addPeer: ConfigNode creates pipes in AddRegionPeerProcedure
+ *   <li>Region migration removePeer: ConfigNode drops pipes in RemoveRegionPeerProcedure
+ * </ul>
+ *
+ * <p>The checkConsensusPipe guardian still detects inconsistencies (via logging), but actual
+ * remediation is handled by ConfigNode's procedure retry or manual intervention.
+ */
 public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ConsensusPipeDataNodeDispatcher.class);
-
-  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
-      ConfigNodeClientManager.getInstance();
 
   @Override
   public void createPipe(
@@ -54,78 +51,21 @@ public class ConsensusPipeDataNodeDispatcher implements ConsensusPipeDispatcher 
       Map<String, String> connectorAttributes,
       boolean needManuallyStart)
       throws Exception {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TCreatePipeReq req =
-          new TCreatePipeReq()
-              .setPipeName(pipeName)
-              .setNeedManuallyStart(needManuallyStart)
-              .setExtractorAttributes(extractorAttributes)
-              .setProcessorAttributes(processorAttributes)
-              .setConnectorAttributes(connectorAttributes);
-      TSStatus status = configNodeClient.createPipe(req);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        LOGGER.warn("Failed to create consensus pipe-{}, status: {}", pipeName, status);
-        // ignore idempotence logic
-        if (status.getMessage().contains(PIPE_ALREADY_EXIST_MSG)) {
-          return;
-        }
-        throw new PipeException(status.getMessage());
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Failed to create consensus pipe-{}", pipeName, e);
-      throw new PipeException("Failed to create consensus pipe", e);
-    }
+    LOGGER.debug("No-op createPipe for {}, managed by ConfigNode", pipeName);
   }
 
   @Override
   public void startPipe(String pipeName) throws Exception {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      TSStatus status = configNodeClient.startPipe(pipeName);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        LOGGER.warn("Failed to start consensus pipe-{}, status: {}", pipeName, status);
-        throw new PipeException(status.getMessage());
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Failed to start consensus pipe-{}", pipeName, e);
-      throw new PipeException("Failed to start consensus pipe", e);
-    }
+    LOGGER.debug("No-op startPipe for {}, managed by ConfigNode", pipeName);
   }
 
   @Override
   public void stopPipe(String pipeName) throws Exception {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus status = configNodeClient.stopPipe(pipeName);
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        LOGGER.warn("Failed to stop consensus pipe-{}, status: {}", pipeName, status);
-        throw new PipeException(status.getMessage());
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Failed to stop consensus pipe-{}", pipeName, e);
-      throw new PipeException("Failed to stop consensus pipe", e);
-    }
+    LOGGER.debug("No-op stopPipe for {}, managed by ConfigNode", pipeName);
   }
 
-  // Use ConsensusPipeName instead of String to provide information for receiverAgent to release
-  // corresponding resource
   @Override
   public void dropPipe(ConsensusPipeName pipeName) throws Exception {
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      final TSStatus status = configNodeClient.dropPipe(pipeName.toString());
-      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != status.getCode()) {
-        LOGGER.warn("Failed to drop consensus pipe-{}, status: {}", pipeName, status);
-        // ignore idempotence logic
-        if (status.getMessage().contains(PIPE_NOT_EXIST_MSG)) {
-          return;
-        }
-        throw new PipeException(status.getMessage());
-      }
-    } catch (Exception e) {
-      LOGGER.warn("Failed to drop consensus pipe-{}", pipeName, e);
-      throw new PipeException("Failed to drop consensus pipe", e);
-    }
+    LOGGER.debug("No-op dropPipe for {}, managed by ConfigNode", pipeName);
   }
 }
