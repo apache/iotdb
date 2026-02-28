@@ -298,22 +298,15 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
+    // Always use full retries regardless of node status, because after a cluster crash the
+    // target DataNode may be Unknown but still in the process of restarting.
     status =
-        configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
-                == NodeStatus.Unknown
-            ? (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithGivenRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
-                        1)
-            : (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    maintainPeerReq,
+                    CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
