@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
@@ -648,6 +649,17 @@ public class UnaliasSymbolReferences implements PlanOptimizer {
       TopKRankingNode rewrittenTopKRanking = mapper.map(node, rewrittenSource.getRoot());
 
       return new PlanAndMappings(rewrittenTopKRanking, mapping);
+    }
+
+    @Override
+    public PlanAndMappings visitLimitKRanking(LimitKRankingNode node, UnaliasContext context) {
+      PlanAndMappings rewrittenSource = node.getChild().accept(this, context);
+      Map<Symbol, Symbol> mapping = new HashMap<>(rewrittenSource.getMappings());
+      SymbolMapper mapper = symbolMapper(mapping);
+
+      LimitKRankingNode rewrittenNode = mapper.map(node, rewrittenSource.getRoot());
+
+      return new PlanAndMappings(rewrittenNode, mapping);
     }
 
     @Override

@@ -79,6 +79,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnaly
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -1144,6 +1145,24 @@ public class PlanGraphPrinter extends PlanVisitor<List<String>, PlanGraphPrinter
     boxValue.add(String.format("TopKRanking-%s", node.getPlanNodeId().getId()));
     boxValue.add(String.format("RankingType: %s", node.getRankingType()));
     boxValue.add(String.format("RankingSymbol: %s", node.getRankingSymbol()));
+    DataOrganizationSpecification specification = node.getSpecification();
+    if (!specification.getPartitionBy().isEmpty()) {
+      boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");
+    }
+    specification
+        .getOrderingScheme()
+        .ifPresent(orderingScheme -> boxValue.add("Order by: " + orderingScheme));
+
+    return render(node, boxValue, context);
+  }
+
+  @Override
+  public List<String> visitLimitKRanking(LimitKRankingNode node, GraphContext context) {
+    List<String> boxValue = new ArrayList<>();
+
+    boxValue.add(String.format("LimitKRanking-%s", node.getPlanNodeId().getId()));
+    boxValue.add(String.format("RankingSymbol: %s", node.getRankingSymbol()));
+    boxValue.add(String.format("MaxRowCount: %d", node.getMaxRowCountPerPartition()));
     DataOrganizationSpecification specification = node.getSpecification();
     if (!specification.getPartitionBy().isEmpty()) {
       boxValue.add("Partition by: [" + Joiner.on(", ").join(specification.getPartitionBy()) + "]");

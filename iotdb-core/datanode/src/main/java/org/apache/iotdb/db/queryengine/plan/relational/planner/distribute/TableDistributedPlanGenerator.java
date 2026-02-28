@@ -69,6 +69,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
@@ -1899,6 +1900,36 @@ public class TableDistributedPlanGenerator
               .map(child -> child.getChildren().get(0))
               .collect(Collectors.toList());
     }
+
+    if (childrenNodes.size() == 1) {
+      node.setChild(childrenNodes.get(0));
+      return Collections.singletonList(node);
+    } else if (!canSplitPushDown) {
+      CollectNode collectNode =
+          new CollectNode(queryId.genPlanNodeId(), node.getChildren().get(0).getOutputSymbols());
+      childrenNodes.forEach(collectNode::addChild);
+      node.setChild(collectNode);
+      return Collections.singletonList(node);
+    } else {
+      return splitForEachChild(node, childrenNodes);
+    }
+  }
+
+  @Override
+  public List<PlanNode> visitLimitKRanking(LimitKRankingNode node, PlanContext context) {
+    Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+    if (orderingScheme.isPresent()) {
+      context.setExpectedOrderingScheme(orderingScheme.get());
+      nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme.get());
+    }
+
+    checkArgument(
+        node.getChildren().size() == 1, "Size of LimitKRankingNode can only be 1 in logical plan.");
+    boolean canSplitPushDown = node.getChild() instanceof GroupNode;
+    if (!canSplitPushDown) {
+      node.setChild(((SortNode) node.getChild()).getChild());
+    }
+    List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
 
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));

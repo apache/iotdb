@@ -795,6 +795,12 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitLimitKRanking(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode node,
+      C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
   public R visitRowNumber(RowNumberNode node, C context) {
     return visitSingleChildProcess(node, context);
   }

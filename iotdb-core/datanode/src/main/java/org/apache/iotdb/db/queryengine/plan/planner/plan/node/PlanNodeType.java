@@ -125,6 +125,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
@@ -323,6 +324,8 @@ public enum PlanNodeType {
   TABLE_TOPK_RANKING_NODE((short) 1037),
   TABLE_ROW_NUMBER_NODE((short) 1038),
   TABLE_VALUES_NODE((short) 1039),
+
+  TABLE_LIMITK_RANKING_NODE((short) 1040),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -727,6 +730,8 @@ public enum PlanNodeType {
         return RowNumberNode.deserialize(buffer);
       case 1039:
         return ValuesNode.deserialize(buffer);
+      case 1040:
+        return LimitKRankingNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

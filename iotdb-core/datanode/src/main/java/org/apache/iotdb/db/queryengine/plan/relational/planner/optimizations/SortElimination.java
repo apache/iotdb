@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import java.util.Collections;
 
@@ -72,10 +74,13 @@ public class SortElimination implements PlanOptimizer {
       OrderingScheme orderingScheme = node.getOrderingScheme();
       if (context.canEliminateSort()
           && newContext.getTotalDeviceEntrySize() == 1
-          && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())) {
+          && orderingScheme.getOrderBy().get(0).getName().equals(context.getTimeColumnName())
+          && timeSortDirectionMatchesScanOrder(orderingScheme, newContext)) {
         return child;
       }
-      return context.canEliminateSort() && node.isOrderByAllIdsAndTime()
+      return context.canEliminateSort()
+              && node.isOrderByAllIdsAndTime()
+              && timeSortDirectionMatchesScanOrder(orderingScheme, newContext)
           ? child
           : node.replaceChildren(Collections.singletonList(child));
     }
@@ -86,17 +91,39 @@ public class SortElimination implements PlanOptimizer {
       PlanNode child = node.getChild().accept(this, newContext);
       context.setCannotEliminateSort(newContext.cannotEliminateSort);
       return context.canEliminateSort()
-              && (node.isOrderByAllIdsAndTime()
+              && ((node.isOrderByAllIdsAndTime()
+                      && timeSortDirectionMatchesScanOrder(node.getOrderingScheme(), newContext))
                   || node.getStreamCompareKeyEndIndex()
                       == node.getOrderingScheme().getOrderBy().size() - 1)
           ? child
           : node.replaceChildren(Collections.singletonList(child));
     }
 
+    /**
+     * Checks whether the sort direction on the time column matches the underlying scan order. When
+     * the scan is DESC (e.g. due to LimitKRanking with ORDER BY time DESC), a sort expecting ASC
+     * must not be eliminated.
+     */
+    private boolean timeSortDirectionMatchesScanOrder(
+        OrderingScheme orderingScheme, Context childContext) {
+      if (childContext.getTimeColumnName() == null) {
+        return true;
+      }
+      for (Symbol symbol : orderingScheme.getOrderBy()) {
+        if (symbol.getName().equals(childContext.getTimeColumnName())) {
+          SortOrder sortOrder = orderingScheme.getOrdering(symbol);
+          boolean scanAscending = childContext.getScanOrder() == Ordering.ASC;
+          return sortOrder.isAscending() == scanAscending;
+        }
+      }
+      return true;
+    }
+
     @Override
     public PlanNode visitDeviceTableScan(DeviceTableScanNode node, Context context) {
       context.addDeviceEntrySize(node.getDeviceEntries().size());
       context.setTimeColumnName(node.getTimeColumn().map(Symbol::getName).orElse(null));
+      context.setScanOrder(node.getScanOrder());
       return node;
     }
 
@@ -152,6 +179,8 @@ public class SortElimination implements PlanOptimizer {
 
     private String timeColumnName = null;
 
+    private Ordering scanOrder = Ordering.ASC;
+
     Context() {}
 
     public void addDeviceEntrySize(int deviceEntrySize) {
@@ -176,6 +205,14 @@ public class SortElimination implements PlanOptimizer {
 
     public void setTimeColumnName(String timeColumnName) {
       this.timeColumnName = timeColumnName;
+    }
+
+    public Ordering getScanOrder() {
+      return scanOrder;
+    }
+
+    public void setScanOrder(Ordering scanOrder) {
+      this.scanOrder = scanOrder;
     }
   }
 }
