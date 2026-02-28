@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.config;
 
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeDispatcher;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeReceiver;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
@@ -244,7 +243,6 @@ public class PipeConsensusConfig {
     private final String extractorPluginName;
     private final String processorPluginName;
     private final String connectorPluginName;
-    private final ConsensusPipeDispatcher consensusPipeDispatcher;
     private final ConsensusPipeGuardian consensusPipeGuardian;
     private final ConsensusPipeSelector consensusPipeSelector;
     private final ReplicateProgressManager replicateProgressManager;
@@ -255,7 +253,6 @@ public class PipeConsensusConfig {
         String extractorPluginName,
         String processorPluginName,
         String connectorPluginName,
-        ConsensusPipeDispatcher consensusPipeDispatcher,
         ConsensusPipeGuardian consensusPipeGuardian,
         ConsensusPipeSelector consensusPipeSelector,
         ReplicateProgressManager replicateProgressManager,
@@ -264,7 +261,6 @@ public class PipeConsensusConfig {
       this.extractorPluginName = extractorPluginName;
       this.processorPluginName = processorPluginName;
       this.connectorPluginName = connectorPluginName;
-      this.consensusPipeDispatcher = consensusPipeDispatcher;
       this.consensusPipeGuardian = consensusPipeGuardian;
       this.consensusPipeSelector = consensusPipeSelector;
       this.replicateProgressManager = replicateProgressManager;
@@ -282,10 +278,6 @@ public class PipeConsensusConfig {
 
     public String getConnectorPluginName() {
       return connectorPluginName;
-    }
-
-    public ConsensusPipeDispatcher getConsensusPipeDispatcher() {
-      return consensusPipeDispatcher;
     }
 
     public ConsensusPipeGuardian getConsensusPipeGuardian() {
@@ -318,7 +310,6 @@ public class PipeConsensusConfig {
           BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName();
       private String connectorPluginName =
           BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName();
-      private ConsensusPipeDispatcher consensusPipeDispatcher = null;
       private ConsensusPipeGuardian consensusPipeGuardian = null;
       private ConsensusPipeSelector consensusPipeSelector = null;
       private ReplicateProgressManager replicateProgressManager = null;
@@ -337,12 +328,6 @@ public class PipeConsensusConfig {
 
       public Pipe.Builder setConnectorPluginName(String connectorPluginName) {
         this.connectorPluginName = connectorPluginName;
-        return this;
-      }
-
-      public Pipe.Builder setConsensusPipeDispatcher(
-          ConsensusPipeDispatcher consensusPipeDispatcher) {
-        this.consensusPipeDispatcher = consensusPipeDispatcher;
         return this;
       }
 
@@ -378,7 +363,6 @@ public class PipeConsensusConfig {
             extractorPluginName,
             processorPluginName,
             connectorPluginName,
-            consensusPipeDispatcher,
             consensusPipeGuardian,
             consensusPipeSelector,
             replicateProgressManager,
