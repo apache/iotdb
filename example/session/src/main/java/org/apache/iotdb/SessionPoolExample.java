@@ -115,8 +115,7 @@ public class SessionPoolExample {
               while (dataIterator.next()) {
                 StringBuilder builder = new StringBuilder();
                 for (String columnName : wrapper.getColumnNames()) {
-                  builder.append(dataIterator.getString(columnName))
-                          .append(" ");
+                  builder.append(dataIterator.getString(columnName)).append(" ");
                 }
                 System.out.println(builder);
               }
