@@ -113,7 +113,6 @@ public class PipeConsensusServerImpl {
     // creates consensus pipes at key lifecycle points:
     //   1. New DataRegion creation: via CreatePipeProcedureV2 in CreateRegionGroupsProcedure
     //   2. Region migration addPeer: via CREATE_CONSENSUS_PIPES state in AddRegionPeerProcedure
-    // The async dispatcher and checkConsensusPipe guardian serve as backup repair mechanisms.
   }
 
   public synchronized void start() throws IOException {
