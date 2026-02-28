@@ -158,13 +158,13 @@ mvn spotless:apply -P with-integration-tests
 
 ```bash
 # Unit tests for a specific module
-mvn test -pl iotdb-core/datanode
+mvn test -pl iotdb-core/datanode -am
 
 # Single unit test class
-mvn test -pl iotdb-core/datanode -Dtest=ClassName
+mvn test -pl iotdb-core/datanode -am -Dtest=ClassName
 
 # Single unit test method
-mvn test -pl iotdb-core/datanode -Dtest=ClassName#methodName
+mvn test -pl iotdb-core/datanode -am -Dtest=ClassName#methodName
 
 # Integration tests — Simple mode (1 ConfigNode + 1 DataNode, tree model)
 mvn clean verify -DskipUTs -pl integration-test -am -P with-integration-tests
