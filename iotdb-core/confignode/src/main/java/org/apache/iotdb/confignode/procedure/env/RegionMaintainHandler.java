@@ -500,8 +500,7 @@ public class RegionMaintainHandler {
     DataRegionId dataRegionId = new DataRegionId(regionId.getId());
     ConsensusPipeName pipeName = new ConsensusPipeName(dataRegionId, senderNodeId, receiverNodeId);
 
-    // Replicate mode should match DataNode's iot_consensus_v2_mode config (default: "batch")
-    String replicateMode = "batch";
+    String replicateMode = CONF.getIotConsensusV2Mode();
 
     Map<String, String> extractorAttributes = new HashMap<>();
     extractorAttributes.put(EXTRACTOR_KEY, BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
