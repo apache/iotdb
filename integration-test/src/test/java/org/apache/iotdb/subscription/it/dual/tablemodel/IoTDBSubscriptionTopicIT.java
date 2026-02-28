@@ -37,11 +37,11 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullCons
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -401,15 +401,24 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         continue;
       }
       switch (SubscriptionMessageType.valueOf(messageType)) {
-        case SESSION_DATA_SETS_HANDLER:
-          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+        case RECORD_HANDLER:
+          for (final ResultSet dataSet : message.getRecords()) {
             session.executeNonQueryStatement(
-                "use " + Objects.requireNonNull(dataSet.getDatabaseName()));
-            session.insert(dataSet.getTablet());
+                "use "
+                    + Objects.requireNonNull(
+                        ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                    .SubscriptionRecord)
+                                dataSet)
+                            .getDatabaseName()));
+            session.insert(
+                ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                            .SubscriptionRecord)
+                        dataSet)
+                    .getTablet());
           }
           break;
-        case TS_FILE_HANDLER:
-          final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+        case TS_FILE:
+          final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
           session.executeNonQueryStatement(
               "use " + Objects.requireNonNull(tsFileHandler.getDatabaseName()));
           session.executeNonQueryStatement(

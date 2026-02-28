@@ -506,7 +506,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionTreeRegres
           break;
         }
         for (final SubscriptionMessage message : messages) {
-          TsFileReader reader = message.getTsFileHandler().openReader();
+          TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
           QueryDataSet dataset =
               reader.query(
                   QueryExpression.create(
@@ -552,7 +552,7 @@ public class IoTDBTestParamPullConsumerIT extends AbstractSubscriptionTreeRegres
           break;
         }
         for (final SubscriptionMessage message : messages) {
-          TsFileReader reader = message.getTsFileHandler().openReader();
+          TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
           QueryDataSet dataset =
               reader.query(
                   QueryExpression.create(

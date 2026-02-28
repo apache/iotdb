@@ -163,8 +163,7 @@ public class IoTDBSubscriptionTimePrecisionIT extends AbstractSubscriptionDualIT
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
+                    for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                         it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
