@@ -45,12 +45,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.MultiInpu
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputMultiReferenceLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.intermediate.SingleInputSingleReferenceLayer;
 import org.apache.iotdb.db.queryengine.transformation.dag.memory.LayerMemoryAssigner;
+import org.apache.iotdb.db.queryengine.transformation.dag.transformer.ArithmeticTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticAdditionTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticDivisionTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticModuloTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticMultiplicationTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.ArithmeticSubtractionTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareEqualToTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareGreaterEqualTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.binary.CompareGreaterThanTransformer;
@@ -64,7 +60,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQ
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.ternary.BetweenTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.InTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.IsNullTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.transformer.unary.LikeTransformer;
@@ -138,7 +133,8 @@ public class IntermediateLayerVisitor
           getConcreteBinaryTransformer(
               binaryExpression,
               leftParentIntermediateLayer.constructReader(),
-              rightParentIntermediateLayer.constructReader());
+              rightParentIntermediateLayer.constructReader(),
+              context);
 
       // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
       // yet. And since a ConstantLayerPointReader won't produce too much IO,
@@ -310,7 +306,8 @@ public class IntermediateLayerVisitor
       case LOGIC_NOT:
         return new LogicNotTransformer(parentReader);
       case NEGATION:
-        return new ArithmeticNegationTransformer(parentReader);
+        TSDataType negationType = parentReader.getDataTypes()[0];
+        return ArithmeticTransformerApi.getNegationTransformer(parentReader, negationType);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
         LikePattern pattern =
@@ -328,19 +325,47 @@ public class IntermediateLayerVisitor
   private Transformer getConcreteBinaryTransformer(
       Expression expression,
       LayerReader leftParentLayerReader,
-      LayerReader rightParentLayerReader) {
+      LayerReader rightParentLayerReader,
+      IntermediateLayerVisitorContext context) {
+    TSDataType leftType = leftParentLayerReader.getDataTypes()[0];
+    TSDataType rightType = rightParentLayerReader.getDataTypes()[0];
+
     switch (expression.getExpressionType()) {
       case ADDITION:
-        return new ArithmeticAdditionTransformer(leftParentLayerReader, rightParentLayerReader);
+        return ArithmeticTransformerApi.getAdditionTransformer(
+            leftParentLayerReader,
+            rightParentLayerReader,
+            leftType,
+            rightType,
+            context.udtfContext.getZoneId());
       case SUBTRACTION:
-        return new ArithmeticSubtractionTransformer(leftParentLayerReader, rightParentLayerReader);
+        return ArithmeticTransformerApi.getSubtractionTransformer(
+            leftParentLayerReader,
+            rightParentLayerReader,
+            leftType,
+            rightType,
+            context.udtfContext.getZoneId());
       case MULTIPLICATION:
-        return new ArithmeticMultiplicationTransformer(
-            leftParentLayerReader, rightParentLayerReader);
+        return ArithmeticTransformerApi.getMultiplicationTransformer(
+            leftParentLayerReader,
+            rightParentLayerReader,
+            leftType,
+            rightType,
+            context.udtfContext.getZoneId());
       case DIVISION:
-        return new ArithmeticDivisionTransformer(leftParentLayerReader, rightParentLayerReader);
+        return ArithmeticTransformerApi.getDivisionTransformer(
+            leftParentLayerReader,
+            rightParentLayerReader,
+            leftType,
+            rightType,
+            context.udtfContext.getZoneId());
       case MODULO:
-        return new ArithmeticModuloTransformer(leftParentLayerReader, rightParentLayerReader);
+        return ArithmeticTransformerApi.getModulusTransformer(
+            leftParentLayerReader,
+            rightParentLayerReader,
+            leftType,
+            rightType,
+            context.udtfContext.getZoneId());
       case EQUAL_TO:
         return new CompareEqualToTransformer(leftParentLayerReader, rightParentLayerReader);
       case NON_EQUAL:

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.expression.visitor;
 
 import org.apache.iotdb.db.queryengine.common.NodeRef;
+import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.binary.BinaryExpression;
@@ -41,11 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.TreeCaseWhenThenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticDivisionColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticModuloColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticSubtractionColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.ArithmeticColumnTransformerApi;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareEqualToColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
@@ -54,8 +51,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicOrColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongDivisionLongColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongModulusLongColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -63,7 +58,6 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.NullColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ternary.BetweenColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.InColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.IsNullColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.LikeColumnTransformer;
@@ -79,6 +73,7 @@ import org.apache.tsfile.read.common.type.LongType;
 import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.read.common.type.TypeFactory;
 
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +81,6 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.BETWEEN;
 import static org.apache.tsfile.enums.TSDataType.UNKNOWN;
-import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -161,7 +155,8 @@ public class ColumnTransformerVisitor
                 binaryExpression,
                 leftColumnTransformer,
                 rightColumnTransformer,
-                TypeFactory.getType(context.getType(binaryExpression))));
+                TypeFactory.getType(context.getType(binaryExpression)),
+                context.getZoneId()));
       }
     }
 
@@ -445,7 +440,7 @@ public class ColumnTransformerVisitor
       case LOGIC_NOT:
         return new LogicNotColumnTransformer(returnType, childColumnTransformer);
       case NEGATION:
-        return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
+        return ArithmeticColumnTransformerApi.getNegationTransformer(childColumnTransformer);
       case LIKE:
         LikeExpression likeExpression = (LikeExpression) expression;
         LikePattern pattern =
@@ -465,31 +460,25 @@ public class ColumnTransformerVisitor
       Expression expression,
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
-      Type returnType) {
+      Type returnType,
+      ZoneId zoneId) {
+
     switch (expression.getExpressionType()) {
       case ADDITION:
-        return new ArithmeticAdditionColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
+        return ArithmeticColumnTransformerApi.getAdditionTransformer(
+            leftColumnTransformer, rightColumnTransformer, zoneId);
       case SUBTRACTION:
-        return new ArithmeticSubtractionColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
+        return ArithmeticColumnTransformerApi.getSubtractionTransformer(
+            leftColumnTransformer, rightColumnTransformer, zoneId);
       case MULTIPLICATION:
-        return new ArithmeticMultiplicationColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
+        return ArithmeticColumnTransformerApi.getMultiplicationTransformer(
+            leftColumnTransformer, rightColumnTransformer, zoneId);
       case DIVISION:
-        if (returnType == INT64) {
-          return new LongDivisionLongColumnTransformer(
-              returnType, leftColumnTransformer, rightColumnTransformer);
-        }
-        return new ArithmeticDivisionColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
+        return ArithmeticColumnTransformerApi.getDivisionTransformer(
+            leftColumnTransformer, rightColumnTransformer, zoneId);
       case MODULO:
-        if (returnType == INT64) {
-          return new LongModulusLongColumnTransformer(
-              returnType, leftColumnTransformer, rightColumnTransformer);
-        }
-        return new ArithmeticModuloColumnTransformer(
-            returnType, leftColumnTransformer, rightColumnTransformer);
+        return ArithmeticColumnTransformerApi.getModulusTransformer(
+            leftColumnTransformer, rightColumnTransformer, zoneId);
       case EQUAL_TO:
         return new CompareEqualToColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
@@ -541,6 +530,9 @@ public class ColumnTransformerVisitor
   }
 
   public static class ColumnTransformerVisitorContext {
+    // SessionInfo for getting ZoneId
+    SessionInfo sessionInfo;
+
     // UDTFContext of expression
     UDTFContext udtfContext;
 
@@ -570,6 +562,7 @@ public class ColumnTransformerVisitor
 
     @SuppressWarnings("squid:S107")
     public ColumnTransformerVisitorContext(
+        SessionInfo sessionInfo,
         UDTFContext udtfContext,
         Map<NodeRef<Expression>, TSDataType> expressionTypes,
         List<LeafColumnTransformer> leafList,
@@ -580,6 +573,7 @@ public class ColumnTransformerVisitor
         List<TSDataType> inputDataTypes,
         int originSize,
         TypeProvider typeProvider) {
+      this.sessionInfo = sessionInfo;
       this.udtfContext = udtfContext;
       this.expressionTypes = expressionTypes;
       this.leafList = leafList;
@@ -613,6 +607,10 @@ public class ColumnTransformerVisitor
 
     public TypeProvider getTypeProvider() {
       return this.typeProvider;
+    }
+
+    public ZoneId getZoneId() {
+      return sessionInfo.getZoneId();
     }
   }
 }
