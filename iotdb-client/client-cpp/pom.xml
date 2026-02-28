@@ -415,8 +415,8 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
+                <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
+                <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
             </properties>
         </profile>
