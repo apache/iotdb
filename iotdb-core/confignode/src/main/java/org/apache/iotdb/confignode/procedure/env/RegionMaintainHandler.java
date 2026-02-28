@@ -45,6 +45,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -445,6 +446,43 @@ public class RegionMaintainHandler {
           existingLocation.getDataNodeId(),
           existingLocation.getDataRegionConsensusEndPoint());
     }
+  }
+
+  /**
+   * Create bidirectional consensus pipes among all peers for newly created RegionGroups. Only
+   * applies to IoTConsensusV2 DataRegions. Called by CreateRegionGroupsProcedure after all regions
+   * are activated.
+   */
+  public void createInitialConsensusPipes(CreateRegionGroupsPlan persistPlan) {
+    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      return;
+    }
+
+    persistPlan
+        .getRegionGroupMap()
+        .forEach(
+            (database, regionReplicaSets) ->
+                regionReplicaSets.forEach(
+                    regionReplicaSet -> {
+                      TConsensusGroupId regionId = regionReplicaSet.getRegionId();
+                      if (!TConsensusGroupType.DataRegion.equals(regionId.getType())) {
+                        return;
+                      }
+                      List<TDataNodeLocation> locations = regionReplicaSet.getDataNodeLocations();
+                      for (int i = 0; i < locations.size(); i++) {
+                        for (int j = 0; j < locations.size(); j++) {
+                          if (i == j) {
+                            continue;
+                          }
+                          createSingleConsensusPipe(
+                              regionId,
+                              locations.get(i).getDataNodeId(),
+                              locations.get(i).getDataRegionConsensusEndPoint(),
+                              locations.get(j).getDataNodeId(),
+                              locations.get(j).getDataRegionConsensusEndPoint());
+                        }
+                      }
+                    }));
   }
 
   /**
