@@ -27,6 +27,9 @@ import java.util.Map;
 import java.util.Set;
 
 public interface IDiskMetricsManager {
+
+  long UPDATE_SMALLEST_INTERVAL = 10000L;
+
   default Map<String, Double> getReadDataSizeForDisk() {
     return Collections.emptyMap();
   }
