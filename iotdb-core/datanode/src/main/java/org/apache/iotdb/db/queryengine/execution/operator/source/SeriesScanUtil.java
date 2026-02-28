@@ -2334,8 +2334,7 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(
-          curSeqFileIndex, false, deviceID, maxTsFileVersion)) {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID, maxTsFileVersion)) {
         if (dataSource.isSeqSatisfied(
             deviceID,
             curSeqFileIndex,
@@ -2346,8 +2345,7 @@ public class SeriesScanUtil implements Accountable {
         }
         curSeqFileIndex--;
       }
-      return dataSource.hasNextSeqResource(
-          curSeqFileIndex, false, deviceID, maxTsFileVersion);
+      return dataSource.hasNextSeqResource(curSeqFileIndex, false, deviceID, maxTsFileVersion);
     }
 
     @Override
@@ -2364,8 +2362,7 @@ public class SeriesScanUtil implements Accountable {
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, false, deviceID, maxTsFileVersion);
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex, false, deviceID, maxTsFileVersion);
     }
 
     @Override
@@ -2475,8 +2472,7 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextSeqResource() {
-      while (dataSource.hasNextSeqResource(
-          curSeqFileIndex, true, deviceID, maxTsFileVersion)) {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID, maxTsFileVersion)) {
         if (dataSource.isSeqSatisfied(
             deviceID,
             curSeqFileIndex,
@@ -2492,8 +2488,7 @@ public class SeriesScanUtil implements Accountable {
 
     @Override
     public boolean hasNextUnseqResource() {
-      while (dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, true, deviceID, maxTsFileVersion)) {
+      while (dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID, maxTsFileVersion)) {
         if (dataSource.isUnSeqSatisfied(
             deviceID,
             curUnseqFileIndex,
@@ -2504,8 +2499,7 @@ public class SeriesScanUtil implements Accountable {
         }
         curUnseqFileIndex++;
       }
-      return dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, true, deviceID, maxTsFileVersion);
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex, true, deviceID, maxTsFileVersion);
     }
 
     @Override

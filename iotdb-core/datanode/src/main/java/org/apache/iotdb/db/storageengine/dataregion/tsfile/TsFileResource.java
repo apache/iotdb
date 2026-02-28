@@ -670,8 +670,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   // cannot use FileTimeIndex
-  public long getOrderTimeForSeq(
-      IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
       EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
@@ -686,8 +685,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   // can use FileTimeIndex
-  public long getOrderTimeForUnseq(
-      IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
       EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
@@ -1067,11 +1065,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
    * @return true if the device is contained in the TsFile
    */
   public boolean isFinalDeviceIdSatisfied(
-      IDeviceID deviceId,
-      Filter timeFilter,
-      boolean isSeq,
-      boolean debug,
-      long maxTsFileVersion) {
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug, long maxTsFileVersion) {
     EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
     if (evolvedSchema != null) {
       deviceId = evolvedSchema.rewriteToOriginal(deviceId);

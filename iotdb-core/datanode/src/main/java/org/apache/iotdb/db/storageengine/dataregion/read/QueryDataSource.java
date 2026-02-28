@@ -119,20 +119,14 @@ public class QueryDataSource implements IQueryDataSource {
     if (res && curIndex != this.curSeqIndex) {
       this.curSeqIndex = curIndex;
       this.curSeqOrderTime =
-          seqResources
-              .get(curIndex)
-              .getOrderTimeForSeq(deviceID, ascending, maxTsFileVersion);
+          seqResources.get(curIndex).getOrderTimeForSeq(deviceID, ascending, maxTsFileVersion);
       this.curSeqSatisfied = null;
     }
     return res;
   }
 
   public boolean isSeqSatisfied(
-      IDeviceID deviceID,
-      int curIndex,
-      Filter timeFilter,
-      boolean debug,
-      long maxTsFileVersion) {
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug, long maxTsFileVersion) {
     if (curIndex != this.curSeqIndex) {
       throw new IllegalArgumentException(
           String.format("curIndex %d is not equal to curSeqIndex %d", curIndex, this.curSeqIndex));
@@ -179,11 +173,7 @@ public class QueryDataSource implements IQueryDataSource {
   }
 
   public boolean isUnSeqSatisfied(
-      IDeviceID deviceID,
-      int curIndex,
-      Filter timeFilter,
-      boolean debug,
-      long maxTsFileVersion) {
+      IDeviceID deviceID, int curIndex, Filter timeFilter, boolean debug, long maxTsFileVersion) {
     if (curIndex != this.curUnSeqIndex) {
       throw new IllegalArgumentException(
           String.format(

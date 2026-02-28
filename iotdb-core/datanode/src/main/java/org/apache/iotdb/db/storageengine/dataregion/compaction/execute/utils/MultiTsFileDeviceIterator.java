@@ -67,7 +67,6 @@ import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(MultiTsFileDeviceIterator.class);
   // sort from the newest to the oldest by version (Used by FastPerformer and ReadPointPerformer)
   private final List<TsFileResource> tsFileResourcesSortedByDesc;
 

@@ -116,7 +116,7 @@ public class CrossSpaceCompactionCandidate {
         EvolvedSchema unseqEvolvedSchema =
             unseqFile.resource.getMergedEvolvedSchema(maxFileVersion);
         if (unseqEvolvedSchema != null) {
-          finalDeviceId = unseqEvolvedSchema.rewriteToOriginal(deviceIdInUnseq);
+          finalDeviceId = unseqEvolvedSchema.rewriteToFinal(deviceIdInUnseq);
         }
         // If the seqFile may need to be selected, but it's invalid, the selection should be
         // terminated.
