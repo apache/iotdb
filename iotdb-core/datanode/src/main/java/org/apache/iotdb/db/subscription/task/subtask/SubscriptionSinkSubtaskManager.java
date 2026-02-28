@@ -129,8 +129,7 @@ public class SubscriptionSinkSubtaskManager {
             String.format(
                 "Failed to construct subscription sink, because of %s or %s "
                     + "does not exist in pipe connector parameters",
-                PipeSinkConstant.SINK_TOPIC_KEY,
-                    PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
+                PipeSinkConstant.SINK_TOPIC_KEY, PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
       }
 
       // 3. Construct PipeConnectorSubtaskLifeCycle to manage PipeConnectorSubtask's life cycle
