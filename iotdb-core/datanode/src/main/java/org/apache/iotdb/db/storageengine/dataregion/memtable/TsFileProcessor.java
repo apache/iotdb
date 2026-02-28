@@ -1353,7 +1353,7 @@ public class TsFileProcessor {
             dataRegionName,
             tsFileResource.getTsFile().getName());
       }
-      addAMemtableIntoFlushingList(tmpMemTable);
+      closeFuture = addAMemtableIntoFlushingList(tmpMemTable);
     } finally {
       flushQueryLock.writeLock().unlock();
       logFlushQueryWriteUnlocked();
@@ -1393,7 +1393,7 @@ public class TsFileProcessor {
       }
       logger.info(
           "Async flush a memtable to tsfile: {}", tsFileResource.getTsFile().getAbsolutePath());
-      addAMemtableIntoFlushingList(workMemTable);
+      closeFuture = addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error(
           "{}: {} add a memtable into flushing list failed",
