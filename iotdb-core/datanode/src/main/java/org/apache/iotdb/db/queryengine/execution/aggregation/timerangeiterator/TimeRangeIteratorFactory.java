@@ -42,6 +42,7 @@ public class TimeRangeIteratorFactory {
       TimeDuration slidingStep,
       boolean isAscending,
       boolean leftCRightO,
+      boolean rightClosed,
       boolean outputPartialTimeWindow,
       ZoneId zoneId) {
     if (outputPartialTimeWindow
@@ -54,14 +55,22 @@ public class TimeRangeIteratorFactory {
             interval.nonMonthDuration,
             slidingStep.nonMonthDuration,
             isAscending,
-            leftCRightO);
+            leftCRightO,
+            rightClosed);
       } else {
         return new PreAggrWindowWithNaturalMonthIterator(
-            startTime, endTime, interval, slidingStep, isAscending, leftCRightO, zoneId);
+            startTime,
+            endTime,
+            interval,
+            slidingStep,
+            isAscending,
+            leftCRightO,
+            rightClosed,
+            zoneId);
       }
     } else {
       return new AggrWindowIterator(
-          startTime, endTime, interval, slidingStep, isAscending, leftCRightO, zoneId);
+          startTime, endTime, interval, slidingStep, isAscending, leftCRightO, rightClosed, zoneId);
     }
   }
 }
