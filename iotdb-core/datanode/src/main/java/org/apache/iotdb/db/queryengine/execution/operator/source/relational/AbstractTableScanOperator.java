@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational;
 
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractSeriesScanOperator;
@@ -90,6 +91,8 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   private int currentDeviceIndex;
 
+  protected final int maxPeekMemoryTimeAndFieldColumnCount;
+
   public AbstractTableScanOperator(AbstractTableScanOperatorParameter parameter) {
     this.sourceId = parameter.sourceId;
     this.operatorContext = parameter.context;
@@ -111,10 +114,19 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.currentDeviceIndex = 0;
     this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
+    int timeAndFieldColumnCount = 0;
+    for (ColumnSchema columnSchema : parameter.columnSchemas) {
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TIME
+          || columnSchema.getColumnCategory() == TsTableColumnCategory.FIELD) {
+        timeAndFieldColumnCount++;
+      }
+    }
+    this.maxPeekMemoryTimeAndFieldColumnCount = timeAndFieldColumnCount;
+
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
-            (1L + parameter.columnsIndexArray.length)
+            (1L + timeAndFieldColumnCount)
                 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
 
@@ -228,8 +240,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public long calculateMaxPeekMemory() {
-    return (1L + columnsIndexArray.length)
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return Math.max(
+        maxReturnSize,
+        (1L + maxPeekMemoryTimeAndFieldColumnCount)
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override
