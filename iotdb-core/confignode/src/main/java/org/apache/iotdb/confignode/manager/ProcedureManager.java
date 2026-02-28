@@ -42,6 +42,7 @@ import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.trigger.TriggerInformation;
+import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -126,6 +127,7 @@ import org.apache.iotdb.confignode.procedure.impl.trigger.CreateTriggerProcedure
 import org.apache.iotdb.confignode.procedure.impl.trigger.DropTriggerProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
+import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -146,6 +148,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteTableDeviceResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDropPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TExtendRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrationInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
@@ -2328,5 +2331,36 @@ public class ProcedureManager {
 
   public ProcedureMetrics getProcedureMetrics() {
     return procedureMetrics;
+  }
+
+  /**
+   * Get all running region migration procedures
+   *
+   * @return List of migration info
+   */
+  public List<TMigrationInfo> getRunningMigrations() {
+    return getExecutor().getProcedures().values().stream()
+        .filter(procedure -> procedure instanceof RegionMigrateProcedure)
+        .filter(procedure -> !procedure.isFinished())
+        .map(
+            procedure -> {
+              RegionMigrateProcedure migrateProc = (RegionMigrateProcedure) procedure;
+              TMigrationInfo info = new TMigrationInfo();
+              info.setProcedureId(migrateProc.getProcId());
+              info.setRegionId(migrateProc.getRegionId().getId());
+              info.setRegionType(migrateProc.getRegionId().getType());
+              info.setFromNodeId(migrateProc.getOriginalDataNode().getDataNodeId());
+              info.setToNodeId(migrateProc.getDestDataNode().getDataNodeId());
+              RegionTransitionState currentState = migrateProc.getCurrentRegionTransitionState();
+              info.setCurrentState(currentState != null ? currentState.name() : "UNKNOWN");
+              info.setProcedureStatus(migrateProc.getState().name());
+              info.setSubmittedTime(migrateProc.getSubmittedTime());
+              info.setLastUpdateTime(migrateProc.getLastUpdate());
+              // Calculate duration
+              long duration = System.currentTimeMillis() - migrateProc.getSubmittedTime();
+              info.setDuration(CommonDateTimeUtils.convertMillisecondToDurationStr(duration));
+              return info;
+            })
+        .collect(Collectors.toList());
   }
 }

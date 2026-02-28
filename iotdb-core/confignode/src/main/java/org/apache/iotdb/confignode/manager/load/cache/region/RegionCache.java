@@ -35,6 +35,7 @@ import java.util.List;
  */
 public class RegionCache extends AbstractLoadCache {
   private final Pair<Integer, TConsensusGroupId> id;
+  private long lastDiskUsage = 0L;
 
   public RegionCache(int dataNodeId, TConsensusGroupId gid) {
     super();
@@ -51,17 +52,24 @@ public class RegionCache extends AbstractLoadCache {
       history = Collections.unmodifiableList(slidingWindow);
 
       RegionStatus status;
+      long diskUsage;
       long currentNanoTime = System.nanoTime();
       if (lastSample == null) {
         /* First heartbeat not received from this region, status is UNKNOWN */
         status = RegionStatus.Unknown;
+        diskUsage = 0;
       } else if (!failureDetector.isAvailable(id, history)) {
         /* Failure detector decides that this region is UNKNOWN */
         status = RegionStatus.Unknown;
+        diskUsage = lastSample.getDiskUsage();
       } else {
         status = lastSample.getStatus();
+        diskUsage = lastSample.getDiskUsage();
       }
-      this.currentStatistics.set(new RegionStatistics(currentNanoTime, status));
+      if (diskUsage != 0L) {
+        lastDiskUsage = diskUsage;
+      }
+      this.currentStatistics.set(new RegionStatistics(currentNanoTime, status, lastDiskUsage));
     }
   }
 

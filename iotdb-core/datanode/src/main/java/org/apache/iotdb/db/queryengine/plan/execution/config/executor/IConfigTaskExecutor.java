@@ -57,12 +57,14 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DeleteTimeSeriesS
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.LoadBalanceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe.AlterPipeStatement;
@@ -183,6 +185,9 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> showRegion(
       final ShowRegionStatement showRegionStatement, final boolean isTableModel);
 
+  SettableFuture<ConfigTaskResult> showMigrations(
+      final ShowMigrationsStatement showMigrationsStatement, final boolean isTableModel);
+
   SettableFuture<ConfigTaskResult> showDataNodes();
 
   SettableFuture<ConfigTaskResult> showAvailableUrls();
@@ -276,6 +281,8 @@ public interface IConfigTaskExecutor {
       CountTimeSlotListStatement countTimeSlotListStatement);
 
   SettableFuture<ConfigTaskResult> migrateRegion(MigrateRegionTask migrateRegionTask);
+
+  SettableFuture<ConfigTaskResult> loadBalance(LoadBalanceStatement statement);
 
   SettableFuture<ConfigTaskResult> reconstructRegion(ReconstructRegionTask reconstructRegionTask);
 

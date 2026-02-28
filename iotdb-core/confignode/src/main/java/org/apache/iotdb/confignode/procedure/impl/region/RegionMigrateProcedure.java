@@ -209,4 +209,17 @@ public class RegionMigrateProcedure extends RegionOperationProcedure<RegionTrans
   public TDataNodeLocation getDestDataNode() {
     return destDataNode;
   }
+
+  public TDataNodeLocation getOriginalDataNode() {
+    return originalDataNode;
+  }
+
+  /**
+   * Get the current RegionTransitionState of this migration procedure
+   *
+   * @return the current RegionTransitionState, or null if not available
+   */
+  public RegionTransitionState getCurrentRegionTransitionState() {
+    return getCurrentState();
+  }
 }

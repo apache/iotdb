@@ -165,6 +165,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.LoadBalanceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
@@ -181,6 +182,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStat
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -3867,6 +3869,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return showRegionStatement;
   }
 
+  // show migrations
+
+  @Override
+  public Statement visitShowMigrations(IoTDBSqlParser.ShowMigrationsContext ctx) {
+    return new ShowMigrationsStatement();
+  }
+
   // show datanodes
 
   @Override
@@ -4522,6 +4531,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.regionId.getText()),
         Integer.parseInt(ctx.fromId.getText()),
         Integer.parseInt(ctx.toId.getText()));
+  }
+
+  @Override
+  public Statement visitLoadBalance(IoTDBSqlParser.LoadBalanceContext ctx) {
+    List<Integer> targetNodeIds = null;
+    if (ctx.targetNodeIds != null && !ctx.targetNodeIds.isEmpty()) {
+      targetNodeIds =
+          ctx.targetNodeIds.stream()
+              .map(Token::getText)
+              .map(Integer::parseInt)
+              .collect(Collectors.toList());
+    }
+    return new LoadBalanceStatement(targetNodeIds);
   }
 
   @Override

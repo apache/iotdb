@@ -48,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.DropTrigge
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetRegionIdTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetSeriesSlotListTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.GetTimeSlotListTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.LoadBalanceTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveAINodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveConfigNodeTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.RemoveDataNodeTask;
@@ -62,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowContin
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDataNodesTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowDatabaseTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowFunctionsTask;
+import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowMigrationsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowPipePluginsTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowRegionTask;
 import org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ShowTTLTask;
@@ -147,6 +149,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.LoadBalanceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
@@ -159,6 +162,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowContinuousQue
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowDatabaseStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowMigrationsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.ShowTriggersStatement;
@@ -534,6 +538,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   }
 
   @Override
+  public IConfigTask visitShowMigrations(
+      ShowMigrationsStatement showMigrationsStatement, MPPQueryContext context) {
+    return new ShowMigrationsTask(showMigrationsStatement, false);
+  }
+
+  @Override
   public IConfigTask visitCreateSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement, MPPQueryContext context) {
     return new CreateSchemaTemplateTask(createSchemaTemplateStatement);
@@ -817,6 +827,12 @@ public class TreeConfigTaskVisitor extends StatementVisitor<IConfigTask, MPPQuer
   public IConfigTask visitMigrateRegion(
       MigrateRegionStatement migrateRegionStatement, MPPQueryContext context) {
     return new MigrateRegionTask(migrateRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitLoadBalance(
+      LoadBalanceStatement loadBalanceStatement, MPPQueryContext context) {
+    return new LoadBalanceTask(loadBalanceStatement);
   }
 
   @Override

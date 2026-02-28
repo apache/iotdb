@@ -33,6 +33,7 @@ public class RegionGroupStatistics {
 
   private final RegionGroupStatus regionGroupStatus;
   private final Map<Integer, RegionStatistics> regionStatisticsMap;
+  private long diskUsage = 0;
 
   public RegionGroupStatistics(
       RegionGroupStatus regionGroupStatus, Map<Integer, RegionStatistics> regionStatisticsMap) {
@@ -46,6 +47,14 @@ public class RegionGroupStatistics {
 
   public RegionGroupStatus getRegionGroupStatus() {
     return regionGroupStatus;
+  }
+
+  public long getDiskUsage() {
+    return diskUsage;
+  }
+
+  public void setDiskUsage(long diskUsage) {
+    this.diskUsage = diskUsage;
   }
 
   /**
