@@ -146,11 +146,8 @@ mvn clean package -DskipTests
 # Build CLI only
 mvn clean package -pl iotdb-client/cli -am -DskipTests
 
-# Code formatting check / auto-fix (Google Java Format via Spotless)
+# Code formatting check / auto-fix (Google Java Format via Spotless, including integration tests)
 mvn spotless:check -P with-integration-tests
-mvn spotless:apply -P with-integration-tests
-
-# Format integration test code
 mvn spotless:apply -P with-integration-tests
 ```
 
