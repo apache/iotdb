@@ -242,7 +242,7 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     } else {
       supportModsIfIsDataNodeReceiver = true;
     }
-    socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapNonTsFileTabletTimeoutMs());
+    socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapSinkTabletTimeoutMs());
     LOGGER.info("Handshake success. Socket: {}", socket);
   }
 
