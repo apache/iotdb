@@ -102,14 +102,22 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
       final boolean isGeneratedByPipe =
           listeningDir.equals(IOTDB_CONFIG.getLoadActiveListeningPipeDir());
       final File listeningDirFile = new File(listeningDir);
-      try (final Stream<File> fileStream =
-          FileUtils.streamFiles(listeningDirFile, true, (String[]) null)) {
+      try (Stream<Path> pathStream = Files.walk(listeningDirFile.toPath());
+          final Stream<File> fileStream =
+              pathStream
+                  .map(Path::toFile)
+                  .filter(
+                      file1 ->
+                          isTsFileCompleted(file1.getAbsolutePath())
+                                  && !file1
+                                      .getAbsolutePath()
+                                      .contains(File.separator + "datanode" + File.separator)
+                              || isDataNodeDir(file1.getAbsolutePath()))) {
         try {
           fileStream
               .filter(file -> !activeLoadTsFileLoader.isFilePendingOrLoading(file))
               .filter(File::exists)
               .map(file -> LoadUtil.getTsFilePath(file.getAbsolutePath()))
-              .filter(this::isTsFileCompleted)
               .limit(currentAllowedPendingSize)
               .forEach(
                   filePath -> {
@@ -183,6 +191,10 @@ public class ActiveLoadDirScanner extends ActiveLoadScheduledExecutorService {
     } catch (final Exception e) {
       return false;
     }
+  }
+
+  private boolean isDataNodeDir(final String file) {
+    return file.endsWith("datanode");
   }
 
   private void hotReloadActiveLoadDirs() {

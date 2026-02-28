@@ -34,7 +34,6 @@ import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
 import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.MetricService;
@@ -1425,8 +1424,8 @@ public class ClusterSchemaManager {
   public synchronized Pair<TSStatus, TsTable> tableColumnCheckForColumnRenaming(
       final String database,
       final String tableName,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final boolean isTableView)
       throws MetadataException {
     final TsTable originalTable = getTableIfExists(database, tableName).orElse(null);
@@ -1445,33 +1444,40 @@ public class ClusterSchemaManager {
       return result.get();
     }
 
-    final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
-    if (Objects.isNull(schema)) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_NOT_EXISTS, String.format("Column '%s' does not exist", oldName)),
-          null);
+    for (String oldName : oldNames) {
+      final TsTableColumnSchema schema = originalTable.getColumnSchema(oldName);
+      if (Objects.isNull(schema)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.COLUMN_NOT_EXISTS,
+                String.format("Column '%s' does not exist", oldName)),
+            null);
+      }
+
+      if (schema.getDataType().equals(TSDataType.OBJECT)) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.SEMANTIC_ERROR,
+                String.format("Renaming Object column %s is currently unsupported", oldName)),
+            null);
+      }
     }
 
-    if (schema.getColumnCategory() == TsTableColumnCategory.TIME) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_CATEGORY_MISMATCH,
-              "The renaming for time column is not supported."),
-          null);
-    }
-
-    if (Objects.nonNull(originalTable.getColumnSchema(newName))) {
-      return new Pair<>(
-          RpcUtils.getStatus(
-              TSStatusCode.COLUMN_ALREADY_EXISTS,
-              "The new column name " + newName + " already exists"),
-          null);
+    for (String newName : newNames) {
+      if (Objects.nonNull(originalTable.getColumnSchema(newName))) {
+        return new Pair<>(
+            RpcUtils.getStatus(
+                TSStatusCode.COLUMN_ALREADY_EXISTS,
+                "The new column name " + newName + " already exists"),
+            null);
+      }
     }
 
     final TsTable expandedTable = new TsTable(originalTable);
 
-    expandedTable.renameColumnSchema(oldName, newName);
+    for (int i = 0; i < oldNames.size(); i++) {
+      expandedTable.renameColumnSchema(oldNames.get(i), newNames.get(i));
+    }
 
     return new Pair<>(RpcUtils.SUCCESS_STATUS, expandedTable);
   }
@@ -1492,10 +1498,35 @@ public class ClusterSchemaManager {
           null);
     }
 
+    if (!originalTable.canAlterName()) {
+      return new Pair<>(
+          RpcUtils.getStatus(
+              TSStatusCode.SEMANTIC_ERROR,
+              String.format(
+                  "Table '%s.%s' is created in a old version and cannot be renamed, "
+                      + "please migrate its data to a new table manually",
+                  database, tableName)),
+          null);
+    }
+
     final Optional<Pair<TSStatus, TsTable>> result =
         checkTable4View(database, originalTable, isTableView);
     if (result.isPresent()) {
       return result.get();
+    }
+
+    for (TsTableColumnSchema tsTableColumnSchema : originalTable.getColumnList()) {
+      if (tsTableColumnSchema.getDataType().equals(TSDataType.OBJECT)) {
+        if (!TreeViewSchema.isTreeViewTable(originalTable)) {
+          return new Pair<>(
+              RpcUtils.getStatus(
+                  TSStatusCode.SEMANTIC_ERROR,
+                  String.format(
+                      "Table '%s.%s' contains Object column, renaming is currently unsupported",
+                      database, tableName)),
+              null);
+        }
+      }
     }
 
     if (getTableIfExists(database, newName).isPresent()) {

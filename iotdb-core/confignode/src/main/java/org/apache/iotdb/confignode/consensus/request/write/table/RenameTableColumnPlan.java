@@ -19,58 +19,61 @@
 
 package org.apache.iotdb.confignode.consensus.request.write.table;
 
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-
-import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 public class RenameTableColumnPlan extends AbstractTablePlan {
 
-  private String oldName;
-  private String newName;
+  private List<String> oldNames;
+  private List<String> newNames;
 
   public RenameTableColumnPlan(final ConfigPhysicalPlanType type) {
     super(type);
   }
 
   public RenameTableColumnPlan(
-      final String database, final String tableName, final String oldName, final String newName) {
-    this(ConfigPhysicalPlanType.RenameTableColumn, database, tableName, oldName, newName);
+      final String database,
+      final String tableName,
+      final List<String> oldNames,
+      final List<String> newNames) {
+    this(ConfigPhysicalPlanType.RenameTableColumn, database, tableName, oldNames, newNames);
   }
 
   protected RenameTableColumnPlan(
       final ConfigPhysicalPlanType type,
       final String database,
       final String tableName,
-      final String oldName,
-      final String newName) {
+      final List<String> oldNames,
+      final List<String> newNames) {
     super(type, database, tableName);
-    this.oldName = oldName;
-    this.newName = newName;
+    this.oldNames = oldNames;
+    this.newNames = newNames;
   }
 
-  public String getOldName() {
-    return oldName;
+  public List<String> getOldNames() {
+    return oldNames;
   }
 
-  public String getNewName() {
-    return newName;
+  public List<String> getNewNames() {
+    return newNames;
   }
 
   @Override
   protected void serializeImpl(final DataOutputStream stream) throws IOException {
     super.serializeImpl(stream);
-    ReadWriteIOUtils.write(oldName, stream);
-    ReadWriteIOUtils.write(newName, stream);
+    IOUtils.write(oldNames, stream);
+    IOUtils.write(newNames, stream);
   }
 
   @Override
   protected void deserializeImpl(final ByteBuffer buffer) throws IOException {
     super.deserializeImpl(buffer);
-    this.oldName = ReadWriteIOUtils.readString(buffer);
-    this.newName = ReadWriteIOUtils.readString(buffer);
+    this.oldNames = IOUtils.readStringList(buffer);
+    this.newNames = IOUtils.readStringList(buffer);
   }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -49,6 +50,7 @@ import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurat
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.ON_SUCCESS_NONE_VALUE;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.PIPE_GENERATED_KEY;
+import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.SEVO_FILE_PATH_KEY;
 import static org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator.TABLET_CONVERSION_THRESHOLD_KEY;
 
 public class LoadTsFileStatement extends Statement {
@@ -68,7 +70,11 @@ public class LoadTsFileStatement extends Statement {
   private List<Boolean> isTableModel;
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
+  private File schemaEvolutionFile;
   private boolean needDecode4TimeColumn;
+
+  // for loading iotdb datanode dir
+  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileStatement(String filePath) throws FileNotFoundException {
     this.file = new File(filePath).getAbsoluteFile();
@@ -256,8 +262,25 @@ public class LoadTsFileStatement extends Statement {
     initAttributes(loadAttributes);
   }
 
+  public File getSchemaEvolutionFile() {
+    return schemaEvolutionFile;
+  }
+
+  public void setSchemaEvolutionFile(File schemaEvolutionFile) {
+    this.schemaEvolutionFile = schemaEvolutionFile;
+  }
+
   public boolean isAsyncLoad() {
     return isAsyncLoad;
+  }
+
+  public void setDatabaseRegionTsFileManagers(
+      Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
+    this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
+  }
+
+  public Map<String, Map<Integer, TsFileManager>> getDatabaseRegionTsFileManagers() {
+    return databaseRegionTsFileManagers;
   }
 
   private void initAttributes(final Map<String, String> loadAttributes) {
@@ -273,6 +296,7 @@ public class LoadTsFileStatement extends Statement {
     if (LoadTsFileConfigurator.parseOrGetDefaultPipeGenerated(loadAttributes)) {
       markIsGeneratedByPipe();
     }
+    this.schemaEvolutionFile = LoadTsFileConfigurator.parseSevoFile(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {
@@ -363,6 +387,10 @@ public class LoadTsFileStatement extends Statement {
     return subStatements;
   }
 
+  public File getFile() {
+    return file;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
@@ -386,6 +414,9 @@ public class LoadTsFileStatement extends Statement {
     loadAttributes.put(ASYNC_LOAD_KEY, String.valueOf(isAsyncLoad));
     if (isGeneratedByPipe) {
       loadAttributes.put(PIPE_GENERATED_KEY, String.valueOf(true));
+    }
+    if (schemaEvolutionFile != null) {
+      loadAttributes.put(SEVO_FILE_PATH_KEY, schemaEvolutionFile.getAbsolutePath());
     }
 
     return new LoadTsFile(null, file.getAbsolutePath(), loadAttributes);
@@ -415,6 +446,8 @@ public class LoadTsFileStatement extends Statement {
         + isAsyncLoad
         + ", tsFiles size="
         + tsFiles.size()
+        + ", database='"
+        + database
         + '}';
   }
 }

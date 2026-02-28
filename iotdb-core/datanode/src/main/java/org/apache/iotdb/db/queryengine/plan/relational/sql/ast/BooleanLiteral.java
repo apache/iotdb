@@ -119,4 +119,8 @@ public class BooleanLiteral extends Literal {
     return INSTANCE_SIZE
         + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
   }
+
+  public boolean getParsedValue() {
+    return value;
+  }
 }

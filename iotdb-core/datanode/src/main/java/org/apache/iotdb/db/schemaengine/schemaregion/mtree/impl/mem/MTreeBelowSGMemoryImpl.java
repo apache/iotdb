@@ -1884,6 +1884,16 @@ public class MTreeBelowSGMemoryImpl {
     return notExistNum;
   }
 
+  public synchronized void renameTable(final String oldTableName, final String newTableName) {
+    IMemMNode tableNode = databaseMNode.deleteChild(oldTableName);
+    if (tableNode == null) {
+      LOGGER.warn("Renaming a non-existing table {}.", oldTableName);
+      return;
+    }
+    tableNode.setName(newTableName);
+    databaseMNode.addChild(tableNode);
+  }
+
   public void createOrUpdateTableDevice(
       final String tableName,
       final String[] devicePath,

@@ -122,6 +122,11 @@ public interface BaseEnv {
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
+  default Connection getAvailableConnection(String sqlDialect) throws SQLException {
+    return getAvailableConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, sqlDialect);
+  }
+
   default Connection getTableConnection() throws SQLException {
     return getConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);

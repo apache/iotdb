@@ -45,7 +45,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 
-public class DistinctTest {
+public class DistinctTest extends BaseAnalyzerTest {
   // ==================================================================
   // ===================== Select Distinct Test =======================
   // ==================================================================

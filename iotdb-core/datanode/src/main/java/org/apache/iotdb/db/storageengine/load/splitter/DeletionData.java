@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
@@ -31,7 +32,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class DeletionData implements TsFileData {
-  private final ModEntry deletion;
+  private ModEntry deletion;
 
   public DeletionData(ModEntry deletion) {
     this.deletion = deletion;
@@ -49,6 +50,11 @@ public class DeletionData implements TsFileData {
   @Override
   public TsFileDataType getType() {
     return TsFileDataType.DELETION;
+  }
+
+  @Override
+  public void rewriteToFinal(EvolvedSchema evolvedSchema) {
+    deletion = evolvedSchema.rewriteToFinal(deletion);
   }
 
   @Override

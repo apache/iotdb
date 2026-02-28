@@ -533,12 +533,14 @@ public class CompactionCheckerUtils {
   public static List<IFullPath> getAllPathsOfResources(List<TsFileResource> resources)
       throws IOException, IllegalPathException {
     Set<IFullPath> paths = new HashSet<>();
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(resources)) {
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(resources, Long.MIN_VALUE)) {
       while (deviceIterator.hasNextDevice()) {
         Pair<IDeviceID, Boolean> iDeviceIDBooleanPair = deviceIterator.nextDevice();
         IDeviceID deviceID = iDeviceIDBooleanPair.getLeft();
         boolean isAlign = iDeviceIDBooleanPair.getRight();
-        Map<String, MeasurementSchema> schemaMap = deviceIterator.getAllSchemasOfCurrentDevice();
+        Map<String, MeasurementSchema> schemaMap =
+            deviceIterator.getAllSchemasOfCurrentDevice(new Pair<>(Long.MIN_VALUE, null));
         IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
         List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
         if (measurementSchemas.isEmpty()) {

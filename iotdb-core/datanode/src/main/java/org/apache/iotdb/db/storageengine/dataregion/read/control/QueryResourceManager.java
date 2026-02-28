@@ -56,7 +56,12 @@ public class QueryResourceManager {
    * queryId = xx + Long.MIN_VALUE
    */
   public long assignCompactionQueryId() {
-    long threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[5]);
+    long threadNum = 0;
+    try {
+      threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[5]);
+    } catch (ArrayIndexOutOfBoundsException | NumberFormatException e) {
+      // test environment, ignore it
+    }
     long queryId = Long.MIN_VALUE + threadNum;
     filePathsManager.addQueryId(queryId);
     return queryId;

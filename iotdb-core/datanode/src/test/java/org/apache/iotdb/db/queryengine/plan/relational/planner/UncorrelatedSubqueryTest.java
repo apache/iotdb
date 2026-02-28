@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.BaseAnalyzerTest;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
@@ -61,7 +62,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Comparison
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
-public class UncorrelatedSubqueryTest {
+public class UncorrelatedSubqueryTest extends BaseAnalyzerTest {
   private PlanTester planTester;
   private PredicateWithUncorrelatedScalarSubqueryReconstructor
       predicateWithUncorrelatedScalarSubquery;

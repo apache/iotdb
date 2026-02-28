@@ -24,26 +24,28 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.executor.IConfigTas
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.List;
+
 public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
 
-  private final String oldName;
+  private final List<String> oldNames;
 
-  private final String newName;
+  private final List<String> newNames;
 
   private final boolean columnIfExists;
 
   public AlterTableRenameColumnTask(
       final String database,
       final String tableName,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
       final boolean view) {
     super(database, tableName, queryId, tableIfExists, view);
-    this.oldName = oldName;
-    this.newName = newName;
+    this.oldNames = oldNames;
+    this.newNames = newNames;
     this.columnIfExists = columnIfExists;
   }
 
@@ -51,6 +53,6 @@ public class AlterTableRenameColumnTask extends AbstractAlterOrDropTableTask {
   public ListenableFuture<ConfigTaskResult> execute(final IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
     return configTaskExecutor.alterTableRenameColumn(
-        database, tableName, oldName, newName, queryId, tableIfExists, columnIfExists, view);
+        database, tableName, oldNames, newNames, queryId, tableIfExists, columnIfExists, view);
   }
 }

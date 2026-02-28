@@ -240,6 +240,9 @@ public class ActiveLoadTsFileLoader {
               ? null
               : parentFile.getName());
     }
+    if (entry.isDataNodeDir()) {
+      statement.setDatabase(null);
+    }
 
     return executeStatement(
         entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
@@ -273,7 +276,11 @@ public class ActiveLoadTsFileLoader {
           entry.getFile(),
           entry.isGeneratedByPipe(),
           status);
-      removeFileAndResourceAndModsToFailDir(entry.getFile());
+      if (!entry.isDataNodeDir()) {
+        removeFileAndResourceAndModsToFailDir(entry.getFile());
+      } else {
+        removeDirToFailDir(entry.getFile());
+      }
     }
   }
 
@@ -282,7 +289,11 @@ public class ActiveLoadTsFileLoader {
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
         entry.getFile(),
         entry.isGeneratedByPipe());
-    removeFileAndResourceAndModsToFailDir(entry.getFile());
+    if (entry.isDataNodeDir()) {
+      removeDirToFailDir(entry.getFile());
+    } else {
+      removeFileAndResourceAndModsToFailDir(entry.getFile());
+    }
   }
 
   private void handleOtherException(
@@ -293,18 +304,41 @@ public class ActiveLoadTsFileLoader {
           entry.getFile(),
           entry.isGeneratedByPipe(),
           e);
-      removeFileAndResourceAndModsToFailDir(entry.getFile());
+      if (entry.isDataNodeDir()) {
+        removeDirToFailDir(entry.getFile());
+      } else {
+        removeFileAndResourceAndModsToFailDir(entry.getFile());
+      }
     }
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
-    removeToFailDir(filePath);
-    removeToFailDir(LoadUtil.getTsFileResourcePath(filePath));
-    removeToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
-    removeToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
+    removeFileToFailDir(filePath);
+    removeFileToFailDir(LoadUtil.getTsFileResourcePath(filePath));
+    removeFileToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
+    removeFileToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
   }
 
-  private void removeToFailDir(final String filePath) {
+  private void removeDirToFailDir(final String filePath) {
+    final File sourceFile = new File(filePath);
+    // prevent the resource or mods not exist
+    if (!sourceFile.exists()) {
+      return;
+    }
+
+    final File targetDir = new File(failDir.get());
+    try {
+      RetryUtils.retryOnException(
+          () -> {
+            org.apache.iotdb.commons.utils.FileUtils.moveDirWithMD5Check(sourceFile, targetDir);
+            return null;
+          });
+    } catch (final IOException e) {
+      LOGGER.warn("Error occurred during moving file {} to fail directory.", filePath, e);
+    }
+  }
+
+  private void removeFileToFailDir(final String filePath) {
     final File sourceFile = new File(filePath);
     // prevent the resource or mods not exist
     if (!sourceFile.exists()) {

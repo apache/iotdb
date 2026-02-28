@@ -23,6 +23,8 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.utils.Pair;
+
 import java.util.List;
 
 /**
@@ -49,4 +51,6 @@ public interface ICompactionPerformer {
     throw new IllegalSourceFileTypeException(
         "Cannot set both seq files and unseq files to this kind of performer");
   }
+
+  void setMaxTsFileVersionAndMinResource(Pair<Long, TsFileResource> maxTsFileVersionAndMinResource);
 }

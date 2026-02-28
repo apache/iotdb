@@ -20,12 +20,15 @@
 package org.apache.iotdb.db.storageengine.dataregion;
 
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
@@ -70,7 +73,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
             timePartitionId, id -> new DeviceLastFlushTime());
 
     long memIncr = 0L;
-    for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+    for (Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
       if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
       }
@@ -93,7 +96,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       long maxFlushTime = flushTimeMapForPartition.getLastFlushTime(null);
       ILastFlushTime newDeviceLastFlushTime = new DeviceLastFlushTime();
       long memIncr = 0;
-      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+      for (Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
         memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
         newDeviceLastFlushTime.updateLastFlushTime(entry.getKey(), entry.getValue());
         maxFlushTime = Math.max(maxFlushTime, entry.getValue());
@@ -104,7 +107,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     } else {
       // go here when DeviceLastFlushTime was recovered by wal recovery
       long memIncr = 0;
-      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+      for (Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
         if (flushTimeMapForPartition.getLastFlushTime(entry.getKey()) == Long.MIN_VALUE) {
           memIncr += HASHMAP_NODE_BASIC_SIZE + entry.getKey().ramBytesUsed();
         }
@@ -131,7 +134,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       // go here when DeviceLastFlushTime was recovered by wal recovery
       DeviceLastFlushTime deviceLastFlushTime = (DeviceLastFlushTime) flushTimeMapForPartition;
       Map<IDeviceID, Long> flushedTimeMap = deviceLastFlushTime.getDeviceLastFlushTimeMap();
-      for (Map.Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
+      for (Entry<IDeviceID, Long> entry : flushedTimeMap.entrySet()) {
         flushTimeMapForPartition.updateLastFlushTime(entry.getKey(), entry.getValue());
       }
     }
@@ -139,7 +142,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
 
   @Override
   public void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap) {
-    for (Map.Entry<IDeviceID, Long> entry : globalFlushedTimeMap.entrySet()) {
+    for (Entry<IDeviceID, Long> entry : globalFlushedTimeMap.entrySet()) {
       globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
     }
   }
@@ -161,7 +164,7 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   // For insert
   @Override
   public void updateLatestFlushTime(long partitionId, Map<IDeviceID, Long> updateMap) {
-    for (Map.Entry<IDeviceID, Long> entry : updateMap.entrySet()) {
+    for (Entry<IDeviceID, Long> entry : updateMap.entrySet()) {
       partitionLatestFlushedTime
           .computeIfAbsent(partitionId, id -> new DeviceLastFlushTime())
           .updateLastFlushTime(entry.getKey(), entry.getValue());
@@ -211,5 +214,16 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       return memCostForEachPartition.get(partitionId);
     }
     return 0;
+  }
+
+  @Override
+  public void accept(SchemaEvolution schemaEvolution) {
+    if (!(schemaEvolution instanceof TableRename)) {
+      return;
+    }
+
+    TableRename tableRename = (TableRename) schemaEvolution;
+    tableRename.rewriteMap(globalLatestFlushedTimeForEachDevice);
+    partitionLatestFlushedTime.values().forEach(t -> t.accept(schemaEvolution));
   }
 }

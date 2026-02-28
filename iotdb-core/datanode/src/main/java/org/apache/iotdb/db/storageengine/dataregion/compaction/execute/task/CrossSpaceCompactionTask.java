@@ -189,6 +189,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
             targetTsfileResourceList, selectedSequenceFiles, selectedUnsequenceFiles);
 
         performer.setSourceFiles(selectedSequenceFiles, selectedUnsequenceFiles);
+        performer.setMaxTsFileVersionAndMinResource(
+            TsFileResource.getMaxTsFileVersionAndMinResource(getAllSourceTsFiles()));
         performer.setTargetFiles(targetTsfileResourceList);
         performer.setSummary(summary);
         performer.perform();

@@ -24,6 +24,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 public class RenameViewColumnProcedure extends RenameTableColumnProcedure {
   public RenameViewColumnProcedure(final boolean isGeneratedByPipe) {
@@ -34,10 +35,10 @@ public class RenameViewColumnProcedure extends RenameTableColumnProcedure {
       final String database,
       final String tableName,
       final String queryId,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final boolean isGeneratedByPipe) {
-    super(database, tableName, queryId, oldName, newName, isGeneratedByPipe);
+    super(database, tableName, queryId, oldNames, newNames, isGeneratedByPipe);
   }
 
   @Override

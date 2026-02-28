@@ -67,9 +67,36 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
+      long maxTsFileVersion) {
+    this(seriesPath, scanOrder, scanOptions, context, false, null, maxTsFileVersion);
+  }
+
+  public AlignedSeriesScanUtil(
+      AlignedFullPath seriesPath,
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
+      FragmentInstanceContext context,
       boolean queryAllSensors,
       List<TSDataType> givenDataTypes) {
-    super(seriesPath, scanOrder, scanOptions, context);
+    this(
+        seriesPath,
+        scanOrder,
+        scanOptions,
+        context,
+        queryAllSensors,
+        givenDataTypes,
+        Long.MAX_VALUE);
+  }
+
+  public AlignedSeriesScanUtil(
+      AlignedFullPath seriesPath,
+      Ordering scanOrder,
+      SeriesScanOptions scanOptions,
+      FragmentInstanceContext context,
+      boolean queryAllSensors,
+      List<TSDataType> givenDataTypes,
+      long maxTsFileVersion) {
+    super(seriesPath, scanOrder, scanOptions, context, maxTsFileVersion);
     isAligned = true;
     this.dataTypes =
         givenDataTypes != null
@@ -100,7 +127,8 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
         context,
         scanOptions.getGlobalTimeFilter(),
         isSeq,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxTsFileVersion);
   }
 
   @Override

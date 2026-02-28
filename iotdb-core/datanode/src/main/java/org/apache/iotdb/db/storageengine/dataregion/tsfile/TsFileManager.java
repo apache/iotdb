@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.rescon.memory.TsFileResourceManager;
 
@@ -31,12 +32,15 @@ import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -45,7 +49,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TsFileManager {
   private final String storageGroupName;
   private String dataRegionId;
-  private final String dataRegionSysDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock resourceListLock = new ReentrantReadWriteLock();
@@ -55,13 +58,13 @@ public class TsFileManager {
   private final TreeMap<Long, TsFileResourceList> sequenceFiles = new TreeMap<>();
   private final TreeMap<Long, TsFileResourceList> unsequenceFiles = new TreeMap<>();
   private final TreeMap<Long, ModFileManagement> modFileManagementMap = new TreeMap<>();
+  private final Map<Long, List<TsFileSet>> tsfileSets = new ConcurrentSkipListMap<>();
 
   private volatile boolean allowCompaction = true;
   private final AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegionId, String dataRegionSysDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId) {
     this.storageGroupName = storageGroupName;
-    this.dataRegionSysDir = dataRegionSysDir;
     this.dataRegionId = dataRegionId;
   }
 
@@ -236,6 +239,7 @@ public class TsFileManager {
             modFileManagementMap.computeIfAbsent(
                 timePartition, t -> new PartitionLevelModFileManager()));
       }
+      tsFileResource.setTsFileManager(this);
     } finally {
       writeUnlock();
     }
@@ -254,6 +258,7 @@ public class TsFileManager {
             modFileManagementMap.computeIfAbsent(
                 tsFileResource.getTimePartition(), t -> new PartitionLevelModFileManager()));
       }
+      tsFileResource.setTsFileManager(this);
     } finally {
       writeUnlock();
     }
@@ -272,6 +277,7 @@ public class TsFileManager {
             modFileManagementMap.computeIfAbsent(
                 tsFileResource.getTimePartition(), t -> new PartitionLevelModFileManager()));
       }
+      tsFileResource.setTsFileManager(this);
     } finally {
       writeUnlock();
     }
@@ -332,6 +338,7 @@ public class TsFileManager {
                 modFileManagementMap.computeIfAbsent(
                     resource.getTimePartition(), t -> new PartitionLevelModFileManager()));
           }
+          resource.setTsFileManager(this);
         }
       }
     } finally {
@@ -427,10 +434,6 @@ public class TsFileManager {
     return storageGroupName;
   }
 
-  public String getDataRegionSysDir() {
-    return dataRegionSysDir;
-  }
-
   public Set<Long> getTimePartitions() {
     readLock();
     try {
@@ -506,5 +509,42 @@ public class TsFileManager {
       resourceListLock.readLock().unlock();
     }
     return maxFileTimestamp;
+  }
+
+  public void addTsFileSet(TsFileSet newSet, long partitionId) {
+    List<TsFileSet> tsFileSetList =
+        tsfileSets.computeIfAbsent(partitionId, p -> new CopyOnWriteArrayList<>());
+    tsFileSetList.add(newSet);
+  }
+
+  public List<TsFileSet> getTsFileSet(long partitionId) {
+    return getTsFileSet(partitionId, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  public List<TsFileSet> getTsFileSet(
+      long partitionId, long minFileVersionIncluded, long maxFileVersionExcluded) {
+    List<TsFileSet> tsFileSetList = tsfileSets.getOrDefault(partitionId, Collections.emptyList());
+    int start = 0, end = tsFileSetList.size();
+    for (int i = 0, tsFileSetListSize = tsFileSetList.size(); i < tsFileSetListSize; i++) {
+      TsFileSet tsFileSet = tsFileSetList.get(i);
+      if (tsFileSet.getEndVersion() < minFileVersionIncluded) {
+        start = i + 1;
+      }
+      if (tsFileSet.getEndVersion() >= maxFileVersionExcluded) {
+        end = i;
+        break;
+      }
+    }
+    return start < end
+        ? new ArrayList<>(tsFileSetList.subList(start, end))
+        : Collections.emptyList();
+  }
+
+  public void deleteTsFileSets() {
+    for (List<TsFileSet> value : tsfileSets.values()) {
+      for (TsFileSet tsFileSet : value) {
+        tsFileSet.remove();
+      }
+    }
   }
 }

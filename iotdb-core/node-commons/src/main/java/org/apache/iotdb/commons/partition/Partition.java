@@ -21,8 +21,7 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-
-import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 
 import java.util.List;
 
@@ -42,8 +41,8 @@ public abstract class Partition {
             seriesSlotExecutorName, seriesPartitionSlotNum);
   }
 
-  public TSeriesPartitionSlot calculateDeviceGroupId(IDeviceID deviceID) {
-    return executor.getSeriesPartitionSlot(deviceID);
+  public TSeriesPartitionSlot calculateDeviceGroupId(SeriesPartitionKey key) {
+    return executor.getSeriesPartitionSlot(key);
   }
 
   public abstract List<RegionReplicaSetInfo> getDistributionInfo();

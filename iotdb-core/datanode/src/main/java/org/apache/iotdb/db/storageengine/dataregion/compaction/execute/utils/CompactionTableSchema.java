@@ -33,6 +33,18 @@ public class CompactionTableSchema extends TableSchema {
     super(tableName);
   }
 
+  public CompactionTableSchema(TableSchema tableSchema) {
+    this(tableSchema.getTableName(), tableSchema.getColumnSchemas(), tableSchema.getColumnTypes());
+    this.updatable = tableSchema.isUpdatable();
+  }
+
+  public CompactionTableSchema(
+      String tableName,
+      List<IMeasurementSchema> columnSchemas,
+      List<ColumnCategory> columnCategories) {
+    super(tableName, columnSchemas, columnCategories);
+  }
+
   public boolean merge(TableSchema tableSchema) {
     if (tableSchema == null) {
       return true;

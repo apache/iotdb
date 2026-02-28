@@ -29,8 +29,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Creat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceAttributeUpdateNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
 
 import org.apache.tsfile.read.common.TimeRange;
 import org.junit.Assert;
@@ -115,12 +115,12 @@ public class PipePlanTablePatternParseVisitorTest {
                         new TableDeletionEntry(
                             new DeletionPredicate(
                                 "ac",
-                                new IDPredicate.And(
-                                    new IDPredicate.FullExactMatch(
+                                new TagPredicate.And(
+                                    new TagPredicate.FullExactMatch(
                                         DeviceIDFactory.getInstance()
                                             .getDeviceID(
                                                 new PartialPath(new String[] {"ac", "device1"}))),
-                                    new IDPredicate.SegmentExactMatch("device2", 1))),
+                                    new TagPredicate.SegmentExactMatch("device2", 1))),
                             new TimeRange(0, 1))),
                     "db1"),
                 tablePattern)

@@ -98,7 +98,7 @@ public class InsertStatementTest {
     tableSchema = new TableSchema("table1", columnSchemas);
 
     TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
-    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
     when(metadata.validateTableHeaderSchema4TsFile(
@@ -251,7 +251,7 @@ public class InsertStatementTest {
     tableSchema = new TableSchema("table1", columnSchemas);
 
     TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
-    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
     when(metadata.validateTableHeaderSchema4TsFile(
@@ -287,7 +287,7 @@ public class InsertStatementTest {
     tableSchema = new TableSchema("table1", columnSchemas);
 
     TsTable tsTable = convertTableSchemaToTsTable(tableSchema);
-    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable("test", tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable("test", "table1", null);
 
     when(metadata.validateTableHeaderSchema4TsFile(

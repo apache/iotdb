@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -173,7 +174,7 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  targetPath.getIDeviceIDAsFullDevice(),
+                  new FullDeviceIdKey(targetPath.getIDeviceIDAsFullDevice()),
                   timePartitionSlot,
                   analysis.getDatabaseName());
       Map<TTimePartitionSlot, List<InsertRowNode>> tmpMap =

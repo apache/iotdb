@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterImpl {
 
@@ -156,6 +157,18 @@ public class FirstBatchCompactionAlignedChunkWriter extends AlignedChunkWriterIm
       beforeChunkWriterFlushCallback.call(this);
     }
     super.writeToFileWriter(tsfileWriter);
+  }
+
+  @Override
+  public void writeToFileWriter(
+      TsFileIOWriter tsfileWriter, Function<String, String> measurementNameRemapper)
+      throws IOException {
+    if (!isEmpty() && beforeChunkWriterFlushCallback != null) {
+      // make sure all pages are recorded before this call
+      sealCurrentPage();
+      beforeChunkWriterFlushCallback.call(this);
+    }
+    super.writeToFileWriter(tsfileWriter, measurementNameRemapper);
   }
 
   public void registerBeforeFlushChunkWriterCallback(

@@ -1510,7 +1510,7 @@ public class TestUtils {
 
   public static void assertDataEventuallyOnEnv(
       BaseEnv env, String sql, String expectedHeader, Set<String> expectedResSet) {
-    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600);
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, 600, false);
   }
 
   public static void assertDataEventuallyOnEnv(
@@ -1528,9 +1528,19 @@ public class TestUtils {
       String expectedHeader,
       Set<String> expectedResSet,
       long timeoutSeconds) {
+    assertDataEventuallyOnEnv(env, sql, expectedHeader, expectedResSet, timeoutSeconds, false);
+  }
+
+  public static void assertDataEventuallyOnEnv(
+      BaseEnv env,
+      String sql,
+      String expectedHeader,
+      Set<String> expectedResSet,
+      long timeoutSeconds,
+      boolean tableModel) {
     final long startTime = System.currentTimeMillis();
     final boolean[] flushed = {false};
-    try (Connection connection = env.getConnection();
+    try (Connection connection = tableModel ? env.getTableConnection() : env.getConnection();
         Statement statement = connection.createStatement()) {
       // Keep retrying if there are execution failures
       await()

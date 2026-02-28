@@ -766,11 +766,13 @@ public class ConfigMTree {
   public void renameTableColumn(
       final PartialPath database,
       final String tableName,
-      final String oldName,
-      final String newName)
+      final List<String> oldNames,
+      final List<String> newNames)
       throws MetadataException {
     final ConfigTableNode tableNode = getTableNode(database, tableName);
-    tableNode.getTable().renameColumnSchema(oldName, newName);
+    for (int i = 0; i < oldNames.size(); i++) {
+      tableNode.getTable().renameColumnSchema(oldNames.get(i), newNames.get(i));
+    }
   }
 
   public void setTableComment(

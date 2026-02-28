@@ -19,11 +19,16 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.it.utils.TsFileTableGenerator;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.enums.ColumnCategory;
@@ -31,8 +36,8 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.awaitility.Awaitility;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -45,14 +50,23 @@ import java.io.File;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+@SuppressWarnings("SqlSourceToSinkFlow")
 @RunWith(IoTDBTestRunner.class)
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBLoadTsFileIT {
@@ -198,9 +212,9 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           adminStmt.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
     }
@@ -240,9 +254,9 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
     }
@@ -281,17 +295,231 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
 
       try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertFalse(resultSet.next());
+        assertTrue(resultSet.next());
+        assertFalse(resultSet.next());
       }
     }
+  }
+
+  @Test
+  public void testLoadWithSevoFile() throws Exception {
+    testLoadWithSevoFile(false);
+  }
+
+  @Test
+  public void testAsyncLoadWithSevoFile() throws Exception {
+    testLoadWithSevoFile(true);
+  }
+
+  public void testLoadWithSevoFile(boolean async) throws Exception {
+    final int lineCount = 10000;
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemas();
+    List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+
+    final File file = new File(tmpDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    // rename table0 to table1
+    File sevoFile = new File(tmpDir, "0.sevo");
+    SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(sevoFile.getAbsolutePath());
+    SchemaEvolution schemaEvolution = new TableRename(SchemaConfig.TABLE_0, SchemaConfig.TABLE_1);
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+    // rename INT322INT32 to INT322INT32_NEW
+    schemaEvolution = new ColumnRename(SchemaConfig.TABLE_1, "INT322INT32", "INT322INT32_NEW");
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("create database if not exists %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("use %s", SchemaConfig.DATABASE_0));
+      statement.execute(
+          String.format(
+              "load '%s' with ('database'='%s', 'sevo-file-path'='%s', 'on-success'='delete', 'async'='%s')",
+              file.getAbsolutePath(),
+              SchemaConfig.DATABASE_0,
+              schemaEvolutionFile.getFilePath(),
+              async));
+
+      if (!async) {
+        checkSevoResult(statement, lineCount);
+      } else {
+        Awaitility.await()
+            .atMost(20, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    checkSevoResult(statement, lineCount);
+                  } catch (SQLException e) {
+                    throw new AssertionError(e);
+                  }
+                });
+      }
+    }
+    assertFalse(sevoFile.exists());
+  }
+
+  private void checkSevoResult(Statement statement, int lineCount) throws SQLException {
+    statement.execute("use " + SchemaConfig.DATABASE_0);
+    // cannot query using table0
+    try (final ResultSet resultSet =
+        statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
+      fail();
+    } catch (SQLException e) {
+      assertEquals("550: Table 'root.test' does not exist.", e.getMessage());
+    }
+
+    // can query with table1
+    try (final ResultSet resultSet =
+        statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_1))) {
+      if (resultSet.next()) {
+        assertEquals(lineCount, resultSet.getLong(1));
+      } else {
+        fail("This ResultSet is empty.");
+      }
+    }
+
+    // cannot query using INT322INT32
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format("select count(%s) from %s", "INT322INT32", SchemaConfig.TABLE_1))) {
+      fail();
+    } catch (SQLException e) {
+      assertEquals("616: Column 'int322int32' cannot be resolved", e.getMessage());
+    }
+
+    // can query with INT322INT32_NEW
+    try (final ResultSet resultSet =
+        statement.executeQuery(
+            String.format("select count(%s) from %s", "INT322INT32_NEW", SchemaConfig.TABLE_1))) {
+      if (resultSet.next()) {
+        assertEquals(lineCount, resultSet.getLong(1));
+      } else {
+        fail("This ResultSet is empty.");
+      }
+    }
+
+    try (final ResultSet resultSet = statement.executeQuery("show tables")) {
+      assertTrue(resultSet.next());
+      assertEquals(SchemaConfig.TABLE_1, resultSet.getString(1));
+      assertFalse(resultSet.next());
+    }
+  }
+
+  @Test
+  public void testLoadSevoWithIoTDBDir() throws Exception {
+    testLoadSevoWithIoTDBDir(false);
+  }
+
+  @Test
+  public void testAsyncLoadSevoWithIoTDBDir() throws Exception {
+    testLoadSevoWithIoTDBDir(true);
+  }
+
+  public void testLoadSevoWithIoTDBDir(boolean async) throws Exception {
+    final int lineCount = 10000;
+    File datanodeDir = prepareIoTDBDirWithSevo(lineCount);
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute(String.format("DROP DATABASE IF EXISTS %s", SchemaConfig.DATABASE_0));
+      statement.execute(String.format("create database if not exists %s", "another"));
+      statement.execute(String.format("use %s", "another"));
+
+      try {
+        statement.execute(
+            String.format("load '%s' WITH ('database'='somedb')", datanodeDir.getAbsolutePath()));
+        fail();
+      } catch (SQLException e) {
+        assertTrue(
+            e.getMessage()
+                .contains(
+                    "Database is not supported when loading from datanode directory, if you wish to use specified database and ignore ones in the datanode directory, please rename the datanode directory to any other one."));
+      }
+
+      statement.execute(
+          String.format("load '%s' WITH ('async'='%s')", datanodeDir.getAbsolutePath(), async));
+
+      if (!async) {
+        checkSevoResult(statement, lineCount);
+      } else {
+        Awaitility.await()
+            .atMost(20, TimeUnit.SECONDS)
+            .pollInterval(1, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  try {
+                    checkSevoResult(statement, lineCount);
+                  } catch (SQLException e) {
+                    throw new AssertionError(e);
+                  }
+                });
+      }
+    }
+  }
+
+  @SuppressWarnings({"ResultOfMethodCallIgnored", "SameParameterValue"})
+  private File prepareIoTDBDirWithSevo(int lineCount) throws Exception {
+    File datanodeDir = new File(TestConstant.BASE_OUTPUT_PATH, "datanode");
+    File dataDir = new File(datanodeDir, "data");
+    File sequenceDir = new File(dataDir, "sequence");
+    File databaseDataDir = new File(sequenceDir, SchemaConfig.DATABASE_0);
+    File regionDataDir = new File(databaseDataDir, "0");
+    File partitionDataDir = new File(regionDataDir, "0");
+    partitionDataDir.mkdirs();
+
+    List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas =
+        generateMeasurementSchemas();
+    List<ColumnCategory> columnCategories =
+        generateTabletColumnCategory(0, measurementSchemas.size(), -1);
+
+    final File file = new File(partitionDataDir, "1-0-0-0.tsfile");
+
+    List<MeasurementSchema> schemaList1 =
+        measurementSchemas.stream().map(pair -> pair.left).collect(Collectors.toList());
+
+    try (final TsFileTableGenerator generator = new TsFileTableGenerator(file)) {
+      generator.registerTable(SchemaConfig.TABLE_0, new ArrayList<>(schemaList1), columnCategories);
+      generator.generateData(SchemaConfig.TABLE_0, lineCount, PARTITION_INTERVAL / 10_000);
+    }
+
+    File systemDir = new File(datanodeDir, "system");
+    File databasesDir = new File(systemDir, "databases");
+    File databaseSystemDir = new File(databasesDir, SchemaConfig.DATABASE_0);
+    File regionSystemDir = new File(databaseSystemDir, "0");
+    File partitionSystemDir = new File(regionSystemDir, "0");
+    File fileSetsDir = new File(partitionSystemDir, "filesets");
+    File fileSetDir = new File(fileSetsDir, "0");
+    fileSetDir.mkdirs();
+
+    // rename table0 to table1
+    File sevoFile = new File(fileSetDir, "0.sevo");
+    SchemaEvolutionFile schemaEvolutionFile = new SchemaEvolutionFile(sevoFile.getAbsolutePath());
+    SchemaEvolution schemaEvolution = new TableRename(SchemaConfig.TABLE_0, SchemaConfig.TABLE_1);
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+    // rename INT322INT32 to INT322INT32_NEW
+    schemaEvolution = new ColumnRename(SchemaConfig.TABLE_1, "INT322INT32", "INT322INT32_NEW");
+    schemaEvolutionFile.append(Collections.singletonList(schemaEvolution));
+
+    return datanodeDir;
   }
 
   @Test
@@ -417,27 +645,27 @@ public class IoTDBLoadTsFileIT {
       try (final ResultSet resultSet =
           statement.executeQuery(String.format("select count(*) from %s", SchemaConfig.TABLE_0))) {
         if (resultSet.next()) {
-          Assert.assertEquals(lineCount, resultSet.getLong(1));
+          assertEquals(lineCount, resultSet.getLong(1));
         } else {
-          Assert.fail("This ResultSet is empty.");
+          fail("This ResultSet is empty.");
         }
       }
 
       try (final ResultSet resultSet = statement.executeQuery("show tables")) {
-        Assert.assertTrue(resultSet.next());
-        Assert.assertFalse(resultSet.next());
+        assertTrue(resultSet.next());
+        assertFalse(resultSet.next());
       }
 
       // Time column's difference shall not affect the old column
       if (Objects.nonNull(resultSetOld)) {
         try (final ResultSet resultSet = statement.executeQuery("desc " + SchemaConfig.TABLE_0)) {
           while (resultSet.next() && resultSetOld.next()) {
-            Assert.assertEquals(resultSet.getString(1), resultSetOld.getString(1));
-            Assert.assertEquals(resultSet.getString(2), resultSetOld.getString(2));
-            Assert.assertEquals(resultSet.getString(3), resultSetOld.getString(3));
+            assertEquals(resultSet.getString(1), resultSetOld.getString(1));
+            assertEquals(resultSet.getString(2), resultSetOld.getString(2));
+            assertEquals(resultSet.getString(3), resultSetOld.getString(3));
           }
           if (resultSet.next() || resultSetOld.next()) {
-            Assert.fail("The table schema has changed after load.");
+            fail("The table schema has changed after load.");
           }
         }
       }

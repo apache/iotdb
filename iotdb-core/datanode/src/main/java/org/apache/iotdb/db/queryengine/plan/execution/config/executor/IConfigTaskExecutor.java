@@ -386,8 +386,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
       final String tableName,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,

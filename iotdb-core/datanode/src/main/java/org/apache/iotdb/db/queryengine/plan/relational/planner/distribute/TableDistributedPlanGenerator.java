@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -104,6 +105,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
@@ -714,7 +716,8 @@ public class TableDistributedPlanGenerator
               seriesSlotMap,
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
-              cachedSeriesSlotWithRegions);
+              cachedSeriesSlotWithRegions,
+              dbName);
       regionReplicaSets.forEach(
           regionReplicaSet ->
               regionDeviceCount.put(
@@ -805,7 +808,8 @@ public class TableDistributedPlanGenerator
               seriesSlotMap,
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
-              cachedSeriesSlotWithRegions);
+              cachedSeriesSlotWithRegions,
+              dbName);
       if (regionReplicaSets.size() > 1) {
         context.deviceCrossRegion = true;
       }
@@ -895,7 +899,8 @@ public class TableDistributedPlanGenerator
               seriesSlotMap,
               deviceEntry.getDeviceID(),
               node.getTimeFilter(),
-              cachedSeriesSlotWithRegions);
+              cachedSeriesSlotWithRegions,
+              dbName);
 
       if (regionReplicaSets.size() > 1) {
         context.deviceCrossRegion = true;
@@ -1215,7 +1220,8 @@ public class TableDistributedPlanGenerator
                 seriesSlotMap,
                 deviceEntry.getDeviceID(),
                 node.getTimeFilter(),
-                cachedSeriesSlotWithRegions);
+                cachedSeriesSlotWithRegions,
+                dbName);
         if (regionReplicaSets.size() > 1) {
           needSplit = true;
           context.deviceCrossRegion = true;
@@ -1298,10 +1304,14 @@ public class TableDistributedPlanGenerator
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>> seriesSlotMap,
       IDeviceID deviceId,
       Filter timeFilter,
-      Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions) {
+      Map<Integer, List<TRegionReplicaSet>> cachedSeriesSlotWithRegions,
+      String databaseName) {
 
     // given seriesPartitionSlot has already been calculated
-    final TSeriesPartitionSlot seriesPartitionSlot = dataPartition.calculateDeviceGroupId(deviceId);
+    SeriesPartitionKey seriesPartitionKey =
+        CommonUtils.getSeriesPartitionKey(deviceId, databaseName, true);
+    final TSeriesPartitionSlot seriesPartitionSlot =
+        dataPartition.calculateDeviceGroupId(seriesPartitionKey);
     List<TRegionReplicaSet> regionReplicaSets =
         cachedSeriesSlotWithRegions.get(seriesPartitionSlot.getSlotId());
     if (regionReplicaSets != null) {
@@ -1780,8 +1790,10 @@ public class TableDistributedPlanGenerator
       final List<IDeviceID> partitionKeyList = node.getPartitionKeyList();
       final List<Object[]> deviceIDArray = node.getDeviceIdList();
       for (int i = 0; i < node.getPartitionKeyList().size(); ++i) {
+        SeriesPartitionKey seriesPartitionKey =
+            CommonUtils.getSeriesPartitionKey(partitionKeyList.get(i), database, true);
         final TRegionReplicaSet regionReplicaSet =
-            databaseMap.get(schemaPartition.calculateDeviceGroupId(partitionKeyList.get(i)));
+            databaseMap.get(schemaPartition.calculateDeviceGroupId(seriesPartitionKey));
         if (Objects.nonNull(regionReplicaSet)) {
           tableDeviceFetchMap
               .computeIfAbsent(

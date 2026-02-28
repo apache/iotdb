@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -184,5 +185,9 @@ public abstract class SchemaRegionPlanVisitor<R, C> {
   public R visitAlterEncodingCompressor(
       final AlterEncodingCompressorNode alterEncodingCompressorNode, final C context) {
     return visitSchemaRegionPlan(alterEncodingCompressorNode, context);
+  }
+
+  public R visitEvolveSchema(final EvolveSchemaNode evolveSchemaNode, final C context) {
+    return visitSchemaRegionPlan(evolveSchemaNode, context);
   }
 }

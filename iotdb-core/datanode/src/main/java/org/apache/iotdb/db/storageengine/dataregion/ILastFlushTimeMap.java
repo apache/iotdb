@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.Map;
@@ -63,4 +65,6 @@ public interface ILastFlushTimeMap {
   void degradeLastFlushTime(long partitionId);
 
   long getMemSize(long partitionId);
+
+  void accept(SchemaEvolution schemaEvolution);
 }

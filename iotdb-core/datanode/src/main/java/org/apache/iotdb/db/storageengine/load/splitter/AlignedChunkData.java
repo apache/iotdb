@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.load.splitter;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
@@ -66,7 +67,7 @@ public class AlignedChunkData implements ChunkData {
   protected static final Binary DEFAULT_BINARY = null;
 
   protected final TTimePartitionSlot timePartitionSlot;
-  protected final IDeviceID device;
+  protected IDeviceID device;
   protected List<ChunkHeader> chunkHeaderList;
 
   protected PublicBAOS byteStream;
@@ -507,5 +508,15 @@ public class AlignedChunkData implements ChunkData {
         + ", needDecodeChunk="
         + needDecodeChunk
         + '}';
+  }
+
+  @Override
+  public void rewriteToFinal(EvolvedSchema evolvedSchema) {
+    IDeviceID newDevice = evolvedSchema.rewriteToFinal(device);
+    chunkHeaderList.forEach(
+        h ->
+            h.setMeasurementID(
+                evolvedSchema.getFinalColumnName(device.getTableName(), h.getMeasurementID())));
+    device = newDevice;
   }
 }

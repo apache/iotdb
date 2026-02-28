@@ -1,0 +1,534 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution;
+
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry.ModType;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+import org.apache.iotdb.db.utils.io.IOUtils;
+
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
+import org.apache.tsfile.file.metadata.IChunkMetadata;
+import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.TableSchema;
+import org.apache.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.PublicBAOS;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.apache.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+public class EvolvedSchema implements Accountable, SchemaEvolution {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(EvolvedSchema.class);
+  // the evolved table names after applying all schema evolution operations
+  private Map<String, String> finalToOriginalTableNames = new LinkedHashMap<>();
+
+  /**
+   * the first key is the evolved table name, the second key is the evolved column name, and the
+   * value is the original column name before any schema evolution.
+   */
+  private Map<String, Map<String, String>> finalToOriginalColumnNames = new LinkedHashMap<>();
+
+  // the reversed version of finalToOriginalTableNames
+  private Map<String, String> originalToFinalTableNames = new LinkedHashMap<>();
+
+  // the reversed version of finalToOriginalColumnNames
+  private Map<String, Map<String, String>> originalToFinalColumnNames = new LinkedHashMap<>();
+
+  public void renameTable(String oldTableName, String newTableName) {
+    if (!finalToOriginalTableNames.containsKey(oldTableName)
+        || finalToOriginalTableNames.get(oldTableName).isEmpty()) {
+      finalToOriginalTableNames.put(newTableName, oldTableName);
+      finalToOriginalTableNames.put(oldTableName, "");
+      originalToFinalTableNames.put(oldTableName, newTableName);
+    } else {
+      // mark the old table name as non-exists (empty)
+      String originalName = finalToOriginalTableNames.put(oldTableName, "");
+      finalToOriginalTableNames.put(newTableName, originalName);
+      originalToFinalTableNames.put(originalName, newTableName);
+    }
+
+    if (finalToOriginalColumnNames.containsKey(oldTableName)) {
+      Map<String, String> columnMap = finalToOriginalColumnNames.remove(oldTableName);
+      finalToOriginalColumnNames.put(newTableName, columnMap);
+    }
+  }
+
+  public void renameColumn(String newTableName, String oldColumnName, String newColumnName) {
+    Map<String, String> finalToOriginalMap =
+        finalToOriginalColumnNames.computeIfAbsent(newTableName, t -> new LinkedHashMap<>());
+    String originalTableName = getOriginalTableName(newTableName);
+    if (!finalToOriginalMap.containsKey(oldColumnName)
+        || finalToOriginalMap.get(oldColumnName).isEmpty()) {
+      finalToOriginalMap.put(newColumnName, oldColumnName);
+      finalToOriginalMap.put(oldColumnName, "");
+      originalToFinalColumnNames
+          .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+          .put(oldColumnName, newColumnName);
+    } else {
+      // mark the old column name as non-exists
+      String originalName = finalToOriginalMap.put(oldColumnName, "");
+      if (!newColumnName.equals(originalName)) {
+        finalToOriginalMap.put(newColumnName, originalName);
+        originalToFinalColumnNames
+            .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+            .put(originalName, newColumnName);
+      } else {
+        // the new name is the same as the original name, remove the mapping
+        finalToOriginalMap.remove(newColumnName);
+        finalToOriginalMap.remove(oldColumnName);
+        if (finalToOriginalMap.isEmpty()) {
+          finalToOriginalColumnNames.remove(newTableName);
+        }
+
+        Map<String, String> originalToFinalMap = originalToFinalColumnNames.get(originalTableName);
+        if (originalToFinalMap != null) {
+          originalToFinalMap.remove(originalName);
+          if (originalToFinalMap.isEmpty()) {
+            originalToFinalColumnNames.remove(originalTableName);
+          }
+        }
+      }
+    }
+  }
+
+  public String getOriginalTableName(String finalTableName) {
+    return finalToOriginalTableNames.getOrDefault(finalTableName, finalTableName);
+  }
+
+  public String getFinalTableName(String originalTableName) {
+    return originalToFinalTableNames.getOrDefault(originalTableName, originalTableName);
+  }
+
+  public String getOriginalColumnName(String tableName, String evolvedColumnName) {
+    Map<String, String> columnNameMap = finalToOriginalColumnNames.get(tableName);
+    if (columnNameMap == null) {
+      return evolvedColumnName;
+    }
+    return columnNameMap.getOrDefault(evolvedColumnName, evolvedColumnName);
+  }
+
+  public String getFinalColumnName(String originalTableName, String originalColumnName) {
+    return originalToFinalColumnNames
+        .getOrDefault(originalTableName, Collections.emptyMap())
+        .getOrDefault(originalColumnName, originalColumnName);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    EvolvedSchema that = (EvolvedSchema) o;
+    return Objects.equals(finalToOriginalTableNames, that.finalToOriginalTableNames)
+        && Objects.equals(finalToOriginalColumnNames, that.finalToOriginalColumnNames);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(finalToOriginalTableNames, finalToOriginalColumnNames);
+  }
+
+  @Override
+  public String toString() {
+    return "EvolvedSchema{"
+        + "finalToOriginalTableNames="
+        + finalToOriginalTableNames
+        + ", finalToOriginalColumnNames="
+        + finalToOriginalColumnNames
+        + ", originalToFinalTableNames="
+        + originalToFinalTableNames
+        + ", originalToFinalColumnNames="
+        + originalToFinalColumnNames
+        + '}';
+  }
+
+  public ByteBuffer toSchemaEvolutionFileBuffer() {
+    PublicBAOS publicBAOS = new PublicBAOS();
+    try {
+      ReadWriteIOUtils.write(0L, publicBAOS);
+      this.serialize(publicBAOS);
+    } catch (IOException e) {
+      // ignored
+    }
+
+    ByteBuffer buffer = ByteBuffer.wrap(publicBAOS.getBuf(), 0, publicBAOS.size());
+    buffer.putLong(0, buffer.limit());
+    buffer.position(0);
+    return buffer;
+  }
+
+  public ModEntry rewriteToOriginal(ModEntry entry) {
+    if (entry.getType() == ModType.TABLE_DELETION) {
+      return rewriteToOriginal(((TableDeletionEntry) entry));
+    }
+    return entry;
+  }
+
+  public ModEntry rewriteToFinal(ModEntry entry) {
+    if (entry.getType() == ModType.TABLE_DELETION) {
+      return rewriteToFinal(((TableDeletionEntry) entry));
+    }
+    return entry;
+  }
+
+  public TableDeletionEntry rewriteToOriginal(TableDeletionEntry entry) {
+    DeletionPredicate deletionPredicate = rewriteToOriginal(entry.getPredicate());
+    return new TableDeletionEntry(deletionPredicate, entry.getTimeRange());
+  }
+
+  public TableDeletionEntry rewriteToFinal(TableDeletionEntry entry) {
+    DeletionPredicate deletionPredicate = rewriteToFinal(entry.getPredicate());
+    return new TableDeletionEntry(deletionPredicate, entry.getTimeRange());
+  }
+
+  private DeletionPredicate rewriteToFinal(DeletionPredicate predicate) {
+    String finalTableName = getFinalTableName(predicate.getTableName());
+    TagPredicate tagPredicate = predicate.getTagPredicate();
+    tagPredicate = tagPredicate.rewriteToOriginal(this);
+    List<String> newMeasurements =
+        predicate.getMeasurementNames().stream()
+            .map(m -> getFinalColumnName(predicate.getTableName(), m))
+            .collect(Collectors.toList());
+    return new DeletionPredicate(finalTableName, tagPredicate, newMeasurements);
+  }
+
+  private DeletionPredicate rewriteToOriginal(DeletionPredicate predicate) {
+    String originalTableName = getOriginalTableName(predicate.getTableName());
+    TagPredicate tagPredicate = predicate.getTagPredicate();
+    tagPredicate = tagPredicate.rewriteToOriginal(this);
+    List<String> newMeasurements =
+        predicate.getMeasurementNames().stream()
+            .map(m -> getOriginalColumnName(predicate.getTableName(), m))
+            .collect(Collectors.toList());
+    return new DeletionPredicate(originalTableName, tagPredicate, newMeasurements);
+  }
+
+  public IDeviceID rewriteToOriginal(IDeviceID deviceID) {
+    String tableName = deviceID.getTableName();
+    String originalTableName = getOriginalTableName(tableName);
+    return rewriteTableName(deviceID, originalTableName);
+  }
+
+  public IDeviceID rewriteToFinal(IDeviceID deviceID) {
+    String tableName = deviceID.getTableName();
+    String finalTableName = getFinalTableName(tableName);
+    return rewriteTableName(deviceID, finalTableName);
+  }
+
+  public void rewriteToFinal(
+      String originalTableName, List<TimeseriesMetadata> timeseriesMetadataList) {
+    timeseriesMetadataList.forEach(
+        timeseriesMetadata -> {
+          String finalColumnName =
+              getFinalColumnName(originalTableName, timeseriesMetadata.getMeasurementId());
+          timeseriesMetadata.setMeasurementId(finalColumnName);
+        });
+  }
+
+  public Map<String, TableSchema> rewriteToFinal(Map<String, TableSchema> tableSchemas) {
+    Map<String, TableSchema> finalTableSchemas = new HashMap<>(tableSchemas.size());
+    for (Map.Entry<String, TableSchema> entry : tableSchemas.entrySet()) {
+      TableSchema tableSchema = entry.getValue();
+      tableSchema = rewriteToFinal(tableSchema);
+      finalTableSchemas.put(tableSchema.getTableName(), tableSchema);
+    }
+    return finalTableSchemas;
+  }
+
+  private TableSchema rewriteToOriginal(TableSchema tableSchema) {
+    String originalTableName = getOriginalTableName(tableSchema.getTableName());
+
+    List<IMeasurementSchema> measurementSchemas =
+        new ArrayList<>(tableSchema.getColumnSchemas().size());
+    List<ColumnCategory> columnCategories = new ArrayList<>(tableSchema.getColumnTypes().size());
+    List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+    for (int i = 0, columnSchemasSize = columnSchemas.size(); i < columnSchemasSize; i++) {
+      IMeasurementSchema measurementSchema = columnSchemas.get(i);
+      measurementSchemas.add(
+          new MeasurementSchema(
+              getOriginalColumnName(
+                  tableSchema.getTableName(), measurementSchema.getMeasurementName()),
+              measurementSchema.getType(),
+              measurementSchema.getEncodingType(),
+              measurementSchema.getCompressor()));
+      columnCategories.add(tableSchema.getColumnTypes().get(i));
+    }
+
+    TableSchema schema = new TableSchema(originalTableName, measurementSchemas, columnCategories);
+    schema.setUpdatable(tableSchema.isUpdatable());
+    return schema;
+  }
+
+  public TableSchema rewriteToFinal(TableSchema tableSchema) {
+    String finalTableName = getFinalTableName(tableSchema.getTableName());
+
+    List<IMeasurementSchema> measurementSchemas =
+        new ArrayList<>(tableSchema.getColumnSchemas().size());
+    List<ColumnCategory> columnCategories = new ArrayList<>(tableSchema.getColumnTypes().size());
+    List<IMeasurementSchema> columnSchemas = tableSchema.getColumnSchemas();
+    for (int i = 0, columnSchemasSize = columnSchemas.size(); i < columnSchemasSize; i++) {
+      IMeasurementSchema measurementSchema = columnSchemas.get(i);
+      measurementSchemas.add(
+          new MeasurementSchema(
+              getFinalColumnName(
+                  tableSchema.getTableName(), measurementSchema.getMeasurementName()),
+              measurementSchema.getType(),
+              measurementSchema.getEncodingType(),
+              measurementSchema.getCompressor()));
+      columnCategories.add(tableSchema.getColumnTypes().get(i));
+    }
+
+    TableSchema schema = new TableSchema(finalTableName, measurementSchemas, columnCategories);
+    schema.setUpdatable(tableSchema.isUpdatable());
+    return schema;
+  }
+
+  @SuppressWarnings("SuspiciousSystemArraycopy")
+  public static IDeviceID rewriteTableName(IDeviceID deviceID, String newTableName) {
+    String tableName = deviceID.getTableName();
+    if (!tableName.equals(newTableName)) {
+      Object[] segments = deviceID.getSegments();
+      String[] newSegments = new String[segments.length];
+      newSegments[0] = newTableName;
+      System.arraycopy(segments, 1, newSegments, 1, segments.length - 1);
+      return Factory.DEFAULT_FACTORY.create(newSegments);
+    }
+    return deviceID;
+  }
+
+  public static EvolvedSchema deepCopy(EvolvedSchema evolvedSchema) {
+    EvolvedSchema newEvolvedSchema = new EvolvedSchema();
+    newEvolvedSchema.finalToOriginalTableNames =
+        new LinkedHashMap<>(evolvedSchema.finalToOriginalTableNames);
+    newEvolvedSchema.finalToOriginalColumnNames = new LinkedHashMap<>();
+    for (Entry<String, Map<String, String>> entry :
+        evolvedSchema.finalToOriginalColumnNames.entrySet()) {
+      newEvolvedSchema.finalToOriginalColumnNames.put(
+          entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+    }
+    newEvolvedSchema.originalToFinalTableNames =
+        new LinkedHashMap<>(evolvedSchema.originalToFinalTableNames);
+    newEvolvedSchema.originalToFinalColumnNames = new LinkedHashMap<>();
+    for (Entry<String, Map<String, String>> entry :
+        evolvedSchema.originalToFinalColumnNames.entrySet()) {
+      newEvolvedSchema.originalToFinalColumnNames.put(
+          entry.getKey(), new LinkedHashMap<>(entry.getValue()));
+    }
+    return newEvolvedSchema;
+  }
+
+  public static EvolvedSchema merge(EvolvedSchema... schemas) {
+    EvolvedSchema firstNotNullSchema = null;
+    int i = 0;
+    for (; i < schemas.length; i++) {
+      if (schemas[i] != null) {
+        firstNotNullSchema = schemas[i];
+        i++;
+        break;
+      }
+    }
+    if (i == schemas.length) {
+      return firstNotNullSchema;
+    }
+
+    if (firstNotNullSchema == null) {
+      return null;
+    }
+    EvolvedSchema mergedSchema = deepCopy(firstNotNullSchema);
+
+    for (; i < schemas.length; i++) {
+      if (schemas[i] != null) {
+        EvolvedSchema newSchema = schemas[i];
+        for (Entry<String, String> finalOriginalTableName :
+            newSchema.finalToOriginalTableNames.entrySet()) {
+          if (!finalOriginalTableName.getValue().isEmpty()) {
+            mergedSchema.renameTable(
+                finalOriginalTableName.getValue(), finalOriginalTableName.getKey());
+          }
+        }
+        for (Entry<String, Map<String, String>> finalTableNameColumnNameMapEntry :
+            newSchema.finalToOriginalColumnNames.entrySet()) {
+          for (Entry<String, String> finalColNameOriginalColNameEntry :
+              finalTableNameColumnNameMapEntry.getValue().entrySet()) {
+            if (!finalColNameOriginalColNameEntry.getValue().isEmpty()) {
+              String finalTableName = finalTableNameColumnNameMapEntry.getKey();
+              String finalColName = finalColNameOriginalColNameEntry.getKey();
+              String originalColName = finalColNameOriginalColNameEntry.getValue();
+              mergedSchema.renameColumn(finalTableName, originalColName, finalColName);
+            }
+          }
+        }
+      }
+    }
+    return mergedSchema;
+  }
+
+  public Schema rewriteToOriginal(Schema schema) {
+    return rewriteToOriginal(schema, null);
+  }
+
+  public Schema rewriteToOriginal(
+      Schema schema, Function<TableSchema, TableSchema> tableSchemaTransformer) {
+    Schema copySchema = new Schema();
+    for (TableSchema tableSchema : schema.getTableSchemaMap().values()) {
+      TableSchema originalSchema = rewriteToOriginal(tableSchema);
+      if (tableSchemaTransformer != null) {
+        originalSchema = tableSchemaTransformer.apply(originalSchema);
+      }
+      copySchema.registerTableSchema(originalSchema);
+    }
+    return copySchema;
+  }
+
+  public void rewriteToFinal(
+      AbstractAlignedChunkMetadata abstractAlignedChunkMetadata, String originalTableName) {
+    for (IChunkMetadata iChunkMetadata : abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
+      if (iChunkMetadata != null) {
+        iChunkMetadata.setMeasurementUid(
+            getFinalColumnName(originalTableName, iChunkMetadata.getMeasurementUid()));
+      }
+    }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return RamUsageEstimator.sizeOfMap(this.finalToOriginalTableNames)
+        + RamUsageEstimator.sizeOfMap(this.finalToOriginalColumnNames)
+        + RamUsageEstimator.sizeOfMap(this.originalToFinalTableNames)
+        + RamUsageEstimator.sizeOfMap(this.originalToFinalColumnNames);
+  }
+
+  @Override
+  public void applyTo(EvolvedSchema schema) {
+    schema.finalToOriginalTableNames = finalToOriginalTableNames;
+    schema.finalToOriginalColumnNames = finalToOriginalColumnNames;
+    schema.originalToFinalTableNames = originalToFinalTableNames;
+    schema.originalToFinalColumnNames = originalToFinalColumnNames;
+  }
+
+  @Override
+  public SchemaEvolutionType getEvolutionType() {
+    return SchemaEvolutionType.FULL_EVOLUTION;
+  }
+
+  @Override
+  public String getAffectedTableName() {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public long serialize(ByteBuffer buffer) {
+    long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), buffer);
+    size += IOUtils.writeStringMap(finalToOriginalTableNames, buffer);
+
+    size += ReadWriteForEncodingUtils.writeVarInt(finalToOriginalColumnNames.size(), buffer);
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(tableEntry.getKey(), buffer);
+      size += IOUtils.writeStringMap(tableEntry.getValue(), buffer);
+    }
+    return size;
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    finalToOriginalTableNames = IOUtils.readLinkedStringMap(buffer);
+
+    int size = ReadWriteForEncodingUtils.readVarInt(buffer);
+    for (int i = 0; i < size; i++) {
+      String tableName = ReadWriteIOUtils.readVarIntString(buffer);
+      finalToOriginalColumnNames.put(tableName, IOUtils.readLinkedStringMap(buffer));
+    }
+
+    buildOriginalToFinalMap();
+  }
+
+  private void buildOriginalToFinalMap() {
+    originalToFinalTableNames = new HashMap<>(finalToOriginalTableNames.size());
+    for (Entry<String, String> entry : finalToOriginalTableNames.entrySet()) {
+      originalToFinalTableNames.put(entry.getValue(), entry.getKey());
+    }
+
+    originalToFinalColumnNames = new HashMap<>(finalToOriginalColumnNames.size());
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      String finalTableName = tableEntry.getKey();
+      String originalTableName = getOriginalTableName(finalTableName);
+      Map<String, String> columnMap = tableEntry.getValue();
+      for (Entry<String, String> columnEntry : columnMap.entrySet()) {
+        String finalColumnName = columnEntry.getKey();
+        String originalColumnName = getOriginalColumnName(originalTableName, finalColumnName);
+        originalToFinalColumnNames
+            .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+            .put(originalColumnName, finalColumnName);
+      }
+    }
+  }
+
+  @Override
+  public long serialize(OutputStream stream) throws IOException {
+    long size = ReadWriteForEncodingUtils.writeVarInt(getEvolutionType().ordinal(), stream);
+    size += IOUtils.writeStringMap(finalToOriginalTableNames, stream);
+
+    size += ReadWriteForEncodingUtils.writeVarInt(finalToOriginalColumnNames.size(), stream);
+    for (Entry<String, Map<String, String>> tableEntry : finalToOriginalColumnNames.entrySet()) {
+      size += ReadWriteIOUtils.writeVar(tableEntry.getKey(), stream);
+      size += IOUtils.writeStringMap(tableEntry.getValue(), stream);
+    }
+    return size;
+  }
+
+  @Override
+  public void deserialize(InputStream stream) throws IOException {
+    finalToOriginalTableNames = IOUtils.readLinkedStringMap(stream);
+
+    int size = ReadWriteForEncodingUtils.readVarInt(stream);
+    for (int i = 0; i < size; i++) {
+      String tableName = ReadWriteIOUtils.readVarIntString(stream);
+      finalToOriginalColumnNames.put(tableName, IOUtils.readLinkedStringMap(stream));
+    }
+
+    buildOriginalToFinalMap();
+  }
+}

@@ -24,6 +24,8 @@ import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionIoDataType;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.encrypt.EncryptParameter;
@@ -53,25 +55,39 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   private volatile boolean isWritingAligned = false;
   private boolean isEmptyTargetFile = true;
-  private IDeviceID currentDeviceId;
+  private IDeviceID currentOriginalDeviceId;
 
-  private EncryptParameter firstEncryptParameter;
+  private final TsFileResource tsFileResource;
+  private final EvolvedSchema evolvedSchema;
+
+  private final EncryptParameter firstEncryptParameter;
 
   @TestOnly
   public CompactionTsFileWriter(File file, long maxMetadataSize, CompactionType type)
       throws IOException {
-    this(file, maxMetadataSize, type, EncryptDBUtils.getDefaultFirstEncryptParam());
+    this(
+        new TsFileResource(file),
+        maxMetadataSize,
+        type,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
   }
 
   public CompactionTsFileWriter(
-      File file, long maxMetadataSize, CompactionType type, EncryptParameter encryptParameter)
+      TsFileResource tsFile,
+      long maxMetadataSize,
+      CompactionType type,
+      EncryptParameter encryptParameter,
+      long maxTsFileSetEndVersion)
       throws IOException {
-    super(file, maxMetadataSize, encryptParameter);
+    super(tsFile.getTsFile(), maxMetadataSize, encryptParameter);
+    this.tsFileResource = tsFile;
     this.firstEncryptParameter = encryptParameter;
     this.type = type;
     super.out =
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
+    evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
   }
 
   public EncryptParameter getEncryptParameter() {
@@ -92,7 +108,14 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     if (!chunkWriter.isEmpty()) {
       isEmptyTargetFile = false;
     }
-    chunkWriter.writeToFileWriter(this);
+    chunkWriter.writeToFileWriter(
+        this,
+        evolvedSchema == null
+            ? null
+            : measurementName ->
+                evolvedSchema.getOriginalColumnName(
+                    evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName()),
+                    measurementName));
     long writtenDataSize = this.getPos() - beforeOffset;
     CompactionMetrics.getInstance()
         .recordWriteInfo(
@@ -106,6 +129,15 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
     long beforeOffset = this.getPos();
     if (chunkMetadata.getNumOfPoints() != 0) {
       isEmptyTargetFile = false;
+    }
+    if (evolvedSchema != null) {
+      String finalTableName =
+          evolvedSchema.getFinalTableName(currentOriginalDeviceId.getTableName());
+      chunk
+          .getHeader()
+          .setMeasurementID(
+              evolvedSchema.getOriginalColumnName(
+                  finalTableName, chunk.getHeader().getMeasurementID()));
     }
     super.writeChunk(chunk, chunkMetadata);
     long writtenDataSize = this.getPos() - beforeOffset;
@@ -124,6 +156,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       TSEncoding encodingType,
       Statistics<? extends Serializable> statistics)
       throws IOException {
+    if (evolvedSchema != null) {
+      measurementId =
+          evolvedSchema.getOriginalColumnName(
+              currentOriginalDeviceId.getTableName(), measurementId);
+    }
     long beforeOffset = this.getPos();
     super.writeEmptyValueChunk(
         measurementId, compressionType, tsDataType, encodingType, statistics);
@@ -141,21 +178,24 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public int startChunkGroup(IDeviceID deviceId) throws IOException {
-    currentDeviceId = deviceId;
+    if (evolvedSchema != null) {
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+    }
+    currentOriginalDeviceId = deviceId;
     return super.startChunkGroup(deviceId);
   }
 
   @Override
   public void endChunkGroup() throws IOException {
-    if (currentDeviceId == null || chunkMetadataList.isEmpty()) {
+    if (currentOriginalDeviceId == null || chunkMetadataList.isEmpty()) {
       return;
     }
-    String tableName = currentDeviceId.getTableName();
+    String tableName = currentOriginalDeviceId.getTableName();
     TableSchema tableSchema = getSchema().getTableSchemaMap().get(tableName);
     boolean generateTableSchemaForCurrentChunkGroup = tableSchema != null;
     setGenerateTableSchema(generateTableSchemaForCurrentChunkGroup);
     super.endChunkGroup();
-    currentDeviceId = null;
+    currentOriginalDeviceId = null;
   }
 
   @Override
@@ -191,5 +231,13 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
       }
       iterator.remove();
     }
+  }
+
+  public TsFileResource getTsFileResource() {
+    return tsFileResource;
+  }
+
+  public IDeviceID getCurrentOriginalDeviceId() {
+    return currentOriginalDeviceId;
   }
 }

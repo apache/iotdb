@@ -35,9 +35,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
-import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.FullExactMatch;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
@@ -333,7 +333,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
             new TableDeletionEntry(
                 new DeletionPredicate(
                     "t1",
-                    new IDPredicate.FullExactMatch(deviceID),
+                    new TagPredicate.FullExactMatch(deviceID),
                     Collections.singletonList("s0")),
                 new TimeRange(Long.MIN_VALUE, 11)));
     resource1
@@ -342,7 +342,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
             new TableDeletionEntry(
                 new DeletionPredicate(
                     "t1",
-                    new IDPredicate.FullExactMatch(deviceID),
+                    new TagPredicate.FullExactMatch(deviceID),
                     Collections.singletonList("s1")),
                 new TimeRange(Long.MIN_VALUE, 11)));
     resource1
@@ -351,7 +351,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
             new TableDeletionEntry(
                 new DeletionPredicate(
                     "t1",
-                    new IDPredicate.FullExactMatch(deviceID),
+                    new TagPredicate.FullExactMatch(deviceID),
                     Collections.singletonList("s2")),
                 new TimeRange(Long.MIN_VALUE, 11)));
     resource1
@@ -360,7 +360,7 @@ public class CompactionWithAllNullRowsTest extends AbstractCompactionTest {
             new TableDeletionEntry(
                 new DeletionPredicate(
                     "t1",
-                    new IDPredicate.FullExactMatch(deviceID),
+                    new TagPredicate.FullExactMatch(deviceID),
                     Collections.singletonList("s3")),
                 new TimeRange(Long.MIN_VALUE, 11)));
     resource1.getModFileForWrite().close();

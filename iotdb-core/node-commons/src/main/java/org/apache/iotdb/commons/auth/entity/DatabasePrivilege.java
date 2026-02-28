@@ -247,4 +247,14 @@ public class DatabasePrivilege {
       this.tablePrivilegeMap.put(tablePrivilege.getTableName(), tablePrivilege);
     }
   }
+
+  public boolean renameTable(String oldTableName, String newTableName) {
+    TablePrivilege tablePrivilege = tablePrivilegeMap.remove(oldTableName);
+    if (tablePrivilege != null) {
+      tablePrivilege.setTableName(newTableName);
+      tablePrivilegeMap.put(newTableName, tablePrivilege);
+      return true;
+    }
+    return false;
+  }
 }

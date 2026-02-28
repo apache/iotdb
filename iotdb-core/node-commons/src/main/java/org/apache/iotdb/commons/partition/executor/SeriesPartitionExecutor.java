@@ -45,7 +45,12 @@ public abstract class SeriesPartitionExecutor {
   @TestOnly
   public abstract TSeriesPartitionSlot getSeriesPartitionSlot(String device);
 
-  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID);
+  @TestOnly
+  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+    return getSeriesPartitionSlot(new FullDeviceIdKey(deviceID));
+  }
+
+  public abstract TSeriesPartitionSlot getSeriesPartitionSlot(SeriesPartitionKey deviceID);
 
   public static SeriesPartitionExecutor getSeriesPartitionExecutor(
       String executorName, int seriesPartitionSlotNum) {
@@ -71,6 +76,52 @@ public abstract class SeriesPartitionExecutor {
         throw new IllegalArgumentException(
             String.format("Couldn't Constructor SeriesPartitionExecutor class: %s", executorName));
       }
+    }
+  }
+
+  public interface SeriesPartitionKey {
+    int segmentNum();
+
+    Object segment(int index);
+  }
+
+  public static class FullDeviceIdKey implements SeriesPartitionKey {
+    private final IDeviceID deviceID;
+
+    public FullDeviceIdKey(IDeviceID deviceID) {
+      this.deviceID = deviceID;
+    }
+
+    @Override
+    public int segmentNum() {
+      return deviceID.segmentNum();
+    }
+
+    @Override
+    public Object segment(int index) {
+      return deviceID.segment(index);
+    }
+
+    public IDeviceID getDeviceID() {
+      return deviceID;
+    }
+  }
+
+  public static class NoTableNameDeviceIdKey implements SeriesPartitionKey {
+    private final IDeviceID deviceID;
+
+    public NoTableNameDeviceIdKey(IDeviceID deviceID) {
+      this.deviceID = deviceID;
+    }
+
+    @Override
+    public int segmentNum() {
+      return deviceID.segmentNum() - 1;
+    }
+
+    @Override
+    public Object segment(int index) {
+      return deviceID.segment(index + 1);
     }
   }
 }

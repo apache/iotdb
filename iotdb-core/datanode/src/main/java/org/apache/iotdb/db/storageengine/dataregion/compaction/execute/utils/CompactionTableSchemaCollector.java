@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.read.TsFileSequenceReader;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.Schema;
 
 import java.io.IOException;
@@ -42,7 +44,8 @@ public class CompactionTableSchemaCollector {
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
-      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap)
+      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap,
+      Pair<Long, TsFileResource> maxTsFileVersionAndAssociatedResource)
       throws IOException {
     List<Schema> targetSchemas = new ArrayList<>(seqFiles.size());
     Schema schema =
@@ -51,7 +54,8 @@ public class CompactionTableSchemaCollector {
                 .sorted(TsFileResource::compareFileName)
                 .collect(Collectors.toList()),
             readerMap,
-            deprecatedTableSchemaMap);
+            deprecatedTableSchemaMap,
+            maxTsFileVersionAndAssociatedResource);
 
     targetSchemas.add(schema);
     for (int i = 1; i < seqFiles.size(); i++) {
@@ -72,10 +76,12 @@ public class CompactionTableSchemaCollector {
   public static Schema collectSchema(
       List<TsFileResource> sourceFiles,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
-      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap)
+      Map<TsFileResource, Set<String>> deprecatedTableSchemaMap,
+      Pair<Long, TsFileResource> maxTsFileVersionAndAssociatedResource)
       throws IOException {
     Schema targetSchema = new Schema();
     Map<String, TableSchema> targetTableSchemaMap = new HashMap<>();
+
     for (int i = 0; i < sourceFiles.size(); i++) {
       TsFileResource resource = sourceFiles.get(i);
       TsFileSequenceReader reader = readerMap.get(resource);
@@ -84,12 +90,21 @@ public class CompactionTableSchemaCollector {
         // v3 tsfile
         continue;
       }
+
+      EvolvedSchema evolvedSchema =
+          resource.getMergedEvolvedSchema(maxTsFileVersionAndAssociatedResource.getLeft());
+
       for (Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
         String tableName = entry.getKey();
         TableSchema currentTableSchema = entry.getValue();
         if (isTreeModel(currentTableSchema)) {
           continue;
         }
+        if (evolvedSchema != null) {
+          currentTableSchema = evolvedSchema.rewriteToFinal(currentTableSchema);
+          tableName = currentTableSchema.getTableName();
+        }
+
         // merge all id columns, measurement schema will be generated automatically when end chunk
         // group
         CompactionTableSchema collectedTableSchema =

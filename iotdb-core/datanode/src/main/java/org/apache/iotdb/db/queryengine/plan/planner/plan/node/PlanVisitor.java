@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.vie
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.DeleteLogicalViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view.RollbackLogicalViewBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedEvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedNonWritePlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedWritePlanNode;
@@ -111,6 +112,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueries
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -645,6 +647,10 @@ public abstract class PlanVisitor<R, C> {
     return visitPlan(node, context);
   }
 
+  public R visitEvolveSchemaNode(EvolveSchemaNode node, C context) {
+    return visitPlan(node, context);
+  }
+
   public R visitWriteObjectFile(ObjectNode node, C context) {
     return visitPlan(node, context);
   }
@@ -658,6 +664,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitPipeEnrichedDeleteDataNode(PipeEnrichedDeleteDataNode node, C context) {
+    return visitPlan(node, context);
+  }
+
+  public R visitPipeEnrichedEvolveSchemaNode(PipeEnrichedEvolveSchemaNode node, C context) {
     return visitPlan(node, context);
   }
 

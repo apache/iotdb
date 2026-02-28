@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.pipe.PipeEnrichedInsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.EvolveSchemaNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
@@ -280,6 +281,17 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.deleteByTable(node);
       dataRegion.insertSeparatorToWAL();
+      return StatusUtils.OK;
+    } catch (final IOException e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    }
+  }
+
+  @Override
+  public TSStatus visitEvolveSchemaNode(EvolveSchemaNode node, DataRegion dataRegion) {
+    try {
+      dataRegion.applySchemaEvolution(node.getSchemaEvolutions());
       return StatusUtils.OK;
     } catch (final IOException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
