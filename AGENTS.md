@@ -140,7 +140,7 @@ mvn checkstyle:check -P with-integration-tests
 # Full build (produces distribution in distribution/target/)
 mvn clean package -pl distribution -am -DskipTests
 
-# Build server only
+# Build all modules (skip tests)
 mvn clean package -DskipTests
 
 # Build CLI only
