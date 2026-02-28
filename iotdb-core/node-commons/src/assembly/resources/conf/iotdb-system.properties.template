@@ -1253,6 +1253,38 @@ unseq_memtable_flush_interval_in_ms=600000
 # Datatype: long
 unseq_memtable_flush_check_interval_in_ms=30000
 
+# Whether to enable delay analyzer for tracking data arrival delays and calculating safe watermarks.
+# The delay analyzer tracks the delay between data generation time and arrival time to calculate
+# safe watermarks for handling out-of-order data.
+# effectiveMode: restart
+# Datatype: boolean
+enable_delay_analyzer=true
+
+# Default window size for delay analyzer, empirical value: 10000 sample points.
+# A larger window provides more accurate P99 calculations but increases memory and sorting overhead.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_window_size=10000
+
+# Minimum window size for delay analyzer validation.
+# Window size must be between min and max window size.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_min_window_size=1000
+
+# Maximum window size for delay analyzer validation.
+# Window size must be between min and max window size.
+# effectiveMode: restart
+# Datatype: int
+delay_analyzer_max_window_size=100000
+
+# Default confidence level for delay analyzer: 99% (0.99).
+# Used for calculating safe watermarks based on delay quantiles.
+# Range: (0, 1], e.g., 0.99 represents 99% quantile (P99).
+# effectiveMode: restart
+# Datatype: double
+delay_analyzer_confidence_level=0.99
+
 # The sort algorithms used in the memtable's TVList
 # TIM: default tim sort,
 # QUICK: quick sort,
