@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
@@ -61,9 +62,11 @@ public class TableScanOperatorTest {
     List<String> measurementColumnNames = Arrays.asList("field1", "field2");
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
 
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    allSensors.add("");
     AbstractTableScanOperatorParameter parameter =
         new AbstractTableScanOperatorParameter(
-            new HashSet<>(),
+            allSensors,
             operatorContext,
             sourceId,
             columnSchemas,
