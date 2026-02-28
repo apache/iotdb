@@ -27,8 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 
@@ -139,15 +141,36 @@ public class SortElimination implements PlanOptimizer {
       context.setCannotEliminateSort(true);
       return newNode;
     }
+
+    @Override
+    public PlanNode visitTopKRanking(TopKRankingNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      context.setCannotEliminateSort(true);
+      return newNode;
+    }
+
+    @Override
+    public PlanNode visitRowNumber(RowNumberNode node, Context context) {
+      PlanNode newNode = node.clone();
+      for (PlanNode child : node.getChildren()) {
+        newNode.addChild(child.accept(this, context));
+      }
+      context.setCannotEliminateSort(true);
+      return newNode;
+    }
   }
 
   private static class Context {
     private int totalDeviceEntrySize = 0;
 
-    // There are 3 situations where sort cannot be eliminated
+    // There are 4 situations where sort cannot be eliminated
     // 1. Query plan has linear fill, previous fill or gapfill
     // 2. Query plan has window function and it has ordering scheme
     // 3. Query plan has pattern recognition and it has ordering scheme
+    // 4. Query plan has row number node or topk ranking node
     private boolean cannotEliminateSort = false;
 
     private String timeColumnName = null;

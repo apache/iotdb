@@ -195,6 +195,165 @@ public class TopKRankingOperatorTest {
         2);
   }
 
+  // ==================== RANK Tests ====================
+
+  @Test
+  public void testRankWithPartitionAndTies() {
+    // d1: values [5, 3, 3, 1], d2: values [6, 2, 2]
+    // topN=2 ASC → d1 keeps rank≤2: 1(r=1),3(r=2),3(r=2); d2 keeps rank≤2: 2(r=1),2(r=1)
+    long[][] timeArray = {{1, 2, 3, 4, 5, 6, 7}};
+    String[][] deviceArray = {{"d1", "d1", "d1", "d1", "d2", "d2", "d2"}};
+    int[][] valueArray = {{5, 3, 3, 1, 6, 2, 2}};
+
+    Map<String, List<int[]>> expectedByDevice = new HashMap<>();
+    expectedByDevice.put("d1", Arrays.asList(new int[] {1, 1}, new int[] {3, 2}, new int[] {3, 2}));
+    expectedByDevice.put("d2", Arrays.asList(new int[] {2, 1}, new int[] {2, 1}));
+
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.singletonList(1),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_LAST),
+        2,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedByDevice,
+        5);
+  }
+
+  @Test
+  public void testRankWithPartitionDescendingAndTies() {
+    // d1: values [5, 3, 3, 1] DESC → 5(r=1),3(r=2),3(r=2),1(r=4) → keep rank≤2
+    // d2: values [6, 2, 4] DESC → 6(r=1),4(r=2),2(r=3) → keep rank≤2
+    long[][] timeArray = {{1, 2, 3, 4, 5, 6}};
+    String[][] deviceArray = {{"d1", "d1", "d1", "d1", "d2", "d2"}};
+    int[][] valueArray = {{5, 3, 3, 1, 6, 4}};
+
+    Map<String, List<int[]>> expectedByDevice = new HashMap<>();
+    expectedByDevice.put("d1", Arrays.asList(new int[] {5, 1}, new int[] {3, 2}, new int[] {3, 2}));
+    expectedByDevice.put("d2", Arrays.asList(new int[] {6, 1}, new int[] {4, 2}));
+
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.singletonList(1),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.DESC_NULLS_LAST),
+        2,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedByDevice,
+        5);
+  }
+
+  @Test
+  public void testRankWithoutPartitionAndTies() {
+    // Global: values [5, 3, 1, 3, 2] ASC → 1(r=1),2(r=2),3(r=3),3(r=3),5(r=5) → keep rank≤3
+    long[][] timeArray = {{1, 2, 3, 4, 5}};
+    String[][] deviceArray = {{"d1", "d1", "d2", "d2", "d2"}};
+    int[][] valueArray = {{5, 3, 1, 3, 2}};
+
+    int[][] expectedValueAndRank = {{1, 1}, {2, 2}, {3, 3}, {3, 3}};
+
+    verifyTopKResultsGlobal(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.emptyList(),
+        Collections.emptyList(),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_LAST),
+        3,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedValueAndRank,
+        4);
+  }
+
+  @Test
+  public void testRankWithMultipleTsBlocksAndTies() {
+    // Same data as testRankWithPartitionAndTies, split across blocks
+    long[][] timeArray = {{1, 2, 3}, {4, 5}, {6, 7}};
+    String[][] deviceArray = {{"d1", "d1", "d1"}, {"d1", "d2"}, {"d2", "d2"}};
+    int[][] valueArray = {{5, 3, 3}, {1, 6}, {2, 2}};
+
+    Map<String, List<int[]>> expectedByDevice = new HashMap<>();
+    expectedByDevice.put("d1", Arrays.asList(new int[] {1, 1}, new int[] {3, 2}, new int[] {3, 2}));
+    expectedByDevice.put("d2", Arrays.asList(new int[] {2, 1}, new int[] {2, 1}));
+
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.singletonList(1),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_LAST),
+        2,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedByDevice,
+        5);
+  }
+
+  @Test
+  public void testRankTopOneWithTies() {
+    // d1: values [5, 3], d2: values [2, 2]
+    // topN=1 ASC → d1: 3(r=1); d2: 2(r=1),2(r=1) (ties at rank 1 are all kept)
+    long[][] timeArray = {{1, 2, 3, 4}};
+    String[][] deviceArray = {{"d1", "d1", "d2", "d2"}};
+    int[][] valueArray = {{5, 3, 2, 2}};
+
+    Map<String, List<int[]>> expectedByDevice = new HashMap<>();
+    expectedByDevice.put("d1", Collections.singletonList(new int[] {3, 1}));
+    expectedByDevice.put("d2", Arrays.asList(new int[] {2, 1}, new int[] {2, 1}));
+
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.singletonList(1),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_LAST),
+        1,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedByDevice,
+        3);
+  }
+
+  @Test
+  public void testRankNoTiesBehavesLikeRowNumber() {
+    // When no ties, rank should produce the same results as row_number
+    long[][] timeArray = {{1, 2, 3, 4, 5, 6, 7}};
+    String[][] deviceArray = {{"d1", "d1", "d1", "d1", "d2", "d2", "d2"}};
+    int[][] valueArray = {{5, 3, 1, 4, 6, 2, 7}};
+
+    Map<String, List<int[]>> expectedByDevice = new HashMap<>();
+    expectedByDevice.put("d1", Arrays.asList(new int[] {1, 1}, new int[] {3, 2}));
+    expectedByDevice.put("d2", Arrays.asList(new int[] {2, 1}, new int[] {6, 2}));
+
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        Collections.singletonList(1),
+        Collections.singletonList(TSDataType.TEXT),
+        Collections.singletonList(2),
+        Collections.singletonList(SortOrder.ASC_NULLS_LAST),
+        2,
+        false,
+        TopKRankingNode.RankingType.RANK,
+        expectedByDevice,
+        4);
+  }
+
   /**
    * Verifies top-K results grouped by partition (device). The output order between partitions is
    * not guaranteed, so we group results by device and verify each partition independently.
@@ -211,6 +370,34 @@ public class TopKRankingOperatorTest {
       boolean partial,
       Map<String, List<int[]>> expectedByDevice,
       int expectedTotalCount) {
+    verifyTopKResultsByPartition(
+        timeArray,
+        deviceArray,
+        valueArray,
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrders,
+        maxRowCountPerPartition,
+        partial,
+        TopKRankingNode.RankingType.ROW_NUMBER,
+        expectedByDevice,
+        expectedTotalCount);
+  }
+
+  private void verifyTopKResultsByPartition(
+      long[][] timeArray,
+      String[][] deviceArray,
+      int[][] valueArray,
+      List<Integer> partitionChannels,
+      List<TSDataType> partitionTypes,
+      List<Integer> sortChannels,
+      List<SortOrder> sortOrders,
+      int maxRowCountPerPartition,
+      boolean partial,
+      TopKRankingNode.RankingType rankingType,
+      Map<String, List<int[]>> expectedByDevice,
+      int expectedTotalCount) {
 
     Map<String, List<int[]>> actualByDevice = new HashMap<>();
     int count = 0;
@@ -225,7 +412,8 @@ public class TopKRankingOperatorTest {
             sortChannels,
             sortOrders,
             maxRowCountPerPartition,
-            partial)) {
+            partial,
+            rankingType)) {
       while (!operator.isFinished()) {
         if (operator.hasNext()) {
           TsBlock tsBlock = operator.next();
@@ -282,7 +470,34 @@ public class TopKRankingOperatorTest {
       boolean partial,
       int[][] expectedValueAndRn,
       int expectedTotalCount) {
+    verifyTopKResultsGlobal(
+        timeArray,
+        deviceArray,
+        valueArray,
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrders,
+        maxRowCountPerPartition,
+        partial,
+        TopKRankingNode.RankingType.ROW_NUMBER,
+        expectedValueAndRn,
+        expectedTotalCount);
+  }
 
+  private void verifyTopKResultsGlobal(
+      long[][] timeArray,
+      String[][] deviceArray,
+      int[][] valueArray,
+      List<Integer> partitionChannels,
+      List<TSDataType> partitionTypes,
+      List<Integer> sortChannels,
+      List<SortOrder> sortOrders,
+      int maxRowCountPerPartition,
+      boolean partial,
+      TopKRankingNode.RankingType rankingType,
+      int[][] expectedValueAndRn,
+      int expectedTotalCount) {
     List<int[]> results = new ArrayList<>();
     int count = 0;
 
@@ -296,7 +511,8 @@ public class TopKRankingOperatorTest {
             sortChannels,
             sortOrders,
             maxRowCountPerPartition,
-            partial)) {
+            partial,
+            rankingType)) {
       while (!operator.isFinished()) {
         if (operator.hasNext()) {
           TsBlock tsBlock = operator.next();
@@ -346,6 +562,30 @@ public class TopKRankingOperatorTest {
       List<SortOrder> sortOrders,
       int maxRowCountPerPartition,
       boolean partial) {
+    return genTopKRankingOperator(
+        timeArray,
+        deviceArray,
+        valueArray,
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrders,
+        maxRowCountPerPartition,
+        partial,
+        TopKRankingNode.RankingType.ROW_NUMBER);
+  }
+
+  private TopKRankingOperator genTopKRankingOperator(
+      long[][] timeArray,
+      String[][] deviceArray,
+      int[][] valueArray,
+      List<Integer> partitionChannels,
+      List<TSDataType> partitionTypes,
+      List<Integer> sortChannels,
+      List<SortOrder> sortOrders,
+      int maxRowCountPerPartition,
+      boolean partial,
+      TopKRankingNode.RankingType rankingType) {
     DriverContext driverContext = createDriverContext();
 
     List<TSDataType> inputDataTypes =
@@ -359,7 +599,7 @@ public class TopKRankingOperatorTest {
     return new TopKRankingOperator(
         driverContext.getOperatorContexts().get(0),
         childOperator,
-        TopKRankingNode.RankingType.ROW_NUMBER,
+        rankingType,
         inputDataTypes,
         outputChannels,
         partitionChannels,
