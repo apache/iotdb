@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.CompactionMetrics;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
@@ -38,6 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
 
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
@@ -236,6 +238,8 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           }
         }
 
+        updateTableSizeCache();
+
         CompactionMetrics.getInstance().recordSummaryInfo(summary);
 
         double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
@@ -271,6 +275,21 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
     }
     return isSuccess;
+  }
+
+  protected void updateTableSizeCache() {
+    if (!PathUtils.isTableModelDatabase(this.storageGroupName)) {
+      return;
+    }
+    for (TsFileResource resource : targetTsfileResourceList) {
+      if (!resource.isDeleted()) {
+        TableDiskUsageCache.getInstance()
+            .write(
+                storageGroupName,
+                resource.getTsFileID(),
+                summary.getTableSizeMapOfTargetResource(resource.getTsFileID()));
+      }
+    }
   }
 
   public void recover() {

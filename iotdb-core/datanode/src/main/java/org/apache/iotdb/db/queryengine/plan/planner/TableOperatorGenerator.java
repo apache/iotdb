@@ -1319,14 +1319,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         operatorContext,
         node.getPlanNodeId(),
         getSupplier(
-            node.getQualifiedObjectName().getObjectName(),
+            operatorContext,
             dataTypes,
-            node.getPushDownPredicate(),
             context
                 .getDriverContext()
                 .getFragmentInstanceContext()
                 .getSessionInfo()
-                .getUserEntity()));
+                .getUserEntity(),
+            node));
   }
 
   @Override

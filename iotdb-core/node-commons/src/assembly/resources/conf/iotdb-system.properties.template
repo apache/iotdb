@@ -832,6 +832,11 @@ io_task_queue_size_for_flushing=10
 # Datatype: bool
 enable_query_memory_estimation=true
 
+# max sub task num for InformationTableScan
+# effectiveMode: hot_reload
+# Datatype: int
+max_sub_task_num_for_information_table_scan=4
+
 ####################
 ### Schema Engine Configuration
 ####################

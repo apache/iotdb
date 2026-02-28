@@ -44,7 +44,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePie
 import org.apache.iotdb.db.queryengine.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.queryengine.plan.scheduler.IFragInstanceDispatcher;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.utils.SetThreadName;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
@@ -62,6 +64,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -182,13 +185,15 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
           cloneTsFileResource = tsFileResource.shallowClone();
         }
 
-        StorageEngine.getInstance()
-            .getDataRegion((DataRegionId) groupId)
-            .loadNewTsFile(
-                cloneTsFileResource,
-                ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
-                isGeneratedByPipe,
-                false);
+        DataRegion dataRegion = StorageEngine.getInstance().getDataRegion((DataRegionId) groupId);
+        dataRegion.loadNewTsFile(
+            cloneTsFileResource,
+            ((LoadSingleTsFileNode) planNode).isDeleteAfterLoad(),
+            isGeneratedByPipe,
+            false,
+            dataRegion.isTableModel()
+                ? TableDiskUsageStatisticUtil.calculateTableSizeMap(cloneTsFileResource)
+                : Optional.empty());
       } catch (LoadFileException e) {
         LOGGER.warn("Load TsFile Node {} error.", planNode, e);
         TSStatus resultStatus = new TSStatus();

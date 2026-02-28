@@ -679,7 +679,6 @@ showQueriesStatement
         limitOffsetClause
     ;
 
-
 killQueryStatement
     : KILL (QUERY queryId=string | ALL QUERIES)
     ;

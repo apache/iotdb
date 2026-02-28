@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -447,97 +449,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
     @Override
     public PlanNode visitInformationSchemaTableScan(
         InformationSchemaTableScanNode node, RewriteContext context) {
-      // no predicate or table is not current_queries, just return dierectly
       if (TRUE_LITERAL.equals(context.inheritedPredicate)) {
         return node;
       }
 
-      // push-down for CURRENT_QUERIES
-      if (CURRENT_QUERIES.equals(node.getQualifiedObjectName().getObjectName())) {
-        SplitExpression splitExpression = splitCurrentQueriesPredicate(context.inheritedPredicate);
-        // exist expressions can push down to scan operator
-        if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
-          List<Expression> expressions = splitExpression.getExpressionsCanPushDown();
-          checkState(expressions.size() == 1, "Unexpected number of expressions in table scan");
-          node.setPushDownPredicate(expressions.get(0));
-        }
-
-        // exist expressions cannot push down
-        if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
-          List<Expression> expressions = splitExpression.getExpressionsCannotPushDown();
-          return new FilterNode(
-              queryId.genPlanNodeId(),
-              node,
-              expressions.size() == 1
-                  ? expressions.get(0)
-                  : new LogicalExpression(LogicalExpression.Operator.AND, expressions));
-        }
-        return node;
-      }
-
-      FilterNode filterNode =
-          new FilterNode(queryId.genPlanNodeId(), node, context.inheritedPredicate);
-      context.inheritedPredicate = TRUE_LITERAL;
-      return filterNode;
-    }
-
-    private SplitExpression splitCurrentQueriesPredicate(Expression predicate) {
-      List<Expression> expressionsCanPushDown = new ArrayList<>();
-      List<Expression> expressionsCannotPushDown = new ArrayList<>();
-
-      if (predicate instanceof LogicalExpression
-          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
-
-        // predicate like state = 'xxx' can be push down
-        // Note: the optimizer CanonicalizeExpressionRewriter will ensure the predicate like 'xxx' =
-        // state will be canonicalized to state = 'xxx'
-        boolean hasExpressionPushDown = false;
-        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
-          if (isStateComparedWithConstant(expression) && !hasExpressionPushDown) {
-            // if there are more than one state = 'xxx' terms, only add first to push-down candidate
-            expressionsCanPushDown.add(expression);
-            hasExpressionPushDown = true;
-          } else {
-            expressionsCannotPushDown.add(expression);
-          }
-        }
-
-        return new SplitExpression(
-            Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
-      }
-
-      if (isStateComparedWithConstant(predicate)) {
-        expressionsCanPushDown.add(predicate);
-      } else {
-        expressionsCannotPushDown.add(predicate);
-      }
-
-      return new SplitExpression(
-          Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
-    }
-
-    private boolean isStateComparedWithConstant(Expression expression) {
-      if (!(expression instanceof ComparisonExpression)) {
-        return false;
-      }
-
-      ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
-
-      if (ComparisonExpression.Operator.EQUAL != comparisonExpression.getOperator()) {
-        return false;
-      }
-
-      if (!(comparisonExpression.getLeft() instanceof SymbolReference)
-          || !STATE_TABLE_MODEL.equals(
-              ((SymbolReference) comparisonExpression.getLeft()).getName())) {
-        return false;
-      }
-
-      if (!(comparisonExpression.getRight() instanceof StringLiteral)) {
-        return false;
-      }
-
-      return true;
+      // push down for information schema tables
+      return combineFilterAndScan(node, context.inheritedPredicate);
     }
 
     @Override
@@ -554,8 +471,12 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       return combineFilterAndScan(tableScanNode, context.inheritedPredicate);
     }
 
-    public PlanNode combineFilterAndScan(DeviceTableScanNode tableScanNode, Expression predicate) {
-      SplitExpression splitExpression = splitPredicate(tableScanNode, predicate);
+    public PlanNode combineFilterAndScan(TableScanNode tableScanNode, Expression predicate) {
+      SplitExpression splitExpression =
+          tableScanNode instanceof InformationSchemaTableScanNode
+              ? splitPredicateForInformationSchemaTable(
+                  (InformationSchemaTableScanNode) tableScanNode, predicate)
+              : splitPredicate((DeviceTableScanNode) tableScanNode, predicate);
 
       // exist expressions can push down to scan operator
       if (!splitExpression.getExpressionsCanPushDown().isEmpty()) {
@@ -568,10 +489,11 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
         // extract global time filter and set it to DeviceTableScanNode
         Pair<Expression, Boolean> resultPair =
             extractGlobalTimeFilter(pushDownPredicate, splitExpression.getTimeColumnName());
-        if (resultPair.left != null) {
-          tableScanNode.setTimePredicate(resultPair.left);
+        Boolean hasValueFilter = resultPair.getRight();
+        if (tableScanNode instanceof DeviceTableScanNode && resultPair.left != null) {
+          ((DeviceTableScanNode) tableScanNode).setTimePredicate(resultPair.left);
         }
-        if (Boolean.TRUE.equals(resultPair.right)) {
+        if (Boolean.TRUE.equals(hasValueFilter)) {
           if (pushDownPredicate instanceof LogicalExpression
               && ((LogicalExpression) pushDownPredicate).getTerms().size() == 1) {
             tableScanNode.setPushDownPredicate(
@@ -585,7 +507,10 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       // do index scan after expressionCanPushDown is processed
-      getDeviceEntriesWithDataPartitions(tableScanNode, splitExpression.getMetadataExpressions());
+      if (tableScanNode instanceof DeviceTableScanNode) {
+        getDeviceEntriesWithDataPartitions(
+            (DeviceTableScanNode) tableScanNode, splitExpression.getMetadataExpressions());
+      }
 
       // exist expressions can not push down to scan operator
       if (!splitExpression.getExpressionsCannotPushDown().isEmpty()) {
@@ -599,6 +524,101 @@ public class PushPredicateIntoTableScan implements PlanOptimizer {
       }
 
       return tableScanNode;
+    }
+
+    interface InformationSchemaTablePredicatePushDownChecker {
+      boolean canPushDown(Expression expression);
+    }
+
+    private SplitExpression splitPredicateForInformationSchemaTable(
+        InformationSchemaTableScanNode tableScanNode, Expression predicate) {
+      String informationSchemaTable = tableScanNode.getQualifiedObjectName().getObjectName();
+      InformationSchemaTablePredicatePushDownChecker checker;
+      switch (informationSchemaTable) {
+        case CURRENT_QUERIES:
+          checker =
+              new InformationSchemaTablePredicatePushDownChecker() {
+                // predicate like state = 'xxx' can be push down
+                // Note: the optimizer CanonicalizeExpressionRewriter will ensure the predicate like
+                // 'xxx' =
+                // state will be canonicalized to state = 'xxx'
+                boolean hasExpressionPushDown = false;
+
+                @Override
+                public boolean canPushDown(Expression expression) {
+                  if (isStateComparedWithConstant(expression) && !hasExpressionPushDown) {
+                    // if there are more than one state = 'xxx' terms, only add first to push-down
+                    // candidate
+                    hasExpressionPushDown = true;
+                    return true;
+                  }
+                  return false;
+                }
+
+                private boolean isStateComparedWithConstant(Expression expression) {
+                  if (!(expression instanceof ComparisonExpression)) {
+                    return false;
+                  }
+
+                  ComparisonExpression comparisonExpression = (ComparisonExpression) expression;
+
+                  if (ComparisonExpression.Operator.EQUAL != comparisonExpression.getOperator()) {
+                    return false;
+                  }
+
+                  if (!(comparisonExpression.getLeft() instanceof SymbolReference)
+                      || !STATE_TABLE_MODEL.equals(
+                          ((SymbolReference) comparisonExpression.getLeft()).getName())) {
+                    return false;
+                  }
+
+                  return comparisonExpression.getRight() instanceof StringLiteral;
+                }
+              };
+          break;
+        default:
+          checker =
+              new InformationSchemaTablePredicatePushDownChecker() {
+                final Set<String> columnsThatSupportPushDownPredicate =
+                    InformationSchema.getColumnsSupportPushDownPredicate(informationSchemaTable);
+
+                @Override
+                public boolean canPushDown(Expression expression) {
+                  return PredicateCombineIntoTableScanChecker.check(
+                      columnsThatSupportPushDownPredicate, expression);
+                }
+              };
+      }
+      return splitPredicateForInformationSchemaTable(predicate, checker);
+    }
+
+    private SplitExpression splitPredicateForInformationSchemaTable(
+        Expression predicate, InformationSchemaTablePredicatePushDownChecker checker) {
+      List<Expression> expressionsCanPushDown = new ArrayList<>();
+      List<Expression> expressionsCannotPushDown = new ArrayList<>();
+      if (predicate instanceof LogicalExpression
+          && ((LogicalExpression) predicate).getOperator() == LogicalExpression.Operator.AND) {
+
+        for (Expression expression : ((LogicalExpression) predicate).getTerms()) {
+          if (checker.canPushDown(expression)) {
+            expressionsCanPushDown.add(expression);
+          } else {
+            expressionsCannotPushDown.add(expression);
+          }
+        }
+
+        return new SplitExpression(
+            Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
+      }
+
+      if (checker.canPushDown(predicate)) {
+        expressionsCanPushDown.add(predicate);
+      } else {
+        expressionsCannotPushDown.add(predicate);
+      }
+
+      return new SplitExpression(
+          Collections.emptyList(), expressionsCanPushDown, expressionsCannotPushDown, null);
     }
 
     private SplitExpression splitPredicate(DeviceTableScanNode node, Expression predicate) {

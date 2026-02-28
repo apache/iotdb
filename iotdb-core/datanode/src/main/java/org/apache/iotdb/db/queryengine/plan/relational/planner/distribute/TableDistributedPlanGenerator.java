@@ -26,10 +26,14 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.ClusterTopology;
@@ -80,6 +84,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableDiskUsageInformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
@@ -1006,15 +1011,23 @@ public class TableDistributedPlanGenerator
   @Override
   public List<PlanNode> visitInformationSchemaTableScan(
       InformationSchemaTableScanNode node, PlanContext context) {
+    final String tableName = node.getQualifiedObjectName().getObjectName();
     List<TDataNodeLocation> dataNodeLocations =
-        dataNodeLocationSupplier.getDataNodeLocations(
-            node.getQualifiedObjectName().getObjectName());
+        dataNodeLocationSupplier.getDataNodeLocations(tableName);
     if (dataNodeLocations.isEmpty()) {
       throw new IoTDBRuntimeException(
           "No available dataNodes, may be the cluster is closing",
           TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode());
     }
 
+    if (InformationSchema.TABLE_DISK_USAGE.equals(tableName)) {
+      return buildTableDiskUsageScanNodes(node, dataNodeLocations);
+    }
+    return buildNormalInformationSchemaScanNodes(node, dataNodeLocations);
+  }
+
+  private List<PlanNode> buildNormalInformationSchemaScanNodes(
+      InformationSchemaTableScanNode node, List<TDataNodeLocation> dataNodeLocations) {
     List<PlanNode> resultTableScanNodeList = new ArrayList<>();
     dataNodeLocations.forEach(
         dataNodeLocation ->
@@ -1029,6 +1042,66 @@ public class TableDistributedPlanGenerator
                     node.getPushDownOffset(),
                     new TRegionReplicaSet(null, ImmutableList.of(dataNodeLocation)))));
     return resultTableScanNodeList;
+  }
+
+  private List<PlanNode> buildTableDiskUsageScanNodes(
+      InformationSchemaTableScanNode node, List<TDataNodeLocation> dataNodeLocations) {
+    final int maxSubTaskNum =
+        Math.max(
+            1, IoTDBDescriptor.getInstance().getConfig().getMaxSubTaskNumForInformationTableScan());
+    final Map<Integer, List<TRegionInfo>> regionsByDataNode =
+        DataNodeLocationSupplierFactory.getReadableRegionsForTableDiskUsageInformationSchemaTable();
+    final List<PlanNode> result = new ArrayList<>(dataNodeLocations.size() * maxSubTaskNum);
+    for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+      final List<TRegionInfo> regionInfos = regionsByDataNode.get(dataNodeLocation.getDataNodeId());
+      if (regionInfos == null || regionInfos.isEmpty()) {
+        continue;
+      }
+      List<List<Integer>> subTaskRegions = splitRegionsBySubTask(regionInfos, maxSubTaskNum);
+      for (List<Integer> regionIds : subTaskRegions) {
+        result.add(
+            new TableDiskUsageInformationSchemaTableScanNode(
+                queryId.genPlanNodeId(),
+                node.getQualifiedObjectName(),
+                node.getOutputSymbols(),
+                node.getAssignments(),
+                node.getPushDownPredicate(),
+                node.getPushDownLimit(),
+                node.getPushDownOffset(),
+                new TRegionReplicaSet(null, ImmutableList.of(dataNodeLocation)),
+                regionIds));
+      }
+    }
+    if (result.isEmpty()) {
+      result.add(
+          new TableDiskUsageInformationSchemaTableScanNode(
+              queryId.genPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              new TRegionReplicaSet(
+                  null, ImmutableList.of(DataNodeEndPoints.getLocalDataNodeLocation())),
+              Collections.emptyList()));
+    }
+    return result;
+  }
+
+  private List<List<Integer>> splitRegionsBySubTask(
+      List<TRegionInfo> regionInfos, int maxSubTaskNum) {
+    int subTaskNum = Math.min(maxSubTaskNum, regionInfos.size());
+    final List<List<Integer>> result = new ArrayList<>(subTaskNum);
+    for (int i = 0; i < subTaskNum; i++) {
+      result.add(new ArrayList<>());
+    }
+    for (int i = 0; i < regionInfos.size(); i++) {
+      int groupIndex = i % subTaskNum;
+      result.get(groupIndex).add(regionInfos.get(i).getConsensusGroupId().getId());
+    }
+
+    return result;
   }
 
   @Override

@@ -78,6 +78,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 public class DataNodeInternalRPCServiceImplTest {
 
@@ -209,7 +210,7 @@ public class DataNodeInternalRPCServiceImplTest {
     ((IoTConsensus) DataRegionConsensusImpl.getInstance())
         .getImpl(new DataRegionId(1))
         .setActive(false);
-    dataRegion.loadNewTsFile(new TsFileResource(), false, false, false);
+    dataRegion.loadNewTsFile(new TsFileResource(), false, false, false, Optional.empty());
     ((IoTConsensus) DataRegionConsensusImpl.getInstance())
         .getImpl(new DataRegionId(1))
         .setActive(true);

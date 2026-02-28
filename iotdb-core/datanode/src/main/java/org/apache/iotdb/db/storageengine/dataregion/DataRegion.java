@@ -138,6 +138,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -379,6 +380,8 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
+  private final boolean isTableModel;
+
   /**
    * Construct a database processor.
    *
@@ -397,6 +400,7 @@ public class DataRegion implements IDataRegionForQuery {
     this.dataRegionId = new DataRegionId(Integer.parseInt(dataRegionIdString));
     this.databaseName = databaseName;
     this.fileFlushPolicy = fileFlushPolicy;
+    this.isTableModel = isTableModelDatabase(databaseName);
     acquireDirectBufferMemory();
 
     dataRegionSysDir = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionIdString);
@@ -413,6 +417,8 @@ public class DataRegion implements IDataRegionForQuery {
     upgradeModFileThreadPool =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             databaseName + "-" + dataRegionIdString + "-UpgradeMod");
+
+    TableDiskUsageCache.getInstance().registerRegion(this);
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
@@ -456,6 +462,7 @@ public class DataRegion implements IDataRegionForQuery {
   @TestOnly
   public DataRegion(String databaseName, String dataRegionIdString) {
     this.databaseName = databaseName;
+    this.isTableModel = isTableModelDatabase(databaseName);
     this.dataRegionIdString = dataRegionIdString;
     this.dataRegionId = new DataRegionId(Integer.parseInt(this.dataRegionIdString));
     this.tsFileManager = new TsFileManager(databaseName, dataRegionIdString, "");
@@ -497,6 +504,10 @@ public class DataRegion implements IDataRegionForQuery {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public boolean isTableModel() {
+    return isTableModel;
   }
 
   public boolean isReady() {
@@ -2005,8 +2016,9 @@ public class DataRegion implements IDataRegionForQuery {
         "{} will close all files for deleting data folder {}",
         databaseName + "-" + dataRegionIdString,
         systemDir);
-    FileTimeIndexCacheRecorder.getInstance()
-        .removeFileTimeIndexCache(Integer.parseInt(dataRegionIdString));
+    int regionId = dataRegionId.getId();
+    TableDiskUsageCache.getInstance().remove(databaseName, regionId);
+    FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");
     try {
       File dataRegionSystemFolder =
@@ -3842,7 +3854,8 @@ public class DataRegion implements IDataRegionForQuery {
       final TsFileResource newTsFileResource,
       final boolean deleteOriginFile,
       final boolean isGeneratedByPipe,
-      final boolean isFromConsensus)
+      final boolean isFromConsensus,
+      final Optional<Map<String, Long>> tableSizeMap)
       throws LoadFileException {
     if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensus) {
       final IoTConsensusServerImpl impl =
@@ -3911,6 +3924,11 @@ public class DataRegion implements IDataRegionForQuery {
           newFilePartitionId,
           deleteOriginFile,
           isGeneratedByPipe);
+
+      tableSizeMap.ifPresent(
+          stringLongMap ->
+              TableDiskUsageCache.getInstance()
+                  .write(databaseName, newTsFileResource.getTsFileID(), stringLongMap));
 
       FileMetrics.getInstance()
           .addTsFile(

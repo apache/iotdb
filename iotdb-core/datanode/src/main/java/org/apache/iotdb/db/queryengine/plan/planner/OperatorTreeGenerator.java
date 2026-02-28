@@ -57,6 +57,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ActiveRegionScanMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.AggregationOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ColumnInjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.DeviceViewOperator;
@@ -150,6 +151,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.AlignedSeriesSc
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ShowDiskUsageOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ShowQueriesOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.window.ConditionWindowParameter;
 import org.apache.iotdb.db.queryengine.execution.operator.window.CountWindowParameter;
@@ -198,6 +200,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AI.Inferen
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ColumnInjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewIntoNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
@@ -236,6 +239,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.LastQuerySc
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationSourceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowDiskUsageNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.ShowQueriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.TimeseriesRegionScanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
@@ -283,6 +287,7 @@ import org.apache.tsfile.read.common.block.column.TimeColumn;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGt;
 import org.apache.tsfile.read.filter.operator.TimeFilterOperators.TimeGtEq;
+import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TimeDuration;
@@ -1169,6 +1174,18 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         children,
         dataTypes,
         getComparator(sortItemList, sortItemIndexList, sortItemDataTypeList));
+  }
+
+  @Override
+  public Operator visitCollect(CollectNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CollectOperator.class.getSimpleName());
+    return new CollectOperator(operatorContext, dealWithConsumeChildrenOneByOneNode(node, context));
   }
 
   @Override
@@ -2594,6 +2611,32 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         node.getPlanNodeId(),
         Coordinator.getInstance(),
         node.getAllowedUsername());
+  }
+
+  @Override
+  public Operator visitShowDiskUsage(ShowDiskUsageNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ShowDiskUsageOperator.class.getSimpleName());
+    Filter pushDownFilter =
+        convertPredicateToFilter(
+            node.getPushDownPredicate(),
+            node.getOutputColumnNames(),
+            false,
+            context.getTypeProvider(),
+            context.getZoneId());
+    PaginationController paginationController =
+        new PaginationController(node.getPushDownLimit(), node.getPushDownOffset());
+    return new ShowDiskUsageOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getPathPattern(),
+        pushDownFilter,
+        paginationController);
   }
 
   private List<OutputColumn> generateOutputColumnsFromChildren(MultiChildProcessNode node) {

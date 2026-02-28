@@ -171,6 +171,9 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       // set empty target file to DELETED
       if (isEmptyFile[i]) {
         targetResources.get(i).forceMarkDeleted();
+      } else if (compactionTaskSummary != null) {
+        compactionTaskSummary.recordTargetTsFileTableSizeMap(
+            targetResources.get(i), targetFileWriters.get(i).getTableSizeMap());
       }
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task;
 
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
@@ -432,7 +434,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     CompactionUtils.deleteSourceTsFileAndUpdateFileMetrics(
         filesView.sourceFilesInLog, filesView.sequence);
-
+    updateTableSizeCache();
     CompactionMetrics.getInstance().recordSummaryInfo(summary);
   }
 
@@ -456,6 +458,28 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
     CompactionUtils.combineModsInInnerCompaction(
         filesView.sourceFilesInCompactionPerformer, filesView.targetFilesInPerformer);
+  }
+
+  protected void updateTableSizeCache() {
+    if (!PathUtils.isTableModelDatabase(this.storageGroupName)) {
+      return;
+    }
+    for (int i = 0; i < filesView.renamedTargetFiles.size(); i++) {
+      TableDiskUsageCache.getInstance()
+          .write(
+              this.storageGroupName,
+              filesView.skippedSourceFiles.get(i).getTsFileID(),
+              filesView.renamedTargetFiles.get(i).getTsFileID());
+    }
+    for (TsFileResource resource : filesView.targetFilesInPerformer) {
+      if (!resource.isDeleted()) {
+        TableDiskUsageCache.getInstance()
+            .write(
+                this.storageGroupName,
+                resource.getTsFileID(),
+                summary.getTableSizeMapOfTargetResource(resource.getTsFileID()));
+      }
+    }
   }
 
   public void recover() {
