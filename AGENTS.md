@@ -26,7 +26,7 @@ Apache IoTDB is a distributed time-series database written in Java. Version 2.0.
 
 # IoTDB Java Code Style Guide
 
-This document defines the coding rules that **must** be followed when generating or modifying Java code in this project. These rules are enforced by CheckStyle (`checkstyle.xml`) and Spotless (`pom.xml`).
+This document defines the coding rules that **must** be followed when generating or modifying Java code in this project. Many of these rules are enforced by CheckStyle (`checkstyle.xml`) and Spotless (`pom.xml`), while others are conventions that contributors are expected to follow.
 
 ## Imports
 
