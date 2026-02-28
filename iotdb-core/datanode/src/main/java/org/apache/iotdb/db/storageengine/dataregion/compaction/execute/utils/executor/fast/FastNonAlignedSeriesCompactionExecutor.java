@@ -86,7 +86,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
       IDeviceID deviceId,
       int subTaskId,
       FastCompactionTaskSummary summary,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     super(
         compactionWriter,
         readerCacheMap,
@@ -95,7 +95,7 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
         false,
         subTaskId,
         summary,
-        maxTsFileSetEndVersionAndMinResource);
+        maxTsFileVersionAndMinResource);
     this.sortResources = sortedSourceFiles;
   }
 

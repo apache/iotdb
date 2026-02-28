@@ -89,7 +89,7 @@ public class FileLoaderUtils {
       Filter globalTimeFilter,
       Set<String> allSensors,
       boolean isSeq,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
     long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -100,7 +100,7 @@ public class FileLoaderUtils {
       if (resource.isClosed()) {
         // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
         // we should not ignore the non-exist of device in TsFileMetadata
-        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileVersion);
         IDeviceID deviceId = seriesPath.getDeviceId();
         String measurement = seriesPath.getMeasurement();
         if (evolvedSchema != null) {
@@ -200,7 +200,7 @@ public class FileLoaderUtils {
       Filter globalTimeFilter,
       boolean isSeq,
       boolean ignoreAllNullRows,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
     final long t1 = System.nanoTime();
     boolean loadFromMem = false;
@@ -219,7 +219,7 @@ public class FileLoaderUtils {
                 context,
                 globalTimeFilter,
                 ignoreAllNullRows,
-                maxTsFileSetEndVersion);
+                maxTsFileVersion);
       } else { // if the tsfile is unclosed, we just get it directly from TsFileResource
         loadFromMem = true;
         alignedTimeSeriesMetadata =
@@ -288,7 +288,7 @@ public class FileLoaderUtils {
       FragmentInstanceContext context,
       Filter globalTimeFilter,
       boolean ignoreAllNullRows,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
     AbstractAlignedTimeSeriesMetadata alignedTimeSeriesMetadata = null;
     // load all the TimeseriesMetadata of vector, the first one is for time column and the
@@ -301,7 +301,7 @@ public class FileLoaderUtils {
     String filePath = resource.getTsFilePath();
     IDeviceID deviceId = alignedPath.getDeviceId();
 
-    EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileVersion);
     if (evolvedSchema != null) {
       IDeviceID finalDeviceId = deviceId;
       valueMeasurementList =

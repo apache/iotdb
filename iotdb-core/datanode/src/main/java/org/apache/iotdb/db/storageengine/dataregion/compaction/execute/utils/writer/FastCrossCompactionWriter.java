@@ -66,9 +66,9 @@ public class FastCrossCompactionWriter extends AbstractCrossCompactionWriter {
       List<TsFileResource> seqSourceResources,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
       EncryptParameter encryptParameter,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
-    super(targetResources, seqSourceResources, encryptParameter, maxTsFileSetEndVersion);
+    super(targetResources, seqSourceResources, encryptParameter, maxTsFileVersion);
     this.readerMap = readerMap;
   }
 

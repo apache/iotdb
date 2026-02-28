@@ -76,7 +76,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   private final EncryptParameter encryptParameter;
 
-  private final long maxTsFileSetEndVersion;
+  private final long maxTsFileVersion;
 
   @TestOnly
   protected AbstractCrossCompactionWriter(
@@ -93,7 +93,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileResources,
       EncryptParameter encryptParameter,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isCurrentDeviceExistedInSourceSeqFiles = new boolean[seqFileResources.size()];
@@ -113,12 +113,12 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
               this.encryptParameter,
-              maxTsFileSetEndVersion));
+              maxTsFileVersion));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
     this.targetResources = targetResources;
-    this.maxTsFileSetEndVersion = maxTsFileSetEndVersion;
+    this.maxTsFileVersion = maxTsFileVersion;
   }
 
   @Override
@@ -240,7 +240,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
       TsFileResource tsFileResource = seqTsFileResources.get(fileIndex);
-      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
       IDeviceID originalDeviceId = deviceId;
       if (evolvedSchema != null) {
         originalDeviceId = evolvedSchema.rewriteToOriginal(deviceId);
@@ -286,16 +286,16 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void setSchemaForAllTargetFile(
-      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     for (int i = 0; i < targetFileWriters.size(); i++) {
       CompactionTsFileWriter compactionTsFileWriter = targetFileWriters.get(i);
       Schema schema = schemas.get(i);
       TsFileResource targetResource = compactionTsFileWriter.getTsFileResource();
-      if (maxTsFileSetEndVersionAndMinResource.right != null) {
-        long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
-        TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+      if (maxTsFileVersionAndMinResource.right != null) {
+        long maxTsFileVersion = maxTsFileVersionAndMinResource.left;
+        TsFileResource minVersionResource = maxTsFileVersionAndMinResource.getRight();
         targetResource.setTsFileManager(minVersionResource.getTsFileManager());
-        EvolvedSchema evolvedSchema = targetResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        EvolvedSchema evolvedSchema = targetResource.getMergedEvolvedSchema(maxTsFileVersion);
 
         if (evolvedSchema != null) {
           schema = evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new);

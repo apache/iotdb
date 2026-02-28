@@ -145,7 +145,7 @@ public class SeriesScanUtil implements Accountable {
       TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   // to restrict the scope of sevo files for compaction
-  protected final long maxTsFileSetEndVersion;
+  protected final long maxTsFileVersion;
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(SeriesScanUtil.class)
@@ -170,7 +170,7 @@ public class SeriesScanUtil implements Accountable {
       Ordering scanOrder,
       SeriesScanOptions scanOptions,
       FragmentInstanceContext context,
-      long maxTsFileSetEndVersion) {
+      long maxTsFileVersion) {
     this.seriesPath = seriesPath;
     this.deviceID = seriesPath.getDeviceId();
     this.dataType = seriesPath.getSeriesType();
@@ -209,7 +209,7 @@ public class SeriesScanUtil implements Accountable {
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
 
-    this.maxTsFileSetEndVersion = maxTsFileSetEndVersion;
+    this.maxTsFileVersion = maxTsFileVersion;
   }
 
   /**
@@ -218,7 +218,7 @@ public class SeriesScanUtil implements Accountable {
    * @param dataSource the query data source
    */
   public void initQueryDataSource(QueryDataSource dataSource) {
-    dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending(), maxTsFileSetEndVersion);
+    dataSource.fillOrderIndexes(deviceID, orderUtils.getAscending(), maxTsFileVersion);
     this.dataSource = dataSource;
 
     // updated filter concerning TTL
@@ -1917,7 +1917,7 @@ public class SeriesScanUtil implements Accountable {
         scanOptions.getGlobalTimeFilter(),
         scanOptions.getAllSensors(),
         isSeq,
-        maxTsFileSetEndVersion);
+        maxTsFileVersion);
   }
 
   public List<TSDataType> getTsDataTypeList() {
@@ -2335,37 +2335,37 @@ public class SeriesScanUtil implements Accountable {
     @Override
     public boolean hasNextSeqResource() {
       while (dataSource.hasNextSeqResource(
-          curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
+          curSeqFileIndex, false, deviceID, maxTsFileVersion)) {
         if (dataSource.isSeqSatisfied(
             deviceID,
             curSeqFileIndex,
             scanOptions.getGlobalTimeFilter(),
             false,
-            maxTsFileSetEndVersion)) {
+            maxTsFileVersion)) {
           break;
         }
         curSeqFileIndex--;
       }
       return dataSource.hasNextSeqResource(
-          curSeqFileIndex, false, deviceID, maxTsFileSetEndVersion);
+          curSeqFileIndex, false, deviceID, maxTsFileVersion);
     }
 
     @Override
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion)) {
+          curUnseqFileIndex, false, deviceID, maxTsFileVersion)) {
         if (dataSource.isUnSeqSatisfied(
             deviceID,
             curUnseqFileIndex,
             scanOptions.getGlobalTimeFilter(),
             false,
-            maxTsFileSetEndVersion)) {
+            maxTsFileVersion)) {
           break;
         }
         curUnseqFileIndex++;
       }
       return dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, false, deviceID, maxTsFileSetEndVersion);
+          curUnseqFileIndex, false, deviceID, maxTsFileVersion);
     }
 
     @Override
@@ -2476,36 +2476,36 @@ public class SeriesScanUtil implements Accountable {
     @Override
     public boolean hasNextSeqResource() {
       while (dataSource.hasNextSeqResource(
-          curSeqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
+          curSeqFileIndex, true, deviceID, maxTsFileVersion)) {
         if (dataSource.isSeqSatisfied(
             deviceID,
             curSeqFileIndex,
             scanOptions.getGlobalTimeFilter(),
             false,
-            maxTsFileSetEndVersion)) {
+            maxTsFileVersion)) {
           break;
         }
         curSeqFileIndex++;
       }
-      return dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID, maxTsFileSetEndVersion);
+      return dataSource.hasNextSeqResource(curSeqFileIndex, true, deviceID, maxTsFileVersion);
     }
 
     @Override
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion)) {
+          curUnseqFileIndex, true, deviceID, maxTsFileVersion)) {
         if (dataSource.isUnSeqSatisfied(
             deviceID,
             curUnseqFileIndex,
             scanOptions.getGlobalTimeFilter(),
             false,
-            maxTsFileSetEndVersion)) {
+            maxTsFileVersion)) {
           break;
         }
         curUnseqFileIndex++;
       }
       return dataSource.hasNextUnseqResource(
-          curUnseqFileIndex, true, deviceID, maxTsFileSetEndVersion);
+          curUnseqFileIndex, true, deviceID, maxTsFileVersion);
     }
 
     @Override

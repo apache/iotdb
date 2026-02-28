@@ -34,7 +34,6 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -68,6 +67,7 @@ import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(MultiTsFileDeviceIterator.class);
   // sort from the newest to the oldest by version (Used by FastPerformer and ReadPointPerformer)
   private final List<TsFileResource> tsFileResourcesSortedByDesc;
 
@@ -83,14 +83,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
   private final String databaseName;
-  private final long maxTsFileSetEndVersion;
+  private final long maxTsFileVersion;
 
   /**
    * Used for compaction with read chunk performer.
    *
    * @throws IOException if io error occurred
    */
-  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, long maxTsFileVersion)
+      throws IOException {
     this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
@@ -99,18 +100,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
-    maxTsFileSetEndVersion =
-        this.tsFileResourcesSortedByDesc.stream()
-            .mapToLong(
-                // max endVersion of all filesets of a TsFile
-                resource ->
-                    resource.getTsFileSets().stream()
-                        .mapToLong(TsFileSet::getEndVersion)
-                        .max()
-                        .orElse(Long.MAX_VALUE))
-            // overall max endVersion
-            .max()
-            .orElse(Long.MAX_VALUE);
+    this.maxTsFileVersion = maxTsFileVersion;
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         CompactionTsFileReader reader =
@@ -120,7 +110,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
         readerMap.put(tsFileResource, reader);
         TsFileDeviceIterator tsFileDeviceIterator;
-        EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
         if (evolvedSchema != null) {
           tsFileDeviceIterator =
               new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
@@ -145,7 +135,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MultiTsFileDeviceIterator(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources, long maxTsFileVersion)
+      throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
@@ -153,18 +144,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
 
-    maxTsFileSetEndVersion =
-        this.tsFileResourcesSortedByDesc.stream()
-            .mapToLong(
-                // max endVersion of all filesets of a TsFile
-                resource ->
-                    resource.getTsFileSets().stream()
-                        .mapToLong(TsFileSet::getEndVersion)
-                        .max()
-                        .orElse(Long.MAX_VALUE))
-            // overall max endVersion
-            .max()
-            .orElse(Long.MAX_VALUE);
+    this.maxTsFileVersion = maxTsFileVersion;
 
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
@@ -173,7 +153,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       readerMap.put(tsFileResource, reader);
 
       TsFileDeviceIterator tsFileDeviceIterator;
-      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
         tsFileDeviceIterator =
             new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
@@ -192,7 +172,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      Map<TsFileResource, TsFileSequenceReader> readerMap)
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      long maxTsFileVersion)
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
@@ -202,18 +183,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
 
-    maxTsFileSetEndVersion =
-        this.tsFileResourcesSortedByDesc.stream()
-            .mapToLong(
-                // max endVersion of all filesets of a TsFile
-                resource ->
-                    resource.getTsFileSets().stream()
-                        .mapToLong(TsFileSet::getEndVersion)
-                        .max()
-                        .orElse(Long.MAX_VALUE))
-            // overall max endVersion
-            .max()
-            .orElse(Long.MAX_VALUE);
+    this.maxTsFileVersion = maxTsFileVersion;
 
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
@@ -233,7 +203,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       readerMap.put(tsFileResource, reader);
 
       TsFileDeviceIterator tsFileDeviceIterator;
-      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
         tsFileDeviceIterator =
             new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
@@ -329,7 +299,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice(
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) throws IOException {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
@@ -348,7 +318,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           true,
           null);
       EvolvedSchema evolvedSchema =
-          resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.left);
+          resource.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.left);
       if (evolvedSchema != null) {
         // the device has been rewritten, should get the original name for rewriting
         evolvedSchema.rewriteToFinal(
@@ -517,7 +487,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   true)
               .entrySet()) {
         String measurementId = entrySet.getKey();
-        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileVersion);
         if (evolvedSchema != null) {
           String originalTableName =
               evolvedSchema.getOriginalTableName(currentDevice.left.getTableName());
@@ -525,6 +495,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         }
         if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
           MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+          schema.setMeasurementName(measurementId);
           timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
         }
         timeseriesMetadataOffsetMap
@@ -583,7 +554,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
-      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
       IDeviceID originalDeviceId = currentDevice.left;
       if (evolvedSchema != null) {
         // rewrite the deviceId to the original one so that we can use it to query the file
@@ -629,7 +600,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
-    Optional<Long> startTime = tsFileResource.getStartTime(device, maxTsFileSetEndVersion);
+    Optional<Long> startTime = tsFileResource.getStartTime(device, maxTsFileVersion);
     if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
@@ -855,7 +826,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         ModEntry ttlDeletion = null;
-        Optional<Long> startTime = resource.getStartTime(device, maxTsFileSetEndVersion);
+        Optional<Long> startTime = resource.getStartTime(device, maxTsFileVersion);
         if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new TreeDeletionEntry(

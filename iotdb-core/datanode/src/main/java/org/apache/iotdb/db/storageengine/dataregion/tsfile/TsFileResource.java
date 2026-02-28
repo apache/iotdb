@@ -619,21 +619,21 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return toOriginalDeviceID(Long.MAX_VALUE, deviceID);
   }
 
-  public IDeviceID toOriginalDeviceID(long maxTsFileSetEndVersion, IDeviceID deviceID) {
-    if (maxTsFileSetEndVersion == Long.MIN_VALUE) {
+  public IDeviceID toOriginalDeviceID(long maxTsFileVersion, IDeviceID deviceID) {
+    if (maxTsFileVersion == Long.MIN_VALUE) {
       // already the original deviceID
       return deviceID;
     }
-    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
     if (evolvedSchema != null) {
       return evolvedSchema.rewriteToOriginal(deviceID);
     }
     return deviceID;
   }
 
-  public Optional<Long> getStartTime(IDeviceID deviceId, long maxTsFileSetEndVersion) {
+  public Optional<Long> getStartTime(IDeviceID deviceId, long maxTsFileVersion) {
     try {
-      deviceId = toOriginalDeviceID(maxTsFileSetEndVersion, deviceId);
+      deviceId = toOriginalDeviceID(maxTsFileVersion, deviceId);
       return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -650,9 +650,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   /** open file's end time is Long.MIN_VALUE */
-  public Optional<Long> getEndTime(IDeviceID deviceId, long maxTsFileSetEndVersion) {
+  public Optional<Long> getEndTime(IDeviceID deviceId, long maxTsFileVersion) {
     try {
-      deviceId = toOriginalDeviceID(maxTsFileSetEndVersion, deviceId);
+      deviceId = toOriginalDeviceID(maxTsFileVersion, deviceId);
       return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -671,9 +671,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   // cannot use FileTimeIndex
   public long getOrderTimeForSeq(
-      IDeviceID deviceId, boolean ascending, long maxTsFileSetEndVersion) {
+      IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
         deviceId = evolvedSchema.rewriteToOriginal(deviceId);
       }
@@ -687,9 +687,9 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   // can use FileTimeIndex
   public long getOrderTimeForUnseq(
-      IDeviceID deviceId, boolean ascending, long maxTsFileSetEndVersion) {
+      IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
-      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
       if (evolvedSchema != null) {
         deviceId = evolvedSchema.rewriteToOriginal(deviceId);
       }
@@ -1071,8 +1071,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
       Filter timeFilter,
       boolean isSeq,
       boolean debug,
-      long maxTsFileSetEndVersion) {
-    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileSetEndVersion);
+      long maxTsFileVersion) {
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
     if (evolvedSchema != null) {
       deviceId = evolvedSchema.rewriteToOriginal(deviceId);
     }
@@ -1745,29 +1745,19 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return EvolvedSchema.merge(list.toArray(new EvolvedSchema[0]));
   }
 
-  public static Pair<Long, TsFileResource> getMaxTsFileSetEndVersionAndMinResource(
+  public static Pair<Long, TsFileResource> getMaxTsFileVersionAndMinResource(
       List<TsFileResource> tsFileResources) {
-    long maxTsFileSetEndVersion = Long.MIN_VALUE;
+    long maxTsFileVersion = Long.MIN_VALUE;
     long minResourceVersion = Long.MAX_VALUE;
     TsFileResource minTsFileResource = null;
     for (TsFileResource tsFileResource : tsFileResources) {
-      List<TsFileSet> tsFileSets = tsFileResource.getTsFileSets();
-      if (tsFileSets.isEmpty()) {
-        // include the newest files that does not belong to any file sets,
-        // should apply all schema evolution
-        maxTsFileSetEndVersion = Long.MAX_VALUE;
-        break;
-      }
-      TsFileSet lastTsFileSet = tsFileSets.get(tsFileSets.size() - 1);
-      if (lastTsFileSet.getEndVersion() > maxTsFileSetEndVersion) {
-        maxTsFileSetEndVersion = lastTsFileSet.getEndVersion();
-      }
-      if (tsFileResource.getTsFileID().fileVersion < minResourceVersion) {
+      maxTsFileVersion = Math.max(tsFileResource.getVersion(), maxTsFileVersion);
+      if (tsFileResource.getVersion() < minResourceVersion) {
         minTsFileResource = tsFileResource;
-        minResourceVersion = tsFileResource.getTsFileID().fileVersion;
+        minResourceVersion = tsFileResource.getVersion();
       }
     }
-    return new Pair<>(maxTsFileSetEndVersion, minTsFileResource);
+    return new Pair<>(maxTsFileVersion, minTsFileResource);
   }
 
   public void setTsFileManager(TsFileManager tsFileManager) {

@@ -77,37 +77,9 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas;
 
-  private final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  private final Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   private Map<String, CompactionSeriesContext> compactionSeriesContextMap;
-
-  /** Used for nonAligned timeseries. */
-  @SuppressWarnings("squid:S107")
-  public FastCompactionPerformerSubTask(
-      AbstractCompactionWriter compactionWriter,
-      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-          modificationCacheMap,
-      List<TsFileResource> sortedSourceFiles,
-      List<String> measurements,
-      IDeviceID deviceId,
-      FastCompactionTaskSummary summary,
-      int subTaskId,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
-    this.compactionWriter = compactionWriter;
-    this.subTaskId = subTaskId;
-    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
-    this.isAligned = false;
-    this.deviceId = deviceId;
-    this.readerCacheMap = readerCacheMap;
-    this.modificationCacheMap = modificationCacheMap;
-    this.sortedSourceFiles = sortedSourceFiles;
-    this.measurements = measurements;
-    this.summary = summary;
-    this.ignoreAllNullRows = true;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
-  }
 
   public FastCompactionPerformerSubTask(
       Map<String, CompactionSeriesContext> compactionSeriesContextMap,
@@ -120,7 +92,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
       int subTaskId,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.compactionSeriesContextMap = compactionSeriesContextMap;
@@ -133,7 +105,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurements = measurements;
     this.summary = summary;
     this.ignoreAllNullRows = true;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   /** Used for aligned timeseries. */
@@ -147,7 +119,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
       boolean ignoreAllNullRows,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -159,7 +131,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurementSchemas = measurementSchemas;
     this.summary = summary;
     this.ignoreAllNullRows = ignoreAllNullRows;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   @Override
@@ -175,7 +147,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               deviceId,
               subTaskId,
               summary,
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
       for (String measurement : measurements) {
         seriesCompactionExecutor.setNewMeasurement(
             compactionSeriesContextMap.get(measurement).getFileTimeseriesMetdataOffsetMap());
@@ -201,7 +173,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 measurementSchemas,
                 summary,
                 ignoreAllNullRows,
-                maxTsFileSetEndVersionAndMinResource);
+                maxTsFileVersionAndMinResource);
       } else {
         seriesCompactionExecutor =
             new FastAlignedSeriesCompactionExecutor(
@@ -215,7 +187,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 measurementSchemas,
                 summary,
                 ignoreAllNullRows,
-                maxTsFileSetEndVersionAndMinResource);
+                maxTsFileVersionAndMinResource);
       }
       seriesCompactionExecutor.execute();
     }

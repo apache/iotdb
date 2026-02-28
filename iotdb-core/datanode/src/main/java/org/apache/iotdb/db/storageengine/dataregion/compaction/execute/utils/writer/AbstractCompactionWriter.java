@@ -342,5 +342,5 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   public abstract void setSchemaForAllTargetFile(
-      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndAssociatedResource);
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileVersionAndAssociatedResource);
 }

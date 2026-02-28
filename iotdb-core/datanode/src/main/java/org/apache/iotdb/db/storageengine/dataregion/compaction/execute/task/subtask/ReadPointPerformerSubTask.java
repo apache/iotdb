@@ -57,7 +57,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   private final AbstractCompactionWriter compactionWriter;
   private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
-  private final long maxTsFileSetEndVersion;
+  private final long maxTsFileVersion;
 
   public ReadPointPerformerSubTask(
       IDeviceID device,
@@ -67,7 +67,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, MeasurementSchema> schemaMap,
       int taskId,
-      long maxTsFileSetEndVersion) {
+      long maxTsFileVersion) {
     this.device = device;
     this.measurementList = measurementList;
     this.fragmentInstanceContext = fragmentInstanceContext;
@@ -75,7 +75,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
     this.compactionWriter = compactionWriter;
     this.schemaMap = schemaMap;
     this.taskId = taskId;
-    this.maxTsFileSetEndVersion = maxTsFileSetEndVersion;
+    this.maxTsFileVersion = maxTsFileVersion;
   }
 
   @Override
@@ -92,7 +92,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
               fragmentInstanceContext,
               queryDataSource,
               false,
-              maxTsFileSetEndVersion);
+              maxTsFileVersion);
 
       if (dataBlockReader.hasNextBatch()) {
         compactionWriter.startMeasurement(

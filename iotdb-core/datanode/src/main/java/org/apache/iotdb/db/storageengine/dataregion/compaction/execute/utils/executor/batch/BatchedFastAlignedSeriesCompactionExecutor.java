@@ -90,7 +90,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary,
       boolean ignoreAllNullRows,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     super(
         compactionWriter,
         timeseriesMetadataOffsetMap,
@@ -102,7 +102,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         measurementSchemas,
         summary,
         ignoreAllNullRows,
-        maxTsFileSetEndVersionAndMinResource);
+        maxTsFileVersionAndMinResource);
     timeSchema = measurementSchemas.remove(0);
     valueMeasurementSchemas = measurementSchemas;
     this.batchColumnSelection =
@@ -174,7 +174,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
             selectedMeasurementSchemas,
             summary,
             ignoreAllNullRows,
-            maxTsFileSetEndVersionAndMinResource);
+            maxTsFileVersionAndMinResource);
     executor.execute();
     LOGGER.debug(
         "[Batch Compaction] current device is {}, first batch compacted time chunk is {}",
@@ -203,7 +203,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
               currentBatchMeasurementSchemas,
               summary,
               ignoreAllNullRows,
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
       executor.execute();
     }
   }
@@ -235,7 +235,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         List<IMeasurementSchema> measurementSchemas,
         FastCompactionTaskSummary summary,
         boolean ignoreAllNullRows,
-        Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+        Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
       super(
           compactionWriter,
           timeseriesMetadataOffsetMap,
@@ -247,7 +247,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           measurementSchemas,
           summary,
           ignoreAllNullRows,
-          maxTsFileSetEndVersionAndMinResource);
+          maxTsFileVersionAndMinResource);
       isBatchedCompaction = true;
     }
 
@@ -347,7 +347,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
         List<IMeasurementSchema> measurementSchemas,
         FastCompactionTaskSummary summary,
         boolean ignoreAllNullRows,
-        Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+        Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
       super(
           compactionWriter,
           timeseriesMetadataOffsetMap,
@@ -359,7 +359,7 @@ public class BatchedFastAlignedSeriesCompactionExecutor
           measurementSchemas,
           summary,
           ignoreAllNullRows,
-          maxTsFileSetEndVersionAndMinResource);
+          maxTsFileVersionAndMinResource);
       isBatchedCompaction = true;
     }
 

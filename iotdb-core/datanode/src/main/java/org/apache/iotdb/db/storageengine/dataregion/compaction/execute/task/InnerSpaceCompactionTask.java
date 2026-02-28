@@ -337,7 +337,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // schema evolution
     boolean hasDifferentSchemaEvolution =
         filesView.sortedAllSourceFilesInTask.get(0).getMergedEvolvedSchema() != null
-            && filesView
+            && !filesView
                 .sortedAllSourceFilesInTask
                 .get(0)
                 .getTsFileSets()
@@ -421,6 +421,8 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
   protected void compact(SimpleCompactionLogger compactionLogger) throws Exception {
     // carry out the compaction
     performer.setSourceFiles(filesView.sourceFilesInCompactionPerformer);
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(filesView.sortedAllSourceFilesInTask));
     // As elements in targetFiles may be removed in performer, we should use a mutable list
     // instead of Collections.singletonList()
     performer.setTargetFiles(filesView.targetFilesInPerformer);

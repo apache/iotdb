@@ -74,18 +74,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private Schema schema = null;
 
   private final EncryptParameter firstEncryptParameter;
-  protected Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  protected Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
-  }
-
-  public ReadChunkCompactionPerformer(
-      List<TsFileResource> sourceFiles,
-      TsFileResource targetFile,
-      EncryptParameter encryptParameter) {
-    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
   }
 
   @TestOnly
@@ -94,9 +87,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
+  @TestOnly
   public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles,
       List<TsFileResource> targetFiles,
@@ -104,23 +98,15 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
     this.firstEncryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource =
-        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
+    this.maxTsFileVersionAndMinResource =
+        TsFileResource.getMaxTsFileVersionAndMinResource(sourceFiles);
   }
 
   @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
     this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
-  }
-
-  public ReadChunkCompactionPerformer(
-      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
-    setSourceFiles(sourceFiles);
-    this.firstEncryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource =
-        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(sourceFiles);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   @TestOnly
@@ -129,7 +115,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
@@ -143,13 +129,14 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           InterruptedException,
           StorageEngineException,
           PageException {
-    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(seqFiles, maxTsFileVersionAndMinResource.left)) {
       schema =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles,
               deviceIterator.getReaderMap(),
               deviceIterator.getDeprecatedTableSchemaMap(),
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -222,15 +209,15 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter,
-            maxTsFileSetEndVersionAndMinResource.getLeft());
+            maxTsFileVersionAndMinResource.getLeft());
 
     Schema schema = CompactionTableSchemaCollector.copySchema(this.schema);
-    TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+    TsFileResource minVersionResource = maxTsFileVersionAndMinResource.getRight();
     // only null during test
     tsFileResource.setTsFileManager(
         minVersionResource != null ? minVersionResource.getTsFileManager() : null);
     EvolvedSchema evolvedSchema =
-        tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
+        tsFileResource.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.getLeft());
     currentWriter.setSchema(
         evolvedSchema != null
             ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new)
@@ -378,12 +365,16 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
-    this.maxTsFileSetEndVersionAndMinResource =
-        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(seqFiles);
   }
 
   @Override
   public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
     return Optional.of(new ReadChunkInnerCompactionEstimator());
+  }
+
+  @Override
+  public void setMaxTsFileVersionAndMinResource(
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 }

@@ -49,7 +49,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   protected long endedFileSize = 0;
   protected List<Schema> schemas;
   protected EncryptParameter encryptParameter;
-  protected Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  protected Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   protected final long memoryBudgetForFileWriter =
       (long)
@@ -117,7 +117,7 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
   }
 
   private void useNewWriter() throws IOException {
-    long maxTsFileSetEndVersion = maxTsFileSetEndVersionAndMinResource.left;
+    long maxTsFileVersion = maxTsFileVersionAndMinResource.left;
     fileWriter =
         new CompactionTsFileWriter(
             targetResources.get(currentFileIndex),
@@ -126,16 +126,16 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
                 ? CompactionType.INNER_SEQ_COMPACTION
                 : CompactionType.INNER_UNSEQ_COMPACTION,
             encryptParameter,
-            maxTsFileSetEndVersion);
+            maxTsFileVersion);
     Schema schema = CompactionTableSchemaCollector.copySchema(schemas.get(0));
-    TsFileResource minVersionResource = maxTsFileSetEndVersionAndMinResource.getRight();
+    TsFileResource minVersionResource = maxTsFileVersionAndMinResource.getRight();
     // only null during test
     fileWriter
         .getTsFileResource()
         .setTsFileManager(
             minVersionResource != null ? minVersionResource.getTsFileManager() : null);
     EvolvedSchema evolvedSchema =
-        fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileSetEndVersion);
+        fileWriter.getTsFileResource().getMergedEvolvedSchema(maxTsFileVersion);
     fileWriter.setSchema(
         evolvedSchema != null
             ? evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new)
@@ -193,9 +193,9 @@ public abstract class AbstractInnerCompactionWriter extends AbstractCompactionWr
 
   @Override
   public void setSchemaForAllTargetFile(
-      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.schemas = schemas;
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   @Override

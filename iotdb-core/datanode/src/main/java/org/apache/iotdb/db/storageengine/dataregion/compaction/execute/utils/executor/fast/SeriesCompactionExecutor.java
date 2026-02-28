@@ -98,7 +98,7 @@ public abstract class SeriesCompactionExecutor {
 
   protected boolean isAligned;
 
-  protected final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  protected final Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
@@ -109,7 +109,7 @@ public abstract class SeriesCompactionExecutor {
       boolean isAligned,
       int subTaskId,
       FastCompactionTaskSummary summary,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.deviceId = deviceId;
@@ -132,7 +132,7 @@ public abstract class SeriesCompactionExecutor {
               int timeCompare = Long.compare(o1.getStartTime(), o2.getStartTime());
               return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
-    this.maxTsFileSetEndVersionAndMinResource = maxTsFileSetEndVersionAndMinResource;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   public abstract void execute()
@@ -356,13 +356,13 @@ public abstract class SeriesCompactionExecutor {
   protected List<FileElement> findOverlapFiles(FileElement fileToCheck) {
     List<FileElement> overlappedFiles = new ArrayList<>();
     Optional<Long> endTimeInCheckingFile =
-        fileToCheck.resource.getEndTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
+        fileToCheck.resource.getEndTime(deviceId, maxTsFileVersionAndMinResource.left);
     for (FileElement otherFile : fileList) {
       if (!endTimeInCheckingFile.isPresent()) {
         continue;
       }
       Optional<Long> startTimeInOtherFile =
-          otherFile.resource.getStartTime(deviceId, maxTsFileSetEndVersionAndMinResource.left);
+          otherFile.resource.getStartTime(deviceId, maxTsFileVersionAndMinResource.left);
       if (startTimeInOtherFile.isPresent()
           && startTimeInOtherFile.get() <= endTimeInCheckingFile.get()) {
         if (!otherFile.isSelected) {

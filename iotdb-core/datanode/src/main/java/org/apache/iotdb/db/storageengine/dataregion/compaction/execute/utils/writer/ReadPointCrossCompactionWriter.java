@@ -58,9 +58,9 @@ public class ReadPointCrossCompactionWriter extends AbstractCrossCompactionWrite
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileResources,
       EncryptParameter encryptParameter,
-      long maxTsFileSetEndVersion)
+      long maxTsFileVersion)
       throws IOException {
-    super(targetResources, seqFileResources, encryptParameter, maxTsFileSetEndVersion);
+    super(targetResources, seqFileResources, encryptParameter, maxTsFileVersion);
   }
 
   @Override

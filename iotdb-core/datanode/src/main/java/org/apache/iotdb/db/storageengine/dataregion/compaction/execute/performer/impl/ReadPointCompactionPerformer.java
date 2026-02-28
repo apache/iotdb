@@ -70,7 +70,6 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class ReadPointCompactionPerformer
     implements ICrossCompactionPerformer, IUnseqCompactionPerformer {
@@ -88,6 +87,8 @@ public class ReadPointCompactionPerformer
   protected List<TsFileResource> targetFiles = Collections.emptyList();
 
   private EncryptParameter encryptParameter;
+
+  private Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   @TestOnly
   public ReadPointCompactionPerformer(
@@ -152,13 +153,7 @@ public class ReadPointCompactionPerformer
         getCompactionWriter(seqFiles, unseqFiles, targetFiles)) {
       // Do not close device iterator, because tsfile reader is managed by FileReaderManager.
       MultiTsFileDeviceIterator deviceIterator =
-          new MultiTsFileDeviceIterator(seqFiles, unseqFiles);
-      List<TsFileResource> allSourceFiles =
-          Stream.concat(seqFiles.stream(), unseqFiles.stream())
-              .sorted(TsFileResource::compareFileName)
-              .collect(Collectors.toList());
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource =
-          TsFileResource.getMaxTsFileSetEndVersionAndMinResource(allSourceFiles);
+          new MultiTsFileDeviceIterator(seqFiles, unseqFiles, maxTsFileVersionAndMinResource.left);
 
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
@@ -166,15 +161,15 @@ public class ReadPointCompactionPerformer
               unseqFiles,
               deviceIterator.getReaderMap(),
               deviceIterator.getDeprecatedTableSchemaMap(),
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
 
-      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileSetEndVersionAndMinResource);
+      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileVersionAndMinResource);
       while (deviceIterator.hasNextDevice()) {
         checkThreadInterrupted();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
         IDeviceID device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        queryDataSource.fillOrderIndexes(device, true, maxTsFileSetEndVersionAndMinResource.left);
+        queryDataSource.fillOrderIndexes(device, true, maxTsFileVersionAndMinResource.left);
 
         if (isAligned) {
           compactAlignedSeries(
@@ -183,7 +178,7 @@ public class ReadPointCompactionPerformer
               compactionWriter,
               fragmentInstanceContext,
               queryDataSource,
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
         } else {
           compactNonAlignedSeries(
               device,
@@ -191,7 +186,7 @@ public class ReadPointCompactionPerformer
               compactionWriter,
               fragmentInstanceContext,
               queryDataSource,
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
         }
         summary.setTemporaryFileSize(compactionWriter.getWriterSize());
       }
@@ -228,10 +223,10 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource)
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource)
       throws IOException {
     Map<String, MeasurementSchema> schemaMap =
-        deviceIterator.getAllSchemasOfCurrentDevice(maxTsFileSetEndVersionAndMinResource);
+        deviceIterator.getAllSchemasOfCurrentDevice(maxTsFileVersionAndMinResource);
     IMeasurementSchema timeSchema = schemaMap.remove(TsFileConstant.TIME_COLUMN_ID);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
@@ -252,7 +247,7 @@ public class ReadPointCompactionPerformer
             fragmentInstanceContext,
             queryDataSource,
             true,
-            maxTsFileSetEndVersionAndMinResource.left);
+            maxTsFileVersionAndMinResource.left);
 
     if (dataBlockReader.hasNextBatch()) {
       compactionWriter.startChunkGroup(device, true);
@@ -277,10 +272,10 @@ public class ReadPointCompactionPerformer
       AbstractCompactionWriter compactionWriter,
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource)
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource)
       throws IOException, InterruptedException, ExecutionException {
     Map<String, MeasurementSchema> schemaMap =
-        deviceIterator.getAllSchemasOfCurrentDevice(maxTsFileSetEndVersionAndMinResource);
+        deviceIterator.getAllSchemasOfCurrentDevice(maxTsFileVersionAndMinResource);
     List<String> allMeasurements = new ArrayList<>(schemaMap.keySet());
     allMeasurements.sort((String::compareTo));
     int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);
@@ -310,7 +305,7 @@ public class ReadPointCompactionPerformer
                         compactionWriter,
                         schemaMap,
                         i,
-                        maxTsFileSetEndVersionAndMinResource.left)));
+                        maxTsFileVersionAndMinResource.left)));
       }
       for (Future<Void> future : futures) {
         future.get();
@@ -335,7 +330,7 @@ public class ReadPointCompactionPerformer
       FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
       boolean isAlign,
-      long maxTsFileSetEndVersion) {
+      long maxTsFileVersion) {
     IFullPath seriesPath;
     if (isAlign) {
       seriesPath = new AlignedFullPath(deviceId, measurementIds, measurementSchemas);
@@ -349,7 +344,7 @@ public class ReadPointCompactionPerformer
         fragmentInstanceContext,
         queryDataSource,
         true,
-        maxTsFileSetEndVersion);
+        maxTsFileVersion);
   }
 
   @SuppressWarnings("squid:S1172")
@@ -380,16 +375,11 @@ public class ReadPointCompactionPerformer
       throws IOException {
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
-      List<TsFileResource> allSourceFiles =
-          Stream.concat(seqFileResources.stream(), unseqFileResources.stream())
-              .collect(Collectors.toList());
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource =
-          TsFileResource.getMaxTsFileSetEndVersionAndMinResource(allSourceFiles);
       return new ReadPointCrossCompactionWriter(
           targetFileResources,
           seqFileResources,
           encryptParameter,
-          maxTsFileSetEndVersionAndMinResource.left);
+          maxTsFileVersionAndMinResource.left);
     } else {
       // inner space
       return new ReadPointInnerCompactionWriter(targetFileResources, encryptParameter);
@@ -418,5 +408,11 @@ public class ReadPointCompactionPerformer
   @Override
   public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
     return Optional.of(new RepairUnsortedFileCompactionEstimator());
+  }
+
+  @Override
+  public void setMaxTsFileVersionAndMinResource(
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 }

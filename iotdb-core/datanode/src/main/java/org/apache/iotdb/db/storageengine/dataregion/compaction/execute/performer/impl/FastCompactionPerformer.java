@@ -106,7 +106,7 @@ public class FastCompactionPerformer
   private final boolean isCrossCompaction;
 
   private EncryptParameter encryptParameter;
-  private final Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource;
+  private Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
   @TestOnly
   public FastCompactionPerformer(
@@ -126,9 +126,10 @@ public class FastCompactionPerformer
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
+  @TestOnly
   public FastCompactionPerformer(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
@@ -144,8 +145,8 @@ public class FastCompactionPerformer
       isCrossCompaction = true;
     }
     this.encryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource =
-        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(
+    this.maxTsFileVersionAndMinResource =
+        TsFileResource.getMaxTsFileVersionAndMinResource(
             Stream.concat(seqFiles.stream(), unseqFiles.stream()).collect(Collectors.toList()));
   }
 
@@ -156,27 +157,22 @@ public class FastCompactionPerformer
         new EncryptParameter(
             TSFileDescriptor.getInstance().getConfig().getEncryptType(),
             TSFileDescriptor.getInstance().getConfig().getEncryptKey());
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   public FastCompactionPerformer(boolean isCrossCompaction, EncryptParameter encryptParameter) {
     this.isCrossCompaction = isCrossCompaction;
     this.encryptParameter = encryptParameter;
-    this.maxTsFileSetEndVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
+    this.maxTsFileVersionAndMinResource = new Pair<>(Long.MIN_VALUE, null);
   }
 
   @Override
   public void perform() throws Exception {
     this.subTaskSummary.setTemporalFileNum(targetFiles.size());
-    List<TsFileResource> allSourceFiles =
-        Stream.concat(seqFiles.stream(), unseqFiles.stream())
-            .sorted(TsFileResource::compareFileName)
-            .collect(Collectors.toList());
-    Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource =
-        TsFileResource.getMaxTsFileSetEndVersionAndMinResource(allSourceFiles);
 
     try (MultiTsFileDeviceIterator deviceIterator =
-            new MultiTsFileDeviceIterator(seqFiles, unseqFiles, readerCacheMap);
+            new MultiTsFileDeviceIterator(
+                seqFiles, unseqFiles, readerCacheMap, maxTsFileVersionAndMinResource.left);
         AbstractCompactionWriter compactionWriter =
             isCrossCompaction
                 ? new FastCrossCompactionWriter(
@@ -184,7 +180,7 @@ public class FastCompactionPerformer
                     seqFiles,
                     readerCacheMap,
                     encryptParameter,
-                    maxTsFileSetEndVersionAndMinResource.left)
+                    maxTsFileVersionAndMinResource.left)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
@@ -192,9 +188,9 @@ public class FastCompactionPerformer
               unseqFiles,
               readerCacheMap,
               deviceIterator.getDeprecatedTableSchemaMap(),
-              maxTsFileSetEndVersionAndMinResource);
+              maxTsFileVersionAndMinResource);
 
-      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileSetEndVersionAndMinResource);
+      compactionWriter.setSchemaForAllTargetFile(schemas, maxTsFileVersionAndMinResource);
       readModification(seqFiles);
       readModification(unseqFiles);
       while (deviceIterator.hasNextDevice()) {
@@ -213,7 +209,7 @@ public class FastCompactionPerformer
         sortedSourceFiles.removeIf(
             x -> {
               EvolvedSchema evolvedSchema =
-                  x.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.left);
+                  x.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.left);
               IDeviceID originalDevice = device;
               if (evolvedSchema != null) {
                 originalDevice = evolvedSchema.rewriteToOriginal(device);
@@ -225,7 +221,7 @@ public class FastCompactionPerformer
             Comparator.comparingLong(
                 x -> {
                   //noinspection OptionalGetWithoutIsPresent
-                  return x.getStartTime(device, maxTsFileSetEndVersionAndMinResource.left).get();
+                  return x.getStartTime(device, maxTsFileVersionAndMinResource.left).get();
                 }));
         ModEntry ttlDeletion = null;
         if (ttl != Long.MAX_VALUE) {
@@ -313,7 +309,7 @@ public class FastCompactionPerformer
             deviceId,
             taskSummary,
             ignoreAllNullRows,
-            maxTsFileSetEndVersionAndMinResource)
+            maxTsFileVersionAndMinResource)
         .call();
     subTaskSummary.increase(taskSummary);
   }
@@ -374,7 +370,7 @@ public class FastCompactionPerformer
                       deviceID,
                       taskSummary,
                       i,
-                      maxTsFileSetEndVersionAndMinResource)));
+                      maxTsFileVersionAndMinResource)));
       taskSummaryList.add(taskSummary);
     }
 
@@ -456,6 +452,12 @@ public class FastCompactionPerformer
   @Override
   public void setSourceFiles(List<TsFileResource> unseqFiles) {
     this.seqFiles = unseqFiles;
+  }
+
+  @Override
+  public void setMaxTsFileVersionAndMinResource(
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   private void readModification(List<TsFileResource> resources) {

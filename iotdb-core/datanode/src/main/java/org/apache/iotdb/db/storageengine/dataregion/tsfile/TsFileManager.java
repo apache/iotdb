@@ -535,7 +535,9 @@ public class TsFileManager {
         break;
       }
     }
-    return start < end ? tsFileSetList.subList(start, end) : Collections.emptyList();
+    return start < end
+        ? new ArrayList<>(tsFileSetList.subList(start, end))
+        : Collections.emptyList();
   }
 
   public void deleteTsFileSets() {

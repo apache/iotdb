@@ -248,7 +248,7 @@ public class TsFileNameGenerator {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
       // set target resource to COMPACTING until the end of this task
-      targetFileResources.add(
+      TsFileResource tsFileResource =
           new TsFileResource(
               new File(
                   generateNewTsFilePathWithMkdir(
@@ -262,7 +262,9 @@ public class TsFileNameGenerator {
                       tsFileName.crossCompactionCnt,
                       resource.getTierLevel(),
                       IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)),
-              TsFileResourceStatus.COMPACTING));
+              TsFileResourceStatus.COMPACTING);
+      tsFileResource.setTsFileManager(resource.getTsFileManager());
+      targetFileResources.add(tsFileResource);
     }
     return targetFileResources;
   }

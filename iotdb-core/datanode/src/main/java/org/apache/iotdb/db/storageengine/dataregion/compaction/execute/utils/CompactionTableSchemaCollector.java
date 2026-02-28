@@ -45,7 +45,7 @@ public class CompactionTableSchemaCollector {
       List<TsFileResource> unseqFiles,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
       Map<TsFileResource, Set<String>> deprecatedTableSchemaMap,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndAssociatedResource)
+      Pair<Long, TsFileResource> maxTsFileVersionAndAssociatedResource)
       throws IOException {
     List<Schema> targetSchemas = new ArrayList<>(seqFiles.size());
     Schema schema =
@@ -55,7 +55,7 @@ public class CompactionTableSchemaCollector {
                 .collect(Collectors.toList()),
             readerMap,
             deprecatedTableSchemaMap,
-            maxTsFileSetEndVersionAndAssociatedResource);
+            maxTsFileVersionAndAssociatedResource);
 
     targetSchemas.add(schema);
     for (int i = 1; i < seqFiles.size(); i++) {
@@ -77,7 +77,7 @@ public class CompactionTableSchemaCollector {
       List<TsFileResource> sourceFiles,
       Map<TsFileResource, TsFileSequenceReader> readerMap,
       Map<TsFileResource, Set<String>> deprecatedTableSchemaMap,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndAssociatedResource)
+      Pair<Long, TsFileResource> maxTsFileVersionAndAssociatedResource)
       throws IOException {
     Schema targetSchema = new Schema();
     Map<String, TableSchema> targetTableSchemaMap = new HashMap<>();
@@ -92,7 +92,7 @@ public class CompactionTableSchemaCollector {
       }
 
       EvolvedSchema evolvedSchema =
-          resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndAssociatedResource.getLeft());
+          resource.getMergedEvolvedSchema(maxTsFileVersionAndAssociatedResource.getLeft());
 
       for (Map.Entry<String, TableSchema> entry : tableSchemaMap.entrySet()) {
         String tableName = entry.getKey();

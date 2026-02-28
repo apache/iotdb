@@ -91,7 +91,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary,
       boolean ignoreAllNullRows,
-      Pair<Long, TsFileResource> maxTsFileSetEndVersionAndMinResource) {
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     super(
         compactionWriter,
         readerCacheMap,
@@ -100,7 +100,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         true,
         subTaskId,
         summary,
-        maxTsFileSetEndVersionAndMinResource);
+        maxTsFileVersionAndMinResource);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
@@ -198,7 +198,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
     EvolvedSchema evolvedSchema =
-        resource.getMergedEvolvedSchema(maxTsFileSetEndVersionAndMinResource.getLeft());
+        resource.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.getLeft());
 
     for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
         timeseriesMetadataOffsetMap.entrySet()) {
