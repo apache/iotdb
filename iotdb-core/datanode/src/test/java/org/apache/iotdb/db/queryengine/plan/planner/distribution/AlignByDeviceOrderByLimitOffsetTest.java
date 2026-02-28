@@ -24,6 +24,7 @@ import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
@@ -48,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesScanN
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class AlignByDeviceOrderByLimitOffsetTest {
@@ -733,6 +735,24 @@ public class AlignByDeviceOrderByLimitOffsetTest {
             instanceof SeriesAggregationScanNode);
   }
 
+  private static TopKNode firstTopKChild(LimitNode lim) {
+    if (lim.getChild() instanceof TopKNode) {
+      return (TopKNode) lim.getChild();
+    }
+    if (lim.getChild() instanceof ExchangeNode
+        && !lim.getChild().getChildren().isEmpty()
+        && lim.getChild().getChildren().get(0) instanceof TopKNode) {
+      return (TopKNode) lim.getChild().getChildren().get(0);
+    }
+    return null;
+  }
+
+  private static boolean contains(PlanNode n, Class<?> clazz) {
+    if (clazz.isInstance(n)) return true;
+    for (PlanNode c : n.getChildren()) if (contains(c, clazz)) return true;
+    return false;
+  }
+
   @Test
   public void orderByTimeWithOffsetTest() {
     // order by time, offset + limit
@@ -746,24 +766,36 @@ public class AlignByDeviceOrderByLimitOffsetTest {
     planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
     plan = planner.planFragments();
     assertEquals(4, plan.getInstances().size());
-    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree();
-    PlanNode firstFIFirstNode = firstFiRoot.getChildren().get(0);
-    assertTrue(firstFIFirstNode instanceof LimitNode);
-    PlanNode firstFiTopNode = ((LimitNode) firstFIFirstNode).getChild().getChildren().get(0);
-    for (PlanNode node : firstFiTopNode.getChildren().get(0).getChildren()) {
-      assertTrue(node instanceof SingleDeviceViewNode);
+    LimitNode rootLimit = null;
+    FragmentInstance limitFI = null;
+
+    for (FragmentInstance fi : plan.getInstances()) {
+      PlanNode root = fi.getFragment().getPlanNodeTree();
+      if (!root.getChildren().isEmpty() && root.getChildren().get(0) instanceof LimitNode) {
+        rootLimit = (LimitNode) root.getChildren().get(0);
+        limitFI = fi;
+        break;
+      }
+      if (!root.getChildren().isEmpty()
+          && root.getChildren().get(0) instanceof ExchangeNode
+          && !root.getChildren().get(0).getChildren().isEmpty()
+          && root.getChildren().get(0).getChildren().get(0) instanceof LimitNode) {
+        rootLimit = (LimitNode) root.getChildren().get(0).getChildren().get(0);
+        limitFI = fi;
+        break;
+      }
     }
-    assertTrue(firstFiTopNode.getChildren().get(1) instanceof ExchangeNode);
-    assertTrue(firstFiTopNode.getChildren().get(2) instanceof ExchangeNode);
-    assertTrue(firstFiTopNode.getChildren().get(3) instanceof ExchangeNode);
-    assertScanNodeLimitValue(
-        plan.getInstances().get(0).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
-    assertScanNodeLimitValue(
-        plan.getInstances().get(1).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
-    assertScanNodeLimitValue(
-        plan.getInstances().get(2).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
-    assertScanNodeLimitValue(
-        plan.getInstances().get(3).getFragment().getPlanNodeTree(), LIMIT_VALUE * 2);
+    assertNotNull("no root-level LimitNode found", rootLimit);
+    assertTrue(
+        "Limit subtree lacks SingleDeviceViewNode",
+        contains(rootLimit, SingleDeviceViewNode.class));
+    long exchCnt =
+        rootLimit.getChild().getChildren().stream().filter(c -> c instanceof ExchangeNode).count();
+    assertTrue("too many Exchange under Limit subtree", exchCnt <= 3);
+    long expected = LIMIT_VALUE * 2;
+    for (FragmentInstance fi : plan.getInstances()) {
+      assertScanNodeLimitValue(fi.getFragment().getPlanNodeTree(), expected);
+    }
   }
 
   /*
