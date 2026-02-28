@@ -105,14 +105,8 @@ public class SubscriptionCoordinator {
       subscriptionInfoHolder = null;
     }
 
-    try {
-      coordinatorLock.unlock();
-      return true;
-    } catch (IllegalMonitorStateException ignored) {
-      // This is thrown if unlock() is called without lock() called first.
-      LOGGER.warn("This thread is not holding the lock.");
-      return false;
-    }
+    coordinatorLock.unlock();
+    return true;
   }
 
   public boolean isLocked() {
