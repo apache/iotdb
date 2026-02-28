@@ -263,6 +263,8 @@ public class Analysis implements IAnalysis {
   // independently to utilize predicate pushdown optimization.
   private SqlParser sqlParser;
 
+  private boolean isLocalQuery = false;
+
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
     this.parameters = ImmutableMap.copyOf(requireNonNull(parameters, "parameters is null"));
@@ -1573,5 +1575,13 @@ public class Analysis implements IAnalysis {
     public List<ColumnSchema> getColumns() {
       return columns;
     }
+  }
+
+  public boolean isLocalQuery() {
+    return isLocalQuery;
+  }
+
+  public void setLocalQuery(boolean localQuery) {
+    isLocalQuery = localQuery;
   }
 }
