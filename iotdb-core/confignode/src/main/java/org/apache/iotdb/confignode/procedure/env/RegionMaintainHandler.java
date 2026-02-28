@@ -474,7 +474,7 @@ public class RegionMaintainHandler {
                           if (i == j) {
                             continue;
                           }
-                          createSingleConsensusPipe(
+                          createSingleConsensusPipeAsync(
                               regionId,
                               locations.get(i).getDataNodeId(),
                               locations.get(i).getDataRegionConsensusEndPoint(),
@@ -506,21 +506,13 @@ public class RegionMaintainHandler {
           new ConsensusPipeName(
                   dataRegionId, existingLocation.getDataNodeId(), targetDataNode.getDataNodeId())
               .toString();
-      TSStatus status1 = configManager.getProcedureManager().dropConsensusPipe(pipeName1);
-      if (status1.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "{}, Failed to drop consensus pipe {}: {}", REGION_MIGRATE_PROCESS, pipeName1, status1);
-      }
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName1);
       // Drop pipe: targetPeer → existingPeer
       String pipeName2 =
           new ConsensusPipeName(
                   dataRegionId, targetDataNode.getDataNodeId(), existingLocation.getDataNodeId())
               .toString();
-      TSStatus status2 = configManager.getProcedureManager().dropConsensusPipe(pipeName2);
-      if (status2.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "{}, Failed to drop consensus pipe {}: {}", REGION_MIGRATE_PROCESS, pipeName2, status2);
-      }
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName2);
     }
   }
 
@@ -529,7 +521,7 @@ public class RegionMaintainHandler {
         && IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass());
   }
 
-  private void createSingleConsensusPipe(
+  private TCreatePipeReq buildConsensusPipeReq(
       TConsensusGroupId regionId,
       int senderNodeId,
       TEndPoint senderEndpoint,
@@ -568,21 +560,58 @@ public class RegionMaintainHandler {
     connectorAttributes.put(CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, String.valueOf(1));
     connectorAttributes.put(CONNECTOR_REALTIME_FIRST_KEY, String.valueOf(false));
 
-    TCreatePipeReq req =
-        new TCreatePipeReq()
-            .setPipeName(pipeName.toString())
-            .setNeedManuallyStart(false)
-            .setExtractorAttributes(extractorAttributes)
-            .setProcessorAttributes(processorAttributes)
-            .setConnectorAttributes(connectorAttributes);
+    return new TCreatePipeReq()
+        .setPipeName(pipeName.toString())
+        .setNeedManuallyStart(false)
+        .setExtractorAttributes(extractorAttributes)
+        .setProcessorAttributes(processorAttributes)
+        .setConnectorAttributes(connectorAttributes);
+  }
 
+  /**
+   * Create a single consensus pipe synchronously (blocks until procedure finishes or times out with
+   * optimistic success). Used by AddRegionPeerProcedure where pipes must exist before data sync.
+   */
+  private void createSingleConsensusPipe(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
     TSStatus status = configManager.getProcedureManager().createConsensusPipe(req);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.warn(
-          "{}, Failed to create consensus pipe {}: {}", REGION_MIGRATE_PROCESS, pipeName, status);
+          "{}, Failed to create consensus pipe {}: {}",
+          REGION_MIGRATE_PROCESS,
+          req.getPipeName(),
+          status);
     } else {
-      LOGGER.info("{}, Created consensus pipe {}", REGION_MIGRATE_PROCESS, pipeName);
+      LOGGER.info("{}, Created consensus pipe {}", REGION_MIGRATE_PROCESS, req.getPipeName());
     }
+  }
+
+  /**
+   * Create a single consensus pipe asynchronously (fire-and-forget). Used by
+   * CreateRegionGroupsProcedure where blocking would cause deadlock and new regions have no data to
+   * lose.
+   */
+  private void createSingleConsensusPipeAsync(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
+    configManager.getProcedureManager().createConsensusPipeAsync(req);
+    LOGGER.info(
+        "{}, Submitted async consensus pipe creation: {}",
+        REGION_MIGRATE_PROCESS,
+        req.getPipeName());
   }
 
   /**

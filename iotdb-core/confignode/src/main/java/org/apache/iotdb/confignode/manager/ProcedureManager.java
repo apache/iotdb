@@ -1485,6 +1485,23 @@ public class ProcedureManager {
     }
   }
 
+  /**
+   * Submit a consensus pipe creation procedure without blocking. The procedure will execute in the
+   * background. Failures are logged and can be repaired by the consensus pipe guardian.
+   */
+  public void createConsensusPipeAsync(TCreatePipeReq req) {
+    try {
+      CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      LOGGER.info("Submitted async consensus pipe creation: {}", req.getPipeName());
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to submit async consensus pipe creation for {}: {}",
+          req.getPipeName(),
+          e.getMessage());
+    }
+  }
+
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
       CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
@@ -1576,6 +1593,21 @@ public class ProcedureManager {
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  /**
+   * Submit a consensus pipe drop procedure without blocking. The procedure will execute in the
+   * background. Failures are logged and can be repaired by the consensus pipe guardian.
+   */
+  public void dropConsensusPipeAsync(String pipeName) {
+    try {
+      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      LOGGER.info("Submitted async consensus pipe drop: {}", pipeName);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to submit async consensus pipe drop for {}: {}", pipeName, e.getMessage());
     }
   }
 
