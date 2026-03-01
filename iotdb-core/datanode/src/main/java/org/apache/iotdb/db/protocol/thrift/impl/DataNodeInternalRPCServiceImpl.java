@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -61,8 +62,10 @@ import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.ProgressIndexType;
+import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -102,6 +105,7 @@ import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.partition.DataPartitionTableGenerator;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.protocol.client.cn.DnToCnInternalServiceAsyncRequestManager;
@@ -260,6 +264,10 @@ import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableHeartbeatResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
@@ -314,9 +322,10 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
-
-import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.common.TimeRange;
@@ -331,9 +340,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -370,7 +381,6 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
 
@@ -413,6 +423,32 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           new ThreadPoolExecutor.CallerRunsPolicy());
 
   private static final String SYSTEM = "system";
+
+  private final ExecutorService findEarliestTimeSlotExecutor =
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+                  IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+          new IoTThreadFactory(ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName()),
+          ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
+          new ThreadPoolExecutor.CallerRunsPolicy());
+
+  private final ExecutorService partitionTableRecoverExecutor =
+          new WrappedThreadPoolExecutor(
+                  0,
+                  IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
+                  0L,
+                  TimeUnit.SECONDS,
+                  new ArrayBlockingQueue<>(
+                          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+                  new IoTThreadFactory(ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName()),
+                  ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
+                  new ThreadPoolExecutor.CallerRunsPolicy());
+
+  private static final long timeoutMs = 600000; // 600 seconds timeout
 
   public DataNodeInternalRPCServiceImpl() {
     super();
@@ -3116,5 +3152,259 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   public void handleClientExit() {
     // Do nothing
+  }
+
+  // ====================================================
+  // Data Partition Table Integrity Check Implementation
+  // ====================================================
+
+  private volatile DataPartitionTableGenerator currentGenerator;
+  private volatile long currentTaskId = 0;
+
+  @Override
+  public TGetEarliestTimeslotsResp getEarliestTimeslots() {
+    TGetEarliestTimeslotsResp resp = new TGetEarliestTimeslotsResp();
+
+    try {
+      Map<String, Long> earliestTimeslots = new HashMap<>();
+
+      // Get data directories from configuration
+      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+
+      for (String dataDir : dataDirs) {
+        File dir = new File(dataDir);
+        if (dir.exists() && dir.isDirectory()) {
+          processDataDirectoryForEarliestTimeslots(dir, earliestTimeslots);
+        }
+      }
+
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setDatabaseToEarliestTimeslot(earliestTimeslots);
+
+      LOGGER.info("Retrieved earliest timeslots for {} databases", earliestTimeslots.size());
+
+    } catch (Exception e) {
+      LOGGER.error("Failed to get earliest timeslots", e);
+      resp.setStatus(
+          onIoTDBException(
+              e,
+              OperationType.GET_EARLIEST_TIMESLOTS,
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+    }
+
+    return resp;
+  }
+
+  @Override
+  public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req) {
+    TGenerateDataPartitionTableResp resp = new TGenerateDataPartitionTableResp();
+    byte[] empty = new byte[0];
+
+    try {
+      // Check if there's already a task in the progress
+      if (currentGenerator != null
+          && currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
+        resp.setDataPartitionTable(empty);
+        resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
+        resp.setMessage("DataPartitionTable generation is already in the progress");
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        return resp;
+      }
+
+      // Get data directories and configuration
+      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+      if (dataDirs.length == 0) {
+        resp.setDataPartitionTable(empty);
+        resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+        resp.setMessage("dataDirs parameter are not configured in the iotdb-system.properties");
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        return resp;
+      }
+
+      // Create generator for all data directories
+      int seriesSlotNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
+      String seriesPartitionExecutorClass =
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
+
+      currentGenerator =
+          new DataPartitionTableGenerator(
+              dataDirs, partitionTableRecoverExecutor, seriesSlotNum, seriesPartitionExecutorClass);
+      currentTaskId = System.currentTimeMillis();
+
+      // Start generation synchronously for now to return the data partition table immediately
+      currentGenerator.startGeneration();
+
+      // Wait for completion (with timeout)
+      long startTime = System.currentTimeMillis();
+      
+      while (currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
+        if (System.currentTimeMillis() - startTime > timeoutMs) {
+          resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
+          resp.setMessage("DataPartitionTable generation timed out");
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          return resp;
+        }
+        
+        try {
+          Thread.sleep(100); // Sleep for 100ms
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          resp.setDataPartitionTable(empty);
+          resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+          resp.setMessage("DataPartitionTable generation interrupted");
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          return resp;
+        }
+      }
+
+      // Check final status
+      if (currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.COMPLETED) {
+        DataPartitionTable dataPartitionTable = currentGenerator.getDataPartitionTable();
+        if (dataPartitionTable != null) {
+          ByteBuffer result = serializeDataPartitionTable(dataPartitionTable);
+          resp.setDataPartitionTable(result.array());
+        }
+        
+        resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
+        resp.setMessage("DataPartitionTable generation completed successfully");
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+
+        LOGGER.info("DataPartitionTable generation completed with task ID: {}", currentTaskId);
+      } else {
+        resp.setDataPartitionTable(empty);
+        resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+        resp.setMessage(
+            "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+      }
+
+      // Clear current generator
+      currentGenerator = null;
+    } catch (Exception e) {
+      LOGGER.error("Failed to generate DataPartitionTable", e);
+      resp.setStatus(
+          onIoTDBException(
+              e,
+              OperationType.GENERATE_DATA_PARTITION_TABLE,
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+    }
+
+    return resp;
+  }
+
+  @Override
+  public TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat() {
+    TGenerateDataPartitionTableHeartbeatResp resp = new TGenerateDataPartitionTableHeartbeatResp();
+
+    try {
+      if (currentGenerator == null) {
+        resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
+        resp.setMessage("No DataPartitionTable generation task found");
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        return resp;
+      }
+
+      DataPartitionTableGenerator.TaskStatus status = currentGenerator.getStatus();
+
+      switch (status) {
+        case IN_PROGRESS:
+          resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
+          resp.setMessage(
+              String.format(
+                  "DataPartitionTable generation in progress: %.1f%%",
+                  currentGenerator.getProgress() * 100));
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          break;
+        case COMPLETED:
+          resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
+          resp.setMessage("DataPartitionTable generation completed successfully");
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+          break;
+        case FAILED:
+          resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+          resp.setMessage("DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          break;
+        default:
+          resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
+          resp.setMessage("Unknown task status: " + status);
+          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+          break;
+      }
+    } catch (Exception e) {
+      LOGGER.error("Failed to check DataPartitionTable generation status", e);
+      resp.setStatus(
+          onIoTDBException(
+              e,
+              OperationType.CHECK_DATA_PARTITION_TABLE_STATUS,
+              TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()));
+    }
+
+    return resp;
+  }
+
+  /** Process data directory to find the earliest timeslots for each database. */
+  private void processDataDirectoryForEarliestTimeslots(
+      File dataDir, Map<String, Long> earliestTimeslots) {
+    try {
+      Files.list(dataDir.toPath())
+          .filter(Files::isDirectory)
+          .forEach(
+              dbPath -> {
+                String databaseName = dbPath.getFileName().toString();
+                long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
+
+                if (earliestTimeslot != Long.MAX_VALUE) {
+                  earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
+                }
+              });
+    } catch (IOException e) {
+      LOGGER.error("Failed to process data directory: {}", dataDir, e);
+    }
+  }
+
+  /** Find the earliest timeslot in a database directory. */
+  private long findEarliestTimeslotInDatabase(File databaseDir) {
+    final AtomicLong earliest = new AtomicLong(Long.MAX_VALUE);
+
+    try {
+      Files.walk(databaseDir.toPath())
+          .filter(Files::isDirectory)
+          .forEach(
+        regionPath -> {
+            findEarliestTimeSlotExecutor.submit(() -> {
+                    try {
+                      Files.list(regionPath)
+                          .filter(Files::isDirectory)
+                          .forEach(timeSlotPath -> {
+                            String timeSlotName = timeSlotPath.getFileName().toString();
+                            long timeslot = Long.parseLong(timeSlotName);
+                            if (timeslot < earliest.get()) {
+                              earliest.set(timeslot);
+                            }
+                          });
+                    } catch (IOException e) {
+                      LOGGER.error("Failed to scan {}", regionPath, e);
+                    }
+                  });
+              });
+    } catch (IOException e) {
+      LOGGER.error("Failed to walk database directory: {}", databaseDir, e);
+    }
+
+    return earliest.get();
+  }
+
+  /** Serialize DataPartitionTable to ByteBuffer for RPC transmission. */
+  private ByteBuffer serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(baos)) {
+      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
+      dataPartitionTable.serialize(baos, protocol);
+      return ByteBuffer.wrap(baos.toByteArray());
+    } catch (Exception e) {
+      LOGGER.error("Failed to serialize DataPartitionTable", e);
+      return ByteBuffer.allocate(0);
+    }
   }
 }

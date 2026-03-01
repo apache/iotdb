@@ -67,7 +67,6 @@ import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,6 +202,14 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         }
         loadSecretKey();
         loadHardwareCode();
+
+        // The data partition table integrity check is only performed when the ConfigNode is the leader node
+        if (configManager.getConsensusManager().isLeader()) {
+          TSStatus status = configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
+          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOGGER.error("Data partition table integrity check failed!");
+          }
+        }
         return;
       } else {
         saveSecretKey();

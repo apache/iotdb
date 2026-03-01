@@ -77,6 +77,12 @@ public class TimePartitionUtils {
     return timePartitionSlot;
   }
 
+  public static TTimePartitionSlot getTimePartitionSlot(long partitionId) {
+    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
+    timePartitionSlot.setStartTime(getTimePartitionLowerBound(time));
+    return timePartitionSlot;
+  }
+
   public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }
@@ -112,6 +118,14 @@ public class TimePartitionUtils {
         : time / timePartitionInterval - 1;
   }
 
+  public static long getTime(long partitionId) {
+    long time = partitionId * timePartitionInterval;
+    if (time > 0 || time % timePartitionInterval == 0) {
+      return time + timePartitionOrigin;
+    }
+    return ((partitionId + 1) * timePartitionInterval) + timePartitionOrigin;
+  }
+
   public static long getTimePartitionIdWithoutOverflow(long time) {
     BigInteger bigTime = BigInteger.valueOf(time).subtract(bigTimePartitionOrigin);
     BigInteger partitionId =
@@ -120,6 +134,18 @@ public class TimePartitionUtils {
             ? bigTime.divide(bigTimePartitionInterval)
             : bigTime.divide(bigTimePartitionInterval).subtract(BigInteger.ONE);
     return partitionId.longValue();
+  }
+
+  public static long getTimeWithoutOverflow(long partitionId) {
+    BigInteger bigTime = bigTimePartitionInterval.multiply(BigInteger.valueOf(partitionId));
+    if (bigTime.compareTo(BigInteger.ZERO) > 0 || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)) {
+      return bigTime.add(bigTimePartitionOrigin).longValue();
+    }
+    return BigInteger.valueOf(partitionId).add(BigInteger.ONE).multiply(bigTimePartitionInterval).add(bigTimePartitionOrigin).longValue();
+  }
+
+  public static long getTimeByPartitionId(long partitionId) {
+    return originMayCauseOverflow ? getTimeWithoutOverflow(partitionId) : getTime(partitionId);
   }
 
   public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {
@@ -132,6 +158,13 @@ public class TimePartitionUtils {
             ? getTimePartitionIdWithoutOverflow(endTime)
             : getTimePartitionId(endTime);
     return startPartition <= partitionId && endPartition >= partitionId;
+  }
+
+  public static boolean satisfyPartitionId(long startTime, long partitionId) {
+    long endTime = startTime >= timePartitionLowerBoundWithoutOverflow
+            ? Long.MAX_VALUE
+            : (startTime + timePartitionInterval - 1);
+    return satisfyPartitionId(startTime, endTime, partitionId);
   }
 
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {

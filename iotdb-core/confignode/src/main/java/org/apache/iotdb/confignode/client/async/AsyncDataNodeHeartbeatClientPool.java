@@ -63,6 +63,14 @@ public class AsyncDataNodeHeartbeatClientPool {
     }
   }
 
+  public void generateDataPartitionTableHeartbeat(TEndPoint endPoint, TDataNodeHeartbeatReq req, DataNodeHeartbeatHandler handler) {
+    try {
+      clientManager.borrowClient(endPoint).generateDataPartitionTableHeartbeat(req, handler);
+    } catch (Exception ignore) {
+      // Just ignore
+    }
+  }
+
   private static class AsyncDataNodeHeartbeatClientPoolHolder {
 
     private static final AsyncDataNodeHeartbeatClientPool INSTANCE =
