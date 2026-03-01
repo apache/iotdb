@@ -218,8 +218,9 @@ public class LinuxNetMetricManager implements INetMetricManager {
 
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
       // update socket num
+      Process process = null;
       try {
-        Process process = Runtime.getRuntime().exec(this.getConnectNumCmd);
+        process = Runtime.getRuntime().exec(this.getConnectNumCmd);
         StringBuilder result = new StringBuilder();
         try (BufferedReader input =
             new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -228,9 +229,17 @@ public class LinuxNetMetricManager implements INetMetricManager {
             result.append(line);
           }
         }
+        process.waitFor();
         this.connectionNum = Integer.parseInt(result.toString().trim());
       } catch (IOException e) {
         LOGGER.error("Failed to get socket num", e);
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted while waiting for socket num command", e);
+        Thread.currentThread().interrupt();
+      } finally {
+        if (process != null) {
+          process.destroyForcibly();
+        }
       }
     }
   }
