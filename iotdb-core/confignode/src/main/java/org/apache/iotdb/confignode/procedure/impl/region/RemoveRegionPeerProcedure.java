@@ -45,14 +45,18 @@ import java.util.Objects;
 
 import static org.apache.iotdb.commons.utils.KillPoint.KillPoint.setKillPoint;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DELETE_OLD_REGION_PEER;
+import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.DROP_CONSENSUS_PIPES;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_LOCATION_CACHE;
 import static org.apache.iotdb.confignode.procedure.state.RemoveRegionPeerState.REMOVE_REGION_PEER;
 import static org.apache.iotdb.rpc.TSStatusCode.SUCCESS_STATUS;
 
 public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRegionPeerState> {
   private static final Logger LOGGER = LoggerFactory.getLogger(RemoveRegionPeerProcedure.class);
+  private static final int MAX_DELETE_OLD_REGION_PEER_RETRY = 3;
+  private static final long DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS = 5_000;
   private TDataNodeLocation coordinator;
   private TDataNodeLocation targetDataNode;
+  private transient int deleteOldRegionPeerAttempted = 0;
 
   public RemoveRegionPeerProcedure() {
     super();
@@ -129,23 +133,56 @@ public class RemoveRegionPeerProcedure extends RegionOperationProcedure<RemoveRe
               handler.submitDeleteOldRegionPeerTask(this.getProcId(), targetDataNode, regionId);
           setKillPoint(state);
           if (tsStatus.getCode() != SUCCESS_STATUS.getStatusCode()) {
+            deleteOldRegionPeerAttempted++;
+            if (deleteOldRegionPeerAttempted <= MAX_DELETE_OLD_REGION_PEER_RETRY) {
+              LOGGER.warn(
+                  "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed (attempt {}/{}), will retry after {}ms. {}",
+                  getProcId(),
+                  deleteOldRegionPeerAttempted,
+                  MAX_DELETE_OLD_REGION_PEER_RETRY + 1,
+                  DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS,
+                  regionId);
+              Thread.sleep(DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS);
+              setNextState(DELETE_OLD_REGION_PEER);
+              return Flow.HAS_MORE_STATE;
+            }
             LOGGER.warn(
-                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed, procedure will continue. You should manually delete region file. {}",
+                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER task submitted failed after {} attempts, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
+                deleteOldRegionPeerAttempted + 1,
                 regionId);
-            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            setNextState(DROP_CONSENSUS_PIPES);
             return Flow.HAS_MORE_STATE;
           }
           TRegionMigrateResult deleteOldRegionPeerResult =
               handler.waitTaskFinish(this.getProcId(), targetDataNode);
           if (deleteOldRegionPeerResult.getTaskStatus() != TRegionMaintainTaskStatus.SUCCESS) {
+            deleteOldRegionPeerAttempted++;
+            if (deleteOldRegionPeerAttempted <= MAX_DELETE_OLD_REGION_PEER_RETRY) {
+              LOGGER.warn(
+                  "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed (attempt {}/{}), will retry after {}ms. {}",
+                  getProcId(),
+                  deleteOldRegionPeerAttempted,
+                  MAX_DELETE_OLD_REGION_PEER_RETRY + 1,
+                  DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS,
+                  regionId);
+              Thread.sleep(DELETE_OLD_REGION_PEER_RETRY_INTERVAL_MS);
+              setNextState(DELETE_OLD_REGION_PEER);
+              return Flow.HAS_MORE_STATE;
+            }
             LOGGER.warn(
-                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed, procedure will continue. You should manually delete region file. {}",
+                "[pid{}][RemoveRegion] DELETE_OLD_REGION_PEER executed failed after {} attempts, procedure will continue. You should manually delete region file. {}",
                 getProcId(),
+                deleteOldRegionPeerAttempted + 1,
                 regionId);
-            setNextState(REMOVE_REGION_LOCATION_CACHE);
+            setNextState(DROP_CONSENSUS_PIPES);
             return Flow.HAS_MORE_STATE;
           }
+          setNextState(DROP_CONSENSUS_PIPES);
+          break;
+        case DROP_CONSENSUS_PIPES:
+          handler.dropConsensusPipesForRemovePeer(regionId, targetDataNode);
+          setKillPoint(state);
           setNextState(REMOVE_REGION_LOCATION_CACHE);
           break;
         case REMOVE_REGION_LOCATION_CACHE:
