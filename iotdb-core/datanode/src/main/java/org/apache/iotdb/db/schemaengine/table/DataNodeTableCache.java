@@ -171,7 +171,7 @@ public class DataNodeTableCache implements ITableCache {
         final TsTable oldTable = databaseTableMap.get(database).get(table.getTableName());
         if (oldTable != null) {
           TsTable copyTable = new TsTable(oldTable);
-          oldColumnNames.forEach(copyTable::removeColumnSchema);
+          oldColumnNames.forEach(o -> copyTable.removeColumnSchema(o, true));
           databaseTableMap.get(database).put(table.getTableName(), copyTable);
         }
       }

@@ -252,10 +252,21 @@ public class TsTable {
   }
 
   public void removeColumnSchema(final String columnName) {
+    removeColumnSchema(columnName, false);
+  }
+
+  /**
+   * Remove a column in the table.
+   *
+   * @param columnName column to be removed
+   * @param mayRemoveTag if false, will throw an exception when a tag column is being removed
+   */
+  public void removeColumnSchema(final String columnName, boolean mayRemoveTag) {
     executeWrite(
         () -> {
           final TsTableColumnSchema columnSchema = columnSchemaMap.get(columnName);
-          if (columnSchema != null
+          if (!mayRemoveTag
+              && columnSchema != null
               && columnSchema.getColumnCategory().equals(TsTableColumnCategory.TAG)) {
             throw new SchemaExecutionException("Cannot remove an tag column: " + columnName);
           } else if (columnSchema != null) {
