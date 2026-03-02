@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.receiver.protocol.airgap;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.WrappedRunnable;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapELanguageConstant;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapOneByteResponse;
 import org.apache.iotdb.commons.pipe.sink.payload.airgap.AirGapPseudoTPipeTransferRequest;
@@ -161,7 +162,8 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
     } else if (status.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || status.getCode()
             == TSStatusCode.PIPE_RECEIVER_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode()) {
-      LOGGER.info(
+      PipeLogger.log(
+          LOGGER::info,
           "Pipe air gap receiver {}: TSStatus {} is encountered at the air gap receiver, will ignore.",
           receiverId,
           resp.getStatus());
@@ -173,14 +175,16 @@ public class IoTDBAirGapReceiver extends WrappedRunnable {
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
       }
-      LOGGER.info(
+      PipeLogger.log(
+          LOGGER::info,
           "Temporary unavailable exception encountered at air gap receiver, will retry locally.");
       if (System.currentTimeMillis() - startTime
           < PipeConfig.getInstance().getPipeAirGapRetryMaxMs()) {
         handleReq(req, startTime);
       }
     } else {
-      LOGGER.warn(
+      PipeLogger.log(
+          LOGGER::warn,
           "Pipe air gap receiver {}: Handle data failed, status: {}, req: {}",
           receiverId,
           resp.getStatus(),
