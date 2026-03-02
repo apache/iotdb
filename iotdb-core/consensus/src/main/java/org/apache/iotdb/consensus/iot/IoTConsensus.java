@@ -98,6 +98,13 @@ public class IoTConsensus implements IConsensus {
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
   private IoTConsensusConfig config;
+
+  /**
+   * Optional callback invoked after a new local peer is created via {@link #createLocalPeer}. Used
+   * by the subscription system to auto-bind prefetching queues to new DataRegions.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
+
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -298,6 +305,16 @@ public class IoTConsensus implements IConsensus {
     KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
+    }
+
+    // Notify subscription system about new peer creation for auto-binding
+    final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onNewPeerCreated;
+    if (callback != null) {
+      try {
+        callback.accept(groupId, stateMachineMap.get(groupId));
+      } catch (final Exception e) {
+        logger.warn("onNewPeerCreated callback failed for group {}", groupId, e);
+      }
     }
   }
 
