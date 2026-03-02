@@ -23,19 +23,24 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
@@ -160,7 +165,9 @@ public class WindowFunctionOptimizationTest {
         planTester.getFragmentPlan(0), output((collect(exchange(), exchange(), exchange()))));
     assertPlan(planTester.getFragmentPlan(1), topKRanking(tableScan));
     assertPlan(planTester.getFragmentPlan(2), topKRanking(tableScan));
-    assertPlan(planTester.getFragmentPlan(3), topKRanking(sort(tableScan)));
+    assertPlan(planTester.getFragmentPlan(3), topKRanking(mergeSort(exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(4), sort(tableScan));
+    assertPlan(planTester.getFragmentPlan(5), sort(tableScan));
   }
 
   @Test
@@ -342,5 +349,252 @@ public class WindowFunctionOptimizationTest {
       assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
       assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
     }
+  }
+
+  @Test
+  public void testTopKRankingEliminatedWhenRankSymbolNotOutput() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT tag1, s1 FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY time) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: OutputNode -> ProjectNode -> TopKRankingNode -> GroupNode -> TableScanNode
+    assertPlan(logicalQueryPlan, output(project(topKRanking(group(tableScan)))));
+
+    // Distributed plan: TopKRankingNode eliminated since rn is not in the output.
+    // Limit is pushed to DeviceTableScanNode.
+    // Fragment 0: OutputNode -> CollectNode -> ExchangeNodes
+    assertPlan(
+        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+
+    // Worker fragments: ProjectNode -> DeviceTableScanNode (no TopKRankingNode)
+    for (int i = 1; i <= 2; i++) {
+      PlanNode fragmentRoot = planTester.getFragmentPlan(i);
+      assertFalse(
+          "Fragment " + i + " root should NOT be TopKRankingNode",
+          fragmentRoot instanceof TopKRankingNode);
+      assertPlan(planTester.getFragmentPlan(i), project(tableScan));
+
+      assertTrue(
+          "Fragment " + i + " root should be ProjectNode",
+          fragmentRoot instanceof ProjectNode);
+      PlanNode scanChild = fragmentRoot.getChildren().get(0);
+      assertTrue(
+          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
+      assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
+      assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
+    }
+  }
+
+  @Test
+  public void testTopKRankingKeptWhenRankSymbolIsOutput() {
+    PlanTester planTester = new PlanTester();
+
+    // Same query but SELECT * includes rn - TopKRankingNode should NOT be eliminated
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY time) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    assertPlan(logicalQueryPlan, output(topKRanking(group(tableScan))));
+
+    // Worker fragments should still have TopKRankingNode
+    for (int i = 1; i <= 2; i++) {
+      PlanNode fragmentRoot = planTester.getFragmentPlan(i);
+      assertTrue(
+          "Fragment " + i + " root should be TopKRankingNode",
+          fragmentRoot instanceof TopKRankingNode);
+    }
+  }
+
+  @Test
+  public void testRowNumberEliminatedWhenRowNumberNotOutput() {
+    PlanTester planTester = new PlanTester();
+
+    // RowNumber with all IDs as partition - row number not in output
+    String sql =
+        "SELECT tag1, s1 FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3) as rn FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: row_number is pruned at the window level by PruneWindowColumns
+    // since rn is not referenced anywhere. The plan should not contain RowNumberNode.
+    assertPlan(logicalQueryPlan, output(project(group(tableScan))));
+  }
+
+  @Test
+  public void testRowNumberPushDownWhenRowNumberIsOutput() {
+    PlanTester planTester = new PlanTester();
+
+    // RowNumber with all IDs as partition and rn IS referenced in output
+    String sql =
+        "SELECT tag1, s1, rn FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3) as rn FROM table1)";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: OutputNode -> ProjectNode -> RowNumberNode -> GroupNode -> TableScanNode
+    // (project is inlined since it selects a subset including rn)
+    assertPlan(logicalQueryPlan, output(project(rowNumber(group(tableScan)))));
+
+    // RowNumberNode is pushed down to each partition (not eliminated, since rn IS in the output)
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(1), project(rowNumber(tableScan)));
+    assertPlan(planTester.getFragmentPlan(2), project(rowNumber(tableScan)));
+  }
+
+  @Test
+  public void testRowNumberWithMaxCountEliminatedWhenRowNumberNotOutput() {
+    PlanTester planTester = new PlanTester();
+
+    // rn <= 2 pushes the limit into RowNumberNode (maxRowCountPerPartition=2), and since rn is
+    // not in the outer SELECT, the RowNumberNode is eliminated in the distributed plan.
+    String sql =
+        "SELECT tag1, s1 FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: PushFilterIntoRowNumber absorbs rn<=2, leaving RowNumberNode with maxRowCount=2
+    // No filter remains above RowNumberNode.
+    assertPlan(logicalQueryPlan, output(project(rowNumber(group(tableScan)))));
+
+    // Distributed plan: RowNumberNode eliminated since rn is not in the output.
+    // Limit (maxRowCountPerPartition=2) is pushed to each DeviceTableScanNode.
+    assertPlan(
+        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+
+    // Worker fragments: ProjectNode -> DeviceTableScanNode (no RowNumberNode)
+    for (int i = 1; i <= 2; i++) {
+      PlanNode fragmentRoot = planTester.getFragmentPlan(i);
+      assertFalse(
+          "Fragment " + i + " root should NOT be RowNumberNode",
+          fragmentRoot instanceof RowNumberNode);
+      assertPlan(planTester.getFragmentPlan(i), project(tableScan));
+
+      assertTrue(
+          "Fragment " + i + " root should be ProjectNode",
+          fragmentRoot instanceof ProjectNode);
+      PlanNode scanChild = fragmentRoot.getChildren().get(0);
+      assertTrue(
+          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
+      assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
+      assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
+    }
+  }
+
+  @Test
+  public void testRowNumberWithMaxCountKeptWhenRowNumberIsOutput() {
+    PlanTester planTester = new PlanTester();
+
+    // Same query but SELECT * includes rn - RowNumberNode should NOT be eliminated
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3) as rn FROM table1) WHERE rn <= 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Logical plan: RowNumberNode with maxRowCount=2 (filter absorbed), no outer project removing rn
+    assertPlan(logicalQueryPlan, output(rowNumber(group(tableScan))));
+
+    // Worker fragments should still have RowNumberNode since rn IS in the output
+    for (int i = 1; i <= 2; i++) {
+      PlanNode fragmentRoot = planTester.getFragmentPlan(i);
+      assertTrue(
+          "Fragment " + i + " root should be RowNumberNode",
+          fragmentRoot instanceof RowNumberNode);
+    }
+  }
+
+  @Test
+  public void testTopKRankingWithEqualPredicate() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn = 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // TopKRanking created with maxRanking=2, but filter(rn = 2) is kept because
+    // ranking values 1..2 do not all satisfy rn = 2
+    /*
+     *   └──OutputNode
+     *         └──FilterNode(rn = 2)
+     *              └──TopKRankingNode
+     *                   └──SortNode
+     *                        └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(filter(topKRanking(sort(tableScan)))));
+  }
+
+  @Test
+  public void testTopKRankingWithEqualPredicateAllPartitions() {
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn = 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // TopKRanking created with maxRanking=2, filter(rn = 2) is kept
+    /*
+     *   └──OutputNode
+     *         └──FilterNode(rn = 2)
+     *              └──TopKRankingNode
+     *                   └──GroupNode
+     *                        └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(filter(topKRanking(group(tableScan)))));
+
+    // Distributed plan: TopKRanking and filter pushed down
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(1), filter(topKRanking(tableScan)));
+    assertPlan(planTester.getFragmentPlan(2), filter(topKRanking(tableScan)));
+  }
+
+  @Test
+  public void testTopKRankingWithLessThanPredicate() {
+    PlanTester planTester = new PlanTester();
+
+    // rn < 3 is equivalent to rn <= 2, so the filter should be fully absorbed
+    String sql =
+        "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY tag1 ORDER BY s1) as rn FROM table1) WHERE rn < 3";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Filter absorbed into TopKRankingNode (maxRanking=2)
+    /*
+     *   └──OutputNode
+     *         └──TopKRankingNode
+     *              └──SortNode
+     *                   └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(topKRanking(sort(tableScan))));
+  }
+
+  @Test
+  public void testTopKRankingWithEqualPredicateColumnPruned() {
+    PlanTester planTester = new PlanTester();
+
+    // rn = 2 with rn not in output: filter kept, rn pruned by project
+    String sql =
+        "SELECT tag1, s1 FROM (SELECT *, row_number() OVER (PARTITION BY tag1, tag2, tag3 ORDER BY s1) as rn FROM table1) WHERE rn = 2";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    PlanMatchPattern tableScan = tableScan("testdb.table1");
+
+    // Filter(rn = 2) kept, project prunes rn from output
+    /*
+     *   └──OutputNode
+     *         └──ProjectNode
+     *              └──FilterNode(rn = 2)
+     *                └──ProjectNode
+     *                   └──TopKRankingNode
+     *                        └──GroupNode
+     *                             └──TableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(project(filter(project(topKRanking(group(tableScan)))))));
   }
 }
