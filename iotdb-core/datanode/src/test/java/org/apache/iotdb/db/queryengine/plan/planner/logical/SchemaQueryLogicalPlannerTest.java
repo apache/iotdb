@@ -580,7 +580,7 @@ public class SchemaQueryLogicalPlannerTest {
           (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
-      Assert.assertTrue(showDevicesNode.isHasSgCol());
+      Assert.assertTrue(showDevicesNode.isHasDbCol());
       Assert.assertEquals(30, showDevicesNode.getLimit());
       Assert.assertEquals(0, showDevicesNode.getOffset());
       Assert.assertTrue(showDevicesNode.isHasLimit());
@@ -613,7 +613,7 @@ public class SchemaQueryLogicalPlannerTest {
           (DevicesSchemaScanNode) metaMergeNode.getChildren().get(0);
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
-      Assert.assertFalse(showDevicesNode.isHasSgCol());
+      Assert.assertFalse(showDevicesNode.isHasDbCol());
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS, showDevicesNode.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(
@@ -630,7 +630,7 @@ public class SchemaQueryLogicalPlannerTest {
           (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showDevicesNode2);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
-      Assert.assertFalse(showDevicesNode2.isHasSgCol());
+      Assert.assertFalse(showDevicesNode2.isHasDbCol());
       Assert.assertEquals(
           SchemaFilterType.PATH_CONTAINS, showDevicesNode2.getSchemaFilter().getSchemaFilterType());
       Assert.assertEquals(

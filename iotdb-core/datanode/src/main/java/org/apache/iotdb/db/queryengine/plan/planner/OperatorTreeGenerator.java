@@ -935,7 +935,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             node.isPrefixPath(),
             node.getLimit(),
             node.getOffset(),
-            node.isHasSgCol(),
+            node.isHasDbCol(),
             node.getSchemaFilter(),
             node.getScope()));
   }

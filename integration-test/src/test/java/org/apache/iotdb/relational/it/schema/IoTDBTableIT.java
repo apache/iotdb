@@ -762,8 +762,8 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.another");
       statement.execute("create database root.`重庆`.`1`.b");
-      statement.execute("create timeSeries root.`重庆`.`1`.b.c.S1 int32");
-      statement.execute("create timeSeries root.`重庆`.`1`.b.c.s2 string");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.S1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.s2 string");
       statement.execute("create timeSeries root.`重庆`.`1`.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
@@ -789,7 +789,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.`1`.b.d.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`1`.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -814,13 +814,13 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.`1`.b.d.s1");
+      statement.execute("drop timeSeries root.`重庆`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
-      statement.execute("set schema template t1 to root.`重庆`.`1`.b.d");
-      statement.execute("create timeSeries root.`重庆`.`1`.b.c.f.g.h.S1 int32");
+      statement.execute("set schema template t1 to root.`重庆`.`1`.b.`1`");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select S1, s2 from root.`重庆`.`1`.b.c");
+      statement.execute("select S1, s2 from root.`重庆`.`1`.b.`2`");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -937,11 +937,15 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
+          new HashSet<>(Arrays.asList("b,`2`,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
           Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 = '`2`'"),
+          "tag1,tag2,",
+          Collections.singleton("b,`2`,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
