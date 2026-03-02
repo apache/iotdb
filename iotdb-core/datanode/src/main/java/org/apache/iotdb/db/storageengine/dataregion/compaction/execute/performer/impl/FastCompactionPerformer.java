@@ -193,13 +193,6 @@ public class FastCompactionPerformer
           ttlDeletion =
               CompactionUtils.convertTtlToDeletion(
                   device, deviceIterator.getTimeLowerBoundForCurrentDevice());
-          for (TsFileResource sourceFile : sortedSourceFiles) {
-            modificationCache
-                .computeIfAbsent(
-                    sourceFile.getTsFile().getName(),
-                    k -> PatternTreeMapFactory.getModsPatternTreeMap())
-                .append(ttlDeletion.keyOfPatternTree(), ttlDeletion);
-          }
         }
         compactionWriter.setTTLDeletion(ttlDeletion);
 
