@@ -488,7 +488,9 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
   private void buildOriginalToFinalMap() {
     originalToFinalTableNames = new HashMap<>(finalToOriginalTableNames.size());
     for (Entry<String, String> entry : finalToOriginalTableNames.entrySet()) {
-      originalToFinalTableNames.put(entry.getValue(), entry.getKey());
+      if (!entry.getValue().isEmpty()) {
+        originalToFinalTableNames.put(entry.getValue(), entry.getKey());
+      }
     }
 
     originalToFinalColumnNames = new HashMap<>(finalToOriginalColumnNames.size());
@@ -499,9 +501,11 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
       for (Entry<String, String> columnEntry : columnMap.entrySet()) {
         String finalColumnName = columnEntry.getKey();
         String originalColumnName = getOriginalColumnName(originalTableName, finalColumnName);
-        originalToFinalColumnNames
-            .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
-            .put(originalColumnName, finalColumnName);
+        if (!originalColumnName.isEmpty()) {
+          originalToFinalColumnNames
+              .computeIfAbsent(originalTableName, t -> new LinkedHashMap<>())
+              .put(originalColumnName, finalColumnName);
+        }
       }
     }
   }

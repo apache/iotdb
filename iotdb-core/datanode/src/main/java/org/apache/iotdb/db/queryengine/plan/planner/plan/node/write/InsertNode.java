@@ -463,7 +463,10 @@ public abstract class InsertNode extends SearchNode {
       if (measurement != null) {
         int columnIndex = tableSchema.findColumnIndex(measurement);
         if (columnIndex == -1) {
-          return false;
+          if (columnCategories[i] != TsTableColumnCategory.ATTRIBUTE) {
+            return false;
+          }
+          continue;
         }
         ColumnCategory columnCategory = tableSchema.getColumnTypes().get(columnIndex);
         if (columnCategory != columnCategories[i].toTsFileColumnType()) {

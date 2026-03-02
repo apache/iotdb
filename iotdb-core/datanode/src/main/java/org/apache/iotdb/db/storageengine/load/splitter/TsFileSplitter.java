@@ -78,7 +78,6 @@ public class TsFileSplitter {
   private boolean isAligned;
   private int timeChunkIndexOfCurrentValueColumn = 0;
   private Set<TTimePartitionSlot> timePartitionSlots = new HashSet<>();
-  private EvolvedSchema evolvedSchema;
 
   // Maintain the number of times the chunk of each measurement appears.
   private Map<String, Integer> valueColumn2TimeChunkIndex = new HashMap<>();
@@ -93,7 +92,6 @@ public class TsFileSplitter {
     this.tsFile = tsFile;
     this.consumer = consumer;
     if (evolvedSchema != null) {
-      this.evolvedSchema = evolvedSchema;
       this.consumer = new SchemaEvolutionTsFileDataConsumer(this.consumer, evolvedSchema);
     }
   }

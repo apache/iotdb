@@ -2389,7 +2389,8 @@ public class IoTDBTableIT {
                     successfulInserts.incrementAndGet();
                   } catch (final SQLException ex) {
                     if (!ex.getMessage().contains("cannot be resolved")
-                        && !ex.getMessage().contains("Unknown column")) {
+                        && !ex.getMessage().contains("Unknown column")
+                        && !ex.getMessage().contains("is inconsistent")) {
                       err.compareAndSet(null, ex);
                     }
                   }

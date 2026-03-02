@@ -79,6 +79,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
@@ -99,6 +101,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(100);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(2);
+    performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
   }
 
   @After
@@ -4708,6 +4711,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -5594,6 +5598,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -5998,6 +6003,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
     performer.perform();
     Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
     Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -6757,6 +6763,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
       ICompactionPerformer performer =
           new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
       performer.setSummary(new CompactionTaskSummary());
+      performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
       performer.perform();
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
@@ -6898,8 +6905,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
       ICompactionPerformer performer =
           new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+      performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
       performer.setSummary(new CompactionTaskSummary());
       performer.perform();
+      performer.setMaxTsFileVersionAndMinResource(new Pair<>(Long.MIN_VALUE, null));
       Assert.assertEquals(0, FileReaderManager.getInstance().getClosedFileReaderMap().size());
       Assert.assertEquals(0, FileReaderManager.getInstance().getUnclosedFileReaderMap().size());
       CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
@@ -7253,6 +7262,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
 
     // target(version=1):

@@ -30,6 +30,9 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1814,6 +1817,15 @@ public class DataRegionTest {
   @Test
   public void testSchemaEvolution()
       throws WriteProcessException, QueryProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
       new MeasurementSchema("tag1", TSDataType.STRING),
@@ -1823,7 +1835,7 @@ public class DataRegionTest {
     RelationalInsertRowNode insertRowNode =
         new RelationalInsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"table1"}),
+            new PartialPath(new String[] {tsTable.getTableName()}),
             true,
             measurements,
             new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
@@ -1837,10 +1849,20 @@ public class DataRegionTest {
     dataRegion.insert(insertRowNode);
 
     // table1 -> table2
-    dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(new TableRename(tsTable.getTableName(), "sevo2")));
+
+    tsTable = new TsTable("sevo2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
 
     // cannot query with the old name
-    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"table1", "tag1"});
+    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"sevo", "tag1"});
     List<IFullPath> fullPaths =
         Arrays.asList(
             new AlignedFullPath(
@@ -1856,7 +1878,7 @@ public class DataRegionTest {
     assertTrue(dataSource.getSeqResources().isEmpty());
 
     // can query with the new name
-    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[] {"table2", "tag1"});
+    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[] {"sevo2", "tag1"});
     fullPaths =
         Arrays.asList(
             new AlignedFullPath(
@@ -1871,16 +1893,20 @@ public class DataRegionTest {
             Long.MAX_VALUE);
     assertEquals(1, dataSource.getSeqResources().size());
 
+    tsTable = new TsTable("sevo");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null, null);
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
 
     // write again with table1
     insertRowNode =
         new RelationalInsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"table1"}),
+            new PartialPath(new String[] {"sevo"}),
             true,
             measurements,
             new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
@@ -1926,6 +1952,15 @@ public class DataRegionTest {
 
   @Test
   public void testSchemaEvolutionWithPartialDeletion() throws WriteProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo_with_partial_deletion");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
       new MeasurementSchema("tag1", TSDataType.STRING),
@@ -1935,7 +1970,7 @@ public class DataRegionTest {
     RelationalInsertRowNode insertRowNode =
         new RelationalInsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"table1"}),
+            new PartialPath(new String[] {tsTable.getTableName()}),
             true,
             measurements,
             new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
@@ -1951,14 +1986,28 @@ public class DataRegionTest {
     dataRegion.insert(insertRowNode);
 
     // table1 -> table2
-    dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(
+            new TableRename("sevo_with_partial_deletion", "sevo_with_partial_deletion2")));
     // s1 -> s3
     dataRegion.applySchemaEvolution(
-        Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
+        Collections.singletonList(
+            new ColumnRename("sevo_with_partial_deletion2", "s1", "s3", null)));
+
+    DataNodeTableCache.getInstance().invalid(dataRegion.getDatabaseName());
+    tsTable = new TsTable("sevo_with_partial_deletion2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s3", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
 
     // delete with table2
     TableDeletionEntry tableDeletionEntry =
-        new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 15));
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_partial_deletion2"), new TimeRange(0, 15));
     RelationalDeleteDataNode relationalDeleteDataNode =
         new RelationalDeleteDataNode(
             new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
@@ -1966,7 +2015,8 @@ public class DataRegionTest {
     // delete with s3
     tableDeletionEntry =
         new TableDeletionEntry(
-            new DeletionPredicate("table2", new NOP(), Collections.singletonList("s3")),
+            new DeletionPredicate(
+                "sevo_with_partial_deletion2", new NOP(), Collections.singletonList("s3")),
             new TimeRange(0, 15));
     relationalDeleteDataNode =
         new RelationalDeleteDataNode(
@@ -1974,7 +2024,8 @@ public class DataRegionTest {
     dataRegion.deleteByTable(relationalDeleteDataNode);
     // delete with table1
     tableDeletionEntry =
-        new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 15));
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_partial_deletion"), new TimeRange(0, 15));
     relationalDeleteDataNode =
         new RelationalDeleteDataNode(
             new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
@@ -1982,7 +2033,8 @@ public class DataRegionTest {
     // delete with s1
     tableDeletionEntry =
         new TableDeletionEntry(
-            new DeletionPredicate("table2", new NOP(), Collections.singletonList("s1")),
+            new DeletionPredicate(
+                "sevo_with_partial_deletion2", new NOP(), Collections.singletonList("s1")),
             new TimeRange(0, 15));
     relationalDeleteDataNode =
         new RelationalDeleteDataNode(
@@ -1994,7 +2046,7 @@ public class DataRegionTest {
     ModIterator modEntryIterator = sequenceFileList.get(0).getModEntryIterator();
     ModEntry next = modEntryIterator.next();
     // the table2 modification should be rewritten to table1
-    assertEquals("table1", ((TableDeletionEntry) next).getTableName());
+    assertEquals("sevo_with_partial_deletion", ((TableDeletionEntry) next).getTableName());
     next = modEntryIterator.next();
     // the s3 modification should be rewritten to s1
     assertEquals(
@@ -2011,6 +2063,15 @@ public class DataRegionTest {
 
   @Test
   public void testSchemaEvolutionWithFullDeletion() throws WriteProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo_with_full_deletion");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
     String[] measurements = {"tag1", "s1", "s2"};
     MeasurementSchema[] measurementSchemas = {
       new MeasurementSchema("tag1", TSDataType.STRING),
@@ -2020,7 +2081,7 @@ public class DataRegionTest {
     RelationalInsertRowNode insertRowNode =
         new RelationalInsertRowNode(
             new PlanNodeId(""),
-            new PartialPath(new String[] {"table1"}),
+            new PartialPath(new String[] {"sevo_with_full_deletion"}),
             true,
             measurements,
             new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
@@ -2036,14 +2097,26 @@ public class DataRegionTest {
     dataRegion.insert(insertRowNode);
 
     // table1 -> table2
-    dataRegion.applySchemaEvolution(Collections.singletonList(new TableRename("table1", "table2")));
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(
+            new TableRename("sevo_with_full_deletion", "sevo_with_full_deletion2")));
     // s1 -> s3
     dataRegion.applySchemaEvolution(
-        Collections.singletonList(new ColumnRename("table2", "s1", "s3", null)));
+        Collections.singletonList(new ColumnRename("sevo_with_full_deletion2", "s1", "s3", null)));
+
+    tsTable = new TsTable("sevo_with_full_deletion2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s3", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
 
     // delete with table1
     TableDeletionEntry tableDeletionEntry =
-        new TableDeletionEntry(new DeletionPredicate("table1"), new TimeRange(0, 30));
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_full_deletion"), new TimeRange(0, 30));
     RelationalDeleteDataNode relationalDeleteDataNode =
         new RelationalDeleteDataNode(
             new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
@@ -2056,7 +2129,8 @@ public class DataRegionTest {
 
     // delete with table2
     tableDeletionEntry =
-        new TableDeletionEntry(new DeletionPredicate("table2"), new TimeRange(0, 30));
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_full_deletion2"), new TimeRange(0, 30));
     relationalDeleteDataNode =
         new RelationalDeleteDataNode(
             new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
