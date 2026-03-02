@@ -303,10 +303,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 thisNode);
         DNAuditLogger.getInstance().log(fields, () -> logMessage);
       }
-
-      // PipeConsensus (DataRegionConsensus) is already started in setUp() to ensure consensus
-      // groups are available before Internal RPC Service and Pipe Agent recovery.
-
     } catch (Throwable e) {
       int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
@@ -754,11 +750,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
    *
    * @throws StartupException if start up failed.
    */
-  private void active() throws StartupException {
+  private void active() throws StartupException, IOException {
     try {
       processPid();
       setUp();
-    } catch (StartupException e) {
+    } catch (StartupException | IOException e) {
       logger.error("Meet error while starting up.", e);
       throw e;
     }
@@ -792,7 +788,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     }
   }
 
-  private void setUp() throws StartupException {
+  private void setUp() throws StartupException, IOException {
     logger.info("Setting up IoTDB DataNode...");
     registerManager.register(new JMXService());
     JMXService.registerMBean(getInstance(), mbeanName);
@@ -852,13 +848,22 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     // This ensures consensus groups are registered so that deleteLocalPeer() can succeed when
     // DELETE_OLD_REGION_PEER requests arrive during the pipe recovery phase.
     if (isUsingPipeConsensus()) {
-      try {
-        DataRegionConsensusImpl.getInstance().start();
-        dataRegionConsensusStarted = true;
-        logger.info("DataRegion PipeConsensus started in setUp phase.");
-      } catch (IOException e) {
-        throw new StartupException(e);
+      long dataRegionStartTime = System.currentTimeMillis();
+      while (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          logger.warn("IoTDB DataNode failed to set up.", e);
+          Thread.currentThread().interrupt();
+          return;
+        }
       }
+      DataRegionConsensusImpl.getInstance().start();
+      long dataRegionEndTime = System.currentTimeMillis();
+      logger.info(
+          "DataRegion consensus start successfully, which takes {} ms.",
+          (dataRegionEndTime - dataRegionStartTime));
+      dataRegionConsensusStarted = true;
     }
 
     // Start Internal RPC Service before pipe agent recovery, so that the DataNode can accept
@@ -875,7 +880,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   /** Set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-
     // Internal RPC Service is already started in setUp() before pipe agent recovery,
     // so we only need to start client RPC and protocols here.
 
