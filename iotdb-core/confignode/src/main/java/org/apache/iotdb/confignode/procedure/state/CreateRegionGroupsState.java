@@ -37,7 +37,6 @@ public enum CreateRegionGroupsState {
 
   CREATE_REGION_GROUPS_FINISH,
 
-  // Appended at the end to preserve ordinal compatibility with persisted procedures.
   // Create initial consensus pipes for IoTConsensusV2 DataRegionGroups.
   CREATE_INITIAL_CONSENSUS_PIPES
 }
