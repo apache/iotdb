@@ -59,6 +59,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_TARGET_FILES;
@@ -112,6 +114,10 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     compactionLogger.close();
     CompactionExceptionHandler.handleException(
@@ -186,6 +192,10 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
@@ -261,6 +271,10 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     for (TsFileResource resource : seqResources) {
@@ -346,6 +360,10 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();
@@ -463,6 +481,10 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();

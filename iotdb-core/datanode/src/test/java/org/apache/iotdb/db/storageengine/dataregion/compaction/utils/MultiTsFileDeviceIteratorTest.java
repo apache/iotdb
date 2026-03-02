@@ -848,6 +848,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new ReadPointCompactionPerformer(
             tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(tsFileManager.getTsFileList(true)));
     performer.perform();
 
     CompactionUtils.moveTargetFile(
@@ -1008,6 +1010,8 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
         new ReadPointCompactionPerformer(
             tsFileManager.getTsFileList(true), Collections.emptyList(), targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(tsFileManager.getTsFileList(true)));
     performer.perform();
 
     CompactionUtils.moveTargetFile(

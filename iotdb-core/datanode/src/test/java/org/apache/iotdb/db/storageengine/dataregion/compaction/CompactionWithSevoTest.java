@@ -56,6 +56,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -446,6 +448,10 @@ public class CompactionWithSevoTest extends AbstractCompactionTest {
 
     performer = compactionPerformerFunction.apply(targetResources);
     performer.setSummary(summarySupplier.get());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
 
     // target(version=1):
@@ -598,6 +604,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest {
 
     performer = compactionPerformerFunction.apply(targetResources);
     performer.setSummary(summarySupplier.get());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(seqResources));
     performer.perform();
 
     Set<IDeviceID> devices = targetResources.get(0).getDevices();
@@ -661,6 +669,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest {
 
     performer = compactionPerformerFunction.apply(targetResources);
     performer.setSummary(summarySupplier.get());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(seqResources));
     performer.perform();
 
     try (ITsFileReader tsFileReader =
@@ -718,6 +728,8 @@ public class CompactionWithSevoTest extends AbstractCompactionTest {
 
     performer = compactionPerformerFunction.apply(targetResources);
     performer.setSummary(summarySupplier.get());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(seqResources));
     performer.perform();
 
     try (ITsFileReader tsFileReader =

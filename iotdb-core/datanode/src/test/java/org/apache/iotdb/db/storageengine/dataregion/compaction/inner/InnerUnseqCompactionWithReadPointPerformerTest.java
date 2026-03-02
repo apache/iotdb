@@ -370,6 +370,8 @@ public class InnerUnseqCompactionWithReadPointPerformerTest {
                       toMergeResources,
                       Collections.singletonList(targetTsFileResource));
               performer.setSummary(new CompactionTaskSummary());
+              performer.setMaxTsFileVersionAndMinResource(
+                  TsFileResource.getMaxTsFileVersionAndMinResource(toMergeResources));
               performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource),

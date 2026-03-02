@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
@@ -479,6 +480,7 @@ public class IoTDBLoadTsFileIT {
   @SuppressWarnings({"ResultOfMethodCallIgnored", "SameParameterValue"})
   private File prepareIoTDBDirWithSevo(int lineCount) throws Exception {
     File datanodeDir = new File(TestConstant.BASE_OUTPUT_PATH, "datanode");
+    FileUtils.deleteFileOrDirectory(datanodeDir);
     File dataDir = new File(datanodeDir, "data");
     File sequenceDir = new File(dataDir, "sequence");
     File databaseDataDir = new File(sequenceDir, SchemaConfig.DATABASE_0);
