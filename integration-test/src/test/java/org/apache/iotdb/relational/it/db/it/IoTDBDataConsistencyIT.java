@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.relational.it.db.it;
 
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
@@ -45,9 +40,14 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
@@ -63,7 +63,8 @@ public class IoTDBDataConsistencyIT {
   private static final int numDNs = 3;
   private static final int numDataReplications = 2;
   //                                     device   measurement   values
-  private final Map<DataNodeWrapper, Map<String, Map<String, List<Object>>>> dataNodeData = new HashMap<>();
+  private final Map<DataNodeWrapper, Map<String, Map<String, List<Object>>>> dataNodeData =
+      new HashMap<>();
   //                device      measurement  value  #occurrences
   private final Map<String, Map<String, Map<Object, Integer>>> dataOccurrences = new HashMap<>();
   private final boolean verbose = true;
@@ -109,13 +110,16 @@ public class IoTDBDataConsistencyIT {
   private void printCollectedResult() {
     System.out.println("====================Collected Result=====================");
     dataNodeData.forEach((dn, data) -> System.out.println(dn + ": " + data));
-    dataOccurrences.forEach((deviceId, measurementMap) -> System.out.println(deviceId + ": " + measurementMap));
+    dataOccurrences.forEach(
+        (deviceId, measurementMap) -> System.out.println(deviceId + ": " + measurementMap));
   }
 
-  private void collectDataAndOccurrences(ResultSet resultSet,
+  private void collectDataAndOccurrences(
+      ResultSet resultSet,
       Map<DataNodeWrapper, Map<String, Map<String, List<Object>>>> dataNodeData,
       Map<String, Map<String, Map<Object, Integer>>> dataOccurrences,
-      DataNodeWrapper dataNodeWrapper) throws SQLException {
+      DataNodeWrapper dataNodeWrapper)
+      throws SQLException {
     ResultSetMetaData metaData = resultSet.getMetaData();
     int columnCount = metaData.getColumnCount();
     List<String> tagColumnNames = new ArrayList<>();
@@ -140,26 +144,32 @@ public class IoTDBDataConsistencyIT {
       for (String fieldColumnName : fieldColumnNames) {
         Object val = resultSet.getObject(fieldColumnName);
         Pair<Long, Object> timeValuePair = new Pair<>(time, val);
-        dataOccurrences.computeIfAbsent(deviceId.toString(), k -> new HashMap<>()).computeIfAbsent(
-            fieldColumnName, k -> new HashMap<>()).merge(timeValuePair, 1, Integer::sum);
-        dataNodeData.computeIfAbsent(dataNodeWrapper, dn -> new HashMap<>()).computeIfAbsent(
-            deviceId.toString(), k -> new HashMap<>()).computeIfAbsent(fieldColumnName, k -> new ArrayList<>()).add(timeValuePair);
+        dataOccurrences
+            .computeIfAbsent(deviceId.toString(), k -> new HashMap<>())
+            .computeIfAbsent(fieldColumnName, k -> new HashMap<>())
+            .merge(timeValuePair, 1, Integer::sum);
+        dataNodeData
+            .computeIfAbsent(dataNodeWrapper, dn -> new HashMap<>())
+            .computeIfAbsent(deviceId.toString(), k -> new HashMap<>())
+            .computeIfAbsent(fieldColumnName, k -> new ArrayList<>())
+            .add(timeValuePair);
       }
     }
   }
 
-  private void queryAndCollect(Map<DataNodeWrapper, Map<String, Map<String, List<Object>>>> dataNodeData,
+  private void queryAndCollect(
+      Map<DataNodeWrapper, Map<String, Map<String, List<Object>>>> dataNodeData,
       Map<String, Map<String, Map<Object, Integer>>> dataOccurrences,
-      BaseEnv env) throws SQLException {
+      BaseEnv env)
+      throws SQLException {
     dataNodeData.clear();
     dataOccurrences.clear();
     List<DataNodeWrapper> dataNodeWrapperList = env.getDataNodeWrapperList();
     for (DataNodeWrapper dataNodeWrapper : dataNodeWrapperList) {
       try (Connection localConnection =
-          env.getConnection(dataNodeWrapper, BaseEnv.TABLE_SQL_DIALECT);
+              env.getConnection(dataNodeWrapper, BaseEnv.TABLE_SQL_DIALECT);
           Statement localStatement = localConnection.createStatement()) {
-        ResultSet resultSet =
-            localStatement.executeQuery("SELECT LOCALLY * FROM test.t1");
+        ResultSet resultSet = localStatement.executeQuery("SELECT LOCALLY * FROM test.t1");
 
         collectDataAndOccurrences(resultSet, dataNodeData, dataOccurrences, dataNodeWrapper);
       }
@@ -169,23 +179,35 @@ public class IoTDBDataConsistencyIT {
     }
   }
 
-  private void checkConsistency(Map<String, Map<String, Map<Object, Integer>>> dataOccurrences, boolean expectEmpty) {
+  private void checkConsistency(
+      Map<String, Map<String, Map<Object, Integer>>> dataOccurrences, boolean expectEmpty) {
     if (!expectEmpty) {
       assertFalse(dataOccurrences.isEmpty());
     } else {
       assertTrue(dataOccurrences.isEmpty());
     }
-    dataOccurrences.values().forEach(measurementMap ->
-        measurementMap.values().forEach(valueMap -> valueMap.values().forEach(
-            count -> assertEquals(numDataReplications, count.intValue())
-        )));
+    dataOccurrences
+        .values()
+        .forEach(
+            measurementMap ->
+                measurementMap
+                    .values()
+                    .forEach(
+                        valueMap ->
+                            valueMap
+                                .values()
+                                .forEach(
+                                    count -> assertEquals(numDataReplications, count.intValue()))));
   }
 
   private void prepareData(Statement statement, long numTimestamp, int numDevices)
       throws SQLException {
     for (int d = 0; d < numDevices; d++) {
       for (long t = 0; t < numTimestamp; t++) {
-        statement.execute(String.format("INSERT INTO test.t1 (time, tag1, s1, s2) VALUES(%s, 'a%s', %s, %s)", t, d, t, t + 100));
+        statement.execute(
+            String.format(
+                "INSERT INTO test.t1 (time, tag1, s1, s2) VALUES(%s, 'a%s', %s, %s)",
+                t, d, t, t + 100));
       }
     }
   }
