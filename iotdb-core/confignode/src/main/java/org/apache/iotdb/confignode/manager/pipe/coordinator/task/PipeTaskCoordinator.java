@@ -85,12 +85,9 @@ public class PipeTaskCoordinator {
   /**
    * Unlock the pipe task coordinator. Calling this method will clear the pipe task info holder,
    * which means that the holder will be null after calling this method.
-   *
-   * @return {@code true} if successfully unlocked.
    */
-  public boolean unlock() {
+  public void unlock() {
     pipeTaskCoordinatorLock.unlock();
-    return true;
   }
 
   public boolean isLocked() {
