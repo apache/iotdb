@@ -123,9 +123,7 @@ public class ReplaceFilterWindowLeadWithChangePoint implements Rule<FilterNode> 
       }
       Expression offsetExpr = arguments.get(1);
       if (offsetExpr instanceof Literal) {
-        Object val =
-            ((Literal) offsetExpr)
-                .getTsValue();
+        Object val = ((Literal) offsetExpr).getTsValue();
         return val instanceof Number && ((Number) val).longValue() == 1;
       }
       return false;
@@ -155,8 +153,7 @@ public class ReplaceFilterWindowLeadWithChangePoint implements Rule<FilterNode> 
     Expression first = terms.get(0);
     Expression second = terms.get(1);
 
-    return (isNotEqualComparison(first, measurementName, nextName)
-            && isNullCheck(second, nextName))
+    return (isNotEqualComparison(first, measurementName, nextName) && isNullCheck(second, nextName))
         || (isNullCheck(first, nextName)
             && isNotEqualComparison(second, measurementName, nextName));
   }

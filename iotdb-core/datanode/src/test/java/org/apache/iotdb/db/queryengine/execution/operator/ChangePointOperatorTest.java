@@ -230,8 +230,8 @@ public class ChangePointOperatorTest {
   }
 
   /**
-   * Alternating pattern: each point differs from the previous one (1, 2, 1, 2, ...). All points
-   * are change points.
+   * Alternating pattern: each point differs from the previous one (1, 2, 1, 2, ...). All points are
+   * change points.
    */
   @Test
   public void testAlternatingValues() throws Exception {
@@ -252,9 +252,7 @@ public class ChangePointOperatorTest {
     operator.close();
   }
 
-  /**
-   * A single data point. The operator should emit exactly one change point.
-   */
+  /** A single data point. The operator should emit exactly one change point. */
   @Test
   public void testSinglePoint() throws Exception {
     prepareSeqFile(0, new int[] {99});
@@ -326,8 +324,8 @@ public class ChangePointOperatorTest {
   }
 
   /**
-   * Tests that statistics and non-statistics paths yield identical results for mixed data where some
-   * pages are uniform and others are not.
+   * Tests that statistics and non-statistics paths yield identical results for mixed data where
+   * some pages are uniform and others are not.
    *
    * <p>Page 0 (0-19): all 5 (uniform), Page 1 (20-39): values 5,6,5,6,... (non-uniform), Page 2
    * (40-59): all 6 (uniform)
@@ -375,9 +373,7 @@ public class ChangePointOperatorTest {
           resultNoStats.get(i)[0],
           resultWithStats.get(i)[0]);
       assertEquals(
-          "Mismatch at index " + i + " value",
-          resultNoStats.get(i)[1],
-          resultWithStats.get(i)[1]);
+          "Mismatch at index " + i + " value", resultNoStats.get(i)[1], resultWithStats.get(i)[1]);
     }
   }
 
@@ -437,9 +433,7 @@ public class ChangePointOperatorTest {
     assertEquals(10, result.get(0)[1]);
   }
 
-  /**
-   * Verifies isFinished() returns true after all data is consumed.
-   */
+  /** Verifies isFinished() returns true after all data is consumed. */
   @Test
   public void testIsFinished() throws Exception {
     prepareSeqFile(0, new int[] {1, 1, 2, 2, 3});
@@ -472,8 +466,7 @@ public class ChangePointOperatorTest {
         createFragmentInstanceContext(instanceId, stateMachine);
     DriverContext driverContext = new DriverContext(fragmentInstanceContext, 0);
     PlanNodeId planNodeId = new PlanNodeId("1");
-    driverContext.addOperatorContext(
-        1, planNodeId, ChangePointOperator.class.getSimpleName());
+    driverContext.addOperatorContext(1, planNodeId, ChangePointOperator.class.getSimpleName());
 
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(allSensors);
@@ -487,16 +480,13 @@ public class ChangePointOperatorTest {
             scanOptionsBuilder.build(),
             canUseStatistics);
 
-    operator.initQueryDataSource(
-        new QueryDataSource(seqResources, unSeqResources));
+    operator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
     operator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
 
     return operator;
   }
 
-  /**
-   * Collects all (timestamp, int_value) pairs from the operator output.
-   */
+  /** Collects all (timestamp, int_value) pairs from the operator output. */
   private List<long[]> collectResults(ChangePointOperator operator) throws Exception {
     List<long[]> results = new ArrayList<>();
     while (operator.hasNext()) {
@@ -528,7 +518,8 @@ public class ChangePointOperatorTest {
     resource.setVersion(fileIndex);
 
     IMeasurementSchema schema =
-        new MeasurementSchema(MEASUREMENT, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
+        new MeasurementSchema(
+            MEASUREMENT, TSDataType.INT32, TSEncoding.PLAIN, CompressionType.UNCOMPRESSED);
 
     if (!file.getParentFile().exists()) {
       Assert.assertTrue(file.getParentFile().mkdirs());
@@ -545,10 +536,8 @@ public class ChangePointOperatorTest {
       record.addTuple(new IntDataPoint(MEASUREMENT, values[i]));
       writer.writeRecord(record);
 
-      resource.updateStartTime(
-          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID), timestamp);
-      resource.updateEndTime(
-          IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID), timestamp);
+      resource.updateStartTime(IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID), timestamp);
+      resource.updateEndTime(IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID), timestamp);
 
       if ((i + 1) % FLUSH_INTERVAL == 0) {
         writer.flush();

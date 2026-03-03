@@ -56,6 +56,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollect
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
@@ -101,7 +102,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
@@ -187,6 +187,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -209,7 +210,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
