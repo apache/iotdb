@@ -203,7 +203,7 @@ public class ConsensusSubscriptionCommitManager {
    * @param topicName the topic name
    */
   public void removeAllStatesForTopic(final String consumerGroupId, final String topicName) {
-    final String prefix = consumerGroupId + "_" + topicName + "_";
+    final String prefix = consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR;
     final Iterator<Map.Entry<String, ConsensusSubscriptionCommitState>> it =
         commitStates.entrySet().iterator();
     while (it.hasNext()) {
@@ -228,9 +228,13 @@ public class ConsensusSubscriptionCommitManager {
 
   // ======================== Helper Methods ========================
 
+  // Use a separator that cannot appear in consumerGroupId, topicName, or regionId
+  // to prevent key collisions (e.g., "a_b" + "c" vs "a" + "b_c").
+  private static final String KEY_SEPARATOR = "##";
+
   private String generateKey(
       final String consumerGroupId, final String topicName, final String regionId) {
-    return consumerGroupId + "_" + topicName + "_" + regionId;
+    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionId;
   }
 
   private File getProgressFile(final String key) {
@@ -329,8 +333,8 @@ public class ConsensusSubscriptionCommitManager {
     private static final int OUTSTANDING_SIZE_WARN_THRESHOLD = 10000;
 
     public void recordMapping(final long commitId, final long searchIndex) {
-      commitIdToSearchIndex.put(commitId, searchIndex);
       synchronized (this) {
+        commitIdToSearchIndex.put(commitId, searchIndex);
         outstandingSearchIndices.add(searchIndex);
         final int size = outstandingSearchIndices.size();
         if (size > OUTSTANDING_SIZE_WARN_THRESHOLD && size % OUTSTANDING_SIZE_WARN_THRESHOLD == 1) {
@@ -358,16 +362,21 @@ public class ConsensusSubscriptionCommitManager {
      * @return true if successfully committed
      */
     public boolean commit(final long commitId) {
-      final Long searchIndex = commitIdToSearchIndex.remove(commitId);
-      if (searchIndex == null) {
-        LOGGER.warn("ConsensusSubscriptionCommitState: unknown commitId {} for commit", commitId);
-        return false;
-      }
-
       progress.incrementCommitIndex();
 
-      // Advance committed search index contiguously (gap-aware)
+      // Advance committed search index contiguously (gap-aware).
+      // Both remove from commitIdToSearchIndex and outstandingSearchIndices must be
+      // inside the same synchronized block to prevent a race with recordMapping():
+      //   recordMapping: put(commitId, si) -> add(si)
+      //   commit:        remove(commitId) -> remove(si)
+      // Without atomicity, commit could remove from map between put and add,
+      // leaving si permanently in outstandingSearchIndices (WAL leak).
       synchronized (this) {
+        final Long searchIndex = commitIdToSearchIndex.remove(commitId);
+        if (searchIndex == null) {
+          LOGGER.warn("ConsensusSubscriptionCommitState: unknown commitId {} for commit", commitId);
+          return false;
+        }
         outstandingSearchIndices.remove(searchIndex);
         if (searchIndex > maxCommittedSearchIndex) {
           maxCommittedSearchIndex = searchIndex;

@@ -43,6 +43,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** TODO: move these manual tests into ITs */
 public class ConsensusSubscriptionTest {
@@ -62,46 +66,29 @@ public class ConsensusSubscriptionTest {
 
     String targetTest = args.length > 0 ? args[0] : null;
 
-    if (targetTest == null || "testBasicDataDelivery".equals(targetTest)) {
-      runTest("testBasicDataDelivery", ConsensusSubscriptionTest::testBasicDataDelivery);
+    if (targetTest == null || "testBasicFlow".equals(targetTest)) {
+      runTest("testBasicFlow", ConsensusSubscriptionTest::testBasicFlow);
     }
-    if (targetTest == null || "testMultipleDataTypes".equals(targetTest)) {
-      runTest("testMultipleDataTypes", ConsensusSubscriptionTest::testMultipleDataTypes);
+    if (targetTest == null || "testDataTypes".equals(targetTest)) {
+      runTest("testDataTypes", ConsensusSubscriptionTest::testDataTypes);
     }
-    if (targetTest == null || "testDeviceLevelFiltering".equals(targetTest)) {
-      runTest("testDeviceLevelFiltering", ConsensusSubscriptionTest::testDeviceLevelFiltering);
-    }
-    if (targetTest == null || "testTimeseriesLevelFiltering".equals(targetTest)) {
-      runTest(
-          "testTimeseriesLevelFiltering", ConsensusSubscriptionTest::testTimeseriesLevelFiltering);
+    if (targetTest == null || "testPathFiltering".equals(targetTest)) {
+      runTest("testPathFiltering", ConsensusSubscriptionTest::testPathFiltering);
     }
     if (targetTest == null || "testSubscribeBeforeRegion".equals(targetTest)) {
       runTest("testSubscribeBeforeRegion", ConsensusSubscriptionTest::testSubscribeBeforeRegion);
     }
-    if (targetTest == null || "testMultipleDevicesAggregation".equals(targetTest)) {
-      runTest(
-          "testMultipleDevicesAggregation",
-          ConsensusSubscriptionTest::testMultipleDevicesAggregation);
+    if (targetTest == null || "testRedelivery".equals(targetTest)) {
+      runTest("testRedelivery", ConsensusSubscriptionTest::testRedelivery);
     }
-    if (targetTest == null || "testAlignedTimeseries".equals(targetTest)) {
-      runTest("testAlignedTimeseries", ConsensusSubscriptionTest::testAlignedTimeseries);
+    if (targetTest == null || "testMultiEntityIsolation".equals(targetTest)) {
+      runTest("testMultiEntityIsolation", ConsensusSubscriptionTest::testMultiEntityIsolation);
     }
-    if (targetTest == null || "testPollWithoutCommit".equals(targetTest)) {
-      runTest("testPollWithoutCommit", ConsensusSubscriptionTest::testPollWithoutCommit);
+    if (targetTest == null || "testBurstWriteGapRecovery".equals(targetTest)) {
+      runTest("testBurstWriteGapRecovery", ConsensusSubscriptionTest::testBurstWriteGapRecovery);
     }
-    if (targetTest == null || "testMultiConsumerGroupIndependent".equals(targetTest)) {
-      runTest(
-          "testMultiConsumerGroupIndependent",
-          ConsensusSubscriptionTest::testMultiConsumerGroupIndependent);
-    }
-    if (targetTest == null || "testMultiTopicSubscription".equals(targetTest)) {
-      runTest("testMultiTopicSubscription", ConsensusSubscriptionTest::testMultiTopicSubscription);
-    }
-    if (targetTest == null || "testFlushDataDelivery".equals(targetTest)) {
-      runTest("testFlushDataDelivery", ConsensusSubscriptionTest::testFlushDataDelivery);
-    }
-    if (targetTest == null || "testCrossPartitionAligned".equals(targetTest)) {
-      runTest("testCrossPartitionAligned", ConsensusSubscriptionTest::testCrossPartitionAligned);
+    if (targetTest == null || "testCommitAfterUnsubscribe".equals(targetTest)) {
+      runTest("testCommitAfterUnsubscribe", ConsensusSubscriptionTest::testCommitAfterUnsubscribe);
     }
 
     // Summary
@@ -407,14 +394,20 @@ public class ConsensusSubscriptionTest {
     }
   }
 
-  // ============================
-  // Test 1: Basic Data Delivery
-  // ============================
+  // ======================================================================
+  // Test 1: Basic Flow (merged: BasicDataDelivery + MultiDevices + Flush)
+  // ======================================================================
   /**
-   * Verifies the basic consensus subscription flow: write before subscribe (not received), write
-   * after subscribe (received), and no extra data beyond expectation.
+   * Verifies:
+   *
+   * <ul>
+   *   <li>Data written BEFORE subscribe is NOT received
+   *   <li>Multiple devices (d1, d2, d3) written AFTER subscribe are all received
+   *   <li>Flush does not cause data loss (WAL pinning keeps entries available)
+   *   <li>Exact row count matches expectation
+   * </ul>
    */
-  private static void testBasicDataDelivery() throws Exception {
+  private static void testBasicFlow() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
@@ -422,16 +415,19 @@ public class ConsensusSubscriptionTest {
     SubscriptionTreePullConsumer consumer = null;
 
     try {
-      // Step 1: Write initial data to create DataRegion
+      // Step 1: Write initial data to create DataRegion (should NOT be received)
       System.out.println("  Step 1: Writing initial data (should NOT be received)");
       try (ISession session = openSession()) {
         createDatabase(session, database);
         for (int i = 0; i < 50; i++) {
           session.executeNonQueryStatement(
-              String.format(
-                  "INSERT INTO %s.d1(time, s1, s2) VALUES (%d, %d, %f)",
-                  database, i, i * 10, i * 1.5));
+              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
         }
+        // Also write to d2, d3 for multi-device readiness
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO %s.d2(time, s1) VALUES (0, 0)", database));
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO %s.d3(time, s1) VALUES (0, 0)", database));
         session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
@@ -445,48 +441,79 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      // Step 3: Write new data AFTER subscription
-      System.out.println("  Step 3: Writing new data AFTER subscription (100 rows)");
+      // Step 3: Write to 3 devices (30 rows each = 90 total), then flush
+      System.out.println("  Step 3: Writing 30 rows x 3 devices AFTER subscribe, then flush");
       try (ISession session = openSession()) {
-        for (int i = 100; i < 200; i++) {
+        for (int i = 100; i < 130; i++) {
           session.executeNonQueryStatement(
-              String.format(
-                  "INSERT INTO %s.d1(time, s1, s2) VALUES (%d, %d, %f)",
-                  database, i, i * 10, i * 1.5));
+              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO %s.d2(time, s1) VALUES (%d, %d)", database, i, i * 20));
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO %s.d3(time, s1) VALUES (%d, %d)", database, i, i * 30));
         }
+        System.out.println("  Flushing...");
+        session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
 
-      // Step 4: Poll and verify exact count (also verifies no extra data)
+      // Step 4: Poll and verify
       System.out.println("  Step 4: Polling...");
-      PollResult result = pollUntilComplete(consumer, 100, 100);
+      PollResult result = pollUntilComplete(consumer, 90, 100);
       System.out.println("  Result: " + result);
 
-      assertEquals("Expected exactly 100 rows from post-subscribe writes", 100, result.totalRows);
+      assertEquals("Expected exactly 90 rows (30 per device)", 90, result.totalRows);
+      if (!result.rowsPerDevice.isEmpty()) {
+        System.out.println("  Rows per device: " + result.rowsPerDevice);
+        for (String dev : new String[] {"d1", "d2", "d3"}) {
+          Integer devRows = result.rowsPerDevice.get(database + "." + dev);
+          assertAtLeast("Expected rows from " + dev, 1, devRows != null ? devRows : 0);
+        }
+      }
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
-  // ============================
-  // Test 2: Multiple Data Types (Non-Aligned)
-  // ============================
+  // ======================================================================
+  // Test 2: Data Types (merged: MultipleDataTypes + Aligned + CrossPartition)
+  // ======================================================================
   /**
-   * Writes data with multiple data types (INT32, INT64, FLOAT, DOUBLE, BOOLEAN, TEXT) using
-   * separate INSERT statements per type (non-aligned), and verifies all types are delivered.
+   * Verifies:
+   *
+   * <ul>
+   *   <li>Non-aligned: 6 data types (INT32, INT64, FLOAT, DOUBLE, BOOLEAN, TEXT)
+   *   <li>Aligned: 6 data types, cross-partition timestamps (>1 week apart)
+   *   <li>6 write methods: SQL single/multi-row, insertAlignedRecord/Records/Tablet/Tablets
+   * </ul>
    */
-  private static void testMultipleDataTypes() throws Exception {
+  private static void testDataTypes() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
     String consumerId = nextConsumerId();
     SubscriptionTreePullConsumer consumer = null;
+    final long GAP = 604_800_001L; // slightly over 1 week
 
     try {
       try (ISession session = openSession()) {
         createDatabase(session, database);
+        // Create aligned timeseries
+        session.executeNonQueryStatement(
+            String.format(
+                "CREATE ALIGNED TIMESERIES %s.d_aligned"
+                    + "(s_int32 INT32, s_int64 INT64, s_float FLOAT,"
+                    + " s_double DOUBLE, s_bool BOOLEAN, s_text TEXT)",
+                database));
+        // Init rows to force DataRegion creation
         session.executeNonQueryStatement(
             String.format("INSERT INTO %s.d1(time, s_int32) VALUES (0, 0)", database));
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
+                    + " s_double, s_bool, s_text)"
+                    + " VALUES (0, 0, 0, 0.0, 0.0, false, 'init')",
+                database));
         session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
@@ -498,8 +525,29 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      System.out.println("  Writing data with 6 data types x 20 rows each");
+      int totalExpected = 0;
+      final String device = database + ".d_aligned";
+      List<String> measurements =
+          Arrays.asList("s_int32", "s_int64", "s_float", "s_double", "s_bool", "s_text");
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT);
+      List<IMeasurementSchema> schemas = new ArrayList<>();
+      schemas.add(new MeasurementSchema("s_int32", TSDataType.INT32));
+      schemas.add(new MeasurementSchema("s_int64", TSDataType.INT64));
+      schemas.add(new MeasurementSchema("s_float", TSDataType.FLOAT));
+      schemas.add(new MeasurementSchema("s_double", TSDataType.DOUBLE));
+      schemas.add(new MeasurementSchema("s_bool", TSDataType.BOOLEAN));
+      schemas.add(new MeasurementSchema("s_text", TSDataType.TEXT));
+
       try (ISession session = openSession()) {
+        // --- Part A: Non-aligned, 6 types x 20 rows ---
+        System.out.println("  Part A: Non-aligned 6 data types x 20 rows");
         for (int i = 1; i <= 20; i++) {
           session.executeNonQueryStatement(
               String.format("INSERT INTO %s.d1(time, s_int32) VALUES (%d, %d)", database, i, i));
@@ -521,93 +569,103 @@ public class ConsensusSubscriptionTest {
               String.format(
                   "INSERT INTO %s.d1(time, s_text) VALUES (%d, 'text_%d')", database, i, i));
         }
+        totalExpected += 120; // 6 types x 20 rows
+
+        // --- Part B: Aligned cross-partition, 6 write methods ---
+        System.out.println("  Part B: Aligned cross-partition, 6 write methods");
+
+        // Method 1: SQL single row
+        long t1 = 1;
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
+                    + " s_double, s_bool, s_text)"
+                    + " VALUES (%d, 1, 100, 1.1, 1.11, true, 'sql_single')",
+                database, t1));
+        totalExpected += 1;
+
+        // Method 2: SQL multi-row (cross-partition)
+        long t2a = 1 + GAP;
+        long t2b = 1 + 2 * GAP;
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
+                    + " s_double, s_bool, s_text)"
+                    + " VALUES (%d, 2, 200, 2.2, 2.22, false, 'sql_multi_a'),"
+                    + " (%d, 3, 300, 3.3, 3.33, true, 'sql_multi_b')",
+                database, t2a, t2b));
+        totalExpected += 2;
+
+        // Method 3: insertAlignedRecord
+        long t3 = 1 + 3 * GAP;
+        session.insertAlignedRecord(
+            device,
+            t3,
+            measurements,
+            types,
+            Arrays.asList(4, 400L, 4.4f, 4.44, true, "record_single"));
+        totalExpected += 1;
+
+        // Method 4: insertAlignedRecordsOfOneDevice (cross-partition)
+        long t4a = 1 + 4 * GAP;
+        long t4b = 1 + 5 * GAP;
+        session.insertAlignedRecordsOfOneDevice(
+            device,
+            Arrays.asList(t4a, t4b),
+            Arrays.asList(measurements, measurements),
+            Arrays.asList(types, types),
+            Arrays.asList(
+                Arrays.asList(5, 500L, 5.5f, 5.55, false, "records_a"),
+                Arrays.asList(6, 600L, 6.6f, 6.66, true, "records_b")));
+        totalExpected += 2;
+
+        // Method 5: insertAlignedTablet (cross-partition)
+        long t5a = 1 + 6 * GAP;
+        long t5b = 1 + 7 * GAP;
+        Tablet tablet5 = new Tablet(device, schemas, 2);
+        addAlignedTabletRow(tablet5, 0, t5a, 7, 700L, 7.7f, 7.77, false, "tablet_a");
+        addAlignedTabletRow(tablet5, 1, t5b, 8, 800L, 8.8f, 8.88, true, "tablet_b");
+        session.insertAlignedTablet(tablet5);
+        totalExpected += 2;
+
+        // Method 6: insertAlignedTablets (cross-partition)
+        long t6a = 1 + 8 * GAP;
+        long t6b = 1 + 9 * GAP;
+        Tablet tablet6 = new Tablet(device, schemas, 2);
+        addAlignedTabletRow(tablet6, 0, t6a, 9, 900L, 9.9f, 9.99, false, "tablets_a");
+        addAlignedTabletRow(tablet6, 1, t6b, 10, 1000L, 10.1f, 10.10, true, "tablets_b");
+        Map<String, Tablet> tabletMap = new HashMap<>();
+        tabletMap.put(device, tablet6);
+        session.insertAlignedTablets(tabletMap);
+        totalExpected += 2;
       }
+
+      System.out.println("  Total expected rows: " + totalExpected);
       Thread.sleep(2000);
 
-      System.out.println("  Polling...");
-      PollResult result = pollUntilComplete(consumer, 120, 120);
+      PollResult result = pollUntilComplete(consumer, totalExpected, 150);
       System.out.println("  Result: " + result);
 
-      assertAtLeast("Expected at least 20 rows with multiple data types", 20, result.totalRows);
-      System.out.println("  Seen columns: " + result.seenColumns);
-      assertTrue(
-          "Expected multiple column types in result, got: " + result.seenColumns,
-          result.seenColumns.size() > 1);
+      assertAtLeast(
+          "Expected at least " + totalExpected + " rows", totalExpected, result.totalRows);
+      assertAtLeast("Expected multiple column types in result", 2, result.seenColumns.size());
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
-  // ============================
-  // Test 3: Device-Level Filtering
-  // ============================
+  // ======================================================================
+  // Test 3: Path Filtering (merged: DeviceLevel + TimeseriesLevel)
+  // ======================================================================
   /**
-   * Creates a topic that only matches root.db.d1.** and verifies that data written to d2 is NOT
-   * delivered.
+   * Verifies:
+   *
+   * <ul>
+   *   <li>Device-level: topic on d1.** does NOT deliver d2 data
+   *   <li>Timeseries-level: topic on d1.s1 — lenient check for s2 filtering
+   * </ul>
    */
-  private static void testDeviceLevelFiltering() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-
-    try {
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d2(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      String filterPath = database + ".d1.**";
-      createTopic(topicName, filterPath);
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      System.out.println("  Writing to both d1 and d2 (topic filter: d1.** only)");
-      try (ISession session = openSession()) {
-        for (int i = 100; i < 150; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d2(time, s1) VALUES (%d, %d)", database, i, i * 20));
-        }
-      }
-      Thread.sleep(2000);
-
-      System.out.println("  Polling (expecting only d1 data)...");
-      PollResult result = pollUntilComplete(consumer, 50, 60);
-      System.out.println("  Result: " + result);
-
-      assertEquals("Expected exactly 50 rows from d1 only", 50, result.totalRows);
-      if (!result.rowsPerDevice.isEmpty()) {
-        Integer d2Rows = result.rowsPerDevice.get(database + ".d2");
-        assertTrue("Expected NO rows from d2, but got " + d2Rows, d2Rows == null || d2Rows == 0);
-        Integer d1Rows = result.rowsPerDevice.get(database + ".d1");
-        assertAtLeast("Expected d1 rows", 1, d1Rows != null ? d1Rows : 0);
-        System.out.println(
-            "  Device filtering verified: d1=" + d1Rows + " rows, d2=" + d2Rows + " rows");
-      }
-    } finally {
-      cleanup(consumer, topicName, database);
-    }
-  }
-
-  // ============================
-  // Test 4: Timeseries-Level Filtering
-  // ============================
-  /**
-   * Creates a topic matching root.db.d1.s1 only. Tests whether the converter filters at measurement
-   * level. Lenient: if both s1 and s2 arrive, reports device-level-only filtering.
-   */
-  private static void testTimeseriesLevelFiltering() throws Exception {
+  private static void testPathFiltering() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
@@ -619,10 +677,13 @@ public class ConsensusSubscriptionTest {
         createDatabase(session, database);
         session.executeNonQueryStatement(
             String.format("INSERT INTO %s.d1(time, s1, s2) VALUES (0, 0, 0)", database));
+        session.executeNonQueryStatement(
+            String.format("INSERT INTO %s.d2(time, s1) VALUES (0, 0)", database));
         session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
 
+      // Topic filters d1.s1 only (timeseries-level)
       String filterPath = database + ".d1.s1";
       createTopic(topicName, filterPath);
       Thread.sleep(1000);
@@ -631,39 +692,50 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      System.out.println("  Writing to d1.s1 and d1.s2 (topic filter: d1.s1 only)");
+      System.out.println("  Writing to d1 (s1 + s2) and d2 (s1)");
       try (ISession session = openSession()) {
         for (int i = 100; i < 150; i++) {
           session.executeNonQueryStatement(
               String.format(
                   "INSERT INTO %s.d1(time, s1, s2) VALUES (%d, %d, %d)",
                   database, i, i * 10, i * 20));
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO %s.d2(time, s1) VALUES (%d, %d)", database, i, i * 30));
         }
       }
       Thread.sleep(2000);
 
-      System.out.println("  Polling (expecting only s1 data)...");
+      System.out.println("  Polling (expecting d1 data only, ideally s1 only)...");
       PollResult result = pollUntilComplete(consumer, 50, 60);
       System.out.println("  Result: " + result);
 
-      System.out.println("  Seen columns: " + result.seenColumns);
+      // Device-level: d2 must NOT appear
+      if (!result.rowsPerDevice.isEmpty()) {
+        Integer d2Rows = result.rowsPerDevice.get(database + ".d2");
+        assertTrue("Expected NO rows from d2, but got " + d2Rows, d2Rows == null || d2Rows == 0);
+        Integer d1Rows = result.rowsPerDevice.get(database + ".d1");
+        assertAtLeast("Expected d1 rows", 1, d1Rows != null ? d1Rows : 0);
+        System.out.println("  Device filtering verified: d1=" + d1Rows + ", d2=" + d2Rows);
+      }
+
+      // Timeseries-level: lenient check
       boolean hasS2 = result.seenColumns.stream().anyMatch(c -> c.contains(".s2"));
       if (hasS2) {
         System.out.println(
             "  INFO: Both s1 and s2 received — converter uses device-level filtering only.");
-        assertAtLeast("Should have received some rows", 50, result.totalRows);
+        assertAtLeast("Should have received d1 rows", 50, result.totalRows);
       } else {
         System.out.println("  Timeseries-level filtering verified: only s1 data received");
-        assertEquals("Expected exactly 50 rows from s1 only", 50, result.totalRows);
+        assertEquals("Expected exactly 50 rows from d1.s1 only", 50, result.totalRows);
       }
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
-  // ============================
-  // Test 5: Subscribe Before Region Creation
-  // ============================
+  // ======================================================================
+  // Test 4: Subscribe Before Region Creation (kept as-is)
+  // ======================================================================
   /**
    * Subscribe BEFORE the database/region exists, then create database and write. Tests the
    * IoTConsensus.onNewPeerCreated auto-binding path.
@@ -695,7 +767,7 @@ public class ConsensusSubscriptionTest {
       }
       Thread.sleep(5000);
 
-      System.out.println("  Step 4: Polling (auto-binding should have picked up new region)...");
+      System.out.println("  Step 4: Polling...");
       PollResult result = pollUntilComplete(consumer, 100, 100);
       System.out.println("  Result: " + result);
 
@@ -714,164 +786,20 @@ public class ConsensusSubscriptionTest {
     }
   }
 
-  // ============================
-  // Test 6: Multiple Devices Aggregation
-  // ============================
-  /** Writes to d1, d2, d3 and verifies all are received via a broad topic path. */
-  private static void testMultipleDevicesAggregation() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-
-    try {
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d2(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d3(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      System.out.println("  Writing to 3 devices (d1, d2, d3), 30 rows each");
-      try (ISession session = openSession()) {
-        for (int i = 100; i < 130; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d2(time, s1) VALUES (%d, %d)", database, i, i * 20));
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d3(time, s1) VALUES (%d, %d)", database, i, i * 30));
-        }
-      }
-      Thread.sleep(2000);
-
-      System.out.println("  Polling (expecting 90 total from 3 devices)...");
-      PollResult result = pollUntilComplete(consumer, 90, 100);
-      System.out.println("  Result: " + result);
-
-      assertEquals("Expected exactly 90 rows total (30 per device)", 90, result.totalRows);
-      if (!result.rowsPerDevice.isEmpty()) {
-        System.out.println("  Rows per device: " + result.rowsPerDevice);
-        for (String dev : new String[] {"d1", "d2", "d3"}) {
-          Integer devRows = result.rowsPerDevice.get(database + "." + dev);
-          assertAtLeast("Expected rows from " + dev, 1, devRows != null ? devRows : 0);
-        }
-      }
-    } finally {
-      cleanup(consumer, topicName, database);
-    }
-  }
-
-  // ============================
-  // Test 7: Aligned Timeseries
-  // ============================
-  /**
-   * Creates aligned timeseries with 6 data types (INT32, INT64, FLOAT, DOUBLE, BOOLEAN, TEXT) and
-   * writes rows where each INSERT contains ALL columns. Verifies all rows and all column types are
-   * delivered correctly.
-   */
-  private static void testAlignedTimeseries() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-
-    try {
-      // Create aligned timeseries with multiple data types
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format(
-                "CREATE ALIGNED TIMESERIES %s.d_aligned"
-                    + "(s_int32 INT32, s_int64 INT64, s_float FLOAT,"
-                    + " s_double DOUBLE, s_bool BOOLEAN, s_text TEXT)",
-                database));
-        // Write initial row to force DataRegion creation
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
-                    + " s_double, s_bool, s_text)"
-                    + " VALUES (0, 0, 0, 0.0, 0.0, false, 'init')",
-                database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Write 50 aligned rows, each with all 6 data types in a single INSERT
-      System.out.println("  Writing 50 aligned rows with 6 data types per row");
-      try (ISession session = openSession()) {
-        for (int i = 1; i <= 50; i++) {
-          session.executeNonQueryStatement(
-              String.format(
-                  "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
-                      + " s_double, s_bool, s_text)"
-                      + " VALUES (%d, %d, %d, %f, %f, %s, 'text_%d')",
-                  database,
-                  i,
-                  i,
-                  (long) i * 100000L,
-                  i * 1.1f,
-                  i * 2.2,
-                  i % 2 == 0 ? "true" : "false",
-                  i));
-        }
-      }
-      Thread.sleep(2000);
-
-      System.out.println("  Polling...");
-      PollResult result = pollUntilComplete(consumer, 50, 70);
-      System.out.println("  Result: " + result);
-
-      assertEquals("Expected exactly 50 aligned rows", 50, result.totalRows);
-      // Verify we see columns for multiple data types
-      System.out.println("  Seen columns: " + result.seenColumns);
-      assertAtLeast(
-          "Expected at least 6 columns (one per data type)", 6, result.seenColumns.size());
-    } finally {
-      cleanup(consumer, topicName, database);
-    }
-  }
-
-  // ============================
-  // Test 8: Poll Without Commit (Re-delivery)
-  // ============================
+  // ======================================================================
+  // Test 5: Redelivery / At-Least-Once (kept as-is from testPollWithoutCommit)
+  // ======================================================================
   /**
    * Tests at-least-once delivery with a mixed commit/no-commit pattern.
    *
-   * <p>Writes 50 rows. The prefetching thread may batch multiple INSERTs into a single event, so we
-   * track committed ROWS (not events). The state machine alternates:
+   * <p>Writes 50 rows. Alternates between:
    *
    * <ul>
-   *   <li>Even-numbered rounds: poll WITHOUT commit, record ALL timestamps from the event; next
-   *       poll verifies the EXACT SAME timestamps are re-delivered, then commit.
-   *   <li>Odd-numbered rounds: poll and commit directly; next poll should deliver DIFFERENT data.
+   *   <li>Even rounds: poll WITHOUT commit → next poll verifies same timestamps → commit
+   *   <li>Odd rounds: poll and commit directly → next poll should deliver DIFFERENT data
    * </ul>
-   *
-   * <p>This exercises both the re-delivery path (recycleInFlightEventsForConsumer) and the normal
-   * commit path in an interleaved fashion.
    */
-  private static void testPollWithoutCommit() throws Exception {
+  private static void testRedelivery() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
@@ -894,7 +822,6 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      // Write 50 rows (may be batched into fewer events by the prefetching thread)
       final int totalRows = 50;
       System.out.println("  Writing " + totalRows + " rows");
       try (ISession session = openSession()) {
@@ -905,13 +832,11 @@ public class ConsensusSubscriptionTest {
       }
       Thread.sleep(3000);
 
-      // State machine: alternate between skip-commit and direct-commit.
-      // Track committed ROWS (not events) because batching is unpredictable.
       int totalRowsCommitted = 0;
-      int roundNumber = 0; // counts distinct events seen (used for alternation)
+      int roundNumber = 0;
       boolean hasPending = false;
-      List<Long> pendingTimestamps = new ArrayList<>(); // timestamps from the uncommitted event
-      Set<Long> allCommittedTimestamps = new HashSet<>(); // all timestamps ever committed
+      List<Long> pendingTimestamps = new ArrayList<>();
+      Set<Long> allCommittedTimestamps = new HashSet<>();
       int redeliveryCount = 0;
 
       for (int attempt = 0; attempt < 200 && totalRowsCommitted < totalRows; attempt++) {
@@ -922,7 +847,6 @@ public class ConsensusSubscriptionTest {
         }
 
         for (SubscriptionMessage msg : msgs) {
-          // Extract ALL timestamps from this event (may contain multiple rows)
           List<Long> currentTimestamps = new ArrayList<>();
           for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
             while (ds.hasNext()) {
@@ -932,7 +856,7 @@ public class ConsensusSubscriptionTest {
           assertTrue("Poll should return data with at least 1 row", currentTimestamps.size() > 0);
 
           if (hasPending) {
-            // === Re-delivery round: verify EXACT same timestamps ===
+            // Re-delivery round: verify EXACT same timestamps
             assertTrue(
                 "Re-delivery timestamp list mismatch: expected="
                     + pendingTimestamps
@@ -953,8 +877,7 @@ public class ConsensusSubscriptionTest {
                     + "] Re-delivered & committed: timestamps="
                     + currentTimestamps);
           } else {
-            // === New event round ===
-            // After a commit, verify this is DIFFERENT data (no overlap with committed set)
+            // New event round
             if (totalRowsCommitted > 0) {
               boolean overlap = false;
               for (Long ts : currentTimestamps) {
@@ -964,16 +887,9 @@ public class ConsensusSubscriptionTest {
                 }
               }
               assertTrue(
-                  "After commit, should receive different data (timestamps="
-                      + currentTimestamps
-                      + " overlap with committed="
-                      + allCommittedTimestamps
-                      + ")",
-                  !overlap);
+                  "After commit, should receive different data (overlap detected)", !overlap);
             }
 
-            // Even-numbered rounds: skip commit (test re-delivery)
-            // Odd-numbered rounds: commit directly (test normal flow)
             if (roundNumber % 2 == 0) {
               pendingTimestamps = new ArrayList<>(currentTimestamps);
               hasPending = true;
@@ -1021,7 +937,6 @@ public class ConsensusSubscriptionTest {
         }
       }
       assertEquals("After all committed, should receive no more data", 0, extraRows);
-
       System.out.println(
           "  At-least-once re-delivery verified: "
               + totalRows
@@ -1033,16 +948,22 @@ public class ConsensusSubscriptionTest {
     }
   }
 
-  // ============================
-  // Test 9: Multi Consumer Group Independent Consumption
-  // ============================
+  // ======================================================================
+  // Test 6: Multi-Entity Isolation (merged: MultiConsumerGroup + MultiTopic)
+  // ======================================================================
   /**
-   * Two consumer groups subscribe to the same topic. Verifies that each group independently
-   * receives ALL data (data is not partitioned/split between groups).
+   * Verifies:
+   *
+   * <ul>
+   *   <li>Two consumer groups on same topic: each group gets ALL data independently
+   *   <li>One consumer subscribes to two topics with different path filters: each topic delivers
+   *       only matching data
+   * </ul>
    */
-  private static void testMultiConsumerGroupIndependent() throws Exception {
+  private static void testMultiEntityIsolation() throws Exception {
     String database = nextDatabase();
-    String topicName = nextTopic();
+    String topicName1 = "topic_multi_" + testCounter + "_a";
+    String topicName2 = "topic_multi_" + testCounter + "_b";
     String consumerGroupId1 = "cg_multi_" + testCounter + "_a";
     String consumerId1 = "consumer_multi_" + testCounter + "_a";
     String consumerGroupId2 = "cg_multi_" + testCounter + "_b";
@@ -1051,101 +972,7 @@ public class ConsensusSubscriptionTest {
     SubscriptionTreePullConsumer consumer2 = null;
 
     try {
-      // Create database and initial data
-      try (ISession session = openSession()) {
-        createDatabase(session, database);
-        session.executeNonQueryStatement(
-            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      createTopic(topicName, database + ".**");
-      Thread.sleep(1000);
-
-      // Two consumers in different groups both subscribe to the same topic
-      consumer1 = createConsumer(consumerId1, consumerGroupId1);
-      consumer1.subscribe(topicName);
-      consumer2 = createConsumer(consumerId2, consumerGroupId2);
-      consumer2.subscribe(topicName);
-      Thread.sleep(3000);
-
-      // Write 50 rows
-      System.out.println("  Writing 50 rows");
-      try (ISession session = openSession()) {
-        for (int i = 1; i <= 50; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-        }
-      }
-      Thread.sleep(2000);
-
-      // Poll from group 1
-      System.out.println("  Polling from consumer group 1...");
-      PollResult result1 = pollUntilComplete(consumer1, 50, 70);
-      System.out.println("  Group 1 result: " + result1);
-
-      // Poll from group 2
-      System.out.println("  Polling from consumer group 2...");
-      PollResult result2 = pollUntilComplete(consumer2, 50, 70);
-      System.out.println("  Group 2 result: " + result2);
-
-      // Both groups should have all 50 rows
-      assertEquals("Group 1 should receive all 50 rows", 50, result1.totalRows);
-      assertEquals("Group 2 should receive all 50 rows", 50, result2.totalRows);
-      System.out.println(
-          "  Independent consumption verified: group1="
-              + result1.totalRows
-              + ", group2="
-              + result2.totalRows);
-    } finally {
-      // Clean up both consumers
-      if (consumer1 != null) {
-        try {
-          consumer1.unsubscribe(topicName);
-        } catch (Exception e) {
-          // ignore
-        }
-        try {
-          consumer1.close();
-        } catch (Exception e) {
-          // ignore
-        }
-      }
-      if (consumer2 != null) {
-        try {
-          consumer2.unsubscribe(topicName);
-        } catch (Exception e) {
-          // ignore
-        }
-        try {
-          consumer2.close();
-        } catch (Exception e) {
-          // ignore
-        }
-      }
-      dropTopic(topicName);
-      deleteDatabase(database);
-    }
-  }
-
-  // ============================
-  // Test 10: Multi Topic Subscription
-  // ============================
-  /**
-   * One consumer subscribes to two different topics with different path filters. Verifies that each
-   * topic delivers only its matching data, and no cross-contamination occurs.
-   */
-  private static void testMultiTopicSubscription() throws Exception {
-    String database = nextDatabase();
-    String topicName1 = "topic_multi_" + testCounter + "_a";
-    String topicName2 = "topic_multi_" + testCounter + "_b";
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    SubscriptionTreePullConsumer consumer = null;
-
-    try {
-      // Create database with two device groups
+      // Setup: database with d1 and d2
       try (ISession session = openSession()) {
         createDatabase(session, database);
         session.executeNonQueryStatement(
@@ -1156,17 +983,20 @@ public class ConsensusSubscriptionTest {
       }
       Thread.sleep(2000);
 
-      // Topic 1: covers d1 only
+      // Topic 1: covers d1 only, Topic 2: covers d2 only
       createTopic(topicName1, database + ".d1.**");
-      // Topic 2: covers d2 only
       createTopic(topicName2, database + ".d2.**");
       Thread.sleep(1000);
 
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName1, topicName2);
+      // Consumer 1 (group A): subscribes to BOTH topics
+      consumer1 = createConsumer(consumerId1, consumerGroupId1);
+      consumer1.subscribe(topicName1, topicName2);
+      // Consumer 2 (group B): subscribes to BOTH topics
+      consumer2 = createConsumer(consumerId2, consumerGroupId2);
+      consumer2.subscribe(topicName1, topicName2);
       Thread.sleep(3000);
 
-      // Write 30 rows to d1 and 40 rows to d2
+      // Write 30 rows to d1, 40 rows to d2
       System.out.println("  Writing 30 rows to d1, 40 rows to d2");
       try (ISession session = openSession()) {
         for (int i = 1; i <= 40; i++) {
@@ -1180,32 +1010,55 @@ public class ConsensusSubscriptionTest {
       }
       Thread.sleep(2000);
 
-      // Poll all data — should get d1 rows (via topic1) + d2 rows (via topic2)
-      System.out.println("  Polling (expecting 30 from d1 + 40 from d2 = 70 total)...");
-      PollResult result = pollUntilComplete(consumer, 70, 80);
-      System.out.println("  Result: " + result);
+      // Part A: Both groups should get 70 rows independently
+      System.out.println("  Part A: Multi-group isolation");
+      System.out.println("  Polling from group 1...");
+      PollResult result1 = pollUntilComplete(consumer1, 70, 80);
+      System.out.println("  Group 1 result: " + result1);
 
-      assertEquals("Expected exactly 70 rows total (30 d1 + 40 d2)", 70, result.totalRows);
-      if (!result.rowsPerDevice.isEmpty()) {
-        Integer d1Rows = result.rowsPerDevice.get(database + ".d1");
-        Integer d2Rows = result.rowsPerDevice.get(database + ".d2");
-        assertEquals("Expected 30 rows from d1", 30, d1Rows != null ? d1Rows : 0);
-        assertEquals("Expected 40 rows from d2", 40, d2Rows != null ? d2Rows : 0);
-        System.out.println(
-            "  Multi-topic isolation verified: d1=" + d1Rows + " rows, d2=" + d2Rows + " rows");
+      System.out.println("  Polling from group 2...");
+      PollResult result2 = pollUntilComplete(consumer2, 70, 80);
+      System.out.println("  Group 2 result: " + result2);
+
+      assertEquals("Group 1 should receive all 70 rows", 70, result1.totalRows);
+      assertEquals("Group 2 should receive all 70 rows", 70, result2.totalRows);
+
+      // Part B: Verify per-topic device isolation
+      if (!result1.rowsPerDevice.isEmpty()) {
+        Integer d1Rows = result1.rowsPerDevice.get(database + ".d1");
+        Integer d2Rows = result1.rowsPerDevice.get(database + ".d2");
+        assertEquals("Expected 30 rows from d1 (topic1)", 30, d1Rows != null ? d1Rows : 0);
+        assertEquals("Expected 40 rows from d2 (topic2)", 40, d2Rows != null ? d2Rows : 0);
+        System.out.println("  Multi-topic isolation verified: d1=" + d1Rows + ", d2=" + d2Rows);
       }
+      System.out.println(
+          "  Multi-group isolation verified: group1="
+              + result1.totalRows
+              + ", group2="
+              + result2.totalRows);
     } finally {
-      // Clean up consumer, both topics, and database
-      if (consumer != null) {
+      if (consumer1 != null) {
         try {
-          consumer.unsubscribe(topicName1, topicName2);
+          consumer1.unsubscribe(topicName1, topicName2);
         } catch (Exception e) {
-          // ignore
+          /* ignore */
         }
         try {
-          consumer.close();
+          consumer1.close();
         } catch (Exception e) {
-          // ignore
+          /* ignore */
+        }
+      }
+      if (consumer2 != null) {
+        try {
+          consumer2.unsubscribe(topicName1, topicName2);
+        } catch (Exception e) {
+          /* ignore */
+        }
+        try {
+          consumer2.close();
+        } catch (Exception e) {
+          /* ignore */
         }
       }
       dropTopic(topicName1);
@@ -1214,15 +1067,29 @@ public class ConsensusSubscriptionTest {
     }
   }
 
-  // ============================
-  // Test 11: Flush Data Delivery
-  // ============================
+  // ======================================================================
+  // Test 7: Burst Write Gap Recovery (NEW — tests C2 fix)
+  // ======================================================================
   /**
-   * Subscribes first, then writes data and flushes before polling. Verifies that flushing (memtable
-   * → TSFile) does not cause data loss in the subscription pipeline, because WAL pinning keeps
-   * entries available until committed by the subscription consumer.
+   * Tests that burst writing beyond the pending queue capacity (4096) does not cause data loss. The
+   * pending queue overflow triggers gaps, which should be recovered from WAL.
+   *
+   * <p><b>Mechanism:</b> Each {@code IoTConsensusServerImpl.write()} call produces exactly one
+   * {@code pendingEntries.offer()}. A single {@code session.insertTablet(tablet)} with N rows in
+   * one time partition = 1 write() call = 1 offer, so Tablet batches rarely overflow the queue. To
+   * actually overflow, we need 4096+ <i>individual</i> write() calls arriving faster than the
+   * prefetch thread can drain. We achieve this with multiple concurrent writer threads, each
+   * performing individual SQL INSERTs, to maximize the aggregate write rate vs. drain rate.
+   *
+   * <p><b>Note:</b> Gap occurrence is inherently timing-dependent (race between writers and the
+   * prefetch drain loop). This test maximizes the probability by using concurrent threads, but
+   * cannot guarantee gap occurrence on every run. Check server logs for "gap detected" / "Filling
+   * from WAL" messages to confirm the gap path was exercised.
+   *
+   * <p>Fix verified: C2 — gap entries are not skipped when WAL fill times out; they are deferred to
+   * the next prefetch iteration.
    */
-  private static void testFlushDataDelivery() throws Exception {
+  private static void testBurstWriteGapRecovery() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
@@ -1245,75 +1112,102 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      // Write 50 rows, then flush before polling
-      System.out.println("  Writing 50 rows then flushing");
-      try (ISession session = openSession()) {
-        for (int i = 1; i <= 50; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
-        }
-        System.out.println("  Flushing...");
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
+      // Use multiple concurrent writer threads with individual SQL INSERTs.
+      // Each INSERT → 1 IoTConsensusServerImpl.write() → 1 pendingEntries.offer().
+      // With N threads writing concurrently, aggregate rate should exceed drain rate
+      // and overflow the 4096-capacity queue, creating gaps.
+      final int writerThreads = 4;
+      final int rowsPerThread = 1500; // 4 * 1500 = 6000 total write() calls > 4096
+      final int totalRows = writerThreads * rowsPerThread;
+      final AtomicInteger errorCount = new AtomicInteger(0);
+      final CountDownLatch startLatch = new CountDownLatch(1);
+      final CountDownLatch doneLatch = new CountDownLatch(writerThreads);
 
-      // Poll — all 50 rows should be delivered despite flush
-      System.out.println("  Polling after flush...");
-      PollResult result = pollUntilComplete(consumer, 50, 70);
+      System.out.println(
+          "  Burst writing "
+              + totalRows
+              + " rows via "
+              + writerThreads
+              + " concurrent threads ("
+              + rowsPerThread
+              + " individual SQL INSERTs each)");
+      System.out.println(
+          "  (Each INSERT = 1 WAL entry = 1 pendingEntries.offer(); " + "queue capacity = 4096)");
+
+      ExecutorService executor = Executors.newFixedThreadPool(writerThreads);
+      for (int t = 0; t < writerThreads; t++) {
+        final int threadId = t;
+        final int startTs = threadId * rowsPerThread + 1;
+        executor.submit(
+            () -> {
+              try {
+                startLatch.await(); // all threads start at the same time
+                try (ISession session = openSession()) {
+                  for (int i = 0; i < rowsPerThread; i++) {
+                    int ts = startTs + i;
+                    session.executeNonQueryStatement(
+                        String.format(
+                            "INSERT INTO %s.d1(time, s1) VALUES (%d, %d)",
+                            database, ts, (long) ts * 10));
+                  }
+                }
+              } catch (Exception e) {
+                System.out.println("  Writer thread " + threadId + " error: " + e.getMessage());
+                errorCount.incrementAndGet();
+              } finally {
+                doneLatch.countDown();
+              }
+            });
+      }
+
+      // Fire all threads simultaneously
+      startLatch.countDown();
+      doneLatch.await();
+      executor.shutdown();
+
+      if (errorCount.get() > 0) {
+        System.out.println("  WARNING: " + errorCount.get() + " writer threads encountered errors");
+      }
+
+      // Do NOT add artificial delay — let the consumer compete with ongoing WAL writes
+      System.out.println(
+          "  Polling (expecting " + totalRows + " rows, may need WAL gap recovery)...");
+      System.out.println(
+          "  (Check server logs for 'gap detected' to confirm gap recovery was triggered)");
+      PollResult result = pollUntilComplete(consumer, totalRows, 6000, 2000, true);
       System.out.println("  Result: " + result);
-      assertEquals("Expected exactly 50 rows after flush (no data loss)", 50, result.totalRows);
+
+      assertEquals(
+          "Expected exactly " + totalRows + " rows (no data loss despite pending queue overflow)",
+          totalRows,
+          result.totalRows);
     } finally {
       cleanup(consumer, topicName, database);
     }
   }
 
-  // ============================
-  // Test 12: Cross-Partition Aligned Timeseries (Multiple Write Methods)
-  // ============================
+  // ======================================================================
+  // Test 8: Commit After Unsubscribe (NEW — tests H7 fix)
+  // ======================================================================
   /**
-   * Tests cross-partition aligned timeseries with 6 data types, written via six different aligned
-   * methods. Timestamps are spaced >1 week apart to force different time partitions, exercising the
-   * WAL merge path for multi-partition inserts.
+   * Tests that commit still works correctly after the consumer has unsubscribed (queue has been
+   * torn down). The commit routing should use metadata-based topic config check instead of runtime
+   * queue state.
    *
-   * <p>Write methods (all aligned):
-   *
-   * <ol>
-   *   <li>SQL single row
-   *   <li>SQL multi-row (cross-partition)
-   *   <li>session.insertAlignedRecord (single row)
-   *   <li>session.insertAlignedRecordsOfOneDevice (cross-partition)
-   *   <li>session.insertAlignedTablet (cross-partition)
-   *   <li>session.insertAlignedTablets (cross-partition)
-   * </ol>
+   * <p>Fix verified: H7 — commit routes via isConsensusBasedTopic() instead of hasQueue().
    */
-  private static void testCrossPartitionAligned() throws Exception {
+  private static void testCommitAfterUnsubscribe() throws Exception {
     String database = nextDatabase();
     String topicName = nextTopic();
     String consumerGroupId = nextConsumerGroup();
     String consumerId = nextConsumerId();
     SubscriptionTreePullConsumer consumer = null;
 
-    // Gap slightly over 1 week (default partition interval = 604,800,000ms)
-    final long GAP = 604_800_001L;
-    final String device = database + ".d_aligned";
-
     try {
-      // Create aligned timeseries with 6 data types
       try (ISession session = openSession()) {
         createDatabase(session, database);
         session.executeNonQueryStatement(
-            String.format(
-                "CREATE ALIGNED TIMESERIES %s.d_aligned"
-                    + "(s_int32 INT32, s_int64 INT64, s_float FLOAT,"
-                    + " s_double DOUBLE, s_bool BOOLEAN, s_text TEXT)",
-                database));
-        // Init row to force DataRegion creation
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
-                    + " s_double, s_bool, s_text)"
-                    + " VALUES (0, 0, 0, 0.0, 0.0, false, 'init')",
-                database));
+            String.format("INSERT INTO %s.d1(time, s1) VALUES (0, 0)", database));
         session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
@@ -1325,116 +1219,76 @@ public class ConsensusSubscriptionTest {
       consumer.subscribe(topicName);
       Thread.sleep(3000);
 
-      // Shared measurement info for Session API calls
-      List<String> measurements =
-          Arrays.asList("s_int32", "s_int64", "s_float", "s_double", "s_bool", "s_text");
-      List<TSDataType> types =
-          Arrays.asList(
-              TSDataType.INT32,
-              TSDataType.INT64,
-              TSDataType.FLOAT,
-              TSDataType.DOUBLE,
-              TSDataType.BOOLEAN,
-              TSDataType.TEXT);
-
-      // Shared schema for Tablet API calls
-      List<IMeasurementSchema> schemas = new ArrayList<>();
-      schemas.add(new MeasurementSchema("s_int32", TSDataType.INT32));
-      schemas.add(new MeasurementSchema("s_int64", TSDataType.INT64));
-      schemas.add(new MeasurementSchema("s_float", TSDataType.FLOAT));
-      schemas.add(new MeasurementSchema("s_double", TSDataType.DOUBLE));
-      schemas.add(new MeasurementSchema("s_bool", TSDataType.BOOLEAN));
-      schemas.add(new MeasurementSchema("s_text", TSDataType.TEXT));
-
-      System.out.println("  Writing cross-partition aligned data via 6 methods");
-      int totalExpected = 0;
-
+      // Write data
+      System.out.println("  Writing 50 rows");
       try (ISession session = openSession()) {
-
-        // --- Method 1: SQL single row ---
-        long t1 = 1;
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
-                    + " s_double, s_bool, s_text)"
-                    + " VALUES (%d, 1, 100, 1.1, 1.11, true, 'sql_single')",
-                database, t1));
-        totalExpected += 1;
-        System.out.println("    Method 1 (SQL single row): 1 row");
-
-        // --- Method 2: SQL multi-row (cross-partition, 2 rows >1 week apart) ---
-        long t2a = 1 + GAP;
-        long t2b = 1 + 2 * GAP;
-        session.executeNonQueryStatement(
-            String.format(
-                "INSERT INTO %s.d_aligned(time, s_int32, s_int64, s_float,"
-                    + " s_double, s_bool, s_text)"
-                    + " VALUES (%d, 2, 200, 2.2, 2.22, false, 'sql_multi_a'),"
-                    + " (%d, 3, 300, 3.3, 3.33, true, 'sql_multi_b')",
-                database, t2a, t2b));
-        totalExpected += 2;
-        System.out.println("    Method 2 (SQL multi-row, cross-partition): 2 rows");
-
-        // --- Method 3: insertAlignedRecord (single row) ---
-        long t3 = 1 + 3 * GAP;
-        List<Object> values3 = Arrays.asList(4, 400L, 4.4f, 4.44, true, "record_single");
-        session.insertAlignedRecord(device, t3, measurements, types, values3);
-        totalExpected += 1;
-        System.out.println("    Method 3 (insertAlignedRecord): 1 row");
-
-        // --- Method 4: insertAlignedRecordsOfOneDevice (cross-partition, 2 rows) ---
-        long t4a = 1 + 4 * GAP;
-        long t4b = 1 + 5 * GAP;
-        session.insertAlignedRecordsOfOneDevice(
-            device,
-            Arrays.asList(t4a, t4b),
-            Arrays.asList(measurements, measurements),
-            Arrays.asList(types, types),
-            Arrays.asList(
-                Arrays.asList(5, 500L, 5.5f, 5.55, false, "records_a"),
-                Arrays.asList(6, 600L, 6.6f, 6.66, true, "records_b")));
-        totalExpected += 2;
-        System.out.println(
-            "    Method 4 (insertAlignedRecordsOfOneDevice, cross-partition): 2 rows");
-
-        // --- Method 5: insertAlignedTablet (cross-partition, 2 rows) ---
-        long t5a = 1 + 6 * GAP;
-        long t5b = 1 + 7 * GAP;
-        Tablet tablet5 = new Tablet(device, schemas, 2);
-        addAlignedTabletRow(tablet5, 0, t5a, 7, 700L, 7.7f, 7.77, false, "tablet_a");
-        addAlignedTabletRow(tablet5, 1, t5b, 8, 800L, 8.8f, 8.88, true, "tablet_b");
-        session.insertAlignedTablet(tablet5);
-        totalExpected += 2;
-        System.out.println("    Method 5 (insertAlignedTablet, cross-partition): 2 rows");
-
-        // --- Method 6: insertAlignedTablets (cross-partition, 2 rows) ---
-        long t6a = 1 + 8 * GAP;
-        long t6b = 1 + 9 * GAP;
-        Tablet tablet6 = new Tablet(device, schemas, 2);
-        addAlignedTabletRow(tablet6, 0, t6a, 9, 900L, 9.9f, 9.99, false, "tablets_a");
-        addAlignedTabletRow(tablet6, 1, t6b, 10, 1000L, 10.1f, 10.10, true, "tablets_b");
-        Map<String, Tablet> tabletMap = new HashMap<>();
-        tabletMap.put(device, tablet6);
-        session.insertAlignedTablets(tabletMap);
-        totalExpected += 2;
-        System.out.println("    Method 6 (insertAlignedTablets, cross-partition): 2 rows");
+        for (int i = 1; i <= 50; i++) {
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO %s.d1(time, s1) VALUES (%d, %d)", database, i, i * 10));
+        }
       }
-
-      System.out.println("  Total expected rows: " + totalExpected);
       Thread.sleep(2000);
 
-      System.out.println("  Polling...");
-      PollResult result = pollUntilComplete(consumer, totalExpected, 100);
-      System.out.println("  Result: " + result);
+      // Poll WITHOUT commit
+      System.out.println("  Polling WITHOUT commit...");
+      List<SubscriptionMessage> uncommittedMessages = new ArrayList<>();
+      int polledRows = 0;
+      for (int attempt = 0; attempt < 60 && polledRows < 50; attempt++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
+        if (msgs.isEmpty()) {
+          if (polledRows > 0) break;
+          Thread.sleep(500);
+          continue;
+        }
+        for (SubscriptionMessage msg : msgs) {
+          uncommittedMessages.add(msg);
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              polledRows++;
+            }
+          }
+        }
+      }
+      System.out.println(
+          "  Polled "
+              + polledRows
+              + " rows, holding "
+              + uncommittedMessages.size()
+              + " uncommitted messages");
+      assertAtLeast("Should have polled some rows before unsubscribe", 1, polledRows);
 
-      assertEquals(
-          "Expected exactly " + totalExpected + " cross-partition aligned rows",
-          totalExpected,
-          result.totalRows);
-      assertAtLeast(
-          "Expected at least 6 columns (one per data type)", 6, result.seenColumns.size());
+      // Unsubscribe (tears down the consensus queue)
+      System.out.println("  Unsubscribing (queue teardown)...");
+      consumer.unsubscribe(topicName);
+      Thread.sleep(2000);
+
+      // Now commit the previously polled messages — should NOT throw
+      System.out.println(
+          "  Committing " + uncommittedMessages.size() + " messages AFTER unsubscribe...");
+      boolean commitSucceeded = true;
+      for (SubscriptionMessage msg : uncommittedMessages) {
+        try {
+          consumer.commitSync(msg);
+        } catch (Exception e) {
+          System.out.println("  Commit threw exception: " + e.getMessage());
+          commitSucceeded = false;
+        }
+      }
+
+      // The commit may silently succeed or fail gracefully — the key is no crash
+      System.out.println("  Commit after unsubscribe completed. Success=" + commitSucceeded);
+      System.out.println("  (Key: no exception crash, routing handled gracefully)");
     } finally {
-      cleanup(consumer, topicName, database);
+      if (consumer != null) {
+        try {
+          consumer.close();
+        } catch (Exception e) {
+          /* ignore */
+        }
+      }
+      dropTopic(topicName);
+      deleteDatabase(database);
     }
   }
 

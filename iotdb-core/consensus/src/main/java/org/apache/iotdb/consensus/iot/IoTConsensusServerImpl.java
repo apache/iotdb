@@ -968,7 +968,7 @@ public class IoTConsensusServerImpl {
    * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
    * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
    */
-  void checkAndUpdateSafeDeletedSearchIndex() {
+  public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
       logger.error(
           "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");

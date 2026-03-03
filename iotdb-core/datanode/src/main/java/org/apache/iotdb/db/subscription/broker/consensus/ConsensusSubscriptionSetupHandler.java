@@ -61,16 +61,20 @@ public class ConsensusSubscriptionSetupHandler {
   }
 
   /**
-   * Ensures that the IoTConsensus new-peer callback is set, so that when a new DataRegion is
-   * created, all active consensus subscriptions are automatically bound to the new region.
+   * Ensures that the IoTConsensus new-peer and peer-removed callbacks are set, so that when a new
+   * DataRegion is created, all active consensus subscriptions are automatically bound to the new
+   * region, and when a DataRegion is removed, all subscription queues are properly cleaned up.
    */
   public static void ensureNewRegionListenerRegistered() {
-    if (IoTConsensus.onNewPeerCreated != null) {
-      return;
+    if (IoTConsensus.onNewPeerCreated == null) {
+      IoTConsensus.onNewPeerCreated = ConsensusSubscriptionSetupHandler::onNewRegionCreated;
+      LOGGER.info(
+          "Set IoTConsensus.onNewPeerCreated callback for consensus subscription auto-binding");
     }
-    IoTConsensus.onNewPeerCreated = ConsensusSubscriptionSetupHandler::onNewRegionCreated;
-    LOGGER.info(
-        "Set IoTConsensus.onNewPeerCreated callback for consensus subscription auto-binding");
+    if (IoTConsensus.onPeerRemoved == null) {
+      IoTConsensus.onPeerRemoved = ConsensusSubscriptionSetupHandler::onRegionRemoved;
+      LOGGER.info("Set IoTConsensus.onPeerRemoved callback for consensus subscription cleanup");
+    }
   }
 
   /**
@@ -93,14 +97,13 @@ public class ConsensusSubscriptionSetupHandler {
 
     final ConsensusSubscriptionCommitManager commitManager =
         ConsensusSubscriptionCommitManager.getInstance();
-    final long startSearchIndex = serverImpl.getSearchIndex() + 1;
 
     LOGGER.info(
         "New DataRegion {} created, checking {} consumer group(s) for auto-binding, "
-            + "startSearchIndex={}",
+            + "currentSearchIndex={}",
         groupId,
         allSubscriptions.size(),
-        startSearchIndex);
+        serverImpl.getSearchIndex());
 
     for (final Map.Entry<String, java.util.Set<String>> groupEntry : allSubscriptions.entrySet()) {
       final String consumerGroupId = groupEntry.getKey();
@@ -141,12 +144,22 @@ public class ConsensusSubscriptionSetupHandler {
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
           final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
+          // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
+          // for brand-new regions that have no prior subscription progress.
+          final long persistedIndex =
+              commitManager.getCommittedSearchIndex(consumerGroupId, topicName, groupId.toString());
+          final long startSearchIndex =
+              (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
+
           LOGGER.info(
-              "Auto-binding consensus queue for topic [{}] in group [{}] to new region {} (database={})",
+              "Auto-binding consensus queue for topic [{}] in group [{}] to new region {} "
+                  + "(database={}, startSearchIndex={}, persistedIndex={})",
               topicName,
               consumerGroupId,
               groupId,
-              dbTableModel);
+              dbTableModel,
+              startSearchIndex,
+              persistedIndex);
 
           SubscriptionAgent.broker()
               .bindConsensusPrefetchingQueue(
@@ -166,6 +179,26 @@ public class ConsensusSubscriptionSetupHandler {
               e);
         }
       }
+    }
+  }
+
+  /**
+   * Callback invoked before a DataRegion (IoTConsensusServerImpl) is deleted locally. Unbinds and
+   * cleans up all subscription prefetching queues associated with the removed region across all
+   * consumer groups.
+   */
+  private static void onRegionRemoved(final ConsensusGroupId groupId) {
+    if (!(groupId instanceof DataRegionId)) {
+      return;
+    }
+    final String regionIdStr = groupId.toString();
+    LOGGER.info(
+        "DataRegion {} being removed, unbinding all consensus subscription queues", regionIdStr);
+    try {
+      SubscriptionAgent.broker().unbindByRegion(regionIdStr);
+    } catch (final Exception e) {
+      LOGGER.error(
+          "Failed to unbind consensus subscription queues for removed region {}", regionIdStr, e);
     }
   }
 
@@ -316,16 +349,23 @@ public class ConsensusSubscriptionSetupHandler {
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
       final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-      final long startSearchIndex = serverImpl.getSearchIndex() + 1;
+      // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
+      // for brand-new regions that have no prior subscription progress.
+      final long persistedIndex =
+          commitManager.getCommittedSearchIndex(consumerGroupId, topicName, groupId.toString());
+      final long startSearchIndex =
+          (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
 
       LOGGER.info(
           "Binding consensus prefetching queue for topic [{}] in consumer group [{}] "
-              + "to data region consensus group [{}] (database={}), startSearchIndex={}",
+              + "to data region consensus group [{}] (database={}, startSearchIndex={}, "
+              + "persistedIndex={})",
           topicName,
           consumerGroupId,
           groupId,
           dbTableModel,
-          startSearchIndex);
+          startSearchIndex,
+          persistedIndex);
 
       SubscriptionAgent.broker()
           .bindConsensusPrefetchingQueue(

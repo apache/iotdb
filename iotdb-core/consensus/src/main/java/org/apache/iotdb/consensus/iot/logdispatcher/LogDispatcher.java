@@ -167,15 +167,16 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getLastFlushedSyncIndex).min();
   }
 
-  public void checkAndFlushIndex() {
+  public synchronized void checkAndFlushIndex() {
     if (!threads.isEmpty()) {
       threads.forEach(
           thread -> {
             IndexController controller = thread.getController();
             controller.update(controller.getCurrentIndex(), true);
           });
-      // do not set SafelyDeletedSearchIndex as it is Long.MAX_VALUE when replica is 1
-      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+      // Use subscription-aware safe-delete to avoid deleting WAL entries
+      // still needed by subscription consumers.
+      impl.checkAndUpdateSafeDeletedSearchIndex();
     }
   }
 
@@ -397,8 +398,9 @@ public class LogDispatcher {
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely.
       //
-      // Use minFlushedSyncIndex here to reserve the WAL which are not flushed and support kill -9.
-      reader.setSafelyDeletedSearchIndex(impl.getMinFlushedSyncIndex());
+      // Use subscription-aware safe-delete to avoid deleting WAL entries
+      // still needed by subscription consumers.
+      impl.checkAndUpdateSafeDeletedSearchIndex();
       // notify
       if (impl.unblockWrite()) {
         impl.signal();

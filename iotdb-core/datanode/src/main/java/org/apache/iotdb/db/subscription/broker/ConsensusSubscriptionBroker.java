@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -124,12 +125,12 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         eventsToPoll.add(event);
         totalSize += currentSize;
 
-        if (totalSize + currentSize > maxBytes) {
+        if (totalSize >= maxBytes) {
           break;
         }
       }
 
-      if (totalSize > maxBytes) {
+      if (totalSize >= maxBytes) {
         break;
       }
     }
@@ -351,6 +352,30 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
         queues.size(),
         topicName,
         brokerId);
+  }
+
+  public int unbindByRegion(final String regionId) {
+    int closedCount = 0;
+    for (final Map.Entry<String, List<ConsensusPrefetchingQueue>> entry :
+        topicNameToConsensusPrefetchingQueues.entrySet()) {
+      final List<ConsensusPrefetchingQueue> queues = entry.getValue();
+      final Iterator<ConsensusPrefetchingQueue> iterator = queues.iterator();
+      while (iterator.hasNext()) {
+        final ConsensusPrefetchingQueue q = iterator.next();
+        if (regionId.equals(q.getConsensusGroupId())) {
+          q.close();
+          iterator.remove();
+          closedCount++;
+          LOGGER.info(
+              "Subscription: closed consensus prefetching queue for topic [{}] region [{}] "
+                  + "in consumer group [{}] due to region removal",
+              entry.getKey(),
+              regionId,
+              brokerId);
+        }
+      }
+    }
+    return closedCount;
   }
 
   @Override

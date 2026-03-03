@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -154,6 +155,11 @@ public class ConsensusPrefetchingQueue {
 
   private static final int MAX_PREFETCHING_QUEUE_SIZE = 256;
 
+  private static final long WAL_RETENTION_WARN_THRESHOLD = 100_000;
+
+  /** Counter of WAL gap entries that could not be filled (data loss). */
+  private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
+
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isClosed = false;
@@ -215,12 +221,27 @@ public class ConsensusPrefetchingQueue {
   /**
    * Returns the earliest outstanding (uncommitted) search index for WAL pinning. If there are no
    * outstanding events, returns the next expected search index (nothing to pin beyond what we've
-   * already processed).
+   * already processed). Also monitors WAL retention gap for slow consumer detection.
    */
   private long getEarliestOutstandingSearchIndex() {
     final Map.Entry<Long, Long> first = outstandingCommitIdToStartIndex.firstEntry();
     if (first != null) {
-      return first.getValue();
+      final long earliestIndex = first.getValue();
+      // WAL retention health check: warn if outstanding gap grows too large
+      final long currentIndex = nextExpectedSearchIndex.get();
+      final long retentionGap = currentIndex - earliestIndex;
+      if (retentionGap > WAL_RETENTION_WARN_THRESHOLD) {
+        LOGGER.error(
+            "ConsensusPrefetchingQueue {}: WAL retention gap is {} entries "
+                + "(earliest outstanding={}, current={}). "
+                + "A slow or stalled consumer is pinning WAL files and may cause disk exhaustion. "
+                + "Consider committing events or increasing consumer throughput.",
+            this,
+            retentionGap,
+            earliestIndex,
+            currentIndex);
+      }
+      return earliestIndex;
     }
     return nextExpectedSearchIndex.get();
   }
@@ -429,11 +450,11 @@ public class ConsensusPrefetchingQueue {
               t.getClass().getName(),
               t.getMessage(),
               t);
-          if (t instanceof Error) {
+          if (t instanceof VirtualMachineError) {
             LOGGER.error(
-                "ConsensusPrefetchingQueue {}: caught Error in prefetch loop, "
-                    + "will attempt to continue",
-                this);
+                "ConsensusPrefetchingQueue {}: caught VirtualMachineError, stopping thread", this);
+            markClosed();
+            break;
           }
           try {
             Thread.sleep(100);
@@ -478,7 +499,24 @@ public class ConsensusPrefetchingQueue {
             expected,
             searchIndex,
             searchIndex - expected);
-        fillGapFromWAL(expected, searchIndex, batchedTablets);
+        final long gapMaxIndex = fillGapFromWAL(expected, searchIndex, batchedTablets);
+        if (gapMaxIndex > batchEndSearchIndex) {
+          batchEndSearchIndex = gapMaxIndex;
+        }
+
+        // If gap was not fully filled (e.g., WAL timeout), do NOT skip the gap.
+        // Break and defer remaining entries to the next prefetch loop iteration.
+        // WAL pin ensures the missing entries won't be deleted.
+        if (nextExpectedSearchIndex.get() < searchIndex) {
+          LOGGER.warn(
+              "ConsensusPrefetchingQueue {}: gap [{}, {}) not fully filled (reached {}). "
+                  + "Deferring remaining batch to next prefetch iteration.",
+              this,
+              expected,
+              searchIndex,
+              nextExpectedSearchIndex.get());
+          break;
+        }
       }
 
       if (searchIndex < nextExpectedSearchIndex.get()) {
@@ -555,11 +593,14 @@ public class ConsensusPrefetchingQueue {
   /**
    * Fills a gap in the pending queue by reading entries from WAL. Called when gap is detected
    * between nextExpectedSearchIndex and an incoming entry's searchIndex.
+   *
+   * @return the maximum searchIndex processed during gap filling, or -1 if no entries processed
    */
-  private void fillGapFromWAL(
+  private long fillGapFromWAL(
       final long fromIndex, final long toIndex, final List<Tablet> batchedTablets) {
     // Re-position WAL reader to the gap start
     reqIterator = consensusReqReader.getReqIterator(fromIndex);
+    long maxProcessedIndex = -1;
 
     while (nextExpectedSearchIndex.get() < toIndex && reqIterator.hasNext()) {
       try {
@@ -575,6 +616,9 @@ public class ConsensusPrefetchingQueue {
           batchedTablets.addAll(tablets);
         }
         nextExpectedSearchIndex.set(walIndex + 1);
+        if (walIndex > maxProcessedIndex) {
+          maxProcessedIndex = walIndex;
+        }
       } catch (final Exception e) {
         LOGGER.warn(
             "ConsensusPrefetchingQueue {}: error filling gap from WAL at index {}",
@@ -601,6 +645,9 @@ public class ConsensusPrefetchingQueue {
             batchedTablets.addAll(tablets);
           }
           nextExpectedSearchIndex.set(walIndex + 1);
+          if (walIndex > maxProcessedIndex) {
+            maxProcessedIndex = walIndex;
+          }
         }
       } catch (final InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -612,6 +659,24 @@ public class ConsensusPrefetchingQueue {
             toIndex);
       }
     }
+
+    // If the gap still cannot be fully filled (WAL truncated/deleted), skip ahead to avoid
+    // blocking consumption indefinitely. This results in data loss for the skipped range.
+    if (nextExpectedSearchIndex.get() < toIndex) {
+      final long skipped = toIndex - nextExpectedSearchIndex.get();
+      walGapSkippedEntries.addAndGet(skipped);
+      LOGGER.error(
+          "ConsensusPrefetchingQueue {}: WAL gap [{}, {}) cannot be filled - {} entries lost. "
+              + "Total skipped entries so far: {}. This indicates WAL truncation or deletion.",
+          this,
+          nextExpectedSearchIndex.get(),
+          toIndex,
+          skipped,
+          walGapSkippedEntries.get());
+      nextExpectedSearchIndex.set(toIndex);
+    }
+
+    return maxProcessedIndex;
   }
 
   /**
@@ -623,8 +688,24 @@ public class ConsensusPrefetchingQueue {
     syncReqIteratorPosition();
 
     if (!reqIterator.hasNext()) {
-      // No data on disk either - nothing to do
-      return;
+      // The WAL iterator excludes the current-writing WAL file for concurrency safety.
+      // If entries exist in WAL but are all in the current file (e.g., after pending queue
+      // overflow), we need to trigger a WAL file roll to make them readable.
+      final long currentWALIndex = consensusReqReader.getCurrentSearchIndex();
+      if (nextExpectedSearchIndex.get() <= currentWALIndex
+          && consensusReqReader instanceof WALNode) {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: subscription behind (at {} vs WAL {}), "
+                + "triggering WAL file roll to make entries readable",
+            this,
+            nextExpectedSearchIndex.get(),
+            currentWALIndex);
+        ((WALNode) consensusReqReader).rollWALFile();
+        syncReqIteratorPosition();
+      }
+      if (!reqIterator.hasNext()) {
+        return;
+      }
     }
 
     final List<Tablet> batchedTablets = new ArrayList<>();
@@ -1063,6 +1144,8 @@ public class ConsensusPrefetchingQueue {
 
       inFlightEvents.values().forEach(event -> event.cleanUp(true));
       inFlightEvents.clear();
+
+      outstandingCommitIdToStartIndex.clear();
     } finally {
       releaseWriteLock();
     }
@@ -1077,11 +1160,19 @@ public class ConsensusPrefetchingQueue {
     } catch (final InterruptedException e) {
       Thread.currentThread().interrupt();
     }
-    // Unregister from IoTConsensusServerImpl (stop receiving in-memory data, unpin WAL).
-    serverImpl.unregisterSubscriptionQueue(pendingEntries, walPinSupplier);
-    cleanUp();
-    // Persist progress before closing
-    commitManager.persistAll();
+    try {
+      // Unregister from IoTConsensusServerImpl (stop receiving in-memory data, unpin WAL).
+      serverImpl.unregisterSubscriptionQueue(pendingEntries, walPinSupplier);
+    } catch (final Exception e) {
+      LOGGER.warn("ConsensusPrefetchingQueue {}: error during unregister", this, e);
+    } finally {
+      try {
+        cleanUp();
+      } finally {
+        // Persist progress before closing
+        commitManager.persistAll();
+      }
+    }
   }
 
   private SubscriptionEvent generateErrorResponse(final String errorMessage) {
@@ -1168,6 +1259,7 @@ public class ConsensusPrefetchingQueue {
     result.put("outstandingEventsSize", String.valueOf(outstandingCommitIdToStartIndex.size()));
     result.put("pendingEntriesSize", String.valueOf(pendingEntries.size()));
     result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("walGapSkippedEntries", String.valueOf(walGapSkippedEntries.get()));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
   }

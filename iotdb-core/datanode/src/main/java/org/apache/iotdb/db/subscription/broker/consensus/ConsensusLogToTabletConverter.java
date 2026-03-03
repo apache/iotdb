@@ -43,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -190,37 +191,31 @@ public class ConsensusLogToTabletConverter {
       return Collections.emptyList();
     }
 
-    // Build Tablet with all rows
     final int columnCount = matchedColumnIndices.size();
+    final boolean allColumnsMatch = (columnCount == measurements.length);
+
+    // Build schemas (always needed)
     final List<IMeasurementSchema> schemas = new ArrayList<>(columnCount);
     for (final int colIdx : matchedColumnIndices) {
       schemas.add(new MeasurementSchema(measurements[colIdx], dataTypes[colIdx]));
     }
 
-    final Tablet tablet = new Tablet(deviceId.toString(), schemas, rowCount);
+    // Build column arrays and bitmaps using bulk copy
+    final long[] newTimes = Arrays.copyOf(times, rowCount);
+    final Object[] newColumns = new Object[columnCount];
+    final BitMap[] newBitMaps = new BitMap[columnCount];
 
-    for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-      tablet.addTimestamp(rowIdx, times[rowIdx]);
-
-      for (int colIdx = 0; colIdx < columnCount; colIdx++) {
-        final int originalColIdx = matchedColumnIndices.get(colIdx);
-        final boolean isNull =
-            (bitMaps != null
-                && bitMaps[originalColIdx] != null
-                && bitMaps[originalColIdx].isMarked(rowIdx));
-
-        if (isNull) {
-          if (tablet.getBitMaps() == null) {
-            tablet.initBitMaps();
-          }
-          tablet.getBitMaps()[colIdx].mark(rowIdx);
-        } else {
-          copyColumnValue(
-              tablet, rowIdx, colIdx, dataTypes[originalColIdx], columns[originalColIdx], rowIdx);
-        }
+    for (int i = 0; i < columnCount; i++) {
+      final int originalColIdx = allColumnsMatch ? i : matchedColumnIndices.get(i);
+      newColumns[i] = copyColumnArray(dataTypes[originalColIdx], columns[originalColIdx], rowCount);
+      if (bitMaps != null && bitMaps[originalColIdx] != null) {
+        newBitMaps[i] = new BitMap(rowCount);
+        BitMap.copyOfRange(bitMaps[originalColIdx], 0, newBitMaps[i], 0, rowCount);
       }
     }
-    tablet.setRowSize(rowCount);
+
+    final Tablet tablet =
+        new Tablet(deviceId.toString(), schemas, newTimes, newColumns, newBitMaps, rowCount);
 
     return Collections.singletonList(tablet);
   }
@@ -327,26 +322,27 @@ public class ConsensusLogToTabletConverter {
       schemas.add(new MeasurementSchema(measurements[i], dataTypes[i]));
     }
 
-    final Tablet tablet = new Tablet(tableName != null ? tableName : "", schemas, rowCount);
+    // Build column arrays and bitmaps using bulk copy
+    final long[] newTimes = Arrays.copyOf(times, rowCount);
+    final Object[] newColumns = new Object[columnCount];
+    final BitMap[] newBitMaps = new BitMap[columnCount];
 
-    for (int rowIdx = 0; rowIdx < rowCount; rowIdx++) {
-      tablet.addTimestamp(rowIdx, times[rowIdx]);
-
-      for (int colIdx = 0; colIdx < columnCount; colIdx++) {
-        final boolean isNull =
-            (bitMaps != null && bitMaps[colIdx] != null && bitMaps[colIdx].isMarked(rowIdx));
-
-        if (isNull) {
-          if (tablet.getBitMaps() == null) {
-            tablet.initBitMaps();
-          }
-          tablet.getBitMaps()[colIdx].mark(rowIdx);
-        } else {
-          copyColumnValue(tablet, rowIdx, colIdx, dataTypes[colIdx], columns[colIdx], rowIdx);
-        }
+    for (int colIdx = 0; colIdx < columnCount; colIdx++) {
+      newColumns[colIdx] = copyColumnArray(dataTypes[colIdx], columns[colIdx], rowCount);
+      if (bitMaps != null && bitMaps[colIdx] != null) {
+        newBitMaps[colIdx] = new BitMap(rowCount);
+        BitMap.copyOfRange(bitMaps[colIdx], 0, newBitMaps[colIdx], 0, rowCount);
       }
     }
-    tablet.setRowSize(rowCount);
+
+    final Tablet tablet =
+        new Tablet(
+            tableName != null ? tableName : "",
+            schemas,
+            newTimes,
+            newColumns,
+            newBitMaps,
+            rowCount);
 
     return Collections.singletonList(tablet);
   }
@@ -385,6 +381,65 @@ public class ConsensusLogToTabletConverter {
       }
     }
     return matchedIndices;
+  }
+
+  /**
+   * Bulk-copies a typed column array using System.arraycopy. Returns a new array of the same type
+   * containing the first {@code rowCount} elements.
+   */
+  private Object copyColumnArray(
+      final TSDataType dataType, final Object sourceColumn, final int rowCount) {
+    switch (dataType) {
+      case BOOLEAN:
+        {
+          final boolean[] src = (boolean[]) sourceColumn;
+          final boolean[] dst = new boolean[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      case INT32:
+      case DATE:
+        {
+          final int[] src = (int[]) sourceColumn;
+          final int[] dst = new int[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      case INT64:
+      case TIMESTAMP:
+        {
+          final long[] src = (long[]) sourceColumn;
+          final long[] dst = new long[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      case FLOAT:
+        {
+          final float[] src = (float[]) sourceColumn;
+          final float[] dst = new float[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      case DOUBLE:
+        {
+          final double[] src = (double[]) sourceColumn;
+          final double[] dst = new double[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      case TEXT:
+      case BLOB:
+      case STRING:
+        {
+          final Binary[] src = (Binary[]) sourceColumn;
+          final Binary[] dst = new Binary[rowCount];
+          System.arraycopy(src, 0, dst, 0, rowCount);
+          return dst;
+        }
+      default:
+        LOGGER.warn("Unsupported data type for bulk copy: {}", dataType);
+        return sourceColumn;
+    }
   }
 
   /**

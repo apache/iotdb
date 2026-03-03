@@ -25,6 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Tracks consensus subscription consumption progress for a single (consumerGroup, topic, region)
@@ -42,42 +43,42 @@ import java.util.Objects;
  */
 public class SubscriptionConsensusProgress {
 
-  private long searchIndex;
+  private final AtomicLong searchIndex;
 
-  private long commitIndex;
+  private final AtomicLong commitIndex;
 
   public SubscriptionConsensusProgress() {
     this(0L, 0L);
   }
 
   public SubscriptionConsensusProgress(final long searchIndex, final long commitIndex) {
-    this.searchIndex = searchIndex;
-    this.commitIndex = commitIndex;
+    this.searchIndex = new AtomicLong(searchIndex);
+    this.commitIndex = new AtomicLong(commitIndex);
   }
 
   public long getSearchIndex() {
-    return searchIndex;
+    return searchIndex.get();
   }
 
   public void setSearchIndex(final long searchIndex) {
-    this.searchIndex = searchIndex;
+    this.searchIndex.set(searchIndex);
   }
 
   public long getCommitIndex() {
-    return commitIndex;
+    return commitIndex.get();
   }
 
   public void setCommitIndex(final long commitIndex) {
-    this.commitIndex = commitIndex;
+    this.commitIndex.set(commitIndex);
   }
 
   public void incrementCommitIndex() {
-    this.commitIndex++;
+    this.commitIndex.incrementAndGet();
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(searchIndex, stream);
-    ReadWriteIOUtils.write(commitIndex, stream);
+    ReadWriteIOUtils.write(searchIndex.get(), stream);
+    ReadWriteIOUtils.write(commitIndex.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
@@ -95,21 +96,22 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    return searchIndex == that.searchIndex && commitIndex == that.commitIndex;
+    return searchIndex.get() == that.searchIndex.get()
+        && commitIndex.get() == that.commitIndex.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex, commitIndex);
+    return Objects.hash(searchIndex.get(), commitIndex.get());
   }
 
   @Override
   public String toString() {
     return "SubscriptionConsensusProgress{"
         + "searchIndex="
-        + searchIndex
+        + searchIndex.get()
         + ", commitIndex="
-        + commitIndex
+        + commitIndex.get()
         + '}';
   }
 }

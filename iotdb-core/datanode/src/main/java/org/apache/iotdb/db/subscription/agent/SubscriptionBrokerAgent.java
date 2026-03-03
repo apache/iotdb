@@ -24,6 +24,7 @@ import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusLogToTabletConverter;
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
 import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
@@ -188,7 +189,8 @@ public class SubscriptionBrokerAgent {
     final List<SubscriptionCommitContext> consensusContexts = new ArrayList<>();
     for (final SubscriptionCommitContext ctx : commitContexts) {
       final String topicName = ctx.getTopicName();
-      if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      if (Objects.nonNull(consensusBroker)
+          && ConsensusSubscriptionSetupHandler.isConsensusBasedTopic(topicName)) {
         consensusContexts.add(ctx);
       } else {
         pipeContexts.add(ctx);
@@ -368,6 +370,20 @@ public class SubscriptionBrokerAgent {
     }
     broker.unbindConsensusPrefetchingQueue(topicName);
     prefetchingQueueCount.invalidate();
+  }
+
+  public void unbindByRegion(final String regionId) {
+    int totalClosed = 0;
+    for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      totalClosed += broker.unbindByRegion(regionId);
+    }
+    if (totalClosed > 0) {
+      prefetchingQueueCount.invalidate();
+      LOGGER.info(
+          "Subscription: unbound {} consensus prefetching queue(s) for removed region [{}]",
+          totalClosed,
+          regionId);
+    }
   }
 
   public void updateCompletedTopicNames(final String consumerGroupId, final String topicName) {
