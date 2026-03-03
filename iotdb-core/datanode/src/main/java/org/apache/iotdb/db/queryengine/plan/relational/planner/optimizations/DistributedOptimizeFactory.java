@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.El
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitOverProjectWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.MergeLimitWithMergeSort;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.PushDownOffsetIntoTableScan;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule.ReplaceFilterWindowLeadWithChangePoint;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -41,6 +42,11 @@ public class DistributedOptimizeFactory {
 
     this.planOptimizers =
         ImmutableList.of(
+            // replace Filter(Window(LEAD)) change-point pattern with ChangePointNode
+            new IterativeOptimizer(
+                plannerContext,
+                ruleStats,
+                ImmutableSet.of(new ReplaceFilterWindowLeadWithChangePoint())),
             // transfer Limit+Sort to TopK
             new IterativeOptimizer(
                 plannerContext,

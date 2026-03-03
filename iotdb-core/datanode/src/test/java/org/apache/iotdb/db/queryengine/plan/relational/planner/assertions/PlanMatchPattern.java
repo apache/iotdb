@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -479,6 +480,10 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern rowNumber(PlanMatchPattern source) {
     return node(RowNumberNode.class, source);
+  }
+
+  public static PlanMatchPattern changePoint(PlanMatchPattern source) {
+    return node(ChangePointNode.class, source);
   }
 
   public static PlanMatchPattern markDistinct(

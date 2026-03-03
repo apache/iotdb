@@ -101,6 +101,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.exp
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
 import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
@@ -208,6 +209,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
@@ -4304,6 +4306,32 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         partitionChannels,
         node.getMaxRowCountPerPartition(),
         10_000);
+  }
+
+  @Override
+  public Operator visitChangePoint(ChangePointNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableChangePointOperator.class.getSimpleName());
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<TSDataType> childOutputTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    Integer measurementChannel = childLayout.get(node.getMeasurementSymbol());
+    if (measurementChannel == null) {
+      throw new IllegalStateException(
+          "Measurement symbol not found in child output: " + node.getMeasurementSymbol());
+    }
+
+    return new TableChangePointOperator(
+        operatorContext, child, measurementChannel, childOutputTypes);
   }
 
   @Override

@@ -134,6 +134,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
@@ -796,6 +797,10 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitRowNumber(RowNumberNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitChangePoint(ChangePointNode node, C context) {
     return visitSingleChildProcess(node, context);
   }
 

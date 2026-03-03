@@ -235,6 +235,10 @@ public final class Patterns {
     return typeOf(WindowNode.class);
   }
 
+  public static Pattern<ChangePointNode> changePoint() {
+    return typeOf(ChangePointNode.class);
+  }
+
   public static Pattern<GroupNode> groupNode() {
     return typeOf(GroupNode.class);
   }
