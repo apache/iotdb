@@ -181,4 +181,27 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
     return stringBuilder.toString();
   }
+ @Test
+    public void testLongColumnAsTimeColumn() {
+        ElasticSerializableTVList list = ElasticSerializableTVList.newElasticSerializableTVList(
+            TSDataType.INT64, 
+            TSDataType.DOUBLE, 
+            "test_query", 
+            "test_device", 
+            0);
+
+        long[] timestamps = new long[] {1, 2, 3};
+        double[] values = new double[] {10.0, 20.0, 30.0};
+        org.apache.tsfile.block.column.Column timeColumn = 
+            new org.apache.tsfile.read.common.block.column.LongColumn(3, java.util.Optional.empty(), timestamps);
+        org.apache.tsfile.block.column.Column valueColumn = 
+            new org.apache.tsfile.read.common.block.column.DoubleColumn(3, java.util.Optional.empty(), values);
+
+        try {
+            list.putColumn(timeColumn, valueColumn);
+            assertEquals(3, list.size());
+        } catch (IOException e) {
+            fail(e.toString());
+        }
+    }
 }
