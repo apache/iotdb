@@ -67,7 +67,8 @@ public class PushFilterIntoRowNumber implements Rule<FilterNode> {
               source()
                   .matching(
                       rowNumber()
-                          .matching(rowNumber -> !rowNumber.getMaxRowCountPerPartition().isPresent())
+                          .matching(
+                              rowNumber -> !rowNumber.getMaxRowCountPerPartition().isPresent())
                           .capturedAs(CHILD)));
 
   @Override

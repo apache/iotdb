@@ -1908,8 +1908,7 @@ public class TableDistributedPlanGenerator
     if (parentRefs != null && !parentRefs.contains(node.getRowNumberSymbol())) {
       // If maxRowCountPerPartition is set, push it as a per-device limit to each
       // DeviceTableScanNode so that only the required number of rows are scanned.
-      node
-          .getMaxRowCountPerPartition()
+      node.getMaxRowCountPerPartition()
           .ifPresent(
               limit -> {
                 for (PlanNode child : childrenNodes) {
@@ -1930,8 +1929,7 @@ public class TableDistributedPlanGenerator
         return childrenNodes;
       } else {
         CollectNode collectNode =
-            new CollectNode(
-                queryId.genPlanNodeId(), childrenNodes.get(0).getOutputSymbols());
+            new CollectNode(queryId.genPlanNodeId(), childrenNodes.get(0).getOutputSymbols());
         childrenNodes.forEach(collectNode::addChild);
         return Collections.singletonList(collectNode);
       }

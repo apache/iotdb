@@ -31,18 +31,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.group;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.limit;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.mergeSort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.rowNumber;
@@ -50,6 +45,10 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topKRanking;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.window;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class WindowFunctionOptimizationTest {
   @Test
@@ -326,8 +325,7 @@ public class WindowFunctionOptimizationTest {
 
     // Distributed plan: TopKRankingNode pushed down to each partition with limit push-down.
     // Fragment 0: OutputNode -> CollectNode -> ExchangeNodes
-    assertPlan(
-        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
 
     // Worker fragments: TopKRankingNode -> DeviceTableScanNode
     // Verify limit is pushed to DeviceTableScanNode and TopKRankingNode is marked for streaming.
@@ -343,8 +341,7 @@ public class WindowFunctionOptimizationTest {
 
       PlanNode scanChild = topKNode.getChild();
       assertNotNull("TopKRankingNode should have a child", scanChild);
-      assertTrue(
-          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      assertTrue("Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
       DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
       assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
       assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
@@ -366,8 +363,7 @@ public class WindowFunctionOptimizationTest {
     // Distributed plan: TopKRankingNode eliminated since rn is not in the output.
     // Limit is pushed to DeviceTableScanNode.
     // Fragment 0: OutputNode -> CollectNode -> ExchangeNodes
-    assertPlan(
-        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
 
     // Worker fragments: ProjectNode -> DeviceTableScanNode (no TopKRankingNode)
     for (int i = 1; i <= 2; i++) {
@@ -378,11 +374,9 @@ public class WindowFunctionOptimizationTest {
       assertPlan(planTester.getFragmentPlan(i), project(tableScan));
 
       assertTrue(
-          "Fragment " + i + " root should be ProjectNode",
-          fragmentRoot instanceof ProjectNode);
+          "Fragment " + i + " root should be ProjectNode", fragmentRoot instanceof ProjectNode);
       PlanNode scanChild = fragmentRoot.getChildren().get(0);
-      assertTrue(
-          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      assertTrue("Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
       DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
       assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
       assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
@@ -462,8 +456,7 @@ public class WindowFunctionOptimizationTest {
 
     // Distributed plan: RowNumberNode eliminated since rn is not in the output.
     // Limit (maxRowCountPerPartition=2) is pushed to each DeviceTableScanNode.
-    assertPlan(
-        planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
 
     // Worker fragments: ProjectNode -> DeviceTableScanNode (no RowNumberNode)
     for (int i = 1; i <= 2; i++) {
@@ -474,11 +467,9 @@ public class WindowFunctionOptimizationTest {
       assertPlan(planTester.getFragmentPlan(i), project(tableScan));
 
       assertTrue(
-          "Fragment " + i + " root should be ProjectNode",
-          fragmentRoot instanceof ProjectNode);
+          "Fragment " + i + " root should be ProjectNode", fragmentRoot instanceof ProjectNode);
       PlanNode scanChild = fragmentRoot.getChildren().get(0);
-      assertTrue(
-          "Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
+      assertTrue("Child should be DeviceTableScanNode", scanChild instanceof DeviceTableScanNode);
       DeviceTableScanNode dts = (DeviceTableScanNode) scanChild;
       assertTrue("pushLimitToEachDevice should be true", dts.isPushLimitToEachDevice());
       assertEquals("pushDownLimit should be 2", 2, dts.getPushDownLimit());
@@ -495,15 +486,15 @@ public class WindowFunctionOptimizationTest {
     LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
     PlanMatchPattern tableScan = tableScan("testdb.table1");
 
-    // Logical plan: RowNumberNode with maxRowCount=2 (filter absorbed), no outer project removing rn
+    // Logical plan: RowNumberNode with maxRowCount=2 (filter absorbed), no outer project removing
+    // rn
     assertPlan(logicalQueryPlan, output(rowNumber(group(tableScan))));
 
     // Worker fragments should still have RowNumberNode since rn IS in the output
     for (int i = 1; i <= 2; i++) {
       PlanNode fragmentRoot = planTester.getFragmentPlan(i);
       assertTrue(
-          "Fragment " + i + " root should be RowNumberNode",
-          fragmentRoot instanceof RowNumberNode);
+          "Fragment " + i + " root should be RowNumberNode", fragmentRoot instanceof RowNumberNode);
     }
   }
 
@@ -548,9 +539,7 @@ public class WindowFunctionOptimizationTest {
     assertPlan(logicalQueryPlan, output(filter(topKRanking(group(tableScan)))));
 
     // Distributed plan: TopKRanking and filter pushed down
-    assertPlan(
-        planTester.getFragmentPlan(0),
-        output(collect(exchange(), exchange(), exchange())));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
     assertPlan(planTester.getFragmentPlan(1), filter(topKRanking(tableScan)));
     assertPlan(planTester.getFragmentPlan(2), filter(topKRanking(tableScan)));
   }

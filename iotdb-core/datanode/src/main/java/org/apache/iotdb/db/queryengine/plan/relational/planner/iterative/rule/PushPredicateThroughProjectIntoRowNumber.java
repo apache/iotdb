@@ -46,8 +46,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.Patte
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture.newCapture;
 
 /**
- * Pushes a row-number upper-bound filter through an identity projection into {@link
- * RowNumberNode} by setting {@code maxRowCountPerPartition}.
+ * Pushes a row-number upper-bound filter through an identity projection into {@link RowNumberNode}
+ * by setting {@code maxRowCountPerPartition}.
  *
  * <p>Before:
  *
@@ -175,9 +175,8 @@ public class PushPredicateThroughProjectIntoRowNumber implements Rule<FilterNode
   /**
    * For {@code LESS_THAN} and {@code LESS_THAN_OR_EQUAL}, the RowNumberNode with
    * maxRowCountPerPartition produces exactly the rows that satisfy the predicate (row numbers
-   * 1..N), so the filter can be removed. For {@code EQUAL} (e.g. {@code rn = 5}), the
-   * RowNumberNode produces rows 1..5 but only rows where {@code rn = 5} are wanted, so the filter
-   * must be kept.
+   * 1..N), so the filter can be removed. For {@code EQUAL} (e.g. {@code rn = 5}), the RowNumberNode
+   * produces rows 1..5 but only rows where {@code rn = 5} are wanted, so the filter must be kept.
    */
   private static boolean needToKeepFilter(Expression predicate) {
     if (!(predicate instanceof ComparisonExpression)) {

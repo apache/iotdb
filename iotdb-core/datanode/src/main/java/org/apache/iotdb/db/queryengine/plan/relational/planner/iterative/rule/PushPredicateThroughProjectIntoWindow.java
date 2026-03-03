@@ -98,8 +98,7 @@ public class PushPredicateThroughProjectIntoWindow implements Rule<FilterNode> {
                                     .matching(
                                         window()
                                             .matching(
-                                                window ->
-                                                    toTopNRankingType(window).isPresent())
+                                                window -> toTopNRankingType(window).isPresent())
                                             .capturedAs(WINDOW)))));
   }
 
@@ -118,8 +117,7 @@ public class PushPredicateThroughProjectIntoWindow implements Rule<FilterNode> {
       return Result.empty();
     }
 
-    OptionalInt upperBound =
-        extractUpperBoundFromComparison(filter.getPredicate(), rankingSymbol);
+    OptionalInt upperBound = extractUpperBoundFromComparison(filter.getPredicate(), rankingSymbol);
     if (!upperBound.isPresent()) {
       return Result.empty();
     }
@@ -149,8 +147,7 @@ public class PushPredicateThroughProjectIntoWindow implements Rule<FilterNode> {
     return Result.ofPlanNode(project);
   }
 
-  private OptionalInt extractUpperBoundFromComparison(
-      Expression predicate, Symbol rankingSymbol) {
+  private OptionalInt extractUpperBoundFromComparison(Expression predicate, Symbol rankingSymbol) {
     if (!(predicate instanceof ComparisonExpression)) {
       return OptionalInt.empty();
     }
@@ -188,10 +185,10 @@ public class PushPredicateThroughProjectIntoWindow implements Rule<FilterNode> {
   }
 
   /**
-   * For {@code LESS_THAN} and {@code LESS_THAN_OR_EQUAL}, the TopKRankingNode produces exactly
-   * the rows that satisfy the predicate (ranking values 1..N), so the filter can be removed. For
-   * {@code EQUAL} (e.g. {@code rn = 5}), TopKRankingNode produces rows 1..5 but only rows where
-   * {@code rn = 5} are wanted, so the filter must be kept.
+   * For {@code LESS_THAN} and {@code LESS_THAN_OR_EQUAL}, the TopKRankingNode produces exactly the
+   * rows that satisfy the predicate (ranking values 1..N), so the filter can be removed. For {@code
+   * EQUAL} (e.g. {@code rn = 5}), TopKRankingNode produces rows 1..5 but only rows where {@code rn
+   * = 5} are wanted, so the filter must be kept.
    */
   private static boolean needToKeepFilter(Expression predicate) {
     if (!(predicate instanceof ComparisonExpression)) {

@@ -231,8 +231,7 @@ public class IoTDBWindowFunction3IT {
     String[] expectedHeader = new String[] {"time", "device", "value", "rn"};
     String[] retArray =
         new String[] {
-          "2021-01-01T09:05:00.000Z,d1,3.0,1,",
-          "2021-01-01T09:08:00.000Z,d2,2.0,1,",
+          "2021-01-01T09:05:00.000Z,d1,3.0,1,", "2021-01-01T09:08:00.000Z,d2,2.0,1,",
         };
     tableResultSetEqualTest(
         "SELECT * FROM (SELECT *, row_number() OVER (PARTITION BY device ORDER BY time ASC) as rn FROM demo) WHERE rn <= 1 ORDER BY device",
