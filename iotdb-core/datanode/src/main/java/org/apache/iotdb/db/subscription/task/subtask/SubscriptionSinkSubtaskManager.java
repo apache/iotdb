@@ -127,7 +127,8 @@ public class SubscriptionSinkSubtaskManager {
       if (Objects.isNull(topicName) || Objects.isNull(consumerGroupId)) {
         throw new SubscriptionException(
             String.format(
-                "Failed to construct subscription sink, because of %s or %s does not exist in pipe connector parameters",
+                "Failed to construct subscription sink, because of %s or %s "
+                    + "does not exist in pipe connector parameters",
                 PipeSinkConstant.SINK_TOPIC_KEY, PipeSinkConstant.SINK_CONSUMER_GROUP_KEY));
       }
 
