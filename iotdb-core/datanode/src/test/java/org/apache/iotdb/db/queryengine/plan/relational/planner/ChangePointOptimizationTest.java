@@ -26,6 +26,7 @@ import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.changePoint;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.changePointTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
@@ -49,12 +50,12 @@ public class ChangePointOptimizationTest {
     // Logical plan still has Filter -> Window (optimization happens at distributed level)
     assertPlan(logicalQueryPlan, output((filter(window(group(tableScan))))));
 
-    // Distributed plan: ChangePointNode replaces Filter -> Window per partition
+    // Distributed plan: ChangePointNode + TableScan merged into ChangePointTableScanNode
     // Fragment 0: Output -> Collect -> Exchange*
     assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
-    // Fragment 1+: ChangePointNode -> TableScan
-    assertPlan(planTester.getFragmentPlan(1), changePoint(tableScan));
-    assertPlan(planTester.getFragmentPlan(2), changePoint(tableScan));
+    // Fragment 1+: ChangePointTableScanNode (pushdown merged)
+    assertPlan(planTester.getFragmentPlan(1), changePointTableScan("testdb.table1"));
+    assertPlan(planTester.getFragmentPlan(2), changePointTableScan("testdb.table1"));
   }
 
   @Test

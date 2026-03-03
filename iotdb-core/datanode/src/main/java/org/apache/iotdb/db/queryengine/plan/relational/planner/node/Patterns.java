@@ -239,6 +239,10 @@ public final class Patterns {
     return typeOf(ChangePointNode.class);
   }
 
+  public static Pattern<ChangePointTableScanNode> changePointTableScan() {
+    return typeOf(ChangePointTableScanNode.class);
+  }
+
   public static Pattern<GroupNode> groupNode() {
     return typeOf(GroupNode.class);
   }

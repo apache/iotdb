@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -484,6 +485,16 @@ public final class PlanMatchPattern {
 
   public static PlanMatchPattern changePoint(PlanMatchPattern source) {
     return node(ChangePointNode.class, source);
+  }
+
+  public static PlanMatchPattern changePointTableScan(String expectedTableName) {
+    return node(ChangePointTableScanNode.class)
+        .with(
+            new DeviceTableScanMatcher(
+                expectedTableName,
+                Optional.empty(),
+                Collections.emptyList(),
+                Collections.emptySet()));
   }
 
   public static PlanMatchPattern markDistinct(

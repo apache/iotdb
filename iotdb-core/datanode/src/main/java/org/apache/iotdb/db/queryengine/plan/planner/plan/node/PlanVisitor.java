@@ -804,6 +804,12 @@ public abstract class PlanVisitor<R, C> {
     return visitSingleChildProcess(node, context);
   }
 
+  public R visitChangePointTableScan(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode node,
+      C context) {
+    return visitDeviceTableScan(node, context);
+  }
+
   public R visitValuesNode(ValuesNode node, C context) {
     return visitPlan(node, context);
   }

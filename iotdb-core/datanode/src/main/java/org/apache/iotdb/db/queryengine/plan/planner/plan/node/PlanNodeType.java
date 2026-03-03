@@ -325,6 +325,7 @@ public enum PlanNodeType {
   TABLE_ROW_NUMBER_NODE((short) 1038),
   TABLE_VALUES_NODE((short) 1039),
   TABLE_CHANGE_POINT_NODE((short) 1040),
+  CHANGE_POINT_TABLE_SCAN_NODE((short) 1041),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -731,6 +732,9 @@ public enum PlanNodeType {
         return ValuesNode.deserialize(buffer);
       case 1040:
         return ChangePointNode.deserialize(buffer);
+      case 1041:
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node
+            .ChangePointTableScanNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

@@ -56,7 +56,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollect
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.process.TableChangePointOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
@@ -188,6 +188,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationT
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -4310,28 +4311,77 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitChangePoint(ChangePointNode node, LocalExecutionPlanContext context) {
-    Operator child = node.getChild().accept(this, context);
+    throw new UnsupportedOperationException(
+        "ChangePointNode should have been pushed into TableScan by PushChangePointIntoTableScan rule");
+  }
+
+  @Override
+  public Operator visitChangePointTableScan(
+      ChangePointTableScanNode node, LocalExecutionPlanContext context) {
+
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(node, Collections.emptyMap(), false);
+
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            commonParameter.columnSchemaMap,
+            commonParameter.measurementColumnNames,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate());
+
     OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
-                TableChangePointOperator.class.getSimpleName());
+                ChangePointOperator.class.getSimpleName());
 
-    Map<Symbol, Integer> childLayout =
-        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
-    List<TSDataType> childOutputTypes =
-        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    Set<String> allSensors = new HashSet<>(commonParameter.measurementColumnNames);
+    allSensors.add("");
 
-    Integer measurementChannel = childLayout.get(node.getMeasurementSymbol());
-    if (measurementChannel == null) {
+    String monitoredColumnName =
+        node.getAssignments().get(node.getMeasurementSymbol()).getName();
+    int monitoredMeasurementIndex = commonParameter.measurementColumnNames.indexOf(monitoredColumnName);
+    if (monitoredMeasurementIndex < 0) {
       throw new IllegalStateException(
-          "Measurement symbol not found in child output: " + node.getMeasurementSymbol());
+          "Monitored column not found in measurement columns: " + monitoredColumnName);
     }
 
-    return new TableChangePointOperator(
-        operatorContext, child, measurementChannel, childOutputTypes);
+    ChangePointOperator.ChangePointOperatorParameter parameter =
+        new ChangePointOperator.ChangePointOperatorParameter(
+            operatorContext,
+            node.getPlanNodeId(),
+            commonParameter.columnSchemas,
+            commonParameter.columnsIndexArray,
+            node.getDeviceEntries(),
+            node.getScanOrder(),
+            seriesScanOptions,
+            commonParameter.measurementColumnNames,
+            allSensors,
+            commonParameter.measurementSchemas,
+            monitoredMeasurementIndex,
+            idColumnIndex -> ((String) node.getDeviceEntries().get(0).getNthSegment(idColumnIndex + 1)));
+
+    ChangePointOperator changePointOperator = new ChangePointOperator(parameter);
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    addSource(
+        changePointOperator,
+        context,
+        node,
+        commonParameter.measurementColumnNames,
+        commonParameter.measurementSchemas,
+        allSensors,
+        ChangePointTableScanNode.class.getSimpleName());
+
+    return changePointOperator;
   }
 
   @Override
