@@ -181,27 +181,25 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
     }
     return stringBuilder.toString();
   }
- @Test
-    public void testLongColumnAsTimeColumn() {
-        ElasticSerializableTVList list = ElasticSerializableTVList.newElasticSerializableTVList(
-            TSDataType.INT64, 
-            TSDataType.DOUBLE, 
-            "test_query", 
-            "test_device", 
-            0);
 
-        long[] timestamps = new long[] {1, 2, 3};
-        double[] values = new double[] {10.0, 20.0, 30.0};
-        org.apache.tsfile.block.column.Column timeColumn = 
-            new org.apache.tsfile.read.common.block.column.LongColumn(3, java.util.Optional.empty(), timestamps);
-        org.apache.tsfile.block.column.Column valueColumn = 
-            new org.apache.tsfile.read.common.block.column.DoubleColumn(3, java.util.Optional.empty(), values);
+  @Test
+  public void testLongColumnAsTimeColumn() {
+    tvList = ElasticSerializableTVList.construct(TSDataType.DOUBLE, "test_query", 1024 * 1024, 100);
 
-        try {
-            list.putColumn(timeColumn, valueColumn);
-            assertEquals(3, list.size());
-        } catch (IOException e) {
-            fail(e.toString());
-        }
+    long[] timestamps = new long[] {1, 2, 3};
+    double[] values = new double[] {10.0, 20.0, 30.0};
+
+    org.apache.tsfile.read.common.block.column.TimeColumn timeColumn =
+        new org.apache.tsfile.read.common.block.column.TimeColumn(3, timestamps);
+    org.apache.tsfile.read.common.block.column.DoubleColumn valueColumn =
+        new org.apache.tsfile.read.common.block.column.DoubleColumn(
+            3, java.util.Optional.empty(), values);
+
+    try {
+      tvList.putColumn(timeColumn, valueColumn);
+      assertEquals(3, tvList.size());
+    } catch (IOException e) {
+      fail(e.toString());
     }
+  }
 }
