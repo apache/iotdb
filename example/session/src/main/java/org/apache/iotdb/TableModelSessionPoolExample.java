@@ -136,9 +136,7 @@ public class TableModelSessionPoolExample {
         printDataSet(dataSet);
       }
 
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     } finally {
       tableSessionPool.close();
@@ -170,9 +168,7 @@ public class TableModelSessionPoolExample {
         printDataSet(dataSet);
       }
 
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
 
@@ -183,9 +179,7 @@ public class TableModelSessionPoolExample {
         printDataSet(dataSet);
       }
 
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     } finally {
       tableSessionPool.close();
