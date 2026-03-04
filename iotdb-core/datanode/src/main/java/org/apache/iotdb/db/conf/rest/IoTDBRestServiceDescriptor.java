@@ -138,17 +138,22 @@ public class IoTDBRestServiceDescriptor {
       if (urlString != null) {
         urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configName;
       } else {
-        // If this too wasn't provided, try to find a default config in the root of the classpath.
-        URL uri = IoTDBConfig.class.getResource("/" + configName);
-        if (uri != null) {
-          return uri;
+        urlString = System.getProperty(IoTDBConstant.CONFIGNODE_HOME, null);
+        if (urlString != null) {
+          urlString = urlString + File.separatorChar + "conf" + File.separatorChar + configName;
+        } else {
+          // If this too wasn't provided, try to find a default config in the root of the classpath.
+          URL uri = IoTDBConfig.class.getResource("/" + configName);
+          if (uri != null) {
+            return uri;
+          }
+          logger.warn(
+              "Cannot find IOTDB_HOME or IOTDB_CONF or CONFIGNODE_HOME environment variable when loading "
+                  + "config file {}, use default configuration",
+              configName);
+          // update all data seriesPath
+          return null;
         }
-        logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
-                + "config file {}, use default configuration",
-            configName);
-        // update all data seriesPath
-        return null;
       }
     }
     // If a config location was provided, but it doesn't end with a properties file,

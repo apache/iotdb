@@ -20,6 +20,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceConfig;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.externalservice.api.IExternalService;
 import org.apache.iotdb.rest.protocol.filter.ApiOriginFilter;
+import org.apache.iotdb.rest.protocol.filter.UserCache;
 
 import org.eclipse.jetty.http.HttpVersion;
 import org.eclipse.jetty.server.HttpConfiguration;
@@ -140,5 +141,9 @@ public class RestService implements IExternalService {
     } finally {
       server.destroy();
     }
+  }
+
+  public static void clearUserCache(String userName) {
+    UserCache.getInstance().clearUserCache(userName);
   }
 }
