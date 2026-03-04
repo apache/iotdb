@@ -42,7 +42,7 @@ public class InternalClientSession extends IClientSession {
 
   @Override
   public String getClientAddress() {
-    return clientID;
+    return "";
   }
 
   @Override

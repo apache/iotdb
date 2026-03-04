@@ -664,7 +664,7 @@ public class AuthorInfoTest {
             new ArrayList<>());
     status = authorInfo.authorNonQuery(authorPlan);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    TPermissionInfoResp result = authorInfo.login("testuser", "password123456");
+    TPermissionInfoResp result = authorInfo.login("testuser", "password123456", false);
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.getStatus().getCode());
   }
 

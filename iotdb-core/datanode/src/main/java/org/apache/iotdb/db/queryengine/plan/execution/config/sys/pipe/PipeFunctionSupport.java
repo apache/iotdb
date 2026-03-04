@@ -31,7 +31,7 @@ public class PipeFunctionSupport {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeFunctionSupport.class);
 
-  public static void applyNowFunctionToExtractorAttributes(
+  public static void applyNowFunction2SourceAttributes(
       final Map<String, String> extractorAttributes,
       final String sourceKey,
       final String extractorKey,

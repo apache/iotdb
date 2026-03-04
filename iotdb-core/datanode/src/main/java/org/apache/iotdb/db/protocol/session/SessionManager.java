@@ -130,11 +130,26 @@ public class SessionManager implements SessionManagerMBean {
       TSProtocolVersion tsProtocolVersion,
       IoTDBConstant.ClientVersion clientVersion,
       IClientSession.SqlDialect sqlDialect) {
-    BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
+    return login(
+        session, username, password, zoneId, tsProtocolVersion, clientVersion, sqlDialect, false);
+  }
 
-    long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+  // Only pipe can set useEncryptedPassword to true
+  public BasicOpenSessionResp login(
+      final IClientSession session,
+      final String username,
+      final String password,
+      final String zoneId,
+      final TSProtocolVersion tsProtocolVersion,
+      final IoTDBConstant.ClientVersion clientVersion,
+      final IClientSession.SqlDialect sqlDialect,
+      final boolean useEncryptedPassword) {
+    final BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
-    Long timeToExpire = DataNodeAuthUtils.checkPasswordExpiration(userId, password);
+    final long userId = AuthorityChecker.getUserId(username).orElse(-1L);
+
+    Long timeToExpire =
+        DataNodeAuthUtils.checkPasswordExpiration(userId, password, useEncryptedPassword);
     if (timeToExpire != null && timeToExpire <= System.currentTimeMillis()) {
       openSessionResp
           .sessionId(-1)
@@ -154,7 +169,8 @@ public class SessionManager implements SessionManagerMBean {
       return openSessionResp;
     }
 
-    TSStatus loginStatus = AuthorityChecker.checkUser(username, password);
+    final TSStatus loginStatus =
+        AuthorityChecker.checkUser(username, password, useEncryptedPassword);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {

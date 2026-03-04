@@ -111,11 +111,11 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
     this.currentDeviceIndex = 0;
     this.operatorContext.recordSpecifiedInfo(CURRENT_DEVICE_INDEX_STRING, Integer.toString(0));
 
+    // allSensors include time and all field columns
     this.maxReturnSize =
         Math.min(
             maxReturnSize,
-            (1L + parameter.columnsIndexArray.length)
-                * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
+            allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
     this.maxTsBlockLineNum = parameter.maxTsBlockLineNum;
 
     constructAlignedSeriesScanUtil();
@@ -228,8 +228,10 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
 
   @Override
   public long calculateMaxPeekMemory() {
-    return (1L + columnsIndexArray.length)
-        * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    // allSensors have included time column and all field columns
+    return Math.max(
+        maxReturnSize,
+        allSensors.size() * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte());
   }
 
   @Override

@@ -55,7 +55,10 @@ import org.apache.iotdb.pipe.api.annotation.TreeModel;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.exception.PipeException;
+import org.apache.iotdb.pipe.api.exception.PipePasswordCheckException;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import javax.annotation.Nonnull;
 
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -106,6 +109,20 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
 
     PipeConfigRegionSourceMetrics.getInstance().register(this);
     PipeConfigNodeRemainingTimeMetrics.getInstance().register(this);
+  }
+
+  @Override
+  protected void login(final @Nonnull String password) {
+    if (ConfigNode.getInstance()
+            .getConfigManager()
+            .getPermissionManager()
+            .login(userName, password, true)
+            .getStatus()
+            .getCode()
+        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipePasswordCheckException(
+          String.format("Failed to check password for pipe %s.", pipeName));
+    }
   }
 
   @Override
@@ -327,7 +344,8 @@ public class IoTDBConfigRegionSource extends IoTDBNonDataRegionSource {
       final IoTDBTreePatternOperations treePattern,
       final TablePattern tablePattern) {
     final Boolean isTableDatabasePlan = isTableDatabasePlan(plan);
-    return listenedTypeSet.contains(plan.getType())
+    return ConfigRegionListeningFilter.shouldPlanBeListened(plan)
+        && listenedTypeSet.contains(plan.getType())
         && (Objects.isNull(isTableDatabasePlan)
             || Boolean.TRUE.equals(isTableDatabasePlan)
                 && tablePattern.isTableModelDataAllowedToBeCaptured()

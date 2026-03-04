@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.commons.schema.table.TsFileTableSchemaUtil;
 import org.apache.iotdb.commons.schema.table.TsTable;
@@ -3797,6 +3798,9 @@ public class DataRegion implements IDataRegionForQuery {
       return Optional.empty();
     }
     if (databaseName.startsWith(SchemaConstant.AUDIT_DATABASE)) {
+      return Optional.empty();
+    }
+    if (databaseName.startsWith(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
       return Optional.empty();
     }
     int lastIndex = databaseName.lastIndexOf("-");
