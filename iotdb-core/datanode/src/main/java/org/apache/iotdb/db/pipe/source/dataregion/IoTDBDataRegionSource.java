@@ -22,6 +22,7 @@ package org.apache.iotdb.db.pipe.source.dataregion;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.task.PipeTaskAgent;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePatternOperations;
@@ -559,20 +560,22 @@ public class IoTDBDataRegionSource extends IoTDBSource {
 
   @Override
   protected void login(final @Nonnull String password) {
-    if (SessionManager.getInstance()
-            .login(
-                new InternalClientSession("Source_login_session_" + regionId),
-                userName,
-                password,
-                ZoneId.systemDefault().toString(),
-                SessionManager.CURRENT_RPC_VERSION,
-                IoTDBConstant.ClientVersion.V_1_0,
-                IClientSession.SqlDialect.TREE,
-                regionId >= 0)
-            .getCode()
-        != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipePasswordCheckException(
-          String.format("Failed to check password for pipe %s.", pipeName));
+    if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+      if (SessionManager.getInstance()
+              .login(
+                  new InternalClientSession("Source_login_session_" + regionId),
+                  userName,
+                  password,
+                  ZoneId.systemDefault().toString(),
+                  SessionManager.CURRENT_RPC_VERSION,
+                  IoTDBConstant.ClientVersion.V_1_0,
+                  IClientSession.SqlDialect.TREE,
+                  regionId >= 0)
+              .getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipePasswordCheckException(
+            String.format("Failed to check password for pipe %s.", pipeName));
+      }
     }
   }
 
