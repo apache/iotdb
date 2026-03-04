@@ -336,6 +336,11 @@ struct TReconstructRegionReq {
     3: required common.Model model
 }
 
+// Load balance request
+struct TLoadBalanceReq {
+    1: optional list<i32> targetNodeIds
+}
+
 struct TExtendRegionReq {
     1: required list<i32> regionId
     2: required i32 dataNodeId
@@ -766,6 +771,29 @@ struct TRegionInfo {
 struct TShowRegionResp {
   1: required common.TSStatus status
   2: optional list<TRegionInfo> regionInfoList;
+}
+
+// Show migrations
+struct TShowMigrationsReq {
+  1: optional bool isTableModel
+}
+
+struct TMigrationInfo {
+  1: required i64 procedureId
+  2: required i32 regionId
+  3: required common.TConsensusGroupType regionType
+  4: required i32 fromNodeId
+  5: required i32 toNodeId
+  6: required string currentState
+  7: required string procedureStatus
+  8: required i64 submittedTime
+  9: required i64 lastUpdateTime
+  10: required string duration
+}
+
+struct TShowMigrationsResp {
+  1: required common.TSStatus status
+  2: optional list<TMigrationInfo> migrationInfoList;
 }
 
 // Routing
@@ -1747,6 +1775,9 @@ service IConfigNodeRPCService {
   /** Migrate a region replica from one dataNode to another */
   common.TSStatus migrateRegion(TMigrateRegionReq req)
 
+  /** Load balance */
+  common.TSStatus loadBalance(TLoadBalanceReq req)
+
   common.TSStatus reconstructRegion(TReconstructRegionReq req)
 
   common.TSStatus extendRegion(TExtendRegionReq req)
@@ -1797,6 +1828,11 @@ service IConfigNodeRPCService {
    * See https://apache-iotdb.feishu.cn/docx/doxcnOzmIlaE2MX5tKjmYWuMSRg for detailed matching rules
    */
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /**
+   * Show all running region migration tasks
+   */
+  TShowMigrationsResp showMigrations(TShowMigrationsReq req)
 
   // ======================================================
   // Routing

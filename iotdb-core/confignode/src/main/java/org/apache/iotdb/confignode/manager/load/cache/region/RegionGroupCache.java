@@ -108,9 +108,15 @@ public class RegionGroupCache {
                 TreeMap::new,
                 (map, entry) -> map.put(entry.getKey(), entry.getValue().getCurrentStatistics()),
                 TreeMap::putAll);
-    currentStatistics.set(
+    RegionGroupStatistics regionGroupStatistics =
         new RegionGroupStatistics(
-            caculateRegionGroupStatus(regionStatisticsMap), regionStatisticsMap));
+            caculateRegionGroupStatus(regionStatisticsMap), regionStatisticsMap);
+    long diskUsage = 0;
+    for (RegionStatistics regionStatistics : regionStatisticsMap.values()) {
+      diskUsage += regionStatistics.getDiskUsage();
+    }
+    regionGroupStatistics.setDiskUsage(diskUsage);
+    currentStatistics.set(regionGroupStatistics);
   }
 
   private RegionGroupStatus caculateRegionGroupStatus(
