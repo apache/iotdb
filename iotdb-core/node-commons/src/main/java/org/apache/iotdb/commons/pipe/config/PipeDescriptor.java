@@ -360,6 +360,13 @@ public class PipeDescriptor {
                     properties.getProperty(
                         "pipe_connector_handshake_timeout_ms",
                         String.valueOf(config.getPipeSinkHandshakeTimeoutMs())))));
+    config.setPipeAirGapSinkTabletTimeoutMs(
+        Long.parseLong(
+            Optional.ofNullable(properties.getProperty("pipe_air_gap_sink_tablet_timeout_ms"))
+                .orElse(
+                    properties.getProperty(
+                        "pipe_air_gap_connector_tablet_timeout_ms",
+                        String.valueOf(config.getPipeAirGapSinkTabletTimeoutMs())))));
     config.setPipeSinkReadFileBufferSize(
         Integer.parseInt(
             Optional.ofNullable(properties.getProperty("pipe_sink_read_file_buffer_size"))
