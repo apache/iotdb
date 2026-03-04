@@ -99,6 +99,9 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final AirGapSocket socket = sockets.get(socketIndex);
 
     try {
+      // When receiver encountered packet loss, the transfer will time out
+      // We need to restore the transfer quickly by retry under this circumstance
+      socket.setSoTimeout(PIPE_CONFIG.getPipeAirGapSinkTabletTimeoutMs());
       if (tabletInsertionEvent instanceof PipeInsertNodeTabletInsertionEvent) {
         doTransferWrapper(socket, (PipeInsertNodeTabletInsertionEvent) tabletInsertionEvent);
       } else {
@@ -112,6 +115,8 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
               "Network error when transfer tablet insertion event %s, because %s.",
               ((EnrichedEvent) tabletInsertionEvent).coreReportMessage(), e.getMessage()),
           e);
+    } finally {
+      socket.setSoTimeout(PIPE_CONFIG.getPipeSinkTransferTimeoutMs());
     }
   }
 
