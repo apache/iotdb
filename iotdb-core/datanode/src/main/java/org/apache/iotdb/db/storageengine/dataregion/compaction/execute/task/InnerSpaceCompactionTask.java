@@ -357,13 +357,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                         filesView.sortedAllSourceFilesInTask.size())),
                 filesView.sequence);
       } else {
-        filesView.targetFilesInPerformer =
-            Collections.singletonList(
-                TsFileNameGenerator.getInnerCompactionTargetFileResource(
-                    availablePositionForTargetFiles.subList(
-                        availablePositionForTargetFiles.size() - 1,
-                        availablePositionForTargetFiles.size()),
-                    filesView.sequence));
+        TsFileResource targetFileResource =
+            TsFileNameGenerator.getInnerCompactionTargetFileResource(
+                availablePositionForTargetFiles.subList(
+                    availablePositionForTargetFiles.size() - 1,
+                    availablePositionForTargetFiles.size()),
+                filesView.sequence,
+                getMaxFileVersion());
+        filesView.targetFilesInPerformer = Collections.singletonList(targetFileResource);
       }
 
     } else {
@@ -373,13 +374,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 availablePositionForTargetFiles.subList(0, requiredPositionNum),
                 filesView.sequence);
       } else {
-        filesView.targetFilesInPerformer =
-            Collections.singletonList(
-                TsFileNameGenerator.getInnerCompactionTargetFileResource(
-                    availablePositionForTargetFiles.subList(
-                        availablePositionForTargetFiles.size() - 1,
-                        availablePositionForTargetFiles.size()),
-                    filesView.sequence));
+        TsFileResource targetFileResource =
+            TsFileNameGenerator.getInnerCompactionTargetFileResource(
+                availablePositionForTargetFiles.subList(
+                    availablePositionForTargetFiles.size() - 1,
+                    availablePositionForTargetFiles.size()),
+                filesView.sequence,
+                getMaxFileVersion());
+        filesView.targetFilesInPerformer = Collections.singletonList(targetFileResource);
       }
     }
     filesView.targetFilesInLog =
