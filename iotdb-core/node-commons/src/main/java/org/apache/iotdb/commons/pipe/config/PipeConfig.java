@@ -179,6 +179,10 @@ public class PipeConfig {
     return COMMON_CONFIG.getPipeSinkHandshakeTimeoutMs();
   }
 
+  public int getPipeAirGapSinkTabletTimeoutMs() {
+    return COMMON_CONFIG.getPipeAirGapSinkTabletTimeoutMs();
+  }
+
   public int getPipeSinkTransferTimeoutMs() {
     return COMMON_CONFIG.getPipeSinkTransferTimeoutMs();
   }
