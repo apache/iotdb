@@ -404,7 +404,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT),
           new ColumnHeader(NEW_PATH, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
+  public static final List<ColumnHeader> showDevicesWithDbColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),

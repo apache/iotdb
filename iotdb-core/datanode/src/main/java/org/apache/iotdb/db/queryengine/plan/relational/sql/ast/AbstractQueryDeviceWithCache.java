@@ -65,15 +65,20 @@ public abstract class AbstractQueryDeviceWithCache extends AbstractTraverseDevic
     if (Objects.isNull(where)) {
       return true;
     }
-    final Map<String, List<DeviceEntry>> entries = new HashMap<>();
-    entries.put(database, new ArrayList<>());
+    final Map<String, List<DeviceEntry>> hitCacheEntries = new HashMap<>();
+    hitCacheEntries.put(database, new ArrayList<>());
 
-    final boolean needFetch = super.parseWhere(entries, tableInstance, attributeColumns, context);
+    final boolean needFetch =
+        super.parseWhere(hitCacheEntries, tableInstance, attributeColumns, context);
     if (!needFetch) {
       context.reserveMemoryForFrontEnd(
-          entries.get(database).stream().map(DeviceEntry::ramBytesUsed).reduce(0L, Long::sum));
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
+              .map(DeviceEntry::ramBytesUsed)
+              .reduce(0L, Long::sum));
       results =
-          entries.get(database).stream()
+          hitCacheEntries.values().stream()
+              .flatMap(List::stream)
               .map(
                   deviceEntry ->
                       ShowDevicesResult.convertDeviceEntry2ShowDeviceResult(
