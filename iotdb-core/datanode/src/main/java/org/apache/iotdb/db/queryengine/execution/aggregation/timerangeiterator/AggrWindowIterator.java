@@ -42,6 +42,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
 
   private final boolean isAscending;
   private final boolean leftCRightO;
+  private final boolean rightClosed;
 
   private TimeRange curTimeRange;
   private boolean hasCachedTimeRange;
@@ -58,6 +59,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       TimeDuration slidingStep,
       boolean isAscending,
       boolean leftCRightO,
+      boolean rightClosed,
       ZoneId zoneId) {
     this.startTime = startTime;
     this.endTime = endTime;
@@ -65,6 +67,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     this.slidingStep = slidingStep;
     this.isAscending = isAscending;
     this.leftCRightO = leftCRightO;
+    this.rightClosed = rightClosed;
     this.timeRangeCount = 0;
     this.zoneId = zoneId;
   }
@@ -157,7 +160,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       } else {
         retStartTime = curStartTime + slidingStep.nonMonthDuration;
       }
-      // This is an open interval , [0-100)
+      // This is an open interval, [0-100)
       if (retStartTime >= endTime) {
         return false;
       }
@@ -195,6 +198,21 @@ public class AggrWindowIterator implements ITimeRangeIterator {
       return getFinalTimeRange(curTimeRange, leftCRightO);
     }
     return null;
+  }
+
+  @Override
+  public TimeRange getFinalTimeRange(TimeRange timeRange, boolean leftCRightO) {
+    // For rightClosed intervals ending at endTime, preserve the right boundary
+    if (rightClosed && timeRange.getMax() == endTime) {
+      // Still need to adjust left boundary if leftCRightO is false
+      return leftCRightO
+          ? timeRange // [start, end] - no adjustment needed
+          : new TimeRange(timeRange.getMin() + 1, timeRange.getMax()); // (start, end]
+    }
+    // Standard adjustment for non-end windows
+    return leftCRightO
+        ? new TimeRange(timeRange.getMin(), timeRange.getMax() - 1)
+        : new TimeRange(timeRange.getMin() + 1, timeRange.getMax());
   }
 
   @Override

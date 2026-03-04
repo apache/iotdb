@@ -55,12 +55,30 @@ public class GroupByTimeExpression extends Expression {
   // sliding step
   private final TimeDuration slidingStep;
 
+  // if it is left close and right open interval
+  private final boolean leftCRightO;
+
+  // if the right boundary is closed (inclusive)
+  private final boolean rightClosed;
+
   public GroupByTimeExpression(
       long startTime, long endTime, TimeDuration interval, TimeDuration slidingStep) {
+    this(startTime, endTime, interval, slidingStep, true, false);
+  }
+
+  public GroupByTimeExpression(
+      long startTime,
+      long endTime,
+      TimeDuration interval,
+      TimeDuration slidingStep,
+      boolean leftCRightO,
+      boolean rightClosed) {
     this.startTime = startTime;
     this.endTime = endTime;
     this.interval = interval;
     this.slidingStep = slidingStep;
+    this.leftCRightO = leftCRightO;
+    this.rightClosed = rightClosed;
   }
 
   public GroupByTimeExpression(ByteBuffer byteBuffer) {
@@ -68,6 +86,8 @@ public class GroupByTimeExpression extends Expression {
     this.endTime = ReadWriteIOUtils.readLong(byteBuffer);
     this.interval = TimeDuration.deserialize(byteBuffer);
     this.slidingStep = TimeDuration.deserialize(byteBuffer);
+    this.leftCRightO = ReadWriteIOUtils.readBool(byteBuffer);
+    this.rightClosed = ReadWriteIOUtils.readBool(byteBuffer);
   }
 
   public long getStartTime() {
@@ -84,6 +104,14 @@ public class GroupByTimeExpression extends Expression {
 
   public TimeDuration getSlidingStep() {
     return slidingStep;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public boolean isRightClosed() {
+    return rightClosed;
   }
 
   @Override
@@ -147,6 +175,8 @@ public class GroupByTimeExpression extends Expression {
     ReadWriteIOUtils.write(endTime, byteBuffer);
     interval.serialize(byteBuffer);
     slidingStep.serialize(byteBuffer);
+    ReadWriteIOUtils.write(leftCRightO, byteBuffer);
+    ReadWriteIOUtils.write(rightClosed, byteBuffer);
   }
 
   @Override
@@ -155,6 +185,8 @@ public class GroupByTimeExpression extends Expression {
     ReadWriteIOUtils.write(endTime, stream);
     interval.serialize(stream);
     slidingStep.serialize(stream);
+    ReadWriteIOUtils.write(leftCRightO, stream);
+    ReadWriteIOUtils.write(rightClosed, stream);
   }
 
   @Override
