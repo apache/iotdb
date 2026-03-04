@@ -33,8 +33,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 
 import java.util.Map;
@@ -161,6 +163,18 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     public PlanNode visitAggregationTableScan(AggregationTableScanNode node, Context context) {
       context.setCanTransform(false);
       return visitTableScan(node, context);
+    }
+
+    @Override
+    public PlanNode visitTopKRanking(TopKRankingNode node, Context context) {
+      context.setCanTransform(false);
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public PlanNode visitRowNumber(RowNumberNode node, Context context) {
+      context.setCanTransform(false);
+      return visitPlan(node, context);
     }
 
     @Override

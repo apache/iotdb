@@ -4323,6 +4323,35 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
     List<TSDataType> inputDataTypes =
         getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    if (!node.isPartial() || !partitionChannels.isEmpty()) {
+      int channel = inputDataTypes.size();
+      outputMappings.put(node.getRankingSymbol(), channel);
+    }
+
+    if (node.isDataPreSortedAndLimited()) {
+      // Data is already limited to K rows per partition and sorted by time.
+      // Use streaming RowNumberOperator (O(n) time, O(partitions) memory)
+      // instead of heap-based TopKRankingOperator (O(n log K) time, O(n) memory).
+      return new RowNumberOperator(
+          operatorContext,
+          child,
+          inputDataTypes,
+          outputChannels.build(),
+          partitionChannels,
+          Optional.of(node.getMaxRankingPerPartition()),
+          10_000);
+    }
+
     List<TSDataType> partitionTypes =
         partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
 
@@ -4339,21 +4368,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           orderBySymbols.stream()
               .map(symbol -> orderingScheme.get().getOrdering(symbol))
               .collect(toImmutableList());
-    }
-
-    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
-    for (int i = 0; i < inputDataTypes.size(); i++) {
-      outputChannels.add(i);
-    }
-
-    // compute the layout of the output from the window operator
-    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
-    outputMappings.putAll(childLayout);
-
-    if (!node.isPartial() || !partitionChannels.isEmpty()) {
-      // ranking function goes in the last channel
-      int channel = inputDataTypes.size();
-      outputMappings.put(node.getRankingSymbol(), channel);
     }
 
     return new TopKRankingOperator(

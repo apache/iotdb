@@ -54,6 +54,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
@@ -306,7 +307,11 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitProject(ProjectNode node, PlanContext context) {
+    Set<Symbol> savedParentRefs = context.getParentReferencedSymbols();
+    context.setParentReferencedSymbols(
+        SymbolsExtractor.extractUnique(node.getAssignments().getExpressions()));
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    context.setParentReferencedSymbols(savedParentRefs);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     boolean containAllSortItem = false;
     if (childOrdering != null) {
@@ -442,6 +447,33 @@ public class TableDistributedPlanGenerator
     return false;
   }
 
+  private boolean tryPushTopKRankingLimitToScan(
+      TopKRankingNode topKRankingNode, List<PlanNode> children, OrderingScheme orderingScheme) {
+    List<Symbol> orderBy = orderingScheme.getOrderBy();
+    if (orderBy.size() != 1) {
+      return false;
+    }
+    Symbol orderSymbol = orderBy.get(0);
+    long limit = topKRankingNode.getMaxRankingPerPartition();
+    boolean pushed = false;
+
+    for (PlanNode child : children) {
+      if (child instanceof DeviceTableScanNode && !(child instanceof AggregationTableScanNode)) {
+        DeviceTableScanNode scanNode = (DeviceTableScanNode) child;
+        if (scanNode.isTimeColumn(orderSymbol)) {
+          scanNode.setPushLimitToEachDevice(true);
+          if (scanNode.getPushDownLimit() <= 0) {
+            scanNode.setPushDownLimit(limit);
+          } else {
+            scanNode.setPushDownLimit(Math.min(limit, scanNode.getPushDownLimit()));
+          }
+          pushed = true;
+        }
+      }
+    }
+    return pushed;
+  }
+
   @Override
   public List<PlanNode> visitGroup(GroupNode node, PlanContext context) {
     context.setExpectedOrderingScheme(node.getOrderingScheme());
@@ -568,7 +600,15 @@ public class TableDistributedPlanGenerator
 
   @Override
   public List<PlanNode> visitFilter(FilterNode node, PlanContext context) {
+    Set<Symbol> savedParentRefs = context.getParentReferencedSymbols();
+    if (savedParentRefs != null) {
+      ImmutableSet.Builder<Symbol> merged = ImmutableSet.builder();
+      merged.addAll(savedParentRefs);
+      merged.addAll(SymbolsExtractor.extractUnique(node.getPredicate()));
+      context.setParentReferencedSymbols(merged.build());
+    }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+    context.setParentReferencedSymbols(savedParentRefs);
     OrderingScheme childOrdering = nodeOrderingMap.get(childrenNodes.get(0).getPlanNodeId());
     if (childOrdering != null) {
       nodeOrderingMap.put(node.getPlanNodeId(), childOrdering);
@@ -1863,6 +1903,38 @@ public class TableDistributedPlanGenerator
       node.setChild(((SortNode) node.getChild()).getChild());
     }
     List<PlanNode> childrenNodes = node.getChild().accept(this, context);
+
+    Set<Symbol> parentRefs = context.getParentReferencedSymbols();
+    if (parentRefs != null && !parentRefs.contains(node.getRowNumberSymbol())) {
+      // If maxRowCountPerPartition is set, push it as a per-device limit to each
+      // DeviceTableScanNode so that only the required number of rows are scanned.
+      node.getMaxRowCountPerPartition()
+          .ifPresent(
+              limit -> {
+                for (PlanNode child : childrenNodes) {
+                  if (child instanceof DeviceTableScanNode
+                      && !(child instanceof AggregationTableScanNode)) {
+                    DeviceTableScanNode scanNode = (DeviceTableScanNode) child;
+                    scanNode.setPushLimitToEachDevice(true);
+                    if (scanNode.getPushDownLimit() <= 0) {
+                      scanNode.setPushDownLimit(limit);
+                    } else {
+                      scanNode.setPushDownLimit(Math.min(limit, scanNode.getPushDownLimit()));
+                    }
+                  }
+                }
+              });
+      // Eliminate RowNumberNode entirely - return children directly.
+      if (childrenNodes.size() == 1 || canSplitPushDown) {
+        return childrenNodes;
+      } else {
+        CollectNode collectNode =
+            new CollectNode(queryId.genPlanNodeId(), childrenNodes.get(0).getOutputSymbols());
+        childrenNodes.forEach(collectNode::addChild);
+        return Collections.singletonList(collectNode);
+      }
+    }
+
     if (childrenNodes.size() == 1) {
       node.setChild(childrenNodes.get(0));
       return Collections.singletonList(node);
@@ -1885,7 +1957,6 @@ public class TableDistributedPlanGenerator
       nodeOrderingMap.put(node.getPlanNodeId(), orderingScheme.get());
     }
 
-    // TODO: per partition topk eliminate
     checkArgument(
         node.getChildren().size() == 1, "Size of TopKRankingNode can only be 1 in logical plan.");
     boolean canSplitPushDown = node.getChild() instanceof GroupNode;
@@ -1894,10 +1965,22 @@ public class TableDistributedPlanGenerator
     }
     List<PlanNode> childrenNodes = node.getChildren().get(0).accept(this, context);
     if (canSplitPushDown) {
+      // visitGroup may return GroupNode-wrapped children (sort not eliminated) or bare
+      // DeviceTableScanNode (sort eliminated). Unwrap GroupNode/SortNode when present.
       childrenNodes =
           childrenNodes.stream()
-              .map(child -> child.getChildren().get(0))
+              .map(child -> child instanceof SortNode ? child.getChildren().get(0) : child)
               .collect(Collectors.toList());
+    }
+
+    if (canSplitPushDown && orderingScheme.isPresent()) {
+      if (tryPushTopKRankingLimitToScan(node, childrenNodes, orderingScheme.get())) {
+        node.setDataPreSortedAndLimited(true);
+        Set<Symbol> parentRefs = context.getParentReferencedSymbols();
+        if (parentRefs != null && !parentRefs.contains(node.getRankingSymbol())) {
+          return childrenNodes;
+        }
+      }
     }
 
     if (childrenNodes.size() == 1) {
@@ -1958,6 +2041,7 @@ public class TableDistributedPlanGenerator
     OrderingScheme expectedOrderingScheme;
     TRegionReplicaSet mostUsedRegion;
     boolean deviceCrossRegion;
+    Set<Symbol> parentReferencedSymbols;
 
     public PlanContext() {
       this.nodeDistributionMap = new HashMap<>();
@@ -1983,6 +2067,14 @@ public class TableDistributedPlanGenerator
 
     public boolean isPushDownGrouping() {
       return pushDownGrouping;
+    }
+
+    public Set<Symbol> getParentReferencedSymbols() {
+      return parentReferencedSymbols;
+    }
+
+    public void setParentReferencedSymbols(Set<Symbol> parentReferencedSymbols) {
+      this.parentReferencedSymbols = parentReferencedSymbols;
     }
   }
 }
