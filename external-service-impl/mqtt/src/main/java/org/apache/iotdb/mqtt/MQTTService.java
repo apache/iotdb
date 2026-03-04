@@ -52,6 +52,11 @@ public class MQTTService implements IExternalService {
     shutdown();
   }
 
+  @Override
+  public void clearUserCache(String userName) {
+    // do nothing
+  }
+
   public void startup() {
     IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
     IConfig config = createBrokerConfig(iotDBConfig);

@@ -127,7 +127,6 @@ public class IoTDBConstant {
   public static final long KB = 1L << 10;
 
   public static final String IOTDB_HOME = "IOTDB_HOME";
-  public static final String CONFIGNODE_HOME = "CONFIGNODE_HOME";
 
   public static final String IOTDB_DATA_HOME = "IOTDB_DATA_HOME";
 

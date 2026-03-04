@@ -417,6 +417,25 @@ public class ExternalServiceManagementService {
     return ExternalServiceManagementServiceHolder.INSTANCE;
   }
 
+  public void clearServiceUserCache(String userName) {
+    serviceInfos
+        .values()
+        .forEach(
+            serviceInfo -> {
+              // clear user cache of service with RUNNING state
+              if (serviceInfo.getState() == RUNNING) {
+                IExternalService serviceInstance = serviceInfo.getServiceInstance();
+                // serviceInstance maybe null when an exception occurs during the start of certain
+                // service in restoreRunningServiceInstance method
+                if (serviceInstance != null) {
+                  // only clear user cache of the instance successfully started and running
+                  runWithServiceClassLoader(
+                      serviceInfo, () -> serviceInstance.clearUserCache(userName));
+                }
+              }
+            });
+  }
+
   private static class ExternalServiceManagementServiceHolder {
 
     private static final ExternalServiceManagementService INSTANCE =

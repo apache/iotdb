@@ -143,7 +143,8 @@ public class RestService implements IExternalService {
     }
   }
 
-  public static void clearUserCache(String userName) {
+  @Override
+  public void clearUserCache(String userName) {
     UserCache.getInstance().clearUserCache(userName);
   }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.common.rpc.thrift.TExternalServiceEntry;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.audit.UserEntity;
@@ -27,7 +26,6 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.externalservice.ServiceInfo;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
@@ -53,7 +51,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckV
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
-import org.apache.iotdb.db.service.externalservice.BuiltinExternalServices;
 import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -66,8 +63,6 @@ import org.apache.tsfile.utils.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -140,45 +135,8 @@ public class AuthorityChecker {
 
   public static boolean invalidateCache(String username, String roleName) {
     PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
-    tryClearRestUserCache(username);
+    ExternalServiceManagementService.getInstance().clearServiceUserCache(username);
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
-  }
-
-  private static void tryClearRestUserCache(String userName) {
-    List<TExternalServiceEntry> builtInServices =
-        ExternalServiceManagementService.getInstance().getBuiltInServices();
-    for (TExternalServiceEntry service : builtInServices) {
-      if (service.getServiceName().equals(BuiltinExternalServices.REST.getServiceName())) {
-        if (service.getState() == ServiceInfo.State.RUNNING.getValue()) {
-          String restClassName = service.getClassName();
-          try {
-            ClassLoader loader = ExternalServiceManagementService.class.getClassLoader();
-            Class<?> clz = loader.loadClass(restClassName);
-            Method clearUserCacheMethod = clz.getMethod("clearUserCache", String.class);
-            clearUserCacheMethod.invoke(null, userName);
-          } catch (ClassNotFoundException e) {
-            LOGGER.warn(
-                "Failed to load class {} for external service {}, error: {}",
-                restClassName,
-                service.getServiceName(),
-                e.getMessage());
-          } catch (NoSuchMethodException e) {
-            LOGGER.warn(
-                "Failed to find method clearUserCache in class {} for external service {}, error: {}",
-                restClassName,
-                service.getServiceName(),
-                e.getMessage());
-          } catch (IllegalAccessException | InvocationTargetException e) {
-            LOGGER.warn(
-                "Failed to invoke clearUserCache for user {} in external service {}, error: {}",
-                userName,
-                service.getServiceName(),
-                e.getMessage());
-          }
-        }
-      }
-    }
-    LOGGER.info("Cleared cache for user {} in REST service", userName);
   }
 
   public static User getUser(String username) {
