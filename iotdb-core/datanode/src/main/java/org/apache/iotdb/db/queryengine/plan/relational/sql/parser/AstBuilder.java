@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.parser;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
@@ -704,17 +705,26 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
 
   private PartialPath parsePrefixPath(final RelationalSqlParser.PrefixPathContext ctx) {
     final List<RelationalSqlParser.NodeNameContext> nodeNames = ctx.nodeName();
-    final String[] path = new String[nodeNames.size() + 1];
-    path[0] = ctx.ROOT().getText();
+    final StringBuilder builder = new StringBuilder("root.");
     for (int i = 0; i < nodeNames.size(); i++) {
-      path[i + 1] =
-          parseNodeString(
-              nodeNames.get(i).nodeNameWithoutWildcard() != null
-                  ? ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
-                      .getValue()
-                  : nodeNames.get(i).getText());
+      if (nodeNames.get(i).nodeNameWithoutWildcard() != null) {
+        builder
+            .append("`")
+            .append(
+                parseNodeString(
+                    ((Identifier) visit(nodeNames.get(i).nodeNameWithoutWildcard().identifier()))
+                        .getValue()))
+            .append("`")
+            .append(i == nodeNames.size() - 1 ? "" : ".");
+      } else {
+        builder.append(nodeNames.get(i).getText());
+      }
     }
-    return new PartialPath(path);
+    try {
+      return new PartialPath(builder.toString());
+    } catch (final IllegalPathException e) {
+      throw new SemanticException(e);
+    }
   }
 
   @Override

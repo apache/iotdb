@@ -34,8 +34,9 @@ import java.util.Objects;
 import java.util.function.Function;
 
 public class ShowDevicesResult extends ShowSchemaResult implements IDeviceSchemaInfo {
-  private Boolean isAligned;
-  private int templateId;
+
+  private final Boolean isAligned;
+  private final int templateId;
 
   private Function<String, Binary> attributeProvider;
 
