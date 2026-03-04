@@ -48,38 +48,45 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
 /**
- * Basic 3C3D (3 ConfigNode, 3 DataNode) integration test for IoTConsensusV2.
+ * Abstract base for IoTConsensusV2 3C3D integration tests. Subclasses specify batch or stream mode.
  *
- * <p>This test verifies that a 3C3D cluster with IoTConsensusV2 can: 1. Start successfully 2. Write
- * data 3. Execute flush on cluster 4. Query and verify data was written successfully
+ * <p>Verifies that a 3C3D cluster with IoTConsensusV2 can: 1. Start successfully 2. Write data 3.
+ * Execute flush on cluster 4. Query and verify data was written successfully
  *
  * <p>Additionally tests replica consistency: after stopping the leader DataNode, the follower
  * should be elected as new leader and serve the same data.
  */
 @Category({ClusterIT.class})
 @RunWith(IoTDBTestRunner.class)
-public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabilityITFramework {
+public abstract class IoTDBIoTConsensusV23C3DBasicITBase
+    extends IoTDBRegionOperationReliabilityITFramework {
 
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBIoTConsensusV23C3DBasicIT.class);
+      LoggerFactory.getLogger(IoTDBIoTConsensusV23C3DBasicITBase.class);
 
-  private static final int CONFIG_NODE_NUM = 3;
-  private static final int DATA_NODE_NUM = 3;
-  private static final int DATA_REPLICATION_FACTOR = 2;
-  private static final int SCHEMA_REPLICATION_FACTOR = 3;
+  protected static final int CONFIG_NODE_NUM = 3;
+  protected static final int DATA_NODE_NUM = 3;
+  protected static final int DATA_REPLICATION_FACTOR = 2;
+  protected static final int SCHEMA_REPLICATION_FACTOR = 3;
 
   /** Timeout in seconds for 3C3D cluster init. */
-  private static final int CLUSTER_INIT_TIMEOUT_SECONDS = 300;
+  protected static final int CLUSTER_INIT_TIMEOUT_SECONDS = 300;
 
-  private static final String INSERTION1 =
+  protected static final String INSERTION1 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 1, 2)";
-  private static final String INSERTION2 =
+  protected static final String INSERTION2 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(101, 3, 4)";
-  private static final String INSERTION3 =
+  protected static final String INSERTION3 =
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(102, 5, 6)";
-  private static final String FLUSH_COMMAND = "flush on cluster";
-  private static final String COUNT_QUERY = "select count(*) from root.sg.**";
-  private static final String SELECT_ALL_QUERY = "select speed, temperature from root.sg.d1";
+  protected static final String FLUSH_COMMAND = "flush on cluster";
+  protected static final String COUNT_QUERY = "select count(*) from root.sg.**";
+  protected static final String SELECT_ALL_QUERY = "select speed, temperature from root.sg.d1";
+
+  /**
+   * Returns IoTConsensusV2 mode: {@link ConsensusFactory#IOT_CONSENSUS_V2_BATCH_MODE} or {@link
+   * ConsensusFactory#IOT_CONSENSUS_V2_STREAM_MODE}.
+   */
+  protected abstract String getIoTConsensusV2Mode();
 
   @Override
   @Before
@@ -90,7 +97,7 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
         .getCommonConfig()
         .setDataReplicationFactor(DATA_REPLICATION_FACTOR)
         .setSchemaReplicationFactor(SCHEMA_REPLICATION_FACTOR)
-        .setIoTConsensusV2Mode(ConsensusFactory.IOT_CONSENSUS_V2_BATCH_MODE);
+        .setIoTConsensusV2Mode(getIoTConsensusV2Mode());
 
     EnvFactory.getEnv()
         .initClusterEnvironment(CONFIG_NODE_NUM, DATA_NODE_NUM, CLUSTER_INIT_TIMEOUT_SECONDS);
@@ -101,20 +108,17 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
-      // Write data
-      LOGGER.info("Writing data to 3C3D cluster...");
+      LOGGER.info("Writing data to 3C3D cluster (mode: {})...", getIoTConsensusV2Mode());
       statement.execute(INSERTION1);
       statement.execute(INSERTION2);
       statement.execute(INSERTION3);
 
-      // Flush on cluster
       LOGGER.info("Executing flush on cluster...");
       statement.execute(FLUSH_COMMAND);
 
-      // Query and verify data was written successfully
       verifyDataConsistency(statement);
 
-      LOGGER.info("3C3D IoTConsensusV2 basic test passed");
+      LOGGER.info("3C3D IoTConsensusV2 {} basic test passed", getIoTConsensusV2Mode());
     }
   }
 
@@ -127,24 +131,20 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
-      // 1. Write data and flush
-      LOGGER.info("Writing data to 3C3D cluster...");
+      LOGGER.info("Writing data to 3C3D cluster (mode: {})...", getIoTConsensusV2Mode());
       statement.execute(INSERTION1);
       statement.execute(INSERTION2);
       statement.execute(INSERTION3);
       statement.execute(FLUSH_COMMAND);
 
-      // 2. Query to verify initial write
       verifyDataConsistency(statement);
 
       LOGGER.info("Sleeping 2 seconds to wait replicate ...");
       Thread.sleep(1000 * 2);
 
-      // 3. Get data region distribution and find the leader for root.sg
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
           getDataRegionMapWithLeader(statement);
 
-      // Find a data region that has our data (root.sg) - typically region 3 for first user db
       int targetRegionId = -1;
       int leaderDataNodeId = -1;
       int followerDataNodeId = -1;
@@ -178,13 +178,9 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
           leaderDataNodeId,
           targetRegionId);
 
-      // 4. Stop the leader DataNode
       leaderNode.stopForcibly();
       Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
 
-      // 5. Wait for follower to be elected as new leader and query - verify same data Query the
-      // exact follower instead of picking randomly from available nodes. This ensures we verify the
-      // former follower has replicated data correctly.
       DataNodeWrapper followerNode =
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(followerDataNodeId)
@@ -215,7 +211,7 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
     }
   }
 
-  private void verifyDataConsistency(Statement statement) throws Exception {
+  protected void verifyDataConsistency(Statement statement) throws Exception {
     LOGGER.info("Querying data to verify write success...");
     try (ResultSet countResult = statement.executeQuery(COUNT_QUERY)) {
       Assert.assertTrue("Count query should return results", countResult.next());
@@ -233,7 +229,6 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
     try (ResultSet selectResult = statement.executeQuery(SELECT_ALL_QUERY)) {
       while (selectResult.next()) {
         rowCount++;
-        // Use getString() for IoTDB JDBC compatibility (may return "1" or "1.0")
         long timestamp = parseLongFromString(selectResult.getString(1));
         long speed = parseLongFromString(selectResult.getString(2));
         long temperature = parseLongFromString(selectResult.getString(3));
@@ -253,7 +248,7 @@ public class IoTDBIoTConsensusV23C3DBasicIT extends IoTDBRegionOperationReliabil
   }
 
   /** Parse long from IoTDB result string (handles both "1" and "1.0" formats). */
-  private static long parseLongFromString(String s) {
+  protected static long parseLongFromString(String s) {
     if (s == null || s.isEmpty()) {
       return 0;
     }
