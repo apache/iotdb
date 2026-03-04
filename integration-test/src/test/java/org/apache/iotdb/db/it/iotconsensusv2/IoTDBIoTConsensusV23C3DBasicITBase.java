@@ -26,6 +26,7 @@ import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.DailyIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.utils.Pair;
@@ -56,7 +57,7 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
  * <p>Additionally tests replica consistency: after stopping the leader DataNode, the follower
  * should be elected as new leader and serve the same data.
  */
-@Category({ClusterIT.class})
+@Category({DailyIT.class})
 @RunWith(IoTDBTestRunner.class)
 public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     extends IoTDBRegionOperationReliabilityITFramework {
