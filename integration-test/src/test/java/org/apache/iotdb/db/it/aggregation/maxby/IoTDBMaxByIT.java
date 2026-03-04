@@ -301,7 +301,7 @@ public class IoTDBMaxByIT {
             "max_by(root.db.d1.x5, -cos(sin(root.db.d1.y2 / 10)))",
             "max_by(REPLACE(root.db.d1.x6, '3', '4'), -cos(sin(root.db.d1.y2 / 10)))",
           };
-      String[] retArray = new String[] {"0.0,1.3333333333333333,2.0,2.0,false,2,"};
+      String[] retArray = new String[] {"0,1,2.0,2.0,false,2,"};
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
@@ -330,10 +330,7 @@ public class IoTDBMaxByIT {
             "max_by(REPLACE(x6, '3', '4'), -cos(sin(y2 / 10)))",
           };
       String[] retArray =
-          new String[] {
-            "root.db.d1,0.0,1.3333333333333333,2.0,2.0,false,2,",
-            "root.db.d2,0.0,1.3333333333333333,2.0,2.0,false,2,"
-          };
+          new String[] {"root.db.d1,0,1,2.0,2.0,false,2,", "root.db.d2,0,1,2.0,2.0,false,2,"};
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
