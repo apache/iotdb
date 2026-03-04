@@ -146,7 +146,7 @@ public class ShowCreateViewTask extends AbstractTableTask {
     final String[] pathNodes = TreeViewSchema.getPrefixPattern(table).getNodes();
     builder.append(pathNodes[0]);
     for (int i = 1; i < pathNodes.length - 1; ++i) {
-      builder.append(".\"").append(pathNodes[i]).append("\"");
+      builder.append(".\"").append(pathNodes[i].replace("`", "")).append("\"");
     }
     builder.append(".").append(pathNodes[pathNodes.length - 1]);
 
