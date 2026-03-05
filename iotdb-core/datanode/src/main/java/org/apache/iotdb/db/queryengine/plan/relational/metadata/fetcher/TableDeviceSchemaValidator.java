@@ -271,15 +271,7 @@ public class TableDeviceSchemaValidator {
 
   public static boolean hasMultipleTiers() {
     final String[][] tierDataDirs = IoTDBDescriptor.getInstance().getConfig().getTierDataDirs();
-    int count = 0;
-    for (int i = 0; i < tierDataDirs.length; ++i) {
-      for (int j = 0; j < tierDataDirs[i].length; ++j) {
-        if (++count > 1) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return tierDataDirs.length > 1;
   }
 
   private static class ValidateResult {
