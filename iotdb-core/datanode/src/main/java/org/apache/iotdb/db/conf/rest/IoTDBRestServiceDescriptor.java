@@ -144,7 +144,7 @@ public class IoTDBRestServiceDescriptor {
           return uri;
         }
         logger.warn(
-            "Cannot find IOTDB_HOME or IOTDB_CONF or CONFIGNODE_HOME environment variable when loading "
+            "Cannot find IOTDB_HOME or IOTDB_CONF environment variable when loading "
                 + "config file {}, use default configuration",
             configName);
         // update all data seriesPath

@@ -60,8 +60,6 @@ import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,8 +77,6 @@ import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.LIST_U
 // Authority checker is SingleTon working at datanode.
 // It checks permission in local. DCL statement will send to configNode.
 public class AuthorityChecker {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AuthorityChecker.class);
 
   public static int SUPER_USER_ID = 0;
   public static String SUPER_USER =
