@@ -24,18 +24,12 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.DailyIT;
 import org.apache.iotdb.itbase.env.BaseEnv;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +51,6 @@ import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
  * <p>Additionally tests replica consistency: after stopping the leader DataNode, the follower
  * should be elected as new leader and serve the same data.
  */
-@Category({DailyIT.class})
-@RunWith(IoTDBTestRunner.class)
 public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     extends IoTDBRegionOperationReliabilityITFramework {
 
@@ -104,7 +96,6 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
         .initClusterEnvironment(CONFIG_NODE_NUM, DATA_NODE_NUM, CLUSTER_INIT_TIMEOUT_SECONDS);
   }
 
-  @Test
   public void test3C3DWriteFlushAndQuery() throws Exception {
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
@@ -127,7 +118,6 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
    * Test replica consistency: with replication factor 2, stop the leader DataNode and verify the
    * follower serves the same data.
    */
-  @Test
   public void testReplicaConsistencyAfterLeaderStop() throws Exception {
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
