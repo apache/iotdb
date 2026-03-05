@@ -3822,11 +3822,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         ctx.IF() != null && ctx.NOT() != null && ctx.EXISTS() != null);
 
     if (ctx.extractorAttributesClause() != null) {
-      createPipeStatement.setExtractorAttributes(
+      createPipeStatement.setSourceAttributes(
           parseExtractorAttributesClause(
               ctx.extractorAttributesClause().extractorAttributeClause()));
     } else {
-      createPipeStatement.setExtractorAttributes(new HashMap<>());
+      createPipeStatement.setSourceAttributes(new HashMap<>());
     }
     if (ctx.processorAttributesClause() != null) {
       createPipeStatement.setProcessorAttributes(
@@ -3836,11 +3836,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       createPipeStatement.setProcessorAttributes(new HashMap<>());
     }
     if (ctx.connectorAttributesClause() != null) {
-      createPipeStatement.setConnectorAttributes(
+      createPipeStatement.setSinkAttributes(
           parseConnectorAttributesClause(
               ctx.connectorAttributesClause().connectorAttributeClause()));
     } else {
-      createPipeStatement.setConnectorAttributes(
+      createPipeStatement.setSinkAttributes(
           parseConnectorAttributesClause(
               ctx.connectorAttributesWithoutWithSinkClause().connectorAttributeClause()));
     }
