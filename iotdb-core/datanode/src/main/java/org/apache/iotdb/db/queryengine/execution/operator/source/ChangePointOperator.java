@@ -58,11 +58,11 @@ import static org.apache.iotdb.db.queryengine.execution.operator.source.relation
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanGraphPrinter.DEVICE_NUMBER;
 
 /**
- * ChangePointOperator performs "last of run" change-point detection pushed down to the table scan
+ * ChangePointOperator performs "first of run" change-point detection pushed down to the table scan
  * level, leveraging TsFile statistics (min == max) at file/chunk/page level to skip uniform
  * segments and avoid unnecessary I/O.
  *
- * <p>For each consecutive run of identical values in the monitored column, only the last row is
+ * <p>For each consecutive run of identical values in the monitored column, only the first row is
  * emitted, along with the next different value (or NULL at end of partition). This replaces a
  * Filter(Window(LEAD(...))) pattern.
  *
@@ -402,25 +402,23 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
   }
 
   /**
-   * Handles a uniform segment. For "last of run": if the uniform value differs from cached, emit
-   * the buffered row, then buffer the last row from this segment (reconstructed from statistics).
-   * If same as cached, just update the buffered row's time.
+   * Handles a uniform segment. For "first of run": if the uniform value differs from cached, emit
+   * the buffered row, then buffer the first row from this segment (reconstructed from statistics).
+   * If same as cached, do nothing — the first row of the run is already buffered.
    */
   private void handleUniformSegment(long startTime, long endTime, Statistics statistics) {
     Object uniformValue = statistics.getMinValue();
 
     if (!hasBufferedRow) {
       hasBufferedRow = true;
-      bufferedTime = endTime;
+      bufferedTime = startTime;
       bufferedMeasurementValues = new Object[] {uniformValue};
       cachedMonitoredValue = uniformValue;
     } else if (!valuesEqual(cachedMonitoredValue, uniformValue)) {
       emitChangePointFromStatistics(uniformValue);
-      bufferedTime = endTime;
+      bufferedTime = startTime;
       bufferedMeasurementValues = new Object[] {uniformValue};
       cachedMonitoredValue = uniformValue;
-    } else {
-      bufferedTime = endTime;
     }
   }
 
@@ -458,8 +456,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
 
       if (!valuesEqual(cachedMonitoredValue, currentValue)) {
         emitChangePointRow(tsBlock, i, currentValue);
-        bufferRow(tsBlock, i, currentValue);
-      } else {
         bufferRow(tsBlock, i, currentValue);
       }
     }

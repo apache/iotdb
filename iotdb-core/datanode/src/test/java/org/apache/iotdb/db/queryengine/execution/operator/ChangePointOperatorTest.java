@@ -19,8 +19,7 @@
 package org.apache.iotdb.db.queryengine.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.path.IFullPath;
-import org.apache.iotdb.commons.path.NonAlignedFullPath;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.common.PlanFragmentId;
 import org.apache.iotdb.db.queryengine.common.QueryId;
@@ -30,6 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceStateM
 import org.apache.iotdb.db.queryengine.execution.operator.source.ChangePointOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.buffer.BloomFilterCache;
 import org.apache.iotdb.db.storageengine.buffer.ChunkCache;
@@ -41,16 +43,17 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import com.google.common.collect.Sets;
 import io.airlift.units.Duration;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -62,6 +65,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -451,11 +455,36 @@ public class ChangePointOperatorTest {
   // ==================== Helper methods ====================
 
   private ChangePointOperator createOperator(boolean canUseStatistics) throws Exception {
-    IFullPath measurementPath =
-        new NonAlignedFullPath(
-            IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID),
-            new MeasurementSchema(MEASUREMENT, TSDataType.INT32));
-    Set<String> allSensors = Sets.newHashSet(MEASUREMENT);
+    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    measurementSchemas.add(new MeasurementSchema(MEASUREMENT, TSDataType.INT32));
+
+    List<String> measurementColumnNames = new ArrayList<>();
+    measurementColumnNames.add(MEASUREMENT);
+
+    if (!canUseStatistics) {
+      measurementSchemas.add(new MeasurementSchema("__dummy__", TSDataType.INT32));
+      measurementColumnNames.add("__dummy__");
+    }
+
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+    allSensors.add("");
+
+    IDeviceID deviceId = IDeviceID.Factory.DEFAULT_FACTORY.create(DEVICE_ID);
+    DeviceEntry deviceEntry = new AlignedDeviceEntry(deviceId, new Binary[0]);
+    List<DeviceEntry> deviceEntries = new ArrayList<>();
+    deviceEntries.add(deviceEntry);
+
+    List<ColumnSchema> columnSchemas = new ArrayList<>();
+    columnSchemas.add(
+        new ColumnSchema(
+            "time", TypeFactory.getType(TSDataType.TIMESTAMP), false, TsTableColumnCategory.TIME));
+    columnSchemas.add(
+        new ColumnSchema(
+            MEASUREMENT,
+            TypeFactory.getType(TSDataType.INT32),
+            false,
+            TsTableColumnCategory.FIELD));
+    int[] columnsIndexArray = new int[] {0, 0};
 
     QueryId queryId = new QueryId("stub_query");
     FragmentInstanceId instanceId =
@@ -471,18 +500,24 @@ public class ChangePointOperatorTest {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
     scanOptionsBuilder.withAllSensors(allSensors);
 
-    ChangePointOperator operator =
-        new ChangePointOperator(
+    ChangePointOperator.ChangePointOperatorParameter parameter =
+        new ChangePointOperator.ChangePointOperatorParameter(
             driverContext.getOperatorContexts().get(0),
             planNodeId,
-            measurementPath,
+            columnSchemas,
+            columnsIndexArray,
+            deviceEntries,
             Ordering.ASC,
             scanOptionsBuilder.build(),
-            canUseStatistics);
+            measurementColumnNames,
+            allSensors,
+            measurementSchemas,
+            0,
+            idColumnIndex -> null);
+
+    ChangePointOperator operator = new ChangePointOperator(parameter);
 
     operator.initQueryDataSource(new QueryDataSource(seqResources, unSeqResources));
-    operator.getOperatorContext().setMaxRunTime(new Duration(500, TimeUnit.MILLISECONDS));
-
     return operator;
   }
 
@@ -495,8 +530,8 @@ public class ChangePointOperatorTest {
         continue;
       }
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-        long time = tsBlock.getTimeByIndex(i);
-        int value = tsBlock.getColumn(0).getInt(i);
+        long time = tsBlock.getColumn(0).getLong(i);
+        int value = tsBlock.getColumn(1).getInt(i);
         results.add(new long[] {time, value});
       }
     }
@@ -527,7 +562,7 @@ public class ChangePointOperatorTest {
     TsFileWriter writer = new TsFileWriter(file);
     Map<String, IMeasurementSchema> template = new HashMap<>();
     template.put(schema.getMeasurementName(), schema);
-    writer.registerSchemaTemplate("template0", template, false);
+    writer.registerSchemaTemplate("template0", template, true);
     writer.registerDevice(DEVICE_ID, "template0");
 
     for (int i = 0; i < values.length; i++) {
