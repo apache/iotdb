@@ -66,6 +66,28 @@ public class PlainObjectPath implements IObjectPath {
     String[] ideviceIdSegments = new String[path.getNameCount() - 3];
     for (int i = 0; i < ideviceIdSegments.length; i++) {
       ideviceIdSegments[i] = path.getName(i + 1).toString();
+      if ("NUL".equals(ideviceIdSegments[i])) {
+        ideviceIdSegments[i] = null;
+      } else if ("EPT".equals(ideviceIdSegments[i])) {
+        ideviceIdSegments[i] = "";
+      }
+    }
+    deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
+    measurement = path.getName(path.getNameCount() - 2).toString();
+    String fileName = path.getFileName().toString();
+    timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+  }
+
+  public PlainObjectPath(Path path) {
+    this.filePath = path.toString();
+    String[] ideviceIdSegments = new String[path.getNameCount() - 3];
+    for (int i = 0; i < ideviceIdSegments.length; i++) {
+      ideviceIdSegments[i] = path.getName(i + 1).toString();
+      if ("NUL".equals(ideviceIdSegments[i])) {
+        ideviceIdSegments[i] = null;
+      } else if ("EPT".equals(ideviceIdSegments[i])) {
+        ideviceIdSegments[i] = "";
+      }
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement = path.getName(path.getNameCount() - 2).toString();
@@ -79,9 +101,14 @@ public class PlainObjectPath implements IObjectPath {
     StringBuilder relativePathString =
         new StringBuilder(String.valueOf(regionId)).append(File.separator);
     for (Object segment : segments) {
-      relativePathString
-          .append(segment == null ? "null" : segment.toString().toLowerCase())
-          .append(File.separator);
+      if (segment == null) {
+        relativePathString.append("NUL");
+      } else if ("".equals(segment)) {
+        relativePathString.append("EPT");
+      } else {
+        relativePathString.append(segment.toString().toLowerCase());
+      }
+      relativePathString.append(File.separator);
     }
     relativePathString.append(measurement).append(File.separator);
     relativePathString.append(objectFileName);

@@ -171,13 +171,13 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.io.BaseEncoding;
+import com.timecho.iotdb.db.storageengine.dataregion.Base32ObjectPath;
+import com.timecho.iotdb.db.storageengine.dataregion.PlainObjectPath;
 import org.apache.thrift.TException;
 import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
@@ -194,7 +194,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -3183,30 +3182,15 @@ public class DataRegion implements IDataRegionForQuery {
                           || path.getFileName().toString().endsWith(".tmp")))) {
         paths.forEach(
             path -> {
-              Path relativePath = matchedObjectDir.getParentFile().toPath().relativize(path);
-              String[] ideviceIdSegments = new String[relativePath.getNameCount() - 2];
-              for (int i = 0; i < ideviceIdSegments.length; i++) {
-                ideviceIdSegments[i] =
-                    CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
-                        ? relativePath.getName(i).toString()
-                        : new String(
-                            BaseEncoding.base32()
-                                .omitPadding()
-                                .decode(relativePath.getName(i).toString()),
-                            StandardCharsets.UTF_8);
-              }
-              IDeviceID iDeviceID = Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
-              String measurementId =
+              Path relativePath =
+                  matchedObjectDir.getParentFile().getParentFile().toPath().relativize(path);
+              IObjectPath objectPath =
                   CommonDescriptor.getInstance().getConfig().isRestrictObjectLimit()
-                      ? relativePath.getName(relativePath.getNameCount() - 2).toString()
-                      : new String(
-                          BaseEncoding.base32()
-                              .omitPadding()
-                              .decode(
-                                  relativePath.getName(relativePath.getNameCount() - 2).toString()),
-                          StandardCharsets.UTF_8);
-              String fileName = path.getFileName().toString();
-              long timestamp = Long.parseLong(fileName.substring(0, fileName.indexOf('.')));
+                      ? new PlainObjectPath(relativePath)
+                      : new Base32ObjectPath(relativePath);
+              IDeviceID iDeviceID = objectPath.getDeviceID();
+              String measurementId = objectPath.getMeasurement();
+              long timestamp = objectPath.getTime();
               logger.debug(
                   "timestamp {}, measurementId {}, ideviceId {}",
                   timestamp,

@@ -65,8 +65,14 @@ public class Base32ObjectPath implements IObjectPath {
   private Base32ObjectPath(String first, String... more) {
     String[] deviceIdSegments = new String[more.length - 2];
     for (int i = 0; i < more.length - 2; i++) {
-      deviceIdSegments[i] =
-          new String(BaseEncoding.base32().omitPadding().decode(more[i]), StandardCharsets.UTF_8);
+      if ("NUL".equals(more[i])) {
+        deviceIdSegments[i] = null;
+      } else if ("EPT".equals(more[i])) {
+        deviceIdSegments[i] = "";
+      } else {
+        deviceIdSegments[i] =
+            new String(BaseEncoding.base32().omitPadding().decode(more[i]), StandardCharsets.UTF_8);
+      }
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceIdSegments);
     measurement =
@@ -81,10 +87,15 @@ public class Base32ObjectPath implements IObjectPath {
   public Base32ObjectPath(Path path) {
     String[] ideviceIdSegments = new String[path.getNameCount() - 3];
     for (int i = 0; i < ideviceIdSegments.length; i++) {
-      ideviceIdSegments[i] =
-          new String(
-              BaseEncoding.base32().omitPadding().decode(path.getName(i + 1).toString()),
-              StandardCharsets.UTF_8);
+      String segment = path.getName(i + 1).toString();
+      if ("NUL".equals(segment)) {
+        ideviceIdSegments[i] = null;
+      } else if ("EPT".equals(segment)) {
+        ideviceIdSegments[i] = "";
+      } else {
+        ideviceIdSegments[i] =
+            new String(BaseEncoding.base32().omitPadding().decode(segment), StandardCharsets.UTF_8);
+      }
     }
     deviceID = IDeviceID.Factory.DEFAULT_FACTORY.create(ideviceIdSegments);
     measurement =
@@ -103,11 +114,16 @@ public class Base32ObjectPath implements IObjectPath {
     String[] pathSegments = new String[segments.length + 2];
     for (int i = 0; i < segments.length; i++) {
       Object segment = segments[i];
-      String segmentString = segment == null ? "null" : segment.toString();
-      pathSegments[i] =
-          BaseEncoding.base32()
-              .omitPadding()
-              .encode(segmentString.getBytes(StandardCharsets.UTF_8));
+      if (segment == null) {
+        pathSegments[i] = "NUL";
+      } else if ("".equals(segment)) {
+        pathSegments[i] = "EPT";
+      } else {
+        pathSegments[i] =
+            BaseEncoding.base32()
+                .omitPadding()
+                .encode(segment.toString().getBytes(StandardCharsets.UTF_8));
+      }
     }
     pathSegments[pathSegments.length - 2] =
         BaseEncoding.base32().omitPadding().encode(measurement.getBytes(StandardCharsets.UTF_8));
