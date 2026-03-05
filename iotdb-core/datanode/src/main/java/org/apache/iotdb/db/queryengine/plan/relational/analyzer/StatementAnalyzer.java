@@ -1571,7 +1571,9 @@ public class StatementAnalyzer {
           // Skip if parameters contain tables that don't exist in the query
           if (parameters != null) {
             boolean hasInvalidTable =
-                parameters.stream().anyMatch(table -> !existingTables.contains(table));
+                parameters.stream()
+                    .filter(table -> !table.equals("{") && !table.equals("}"))
+                    .anyMatch(table -> !existingTables.contains(table));
             if (hasInvalidTable) {
               return;
             }

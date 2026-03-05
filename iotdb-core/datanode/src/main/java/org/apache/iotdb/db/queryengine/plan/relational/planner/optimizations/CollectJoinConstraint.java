@@ -220,8 +220,7 @@ public class CollectJoinConstraint implements PlanOptimizer {
       }
 
       JoinConstraint joinConstraint =
-          new JoinConstraint(
-              minLeftHand, minRightHand, minLeftHand, minRightHand, join.getJoinType());
+          new JoinConstraint(minLeftHand, minRightHand, leftHand, rightHand, join.getJoinType());
       leading.getJoinConstraintList().add(joinConstraint);
     }
 
