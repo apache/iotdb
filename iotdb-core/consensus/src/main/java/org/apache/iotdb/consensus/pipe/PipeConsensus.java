@@ -51,8 +51,8 @@ import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeManager;
 import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -101,7 +101,7 @@ public class PipeConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final ReentrantReadWriteLock stateMachineMapLock = new ReentrantReadWriteLock();
   private final PipeConsensusConfig config;
-  private final ConsensusPipeManager consensusPipeManager;
+  private final ConsensusPipeSelector consensusPipeSelector;
   private final ConsensusPipeGuardian consensusPipeGuardian;
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
@@ -114,10 +114,8 @@ public class PipeConsensus implements IConsensus {
     this.config = config.getPipeConsensusConfig();
     this.registry = registry;
     this.rpcService = new PipeConsensusRPCService(thisNode, config.getPipeConsensusConfig());
-    this.consensusPipeManager =
-        new ConsensusPipeManager(
-            config.getPipeConsensusConfig().getPipe(),
-            config.getPipeConsensusConfig().getReplicateMode());
+    this.consensusPipeSelector =
+        config.getPipeConsensusConfig().getPipe().getConsensusPipeSelector();
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
     this.asyncClientManager =
@@ -177,7 +175,6 @@ public class PipeConsensus implements IConsensus {
                               registry.apply(consensusGroupId),
                               new ArrayList<>(),
                               config,
-                              consensusPipeManager,
                               syncClientManager);
                       stateMachineMap.put(consensusGroupId, consensus);
                       checkPeerListAndStartIfEligible(consensusGroupId, consensus);
@@ -220,14 +217,14 @@ public class PipeConsensus implements IConsensus {
         // make peers which are in list correct
         resetPeerListWithoutThrow.accept(
             consensusGroupId, correctPeerListBeforeStart.get(consensusGroupId));
-        consensus.start(true);
+        consensus.start();
       } else {
         // clear peers which are not in the list
         resetPeerListWithoutThrow.accept(consensusGroupId, Collections.emptyList());
       }
 
     } else {
-      consensus.start(true);
+      consensus.start();
     }
   }
 
@@ -243,7 +240,7 @@ public class PipeConsensus implements IConsensus {
 
   private void checkAllConsensusPipe() {
     final Map<ConsensusGroupId, Map<ConsensusPipeName, PipeStatus>> existedPipes =
-        consensusPipeManager.getAllConsensusPipe().entrySet().stream()
+        consensusPipeSelector.getAllConsensusPipe().entrySet().stream()
             .filter(entry -> entry.getKey().getSenderDataNodeId() == thisNodeId)
             .collect(
                 Collectors.groupingBy(
@@ -254,25 +251,16 @@ public class PipeConsensus implements IConsensus {
       stateMachineMap.forEach(
           (key, value) ->
               value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
+      // Log orphaned pipes (region no longer exists locally); ConfigNode handles actual cleanup.
       existedPipes.entrySet().stream()
           .filter(entry -> !stateMachineMap.containsKey(entry.getKey()))
           .flatMap(entry -> entry.getValue().keySet().stream())
           .forEach(
-              consensusPipeName -> {
-                try {
+              consensusPipeName ->
                   LOGGER.warn(
-                      "{} drop consensus pipe [{}]",
+                      "{} orphaned consensus pipe [{}] found, should be dropped by ConfigNode",
                       consensusPipeName.getConsensusGroupId(),
-                      consensusPipeName);
-                  consensusPipeManager.updateConsensusPipe(consensusPipeName, PipeStatus.DROPPED);
-                } catch (Exception e) {
-                  LOGGER.warn(
-                      "{} cannot drop consensus pipe [{}]",
-                      consensusPipeName.getConsensusGroupId(),
-                      consensusPipeName,
-                      e);
-                }
-              });
+                      consensusPipeName));
     } finally {
       stateMachineMapLock.writeLock().unlock();
     }
@@ -347,10 +335,9 @@ public class PipeConsensus implements IConsensus {
                 registry.apply(groupId),
                 peers,
                 config,
-                consensusPipeManager,
                 syncClientManager);
         stateMachineMap.put(groupId, consensus);
-        consensus.start(false); // pipe will start after creating
+        consensus.start();
         KillPoint.setKillPoint(DataNodeKillPoints.DESTINATION_CREATE_LOCAL_PEER);
       } catch (IOException e) {
         LOGGER.warn("Cannot create local peer for group {} with peers {}", groupId, peers, e);
@@ -511,7 +498,7 @@ public class PipeConsensus implements IConsensus {
     for (Peer peer : correctPeers) {
       if (!impl.containsPeer(peer) && peer.getNodeId() != this.thisNodeId) {
         try {
-          impl.createConsensusPipeToTargetPeer(peer, false);
+          impl.createConsensusPipeToTargetPeer(peer);
           LOGGER.info("[RESET PEER LIST] {} Build sync channel with: {}", groupId, peer);
         } catch (ConsensusGroupModifyPeerException e) {
           LOGGER.warn(

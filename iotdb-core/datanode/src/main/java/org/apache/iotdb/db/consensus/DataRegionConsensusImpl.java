@@ -44,7 +44,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeDispatcher;
 import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
@@ -188,7 +187,6 @@ public class DataRegionConsensusImpl {
                           .setConnectorPluginName(
                               BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
                           // name
-                          .setConsensusPipeDispatcher(new ConsensusPipeDataNodeDispatcher())
                           .setConsensusPipeGuardian(new ConsensusPipeDataNodeRuntimeAgentGuardian())
                           .setConsensusPipeSelector(
                               () -> PipeDataNodeAgent.task().getAllConsensusPipe())

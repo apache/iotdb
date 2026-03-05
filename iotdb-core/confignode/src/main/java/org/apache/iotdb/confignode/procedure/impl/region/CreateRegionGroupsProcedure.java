@@ -225,6 +225,12 @@ public class CreateRegionGroupsProcedure
                           }
                         }));
         env.activateRegionGroup(activateRegionGroupMap);
+        setNextState(CreateRegionGroupsState.CREATE_INITIAL_CONSENSUS_PIPES);
+        break;
+      case CREATE_INITIAL_CONSENSUS_PIPES:
+        if (TConsensusGroupType.DataRegion.equals(consensusGroupType)) {
+          env.getRegionMaintainHandler().createInitialConsensusPipes(persistPlan);
+        }
         setNextState(CreateRegionGroupsState.CREATE_REGION_GROUPS_FINISH);
         break;
       case CREATE_REGION_GROUPS_FINISH:
