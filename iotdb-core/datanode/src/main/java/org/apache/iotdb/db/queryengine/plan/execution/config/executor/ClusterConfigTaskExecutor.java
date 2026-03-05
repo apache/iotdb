@@ -2267,7 +2267,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                         .addOrReplaceEquivalentAttributesWithClone(
                             new PipeParameters(
                                 Collections.singletonMap(
-                                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT, "true")))
+                                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                                    Boolean.TRUE.toString())))
                         .getAttribute());
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
