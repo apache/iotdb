@@ -46,6 +46,9 @@ public class PipeSinkConstant {
   public static final String SINK_IOTDB_PORT_KEY = "sink.port";
   public static final String CONNECTOR_IOTDB_NODE_URLS_KEY = "connector.node-urls";
   public static final String SINK_IOTDB_NODE_URLS_KEY = "sink.node-urls";
+  public static final String CONNECTOR_IOTDB_SEND_PORTS_KEY = "connector.send-ports";
+  public static final String SINK_IOTDB_SEND_PORTS_KEY = "sink.send-ports";
+  public static final String CONNECTOR_IOTDB_SEND_PORTS_DEFAULT_VALUE = "";
 
   public static final String SINK_IOTDB_SSL_ENABLE_KEY = "sink.ssl.enable";
   public static final String SINK_IOTDB_SSL_TRUST_STORE_PATH_KEY = "sink.ssl.trust-store-path";

@@ -36,16 +36,12 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowsStatement;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 import static org.apache.iotdb.commons.utils.PathUtils.unQualifyDatabaseName;
 
 public class SchemaValidator {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(SchemaValidator.class);
 
   public static void validate(
       ISchemaFetcher schemaFetcher, InsertBaseStatement insertStatement, MPPQueryContext context) {
