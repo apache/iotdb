@@ -28,24 +28,24 @@ import java.util.List;
 
 public class LeaderHint extends ReplicaHint {
   public static String hintName = "leader";
-  private final String targetTable;
+  private final String table;
 
   public LeaderHint(List<String> tables) {
     super(hintName);
     if (tables == null || tables.size() != 1) {
       throw new IllegalArgumentException("LeaderHint accepts exactly one table");
     }
-    targetTable = tables.get(0);
+    table = tables.get(0);
   }
 
   @Override
   public String getKey() {
-    return category + "-" + targetTable;
+    return category + "-" + table;
   }
 
   @Override
   public String toString() {
-    return hintName + "-" + targetTable;
+    return hintName + "-" + table;
   }
 
   @Override

@@ -83,11 +83,5 @@ public class LeadingJoinOptimizer implements PlanOptimizer {
       }
       return node;
     }
-
-    //    @Override
-    //    public PlanNode visitSemiJoin(SemiJoinNode node, Context context) {
-    //      return visitTwoChildProcess(node, context);
-    //    }
-
   }
 }

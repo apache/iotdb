@@ -86,7 +86,6 @@ public abstract class PlanNode implements IConsensusRequest {
     for (PlanNode child : getChildren()) {
       tables.addAll(child.getInputTables());
     }
-    ;
     return tables;
   }
 
