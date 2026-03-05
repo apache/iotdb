@@ -49,6 +49,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.read.Sche
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ActiveRegionScanMergeNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.GroupByTagNode;
@@ -134,6 +135,18 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
   @Override
   public List<PlanNode> visitMergeSort(MergeSortNode node, DistributionPlanContext context) {
     MergeSortNode newRoot = cloneMergeSortNodeWithoutChild(node, context);
+    for (int i = 0; i < node.getChildren().size(); i++) {
+      List<PlanNode> rewroteNodes = rewrite(node.getChildren().get(i), context);
+      rewroteNodes.forEach(newRoot::addChild);
+    }
+    return Collections.singletonList(newRoot);
+  }
+
+  @Override
+  public List<PlanNode> visitCollect(CollectNode node, DistributionPlanContext context) {
+    CollectNode newRoot =
+        new CollectNode(
+            context.queryContext.getQueryId().genPlanNodeId(), node.getOutputColumnNames());
     for (int i = 0; i < node.getChildren().size(); i++) {
       List<PlanNode> rewroteNodes = rewrite(node.getChildren().get(i), context);
       rewroteNodes.forEach(newRoot::addChild);

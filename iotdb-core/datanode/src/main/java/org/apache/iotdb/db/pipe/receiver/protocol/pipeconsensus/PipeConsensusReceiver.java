@@ -60,6 +60,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -657,7 +658,14 @@ public class PipeConsensusReceiver {
         StorageEngine.getInstance().getDataRegion(((DataRegionId) consensusGroupId));
     if (region != null) {
       TsFileResource resource = generateTsFileResource(filePath, progressIndex);
-      region.loadNewTsFile(resource, true, false, true);
+      region.loadNewTsFile(
+          resource,
+          true,
+          false,
+          true,
+          region.isTableModel()
+              ? TableDiskUsageStatisticUtil.calculateTableSizeMap(resource)
+              : Optional.empty());
     } else {
       // Data region is null indicates that dr has been removed or migrated. In those cases, there
       // is no need to replicate data. we just return success to avoid leader keeping retry

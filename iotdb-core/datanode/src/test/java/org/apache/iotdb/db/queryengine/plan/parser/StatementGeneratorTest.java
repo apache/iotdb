@@ -63,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNode
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowDiskUsageStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -119,6 +120,37 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testShowDiskUsage() {
+
+    Statement showDiskUsage =
+        StatementGenerator.createStatement(
+            "show disk_usage from root.test.** order by database, datanodeid, regionid, timepartition, sizeinbytes",
+            ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showDiskUsage instanceof ShowDiskUsageStatement);
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(0),
+        new SortItem(OrderByKey.DATABASE, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(1),
+        new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(2),
+        new SortItem(OrderByKey.REGIONID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(3),
+        new SortItem(OrderByKey.TIMEPARTITION, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowDiskUsageStatement) showDiskUsage).getSortItemList().get(4),
+        new SortItem(OrderByKey.SIZEINBYTES, Ordering.ASC));
+
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show disk_usage from root.test.** order by a", ZonedDateTime.now().getOffset()));
+  }
 
   @Test
   public void testShowQueries() {
