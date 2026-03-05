@@ -45,6 +45,8 @@ public class QuerySpecification extends QueryBody {
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
 
+  private boolean isLocalQuery = false;
+
   public QuerySpecification(
       Select select,
       Optional<Relation> from,
@@ -206,5 +208,15 @@ public class QuerySpecification extends QueryBody {
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.orElse(null));
     size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.orElse(null));
     return size;
+  }
+
+  public QuerySpecification setLocalQuery(boolean localQuery) {
+    isLocalQuery = localQuery;
+    return this;
+  }
+
+  @Override
+  public boolean isLocalQuery() {
+    return isLocalQuery;
   }
 }

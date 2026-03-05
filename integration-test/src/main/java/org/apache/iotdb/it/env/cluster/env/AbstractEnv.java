@@ -642,6 +642,24 @@ public abstract class AbstractEnv implements BaseEnv {
   }
 
   @Override
+  public Connection getConnection(DataNodeWrapper dataNodeWrapper, String sqlDialect)
+      throws SQLException {
+    return new ClusterTestConnection(
+        getWriteConnectionWithSpecifiedDataNode(
+            dataNodeWrapper,
+            null,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            sqlDialect),
+        getReadConnections(
+            null,
+            dataNodeWrapper,
+            SessionConfig.DEFAULT_USER,
+            SessionConfig.DEFAULT_PASSWORD,
+            sqlDialect));
+  }
+
+  @Override
   public Connection getWriteOnlyConnectionWithSpecifiedDataNode(
       final DataNodeWrapper dataNode,
       final String username,
