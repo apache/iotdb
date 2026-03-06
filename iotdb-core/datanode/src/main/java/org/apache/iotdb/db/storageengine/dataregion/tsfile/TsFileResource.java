@@ -1751,6 +1751,11 @@ public class TsFileResource implements PersistentResource, Cloneable {
         minResourceVersion = tsFileResource.getVersion();
       }
     }
+    LOGGER.warn(
+        "getMaxTsFileVersionAndMinResource: {} {} from {}",
+        maxTsFileVersion,
+        minTsFileResource,
+        tsFileResources);
     return new Pair<>(maxTsFileVersion, minTsFileResource);
   }
 

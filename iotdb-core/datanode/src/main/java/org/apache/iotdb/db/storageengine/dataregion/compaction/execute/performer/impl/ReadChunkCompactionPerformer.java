@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.MetadataUtils;
@@ -51,6 +52,8 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -59,6 +62,9 @@ import java.util.List;
 import java.util.Optional;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
+
   private List<TsFileResource> seqFiles;
   private List<TsFileResource> targetResources;
   private CompactionTaskSummary summary;
@@ -240,6 +246,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       CompactionTsFileWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
       throws IOException, InterruptedException, IllegalPathException, PageException {
+    LOGGER.warn("Compacting device {} into {}", device, targetResource.getTsFile());
     checkThreadInterrupted();
     LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
         readerAndChunkMetadataList =
@@ -258,6 +265,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             device.getTableName().startsWith("root."));
     compactionExecutor.execute();
     for (ChunkMetadata chunkMetadata : writer.getChunkMetadataListOfCurrentDeviceInMemory()) {
+      LOGGER.warn(
+          "Compacted device {}-{}",
+          writer.getCurrentOriginalDeviceId(),
+          chunkMetadata.getMeasurementUid());
       if (chunkMetadata.getMeasurementUid().isEmpty()) {
         targetResource.updateStartTime(
             writer.getCurrentOriginalDeviceId(), chunkMetadata.getStartTime());
