@@ -133,6 +133,7 @@ public class CollectJoinConstraint implements PlanOptimizer {
           equiJoinTables = Sets.union(equiJoinTables, rightHand);
         }
         leading.getEquiJoins().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
+        leading.putConditionJoinType(equiJoin.toExpression(), node.getJoinType());
       }
 
       Optional<JoinNode.AsofJoinClause> asofJoin = node.getAsofCriteria();
@@ -145,6 +146,7 @@ public class CollectJoinConstraint implements PlanOptimizer {
           asofJoinTables = Sets.union(asofJoinTables, rightHand);
         }
         leading.setAsofJoin(new Pair<>(asofJoinTables, asofJoinClause.toExpression()));
+        leading.putConditionJoinType(asofJoinClause.toExpression(), node.getJoinType());
       }
 
       // join constraint
@@ -203,11 +205,8 @@ public class CollectJoinConstraint implements PlanOptimizer {
 
         // Current join's right table contains the right table of a previous join
         if (isOverlap(rightHand, other.getRightHand())) {
-          if (isOverlap(joinTables, other.getRightHand())
-              || !isOverlap(joinTables, other.getMinLeftHand())) {
-            minRightHand = Sets.union(minRightHand, other.getLeftHand());
-            minRightHand = Sets.union(minRightHand, other.getRightHand());
-          }
+          minRightHand = Sets.union(minRightHand, other.getLeftHand());
+          minRightHand = Sets.union(minRightHand, other.getRightHand());
         }
       }
       if (minLeftHand.isEmpty()) {
