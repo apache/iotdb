@@ -22,6 +22,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
 import java.util.List;
 
@@ -29,7 +30,7 @@ public class FollowerHint extends ReplicaHint {
   public static String hintName = "follower";
   private final String table;
 
-  public FollowerHint(List<String> tables) {
+  public FollowerHint(List<String> tables, MPPQueryContext queryContext) {
     super(hintName);
     if (tables == null || tables.size() != 1) {
       throw new IllegalArgumentException("FollowerHint accepts exactly one table");

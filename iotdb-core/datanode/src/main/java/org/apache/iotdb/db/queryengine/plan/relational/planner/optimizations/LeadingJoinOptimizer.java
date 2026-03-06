@@ -69,7 +69,9 @@ public class LeadingJoinOptimizer implements PlanOptimizer {
     @Override
     public PlanNode visitJoin(JoinNode node, Context context) {
       LeadingHint leadingHint = (LeadingHint) analysis.getHintMap().get(JoinOrderHint.category);
-      Set<Identifier> currentTables = Sets.union(node.getLeftTables(), node.getRightTables());
+      Set<Identifier> leftTables = JoinUtils.collectAllTables(node.getLeftChild());
+      Set<Identifier> rightTables = JoinUtils.collectAllTables(node.getRightChild());
+      Set<Identifier> currentTables = Sets.union(leftTables, rightTables);
       Set<Identifier> leadingTables =
           leadingHint.getTables().stream().map(Identifier::new).collect(Collectors.toSet());
 

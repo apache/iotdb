@@ -635,7 +635,8 @@ public class TableDistributedPlanGenerator
     node.setRightChild(mergeChildrenViaCollectOrMergeSort(rightChildOrdering, rightChildrenNodes));
 
     // Now the join implement but CROSS is MergeSortJoin, so it can keep order
-    if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) {
+    // if (!node.isCrossJoin() && !node.getAsofCriteria().isPresent()) { // cross join？
+    if (!node.getAsofCriteria().isPresent()) {
       switch (node.getJoinType()) {
         case FULL:
           // If join type is FULL Join, we will process SortProperties in ProjectNode above this

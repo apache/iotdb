@@ -21,8 +21,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 
 /**
  * Defines the properties and creation logic for a SQL hint. This class encapsulates the hint's key,
@@ -31,18 +33,8 @@ import java.util.function.Function;
 public final class HintFactory {
 
   private final String key;
-  private final Function<List<String>, Hint> factory;
+  private final BiFunction<List<String>, MPPQueryContext, Hint> factory;
   private final boolean expandParameters;
-
-  /**
-   * Creates a new hint definition.
-   *
-   * @param key the key to use when storing the hint in the hint map
-   * @param hintFactory factory method to create the hint instance, receives the key as parameter
-   */
-  public HintFactory(String key, Function<List<String>, Hint> hintFactory) {
-    this(key, hintFactory, false);
-  }
 
   /**
    * Creates a new hint definition with parameter expansion option.
@@ -52,7 +44,9 @@ public final class HintFactory {
    * @param expandParameters whether to expand array parameters into multiple hints
    */
   public HintFactory(
-      String key, Function<List<String>, Hint> hintFactory, boolean expandParameters) {
+      String key,
+      BiFunction<List<String>, MPPQueryContext, Hint> hintFactory,
+      boolean expandParameters) {
     this.key = key;
     this.factory = hintFactory;
     this.expandParameters = expandParameters;
@@ -72,8 +66,8 @@ public final class HintFactory {
    *
    * @return the created hint
    */
-  public Hint createHint(List<String> parameters) {
-    return factory.apply(parameters);
+  public Hint createHint(List<String> parameters, MPPQueryContext context) {
+    return factory.apply(parameters, context);
   }
 
   /**

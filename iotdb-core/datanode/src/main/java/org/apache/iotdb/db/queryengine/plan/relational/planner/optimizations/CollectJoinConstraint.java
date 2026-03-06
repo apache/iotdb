@@ -116,8 +116,8 @@ public class CollectJoinConstraint implements PlanOptimizer {
       Set<Identifier> leadingTables =
           leading.getTables().stream().map(Identifier::new).collect(Collectors.toSet());
 
-      Set<Identifier> leftHand = node.getLeftTables();
-      Set<Identifier> rightHand = node.getRightTables();
+      Set<Identifier> leftHand = JoinUtils.collectAllTables(node.getLeftChild());
+      Set<Identifier> rightHand = JoinUtils.collectAllTables(node.getRightChild());
       Set<Identifier> totalJoinTables = ImmutableSet.of();
 
       // join conjunctions
@@ -133,7 +133,6 @@ public class CollectJoinConstraint implements PlanOptimizer {
           equiJoinTables = Sets.union(equiJoinTables, rightHand);
         }
         leading.getEquiJoins().add(new Pair<>(equiJoinTables, equiJoin.toExpression()));
-        leading.putConditionJoinType(equiJoin.toExpression(), node.getJoinType());
       }
 
       Optional<JoinNode.AsofJoinClause> asofJoin = node.getAsofCriteria();
@@ -146,7 +145,6 @@ public class CollectJoinConstraint implements PlanOptimizer {
           asofJoinTables = Sets.union(asofJoinTables, rightHand);
         }
         leading.setAsofJoin(new Pair<>(asofJoinTables, asofJoinClause.toExpression()));
-        leading.putConditionJoinType(asofJoinClause.toExpression(), node.getJoinType());
       }
 
       // join constraint

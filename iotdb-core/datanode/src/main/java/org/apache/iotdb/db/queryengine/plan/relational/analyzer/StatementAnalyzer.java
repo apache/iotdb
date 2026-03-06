@@ -1563,7 +1563,7 @@ public class StatementAnalyzer {
               .filter(table -> parameters == null || existingTables.contains(table))
               .forEach(
                   table -> {
-                    Hint hint = definition.createHint(ImmutableList.of(table));
+                    Hint hint = definition.createHint(ImmutableList.of(table), queryContext);
                     String hintKey = hint.getKey();
                     hintMap.putIfAbsent(hintKey, hint);
                   });
@@ -1579,7 +1579,7 @@ public class StatementAnalyzer {
             }
           }
 
-          Hint hint = definition.createHint(parameters);
+          Hint hint = definition.createHint(parameters, queryContext);
           String hintKey = hint.getKey();
           if (!hintMap.containsKey(hintKey)) {
             hintMap.put(hintKey, hint);
