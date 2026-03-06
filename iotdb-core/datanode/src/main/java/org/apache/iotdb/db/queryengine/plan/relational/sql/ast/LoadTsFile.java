@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.config.LoadTsFileConfigurator;
 
@@ -64,7 +65,11 @@ public class LoadTsFile extends Statement {
   private List<TsFileResource> resources;
   private List<Long> writePointCountList;
   private List<Boolean> isTableModel;
+  private File schemaEvolutionFile;
   private boolean needDecode4TimeColumn;
+
+  // for loading iotdb datanode dir
+  private Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFile(NodeLocation location, String filePath, Map<String, String> loadAttributes) {
     super(location);
@@ -196,6 +201,19 @@ public class LoadTsFile extends Statement {
     return writePointCountList.get(resourceIndex);
   }
 
+  public File getSchemaEvolutionFile() {
+    return schemaEvolutionFile;
+  }
+
+  public void setDatabaseRegionTsFileManagers(
+      Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers) {
+    this.databaseRegionTsFileManagers = databaseRegionTsFileManagers;
+  }
+
+  public Map<String, Map<Integer, TsFileManager>> getDatabaseRegionTsFileManagers() {
+    return databaseRegionTsFileManagers;
+  }
+
   private void initAttributes() {
     this.databaseLevel = LoadTsFileConfigurator.parseOrGetDefaultDatabaseLevel(loadAttributes);
     this.database = LoadTsFileConfigurator.parseDatabaseName(loadAttributes);
@@ -206,6 +224,7 @@ public class LoadTsFile extends Statement {
         LoadTsFileConfigurator.parseOrGetDefaultTabletConversionThresholdBytes(loadAttributes);
     this.verify = LoadTsFileConfigurator.parseOrGetDefaultVerify(loadAttributes);
     this.isAsyncLoad = LoadTsFileConfigurator.parseOrGetDefaultAsyncLoad(loadAttributes);
+    this.schemaEvolutionFile = LoadTsFileConfigurator.parseSevoFile(loadAttributes);
   }
 
   public boolean reconstructStatementIfMiniFileConverted(final List<Boolean> isMiniTsFile) {

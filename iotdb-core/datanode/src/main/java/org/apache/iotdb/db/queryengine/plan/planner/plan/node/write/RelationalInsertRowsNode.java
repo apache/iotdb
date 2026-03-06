@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.queryengine.plan.analyze.IAnalysis;
@@ -29,9 +30,11 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
+import org.apache.iotdb.db.utils.CommonUtils;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.TableSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -168,11 +171,14 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       InsertRowNode insertRowNode = getInsertRowNodeList().get(i);
       // Data region for insert row node
       // each row may belong to different database, pass null for auto-detection
+      SeriesPartitionKey seriesPartitionKey =
+          CommonUtils.getSeriesPartitionKey(
+              insertRowNode.getDeviceID(), analysis.getDatabaseName(), true);
       TRegionReplicaSet dataRegionReplicaSet =
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.getDeviceID(),
+                  seriesPartitionKey,
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   analysis.getDatabaseName());
 
@@ -203,5 +209,15 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
     for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
       insertRowNode.checkDataType(memTable);
     }
+  }
+
+  @Override
+  public boolean isSchemaConsistent(TableSchema tableSchema) {
+    for (InsertRowNode insertRowNode : getInsertRowNodeList()) {
+      if (!insertRowNode.isSchemaConsistent(tableSchema)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

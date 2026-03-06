@@ -31,6 +31,8 @@ import java.util.regex.Pattern;
 
 public class IoTDBConstant {
 
+  public static final String SCHEMA_EVOLUTION_FILE_SUFFIX = ".sevo";
+
   private IoTDBConstant() {}
 
   static {

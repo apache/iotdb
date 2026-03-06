@@ -31,6 +31,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory.ModsSerializer;
 
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -76,33 +77,9 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private List<IMeasurementSchema> measurementSchemas;
 
-  private Map<String, CompactionSeriesContext> compactionSeriesContextMap;
+  private final Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
 
-  /** Used for nonAligned timeseries. */
-  @SuppressWarnings("squid:S107")
-  public FastCompactionPerformerSubTask(
-      AbstractCompactionWriter compactionWriter,
-      Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
-      Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-          modificationCacheMap,
-      List<TsFileResource> sortedSourceFiles,
-      List<String> measurements,
-      IDeviceID deviceId,
-      FastCompactionTaskSummary summary,
-      int subTaskId) {
-    this.compactionWriter = compactionWriter;
-    this.subTaskId = subTaskId;
-    this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
-    this.isAligned = false;
-    this.deviceId = deviceId;
-    this.readerCacheMap = readerCacheMap;
-    this.modificationCacheMap = modificationCacheMap;
-    this.sortedSourceFiles = sortedSourceFiles;
-    this.measurements = measurements;
-    this.summary = summary;
-    this.ignoreAllNullRows = true;
-  }
+  private Map<String, CompactionSeriesContext> compactionSeriesContextMap;
 
   public FastCompactionPerformerSubTask(
       Map<String, CompactionSeriesContext> compactionSeriesContextMap,
@@ -114,7 +91,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       List<String> measurements,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      int subTaskId) {
+      int subTaskId,
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.compactionSeriesContextMap = compactionSeriesContextMap;
@@ -127,6 +105,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurements = measurements;
     this.summary = summary;
     this.ignoreAllNullRows = true;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   /** Used for aligned timeseries. */
@@ -134,13 +113,13 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       AbstractCompactionWriter compactionWriter,
       Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
-      Map<String, PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer>>
-          modificationCacheMap,
+      Map<String, PatternTreeMap<ModEntry, ModsSerializer>> modificationCacheMap,
       List<TsFileResource> sortedSourceFiles,
       List<IMeasurementSchema> measurementSchemas,
       IDeviceID deviceId,
       FastCompactionTaskSummary summary,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = 0;
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
@@ -152,6 +131,7 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
     this.measurementSchemas = measurementSchemas;
     this.summary = summary;
     this.ignoreAllNullRows = ignoreAllNullRows;
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   @Override
@@ -166,7 +146,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
               sortedSourceFiles,
               deviceId,
               subTaskId,
-              summary);
+              summary,
+              maxTsFileVersionAndMinResource);
       for (String measurement : measurements) {
         seriesCompactionExecutor.setNewMeasurement(
             compactionSeriesContextMap.get(measurement).getFileTimeseriesMetdataOffsetMap());
@@ -191,7 +172,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 subTaskId,
                 measurementSchemas,
                 summary,
-                ignoreAllNullRows);
+                ignoreAllNullRows,
+                maxTsFileVersionAndMinResource);
       } else {
         seriesCompactionExecutor =
             new FastAlignedSeriesCompactionExecutor(
@@ -204,7 +186,8 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
                 subTaskId,
                 measurementSchemas,
                 summary,
-                ignoreAllNullRows);
+                ignoreAllNullRows,
+                maxTsFileVersionAndMinResource);
       }
       seriesCompactionExecutor.execute();
     }

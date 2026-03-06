@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 import java.util.HashMap;
@@ -52,5 +55,14 @@ public class DeviceLastFlushTime implements ILastFlushTime {
 
   Map<IDeviceID, Long> getDeviceLastFlushTimeMap() {
     return deviceLastFlushTimeMap;
+  }
+
+  @Override
+  public void accept(SchemaEvolution schemaEvolution) {
+    if (!(schemaEvolution instanceof TableRename)) {
+      return;
+    }
+    TableRename tableRename = (TableRename) schemaEvolution;
+    tableRename.rewriteMap(deviceLastFlushTimeMap);
   }
 }

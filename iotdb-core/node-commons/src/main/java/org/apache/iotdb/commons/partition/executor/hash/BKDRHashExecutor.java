@@ -22,8 +22,6 @@ package org.apache.iotdb.commons.partition.executor.hash;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 
-import org.apache.tsfile.file.metadata.IDeviceID;
-
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class BKDRHashExecutor extends SeriesPartitionExecutor {
@@ -47,12 +45,12 @@ public class BKDRHashExecutor extends SeriesPartitionExecutor {
   }
 
   @Override
-  public TSeriesPartitionSlot getSeriesPartitionSlot(IDeviceID deviceID) {
+  public TSeriesPartitionSlot getSeriesPartitionSlot(SeriesPartitionKey key) {
     int hash = 0;
-    int segmentNum = deviceID.segmentNum();
+    int segmentNum = key.segmentNum();
 
     for (int segmentID = 0; segmentID < segmentNum; segmentID++) {
-      Object segment = deviceID.segment(segmentID);
+      Object segment = key.segment(segmentID);
       if (segment instanceof String) {
         String segmentStr = (String) segment;
         for (int i = 0; i < segmentStr.length(); i++) {

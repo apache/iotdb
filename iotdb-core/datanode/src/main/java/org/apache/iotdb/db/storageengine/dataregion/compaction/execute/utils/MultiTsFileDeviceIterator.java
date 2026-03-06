@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.read.control.FileReaderManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
@@ -48,6 +49,8 @@ import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -65,6 +68,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
+  protected static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   // sort from the newest to the oldest by version (Used by FastPerformer and ReadPointPerformer)
   private final List<TsFileResource> tsFileResourcesSortedByDesc;
@@ -81,13 +86,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private long ttlForCurrentDevice;
   private long timeLowerBoundForCurrentDevice;
   private final String databaseName;
+  private final long maxTsFileVersion;
 
   /**
    * Used for compaction with read chunk performer.
    *
    * @throws IOException if io error occurred
    */
-  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources, long maxTsFileVersion)
+      throws IOException {
     this.databaseName = tsFileResources.get(0).getDatabaseName();
     this.tsFileResourcesSortedByDesc = new ArrayList<>(tsFileResources);
     this.tsFileResourcesSortedByAsc = new ArrayList<>(tsFileResources);
@@ -96,6 +103,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
+    this.maxTsFileVersion = maxTsFileVersion;
     try {
       for (TsFileResource tsFileResource : this.tsFileResourcesSortedByDesc) {
         CompactionTsFileReader reader =
@@ -104,7 +112,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                 CompactionType.INNER_SEQ_COMPACTION,
                 EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
         readerMap.put(tsFileResource, reader);
-        deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+        TsFileDeviceIterator tsFileDeviceIterator;
+        EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
+        if (evolvedSchema != null) {
+          tsFileDeviceIterator =
+              new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
+        } else {
+          tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+        }
+        deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
       }
     } catch (Exception e) {
       // if there is any exception occurs
@@ -122,19 +138,32 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public MultiTsFileDeviceIterator(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
+      List<TsFileResource> seqResources, List<TsFileResource> unseqResources, long maxTsFileVersion)
+      throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
     this.databaseName = tsFileResourcesSortedByDesc.get(0).getDatabaseName();
     // sort the files from the newest to the oldest
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
+
+    this.maxTsFileVersion = maxTsFileVersion;
+
     for (TsFileResource tsFileResource : tsFileResourcesSortedByDesc) {
       TsFileSequenceReader reader =
           FileReaderManager.getInstance()
               .get(tsFileResource.getTsFilePath(), tsFileResource.getTsFileID(), true);
       readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+
+      TsFileDeviceIterator tsFileDeviceIterator;
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
+      if (evolvedSchema != null) {
+        tsFileDeviceIterator =
+            new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
+      } else {
+        tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      }
+      deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
     }
   }
 
@@ -146,7 +175,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   public MultiTsFileDeviceIterator(
       List<TsFileResource> seqResources,
       List<TsFileResource> unseqResources,
-      Map<TsFileResource, TsFileSequenceReader> readerMap)
+      Map<TsFileResource, TsFileSequenceReader> readerMap,
+      long maxTsFileVersion)
       throws IOException {
     this.tsFileResourcesSortedByDesc = new ArrayList<>(seqResources);
     tsFileResourcesSortedByDesc.addAll(unseqResources);
@@ -155,6 +185,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Collections.sort(
         this.tsFileResourcesSortedByDesc, TsFileResource::compareFileCreationOrderByDesc);
     this.readerMap = readerMap;
+
+    this.maxTsFileVersion = maxTsFileVersion;
 
     CompactionType type = null;
     if (!seqResources.isEmpty() && !unseqResources.isEmpty()) {
@@ -172,7 +204,16 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
               type,
               EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFileResource.getTsFilePath()));
       readerMap.put(tsFileResource, reader);
-      deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
+
+      TsFileDeviceIterator tsFileDeviceIterator;
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
+      if (evolvedSchema != null) {
+        tsFileDeviceIterator =
+            new ReorderedTsFileDeviceIterator(reader, evolvedSchema::rewriteToFinal);
+      } else {
+        tsFileDeviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      }
+      deviceIteratorMap.put(tsFileResource, tsFileDeviceIterator);
     }
   }
 
@@ -260,7 +301,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    *
    * @throws IOException if io errors occurred
    */
-  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice() throws IOException {
+  public Map<String, MeasurementSchema> getAllSchemasOfCurrentDevice(
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
@@ -278,12 +320,23 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           schemaMap.keySet(),
           true,
           null);
+      EvolvedSchema evolvedSchema =
+          resource.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.left);
+      if (evolvedSchema != null) {
+        // the device has been rewritten, should get the original name for rewriting
+        evolvedSchema.rewriteToFinal(
+            evolvedSchema.getOriginalTableName(currentDevice.left.getTableName()),
+            timeseriesMetadataList);
+      }
+
       for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
         if (!schemaMap.containsKey(timeseriesMetadata.getMeasurementId())
             && !timeseriesMetadata.getChunkMetadataList().isEmpty()) {
-          schemaMap.put(
-              timeseriesMetadata.getMeasurementId(),
-              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList()));
+          MeasurementSchema measurementSchema =
+              reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList());
+          // the column may be renamed
+          measurementSchema.setMeasurementName(timeseriesMetadata.getMeasurementId());
+          schemaMap.put(timeseriesMetadata.getMeasurementId(), measurementSchema);
         }
       }
     }
@@ -372,8 +425,15 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                   true)
               .entrySet()) {
         String measurementId = entrySet.getKey();
+        EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema(maxTsFileVersion);
+        if (evolvedSchema != null) {
+          String originalTableName =
+              evolvedSchema.getOriginalTableName(currentDevice.left.getTableName());
+          measurementId = evolvedSchema.getFinalColumnName(originalTableName, measurementId);
+        }
         if (!timeseriesMetadataOffsetMap.containsKey(measurementId)) {
           MeasurementSchema schema = reader.getMeasurementSchema(entrySet.getValue().left);
+          schema.setMeasurementName(measurementId);
           timeseriesMetadataOffsetMap.put(measurementId, new Pair<>(schema, new HashMap<>()));
         }
         timeseriesMetadataOffsetMap
@@ -432,10 +492,51 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       MetadataIndexNode firstMeasurementNodeOfCurrentDevice =
           iterator.getFirstMeasurementNodeOfCurrentDevice();
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
+      IDeviceID originalDeviceId = currentDevice.left;
+      if (evolvedSchema != null) {
+        // rewrite the deviceId to the original one so that we can use it to query the file
+        originalDeviceId = evolvedSchema.rewriteToOriginal(originalDeviceId);
+      }
+      LOGGER.warn(
+          "Device {} is {} in file {}",
+          currentDevice.left,
+          originalDeviceId,
+          tsFileResource.getTsFile());
+
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
-              currentDevice.left, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
+              originalDeviceId, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
+      for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
+        LOGGER.warn(
+            "Read a chunk metadata {}, {}",
+            abstractAlignedChunkMetadata.getValueChunkMetadataList().stream()
+                .map(IChunkMetadata::getMeasurementUid)
+                .collect(Collectors.toList()),
+            abstractAlignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+      }
+
+      if (evolvedSchema != null) {
+        // rewrite the measurementId to the final ones so that they can be aligned with other files
+        for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
+          for (IChunkMetadata chunkMetadata :
+              abstractAlignedChunkMetadata.getValueChunkMetadataList()) {
+            if (chunkMetadata != null) {
+              chunkMetadata.setMeasurementUid(
+                  evolvedSchema.getFinalColumnName(
+                      originalDeviceId.getTableName(), chunkMetadata.getMeasurementUid()));
+            }
+          }
+          LOGGER.warn(
+              "Chunk metadata after conversion {}, {}",
+              abstractAlignedChunkMetadata.getValueChunkMetadataList().stream()
+                  .map(IChunkMetadata::getMeasurementUid)
+                  .collect(Collectors.toList()),
+              abstractAlignedChunkMetadata.getTimeChunkMetadata().getStatistics());
+        }
+      }
+
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
 
@@ -457,7 +558,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
     IDeviceID device = currentDevice.getLeft();
     ModEntry ttlDeletion = null;
-    Optional<Long> startTime = tsFileResource.getStartTime(device);
+    Optional<Long> startTime = tsFileResource.getStartTime(device, maxTsFileVersion);
     if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
       ttlDeletion = CompactionUtils.convertTtlToDeletion(device, timeLowerBoundForCurrentDevice);
     }
@@ -683,7 +784,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
         ModEntry ttlDeletion = null;
-        Optional<Long> startTime = resource.getStartTime(device);
+        Optional<Long> startTime = resource.getStartTime(device, maxTsFileVersion);
         if (startTime.isPresent() && startTime.get() < timeLowerBoundForCurrentDevice) {
           ttlDeletion =
               new TreeDeletionEntry(

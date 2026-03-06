@@ -86,12 +86,16 @@ public abstract class AbstractAlterOrDropTableProcedure<T>
   }
 
   protected void preRelease(final ConfigNodeProcedureEnv env) {
-    preRelease(env, null);
+    preRelease(env, null, null);
   }
 
-  protected void preRelease(final ConfigNodeProcedureEnv env, final @Nullable String oldName) {
+  protected void preRelease(
+      final ConfigNodeProcedureEnv env,
+      final @Nullable String oldTableName,
+      final @Nullable List<String> oldColumnNames) {
     final Map<Integer, TSStatus> failedResults =
-        SchemaUtils.preReleaseTable(database, table, env.getConfigManager(), oldName);
+        SchemaUtils.preReleaseTable(
+            database, table, env.getConfigManager(), oldTableName, oldColumnNames);
 
     if (!failedResults.isEmpty()) {
       // All dataNodes must clear the related schema cache

@@ -1338,7 +1338,11 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void RenameTableColumnPlanTest() throws IOException {
     final RenameTableColumnPlan renameTablePropertiesPlan0 =
-        new RenameTableColumnPlan("database1", "table1", "attr1", "att2");
+        new RenameTableColumnPlan(
+            "database1",
+            "table1",
+            Collections.singletonList("attr1"),
+            Collections.singletonList("att2"));
     final RenameTableColumnPlan renameTablePropertiesPlan1 =
         (RenameTableColumnPlan)
             ConfigPhysicalPlan.Factory.create(renameTablePropertiesPlan0.serializeToByteBuffer());
@@ -1347,15 +1351,19 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         renameTablePropertiesPlan0.getTableName(), renameTablePropertiesPlan1.getTableName());
     Assert.assertEquals(
-        renameTablePropertiesPlan0.getOldName(), renameTablePropertiesPlan1.getOldName());
+        renameTablePropertiesPlan0.getOldNames(), renameTablePropertiesPlan1.getOldNames());
     Assert.assertEquals(
-        renameTablePropertiesPlan0.getNewName(), renameTablePropertiesPlan1.getNewName());
+        renameTablePropertiesPlan0.getNewNames(), renameTablePropertiesPlan1.getNewNames());
   }
 
   @Test
   public void RenameViewColumnPlanTest() throws IOException {
     final RenameViewColumnPlan renameViewPropertiesPlan0 =
-        new RenameViewColumnPlan("database1", "table1", "attr1", "att2");
+        new RenameViewColumnPlan(
+            "database1",
+            "table1",
+            Collections.singletonList("attr1"),
+            Collections.singletonList("att2"));
     final RenameViewColumnPlan renameViewPropertiesPlan1 =
         (RenameViewColumnPlan)
             ConfigPhysicalPlan.Factory.create(renameViewPropertiesPlan0.serializeToByteBuffer());
@@ -1364,9 +1372,9 @@ public class ConfigPhysicalPlanSerDeTest {
     Assert.assertEquals(
         renameViewPropertiesPlan0.getTableName(), renameViewPropertiesPlan1.getTableName());
     Assert.assertEquals(
-        renameViewPropertiesPlan0.getOldName(), renameViewPropertiesPlan1.getOldName());
+        renameViewPropertiesPlan0.getOldNames(), renameViewPropertiesPlan1.getOldNames());
     Assert.assertEquals(
-        renameViewPropertiesPlan0.getNewName(), renameViewPropertiesPlan1.getNewName());
+        renameViewPropertiesPlan0.getNewNames(), renameViewPropertiesPlan1.getNewNames());
   }
 
   @Test

@@ -121,7 +121,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
 
-public class AnalyzerTest {
+public class AnalyzerTest extends BaseAnalyzerTest {
 
   private static final AccessControl nopAccessControl = new AllowAllAccessControl();
   final String database = "db";
@@ -1055,7 +1055,7 @@ public class AnalyzerTest {
 
   private Metadata mockMetadataForInsertion() {
     final TsTable tsTable = StatementTestUtils.genTsTable();
-    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null, null);
     DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
     return new TestMetadata() {
       @Override

@@ -480,7 +480,13 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void renameTableColumnTest() throws IOException {
     final RenameTableColumnProcedure renameTableColumnProcedure =
-        new RenameTableColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
+        new RenameTableColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList("oldName"),
+            Collections.singletonList("newName"),
+            true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -693,7 +699,13 @@ public class PipeEnrichedProcedureTest {
   @Test
   public void renameViewColumnTest() throws IOException {
     final RenameViewColumnProcedure renameViewColumnProcedure =
-        new RenameViewColumnProcedure("database1", "table1", "0", "oldName", "newName", true);
+        new RenameViewColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList("oldName"),
+            Collections.singletonList("newName"),
+            true);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

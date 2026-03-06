@@ -248,7 +248,7 @@ public class TsFileNameGenerator {
       TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
       tsFileName.setCrossCompactionCnt(tsFileName.getCrossCompactionCnt() + 1);
       // set target resource to COMPACTING until the end of this task
-      targetFileResources.add(
+      TsFileResource tsFileResource =
           new TsFileResource(
               new File(
                   generateNewTsFilePathWithMkdir(
@@ -262,7 +262,9 @@ public class TsFileNameGenerator {
                       tsFileName.crossCompactionCnt,
                       resource.getTierLevel(),
                       IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)),
-              TsFileResourceStatus.COMPACTING));
+              TsFileResourceStatus.COMPACTING);
+      tsFileResource.setTsFileManager(resource.getTsFileManager());
+      targetFileResources.add(tsFileResource);
     }
     return targetFileResources;
   }
@@ -331,6 +333,51 @@ public class TsFileNameGenerator {
     return resource;
   }
 
+  /**
+   * Create tmp target file for inner space compaction, in which all source files has only one tmp
+   * target file. The
+   *
+   * @param tsFileResources source files
+   * @param sequence is sequence or not
+   * @return tmp target file, which is xxx.target
+   * @throws IOException
+   */
+  public static TsFileResource getInnerCompactionTargetFileResource(
+      List<TsFileResource> tsFileResources, boolean sequence, long version)
+      throws IOException, DiskSpaceInsufficientException {
+    long minTime = Long.MAX_VALUE;
+    long maxTime = Long.MIN_VALUE;
+    long maxInnerMergeCount = Long.MIN_VALUE;
+    long maxCrossMergeCount = Long.MIN_VALUE;
+    int maxTierLevel = 0;
+    for (TsFileResource resource : tsFileResources) {
+      TsFileName tsFileName = getTsFileName(resource.getTsFile().getName());
+      minTime = Math.min(tsFileName.time, minTime);
+      maxTime = Math.max(tsFileName.time, maxTime);
+      maxInnerMergeCount = Math.max(tsFileName.innerCompactionCnt, maxInnerMergeCount);
+      maxCrossMergeCount = Math.max(tsFileName.crossCompactionCnt, maxCrossMergeCount);
+      maxTierLevel = Math.max(resource.getTierLevel(), maxTierLevel);
+    }
+    // set target resource to COMPACTING until the end of this task
+    TsFileResource resource =
+        new TsFileResource(
+            new File(
+                generateNewTsFilePathWithMkdir(
+                    sequence,
+                    tsFileResources.get(0).getDatabaseName(),
+                    tsFileResources.get(0).getDataRegionId(),
+                    tsFileResources.get(0).getTimePartition(),
+                    maxTime,
+                    version,
+                    (int) maxInnerMergeCount + 1,
+                    (int) maxCrossMergeCount,
+                    maxTierLevel,
+                    IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)),
+            TsFileResourceStatus.COMPACTING);
+    resource.setSeq(sequence);
+    return resource;
+  }
+
   public static List<TsFileResource> getNewInnerCompactionTargetFileResources(
       List<TsFileResource> tsFileResources, boolean sequence)
       throws IOException, DiskSpaceInsufficientException {
@@ -363,6 +410,7 @@ public class TsFileNameGenerator {
               TsFileResourceStatus.COMPACTING);
       targetResource.setSeq(sequence);
       targetResources.add(targetResource);
+      targetResource.setTsFileManager(resource.getTsFileManager());
     }
     return targetResources;
   }

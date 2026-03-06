@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class PipeTransferTsFilePieceReq extends PipeTransferFilePieceReq {
 
@@ -40,6 +41,13 @@ public class PipeTransferTsFilePieceReq extends PipeTransferFilePieceReq {
 
   public static PipeTransferTsFilePieceReq toTPipeTransferReq(
       String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
+    return (PipeTransferTsFilePieceReq)
+        new PipeTransferTsFilePieceReq()
+            .convertToTPipeTransferReq(fileName, startWritingOffset, filePiece);
+  }
+
+  public static PipeTransferTsFilePieceReq toTPipeTransferReq(
+      String fileName, long startWritingOffset, ByteBuffer filePiece) throws IOException {
     return (PipeTransferTsFilePieceReq)
         new PipeTransferTsFilePieceReq()
             .convertToTPipeTransferReq(fileName, startWritingOffset, filePiece);

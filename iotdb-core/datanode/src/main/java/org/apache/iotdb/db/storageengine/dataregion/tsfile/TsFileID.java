@@ -32,6 +32,7 @@ public class TsFileID {
   public final long fileVersion;
   // high 32 bit is compaction level, low 32 bit is merge count
   public final long compactionVersion;
+  public String databaseName;
 
   public TsFileID() {
     this.regionId = -1;
@@ -69,6 +70,10 @@ public class TsFileID {
         tmpTimePartitionId = Long.parseLong(pathSegments[pathLength - 2]);
       } catch (Exception e) {
         // ignore, load will get in here
+      }
+
+      if (pathLength >= 4) {
+        this.databaseName = pathSegments[pathLength - 4];
       }
     }
     this.regionId = tmpRegionId;
