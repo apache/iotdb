@@ -280,8 +280,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
         case DropRole:
           authorizer.deleteRole(roleName);
           break;
-        case AccountUnlock:
-          break;
         case GrantRole:
           for (int permission : permissions) {
             PrivilegeType priv = PrivilegeType.values()[permission];

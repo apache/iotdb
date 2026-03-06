@@ -135,7 +135,6 @@ public enum ConfigPhysicalPlanType {
   CreateUserWithRawPassword((short) 638),
   UpdateUserMaxSession((short) 639),
   UpdateUserMinSession((short) 640),
-  AccountUnlock((short) 641),
 
   /** Table Author */
   RCreateUser((short) 641),
