@@ -124,9 +124,7 @@ public class TableModelSessionExample {
         printDataSet(dataSet);
       }
 
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
 
@@ -153,9 +151,7 @@ public class TableModelSessionExample {
         printDataSet(dataSet);
       }
 
-    } catch (IoTDBConnectionException e) {
-      e.printStackTrace();
-    } catch (StatementExecutionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       e.printStackTrace();
     }
   }
