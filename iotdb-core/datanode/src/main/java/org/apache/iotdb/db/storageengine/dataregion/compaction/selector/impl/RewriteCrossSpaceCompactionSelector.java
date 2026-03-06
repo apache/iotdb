@@ -490,6 +490,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
             nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
           }
           if (!seqFile.containsDevice(deviceId)) {
+            // if the seqFile is deleted by another compaction concurrently,
+            // we cannot ensure whether the seqFile overlaps with the unseqFile.
+            // Let a later selection retry with compacted file.
+            if (!seqFile.hasDetailedDeviceInfo()) {
+              return result;
+            }
             continue;
           }
           DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceId);
