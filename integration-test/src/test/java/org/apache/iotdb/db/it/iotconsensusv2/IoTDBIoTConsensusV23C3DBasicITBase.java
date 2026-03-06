@@ -36,9 +36,12 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
@@ -93,6 +96,11 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
         .setIoTConsensusV2Mode(getIoTConsensusV2Mode());
 
     EnvFactory.getEnv()
+        .getConfig()
+        .getDataNodeConfig()
+        .setMetricReporterType(Collections.singletonList("PROMETHEUS"));
+
+    EnvFactory.getEnv()
         .initClusterEnvironment(CONFIG_NODE_NUM, DATA_NODE_NUM, CLUSTER_INIT_TIMEOUT_SECONDS);
   }
 
@@ -130,9 +138,6 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
 
       verifyDataConsistency(statement);
 
-      LOGGER.info("Sleeping 2 seconds to wait replicate ...");
-      Thread.sleep(1000 * 2);
-
       Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
           getDataRegionMapWithLeader(statement);
 
@@ -164,6 +169,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(leaderDataNodeId)
               .orElseThrow(() -> new AssertionError("DataNode not found in cluster"));
+
+      waitForReplicationComplete(leaderNode);
+
       LOGGER.info(
           "Stopping leader DataNode {} (region {}) for replica consistency test",
           leaderDataNodeId,
@@ -200,6 +208,47 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       LOGGER.info(
           "Replica consistency verified: follower has same data as former leader after failover");
     }
+  }
+
+  private static final Pattern SYNC_LAG_PATTERN =
+      Pattern.compile("pipe_consensus\\{[^}]*type=\"syncLag\"[^}]*}\\s+(\\S+)");
+
+  /**
+   * Wait until all consensus pipe syncLag metrics on the given leader DataNode reach 0, meaning
+   * replication is fully caught up. Queries the leader's Prometheus metrics endpoint periodically.
+   */
+  protected void waitForReplicationComplete(DataNodeWrapper leaderNode) {
+    final long timeoutSeconds = 120;
+    final String metricsUrl =
+        "http://" + leaderNode.getIp() + ":" + leaderNode.getMetricPort() + "/metrics";
+    LOGGER.info(
+        "Waiting for consensus pipe syncLag to reach 0 on leader DataNode (url: {}, timeout: {}s)...",
+        metricsUrl,
+        timeoutSeconds);
+    Awaitility.await()
+        .pollInterval(500, TimeUnit.MILLISECONDS)
+        .atMost(timeoutSeconds, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              String metricsContent = EnvFactory.getEnv().getUrlContent(metricsUrl, null);
+              Assert.assertNotNull(
+                  "Failed to fetch metrics from leader DataNode at " + metricsUrl, metricsContent);
+              Matcher matcher = SYNC_LAG_PATTERN.matcher(metricsContent);
+              boolean found = false;
+              while (matcher.find()) {
+                found = true;
+                double syncLag = Double.parseDouble(matcher.group(1));
+                LOGGER.debug("Found syncLag metric value: {}", syncLag);
+                Assert.assertEquals(
+                    "Consensus pipe syncLag should be 0.0 but was " + syncLag,
+                    0.0,
+                    syncLag,
+                    0.001);
+              }
+              Assert.assertTrue(
+                  "No pipe_consensus syncLag metric found in leader DataNode metrics", found);
+            });
+    LOGGER.info("All consensus pipe syncLag == 0 on leader, replication is complete");
   }
 
   protected void verifyDataConsistency(Statement statement) throws Exception {
