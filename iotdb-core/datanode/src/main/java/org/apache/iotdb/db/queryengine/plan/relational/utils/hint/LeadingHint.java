@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Pair;
 
@@ -62,6 +63,8 @@ public class LeadingHint extends JoinOrderHint {
   private Set<Identifier> innerJoinTables = ImmutableSet.of();
 
   private final List<JoinConstraint> joinConstraintList = new ArrayList<>();
+
+  private final Map<Expression, JoinNode.JoinType> conditionJoinType = Maps.newLinkedHashMap();
 
   public LeadingHint(List<String> parameters, MPPQueryContext queryContext) {
     super(hintName);
@@ -106,6 +109,10 @@ public class LeadingHint extends JoinOrderHint {
 
   public Map<String, PlanNode> getRelationToScanMap() {
     return relationToScanMap;
+  }
+
+  public void putConditionJoinType(Expression filter, JoinNode.JoinType joinType) {
+    conditionJoinType.put(filter, joinType);
   }
 
   public Set<Identifier> getInnerJoinTables() {
@@ -230,6 +237,9 @@ public class LeadingHint extends JoinOrderHint {
     }
 
     List<Expression> equiJoins = getEquiJoinConditions(getEquiJoins(), leftChild, rightChild);
+    if (!isConditionJoinTypeMatched(equiJoins, joinType)) {
+      return null;
+    }
     List<Symbol> leftOutputSymbols = leftChild.getOutputSymbols();
     List<Symbol> rightOutputSymbols = rightChild.getOutputSymbols();
     Optional<JoinNode.AsofJoinClause> asofCriteria = Optional.empty();
@@ -286,6 +296,9 @@ public class LeadingHint extends JoinOrderHint {
 
     Expression asofJoin = getAsofJoinCondition(getAsofJoin(), leftChild, rightChild);
     if (asofJoin != null) {
+      if (!isConditionJoinTypeMatched(asofJoin, joinType)) {
+        return null;
+      }
       ComparisonExpression asofJoinExpr = (ComparisonExpression) asofJoin;
       Symbol leftSymbol = Symbol.from(asofJoinExpr.getLeft());
       Symbol rightSymbol = Symbol.from(asofJoinExpr.getRight());
@@ -390,6 +403,23 @@ public class LeadingHint extends JoinOrderHint {
 
     JoinConstraint joinConstraint = joinConstraintBooleanPair.left;
     return joinConstraint.getJoinType();
+  }
+
+  public boolean isConditionJoinTypeMatched(
+      List<Expression> conditions, JoinNode.JoinType joinType) {
+    for (Expression condition : conditions) {
+      JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
+      if (originalJoinType == joinType) {
+        continue;
+      }
+      return false;
+    }
+    return true;
+  }
+
+  public boolean isConditionJoinTypeMatched(Expression condition, JoinNode.JoinType joinType) {
+    JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
+    return originalJoinType == joinType;
   }
 
   /**
