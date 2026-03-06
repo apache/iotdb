@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.schema.table.NonCommittableTsTable;
 import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TreeViewSchema;
@@ -179,7 +180,8 @@ public class ClusterSchemaManager {
       clusterSchemaInfo.isDatabaseNameValid(
           schema.getName(), schema.isSetIsTableModel() && schema.isIsTableModel());
       if (!schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          && !schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          && !schema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         clusterSchemaInfo.checkDatabaseLimit();
       }
       // Cache DatabaseSchema
@@ -487,7 +489,8 @@ public class ClusterSchemaManager {
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (!isDatabaseExist(databaseSchema.getName())
           || databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the pre deleted database and the system database
         databaseNum--;
       }
@@ -497,7 +500,8 @@ public class ClusterSchemaManager {
         new AdjustMaxRegionGroupNumPlan();
     for (final TDatabaseSchema databaseSchema : databaseSchemaMap.values()) {
       if (databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE)
-          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)) {
+          || databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+          || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE)) {
         // filter the system database
         continue;
       }
@@ -827,7 +831,9 @@ public class ClusterSchemaManager {
     TSStatus errorResp = null;
     final boolean isSystemDatabase =
         databaseSchema.getName().equals(SchemaConstant.SYSTEM_DATABASE);
-    final boolean isAuditDatabase = databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE);
+    final boolean isAuditDatabase =
+        databaseSchema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+            || databaseSchema.getName().equals(Audit.TABLE_MODEL_AUDIT_DATABASE);
 
     if (databaseSchema.getTTL() < 0) {
       errorResp =

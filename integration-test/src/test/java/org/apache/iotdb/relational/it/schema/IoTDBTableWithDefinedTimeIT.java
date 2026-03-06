@@ -227,4 +227,26 @@ public class IoTDBTableWithDefinedTimeIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testAddTimeColumn() {
+    try (final Connection connection =
+            EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        final Statement statement = connection.createStatement()) {
+      statement.execute("use " + TABLE_DATABASE);
+
+      try {
+        statement.execute(
+            "create table table_time(device string tag, s1 int32 field, record_time timestamp time)");
+        statement.execute("alter table table_time add column d_datetime timestamp time");
+        fail("Add the TIME column should not be supported");
+      } catch (SQLException e) {
+        assertEquals("701: Adding TIME column is not supported.", e.getMessage());
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

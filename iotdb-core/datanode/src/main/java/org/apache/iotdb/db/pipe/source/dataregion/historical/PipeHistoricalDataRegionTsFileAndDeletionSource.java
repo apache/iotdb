@@ -57,6 +57,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.customizer.configuration.PipeExtractorRuntimeConfiguration;
+import org.apache.iotdb.pipe.api.customizer.configuration.PipeRuntimeEnvironment;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameterValidator;
 import org.apache.iotdb.pipe.api.customizer.parameter.PipeParameters;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -305,17 +306,17 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
       return;
     }
 
-    final PipeTaskSourceRuntimeEnvironment environment =
-        (PipeTaskSourceRuntimeEnvironment) configuration.getRuntimeEnvironment();
+    final PipeRuntimeEnvironment environment = configuration.getRuntimeEnvironment();
 
     pipeName = environment.getPipeName();
     creationTime = environment.getCreationTime();
-    pipeTaskMeta = environment.getPipeTaskMeta();
-    if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-      startIndex =
-          tryToExtractLocalProgressIndexForIoTV2(environment.getPipeTaskMeta().getProgressIndex());
-    } else {
-      startIndex = environment.getPipeTaskMeta().getProgressIndex();
+    if (environment instanceof PipeTaskSourceRuntimeEnvironment) {
+      pipeTaskMeta = ((PipeTaskSourceRuntimeEnvironment) environment).getPipeTaskMeta();
+      if (pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
+        startIndex = tryToExtractLocalProgressIndexForIoTV2(pipeTaskMeta.getProgressIndex());
+      } else {
+        startIndex = pipeTaskMeta.getProgressIndex();
+      }
     }
 
     dataRegionId = environment.getRegionId();
@@ -498,7 +499,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
         extractTsFiles(dataRegion, startHistoricalExtractionTime, originalResourceList);
       }
       if (shouldExtractDeletion) {
-        Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+        Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
             .ifPresent(manager -> extractDeletions(manager, originalResourceList));
       }
 
@@ -946,7 +947,7 @@ public class PipeHistoricalDataRegionTsFileAndDeletionSource
           dataRegionId,
           event);
     } else {
-      Optional.ofNullable(DeletionResourceManager.getInstance(String.valueOf(dataRegionId)))
+      Optional.ofNullable(DeletionResourceManager.getInstance(dataRegionId))
           .ifPresent(
               manager ->
                   event.setDeletionResource(

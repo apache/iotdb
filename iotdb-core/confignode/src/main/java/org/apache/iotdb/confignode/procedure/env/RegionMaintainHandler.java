@@ -32,6 +32,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.cluster.RegionStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -42,9 +45,12 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.partition.AddRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.request.write.partition.RemoveRegionLocationPlan;
+import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.load.cache.consensus.ConsensusGroupHeartbeatSample;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.rpc.thrift.TCreatePipeReq;
+import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
@@ -64,6 +70,23 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.pipe.config.constant.PipeProcessorConstant.PROCESSOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_CONSENSUS_PIPE_NAME;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_IP_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PORT_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TABLE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CAPTURE_TREE_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_GROUP_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_INCLUSION_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_IOTDB_USER_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTRACTOR_REALTIME_MODE_KEY;
 import static org.apache.iotdb.confignode.conf.ConfigNodeConstant.REGION_MIGRATE_PROCESS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS;
 import static org.apache.iotdb.consensus.ConsensusFactory.IOT_CONSENSUS_V2;
@@ -275,22 +298,15 @@ public class RegionMaintainHandler {
     TMaintainPeerReq maintainPeerReq =
         new TMaintainPeerReq(regionId, originalDataNode, procedureId);
 
+    // Always use full retries regardless of node status, because after a cluster crash the
+    // target DataNode may be Unknown but still in the process of restarting.
     status =
-        configManager.getLoadManager().getNodeStatus(originalDataNode.getDataNodeId())
-                == NodeStatus.Unknown
-            ? (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithGivenRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER,
-                        1)
-            : (TSStatus)
-                SyncDataNodeClientPool.getInstance()
-                    .sendSyncRequestToDataNodeWithRetry(
-                        originalDataNode.getInternalEndPoint(),
-                        maintainPeerReq,
-                        CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
+        (TSStatus)
+            SyncDataNodeClientPool.getInstance()
+                .sendSyncRequestToDataNodeWithRetry(
+                    originalDataNode.getInternalEndPoint(),
+                    maintainPeerReq,
+                    CnToDnSyncRequestType.DELETE_OLD_REGION_PEER);
     LOGGER.info(
         "{}, Send action deleteOldRegionPeer finished, regionId: {}, dataNodeId: {}",
         REGION_MIGRATE_PROCESS,
@@ -390,6 +406,205 @@ public class RegionMaintainHandler {
         status);
     configManager.getLoadManager().removeRegionCache(regionId, deprecatedLocation.getDataNodeId());
     configManager.getLoadManager().getRouteBalancer().balanceRegionLeaderAndPriority();
+  }
+
+  /**
+   * Create bidirectional consensus pipes between the target DataNode and all existing peers. Only
+   * applies to IoTConsensusV2 DataRegions. Called by AddRegionPeerProcedure before
+   * DO_ADD_REGION_PEER so that pipes exist before the coordinator starts data transfer.
+   */
+  public void createConsensusPipesForAddPeer(
+      TConsensusGroupId regionId, TDataNodeLocation targetDataNode) {
+    if (!isIoTConsensusV2DataRegion(regionId)) {
+      return;
+    }
+
+    List<TDataNodeLocation> existingLocations = findRegionLocations(regionId);
+    for (TDataNodeLocation existingLocation : existingLocations) {
+      if (existingLocation.getDataNodeId() == targetDataNode.getDataNodeId()) {
+        continue;
+      }
+      // Pipe: existingPeer → targetPeer
+      createSingleConsensusPipe(
+          regionId,
+          existingLocation.getDataNodeId(),
+          existingLocation.getDataRegionConsensusEndPoint(),
+          targetDataNode.getDataNodeId(),
+          targetDataNode.getDataRegionConsensusEndPoint());
+      // Pipe: targetPeer → existingPeer
+      createSingleConsensusPipe(
+          regionId,
+          targetDataNode.getDataNodeId(),
+          targetDataNode.getDataRegionConsensusEndPoint(),
+          existingLocation.getDataNodeId(),
+          existingLocation.getDataRegionConsensusEndPoint());
+    }
+  }
+
+  /**
+   * Create bidirectional consensus pipes among all peers for newly created RegionGroups. Only
+   * applies to IoTConsensusV2 DataRegions. Called by CreateRegionGroupsProcedure after all regions
+   * are activated.
+   */
+  public void createInitialConsensusPipes(CreateRegionGroupsPlan persistPlan) {
+    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      return;
+    }
+
+    persistPlan
+        .getRegionGroupMap()
+        .forEach(
+            (database, regionReplicaSets) ->
+                regionReplicaSets.forEach(
+                    regionReplicaSet -> {
+                      TConsensusGroupId regionId = regionReplicaSet.getRegionId();
+                      if (!TConsensusGroupType.DataRegion.equals(regionId.getType())) {
+                        return;
+                      }
+                      List<TDataNodeLocation> locations = regionReplicaSet.getDataNodeLocations();
+                      for (int i = 0; i < locations.size(); i++) {
+                        for (int j = 0; j < locations.size(); j++) {
+                          if (i == j) {
+                            continue;
+                          }
+                          createSingleConsensusPipeAsync(
+                              regionId,
+                              locations.get(i).getDataNodeId(),
+                              locations.get(i).getDataRegionConsensusEndPoint(),
+                              locations.get(j).getDataNodeId(),
+                              locations.get(j).getDataRegionConsensusEndPoint());
+                        }
+                      }
+                    }));
+  }
+
+  /**
+   * Drop consensus pipes related to the target DataNode for a region. Only applies to
+   * IoTConsensusV2 DataRegions. Called by RemoveRegionPeerProcedure after DELETE_OLD_REGION_PEER.
+   */
+  public void dropConsensusPipesForRemovePeer(
+      TConsensusGroupId regionId, TDataNodeLocation targetDataNode) {
+    if (!isIoTConsensusV2DataRegion(regionId)) {
+      return;
+    }
+
+    DataRegionId dataRegionId = new DataRegionId(regionId.getId());
+    List<TDataNodeLocation> existingLocations = findRegionLocations(regionId);
+    for (TDataNodeLocation existingLocation : existingLocations) {
+      if (existingLocation.getDataNodeId() == targetDataNode.getDataNodeId()) {
+        continue;
+      }
+      // Drop pipe: existingPeer → targetPeer
+      String pipeName1 =
+          new ConsensusPipeName(
+                  dataRegionId, existingLocation.getDataNodeId(), targetDataNode.getDataNodeId())
+              .toString();
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName1);
+      // Drop pipe: targetPeer → existingPeer
+      String pipeName2 =
+          new ConsensusPipeName(
+                  dataRegionId, targetDataNode.getDataNodeId(), existingLocation.getDataNodeId())
+              .toString();
+      configManager.getProcedureManager().dropConsensusPipeAsync(pipeName2);
+    }
+  }
+
+  private boolean isIoTConsensusV2DataRegion(TConsensusGroupId regionId) {
+    return TConsensusGroupType.DataRegion.equals(regionId.getType())
+        && IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass());
+  }
+
+  private TCreatePipeReq buildConsensusPipeReq(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    DataRegionId dataRegionId = new DataRegionId(regionId.getId());
+    ConsensusPipeName pipeName = new ConsensusPipeName(dataRegionId, senderNodeId, receiverNodeId);
+
+    String replicateMode = CONF.getIotConsensusV2Mode();
+
+    Map<String, String> extractorAttributes = new HashMap<>();
+    extractorAttributes.put(EXTRACTOR_KEY, BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName());
+    extractorAttributes.put(EXTRACTOR_INCLUSION_KEY, "data");
+    extractorAttributes.put(EXTRACTOR_CONSENSUS_GROUP_ID_KEY, dataRegionId.toString());
+    extractorAttributes.put(
+        EXTRACTOR_CONSENSUS_SENDER_DATANODE_ID_KEY, String.valueOf(senderNodeId));
+    extractorAttributes.put(
+        EXTRACTOR_CONSENSUS_RECEIVER_DATANODE_ID_KEY, String.valueOf(receiverNodeId));
+    extractorAttributes.put(EXTRACTOR_REALTIME_MODE_KEY, replicateMode);
+    extractorAttributes.put(EXTRACTOR_CAPTURE_TABLE_KEY, String.valueOf(true));
+    extractorAttributes.put(EXTRACTOR_CAPTURE_TREE_KEY, String.valueOf(true));
+    extractorAttributes.put(
+        EXTRACTOR_IOTDB_USER_KEY, CommonDescriptor.getInstance().getConfig().getDefaultAdminName());
+
+    Map<String, String> processorAttributes = new HashMap<>();
+    processorAttributes.put(
+        PROCESSOR_KEY, BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName());
+
+    Map<String, String> connectorAttributes = new HashMap<>();
+    connectorAttributes.put(
+        CONNECTOR_KEY, BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName());
+    connectorAttributes.put(CONNECTOR_CONSENSUS_GROUP_ID_KEY, String.valueOf(dataRegionId.getId()));
+    connectorAttributes.put(CONNECTOR_CONSENSUS_PIPE_NAME, pipeName.toString());
+    connectorAttributes.put(CONNECTOR_IOTDB_IP_KEY, receiverEndpoint.ip);
+    connectorAttributes.put(CONNECTOR_IOTDB_PORT_KEY, String.valueOf(receiverEndpoint.port));
+    connectorAttributes.put(CONNECTOR_IOTDB_PARALLEL_TASKS_KEY, String.valueOf(1));
+    connectorAttributes.put(CONNECTOR_REALTIME_FIRST_KEY, String.valueOf(false));
+
+    return new TCreatePipeReq()
+        .setPipeName(pipeName.toString())
+        .setNeedManuallyStart(false)
+        .setExtractorAttributes(extractorAttributes)
+        .setProcessorAttributes(processorAttributes)
+        .setConnectorAttributes(connectorAttributes);
+  }
+
+  /**
+   * Create a single consensus pipe synchronously (blocks until procedure finishes or times out with
+   * optimistic success). Used by AddRegionPeerProcedure where pipes must exist before data sync.
+   */
+  private void createSingleConsensusPipe(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
+    TSStatus status = configManager.getProcedureManager().createConsensusPipe(req);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.warn(
+          "{}, Failed to create consensus pipe {}: {}",
+          REGION_MIGRATE_PROCESS,
+          req.getPipeName(),
+          status);
+    } else {
+      LOGGER.info("{}, Created consensus pipe {}", REGION_MIGRATE_PROCESS, req.getPipeName());
+    }
+  }
+
+  /**
+   * Create a single consensus pipe asynchronously (fire-and-forget). Used by
+   * CreateRegionGroupsProcedure where blocking would cause deadlock and new regions have no data to
+   * lose.
+   */
+  private void createSingleConsensusPipeAsync(
+      TConsensusGroupId regionId,
+      int senderNodeId,
+      TEndPoint senderEndpoint,
+      int receiverNodeId,
+      TEndPoint receiverEndpoint) {
+    TCreatePipeReq req =
+        buildConsensusPipeReq(
+            regionId, senderNodeId, senderEndpoint, receiverNodeId, receiverEndpoint);
+    configManager.getProcedureManager().createConsensusPipeAsync(req);
+    LOGGER.info(
+        "{}, Submitted async consensus pipe creation: {}",
+        REGION_MIGRATE_PROCESS,
+        req.getPipeName());
   }
 
   /**

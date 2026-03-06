@@ -126,27 +126,27 @@ public class PipeConsensusSyncLagManager {
   }
 
   private static class PipeConsensusSyncLagManagerHolder {
-    private static Map<String, PipeConsensusSyncLagManager> CONSENSU_GROUP_ID_2_INSTANCE_MAP;
+    private static Map<String, PipeConsensusSyncLagManager> CONSENSUS_GROUP_ID_2_INSTANCE_MAP;
 
     private PipeConsensusSyncLagManagerHolder() {
       // empty constructor
     }
 
     private static void build() {
-      if (CONSENSU_GROUP_ID_2_INSTANCE_MAP == null) {
-        CONSENSU_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
+      if (CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
+        CONSENSUS_GROUP_ID_2_INSTANCE_MAP = new ConcurrentHashMap<>();
       }
     }
   }
 
   public static PipeConsensusSyncLagManager getInstance(String groupId) {
-    return PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
+    return PipeConsensusSyncLagManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.computeIfAbsent(
         groupId, key -> new PipeConsensusSyncLagManager());
   }
 
   public static void release(String groupId) {
     PipeConsensusSyncLagManager.getInstance(groupId).clear();
-    PipeConsensusSyncLagManagerHolder.CONSENSU_GROUP_ID_2_INSTANCE_MAP.remove(groupId);
+    PipeConsensusSyncLagManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP.remove(groupId);
   }
 
   // Only when consensus protocol is PipeConsensus, this method will be called once when construct

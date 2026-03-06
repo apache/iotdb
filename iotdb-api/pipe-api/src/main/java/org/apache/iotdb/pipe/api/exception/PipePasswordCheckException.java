@@ -17,26 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe.consensuspipe;
+package org.apache.iotdb.pipe.api.exception;
 
-import java.util.Map;
-
-public interface ConsensusPipeDispatcher {
-  void createPipe(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
-      boolean needManuallyStart)
-      throws Exception;
-
-  void startPipe(String pipeName) throws Exception;
-
-  void stopPipe(String pipeName) throws Exception;
-
-  /**
-   * Use ConsensusPipeName instead of String to provide information for receiverAgent to release
-   * corresponding resource
-   */
-  void dropPipe(ConsensusPipeName pipeName) throws Exception;
+public class PipePasswordCheckException extends PipeException {
+  public PipePasswordCheckException(final String message) {
+    super(message);
+  }
 }

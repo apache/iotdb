@@ -112,8 +112,9 @@ public class PermissionManager {
     return configManager.getConsensusManager();
   }
 
-  public TPermissionInfoResp login(String username, String password) {
-    return authorInfo.login(username, password);
+  public TPermissionInfoResp login(
+      final String username, final String password, final boolean useEncryptedPassword) {
+    return authorInfo.login(username, password, useEncryptedPassword);
   }
 
   public String login4Pipe(final String userName, final String password) {
