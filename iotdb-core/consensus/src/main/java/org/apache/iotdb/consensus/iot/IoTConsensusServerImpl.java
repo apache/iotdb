@@ -98,7 +98,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.LongSupplier;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.utils.FileUtils.humanReadableByteCountSI;
@@ -135,9 +134,6 @@ public class IoTConsensusServerImpl {
   // similar to LogDispatcher, enabling in-memory data delivery without waiting for WAL flush.
   private final List<BlockingQueue<IndexedConsensusRequest>> subscriptionQueues =
       new CopyOnWriteArrayList<>();
-  // Suppliers that report each subscription consumer's acknowledged search index.
-  // Used to pin WAL files: entries >= min(suppliers) cannot be deleted.
-  private final List<LongSupplier> subscriptionSyncIndexSuppliers = new CopyOnWriteArrayList<>();
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -820,14 +816,10 @@ public class IoTConsensusServerImpl {
    * flush.
    *
    * @param queue the blocking queue to receive IndexedConsensusRequest entries
-   * @param syncIndexSupplier supplies the subscription consumer's current acknowledged search
-   *     index, used by WAL pinning to prevent deletion of unacknowledged entries
    */
-  public void registerSubscriptionQueue(
-      final BlockingQueue<IndexedConsensusRequest> queue, final LongSupplier syncIndexSupplier) {
+  public void registerSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
     subscriptionQueues.add(queue);
-    subscriptionSyncIndexSuppliers.add(syncIndexSupplier);
-    // Immediately re-evaluate the safe delete index to protect WAL for this subscriber
+    // Immediately re-evaluate the safe delete index with new subscription awareness
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
         "Registered subscription queue for group {}, "
@@ -838,10 +830,8 @@ public class IoTConsensusServerImpl {
         System.identityHashCode(this));
   }
 
-  public void unregisterSubscriptionQueue(
-      final BlockingQueue<IndexedConsensusRequest> queue, final LongSupplier syncIndexSupplier) {
+  public void unregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
     subscriptionQueues.remove(queue);
-    subscriptionSyncIndexSuppliers.remove(syncIndexSupplier);
     // Re-evaluate: with fewer subscribers, more WAL may be deletable
     checkAndUpdateSafeDeletedSearchIndex();
     logger.info(
@@ -965,8 +955,8 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
-   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * Computes and updates the safe-to-delete WAL search index based on replication progress and
+   * subscription WAL retention policy. When no subscriptions exist, WAL is cleaned normally.
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
@@ -975,22 +965,31 @@ public class IoTConsensusServerImpl {
       return;
     }
 
-    // Compute the minimum search index that subscription consumers still need.
-    // WAL entries at or after this index must be preserved.
-    long minSubscriptionIndex = Long.MAX_VALUE;
-    for (final LongSupplier supplier : subscriptionSyncIndexSuppliers) {
-      minSubscriptionIndex = Math.min(minSubscriptionIndex, supplier.getAsLong());
-    }
+    final boolean hasSubscriptions = !subscriptionQueues.isEmpty();
+    final long retentionSizeLimit =
+        config.getReplication().getSubscriptionWalRetentionSizeInBytes();
 
-    if (configuration.size() == 1 && subscriptionSyncIndexSuppliers.isEmpty()) {
+    if (configuration.size() == 1 && !hasSubscriptions) {
       // Single replica, no subscription consumers => delete all WAL freely
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
-      // min(replication progress, subscription progress) — preserve WAL for both
       final long replicationIndex =
           configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
+
+      // Subscription WAL retention: if subscriptions exist and retention is configured,
+      // prevent WAL deletion when total WAL size is within the retention limit.
+      long subscriptionRetentionBound = Long.MAX_VALUE;
+      if (hasSubscriptions && retentionSizeLimit > 0) {
+        final long totalWalSize = consensusReqReader.getTotalSize();
+        if (totalWalSize <= retentionSizeLimit) {
+          // WAL size is within retention limit — preserve all WAL for subscribers
+          subscriptionRetentionBound = ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+        }
+        // else: WAL exceeds retention limit — allow normal cleanup (bound stays MAX_VALUE)
+      }
+
       consensusReqReader.setSafelyDeletedSearchIndex(
-          Math.min(replicationIndex, minSubscriptionIndex));
+          Math.min(replicationIndex, subscriptionRetentionBound));
     }
   }
 

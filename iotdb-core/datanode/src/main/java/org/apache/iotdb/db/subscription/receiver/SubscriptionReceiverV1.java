@@ -61,6 +61,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatR
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestType;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeRequestVersion;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeCloseResp;
@@ -70,6 +71,7 @@ import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHeartbeat
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribePollResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseType;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeResponseVersion;
+import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSeekResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeSubscribeResp;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeUnsubscribeResp;
 import org.apache.iotdb.service.rpc.thrift.TPipeSubscribeReq;
@@ -135,6 +137,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
         case CLOSE:
           return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
+        case SEEK:
+          return handlePipeSubscribeSeek(PipeSubscribeSeekReq.fromTPipeSubscribeReq(req));
         default:
           break;
       }
@@ -660,6 +664,45 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     closeConsumer(consumerConfig);
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeSeek(final PipeSubscribeSeekReq req) {
+    try {
+      return handlePipeSubscribeSeekInternal(req);
+    } catch (final Exception e) {
+      LOGGER.warn("Exception occurred when seeking with request {}", req, e);
+      final String exceptionMessage =
+          String.format(
+              "Subscription: something unexpected happened when seeking with request %s: %s",
+              req, e);
+      return PipeSubscribeSeekResp.toTPipeSubscribeResp(
+          RpcUtils.getStatus(TSStatusCode.SUBSCRIPTION_SEEK_ERROR, exceptionMessage));
+    }
+  }
+
+  private TPipeSubscribeResp handlePipeSubscribeSeekInternal(final PipeSubscribeSeekReq req) {
+    // check consumer config thread local
+    final ConsumerConfig consumerConfig = consumerConfigThreadLocal.get();
+    if (Objects.isNull(consumerConfig)) {
+      LOGGER.warn(
+          "Subscription: missing consumer config when handling PipeSubscribeSeekReq: {}", req);
+      return SUBSCRIPTION_MISSING_CUSTOMER_RESP;
+    }
+
+    final String topicName = req.getTopicName();
+    final short seekType = req.getSeekType();
+
+    SubscriptionAgent.broker()
+        .seek(consumerConfig, topicName, seekType, req.getTimestamp());
+
+    LOGGER.info(
+        "Subscription: consumer {} seek topic {} with seekType={}, timestamp={}",
+        consumerConfig,
+        topicName,
+        seekType,
+        req.getTimestamp());
+
+    return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
   private void closeConsumer(final ConsumerConfig consumerConfig) {

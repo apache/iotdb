@@ -207,6 +207,29 @@ public class SubscriptionBrokerAgent {
     return allSuccessful;
   }
 
+  public void seek(
+      final ConsumerConfig consumerConfig,
+      final String topicName,
+      final short seekType,
+      final long timestamp) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+
+    final ConsensusSubscriptionBroker consensusBroker =
+        consumerGroupIdToConsensusBroker.get(consumerGroupId);
+    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      consensusBroker.seek(topicName, seekType, timestamp);
+      return;
+    }
+
+    final String errorMessage =
+        String.format(
+            "Subscription: seek is only supported for consensus-based subscriptions, "
+                + "consumerGroup=%s, topic=%s",
+            consumerGroupId, topicName);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
+  }
+
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
     final String consumerGroupId = commitContext.getConsumerGroupId();
     final String topicName = commitContext.getTopicName();

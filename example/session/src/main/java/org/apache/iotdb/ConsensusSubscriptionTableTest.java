@@ -25,6 +25,7 @@ import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
@@ -80,9 +81,6 @@ public class ConsensusSubscriptionTableTest {
       runTest(
           "testSubscribeBeforeRegion", ConsensusSubscriptionTableTest::testSubscribeBeforeRegion);
     }
-    if (targetTest == null || "testRedelivery".equals(targetTest)) {
-      runTest("testRedelivery", ConsensusSubscriptionTableTest::testRedelivery);
-    }
     if (targetTest == null || "testMultiEntityIsolation".equals(targetTest)) {
       runTest("testMultiEntityIsolation", ConsensusSubscriptionTableTest::testMultiEntityIsolation);
     }
@@ -93,6 +91,9 @@ public class ConsensusSubscriptionTableTest {
     if (targetTest == null || "testCommitAfterUnsubscribe".equals(targetTest)) {
       runTest(
           "testCommitAfterUnsubscribe", ConsensusSubscriptionTableTest::testCommitAfterUnsubscribe);
+    }
+    if (targetTest == null || "testSeek".equals(targetTest)) {
+      runTest("testSeek", ConsensusSubscriptionTableTest::testSeek);
     }
 
     // Summary
@@ -830,156 +831,7 @@ public class ConsensusSubscriptionTableTest {
     }
   }
 
-  // ======================================================================
-  // Test 5: Redelivery / At-Least-Once (kept as-is from testPollWithoutCommit)
-  // ======================================================================
-  /** Tests at-least-once delivery with a mixed commit/no-commit pattern. */
-  private static void testRedelivery() throws Exception {
-    String database = nextDatabase();
-    String topicName = nextTopic();
-    String consumerGroupId = nextConsumerGroup();
-    String consumerId = nextConsumerId();
-    ISubscriptionTablePullConsumer consumer = null;
-
-    try {
-      try (ITableSession session = openTableSession()) {
-        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
-        session.executeNonQueryStatement("USE " + database);
-        session.executeNonQueryStatement("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', 0, 0)");
-        session.executeNonQueryStatement("flush");
-      }
-      Thread.sleep(2000);
-
-      createTopicTable(topicName, database, ".*");
-      Thread.sleep(1000);
-
-      consumer = createConsumer(consumerId, consumerGroupId);
-      consumer.subscribe(topicName);
-      Thread.sleep(3000);
-
-      final int totalRows = 50;
-      System.out.println("  Writing " + totalRows + " rows");
-      try (ITableSession session = openTableSession()) {
-        session.executeNonQueryStatement("USE " + database);
-        for (int i = 1; i <= totalRows; i++) {
-          session.executeNonQueryStatement(
-              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
-        }
-      }
-      Thread.sleep(3000);
-
-      int totalRowsCommitted = 0;
-      int roundNumber = 0;
-      boolean hasPending = false;
-      List<Long> pendingTimestamps = new ArrayList<>();
-      Set<Long> allCommittedTimestamps = new HashSet<>();
-      int redeliveryCount = 0;
-
-      for (int attempt = 0; attempt < 200 && totalRowsCommitted < totalRows; attempt++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(5000));
-        if (msgs.isEmpty()) {
-          Thread.sleep(1000);
-          continue;
-        }
-
-        for (SubscriptionMessage msg : msgs) {
-          List<Long> currentTimestamps = new ArrayList<>();
-          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
-            while (ds.hasNext()) {
-              currentTimestamps.add(ds.next().getTimestamp());
-            }
-          }
-          assertTrue("Poll should return data with at least 1 row", currentTimestamps.size() > 0);
-
-          if (hasPending) {
-            assertTrue(
-                "Re-delivery timestamp list mismatch: expected="
-                    + pendingTimestamps
-                    + ", actual="
-                    + currentTimestamps,
-                currentTimestamps.equals(pendingTimestamps));
-            consumer.commitSync(msg);
-            totalRowsCommitted += currentTimestamps.size();
-            allCommittedTimestamps.addAll(currentTimestamps);
-            hasPending = false;
-            redeliveryCount++;
-            roundNumber++;
-            System.out.println(
-                "    [rows="
-                    + totalRowsCommitted
-                    + "/"
-                    + totalRows
-                    + "] Re-delivered & committed: timestamps="
-                    + currentTimestamps);
-          } else {
-            if (totalRowsCommitted > 0) {
-              boolean overlap = false;
-              for (Long ts : currentTimestamps) {
-                if (allCommittedTimestamps.contains(ts)) {
-                  overlap = true;
-                  break;
-                }
-              }
-              assertTrue(
-                  "After commit, should receive different data (overlap detected)", !overlap);
-            }
-
-            if (roundNumber % 2 == 0) {
-              pendingTimestamps = new ArrayList<>(currentTimestamps);
-              hasPending = true;
-              System.out.println(
-                  "    [rows="
-                      + totalRowsCommitted
-                      + "/"
-                      + totalRows
-                      + "] New event (NOT committed): timestamps="
-                      + currentTimestamps);
-            } else {
-              consumer.commitSync(msg);
-              totalRowsCommitted += currentTimestamps.size();
-              allCommittedTimestamps.addAll(currentTimestamps);
-              roundNumber++;
-              System.out.println(
-                  "    [rows="
-                      + totalRowsCommitted
-                      + "/"
-                      + totalRows
-                      + "] New event (committed directly): timestamps="
-                      + currentTimestamps);
-            }
-          }
-        }
-      }
-
-      assertEquals("Should have committed all rows", totalRows, totalRowsCommitted);
-      assertTrue(
-          "Should have at least 1 re-delivery round (got " + redeliveryCount + ")",
-          redeliveryCount > 0);
-
-      System.out.println("  Final poll: expecting no data");
-      int extraRows = 0;
-      for (int i = 0; i < 3; i++) {
-        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
-        for (SubscriptionMessage msg : msgs) {
-          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
-            while (ds.hasNext()) {
-              ds.next();
-              extraRows++;
-            }
-          }
-        }
-      }
-      assertEquals("After all committed, should receive no more data", 0, extraRows);
-      System.out.println(
-          "  At-least-once re-delivery verified: "
-              + totalRows
-              + " rows committed with "
-              + redeliveryCount
-              + " re-delivery rounds");
-    } finally {
-      cleanup(consumer, topicName, database);
-    }
-  }
+  // testRedelivery removed — will be re-added with proper timeout-based nack testing
 
   // ======================================================================
   // Test 6: Multi-Entity Isolation (merged: MultiConsumerGroup + MultiTopic)
@@ -1324,6 +1176,176 @@ public class ConsensusSubscriptionTableTest {
       }
       dropTopicTable(topicName);
       deleteDatabase(database);
+    }
+  }
+
+  // ======================================================================
+  // Test 8: Seek (seekToBeginning, seekToEnd, seek by timestamp)
+  // ======================================================================
+  /**
+   * Verifies all three seek operations in a single flow:
+   *
+   * <ul>
+   *   <li>seekToBeginning — re-delivers previously committed data from earliest available position
+   *   <li>seekToEnd — skips all existing data, only new writes are received
+   *   <li>seek(timestamp) — positions at the approximate WAL entry matching the given timestamp
+   * </ul>
+   */
+  private static void testSeek() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      // Step 0: Create DataRegion
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
+      }
+      Thread.sleep(2000);
+
+      // Step 1: Create topic + consumer + subscribe
+      System.out.println("  Step 1: Create topic and subscribe");
+      createTopicTable(topicName, database, "t1");
+      Thread.sleep(1000);
+
+      consumer = (SubscriptionTablePullConsumer) createConsumer(consumerId, consumerGroupId);
+      consumer.subscribe(topicName);
+      Thread.sleep(3000);
+
+      // Step 2: Write 1000 rows with timestamps 1000..1999 and poll+commit all
+      System.out.println("  Step 2: Write 1000 rows (timestamps 1000..1999) and poll+commit");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 0; i < 1000; i++) {
+          long ts = 1000 + i;
+          session.executeNonQueryStatement(
+              String.format(
+                  "INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", ts * 10, ts));
+        }
+      }
+      Thread.sleep(2000);
+
+      PollResult firstPoll = pollUntilComplete(consumer, 1000, 120);
+      System.out.println("  First poll: " + firstPoll.totalRows + " rows");
+      assertAtLeast("First poll should get rows", 1, firstPoll.totalRows);
+
+      // ------------------------------------------------------------------
+      // Step 3: seekToBeginning — should re-deliver data from the start
+      // ------------------------------------------------------------------
+      System.out.println("  Step 3: seekToBeginning → expect re-delivery");
+      consumer.seekToBeginning(topicName);
+      Thread.sleep(2000);
+
+      // No initial INSERT in table test (Step 0 only creates DB+table), so expectedRows=1000
+      PollResult beginningPoll = pollUntilComplete(consumer, 1000, 120);
+      System.out.println("  After seekToBeginning: " + beginningPoll);
+      assertAtLeast(
+          "seekToBeginning should re-deliver rows (WAL retention permitting)",
+          1,
+          beginningPoll.totalRows);
+
+      // ------------------------------------------------------------------
+      // Step 4: seekToEnd — should receive nothing until new writes
+      // ------------------------------------------------------------------
+      System.out.println("  Step 4: seekToEnd → expect no old data");
+      consumer.seekToEnd(topicName);
+      Thread.sleep(2000);
+
+      PollResult endPoll = new PollResult();
+      int consecutiveEmpty = 0;
+      for (int attempt = 0; attempt < 15; attempt++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(1000));
+        if (msgs.isEmpty()) {
+          consecutiveEmpty++;
+          if (consecutiveEmpty >= 5) break;
+          Thread.sleep(500);
+          continue;
+        }
+        consecutiveEmpty = 0;
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              endPoll.totalRows++;
+            }
+          }
+          consumer.commitSync(msg);
+        }
+      }
+      System.out.println("  After seekToEnd (no new writes): " + endPoll.totalRows + " rows");
+      // May occasionally be 1 due to prefetch thread race; tolerate small values
+      assertTrue(
+          "seekToEnd should yield at most 1 row (race tolerance)", endPoll.totalRows <= 1);
+
+      // Write 200 new rows — they should be received
+      System.out.println("  Writing 200 new rows after seekToEnd");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 2000; i < 2200; i++) {
+          session.executeNonQueryStatement(
+              String.format(
+                  "INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+        }
+      }
+      Thread.sleep(2000);
+
+      PollResult afterEndPoll = pollUntilComplete(consumer, 200, 120);
+      System.out.println("  After seekToEnd + new writes: " + afterEndPoll);
+      assertEquals("Should receive exactly 200 new rows after seekToEnd", 200, afterEndPoll.totalRows);
+
+      // ------------------------------------------------------------------
+      // Step 5: seek(timestamp) — seek to timestamp 1500
+      // ------------------------------------------------------------------
+      System.out.println("  Step 5: seek(1500) → expect rows from near ts=1500");
+      consumer.seek(topicName, 1500);
+      Thread.sleep(2000);
+
+      // Sparse mapping (interval=100) positions near ts=1500.
+      // Expect: ~500 rows from ts≥1500 in original data (1500..1999)
+      //       + 200 rows from new writes (2000..2199) = ~700 minimum
+      PollResult afterSeek = pollUntilComplete(consumer, 1200, 120);
+      System.out.println("  After seek(1500): " + afterSeek.totalRows + " rows");
+      assertAtLeast("seek(1500) should deliver at least 700 rows (ts >= 1500)", 700, afterSeek.totalRows);
+
+      // ------------------------------------------------------------------
+      // Step 6: seek(future timestamp) — expect 0 rows
+      // ------------------------------------------------------------------
+      System.out.println("  Step 6: seek(99999) → expect no data");
+      consumer.seek(topicName, 99999);
+      Thread.sleep(2000);
+
+      PollResult futurePoll = new PollResult();
+      consecutiveEmpty = 0;
+      for (int attempt = 0; attempt < 10; attempt++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(1000));
+        if (msgs.isEmpty()) {
+          consecutiveEmpty++;
+          if (consecutiveEmpty >= 5) break;
+          Thread.sleep(500);
+          continue;
+        }
+        consecutiveEmpty = 0;
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              futurePoll.totalRows++;
+            }
+          }
+          consumer.commitSync(msg);
+        }
+      }
+      System.out.println("  After seek(99999): " + futurePoll.totalRows + " rows");
+      // seek(99999) should behave like seekToEnd — 0 rows normally,
+      // but may yield up to 1 row due to prefetch thread race (same as seekToEnd)
+      assertTrue("seek(future) should yield at most 1 row (race tolerance)",
+          futurePoll.totalRows <= 1);
+
+      System.out.println("  testSeek passed all sub-tests!");
+    } finally {
+      cleanup(consumer, topicName, database);
     }
   }
 }

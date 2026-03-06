@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
@@ -369,6 +370,44 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     providers.acquireReadLock();
     try {
       unsubscribeWithRedirection(topicNames);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  /////////////////////////////// seek ///////////////////////////////
+
+  /**
+   * Seeks to the earliest available WAL position. Actual position depends on WAL retention — old
+   * segments may have been reclaimed.
+   */
+  public void seekToBeginning(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_BEGINNING, 0);
+  }
+
+  /** Seeks to the current WAL tail. Only newly written data will be consumed after this. */
+  public void seekToEnd(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_END, 0);
+  }
+
+  /**
+   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Each node independently
+   * locates its own position, so this works correctly across multi-leader replicas.
+   */
+  public void seek(final String topicName, final long targetTimestamp)
+      throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP, targetTimestamp);
+  }
+
+  private void seekInternal(
+      final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekWithRedirection(topicName, seekType, timestamp);
     } finally {
       providers.releaseReadLock();
     }
@@ -1371,6 +1410,44 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
+  }
+
+  /**
+   * Sends seek request to ALL available providers. Unlike subscribe/unsubscribe, seek must reach
+   * every node because data regions for the topic may be distributed across different nodes.
+   */
+  private void seekWithRedirection(
+      final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seek topic %s",
+              this, topicName));
+    }
+    boolean anySuccess = false;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seek(topicName, seekType, timestamp);
+        anySuccess = true;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "{} failed to seek topic {} from subscription provider {}, continuing with other providers...",
+            this,
+            topicName,
+            provider,
+            e);
+      }
+    }
+    if (!anySuccess) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seek topic %s from all available subscription providers %s",
+              this, topicName, providers);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage);
+    }
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {

@@ -209,7 +209,7 @@ public class ConsensusSubscriptionSetupHandler {
       final boolean result =
           TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
               && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat);
-      LOGGER.info(
+      LOGGER.debug(
           "isConsensusBasedTopic check for topic [{}]: mode={}, format={}, result={}",
           topicName,
           topicMode,

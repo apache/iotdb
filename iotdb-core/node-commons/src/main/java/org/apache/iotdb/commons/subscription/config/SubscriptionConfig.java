@@ -137,6 +137,23 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  // Consensus subscription batching parameters
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxTabletCount();
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxWalEntries();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -207,6 +224,18 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
         getSubscriptionMetaSyncerSyncIntervalMinutes());
+
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxDelayInMs: {}", getSubscriptionConsensusBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxSizeInBytes: {}",
+        getSubscriptionConsensusBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxTabletCount: {}",
+        getSubscriptionConsensusBatchMaxTabletCount());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxWalEntries: {}",
+        getSubscriptionConsensusBatchMaxWalEntries());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

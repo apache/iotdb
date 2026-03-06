@@ -27,9 +27,12 @@ import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.consensus.iot.log.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
+import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
@@ -49,6 +52,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -58,10 +62,8 @@ import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.LongSupplier;
 
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext.INVALID_COMMIT_ID;
 
@@ -117,20 +119,14 @@ public class ConsensusPrefetchingQueue {
 
   private final ConsensusSubscriptionCommitManager commitManager;
 
-  /**
-   * Cached LongSupplier instance for WAL pinning registration. Must be the SAME object reference
-   * for both registerSubscriptionQueue and unregisterSubscriptionQueue, because
-   * CopyOnWriteArrayList.remove() uses equals() which defaults to reference equality for lambdas.
-   * Using this::method would create a new lambda instance each time, causing remove() to fail and
-   * WAL to be pinned indefinitely.
-   */
-  private final LongSupplier walPinSupplier;
-
   /** Commit ID generator, monotonically increasing within this queue's lifetime. */
   private final AtomicLong commitIdGenerator;
 
-  /** Records the initial commit ID for outdated event detection. */
-  private final long initialCommitId;
+  /**
+   * Commit IDs less than or equal to this threshold are considered outdated. Updated on creation
+   * and on seek to invalidate all pre-seek events.
+   */
+  private volatile long outdatedCommitIdThreshold;
 
   private final AtomicLong nextExpectedSearchIndex;
 
@@ -149,16 +145,25 @@ public class ConsensusPrefetchingQueue {
    */
   private final ConcurrentSkipListMap<Long, Long> outstandingCommitIdToStartIndex;
 
-  private static final int MAX_TABLETS_PER_EVENT = 64;
-
-  private static final int MAX_WAL_ENTRIES_PER_PREFETCH = 128;
-
   private static final int MAX_PREFETCHING_QUEUE_SIZE = 256;
-
-  private static final long WAL_RETENTION_WARN_THRESHOLD = 100_000;
 
   /** Counter of WAL gap entries that could not be filled (data loss). */
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
+
+  /**
+   * Sparse in-memory mapping from data timestamp to searchIndex, used by {@link
+   * #seekToTimestamp(long)} to approximate a searchIndex for a given timestamp. Sampled every
+   * {@link #TIMESTAMP_SAMPLE_INTERVAL} entries during prefetch. Cleared on seek.
+   *
+   * <p>TODO: For a more robust long-term solution, consider extending WALMetaData to store per-entry timestamps
+   * so that timestamp-based seek can use file-level min/max filtering + in-file binary search without
+   * full InsertNode deserialization.
+   */
+  private final NavigableMap<Long, Long> timestampToSearchIndex = new ConcurrentSkipListMap<>();
+
+  private static final int TIMESTAMP_SAMPLE_INTERVAL = 100;
+
+  private long timestampSampleCounter = 0;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
@@ -188,7 +193,7 @@ public class ConsensusPrefetchingQueue {
     this.commitManager = commitManager;
 
     this.commitIdGenerator = sharedCommitIdGenerator;
-    this.initialCommitId = commitIdGenerator.get();
+    this.outdatedCommitIdThreshold = commitIdGenerator.get();
     this.nextExpectedSearchIndex = new AtomicLong(startSearchIndex);
     this.reqIterator = consensusReqReader.getReqIterator(startSearchIndex);
 
@@ -197,11 +202,8 @@ public class ConsensusPrefetchingQueue {
     this.outstandingCommitIdToStartIndex = new ConcurrentSkipListMap<>();
 
     // Create and register the in-memory pending queue with IoTConsensusServerImpl.
-    // IMPORTANT: walPinSupplier is stored as a field (not a method reference) to ensure the
-    // same object reference is used for both register and unregister.
     this.pendingEntries = new ArrayBlockingQueue<>(PENDING_QUEUE_CAPACITY);
-    this.walPinSupplier = this::getEarliestOutstandingSearchIndex;
-    serverImpl.registerSubscriptionQueue(pendingEntries, walPinSupplier);
+    serverImpl.registerSubscriptionQueue(pendingEntries);
 
     // Start background prefetch thread
     this.prefetchThread =
@@ -216,34 +218,6 @@ public class ConsensusPrefetchingQueue {
         topicName,
         consensusGroupId,
         startSearchIndex);
-  }
-
-  /**
-   * Returns the earliest outstanding (uncommitted) search index for WAL pinning. If there are no
-   * outstanding events, returns the next expected search index (nothing to pin beyond what we've
-   * already processed). Also monitors WAL retention gap for slow consumer detection.
-   */
-  private long getEarliestOutstandingSearchIndex() {
-    final Map.Entry<Long, Long> first = outstandingCommitIdToStartIndex.firstEntry();
-    if (first != null) {
-      final long earliestIndex = first.getValue();
-      // WAL retention health check: warn if outstanding gap grows too large
-      final long currentIndex = nextExpectedSearchIndex.get();
-      final long retentionGap = currentIndex - earliestIndex;
-      if (retentionGap > WAL_RETENTION_WARN_THRESHOLD) {
-        LOGGER.error(
-            "ConsensusPrefetchingQueue {}: WAL retention gap is {} entries "
-                + "(earliest outstanding={}, current={}). "
-                + "A slow or stalled consumer is pinning WAL files and may cause disk exhaustion. "
-                + "Consider committing events or increasing consumer throughput.",
-            this,
-            retentionGap,
-            earliestIndex,
-            currentIndex);
-      }
-      return earliestIndex;
-    }
-    return nextExpectedSearchIndex.get();
   }
 
   // ======================== Lock Operations ========================
@@ -276,17 +250,6 @@ public class ConsensusPrefetchingQueue {
   }
 
   private SubscriptionEvent pollInternal(final String consumerId) {
-    // Recycle any uncommitted in-flight events for this consumer before serving new data.
-    final int recycled = recycleInFlightEventsForConsumer(consumerId);
-    if (recycled > 0) {
-      LOGGER.debug(
-          "ConsensusPrefetchingQueue {}: recycled {} uncommitted in-flight events for "
-              + "consumer {} back to prefetching queue",
-          this,
-          recycled,
-          consumerId);
-    }
-
     final long size = prefetchingQueue.size();
     if (size == 0) {
       LOGGER.debug(
@@ -386,16 +349,33 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  private static final long PENDING_DRAIN_TIMEOUT_MS = 200;
+  private static final long PENDING_DRAIN_TIMEOUT_MS = 10;
 
   private static final long WAL_WAIT_TIMEOUT_SECONDS = 2;
 
   /**
    * Background prefetch loop. Continuously drains from pendingEntries (in-memory, real-time),
    * detects gaps and fills from WAL reader, converts to Tablets, and enqueues SubscriptionEvents.
+   *
+   * <p>Batching strategy (linger): Tablets are accumulated across loop iterations until one of
+   * three thresholds is met:
+   *
+   * <ul>
+   *   <li>Tablet count exceeds {@code subscriptionConsensusBatchMaxTabletCount}
+   *   <li>Estimated byte size exceeds {@code subscriptionConsensusBatchMaxSizeInBytes}
+   *   <li>Time since first tablet in current batch exceeds {@code
+   *       subscriptionConsensusBatchMaxDelayInMs}
+   * </ul>
    */
   private void prefetchLoop() {
     LOGGER.info("ConsensusPrefetchingQueue {}: prefetch thread started", this);
+
+    final List<Tablet> lingerTablets = new ArrayList<>();
+    long lingerEstimatedBytes = 0;
+    long lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+    long lingerBatchEndSearchIndex = lingerBatchStartSearchIndex;
+    long lingerFirstTabletTimeMs = 0; // 0 means no tablets accumulated yet
+
     try {
       while (!isClosed && !Thread.currentThread().isInterrupted()) {
         try {
@@ -405,18 +385,21 @@ public class ConsensusPrefetchingQueue {
             continue;
           }
 
+          final SubscriptionConfig config = SubscriptionConfig.getInstance();
+          final int maxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
+          final int batchMaxDelayMs = config.getSubscriptionConsensusBatchMaxDelayInMs();
+          final int maxTablets = config.getSubscriptionConsensusBatchMaxTabletCount();
+          final long maxBatchBytes = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+
           // Try to drain from pending entries (in-memory, fast path)
           final List<IndexedConsensusRequest> batch = new ArrayList<>();
-          // Block briefly for first entry
           final IndexedConsensusRequest first =
               pendingEntries.poll(PENDING_DRAIN_TIMEOUT_MS, TimeUnit.MILLISECONDS);
           if (first != null) {
             batch.add(first);
-            // Drain more non-blocking
             int drained = 0;
             IndexedConsensusRequest next;
-            while (drained < MAX_WAL_ENTRIES_PER_PREFETCH - 1
-                && (next = pendingEntries.poll()) != null) {
+            while (drained < maxWalEntries - 1 && (next = pendingEntries.poll()) != null) {
               batch.add(next);
               drained++;
             }
@@ -433,11 +416,62 @@ public class ConsensusPrefetchingQueue {
                 batch.get(batch.size() - 1).getSearchIndex(),
                 nextExpectedSearchIndex.get(),
                 prefetchingQueue.size());
-            processBatchFromPending(batch);
-          } else {
-            // Pending queue was empty - try catch-up from WAL for any gaps
-            // (entries may have been dropped due to pending queue overflow)
+
+            // Accumulate tablets from pending entries into linger buffer
+            final int tabletsBefore = lingerTablets.size();
+            lingerBatchEndSearchIndex =
+                accumulateFromPending(batch, lingerTablets, lingerBatchEndSearchIndex);
+
+            // Update byte estimates for newly added tablets
+            for (int i = tabletsBefore; i < lingerTablets.size(); i++) {
+              lingerEstimatedBytes += estimateTabletSize(lingerTablets.get(i));
+            }
+
+            // Flush sub-batches that exceeded thresholds during accumulation
+            while (lingerTablets.size() >= maxTablets || lingerEstimatedBytes >= maxBatchBytes) {
+              final int flushCount = Math.min(lingerTablets.size(), maxTablets);
+              final List<Tablet> toFlush = new ArrayList<>(lingerTablets.subList(0, flushCount));
+              createAndEnqueueEvent(
+                  toFlush, lingerBatchStartSearchIndex, lingerBatchEndSearchIndex);
+              lingerTablets.subList(0, flushCount).clear();
+              // Recalculate byte estimate for remaining tablets
+              lingerEstimatedBytes = 0;
+              for (final Tablet t : lingerTablets) {
+                lingerEstimatedBytes += estimateTabletSize(t);
+              }
+              lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+              lingerFirstTabletTimeMs = lingerTablets.isEmpty() ? 0 : lingerFirstTabletTimeMs;
+            }
+
+            // Record first tablet time if we just started accumulating
+            if (!lingerTablets.isEmpty() && lingerFirstTabletTimeMs == 0) {
+              lingerFirstTabletTimeMs = System.currentTimeMillis();
+            }
+          } else if (lingerTablets.isEmpty()) {
+            // Pending queue was empty and no lingering tablets — try catch-up from WAL
             tryCatchUpFromWAL();
+          }
+          // If we have lingering tablets but pending was empty, fall through to time check below
+
+          // Time-based flush: if tablets have been lingering longer than batchMaxDelayMs, flush now
+          if (!lingerTablets.isEmpty()
+              && lingerFirstTabletTimeMs > 0
+              && (System.currentTimeMillis() - lingerFirstTabletTimeMs) >= batchMaxDelayMs) {
+            LOGGER.debug(
+                "ConsensusPrefetchingQueue {}: time-based flush, {} tablets lingered for {}ms "
+                    + "(threshold={}ms)",
+                this,
+                lingerTablets.size(),
+                System.currentTimeMillis() - lingerFirstTabletTimeMs,
+                batchMaxDelayMs);
+            createAndEnqueueEvent(
+                new ArrayList<>(lingerTablets),
+                lingerBatchStartSearchIndex,
+                lingerBatchEndSearchIndex);
+            lingerTablets.clear();
+            lingerEstimatedBytes = 0;
+            lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+            lingerFirstTabletTimeMs = 0;
           }
         } catch (final InterruptedException e) {
           Thread.currentThread().interrupt();
@@ -464,6 +498,15 @@ public class ConsensusPrefetchingQueue {
           }
         }
       }
+
+      if (!lingerTablets.isEmpty()) {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: flushing {} lingering tablets on loop exit",
+            this,
+            lingerTablets.size());
+        createAndEnqueueEvent(
+            lingerTablets, lingerBatchStartSearchIndex, lingerBatchEndSearchIndex);
+      }
     } catch (final Throwable fatal) {
       LOGGER.error(
           "ConsensusPrefetchingQueue {}: FATAL uncaught throwable escaped prefetch loop "
@@ -476,20 +519,24 @@ public class ConsensusPrefetchingQueue {
     LOGGER.info("ConsensusPrefetchingQueue {}: prefetch thread stopped", this);
   }
 
-  private void processBatchFromPending(final List<IndexedConsensusRequest> batch) {
-    final List<Tablet> batchedTablets = new ArrayList<>();
-    long batchStartSearchIndex = nextExpectedSearchIndex.get();
-    long batchEndSearchIndex = batchStartSearchIndex;
+  /**
+   * Accumulates tablets from pending entries into the linger buffer. Handles gap detection and
+   * filling from WAL. Does NOT flush — the caller is responsible for flush decisions.
+   *
+   * @return the updated batchEndSearchIndex
+   */
+  private long accumulateFromPending(
+      final List<IndexedConsensusRequest> batch,
+      final List<Tablet> lingerTablets,
+      long batchEndSearchIndex) {
+
     int processedCount = 0;
     int skippedCount = 0;
-    int nullDeserCount = 0;
-    int emptyConvertCount = 0;
 
     for (final IndexedConsensusRequest request : batch) {
       final long searchIndex = request.getSearchIndex();
 
       // Detect gap: if searchIndex > nextExpected, entries were dropped from pending queue.
-      // Fill the gap from WAL.
       final long expected = nextExpectedSearchIndex.get();
       if (searchIndex > expected) {
         LOGGER.debug(
@@ -499,28 +546,13 @@ public class ConsensusPrefetchingQueue {
             expected,
             searchIndex,
             searchIndex - expected);
-        final long gapMaxIndex = fillGapFromWAL(expected, searchIndex, batchedTablets);
+        final long gapMaxIndex = fillGapFromWAL(expected, searchIndex, lingerTablets);
         if (gapMaxIndex > batchEndSearchIndex) {
           batchEndSearchIndex = gapMaxIndex;
-        }
-
-        // If gap was not fully filled (e.g., WAL timeout), do NOT skip the gap.
-        // Break and defer remaining entries to the next prefetch loop iteration.
-        // WAL pin ensures the missing entries won't be deleted.
-        if (nextExpectedSearchIndex.get() < searchIndex) {
-          LOGGER.warn(
-              "ConsensusPrefetchingQueue {}: gap [{}, {}) not fully filled (reached {}). "
-                  + "Deferring remaining batch to next prefetch iteration.",
-              this,
-              expected,
-              searchIndex,
-              nextExpectedSearchIndex.get());
-          break;
         }
       }
 
       if (searchIndex < nextExpectedSearchIndex.get()) {
-        // Already processed (e.g., gap fill covered this entry), skip
         skippedCount++;
         continue;
       }
@@ -528,66 +560,31 @@ public class ConsensusPrefetchingQueue {
       // Process this entry
       final InsertNode insertNode = deserializeToInsertNode(request);
       if (insertNode != null) {
+        recordTimestampSample(insertNode, searchIndex);
         final List<Tablet> tablets = converter.convert(insertNode);
         if (!tablets.isEmpty()) {
-          batchedTablets.addAll(tablets);
+          lingerTablets.addAll(tablets);
           batchEndSearchIndex = searchIndex;
           processedCount++;
-        } else {
-          emptyConvertCount++;
-          LOGGER.debug(
-              "ConsensusPrefetchingQueue {}: converter returned empty tablets for "
-                  + "searchIndex={}, insertNodeType={}, deviceId={}",
-              this,
-              searchIndex,
-              insertNode.getType(),
-              ConsensusLogToTabletConverter.safeDeviceIdForLog(insertNode));
         }
-      } else {
-        nullDeserCount++;
-        LOGGER.warn(
-            "ConsensusPrefetchingQueue {}: deserializeToInsertNode returned null for "
-                + "searchIndex={}, requestType={}",
-            this,
-            searchIndex,
-            request.getRequests().isEmpty()
-                ? "EMPTY"
-                : request.getRequests().get(0).getClass().getSimpleName());
       }
       nextExpectedSearchIndex.set(searchIndex + 1);
-
-      // Flush batch if large enough
-      if (batchedTablets.size() >= MAX_TABLETS_PER_EVENT) {
-        createAndEnqueueEvent(
-            new ArrayList<>(batchedTablets), batchStartSearchIndex, batchEndSearchIndex);
-        batchedTablets.clear();
-        // Reset start index for the next sub-batch so that
-        // outstandingCommitIdToStartIndex records the correct WAL pin position
-        batchStartSearchIndex = nextExpectedSearchIndex.get();
-      }
     }
 
     // Update WAL reader position to stay in sync
     syncReqIteratorPosition();
 
-    // Flush remaining tablets
-    if (!batchedTablets.isEmpty()) {
-      createAndEnqueueEvent(batchedTablets, batchStartSearchIndex, batchEndSearchIndex);
-    }
-
     LOGGER.debug(
-        "ConsensusPrefetchingQueue {}: batch processing complete, "
-            + "batchSize={}, processed={}, skipped={}, nullDeser={}, emptyConvert={}, "
-            + "tabletsCreated={}, nextExpected={}, prefetchQueueSize={}",
+        "ConsensusPrefetchingQueue {}: accumulate complete, batchSize={}, processed={}, "
+            + "skipped={}, lingerTablets={}, nextExpected={}",
         this,
         batch.size(),
         processedCount,
         skippedCount,
-        nullDeserCount,
-        emptyConvertCount,
-        batchedTablets.size(),
-        nextExpectedSearchIndex.get(),
-        prefetchingQueue.size());
+        lingerTablets.size(),
+        nextExpectedSearchIndex.get());
+
+    return batchEndSearchIndex;
   }
 
   /**
@@ -612,6 +609,7 @@ public class ConsensusPrefetchingQueue {
 
         final InsertNode insertNode = deserializeToInsertNode(walEntry);
         if (insertNode != null) {
+          recordTimestampSample(insertNode, walIndex);
           final List<Tablet> tablets = converter.convert(insertNode);
           batchedTablets.addAll(tablets);
         }
@@ -641,6 +639,7 @@ public class ConsensusPrefetchingQueue {
           }
           final InsertNode insertNode = deserializeToInsertNode(walEntry);
           if (insertNode != null) {
+            recordTimestampSample(insertNode, walIndex);
             final List<Tablet> tablets = converter.convert(insertNode);
             batchedTablets.addAll(tablets);
           }
@@ -660,14 +659,57 @@ public class ConsensusPrefetchingQueue {
       }
     }
 
-    // If the gap still cannot be fully filled (WAL truncated/deleted), skip ahead to avoid
-    // blocking consumption indefinitely. This results in data loss for the skipped range.
+    // If entries are in the current-writing WAL file (excluded by PlanNodeIterator for
+    // concurrency safety), trigger a WAL file roll to make them readable.
+    if (nextExpectedSearchIndex.get() < toIndex && consensusReqReader instanceof WALNode) {
+      final long currentWALIndex = consensusReqReader.getCurrentSearchIndex();
+      if (nextExpectedSearchIndex.get() <= currentWALIndex) {
+        LOGGER.debug(
+            "ConsensusPrefetchingQueue {}: gap fill incomplete (at {} vs WAL {}), "
+                + "triggering WAL file roll",
+            this,
+            nextExpectedSearchIndex.get(),
+            currentWALIndex);
+        ((WALNode) consensusReqReader).rollWALFile();
+        syncReqIteratorPosition();
+        // Retry reading after roll
+        while (nextExpectedSearchIndex.get() < toIndex && reqIterator.hasNext()) {
+          try {
+            final IndexedConsensusRequest walEntry = reqIterator.next();
+            final long walIndex = walEntry.getSearchIndex();
+            if (walIndex < nextExpectedSearchIndex.get()) {
+              continue;
+            }
+            final InsertNode insertNode = deserializeToInsertNode(walEntry);
+            if (insertNode != null) {
+              recordTimestampSample(insertNode, walIndex);
+              final List<Tablet> tablets = converter.convert(insertNode);
+              batchedTablets.addAll(tablets);
+            }
+            nextExpectedSearchIndex.set(walIndex + 1);
+            if (walIndex > maxProcessedIndex) {
+              maxProcessedIndex = walIndex;
+            }
+          } catch (final Exception e) {
+            LOGGER.warn(
+                "ConsensusPrefetchingQueue {}: error reading WAL after roll at index {}",
+                this,
+                nextExpectedSearchIndex.get(),
+                e);
+            break;
+          }
+        }
+      }
+    }
+
+    // If the gap still cannot be filled, WAL is corrupted/truncated
     if (nextExpectedSearchIndex.get() < toIndex) {
       final long skipped = toIndex - nextExpectedSearchIndex.get();
       walGapSkippedEntries.addAndGet(skipped);
-      LOGGER.error(
+      LOGGER.warn(
           "ConsensusPrefetchingQueue {}: WAL gap [{}, {}) cannot be filled - {} entries lost. "
-              + "Total skipped entries so far: {}. This indicates WAL truncation or deletion.",
+              + "Total skipped entries so far: {}. "
+              + "Possible causes: WAL retention policy reclaimed files, or WAL corruption/truncation.",
           this,
           nextExpectedSearchIndex.get(),
           toIndex,
@@ -694,7 +736,7 @@ public class ConsensusPrefetchingQueue {
       final long currentWALIndex = consensusReqReader.getCurrentSearchIndex();
       if (nextExpectedSearchIndex.get() <= currentWALIndex
           && consensusReqReader instanceof WALNode) {
-        LOGGER.info(
+        LOGGER.debug(
             "ConsensusPrefetchingQueue {}: subscription behind (at {} vs WAL {}), "
                 + "triggering WAL file roll to make entries readable",
             this,
@@ -704,16 +746,41 @@ public class ConsensusPrefetchingQueue {
         syncReqIteratorPosition();
       }
       if (!reqIterator.hasNext()) {
-        return;
+        // Data loss detection: if we expected earlier entries but WAL has advanced past them,
+        // the retention policy has reclaimed WAL files before we consumed them.
+        // Auto-seek to the current WAL position (similar to Kafka's auto.offset.reset=latest).
+        if (nextExpectedSearchIndex.get() < currentWALIndex) {
+          final long skipped = currentWALIndex - nextExpectedSearchIndex.get();
+          LOGGER.warn(
+              "ConsensusPrefetchingQueue {}: WAL data loss detected. Expected searchIndex={} "
+                  + "but earliest available is {}. {} entries were reclaimed by WAL retention "
+                  + "policy before consumption. Auto-seeking to current position.",
+              this,
+              nextExpectedSearchIndex.get(),
+              currentWALIndex,
+              skipped);
+          walGapSkippedEntries.addAndGet(skipped);
+          nextExpectedSearchIndex.set(currentWALIndex);
+          syncReqIteratorPosition();
+        }
+        if (!reqIterator.hasNext()) {
+          return;
+        }
       }
     }
+
+    final SubscriptionConfig config = SubscriptionConfig.getInstance();
+    final int maxTablets = config.getSubscriptionConsensusBatchMaxTabletCount();
+    final long maxBatchBytes = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+    final int maxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
 
     final List<Tablet> batchedTablets = new ArrayList<>();
     long batchStartSearchIndex = nextExpectedSearchIndex.get();
     long batchEndSearchIndex = batchStartSearchIndex;
+    long estimatedBatchBytes = 0;
     int entriesRead = 0;
 
-    while (entriesRead < MAX_WAL_ENTRIES_PER_PREFETCH
+    while (entriesRead < maxWalEntries
         && reqIterator.hasNext()
         && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
       try {
@@ -727,18 +794,23 @@ public class ConsensusPrefetchingQueue {
 
         final InsertNode insertNode = deserializeToInsertNode(walEntry);
         if (insertNode != null) {
+          recordTimestampSample(insertNode, walIndex);
           final List<Tablet> tablets = converter.convert(insertNode);
           if (!tablets.isEmpty()) {
             batchedTablets.addAll(tablets);
+            for (final Tablet t : tablets) {
+              estimatedBatchBytes += estimateTabletSize(t);
+            }
             batchEndSearchIndex = walIndex;
           }
         }
         nextExpectedSearchIndex.set(walIndex + 1);
 
-        if (batchedTablets.size() >= MAX_TABLETS_PER_EVENT) {
+        if (batchedTablets.size() >= maxTablets || estimatedBatchBytes >= maxBatchBytes) {
           createAndEnqueueEvent(
               new ArrayList<>(batchedTablets), batchStartSearchIndex, batchEndSearchIndex);
           batchedTablets.clear();
+          estimatedBatchBytes = 0;
           // Reset start index for the next sub-batch
           batchStartSearchIndex = nextExpectedSearchIndex.get();
         }
@@ -843,6 +915,10 @@ public class ConsensusPrefetchingQueue {
     }
 
     return null;
+  }
+
+  private static long estimateTabletSize(final Tablet tablet) {
+    return PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet);
   }
 
   private void createAndEnqueueEvent(
@@ -1071,69 +1147,6 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
-  /**
-   * Maximum number of nack cycles before an in-flight event is kept in place rather than
-   * re-enqueued. Prevents infinite re-delivery loops when a consumer repeatedly polls without
-   * committing. Beyond this threshold, the event stays in inFlightEvents and will eventually be
-   * recycled by the timeout-based {@link #recycleInFlightEvents()} when it becomes pollable.
-   */
-  private static final long MAX_CONSUMER_RECYCLE_NACK_COUNT = 10;
-
-  /**
-   * Recycles uncommitted in-flight events belonging to the given consumer back to the prefetching
-   * queue. This provides at-least-once delivery: when a consumer polls again without committing,
-   * the previously delivered events are nacked and re-queued for re-delivery.
-   *
-   * <p>Events that have been nacked more than {@link #MAX_CONSUMER_RECYCLE_NACK_COUNT} times are
-   * left in-flight to avoid infinite re-delivery loops. They will be cleaned up by the periodic
-   * timeout-based recycler instead.
-   *
-   * @return the number of events recycled
-   */
-  private int recycleInFlightEventsForConsumer(final String consumerId) {
-    final AtomicInteger count = new AtomicInteger(0);
-    for (final Pair<String, SubscriptionCommitContext> key :
-        new ArrayList<>(inFlightEvents.keySet())) {
-      if (!key.getLeft().equals(consumerId)) {
-        continue;
-      }
-      inFlightEvents.compute(
-          key,
-          (k, ev) -> {
-            if (Objects.isNull(ev)) {
-              return null;
-            }
-            if (ev.isCommitted()) {
-              ev.cleanUp(false);
-              return null;
-            }
-            // If the event has been nacked too many times, leave it and let the timeout recycler
-            // handle it.
-            if (ev.getNackCount() >= MAX_CONSUMER_RECYCLE_NACK_COUNT) {
-              LOGGER.warn(
-                  "ConsensusPrefetchingQueue {}: event {} for consumer {} exceeded max nack "
-                      + "count ({}), skipping recycle to prevent infinite loop",
-                  this,
-                  ev,
-                  consumerId,
-                  MAX_CONSUMER_RECYCLE_NACK_COUNT);
-              return ev; // keep in inFlightEvents
-            }
-            ev.nack();
-            prefetchingQueue.add(ev);
-            count.incrementAndGet();
-            LOGGER.debug(
-                "ConsensusPrefetchingQueue {}: recycled uncommitted event {} for consumer {} "
-                    + "back to prefetching queue",
-                this,
-                ev,
-                consumerId);
-            return null;
-          });
-    }
-    return count.get();
-  }
-
   // ======================== Cleanup ========================
 
   public void cleanUp() {
@@ -1151,6 +1164,142 @@ public class ConsensusPrefetchingQueue {
     }
   }
 
+  // ======================== Seek ========================
+
+  /**
+   * Seeks the subscription to a specific WAL search index. Clears all pending, prefetched, and
+   * in-flight events, resets the WAL reader, and invalidates all pre-seek commit contexts.
+   *
+   * <p>After seek, the consumer will receive data starting from {@code targetSearchIndex}. If the
+   * target is beyond available WAL (reclaimed by retention), the consumer will start from the
+   * earliest available position.
+   */
+  public void seekToSearchIndex(final long targetSearchIndex) {
+    acquireWriteLock();
+    try {
+      if (isClosed) {
+        return;
+      }
+
+      // 1. Invalidate all pre-seek commit contexts
+      outdatedCommitIdThreshold = commitIdGenerator.get();
+
+      // 2. Clean up all queued and in-flight events
+      prefetchingQueue.forEach(event -> event.cleanUp(true));
+      prefetchingQueue.clear();
+      inFlightEvents.values().forEach(event -> event.cleanUp(true));
+      inFlightEvents.clear();
+      outstandingCommitIdToStartIndex.clear();
+
+      // 3. Discard stale pending entries from in-memory queue
+      pendingEntries.clear();
+
+      // 4. Reset WAL read position
+      nextExpectedSearchIndex.set(targetSearchIndex);
+      reqIterator = consensusReqReader.getReqIterator(targetSearchIndex);
+
+      // 5. Reset commit state in CommitManager
+      commitManager.resetState(brokerId, topicName, consensusGroupId, targetSearchIndex);
+
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, "
+              + "outdatedCommitIdThreshold={}",
+          this,
+          targetSearchIndex,
+          outdatedCommitIdThreshold);
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  /**
+   * Seeks to the earliest available WAL position. The actual position depends on WAL retention — if
+   * old files have been reclaimed, the earliest available position may be later than 0.
+   */
+  public void seekToBeginning() {
+    // ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX is Long.MIN_VALUE;
+    // getReqIterator will clamp to the earliest available file.
+    seekToSearchIndex(0);
+  }
+
+  /**
+   * Seeks to the current WAL write position. After this, only newly written data will be consumed.
+   */
+  public void seekToEnd() {
+    seekToSearchIndex(consensusReqReader.getCurrentSearchIndex());
+  }
+
+  /**
+   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Uses the in-memory
+   * sparse mapping ({@link #timestampToSearchIndex}) to approximate the searchIndex, then seeks to
+   * that position. If no mapping entry exists (targetTimestamp earlier than all samples), falls back
+   * to seekToBeginning. If targetTimestamp is beyond the latest sample, seeks to the current WAL
+   * write position (equivalent to seekToEnd).
+   */
+  public void seekToTimestamp(final long targetTimestamp) {
+    final Map.Entry<Long, Long> floor = timestampToSearchIndex.floorEntry(targetTimestamp);
+    final long approxSearchIndex;
+    if (floor == null) {
+      // targetTimestamp is earlier than all known samples — seek to beginning
+      approxSearchIndex = 0;
+    } else {
+      final Map.Entry<Long, Long> lastEntry = timestampToSearchIndex.lastEntry();
+      if (lastEntry != null && floor.getKey().equals(lastEntry.getKey())
+          && targetTimestamp > lastEntry.getKey()) {
+        // targetTimestamp is beyond the latest known sample — seek to end
+        approxSearchIndex = consensusReqReader.getCurrentSearchIndex();
+      } else {
+        approxSearchIndex = floor.getValue();
+      }
+    }
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: seekToTimestamp={}, approxSearchIndex={} (from sparse map, size={})",
+        this,
+        targetTimestamp,
+        approxSearchIndex,
+        timestampToSearchIndex.size());
+    seekToSearchIndex(approxSearchIndex);
+  }
+
+  /**
+   * Records a sparse timestamp→searchIndex sample for {@link #seekToTimestamp(long)}. Called during
+   * prefetch for every successfully deserialized InsertNode.
+   */
+  private void recordTimestampSample(final InsertNode insertNode, final long searchIndex) {
+    if (timestampSampleCounter++ % TIMESTAMP_SAMPLE_INTERVAL == 0) {
+      final long minTime = extractMinTime(insertNode);
+      if (minTime != Long.MAX_VALUE) {
+        timestampToSearchIndex.put(minTime, searchIndex);
+      }
+    }
+  }
+
+  /**
+   * Extracts the minimum timestamp from an InsertNode. For InsertMultiTabletsNode (whose
+   * getMinTime() throws NotImplementedException), iterates over inner InsertTabletNodes.
+   *
+   * @return the minimum timestamp, or Long.MAX_VALUE if extraction fails
+   */
+  private long extractMinTime(final InsertNode insertNode) {
+    try {
+      return insertNode.getMinTime();
+    } catch (final Exception e) {
+      // InsertMultiTabletsNode.getMinTime() is not implemented
+      if (insertNode instanceof InsertMultiTabletsNode) {
+        long min = Long.MAX_VALUE;
+        for (final InsertTabletNode child :
+            ((InsertMultiTabletsNode) insertNode).getInsertTabletNodeList()) {
+          try {
+            min = Math.min(min, child.getMinTime());
+          } catch (final Exception ignored) {
+          }
+        }
+        return min;
+      }
+      return Long.MAX_VALUE;
+    }
+  }
+
   public void close() {
     markClosed();
     // Stop background prefetch thread
@@ -1161,8 +1310,8 @@ public class ConsensusPrefetchingQueue {
       Thread.currentThread().interrupt();
     }
     try {
-      // Unregister from IoTConsensusServerImpl (stop receiving in-memory data, unpin WAL).
-      serverImpl.unregisterSubscriptionQueue(pendingEntries, walPinSupplier);
+      // Unregister from IoTConsensusServerImpl (stop receiving in-memory data).
+      serverImpl.unregisterSubscriptionQueue(pendingEntries);
     } catch (final Exception e) {
       LOGGER.warn("ConsensusPrefetchingQueue {}: error during unregister", this, e);
     } finally {
@@ -1201,7 +1350,7 @@ public class ConsensusPrefetchingQueue {
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
     return PipeDataNodeAgent.runtime().getRebootTimes() > commitContext.getRebootTimes()
-        || initialCommitId > commitContext.getCommitId();
+        || outdatedCommitIdThreshold > commitContext.getCommitId();
   }
 
   // ======================== Status ========================

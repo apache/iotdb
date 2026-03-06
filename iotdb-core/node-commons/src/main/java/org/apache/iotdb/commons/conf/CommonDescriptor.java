@@ -420,6 +420,27 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_meta_syncer_sync_interval_minutes",
                 String.valueOf(config.getSubscriptionMetaSyncerSyncIntervalMinutes()))));
+
+    config.setSubscriptionConsensusBatchMaxDelayInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_delay_in_ms",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxDelayInMs()))));
+    config.setSubscriptionConsensusBatchMaxSizeInBytes(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_batch_max_size_in_bytes",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxSizeInBytes()))));
+    config.setSubscriptionConsensusBatchMaxTabletCount(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_tablet_count",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxTabletCount()))));
+    config.setSubscriptionConsensusBatchMaxWalEntries(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_batch_max_wal_entries",
+                String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {

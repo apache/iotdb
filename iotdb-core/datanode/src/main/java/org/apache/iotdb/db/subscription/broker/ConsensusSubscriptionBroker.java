@@ -25,6 +25,7 @@ import org.apache.iotdb.db.subscription.broker.consensus.ConsensusPrefetchingQue
 import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionCommitManager;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -244,6 +245,44 @@ public class ConsensusSubscriptionBroker implements ISubscriptionBroker {
       }
     }
     return true;
+  }
+
+  //////////////////////////// seek ////////////////////////////
+
+  public void seek(final String topicName, final short seekType, final long timestamp) {
+    final List<ConsensusPrefetchingQueue> queues =
+        topicNameToConsensusPrefetchingQueues.get(topicName);
+    if (Objects.isNull(queues) || queues.isEmpty()) {
+      LOGGER.warn(
+          "ConsensusSubscriptionBroker [{}]: no queues for topic [{}] to seek",
+          brokerId,
+          topicName);
+      return;
+    }
+
+    for (final ConsensusPrefetchingQueue queue : queues) {
+      if (queue.isClosed()) {
+        continue;
+      }
+      switch (seekType) {
+        case PipeSubscribeSeekReq.SEEK_TO_BEGINNING:
+          queue.seekToBeginning();
+          break;
+        case PipeSubscribeSeekReq.SEEK_TO_END:
+          queue.seekToEnd();
+          break;
+        case PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP:
+          queue.seekToTimestamp(timestamp);
+          break;
+        default:
+          LOGGER.warn(
+              "ConsensusSubscriptionBroker [{}]: unknown seekType {} for topic [{}]",
+              brokerId,
+              seekType,
+              topicName);
+          break;
+      }
+    }
   }
 
   //////////////////////////// prefetching ////////////////////////////

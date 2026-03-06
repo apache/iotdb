@@ -42,6 +42,7 @@ import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHeartbeatReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribePollReq;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeUnsubscribeReq;
 import org.apache.iotdb.rpc.subscription.payload.response.PipeSubscribeHandshakeResp;
@@ -314,6 +315,34 @@ public abstract class AbstractSubscriptionProvider {
     final PipeSubscribeUnsubscribeResp unsubscribeResp =
         PipeSubscribeUnsubscribeResp.fromTPipeSubscribeResp(resp);
     return unsubscribeResp.getTopics();
+  }
+
+  void seek(final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req = PipeSubscribeSeekReq.toTPipeSubscribeReq(topicName, seekType, timestamp);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seek request for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek with request for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
   }
 
   List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeoutMs)

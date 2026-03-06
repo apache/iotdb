@@ -389,6 +389,13 @@ public class CommonConfig {
   private long subscriptionMetaSyncerInitialSyncDelayMinutes = 3;
   private long subscriptionMetaSyncerSyncIntervalMinutes = 3;
 
+  private int subscriptionConsensusBatchMaxDelayInMs = 50;
+  private long subscriptionConsensusBatchMaxSizeInBytes = 8 * MB;
+  private int subscriptionConsensusBatchMaxTabletCount = 64;
+  private int subscriptionConsensusBatchMaxWalEntries = 128;
+
+  private long subscriptionConsensusWalRetentionSizeInBytes = 512 * MB;
+
   /** Whether to use persistent schema mode. */
   private String schemaEngineMode = "Memory";
 
@@ -2475,6 +2482,52 @@ public class CommonConfig {
 
   public long getSubscriptionMetaSyncerSyncIntervalMinutes() {
     return subscriptionMetaSyncerSyncIntervalMinutes;
+  }
+
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return subscriptionConsensusBatchMaxDelayInMs;
+  }
+
+  public void setSubscriptionConsensusBatchMaxDelayInMs(
+      final int subscriptionConsensusBatchMaxDelayInMs) {
+    this.subscriptionConsensusBatchMaxDelayInMs = subscriptionConsensusBatchMaxDelayInMs;
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return subscriptionConsensusBatchMaxSizeInBytes;
+  }
+
+  public void setSubscriptionConsensusBatchMaxSizeInBytes(
+      final long subscriptionConsensusBatchMaxSizeInBytes) {
+    this.subscriptionConsensusBatchMaxSizeInBytes = subscriptionConsensusBatchMaxSizeInBytes;
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return subscriptionConsensusBatchMaxTabletCount;
+  }
+
+  public void setSubscriptionConsensusBatchMaxTabletCount(
+      final int subscriptionConsensusBatchMaxTabletCount) {
+    this.subscriptionConsensusBatchMaxTabletCount = subscriptionConsensusBatchMaxTabletCount;
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return subscriptionConsensusBatchMaxWalEntries;
+  }
+
+  public void setSubscriptionConsensusBatchMaxWalEntries(
+      final int subscriptionConsensusBatchMaxWalEntries) {
+    this.subscriptionConsensusBatchMaxWalEntries = subscriptionConsensusBatchMaxWalEntries;
+  }
+
+  public long getSubscriptionConsensusWalRetentionSizeInBytes() {
+    return subscriptionConsensusWalRetentionSizeInBytes;
+  }
+
+  public void setSubscriptionConsensusWalRetentionSizeInBytes(
+      final long subscriptionConsensusWalRetentionSizeInBytes) {
+    this.subscriptionConsensusWalRetentionSizeInBytes =
+        subscriptionConsensusWalRetentionSizeInBytes;
   }
 
   public void setSubscriptionMetaSyncerSyncIntervalMinutes(

@@ -218,6 +218,31 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  /**
+   * Resets the commit state for a specific (consumerGroup, topic, region) triple to a new search
+   * index. Used by seek operations to discard all outstanding commit tracking and restart from the
+   * specified position.
+   */
+  public void resetState(
+      final String consumerGroupId,
+      final String topicName,
+      final String regionId,
+      final long newSearchIndex) {
+    final String key = generateKey(consumerGroupId, topicName, regionId);
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    if (state == null) {
+      LOGGER.warn(
+          "ConsensusSubscriptionCommitManager: Cannot reset unknown state, "
+              + "consumerGroupId={}, topicName={}, regionId={}",
+          consumerGroupId,
+          topicName,
+          regionId);
+      return;
+    }
+    state.resetForSeek(newSearchIndex);
+    persistProgress(key, state);
+  }
+
   /** Persists all states. Should be called during graceful shutdown. */
   public void persistAll() {
     for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
@@ -395,6 +420,21 @@ public class ConsensusSubscriptionCommitManager {
       }
 
       return true;
+    }
+
+    /**
+     * Resets all commit tracking state for a seek operation. Clears all outstanding mappings and
+     * resets progress to the new search index position.
+     */
+    public void resetForSeek(final long newSearchIndex) {
+      synchronized (this) {
+        commitIdToSearchIndex.clear();
+        outstandingSearchIndices.clear();
+        final long baseIndex = newSearchIndex - 1;
+        committedSearchIndex = baseIndex;
+        maxCommittedSearchIndex = baseIndex;
+        progress.setSearchIndex(baseIndex);
+      }
     }
 
     public void serialize(final DataOutputStream stream) throws IOException {
