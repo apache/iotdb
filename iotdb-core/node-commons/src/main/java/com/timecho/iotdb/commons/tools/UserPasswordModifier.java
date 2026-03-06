@@ -28,11 +28,15 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.timecho.iotdb.commons.utils.OSUtils;
 
+import java.io.BufferedReader;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.util.function.Supplier;
 
 /** User password modification tool */
 public class UserPasswordModifier {
@@ -64,6 +68,10 @@ public class UserPasswordModifier {
     }
 
     // 3. Validate new password according to rules
+    if (needCheckOld && oldPassword.equals(newPassword)) {
+      throw new AuthException(
+          TSStatusCode.ILLEGAL_PASSWORD, "New password cannot be the same as old password");
+    }
     if (CommonDescriptor.getInstance().getConfig().isEnforceStrongPassword()) {
       if (username.equals(newPassword)) {
         throw new AuthException(
@@ -79,6 +87,69 @@ public class UserPasswordModifier {
       userManager.getAccessor().saveEntity(user);
     }
     return success;
+  }
+
+  /**
+   * Test hook: when non-null, getRunningIoTDBPids() returns this instead of scanning jps. Package
+   * visibility for tests only.
+   */
+  static volatile Supplier<List<Long>> testPidsOverride = null;
+
+  /**
+   * Test hook: when non-null, machine authorization checks use this list instead of ALLOWED_CODES.
+   * Package visibility for tests only.
+   */
+  static volatile Supplier<List<String>> testAllowedCodesOverride = null;
+
+  /**
+   * Collects PIDs of running IoTDB processes (DataNode/ConfigNode) via jps -l. Skips this tool's
+   * own process. Returns empty list on error or when none found.
+   */
+  private static List<Long> getRunningIoTDBPids() {
+    Supplier<List<Long>> override = testPidsOverride;
+    if (override != null) {
+      return new ArrayList<>(override.get());
+    }
+    List<Long> pids = new ArrayList<>();
+    Process process = null;
+    try {
+      process = new ProcessBuilder("jps", "-l").start();
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          if (line.contains("UserPasswordModifier")) {
+            continue; // skip this tool's process
+          }
+          if (line.contains("org.apache.iotdb.db.service.DataNode")
+              || line.contains("org.apache.iotdb.confignode.service.ConfigNode")
+              || line.contains("DataNode")
+              || line.contains("ConfigNode")) {
+            String[] parts = line.trim().split("\\s+", 2); // jps format: "pid classname"
+            if (parts.length >= 1) {
+              try {
+                pids.add(Long.parseLong(parts[0]));
+              } catch (NumberFormatException ignored) {
+                // skip malformed line
+              }
+            }
+          }
+        }
+      }
+      process.waitFor();
+    } catch (Exception ignored) {
+      return pids;
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
+    }
+    return pids;
+  }
+
+  /** Returns true if any DataNode/ConfigNode process is running (uses getRunningIoTDBPids). */
+  private static boolean isIoTDBProcessRunning() {
+    return !getRunningIoTDBPids().isEmpty();
   }
 
   /** Recursively find all system/users directories under the given baseDir */
@@ -106,6 +177,16 @@ public class UserPasswordModifier {
     }
   }
 
+  private static String readPassword(String prompt, Scanner scanner) {
+    Console console = System.console();
+    if (console != null) {
+      char[] chars = console.readPassword(prompt);
+      return chars == null ? "" : new String(chars);
+    }
+    System.out.print(prompt);
+    return scanner.nextLine();
+  }
+
   /** Interactive password modification tool */
   public static void interactiveModify() {
     try (Scanner scanner = new Scanner(System.in)) {
@@ -115,6 +196,15 @@ public class UserPasswordModifier {
       List<File> userDirs = findAllUserDirs(new File(dataRoot));
       if (userDirs.isEmpty()) {
         System.out.println("Error: Could not find any system/users directory under " + dataRoot);
+        return;
+      }
+      List<Long> runningPids = getRunningIoTDBPids();
+      if (!runningPids.isEmpty()) {
+        // Show PIDs so user can stop the right processes
+        System.out.println(
+            "Error: IoTDB process is still running. PIDs: "
+                + runningPids
+                + ". Please stop them first.");
         return;
       }
 
@@ -146,8 +236,7 @@ public class UserPasswordModifier {
       String oldPassword;
       int retryCount = 0;
       while (true) {
-        System.out.print("Enter old password: ");
-        oldPassword = scanner.nextLine();
+        oldPassword = readPassword("Enter old password: ", scanner);
 
         boolean valid = false;
         for (File userDir : userDirs) {
@@ -178,12 +267,13 @@ public class UserPasswordModifier {
       }
 
       // 4. Input new password
-      System.out.print("Enter new password: ");
-      String newPassword = scanner.nextLine();
+      String newPassword = readPassword("Enter new password: ", scanner);
+      String confirmPassword = readPassword("Confirm new password: ", scanner);
 
-      System.out.print("Confirm new password: ");
-      String confirmPassword = scanner.nextLine();
-
+      if (oldPassword.equals(newPassword)) {
+        System.out.println("Error: New password cannot be the same as old password");
+        return;
+      }
       if (!newPassword.equals(confirmPassword)) {
         System.out.println("Error: New passwords do not match");
         return;
@@ -223,6 +313,14 @@ public class UserPasswordModifier {
   private static final List<String> ALLOWED_CODES =
       java.util.Arrays.asList("02-YN7NS7IP-2QOYZWMP-2QOYZWMP", "CODE_2", "CODE_3");
 
+  private static List<String> getAllowedCodes() {
+    Supplier<List<String>> override = testAllowedCodesOverride;
+    if (override != null) {
+      return new ArrayList<>(override.get());
+    }
+    return ALLOWED_CODES;
+  }
+
   public static void main(String[] args) throws LicenseException {
     System.out.println("````````````````````````");
     System.out.println("Starting Modify User Password");
@@ -230,7 +328,7 @@ public class UserPasswordModifier {
 
     String code = OSUtils.generateSystemInfoContentWithVersion();
 
-    if (!ALLOWED_CODES.contains(code)) {
+    if (!getAllowedCodes().contains(code)) {
       System.out.println("Error: This machine is not authorized. Exiting...");
       return;
     }
@@ -254,11 +352,24 @@ public class UserPasswordModifier {
         System.out.println("Error: Could not find any system/users directory under " + args[0]);
         return;
       }
+      List<Long> runningPids = getRunningIoTDBPids();
+      if (!runningPids.isEmpty()) {
+        // Show PIDs so user can stop the right processes
+        System.out.println(
+            "Error: IoTDB process is still running. PIDs: "
+                + runningPids
+                + ". Please stop them first.");
+        return;
+      }
 
       String username = args[1];
       String oldPassword = args[2];
       String newPassword = args[3];
 
+      if (oldPassword.equals(newPassword)) {
+        System.out.println("Error: New password cannot be the same as old password");
+        return;
+      }
       // Check if the user exists in at least one directory
       boolean exists = false;
       for (File userDir : userDirs) {
