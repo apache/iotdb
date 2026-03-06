@@ -111,7 +111,6 @@ public enum ConfigPhysicalPlanType {
   ListRoleUsersDep((short) 617),
 
   // For version after and equal 1.2
-  AccountUnlock((short) 620),
   CreateUser((short) 621),
   CreateRole((short) 622),
   @Deprecated
