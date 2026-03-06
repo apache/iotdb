@@ -240,10 +240,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                 double syncLag = Double.parseDouble(matcher.group(1));
                 LOGGER.debug("Found syncLag metric value: {}", syncLag);
                 Assert.assertEquals(
-                    "Consensus pipe syncLag should be 0.0 but was " + syncLag,
-                    0.0,
-                    syncLag,
-                    0.001);
+                    "Consensus pipe syncLag should be 0.0 but was " + syncLag, 0.0, syncLag, 0.001);
               }
               Assert.assertTrue(
                   "No pipe_consensus syncLag metric found in leader DataNode metrics", found);
