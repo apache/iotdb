@@ -1152,13 +1152,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
-      if (Objects.equals(
-              SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())
+      if (Objects.equals(SubscriptionMessageType.TS_FILE.getType(), message.getMessageType())
           &&
           // do not delete file that can resume from breakpoint
           !inFlightFilesCommitContextSet.contains(message.getCommitContext())) {
         try {
-          message.getTsFileHandler().deleteFile();
+          message.getTsFile().deleteFile();
         } catch (final Exception ignored) {
         }
       }

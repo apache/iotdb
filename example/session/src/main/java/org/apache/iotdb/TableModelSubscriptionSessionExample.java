@@ -29,7 +29,9 @@ import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
+
+import org.apache.tsfile.read.query.dataset.ResultSet;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -131,14 +133,16 @@ public class TableModelSubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
-          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
-            System.out.println(dataSet.getDatabaseName());
-            System.out.println(dataSet.getTableName());
-            System.out.println(dataSet.getColumnNames());
-            System.out.println(dataSet.getColumnTypes());
-            System.out.println(dataSet.getColumnCategories());
-            while (dataSet.hasNext()) {
-              System.out.println(dataSet.next());
+          for (final ResultSet dataSet : message.getRecords()) {
+            final SubscriptionRecordHandler.SubscriptionRecord record =
+                (SubscriptionRecordHandler.SubscriptionRecord) dataSet;
+            System.out.println(record.getDatabaseName());
+            System.out.println(record.getTableName());
+            System.out.println(record.getColumnNames());
+            System.out.println(record.getColumnTypes());
+            System.out.println(record.getColumnCategories());
+            while (dataSet.next()) {
+              System.out.println("Time=" + dataSet.getLong(1));
             }
           }
         }

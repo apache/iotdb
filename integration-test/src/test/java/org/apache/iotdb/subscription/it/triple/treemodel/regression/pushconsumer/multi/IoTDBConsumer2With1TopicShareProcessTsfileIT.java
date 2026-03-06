@@ -152,7 +152,7 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     List<Path> paths = new ArrayList<>(2);
                     for (int i = 0; i < 2; i++) {
                       paths.add(new Path(device, "s_" + i, true));
@@ -183,7 +183,7 @@ public class IoTDBConsumer2With1TopicShareProcessTsfileIT
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     List<Path> paths = new ArrayList<>(2);
                     for (int i = 0; i < 2; i++) {
                       paths.add(new Path(device, "s_" + i, true));

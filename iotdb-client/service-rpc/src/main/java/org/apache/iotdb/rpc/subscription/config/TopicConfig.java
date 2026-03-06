@@ -61,6 +61,8 @@ public class TopicConfig extends PipeParameters {
   private static final Map<String, String> SINK_HYBRID_FORMAT_CONFIG =
       Collections.singletonMap("format", "hybrid");
 
+  private static final String LEGACY_FORMAT_TS_FILE_HANDLER_VALUE = "TsFileHandler";
+
   private static final Map<String, String> SNAPSHOT_MODE_CONFIG =
       Collections.singletonMap("mode", TopicConstant.MODE_SNAPSHOT_VALUE);
   private static final Map<String, String> LIVE_MODE_CONFIG =
@@ -196,10 +198,16 @@ public class TopicConfig extends PipeParameters {
   public Map<String, String> getAttributesWithSinkFormat() {
     // refer to
     // org.apache.iotdb.db.pipe.agent.task.connection.PipeEventCollector.parseAndCollectEvent(org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent)
-    return TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(
+    return isTsFileFormat(
             attributes.getOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE))
         ? SINK_TS_FILE_FORMAT_CONFIG
         : SINK_TABLET_FORMAT_CONFIG;
+  }
+
+  private boolean isTsFileFormat(final String formatValue) {
+    return TopicConstant.FORMAT_TS_FILE_VALUE.equalsIgnoreCase(formatValue)
+        || TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue)
+        || LEGACY_FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(formatValue);
   }
 
   public Map<String, String> getAttributesWithSinkPrefix() {

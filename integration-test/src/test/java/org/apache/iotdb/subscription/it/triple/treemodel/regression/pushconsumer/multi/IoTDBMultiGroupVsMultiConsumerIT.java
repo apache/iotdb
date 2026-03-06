@@ -26,7 +26,6 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
@@ -37,6 +36,7 @@ import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.expression.QueryExpression;
 import org.apache.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -211,7 +211,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -242,7 +242,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -273,10 +273,13 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -295,10 +298,13 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest2.insertTablet(dataSet.getTablet());
+                      session_dest2.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -317,10 +323,13 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -339,10 +348,13 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest2.insertTablet(dataSet.getTablet());
+                      session_dest2.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -361,10 +373,13 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final ResultSet dataSet : message.getRecords()) {
                     try {
-                      session_dest.insertTablet(dataSet.getTablet());
+                      session_dest.insertTablet(
+                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
+                                      .SubscriptionRecord)
+                                  dataSet)
+                              .getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -386,11 +401,14 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final ResultSet dataSet : message.getRecords()) {
                           try {
-                            session_dest.insertTablet(dataSet.getTablet());
+                            session_dest.insertTablet(
+                                ((org.apache.iotdb.session.subscription.payload
+                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                        dataSet)
+                                    .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -398,9 +416,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
@@ -433,7 +451,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -466,11 +484,14 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final ResultSet dataSet : message.getRecords()) {
                           try {
-                            session_dest2.insertTablet(dataSet.getTablet());
+                            session_dest2.insertTablet(
+                                ((org.apache.iotdb.session.subscription.payload
+                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                        dataSet)
+                                    .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
                           } catch (IoTDBConnectionException e) {
@@ -478,9 +499,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(

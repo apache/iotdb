@@ -194,7 +194,7 @@ public class IoTDBSnapshotTSPatternTsfilePushConsumerIT
                   onReceiveCount.incrementAndGet();
                   System.out.println("onReceiveCount=" + onReceiveCount.get());
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     for (int i = 0; i < 4; i++) {
                       QueryDataSet dataset =
                           reader.query(

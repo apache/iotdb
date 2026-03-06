@@ -159,7 +159,7 @@ public class IoTDBDefaultTsfilePushConsumerIT extends AbstractSubscriptionTreeRe
                   System.out.println(
                       FORMAT.format(new Date()) + " ######## onReceived: " + onReceiveCount.get());
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
                     for (int i = 0; i < deviceCount; i++) {
                       QueryDataSet dataset =
                           reader.query(
