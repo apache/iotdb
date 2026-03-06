@@ -2764,6 +2764,10 @@ public class IoTDBTableIT {
 
       final String[] tableNames = new String[tableCount];
       final String[] colNames = new String[tableCount];
+      final ArrayList<ArrayList<Integer>> insertedTimestamps = new ArrayList<>();
+      for (int i = 0; i < tableCount; i++) {
+        insertedTimestamps.add(new ArrayList<>());
+      }
       for (int i = 0; i < tableCount; i++) {
         tableNames[i] = "mtable" + i;
         colNames[i] = "col" + i;
@@ -2775,6 +2779,7 @@ public class IoTDBTableIT {
               String.format(
                   "INSERT INTO %s (time, %s, val) VALUES (%d, %d, %d)",
                   tableNames[i], colNames[i], j, j, j * 10));
+          insertedTimestamps.get(i).add(j);
         }
       }
 
@@ -2874,6 +2879,7 @@ public class IoTDBTableIT {
                             "INSERT INTO %s (time, %s, val) VALUES (%d, %d, %d)",
                             tname, cname, 100 + i, i, i));
                     successfulInserts[tableIdx].incrementAndGet();
+                    insertedTimestamps.get(tableIdx).add(100 + i);
                   } catch (final SQLException ex) {
                     if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("cannot be resolved")
@@ -2909,6 +2915,7 @@ public class IoTDBTableIT {
                             "INSERT INTO %s (time, %s, val) VALUES (%d, %d, %d)",
                             tname, cname, 200 + i, i, i));
                     successfulInserts[tableIdx].incrementAndGet();
+                    insertedTimestamps.get(tableIdx).add(200 + i);
                   } catch (final SQLException ex) {
                     if (!isTableNotFoundOrInconsistent(ex)
                         && !ex.getMessage().contains("cannot be resolved")
@@ -3004,6 +3011,21 @@ public class IoTDBTableIT {
             assertTrue(rs.next());
             final long count = rs.getLong(1);
             final int expectedTotal = 20 + successfulInserts[i].get();
+            if (count != expectedTotal) {
+              List<Long> actualTimestamps = new ArrayList<>();
+              try (ResultSet resultSet =
+                  stmt.executeQuery("SELECT * FROM " + tableNames[i] + " order by time")) {
+                while (resultSet.next()) {
+                  actualTimestamps.add(resultSet.getLong(1));
+                }
+              }
+              insertedTimestamps.get(i).sort(null);
+              System.out.println("Expected timestamps of table " + tableNames[i]);
+              System.out.println(insertedTimestamps.get(i));
+              System.out.println("Actual timestamps");
+              System.out.println(actualTimestamps);
+            }
+
             // Verify total matches (initial 20 rows per table + successful concurrent inserts)
             assertEquals(
                 "Mismatch between expected total and actual total row count for table " + i,
