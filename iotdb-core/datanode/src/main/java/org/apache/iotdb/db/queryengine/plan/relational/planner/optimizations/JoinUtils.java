@@ -442,4 +442,39 @@ public class JoinUtils {
 
     return Optional.empty();
   }
+
+  /**
+   * Collects all table names or aliases from a PlanNode by traversing the plan tree.
+   *
+   * @param node the plan node to traverse
+   * @return a set of all table identifiers (names or aliases) found in the plan
+   */
+  public static Set<Identifier> collectAllTables(PlanNode node) {
+    Set<Identifier> tables = new java.util.HashSet<>();
+    collectAllTables(node, tables);
+    return tables;
+  }
+
+  /**
+   * Recursively collects all table names or aliases from a PlanNode and its children.
+   *
+   * @param node the plan node to traverse
+   * @param tables the set to accumulate table identifiers
+   */
+  private static void collectAllTables(PlanNode node, Set<Identifier> tables) {
+    if (node instanceof DeviceTableScanNode) {
+      DeviceTableScanNode scanNode = (DeviceTableScanNode) node;
+      Identifier alias = scanNode.getAlias();
+      if (alias != null) {
+        tables.add(alias);
+      } else {
+        tables.add(new Identifier(scanNode.getQualifiedObjectName().getObjectName()));
+      }
+    }
+
+    // Recursively process all children
+    for (PlanNode child : node.getChildren()) {
+      collectAllTables(child, tables);
+    }
+  }
 }

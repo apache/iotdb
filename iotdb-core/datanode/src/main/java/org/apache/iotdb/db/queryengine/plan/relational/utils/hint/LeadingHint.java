@@ -22,10 +22,10 @@
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.JoinUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
@@ -33,7 +33,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.tsfile.utils.Pair;
 
@@ -51,6 +50,8 @@ public class LeadingHint extends JoinOrderHint {
   public static String hintName = "leading";
   private final List<String> tables;
 
+  private QueryId idAllocator;
+
   private List<String> addJoinParameters;
   private List<String> normalizedParameters;
 
@@ -62,14 +63,13 @@ public class LeadingHint extends JoinOrderHint {
 
   private final List<JoinConstraint> joinConstraintList = new ArrayList<>();
 
-  private final Map<Expression, JoinNode.JoinType> conditionJoinType = Maps.newLinkedHashMap();
-
-  public LeadingHint(List<String> parameters) {
+  public LeadingHint(List<String> parameters, MPPQueryContext queryContext) {
     super(hintName);
     // /* leading(t3 {}) 会报错
     this.tables = new ArrayList<>();
-    addJoinParameters = insertJoinIntoParameters(parameters);
-    normalizedParameters = parseIntoReversePolishNotation(addJoinParameters);
+    this.idAllocator = queryContext.getQueryId();
+    this.addJoinParameters = insertJoinIntoParameters(parameters);
+    this.normalizedParameters = parseIntoReversePolishNotation(addJoinParameters);
 
     if (tables.isEmpty()) {
       throw new IllegalArgumentException("LeaderHint accepts one or more tables");
@@ -104,10 +104,6 @@ public class LeadingHint extends JoinOrderHint {
     this.asofJoin = asofJoin;
   }
 
-  public void putConditionJoinType(Expression filter, JoinNode.JoinType joinType) {
-    conditionJoinType.put(filter, joinType);
-  }
-
   public Map<String, PlanNode> getRelationToScanMap() {
     return relationToScanMap;
   }
@@ -136,7 +132,6 @@ public class LeadingHint extends JoinOrderHint {
         if (logicalPlan == null) {
           return null;
         }
-        logicalPlan = makeFilterPlanIfExist(getEquiJoins(), logicalPlan);
         stack.push(logicalPlan);
       }
     }
@@ -235,10 +230,6 @@ public class LeadingHint extends JoinOrderHint {
     }
 
     List<Expression> equiJoins = getEquiJoinConditions(getEquiJoins(), leftChild, rightChild);
-    if (!isConditionJoinTypeMatched(equiJoins, joinType)) {
-      return null;
-    }
-
     List<Symbol> leftOutputSymbols = leftChild.getOutputSymbols();
     List<Symbol> rightOutputSymbols = rightChild.getOutputSymbols();
     Optional<JoinNode.AsofJoinClause> asofCriteria = Optional.empty();
@@ -289,16 +280,12 @@ public class LeadingHint extends JoinOrderHint {
                                     "Cannot find source table for symbol %s in leading hint join right child",
                                     leftSymbol)))));
       } else {
-        throw new IllegalArgumentException("Invalid join condition");
+        return null;
       }
     }
 
     Expression asofJoin = getAsofJoinCondition(getAsofJoin(), leftChild, rightChild);
     if (asofJoin != null) {
-      if (!isConditionJoinTypeMatched(asofJoin, joinType)) {
-        return null;
-      }
-
       ComparisonExpression asofJoinExpr = (ComparisonExpression) asofJoin;
       Symbol leftSymbol = Symbol.from(asofJoinExpr.getLeft());
       Symbol rightSymbol = Symbol.from(asofJoinExpr.getRight());
@@ -350,7 +337,7 @@ public class LeadingHint extends JoinOrderHint {
     }
 
     return new JoinNode(
-        new PlanNodeId("join"),
+        idAllocator.genPlanNodeId(),
         joinType,
         leftChild,
         rightChild,
@@ -391,21 +378,6 @@ public class LeadingHint extends JoinOrderHint {
     return null;
   }
 
-  private PlanNode makeFilterPlanIfExist(
-      List<Pair<Set<Identifier>, Expression>> filters, PlanNode plan) {
-    if (filters.isEmpty()) {
-      return plan;
-    }
-    for (int i = filters.size() - 1; i >= 0; i--) {
-      Pair<Set<Identifier>, Expression> filterPair = filters.get(i);
-      if (plan.getInputTables().containsAll(filterPair.left)) {
-        plan = new FilterNode(plan.getPlanNodeId(), plan, filterPair.right);
-        filters.remove(i);
-      }
-    }
-    return plan;
-  }
-
   public JoinNode.JoinType computeJoinType(Set<Identifier> left, Set<Identifier> right) {
     Pair<JoinConstraint, Boolean> joinConstraintBooleanPair =
         getJoinConstraint(Sets.union(left, right), left, right);
@@ -420,28 +392,10 @@ public class LeadingHint extends JoinOrderHint {
     return joinConstraint.getJoinType();
   }
 
-  public boolean isConditionJoinTypeMatched(
-      List<Expression> conditions, JoinNode.JoinType joinType) {
-    for (Expression condition : conditions) {
-      JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
-      if (originalJoinType == joinType) {
-        continue;
-      }
-      return false;
-    }
-    return true;
-  }
-
-  public boolean isConditionJoinTypeMatched(Expression condition, JoinNode.JoinType joinType) {
-    JoinNode.JoinType originalJoinType = conditionJoinType.get(condition);
-    return originalJoinType == joinType;
-  }
-
   /**
    * try to get join constraint. If it can not be found, it means join is inner join
    *
-   * @return boolean value used for judging whether the join is legal, and should this join need to
-   *     reverse
+   * @return boolean value used for judging whether the join is legal
    */
   public Pair<JoinConstraint, Boolean> getJoinConstraint(
       Set<Identifier> joinTables, Set<Identifier> leftHand, Set<Identifier> rightHand) {
