@@ -30,4 +30,7 @@ public interface IExternalService {
    * guarantee to putBack thread or thread pool.
    */
   void stop();
+
+  /** Clear user cache of current service. */
+  void clearUserCache(String userName);
 }
