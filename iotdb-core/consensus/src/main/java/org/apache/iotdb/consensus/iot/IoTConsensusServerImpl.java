@@ -89,7 +89,9 @@ import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -127,6 +129,11 @@ public class IoTConsensusServerImpl {
   private final IoTConsensusRateLimiter ioTConsensusRateLimiter =
       IoTConsensusRateLimiter.getInstance();
   private IndexedConsensusRequest lastConsensusRequest;
+
+  // Subscription queues receive IndexedConsensusRequest in real-time from write(),
+  // similar to LogDispatcher, enabling in-memory data delivery without waiting for WAL flush.
+  private final List<BlockingQueue<IndexedConsensusRequest>> subscriptionQueues =
+      new CopyOnWriteArrayList<>();
 
   public IoTConsensusServerImpl(
       String storageDir,
@@ -236,6 +243,44 @@ public class IoTConsensusServerImpl {
         // in one transaction.
         synchronized (searchIndex) {
           logDispatcher.offer(indexedConsensusRequest);
+          // Deliver to subscription queues for real-time in-memory consumption.
+          // Offer AFTER stateMachine.write() so that InsertNode has inferred types
+          // and properly typed values (same timing as LogDispatcher).
+          final int sqCount = subscriptionQueues.size();
+          if (sqCount > 0) {
+            logger.debug(
+                "write() offering to {} subscription queue(s), "
+                    + "group={}, searchIndex={}, requestType={}",
+                sqCount,
+                consensusGroupId,
+                indexedConsensusRequest.getSearchIndex(),
+                indexedConsensusRequest.getRequests().isEmpty()
+                    ? "EMPTY"
+                    : indexedConsensusRequest.getRequests().get(0).getClass().getSimpleName());
+            for (final BlockingQueue<IndexedConsensusRequest> sq : subscriptionQueues) {
+              final boolean offered = sq.offer(indexedConsensusRequest);
+              logger.debug(
+                  "offer result={}, queueSize={}, queueRemaining={}",
+                  offered,
+                  sq.size(),
+                  sq.remainingCapacity());
+              if (!offered) {
+                logger.warn(
+                    "Subscription queue full, dropped entry searchIndex={}",
+                    indexedConsensusRequest.getSearchIndex());
+              }
+            }
+          } else {
+            // Log periodically when no subscription queues are registered
+            if (indexedConsensusRequest.getSearchIndex() % 50 == 0) {
+              logger.debug(
+                  "write() no subscription queues registered, "
+                      + "group={}, searchIndex={}, this={}",
+                  consensusGroupId,
+                  indexedConsensusRequest.getSearchIndex(),
+                  System.identityHashCode(this));
+            }
+          }
           searchIndex.incrementAndGet();
         }
         // statistic the time of offering request into queue
@@ -243,10 +288,13 @@ public class IoTConsensusServerImpl {
             System.nanoTime() - writeToStateMachineEndTime);
       } else {
         logger.debug(
-            "{}: write operation failed. searchIndex: {}. Code: {}",
+            "write operation FAILED. group={}, searchIndex={}, code={}, "
+                + "subscriptionQueues={}, this={}",
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
-            result.getCode());
+            result.getCode(),
+            subscriptionQueues.size(),
+            System.identityHashCode(this));
       }
       // statistic the time of total write process
       ioTConsensusServerMetrics.recordConsensusWriteTime(
@@ -757,6 +805,41 @@ public class IoTConsensusServerImpl {
     return searchIndex.get();
   }
 
+  public ConsensusReqReader getConsensusReqReader() {
+    return consensusReqReader;
+  }
+
+  /**
+   * Registers a subscription pending queue for real-time in-memory data delivery. When {@link
+   * #write(IConsensusRequest)} succeeds, the IndexedConsensusRequest is offered to all registered
+   * subscription queues, enabling subscription consumers to receive data without waiting for WAL
+   * flush.
+   *
+   * @param queue the blocking queue to receive IndexedConsensusRequest entries
+   */
+  public void registerSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
+    subscriptionQueues.add(queue);
+    // Immediately re-evaluate the safe delete index with new subscription awareness
+    checkAndUpdateSafeDeletedSearchIndex();
+    logger.info(
+        "Registered subscription queue for group {}, "
+            + "total subscription queues: {}, currentSearchIndex={}, this={}",
+        consensusGroupId,
+        subscriptionQueues.size(),
+        searchIndex.get(),
+        System.identityHashCode(this));
+  }
+
+  public void unregisterSubscriptionQueue(final BlockingQueue<IndexedConsensusRequest> queue) {
+    subscriptionQueues.remove(queue);
+    // Re-evaluate: with fewer subscribers, more WAL may be deletable
+    checkAndUpdateSafeDeletedSearchIndex();
+    logger.info(
+        "Unregistered subscription queue for group {}, remaining subscription queues: {}",
+        consensusGroupId,
+        subscriptionQueues.size());
+  }
+
   public long getSyncLag() {
     long minSyncIndex = getMinSyncIndex();
     return getSearchIndex() - minSyncIndex;
@@ -872,17 +955,41 @@ public class IoTConsensusServerImpl {
   }
 
   /**
-   * If there is only one replica, set it to Long.MAX_VALUE. If there are multiple replicas, get the
-   * latest SafelyDeletedSearchIndex again. This enables wal to be deleted in a timely manner.
+   * Computes and updates the safe-to-delete WAL search index based on replication progress and
+   * subscription WAL retention policy. When no subscriptions exist, WAL is cleaned normally.
    */
-  void checkAndUpdateSafeDeletedSearchIndex() {
+  public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
       logger.error(
           "Configuration is empty, which is unexpected. Safe deleted search index won't be updated this time.");
-    } else if (configuration.size() == 1) {
+      return;
+    }
+
+    final boolean hasSubscriptions = !subscriptionQueues.isEmpty();
+    final long retentionSizeLimit =
+        config.getReplication().getSubscriptionWalRetentionSizeInBytes();
+
+    if (configuration.size() == 1 && !hasSubscriptions) {
+      // Single replica, no subscription consumers => delete all WAL freely
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
     } else {
-      consensusReqReader.setSafelyDeletedSearchIndex(getMinFlushedSyncIndex());
+      final long replicationIndex =
+          configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
+
+      // Subscription WAL retention: if subscriptions exist and retention is configured,
+      // prevent WAL deletion when total WAL size is within the retention limit.
+      long subscriptionRetentionBound = Long.MAX_VALUE;
+      if (hasSubscriptions && retentionSizeLimit > 0) {
+        final long totalWalSize = consensusReqReader.getTotalSize();
+        if (totalWalSize <= retentionSizeLimit) {
+          // WAL size is within retention limit — preserve all WAL for subscribers
+          subscriptionRetentionBound = ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+        }
+        // else: WAL exceeds retention limit — allow normal cleanup (bound stays MAX_VALUE)
+      }
+
+      consensusReqReader.setSafelyDeletedSearchIndex(
+          Math.min(replicationIndex, subscriptionRetentionBound));
     }
   }
 

@@ -248,6 +248,11 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     }
   }
 
+  /** Returns the current nack count for this event. */
+  public long getNackCount() {
+    return nackCount.get();
+  }
+
   public void recordLastPolledConsumerId(final String consumerId) {
     lastPolledConsumerId = consumerId;
   }

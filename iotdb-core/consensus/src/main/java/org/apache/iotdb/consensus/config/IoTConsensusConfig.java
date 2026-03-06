@@ -323,6 +323,7 @@ public class IoTConsensusConfig {
     private final IMemoryBlock consensusMemoryBlock;
     private final double maxMemoryRatioForQueue;
     private final long regionMigrationSpeedLimitBytesPerSecond;
+    private final long subscriptionWalRetentionSizeInBytes;
 
     private Replication(
         int maxLogEntriesNumPerBatch,
@@ -338,7 +339,8 @@ public class IoTConsensusConfig {
         long checkpointGap,
         IMemoryBlock consensusMemoryBlock,
         double maxMemoryRatioForQueue,
-        long regionMigrationSpeedLimitBytesPerSecond) {
+        long regionMigrationSpeedLimitBytesPerSecond,
+        long subscriptionWalRetentionSizeInBytes) {
       this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
       this.maxSizePerBatch = maxSizePerBatch;
       this.maxPendingBatchesNum = maxPendingBatchesNum;
@@ -353,6 +355,7 @@ public class IoTConsensusConfig {
       this.consensusMemoryBlock = consensusMemoryBlock;
       this.maxMemoryRatioForQueue = maxMemoryRatioForQueue;
       this.regionMigrationSpeedLimitBytesPerSecond = regionMigrationSpeedLimitBytesPerSecond;
+      this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
     }
 
     public int getMaxLogEntriesNumPerBatch() {
@@ -411,6 +414,10 @@ public class IoTConsensusConfig {
       return regionMigrationSpeedLimitBytesPerSecond;
     }
 
+    public long getSubscriptionWalRetentionSizeInBytes() {
+      return subscriptionWalRetentionSizeInBytes;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -434,6 +441,7 @@ public class IoTConsensusConfig {
               "Consensus-Default", null, Runtime.getRuntime().maxMemory() / 10);
       private double maxMemoryRatioForQueue = 0.6;
       private long regionMigrationSpeedLimitBytesPerSecond = 32 * 1024 * 1024L;
+      private long subscriptionWalRetentionSizeInBytes = 0;
 
       public Replication.Builder setMaxLogEntriesNumPerBatch(int maxLogEntriesNumPerBatch) {
         this.maxLogEntriesNumPerBatch = maxLogEntriesNumPerBatch;
@@ -508,6 +516,12 @@ public class IoTConsensusConfig {
         return this;
       }
 
+      public Builder setSubscriptionWalRetentionSizeInBytes(
+          long subscriptionWalRetentionSizeInBytes) {
+        this.subscriptionWalRetentionSizeInBytes = subscriptionWalRetentionSizeInBytes;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxLogEntriesNumPerBatch,
@@ -523,7 +537,8 @@ public class IoTConsensusConfig {
             checkpointGap,
             consensusMemoryBlock,
             maxMemoryRatioForQueue,
-            regionMigrationSpeedLimitBytesPerSecond);
+            regionMigrationSpeedLimitBytesPerSecond,
+            subscriptionWalRetentionSizeInBytes);
       }
     }
   }

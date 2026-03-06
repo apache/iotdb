@@ -82,6 +82,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class IoTConsensus implements IConsensus {
@@ -98,6 +99,19 @@ public class IoTConsensus implements IConsensus {
   private final IoTConsensusRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
   private IoTConsensusConfig config;
+
+  /**
+   * Optional callback invoked after a new local peer is created via {@link #createLocalPeer}. Used
+   * by the subscription system to auto-bind prefetching queues to new DataRegions.
+   */
+  public static volatile BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> onNewPeerCreated;
+
+  /**
+   * Optional callback invoked before a local peer is deleted via {@link #deleteLocalPeer}. Used by
+   * the subscription system to unbind and clean up prefetching queues before the region is removed.
+   */
+  public static volatile Consumer<ConsensusGroupId> onPeerRemoved;
+
   private final IClientManager<TEndPoint, AsyncIoTConsensusServiceClient> clientManager;
   private final IClientManager<TEndPoint, SyncIoTConsensusServiceClient> syncClientManager;
   private final ScheduledExecutorService backgroundTaskService;
@@ -299,11 +313,33 @@ public class IoTConsensus implements IConsensus {
     if (exist.get()) {
       throw new ConsensusGroupAlreadyExistException(groupId);
     }
+
+    // Notify subscription system about new peer creation for auto-binding
+    final BiConsumer<ConsensusGroupId, IoTConsensusServerImpl> callback = onNewPeerCreated;
+    if (callback != null) {
+      try {
+        callback.accept(groupId, stateMachineMap.get(groupId));
+      } catch (final Exception e) {
+        logger.warn("onNewPeerCreated callback failed for group {}", groupId, e);
+      }
+    }
   }
 
   @Override
   public void deleteLocalPeer(ConsensusGroupId groupId) throws ConsensusException {
     KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.BEFORE_DELETE);
+
+    // Notify subscription system before stopping the peer, so that subscription queues can
+    // properly unregister from the still-alive serverImpl.
+    final Consumer<ConsensusGroupId> removeCallback = onPeerRemoved;
+    if (removeCallback != null) {
+      try {
+        removeCallback.accept(groupId);
+      } catch (final Exception e) {
+        logger.warn("onPeerRemoved callback failed for group {}", groupId, e);
+      }
+    }
+
     AtomicBoolean exist = new AtomicBoolean(false);
     stateMachineMap.computeIfPresent(
         groupId,
