@@ -125,7 +125,6 @@ public class StrictAuthorPlanExecutor implements IAuthorPlanExecutor {
       case RevokeUser:
       case RevokeRole:
       case RevokeRoleFromUser:
-      case AccountUnlock:
         return commonAuthorPlanExecutor.executeAuthorNonQuery(authorPlan);
 
       case GrantUser:
