@@ -24,7 +24,9 @@ services:
     container_name: iotdb-service
     ports:
       - "6667:6667"
+      - "18080:18080"
     environment:
+      - enable_rest_service=true
       - cn_internal_address=iotdb-service
       - cn_internal_port=10710
       - cn_consensus_port=10720
