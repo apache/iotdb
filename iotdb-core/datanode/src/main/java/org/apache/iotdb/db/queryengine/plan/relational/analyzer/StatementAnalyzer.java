@@ -80,6 +80,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
@@ -848,6 +849,22 @@ public class StatementAnalyzer {
       queryContext.setExplainType(ExplainType.EXPLAIN);
       analysis.setFinishQueryAfterAnalyze();
       return visitQuery((Query) node.getStatement(), context);
+    }
+
+    @Override
+    protected Scope visitDescribeQuery(DescribeQuery node, Optional<Scope> context) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      Scope scope = visitQuery(node.getQuery(), context);
+
+      RelationType outputDescriptor = analysis.getOutputDescriptor();
+      for (Field field : outputDescriptor.getVisibleFields()) {
+        String name = field.getName().orElse("unknown");
+        String type = field.getType().toString();
+        System.out.println("DESCRIBE_DEBUG: Column=" + name + ", Type=" + type);
+      }
+
+      analysis.setDescribe(true);
+      return scope;
     }
 
     @Override

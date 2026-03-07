@@ -252,7 +252,7 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private boolean skipExecute() {
-    return analysis.canSkipExecute(context);
+    return analysis.isFailed() || analysis.isFinishQueryAfterAnalyze();
   }
 
   private void constructResultForMemorySource() {
