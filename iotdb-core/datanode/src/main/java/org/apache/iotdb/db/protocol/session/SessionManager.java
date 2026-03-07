@@ -616,6 +616,7 @@ public class SessionManager implements SessionManagerMBean {
             .filter(Objects::nonNull)
             .map(IClientSession::getUsername)
             .filter(Objects::nonNull)
+            .filter(username -> !AuthorityChecker.INTERNAL_AUDIT_USER.equals(username))
             .collect(Collectors.toConcurrentMap(Function.identity(), k -> 1, Integer::sum));
     return currentSessionInfo;
   }
