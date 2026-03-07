@@ -914,6 +914,7 @@ queryStatement
     : query                                                        #statementDefault
     | EXPLAIN query                                                #explain
     | EXPLAIN ANALYZE VERBOSE? query                               #explainAnalyze
+    | DESCRIBE QUERY query                                         #describeQuery
     ;
 
 query
