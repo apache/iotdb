@@ -391,8 +391,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
           }
           authorizer.updateUserMinSession(userName, authorPlan.getMinSessionPerUser());
           break;
-        case RAccountUnlock:
-          break;
         case RDropRole:
           authorizer.deleteRole(roleName);
           break;
