@@ -303,6 +303,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
         case UpdateUserV2:
+        case UpdateUserMaxSession:
+        case UpdateUserMinSession:
         case CreateUserWithRawPassword:
         case RenameUser:
           plan = new AuthorTreePlan(configPhysicalPlanType);
@@ -311,6 +313,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RCreateRole:
         case RUpdateUser:
         case RUpdateUserV2:
+        case RUpdateUserMaxSession:
+        case RUpdateUserMinSession:
         case RDropRole:
         case RDropUser:
         case RDropUserV2:
