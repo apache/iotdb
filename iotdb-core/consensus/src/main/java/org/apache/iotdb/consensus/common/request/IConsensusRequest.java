@@ -36,6 +36,20 @@ public interface IConsensusRequest {
    */
   ByteBuffer serializeToByteBuffer();
 
+  default boolean hasTime() {
+    return false;
+  }
+
+  /**
+   * Return the primary timestamp carried by this request.
+   *
+   * <p>Callers should check {@link #hasTime()} before calling this method.
+   */
+  default long getTime() {
+    throw new UnsupportedOperationException(
+        String.format("%s does not carry timestamp", getClass().getName()));
+  }
+
   default long getMemorySize() {
     // return 0 by default
     return 0;

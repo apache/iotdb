@@ -33,6 +33,7 @@ public class ConsensusConfig {
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig iotConsensusConfig;
   private final PipeConsensusConfig pipeConsensusConfig;
+  private final TRaftConfig tRaftConfig;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -41,7 +42,8 @@ public class ConsensusConfig {
       TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
       IoTConsensusConfig iotConsensusConfig,
-      PipeConsensusConfig pipeConsensusConfig) {
+      PipeConsensusConfig pipeConsensusConfig,
+      TRaftConfig tRaftConfig) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
@@ -49,6 +51,7 @@ public class ConsensusConfig {
     this.ratisConfig = ratisConfig;
     this.iotConsensusConfig = iotConsensusConfig;
     this.pipeConsensusConfig = pipeConsensusConfig;
+    this.tRaftConfig = tRaftConfig;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -79,6 +82,10 @@ public class ConsensusConfig {
     return pipeConsensusConfig;
   }
 
+  public TRaftConfig getTRaftConfig() {
+    return tRaftConfig;
+  }
+
   public static ConsensusConfig.Builder newBuilder() {
     return new ConsensusConfig.Builder();
   }
@@ -92,6 +99,7 @@ public class ConsensusConfig {
     private RatisConfig ratisConfig;
     private IoTConsensusConfig iotConsensusConfig;
     private PipeConsensusConfig pipeConsensusConfig;
+    private TRaftConfig tRaftConfig;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -103,7 +111,8 @@ public class ConsensusConfig {
           Optional.ofNullable(iotConsensusConfig)
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
           Optional.ofNullable(pipeConsensusConfig)
-              .orElseGet(() -> PipeConsensusConfig.newBuilder().build()));
+              .orElseGet(() -> PipeConsensusConfig.newBuilder().build()),
+          Optional.ofNullable(tRaftConfig).orElseGet(() -> TRaftConfig.newBuilder().build()));
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -138,6 +147,11 @@ public class ConsensusConfig {
 
     public Builder setPipeConsensusConfig(PipeConsensusConfig pipeConsensusConfig) {
       this.pipeConsensusConfig = pipeConsensusConfig;
+      return this;
+    }
+
+    public Builder setTRaftConfig(TRaftConfig tRaftConfig) {
+      this.tRaftConfig = tRaftConfig;
       return this;
     }
   }

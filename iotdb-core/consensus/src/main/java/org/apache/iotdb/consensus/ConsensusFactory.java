@@ -37,6 +37,7 @@ public class ConsensusFactory {
   public static final String SIMPLE_CONSENSUS = "org.apache.iotdb.consensus.simple.SimpleConsensus";
   public static final String RATIS_CONSENSUS = "org.apache.iotdb.consensus.ratis.RatisConsensus";
   public static final String IOT_CONSENSUS = "org.apache.iotdb.consensus.iot.IoTConsensus";
+  public static final String TRAFT_CONSENSUS = "org.apache.iotdb.consensus.traft.TRaftConsensus";
   public static final String REAL_PIPE_CONSENSUS = "org.apache.iotdb.consensus.pipe.PipeConsensus";
   public static final String IOT_CONSENSUS_V2 = "org.apache.iotdb.consensus.iot.IoTConsensusV2";
   public static final String IOT_CONSENSUS_V2_BATCH_MODE = "batch";
