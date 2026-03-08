@@ -260,6 +260,16 @@ public class PipeEnrichedInsertNode extends InsertNode {
   }
 
   @Override
+  public boolean hasTime() {
+    return insertNode.hasTime();
+  }
+
+  @Override
+  public long getTime() {
+    return insertNode.getTime();
+  }
+
+  @Override
   public void markFailedMeasurement(final int index) {
     insertNode.markFailedMeasurement(index);
   }
