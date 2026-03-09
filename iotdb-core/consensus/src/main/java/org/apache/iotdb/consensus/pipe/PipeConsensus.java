@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
-import org.apache.iotdb.commons.client.container.PipeConsensusClientMgrContainer;
 import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -120,8 +120,10 @@ public class PipeConsensus implements IConsensus {
             config.getPipeConsensusConfig().getReplicateMode());
     this.consensusPipeGuardian =
         config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
-    this.asyncClientManager = PipeConsensusClientMgrContainer.getInstance().newAsyncClientManager();
-    this.syncClientManager = PipeConsensusClientMgrContainer.getInstance().newSyncClientManager();
+    this.asyncClientManager =
+        IoTV2GlobalComponentContainer.getInstance().getGlobalAsyncClientManager();
+    this.syncClientManager =
+        IoTV2GlobalComponentContainer.getInstance().getGlobalSyncClientManager();
   }
 
   @Override
@@ -236,6 +238,7 @@ public class PipeConsensus implements IConsensus {
     registerManager.deregisterAll();
     consensusPipeGuardian.stop();
     stateMachineMap.values().parallelStream().forEach(PipeConsensusServerImpl::stop);
+    IoTV2GlobalComponentContainer.getInstance().stopBackgroundTaskService();
   }
 
   private void checkAllConsensusPipe() {
@@ -372,13 +375,14 @@ public class PipeConsensus implements IConsensus {
         if (!stateMachineMap.containsKey(groupId)) {
           throw new ConsensusGroupNotExistException(groupId);
         }
-
+        LOGGER.info("[{}] start to delete local peer for group {}", CLASS_NAME, groupId);
         final PipeConsensusServerImpl consensus = stateMachineMap.get(groupId);
         consensus.clear();
         stateMachineMap.remove(groupId);
 
         FileUtils.deleteFileOrDirectory(new File(getPeerDir(groupId)));
         KillPoint.setKillPoint(IoTConsensusDeleteLocalPeerKillPoints.AFTER_DELETE);
+        LOGGER.info("[{}] finish deleting local peer for group {}", CLASS_NAME, groupId);
       } finally {
         stateMachineMapLock.readLock().unlock();
       }

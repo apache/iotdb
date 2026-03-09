@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.path.PathPatternNode.VoidSerializer;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.apache.tsfile.file.metadata.IDeviceID.Factory;
+import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -39,6 +39,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class PathPatternTree {
 
@@ -96,9 +97,17 @@ public class PathPatternTree {
     appendBranchWithoutPrune(root, pathNodes, 0);
   }
 
+  public void appendPathPattern(final PartialPath pathPattern) {
+    appendPathPattern(pathPattern, false);
+  }
+
   /** Add a pathPattern (may contain wildcards) to pathPatternList. */
-  public void appendPathPattern(PartialPath pathPattern) {
+  public void appendPathPattern(final PartialPath pathPattern, final boolean isReload) {
     if (useWildcard) {
+      // This does not guarantee multi-thread safety
+      if (isReload && (pathPatternList == null || pathPatternList.isEmpty())) {
+        pathPatternList = getAllPathPatterns();
+      }
       boolean isExist = false;
       for (PartialPath path : pathPatternList) {
         if (path.include(pathPattern)) {
@@ -112,6 +121,9 @@ public class PathPatternTree {
         pathPatternList.removeIf(pathPattern::include);
         pathPatternList.add(pathPattern);
       }
+      if (isReload) {
+        root.clear();
+      }
     } else {
       appendBranchWithoutPrune(root, pathPattern.getNodes(), 0);
     }
@@ -122,7 +134,8 @@ public class PathPatternTree {
     for (PartialPath path : pathPatternList) {
       appendBranchWithoutPrune(root, path.getNodes(), 0);
     }
-    pathPatternList.clear();
+    // Do not clear to avoid concurrent modification
+    pathPatternList = new LinkedList<>();
   }
 
   private void appendBranchWithoutPrune(
@@ -172,14 +185,16 @@ public class PathPatternTree {
   }
 
   public List<IDeviceID> getAllDevicePatterns() {
-    List<String> nodes = new ArrayList<>();
-    Set<List<String>> resultNodesSet = new HashSet<>();
+    final List<String> nodes = new ArrayList<>();
+    final Set<List<String>> resultNodesSet = new HashSet<>();
     searchDevicePath(root, nodes, resultNodesSet);
 
-    Set<IDeviceID> resultPaths = new HashSet<>();
-    for (List<String> resultNodes : resultNodesSet) {
+    final Set<IDeviceID> resultPaths = new HashSet<>();
+    for (final List<String> resultNodes : resultNodesSet) {
       if (resultNodes != null && !resultNodes.isEmpty()) {
-        resultPaths.add(Factory.DEFAULT_FACTORY.create(resultNodes.toArray(new String[0])));
+        resultPaths.add(
+            IDeviceID.Factory.DEFAULT_FACTORY.create(
+                StringArrayDeviceID.splitDeviceIdString(resultNodes.toArray(new String[0]))));
       }
     }
 
@@ -285,18 +300,14 @@ public class PathPatternTree {
     ancestors.pop();
   }
 
-  public List<PartialPath> getOverlappedPathPatterns(PartialPath pattern) {
-    if (pathPatternList.isEmpty()) {
-      pathPatternList = getAllPathPatterns();
+  public List<PartialPath> getOverlappedPathPatterns(final PartialPath pattern) {
+    List<PartialPath> patternList = pathPatternList;
+    if (Objects.isNull(patternList) || patternList.isEmpty()) {
+      patternList = getAllPathPatterns();
+      pathPatternList = patternList;
     }
 
-    List<PartialPath> results = new ArrayList<>();
-    for (PartialPath path : pathPatternList) {
-      if (pattern.overlapWith(path)) {
-        results.add(path);
-      }
-    }
-    return results;
+    return patternList.stream().filter(pattern::overlapWith).collect(Collectors.toList());
   }
 
   private String convertNodesToString(List<String> nodes) {

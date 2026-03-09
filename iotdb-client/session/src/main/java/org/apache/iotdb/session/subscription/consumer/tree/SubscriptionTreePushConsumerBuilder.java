@@ -132,8 +132,7 @@ public class SubscriptionTreePushConsumerBuilder extends AbstractSubscriptionPus
     return this;
   }
 
-  @Override
-  public ISubscriptionTreePushConsumer buildPushConsumer() {
+  public ISubscriptionTreePushConsumer build() {
     return new SubscriptionTreePushConsumer(this);
   }
 }

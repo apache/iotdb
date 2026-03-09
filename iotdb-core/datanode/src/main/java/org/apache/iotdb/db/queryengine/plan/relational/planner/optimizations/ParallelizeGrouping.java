@@ -32,6 +32,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CorrelatedJo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
@@ -186,6 +187,27 @@ public class ParallelizeGrouping implements PlanOptimizer {
           context.canOptimized = TO_SORT;
         } else {
           checkPrefixMatch(context, dataOrganizationSpecification.get().getPartitionBy());
+        }
+      }
+      return visitPlan(node, context);
+    }
+
+    @Override
+    public PlanNode visitPatternRecognition(PatternRecognitionNode node, Context context) {
+      if (!context.canSkip()) {
+        if (node.getChildren().isEmpty()) {
+          // leaf node
+          context.canOptimized = TO_SORT;
+          return node;
+        }
+
+        List<Symbol> partitionBy = node.getPartitionBy();
+        Optional<OrderingScheme> orderingScheme = node.getOrderingScheme();
+
+        if (!orderingScheme.isPresent()) {
+          context.canOptimized = TO_SORT;
+        } else {
+          checkPrefixMatch(context, partitionBy);
         }
       }
       return visitPlan(node, context);

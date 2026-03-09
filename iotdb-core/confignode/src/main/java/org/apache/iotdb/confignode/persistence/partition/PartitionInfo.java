@@ -28,6 +28,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.commons.schema.table.Audit;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.confignode.consensus.request.read.partition.CountTimeSlotListPlan;
@@ -193,6 +194,12 @@ public class PartitionInfo implements SnapshotProcessor {
     plan.getRegionGroupMap()
         .forEach(
             (database, regionReplicaSets) -> {
+              if (isDatabasePreDeleted(database)) {
+                LOGGER.warn(
+                    "[CreateRegionGroups] Database {} has been deleted, corresponding RegionGroups will not be created.",
+                    database);
+                return;
+              }
               databasePartitionTables.get(database).createRegionGroups(regionReplicaSets);
               regionReplicaSets.forEach(
                   regionReplicaSet ->
@@ -285,7 +292,7 @@ public class PartitionInfo implements SnapshotProcessor {
   public TSStatus preDeleteDatabase(final PreDeleteDatabasePlan preDeleteDatabasePlan) {
     final PreDeleteDatabasePlan.PreDeleteType preDeleteType =
         preDeleteDatabasePlan.getPreDeleteType();
-    final String database = preDeleteDatabasePlan.getStorageGroup();
+    final String database = preDeleteDatabasePlan.getDatabase();
     final DatabasePartitionTable databasePartitionTable = databasePartitionTables.get(database);
     if (databasePartitionTable == null) {
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -521,7 +528,8 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get SchemaNodeManagementPartition through matched Database. */
-  public DataSet getSchemaNodeManagementPartition(List<String> matchedDatabases) {
+  public DataSet getSchemaNodeManagementPartition(
+      List<String> matchedDatabases, boolean canSeeAuditDB) {
     SchemaNodeManagementResp schemaNodeManagementResp = new SchemaNodeManagementResp();
     Map<String, SchemaPartitionTable> schemaPartitionMap = new ConcurrentHashMap<>();
 
@@ -529,6 +537,9 @@ public class PartitionInfo implements SnapshotProcessor {
         .filter(this::isDatabaseExisted)
         .forEach(
             database -> {
+              if (!canSeeAuditDB && Audit.TREE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(database)) {
+                return;
+              }
               schemaPartitionMap.put(database, new SchemaPartitionTable());
 
               databasePartitionTables
@@ -620,7 +631,7 @@ public class PartitionInfo implements SnapshotProcessor {
         .forEach(
             databasePartitionTable ->
                 databasePartitionTable.removeRegionLocation(
-                    req.getRegionId(), req.getDeprecatedLocation()));
+                    req.getRegionId(), req.getDeprecatedLocation().getDataNodeId()));
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

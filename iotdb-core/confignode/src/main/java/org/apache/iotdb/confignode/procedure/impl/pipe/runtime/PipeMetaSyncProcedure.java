@@ -20,15 +20,20 @@
 package org.apache.iotdb.confignode.procedure.impl.pipe.runtime;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.runtime.PipeHandleMetaChangePlan;
 import org.apache.iotdb.confignode.persistence.pipe.PipeTaskInfo;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
 import org.apache.iotdb.confignode.procedure.impl.pipe.PipeTaskOperation;
+import org.apache.iotdb.confignode.procedure.impl.pipe.util.PipeExternalSourceLoadBalancer;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
+import org.apache.iotdb.confignode.service.ConfigNode;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.mpp.rpc.thrift.TPushPipeMetaResp;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -40,10 +45,17 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_EXTRACTOR_PARALLELISM_KEY;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSourceConstant.EXTERNAL_SOURCE_PARALLELISM_KEY;
 
 public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
@@ -75,7 +87,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
     if (System.currentTimeMillis() - LAST_EXECUTION_TIME.get() < MIN_EXECUTION_INTERVAL_MS) {
       // Skip by setting the pipeTaskInfo to null
       pipeTaskInfo = null;
-      LOGGER.info(
+      LOGGER.debug(
           "PipeMetaSyncProcedure: acquireLock, skip the procedure due to the last execution time {}",
           LAST_EXECUTION_TIME.get());
       return ProcedureLockState.LOCK_ACQUIRED;
@@ -91,7 +103,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public boolean executeFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromValidateTask");
 
     LAST_EXECUTION_TIME.set(System.currentTimeMillis());
     return true;
@@ -99,14 +111,66 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void executeFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromCalculateInfoForTask");
 
-    // Do nothing
+    // Re-balance the external source tasks here in case of any changes in the dataRegion
+    pipeTaskInfo
+        .get()
+        .getPipeMetaList()
+        .forEach(
+            pipeMeta -> {
+              if (!pipeMeta.getStaticMeta().isSourceExternal()) {
+                return;
+              }
+
+              final PipeExternalSourceLoadBalancer loadBalancer =
+                  new PipeExternalSourceLoadBalancer(
+                      pipeMeta
+                          .getStaticMeta()
+                          .getSourceParameters()
+                          .getStringOrDefault(
+                              Arrays.asList(
+                                  PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_STRATEGY_KEY,
+                                  PipeSourceConstant.EXTERNAL_SOURCE_BALANCE_STRATEGY_KEY),
+                              PipeSourceConstant.EXTERNAL_EXTRACTOR_BALANCE_PROPORTION_STRATEGY));
+              final int parallelism =
+                  pipeMeta
+                      .getStaticMeta()
+                      .getSourceParameters()
+                      .getIntOrDefault(
+                          Arrays.asList(
+                              EXTERNAL_EXTRACTOR_PARALLELISM_KEY, EXTERNAL_SOURCE_PARALLELISM_KEY),
+                          EXTERNAL_EXTRACTOR_PARALLELISM_DEFAULT_VALUE);
+              final Map<Integer, PipeTaskMeta> consensusGroupIdToTaskMetaMap =
+                  pipeMeta.getRuntimeMeta().getConsensusGroupId2TaskMetaMap();
+
+              // do balance here
+              final Map<Integer, Integer> taskId2LeaderDataNodeId =
+                  loadBalancer.balance(
+                      parallelism,
+                      pipeMeta.getStaticMeta(),
+                      ConfigNode.getInstance().getConfigManager());
+
+              taskId2LeaderDataNodeId.forEach(
+                  (taskIndex, newLeader) -> {
+                    if (consensusGroupIdToTaskMetaMap.containsKey(taskIndex)) {
+                      consensusGroupIdToTaskMetaMap.get(taskIndex).setLeaderNodeId(newLeader);
+                    } else {
+                      consensusGroupIdToTaskMetaMap.put(
+                          taskIndex, new PipeTaskMeta(MinimumProgressIndex.INSTANCE, newLeader));
+                    }
+                  });
+              final Set<Integer> taskIdToRemove =
+                  consensusGroupIdToTaskMetaMap.keySet().stream()
+                      .filter(taskId -> !taskId2LeaderDataNodeId.containsKey(taskId))
+                      .collect(Collectors.toSet());
+              taskIdToRemove.forEach(consensusGroupIdToTaskMetaMap::remove);
+            });
   }
 
   @Override
   public void executeFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromWriteConfigNodeConsensus");
 
     final List<PipeMeta> pipeMetaList = new ArrayList<>();
     for (final PipeMeta pipeMeta : pipeTaskInfo.get().getPipeMetaList()) {
@@ -132,7 +196,7 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
   @Override
   public void executeFromOperateOnDataNodes(ConfigNodeProcedureEnv env)
       throws PipeException, IOException {
-    LOGGER.info("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: executeFromOperateOnDataNodes");
 
     Map<Integer, TPushPipeMetaResp> respMap = pushPipeMetaToDataNodes(env);
     if (pipeTaskInfo.get().recordDataNodePushPipeMetaExceptions(respMap)) {
@@ -145,28 +209,28 @@ public class PipeMetaSyncProcedure extends AbstractOperatePipeProcedureV2 {
 
   @Override
   public void rollbackFromValidateTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromValidateTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromValidateTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromCalculateInfoForTask(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromCalculateInfoForTask");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromWriteConfigNodeConsensus(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromWriteConfigNodeConsensus");
 
     // Do nothing
   }
 
   @Override
   public void rollbackFromOperateOnDataNodes(ConfigNodeProcedureEnv env) {
-    LOGGER.info("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
+    LOGGER.debug("PipeMetaSyncProcedure: rollbackFromOperateOnDataNodes");
 
     // Do nothing
   }

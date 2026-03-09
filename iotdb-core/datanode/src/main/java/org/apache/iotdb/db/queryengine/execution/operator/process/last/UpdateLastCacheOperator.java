@@ -40,7 +40,7 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
   // accept PartialPath
-  private final MeasurementPath fullPath;
+  protected final MeasurementPath fullPath;
 
   // type for queried time series
   protected final String dataType;
@@ -53,12 +53,33 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
       TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
       boolean needUpdateCache,
       boolean isNeedUpdateNullEntry) {
+    this(
+        operatorContext,
+        child,
+        fullPath,
+        dataType,
+        treeDeviceSchemaCacheManager,
+        needUpdateCache,
+        isNeedUpdateNullEntry,
+        true);
+  }
+
+  public UpdateLastCacheOperator(
+      OperatorContext operatorContext,
+      Operator child,
+      MeasurementPath fullPath,
+      TSDataType dataType,
+      TreeDeviceSchemaCacheManager treeDeviceSchemaCacheManager,
+      boolean needUpdateCache,
+      boolean isNeedUpdateNullEntry,
+      boolean deviceInMultiRegion) {
     super(
         operatorContext,
         child,
         treeDeviceSchemaCacheManager,
         needUpdateCache,
-        isNeedUpdateNullEntry);
+        isNeedUpdateNullEntry,
+        deviceInMultiRegion);
     this.fullPath = fullPath;
     this.dataType = dataType.name();
   }
@@ -94,8 +115,8 @@ public class UpdateLastCacheOperator extends AbstractUpdateLastCacheOperator {
   }
 
   protected void appendLastValueToTsBlockBuilder(long lastTime, TsPrimitiveType lastValue) {
-    LastQueryUtil.appendLastValue(
-        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue.getStringValue(), dataType);
+    LastQueryUtil.appendLastValueRespectBlob(
+        tsBlockBuilder, lastTime, fullPath.getFullPath(), lastValue, dataType);
   }
 
   @Override

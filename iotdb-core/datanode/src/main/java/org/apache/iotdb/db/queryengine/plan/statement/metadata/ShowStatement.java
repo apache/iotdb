@@ -59,6 +59,13 @@ public class ShowStatement extends AuthorityInformationStatement {
     this.offset = offset;
   }
 
+  public long getLimitWithOffset() {
+    if (limit <= 0) {
+      return limit;
+    }
+    return limit + offset;
+  }
+
   public boolean isPrefixPath() {
     return isPrefixPath;
   }

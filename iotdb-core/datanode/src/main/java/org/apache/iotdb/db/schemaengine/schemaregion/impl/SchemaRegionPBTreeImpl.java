@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -39,6 +40,8 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.DeleteTableDeviceNode;
@@ -96,13 +99,14 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAligne
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -403,8 +407,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
             System.currentTimeMillis() - time,
             storageGroupFullPath);
       } catch (Exception e) {
-        e.printStackTrace();
-        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin", e);
       }
     }
   }
@@ -421,7 +424,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     try {
       mLogReader.skip(offset);
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Failed to skip {} from {}", offset, schemaRegionDirPath, e);
     }
     while (mLogReader.hasNext()) {
       plan = mLogReader.next();
@@ -642,7 +645,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               plan.getProps(),
               plan.getAlias(),
               (plan instanceof CreateTimeSeriesPlanImpl
-                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()));
+                  && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       try {
         // Should merge
@@ -753,7 +759,10 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       try {
         // Update statistics and schemaDataTypeNumMap
@@ -852,7 +861,11 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mtree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -936,6 +949,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
         }
       }
     }
+  }
+
+  @Override
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
+      throws MetadataException {
+    throw new UnsupportedOperationException(
+        "PBTree does not support altering encoding and compressor yet.");
   }
 
   @Override
@@ -1358,6 +1378,21 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
     }
   }
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException, IOException {
+    throw new UnsupportedOperationException(
+        "PBTree does not support altering timeseries data type.");
+  }
+
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(IMeasurementMNode<ICachedMNode> node) throws IOException {
@@ -1481,6 +1516,13 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
   }
 
   @Override
+  public int fillLastQueryMap(
+      PartialPath pattern,
+      Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  @Override
   public ISchemaReader<IDeviceSchemaInfo> getDeviceReader(IShowDevicesPlan showDevicesPlan)
       throws MetadataException {
     return mtree.getDeviceReader(showDevicesPlan);
@@ -1521,7 +1563,7 @@ public class SchemaRegionPBTreeImpl implements ISchemaRegion {
 
   @Override
   public ISchemaReader<IDeviceSchemaInfo> getTableDeviceReader(
-      String table, List<Object[]> devicePathList) throws MetadataException {
+      String table, List<Object[]> devicePathList) {
     throw new UnsupportedOperationException();
   }
 

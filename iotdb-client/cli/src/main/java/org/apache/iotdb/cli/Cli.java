@@ -158,15 +158,18 @@ public class Cli extends AbstractCli {
   private static void serve(CliContext ctx) {
     try {
       useSsl = commandLine.getOptionValue(USE_SSL_ARGS);
-      trustStore = commandLine.getOptionValue(TRUST_STORE_ARGS);
-      trustStorePwd = commandLine.getOptionValue(TRUST_STORE_PWD_ARGS);
-      password = commandLine.getOptionValue(PW_ARGS);
-      constructProperties();
-      if (hasExecuteSQL && password != null) {
-        executeSql(ctx);
+      if (Boolean.parseBoolean(useSsl)) {
+        trustStore = ctx.getLineReader().readLine("please input your trust_store:", '\0');
+        trustStorePwd = ctx.getLineReader().readLine("please input your trust_store_pwd:", '\0');
       }
+      password = commandLine.getOptionValue(PW_ARGS);
       if (password == null) {
         password = ctx.getLineReader().readLine("please input your password:", '\0');
+      }
+      constructProperties();
+      if (hasExecuteSQL && password != null) {
+        ctx.getLineReader().getVariables().put(LineReader.DISABLE_HISTORY, Boolean.TRUE);
+        executeSql(ctx);
       }
       receiveCommands(ctx);
     } catch (Exception e) {

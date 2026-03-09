@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.crud;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DuplicateInsertException;
@@ -34,15 +31,16 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.pipe.resource.memory.InsertNodeMemoryEstimator;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaValidation;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.schemaengine.schemaregion.attribute.update.UpdateDetailContainer;
 import org.apache.iotdb.db.utils.CommonUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.annotations.TableModel;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.read.common.type.Type;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -78,11 +76,14 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   // get from client
   protected TSDataType[] dataTypes;
 
+  protected Type[] typeConvertors;
+  protected InputLocation[] inputLocations;
+
   /** index of failed measurements -> info including measurement, data type and value */
   protected Map<Integer, FailedMeasurementInfo> failedMeasurementIndex2Info;
 
   protected TsTableColumnCategory[] columnCategories;
-  protected List<Integer> idColumnIndices;
+  protected List<Integer> tagColumnIndices;
   protected List<Integer> attrColumnIndices;
   protected boolean writeToTable = false;
 
@@ -108,6 +109,15 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   @TableModel protected String databaseName;
 
   protected long ramBytesUsed = Long.MIN_VALUE;
+
+  /** Flag to indicate if semantic check has been performed */
+  private boolean hasSemanticChecked = false;
+
+  /** Flag indicating whether ATTRIBUTE columns currently exist (default: true). */
+  private boolean attributeColumnsPresent = true;
+
+  /** Flag indicating whether the lower-case transformation has already been applied. */
+  private boolean toLowerCaseApplied = false;
 
   // endregion
 
@@ -172,25 +182,20 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     this.dataTypes[i] = dataType;
   }
 
+  public void setTypeConvertors(Type[] typeConvertors) {
+    this.typeConvertors = typeConvertors;
+  }
+
+  public void setInputLocations(InputLocation[] inputLocations) {
+    this.inputLocations = inputLocations;
+  }
+
   /** Returns true when this statement is empty and no need to write into the server */
   public abstract boolean isEmpty();
 
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    List<PartialPath> checkedPaths = getPaths().stream().distinct().collect(Collectors.toList());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
-            userName, checkedPaths, PrivilegeType.WRITE_DATA),
-        checkedPaths,
-        PrivilegeType.WRITE_DATA);
   }
 
   public abstract ISchemaValidation getSchemaValidation();
@@ -244,18 +249,33 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
   public abstract Object getFirstValueOfIndex(int index);
 
   public void semanticCheck() {
-    Set<String> deduplicatedMeasurements = new HashSet<>();
+    // Skip if semantic check has already been performed
+    if (hasSemanticChecked) {
+      return;
+    }
+
+    Set<String> deduplicatedMeasurements = new HashSet<>(measurements.length);
+    int index = 0;
+    int failedMeasurements = 0;
     for (String measurement : measurements) {
       if (measurement == null || measurement.isEmpty()) {
+        if ((failedMeasurementIndex2Info != null
+            && failedMeasurementIndex2Info.containsKey(index + failedMeasurements))) {
+          failedMeasurements++;
+          continue;
+        }
         throw new SemanticException(
             "Measurement contains null or empty string: " + Arrays.toString(measurements));
       }
-      if (deduplicatedMeasurements.contains(measurement)) {
+      index++;
+      deduplicatedMeasurements.add(measurement);
+      if (deduplicatedMeasurements.size() != index) {
         throw new SemanticException("Insertion contains duplicated measurement: " + measurement);
-      } else {
-        deduplicatedMeasurements.add(measurement);
       }
     }
+
+    // Mark as checked to avoid redundant checks
+    setSemanticChecked(true);
   }
 
   // region partial insert
@@ -306,19 +326,19 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       columnCategories = new TsTableColumnCategory[measurements.length];
     }
     this.columnCategories[i] = columnCategory;
-    this.idColumnIndices = null;
+    this.tagColumnIndices = null;
   }
 
-  public List<Integer> getIdColumnIndices() {
-    if (idColumnIndices == null && columnCategories != null) {
-      idColumnIndices = new ArrayList<>();
+  public List<Integer> getTagColumnIndices() {
+    if (tagColumnIndices == null && columnCategories != null) {
+      tagColumnIndices = new ArrayList<>();
       for (int i = 0; i < columnCategories.length; i++) {
         if (columnCategories[i].equals(TsTableColumnCategory.TAG)) {
-          idColumnIndices.add(i);
+          tagColumnIndices.add(i);
         }
       }
     }
-    return idColumnIndices;
+    return tagColumnIndices;
   }
 
   public List<Integer> getAttrColumnIndices() {
@@ -331,6 +351,30 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       }
     }
     return attrColumnIndices;
+  }
+
+  public boolean isAttributeColumnsPresent() {
+    return attributeColumnsPresent;
+  }
+
+  public void setAttributeColumnsPresent(final boolean attributeColumnsPresent) {
+    this.attributeColumnsPresent = attributeColumnsPresent;
+  }
+
+  public boolean isToLowerCaseApplied() {
+    return toLowerCaseApplied;
+  }
+
+  public void setToLowerCaseApplied(final boolean toLowerCaseApplied) {
+    this.toLowerCaseApplied = toLowerCaseApplied;
+  }
+
+  public boolean isSemanticChecked() {
+    return hasSemanticChecked;
+  }
+
+  public void setSemanticChecked(final boolean semanticChecked) {
+    this.hasSemanticChecked = semanticChecked;
   }
 
   public boolean hasFailedMeasurements() {
@@ -378,7 +422,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void removeAttributeColumns() {
+    if (!attributeColumnsPresent) {
+      return;
+    }
     if (columnCategories == null) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -390,6 +438,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     }
 
     if (columnsToKeep.size() == columnCategories.length) {
+      attributeColumnsPresent = false;
       return;
     }
 
@@ -419,8 +468,9 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     subRemoveAttributeColumns(columnsToKeep);
 
     // to reconstruct indices
-    idColumnIndices = null;
+    tagColumnIndices = null;
     attrColumnIndices = null;
+    attributeColumnsPresent = false;
   }
 
   protected abstract void subRemoveAttributeColumns(List<Integer> columnsToKeep);
@@ -588,7 +638,7 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
       System.arraycopy(
           columnCategories, pos, tmpCategories, pos + 1, columnCategories.length - pos);
       columnCategories = tmpCategories;
-      idColumnIndices = null;
+      tagColumnIndices = null;
     }
   }
 
@@ -607,7 +657,85 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     if (columnCategories != null) {
       CommonUtils.swapArray(columnCategories, src, target);
     }
-    idColumnIndices = null;
+    if (typeConvertors != null) {
+      CommonUtils.swapArray(typeConvertors, src, target);
+    }
+    if (inputLocations != null) {
+      CommonUtils.swapArray(inputLocations, src, target);
+    }
+    tagColumnIndices = null;
+  }
+
+  /**
+   * The oldToNewMapping array provides the mapping from old array positions to new array positions:
+   * newArray[oldToNewMapping[oldIdx]] = oldArray[oldIdx]
+   *
+   * @param oldToNewMapping maps each old index to its new position in the reorganized array
+   */
+  @TableModel
+  public void rebuildArraysAfterExpansion(
+      final int[] newToOldMapping, final String[] newMeasurements) {
+    final int newLength = newToOldMapping.length;
+
+    // Save old arrays
+    final MeasurementSchema[] oldMeasurementSchemas = measurementSchemas;
+    final TSDataType[] oldDataTypes = dataTypes;
+    final TsTableColumnCategory[] oldColumnCategories = columnCategories;
+    final Type[] oldTypeConvertors = typeConvertors;
+    final InputLocation[] oldInputLocations = inputLocations;
+
+    // Set new measurements array
+    measurements = newMeasurements;
+
+    // Create new arrays
+    final MeasurementSchema[] newMeasurementSchemas = new MeasurementSchema[newLength];
+    final TSDataType[] newDataTypes = new TSDataType[newLength];
+    final TsTableColumnCategory[] newColumnCategories = new TsTableColumnCategory[newLength];
+    final Type[] newTypeConvertors = typeConvertors != null ? new Type[newLength] : null;
+    final InputLocation[] newInputLocations =
+        oldInputLocations != null ? new InputLocation[newLength] : null;
+
+    // Rebuild arrays using mapping: newToOldMapping[newIdx] = oldIdx
+    // If oldIdx == -1, it's a missing TAG column, fill with default values
+    for (int newIdx = 0; newIdx < newLength; newIdx++) {
+      final int oldIdx = newToOldMapping[newIdx];
+      if (oldIdx == -1) {
+        // Missing TAG column, fill with default values
+        final String columnName = newMeasurements[newIdx];
+        newMeasurementSchemas[newIdx] = new MeasurementSchema(columnName, TSDataType.STRING);
+        newDataTypes[newIdx] = TSDataType.STRING;
+        newColumnCategories[newIdx] = TsTableColumnCategory.TAG;
+        // typeConvertors and inputLocations remain null for missing columns
+      } else {
+        // Copy from old array
+        if (oldMeasurementSchemas != null) {
+          newMeasurementSchemas[newIdx] = oldMeasurementSchemas[oldIdx];
+        }
+        if (oldDataTypes != null) {
+          newDataTypes[newIdx] = oldDataTypes[oldIdx];
+        }
+        if (oldColumnCategories != null) {
+          newColumnCategories[newIdx] = oldColumnCategories[oldIdx];
+        }
+        if (oldTypeConvertors != null) {
+          newTypeConvertors[newIdx] = oldTypeConvertors[oldIdx];
+        }
+        if (oldInputLocations != null) {
+          newInputLocations[newIdx] = oldInputLocations[oldIdx];
+        }
+      }
+    }
+
+    // Replace old arrays with new arrays
+    measurementSchemas = newMeasurementSchemas;
+    dataTypes = newDataTypes;
+    columnCategories = newColumnCategories;
+    typeConvertors = newTypeConvertors;
+    inputLocations = newInputLocations;
+
+    // Clear cached indices
+    tagColumnIndices = null;
+    attrColumnIndices = null;
   }
 
   public boolean isWriteToTable() {
@@ -635,7 +763,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
 
   @TableModel
   public void toLowerCase() {
-    devicePath.toLowerCase();
+    if (toLowerCaseApplied) {
+      return;
+    }
+
     if (measurements == null) {
       return;
     }
@@ -652,6 +783,12 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
         }
       }
     }
+    toLowerCaseApplied = true;
+  }
+
+  @TableModel
+  public void toLowerCaseForDevicePath() {
+    devicePath.toLowerCase();
   }
 
   @TableModel
@@ -684,11 +821,11 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     ramBytesUsed =
         InsertNodeMemoryEstimator.sizeOfPartialPath(devicePath)
             + InsertNodeMemoryEstimator.sizeOfMeasurementSchemas(measurementSchemas)
-            + InsertNodeMemoryEstimator.sizeOfStringArray(measurements)
+            + RamUsageEstimator.sizeOf(measurements)
             + RamUsageEstimator.shallowSizeOf(dataTypes)
             + RamUsageEstimator.shallowSizeOf(columnCategories)
             // We assume that the integers are all cached by JVM
-            + shallowSizeOfList(idColumnIndices)
+            + shallowSizeOfList(tagColumnIndices)
             + shallowSizeOfList(attrColumnIndices)
             + shallowSizeOfList(logicalViewSchemaList)
             + (Objects.nonNull(logicalViewSchemaList)
@@ -702,6 +839,16 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
     return ramBytesUsed;
   }
 
+  /**
+   * Set the pre-calculated memory size. This is used when memory size is calculated during
+   * deserialization to avoid recalculation.
+   *
+   * @param ramBytesUsed the calculated memory size in bytes
+   */
+  public void setRamBytesUsed(long ramBytesUsed) {
+    this.ramBytesUsed = ramBytesUsed;
+  }
+
   private long shallowSizeOfList(List<?> list) {
     return Objects.nonNull(list)
         ? UpdateDetailContainer.LIST_SIZE
@@ -709,6 +856,10 @@ public abstract class InsertBaseStatement extends Statement implements Accountab
                 RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
                     + (long) RamUsageEstimator.NUM_BYTES_OBJECT_REF * list.size())
         : 0L;
+  }
+
+  public List<PartialPath> getDevicePaths() {
+    return Collections.singletonList(devicePath);
   }
 
   protected abstract long calculateBytesUsed();

@@ -26,12 +26,12 @@ import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.overview.PipeHeartbeatEventMetrics;
+import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 import org.apache.iotdb.db.utils.DateTimeUtils;
 import org.apache.iotdb.pipe.api.event.Event;
 
-import com.lmax.disruptor.RingBuffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   private final boolean shouldPrintMessage;
 
   public PipeHeartbeatEvent(final String dataRegionId, final boolean shouldPrintMessage) {
-    super(null, 0, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
+    super(null, 0, null, null, null, null, null, null, true, Long.MIN_VALUE, Long.MAX_VALUE);
     this.dataRegionId = dataRegionId;
     this.shouldPrintMessage = shouldPrintMessage;
   }
@@ -82,6 +82,8 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
         null,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -93,7 +95,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
   @Override
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .increaseHeartbeatEventCount(pipeName, creationTime);
     }
     return true;
@@ -104,7 +106,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
     // PipeName == null indicates that the event is the raw event at disruptor,
     // not the event copied and passed to the extractor
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
+      PipeDataNodeSinglePipeMetrics.getInstance()
           .decreaseHeartbeatEventCount(pipeName, creationTime);
       if (shouldPrintMessage && LOGGER.isDebugEnabled()) {
         LOGGER.debug(this.toString());
@@ -125,7 +127,9 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -196,7 +200,7 @@ public class PipeHeartbeatEvent extends EnrichedEvent {
 
   /////////////////////////////// Queue size Reporting ///////////////////////////////
 
-  public void recordDisruptorSize(final RingBuffer<?> ringBuffer) {
+  public void recordDisruptorSize(final RingBuffer ringBuffer) {
     if (shouldPrintMessage) {
       disruptorSize = ringBuffer.getBufferSize() - (int) ringBuffer.remainingCapacity();
     }

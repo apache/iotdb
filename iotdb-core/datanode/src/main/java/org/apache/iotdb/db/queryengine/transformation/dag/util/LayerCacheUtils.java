@@ -26,7 +26,6 @@ import org.apache.iotdb.db.queryengine.transformation.datastructure.row.ElasticS
 import org.apache.iotdb.db.queryengine.transformation.datastructure.tv.ElasticSerializableTVList;
 
 import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.read.common.block.column.TimeColumn;
 
 public class LayerCacheUtils {
 
@@ -43,7 +42,7 @@ public class LayerCacheUtils {
     // First column is the value column;
     // Second column is always the time column.
     Column[] columns = source.current();
-    target.putColumn((TimeColumn) columns[1], columns[0]);
+    target.putColumn(columns[1], columns[0]);
     source.consumedAll();
 
     return YieldableState.YIELDABLE;
@@ -58,7 +57,7 @@ public class LayerCacheUtils {
       }
 
       Column[] columns = source.current();
-      target.putColumn((TimeColumn) columns[1], columns[0]);
+      target.putColumn(columns[1], columns[0]);
       source.consumedAll();
 
       int size = columns[0].getPositionCount();

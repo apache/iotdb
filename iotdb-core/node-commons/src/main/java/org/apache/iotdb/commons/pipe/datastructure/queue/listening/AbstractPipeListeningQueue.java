@@ -76,10 +76,12 @@ public abstract class AbstractPipeListeningQueue extends AbstractSerializableLis
     }
   }
 
-  public synchronized Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots() {
-    if (queueTailIndex2SnapshotsCache.getLeft()
-        < queue.getTailIndex()
-            - PipeConfig.getInstance().getPipeListeningQueueTransferSnapshotThreshold()) {
+  public synchronized Pair<Long, List<PipeSnapshotEvent>> findAvailableSnapshots(
+      final boolean mayClear) {
+    if (mayClear
+        && queueTailIndex2SnapshotsCache.getLeft()
+            < queue.getTailIndex()
+                - PipeConfig.getInstance().getPipeListeningQueueTransferSnapshotThreshold()) {
       clearSnapshots();
     }
     return queueTailIndex2SnapshotsCache;

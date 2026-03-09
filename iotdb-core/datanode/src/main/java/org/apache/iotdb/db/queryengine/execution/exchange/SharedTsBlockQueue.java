@@ -24,11 +24,12 @@ import org.apache.iotdb.db.queryengine.common.FragmentInstanceId;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.LocalSinkChannel;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.LocalSourceHandle;
 import org.apache.iotdb.db.queryengine.execution.memory.LocalMemoryManager;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceId;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.apache.commons.lang3.Validate;
+import org.apache.tsfile.external.commons.lang3.Validate;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -74,7 +75,7 @@ public class SharedTsBlockQueue {
 
   private ListenableFuture<Void> blockedOnMemory;
 
-  private boolean closed = false;
+  private volatile boolean closed = false;
   private boolean alreadyRegistered = false;
 
   private LocalSourceHandle sourceHandle;
@@ -220,6 +221,9 @@ public class SharedTsBlockQueue {
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug("[addTsBlock] TsBlock:{}", CommonUtils.toString(tsBlock));
+    }
     if (closed) {
       // queue may have been closed
       return immediateVoidFuture();

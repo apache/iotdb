@@ -21,6 +21,8 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -38,7 +40,10 @@ import static com.google.common.collect.Iterables.isEmpty;
 import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
-public class QualifiedName {
+public class QualifiedName implements Accountable {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(QualifiedName.class);
 
   private final List<Identifier> originalParts;
   private final List<String> parts;
@@ -155,6 +160,29 @@ public class QualifiedName {
     return name;
   }
 
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(originalParts.size(), buffer);
+    for (Identifier identifier : originalParts) {
+      Expression.serialize(identifier, buffer);
+    }
+
+    ReadWriteIOUtils.write(parts.size(), buffer);
+    for (String part : parts) {
+      ReadWriteIOUtils.write(part, buffer);
+    }
+
+    ReadWriteIOUtils.write(name, buffer);
+
+    if (prefix != null) {
+      ReadWriteIOUtils.write((byte) 1, buffer);
+      prefix.serialize(buffer);
+    } else {
+      ReadWriteIOUtils.write((byte) 0, buffer);
+    }
+
+    ReadWriteIOUtils.write(suffix, buffer);
+  }
+
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(originalParts.size(), stream);
     for (Identifier identifier : originalParts) {
@@ -202,5 +230,18 @@ public class QualifiedName {
     String suffix = ReadWriteIOUtils.readString(byteBuffer);
 
     return new QualifiedName(originalParts, parts, name, prefix, suffix);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(originalParts);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(parts);
+    size += RamUsageEstimator.sizeOf(name);
+    if (prefix != null) {
+      size += prefix.ramBytesUsed();
+    }
+    size += RamUsageEstimator.sizeOf(suffix);
+    return size;
   }
 }

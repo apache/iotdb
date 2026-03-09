@@ -19,28 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 public class CreateTraining extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateTraining.class);
 
   private final String modelId;
-  private final String modelType;
+  private final String targetSql;
 
   private Map<String, String> parameters;
   private String existingModelId = null;
 
-  private List<QualifiedName> targetTables;
-  private List<String> targetDbs;
-
-  private List<List<Long>> targetTimeRanges;
-  private boolean useAllData = false;
-
-  public CreateTraining(String modelId, String modelType) {
+  public CreateTraining(String modelId, String targetSql) {
     super(null);
     this.modelId = modelId;
-    this.modelType = modelType;
+    this.targetSql = targetSql;
   }
 
   @Override
@@ -56,32 +54,8 @@ public class CreateTraining extends Statement {
     this.existingModelId = existingModelId;
   }
 
-  public void setTargetDbs(List<String> targetDbs) {
-    this.targetDbs = targetDbs;
-  }
-
-  public void setTargetTables(List<QualifiedName> targetTables) {
-    this.targetTables = targetTables;
-  }
-
-  public void setUseAllData(boolean useAllData) {
-    this.useAllData = useAllData;
-  }
-
-  public List<String> getTargetDbs() {
-    return targetDbs;
-  }
-
-  public List<QualifiedName> getTargetTables() {
-    return targetTables;
-  }
-
   public String getModelId() {
     return modelId;
-  }
-
-  public String getModelType() {
-    return modelType;
   }
 
   public Map<String, String> getParameters() {
@@ -92,16 +66,8 @@ public class CreateTraining extends Statement {
     return existingModelId;
   }
 
-  public boolean isUseAllData() {
-    return useAllData;
-  }
-
-  public void setTargetTimeRanges(List<List<Long>> targetTimeRanges) {
-    this.targetTimeRanges = targetTimeRanges;
-  }
-
-  public List<List<Long>> getTargetTimeRanges() {
-    return targetTimeRanges;
+  public String getTargetSql() {
+    return targetSql;
   }
 
   @Override
@@ -110,23 +76,20 @@ public class CreateTraining extends Statement {
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(
-        modelId, modelType, existingModelId, parameters, targetTimeRanges, useAllData);
+  public boolean equals(Object o) {
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateTraining that = (CreateTraining) o;
+    return Objects.equals(modelId, that.modelId)
+        && Objects.equals(targetSql, that.targetSql)
+        && Objects.equals(parameters, that.parameters)
+        && Objects.equals(existingModelId, that.existingModelId);
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (!(obj instanceof CreateTraining)) {
-      return false;
-    }
-    CreateTraining createTraining = (CreateTraining) obj;
-    return modelId.equals(createTraining.modelId)
-        && modelType.equals(createTraining.modelType)
-        && Objects.equals(existingModelId, createTraining.existingModelId)
-        && Objects.equals(parameters, createTraining.parameters)
-        && Objects.equals(targetTimeRanges, createTraining.targetTimeRanges)
-        && useAllData == createTraining.useAllData;
+  public int hashCode() {
+    return Objects.hash(modelId, targetSql, parameters, existingModelId);
   }
 
   @Override
@@ -135,22 +98,25 @@ public class CreateTraining extends Statement {
         + "modelId='"
         + modelId
         + '\''
-        + ", modelType='"
-        + modelType
+        + ", targetSql='"
+        + targetSql
         + '\''
         + ", parameters="
         + parameters
         + ", existingModelId='"
         + existingModelId
         + '\''
-        + ", targetTables="
-        + targetTables
-        + ", targetDbs="
-        + targetDbs
-        + ", targetTimeRanges="
-        + targetTimeRanges
-        + ", useAllData="
-        + useAllData
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(modelId);
+    size += RamUsageEstimator.sizeOf(targetSql);
+    size += RamUsageEstimator.sizeOf(existingModelId);
+    size += RamUsageEstimator.sizeOfMap(parameters);
+    return size;
   }
 }

@@ -20,21 +20,26 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
+
+import javax.annotation.Nullable;
 
 import java.util.List;
 import java.util.Objects;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
-import static java.util.Objects.requireNonNull;
 
 public class JoinOn extends JoinCriteria {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(JoinOn.class);
 
-  private final Expression expression;
+  // this can be null when it is AsofJoinOn
+  @Nullable protected final Expression expression;
 
-  public JoinOn(Expression expression) {
-    this.expression = requireNonNull(expression, "expression is null");
+  public JoinOn(@Nullable Expression expression) {
+    this.expression = expression;
   }
 
+  @Nullable
   public Expression getExpression() {
     return expression;
   }
@@ -64,5 +69,16 @@ public class JoinOn extends JoinCriteria {
   @Override
   public List<Node> getNodes() {
     return ImmutableList.of(expression);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
+    return size;
+  }
+
+  protected long ramBytesUsedExcludingInstanceSize() {
+    return AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(expression);
   }
 }

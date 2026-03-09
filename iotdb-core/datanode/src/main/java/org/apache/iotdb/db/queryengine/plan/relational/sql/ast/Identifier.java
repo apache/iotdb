@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -36,6 +37,9 @@ import static java.util.Locale.ENGLISH;
 import static java.util.Objects.requireNonNull;
 
 public class Identifier extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(Identifier.class);
 
   private static final CharMatcher FIRST_CHAR_DISALLOWED_MATCHER =
       CharMatcher.inRange('0', '9').precomputed();
@@ -79,7 +83,11 @@ public class Identifier extends Expression {
   }
 
   public Identifier(String value) {
-    this(value, !isValidIdentifier(value));
+    super(null);
+    this.value = requireNonNull(value, "value is null");
+    this.delimited = !isValidIdentifier(value);
+
+    checkArgument(!value.isEmpty(), "value is empty");
   }
 
   public String getValue() {
@@ -155,6 +163,12 @@ public class Identifier extends Expression {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(this.value, buffer);
+    ReadWriteIOUtils.write(this.delimited, buffer);
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(this.value, stream);
     ReadWriteIOUtils.write(this.delimited, stream);
@@ -164,5 +178,12 @@ public class Identifier extends Expression {
     super(null);
     this.value = ReadWriteIOUtils.readString(byteBuffer);
     this.delimited = ReadWriteIOUtils.readBool(byteBuffer);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + RamUsageEstimator.sizeOf(value);
   }
 }

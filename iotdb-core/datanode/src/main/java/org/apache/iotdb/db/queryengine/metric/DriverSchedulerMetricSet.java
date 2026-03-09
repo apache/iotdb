@@ -88,16 +88,6 @@ public class DriverSchedulerMetricSet implements IMetricSet {
         DriverScheduler::getQueryMapSize,
         Tag.NAME.toString(),
         QUERY_MAP_SIZE);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.DRIVER_SCHEDULER.toString(),
-        Tag.NAME.toString(),
-        TIMEOUT_QUEUE_SIZE);
-    metricService.remove(
-        MetricType.AUTO_GAUGE,
-        Metric.DRIVER_SCHEDULER.toString(),
-        Tag.NAME.toString(),
-        QUERY_MAP_SIZE);
   }
 
   @Override
@@ -124,6 +114,16 @@ public class DriverSchedulerMetricSet implements IMetricSet {
         Metric.DRIVER_SCHEDULER.toString(),
         Tag.NAME.toString(),
         BLOCK_QUEUE_TASK_COUNT);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        TIMEOUT_QUEUE_SIZE);
+    metricService.remove(
+        MetricType.AUTO_GAUGE,
+        Metric.DRIVER_SCHEDULER.toString(),
+        Tag.NAME.toString(),
+        QUERY_MAP_SIZE);
   }
 
   public void recordTaskQueueTime(String name, long queueTimeInNanos) {

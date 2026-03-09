@@ -22,7 +22,7 @@ package org.apache.iotdb.db.subscription.agent;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.resource.SubscriptionDataNodeResourceManager;
-import org.apache.iotdb.db.subscription.task.subtask.SubscriptionConnectorSubtask;
+import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
@@ -30,12 +30,14 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 
 public class SubscriptionBrokerAgent {
 
@@ -43,6 +45,9 @@ public class SubscriptionBrokerAgent {
 
   private final Map<String, SubscriptionBroker> consumerGroupIdToSubscriptionBroker =
       new ConcurrentHashMap<>();
+
+  private final Cache<Integer> prefetchingQueueCount =
+      new Cache<>(this::getPrefetchingQueueCountInternal);
 
   //////////////////////////// provided for subscription agent ////////////////////////////
 
@@ -116,6 +121,25 @@ public class SubscriptionBrokerAgent {
     return broker.commit(consumerId, commitContexts, nack);
   }
 
+  public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
+    final String consumerGroupId = commitContext.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return true;
+    }
+    return broker.isCommitContextOutdated(commitContext);
+  }
+
+  public List<String> fetchTopicNamesToUnsubscribe(
+      final ConsumerConfig consumerConfig, final Set<String> topicNames) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      return Collections.emptyList();
+    }
+    return broker.fetchTopicNamesToUnsubscribe(topicNames);
+  }
+
   /////////////////////////////// broker ///////////////////////////////
 
   public boolean isBrokerExist(final String consumerGroupId) {
@@ -157,7 +181,7 @@ public class SubscriptionBrokerAgent {
 
   /////////////////////////////// prefetching queue ///////////////////////////////
 
-  public void bindPrefetchingQueue(final SubscriptionConnectorSubtask subtask) {
+  public void bindPrefetchingQueue(final SubscriptionSinkSubtask subtask) {
     final String consumerGroupId = subtask.getConsumerGroupId();
     consumerGroupIdToSubscriptionBroker
         .compute(
@@ -173,6 +197,17 @@ public class SubscriptionBrokerAgent {
               return broker;
             })
         .bindPrefetchingQueue(subtask.getTopicName(), subtask.getInputPendingQueue());
+    prefetchingQueueCount.invalidate();
+  }
+
+  public void updateCompletedTopicNames(final String consumerGroupId, final String topicName) {
+    final SubscriptionBroker broker = consumerGroupIdToSubscriptionBroker.get(consumerGroupId);
+    if (Objects.isNull(broker)) {
+      LOGGER.warn(
+          "Subscription: broker bound to consumer group [{}] does not exist", consumerGroupId);
+      return;
+    }
+    broker.updateCompletedTopicNames(topicName);
   }
 
   public void unbindPrefetchingQueue(final String consumerGroupId, final String topicName) {
@@ -183,6 +218,7 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.unbindPrefetchingQueue(topicName);
+    prefetchingQueueCount.invalidate();
   }
 
   public void removePrefetchingQueue(final String consumerGroupId, final String topicName) {
@@ -193,6 +229,7 @@ public class SubscriptionBrokerAgent {
       return;
     }
     broker.removePrefetchingQueue(topicName);
+    prefetchingQueueCount.invalidate();
   }
 
   public boolean executePrefetch(final String consumerGroupId, final String topicName) {
@@ -221,8 +258,56 @@ public class SubscriptionBrokerAgent {
   }
 
   public int getPrefetchingQueueCount() {
+    return prefetchingQueueCount.get();
+  }
+
+  private int getPrefetchingQueueCountInternal() {
     return consumerGroupIdToSubscriptionBroker.values().stream()
         .map(SubscriptionBroker::getPrefetchingQueueCount)
         .reduce(0, Integer::sum);
+  }
+
+  /////////////////////////////// Cache ///////////////////////////////
+
+  /**
+   * A simple generic cache that computes and stores a value on demand.
+   *
+   * <p>Note that since the get() and invalidate() methods are not modified with synchronized, the
+   * value obtained may not be entirely accurate.
+   *
+   * @param <T> the type of the cached value
+   */
+  private static class Cache<T> {
+
+    private T value;
+    private volatile boolean valid = false;
+    private final Supplier<T> supplier;
+
+    /**
+     * Construct a cache with a supplier that knows how to compute the value.
+     *
+     * @param supplier a Supplier that computes the value when needed
+     */
+    private Cache(final Supplier<T> supplier) {
+      this.supplier = supplier;
+    }
+
+    /** Invalidate the cache. The next call to get() will recompute the value. */
+    private void invalidate() {
+      valid = false;
+    }
+
+    /**
+     * Return the cached value, recomputing it if the cache is invalid.
+     *
+     * @return the current value, recomputed if necessary
+     */
+    private T get() {
+      if (!valid) {
+        value = supplier.get();
+        valid = true;
+      }
+      return value;
+    }
   }
 }

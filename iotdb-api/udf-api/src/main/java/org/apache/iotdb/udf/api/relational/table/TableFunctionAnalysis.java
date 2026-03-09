@@ -58,13 +58,17 @@ public class TableFunctionAnalysis {
    */
   private final boolean requireRecordSnapshot;
 
+  private final TableFunctionHandle handle;
+
   private TableFunctionAnalysis(
       Optional<DescribedSchema> properColumnSchema,
       Map<String, List<Integer>> requiredColumns,
-      boolean requiredRecordSnapshot) {
+      boolean requiredRecordSnapshot,
+      TableFunctionHandle handle) {
     this.properColumnSchema = requireNonNull(properColumnSchema, "returnedType is null");
     this.requiredColumns = requiredColumns;
     this.requireRecordSnapshot = requiredRecordSnapshot;
+    this.handle = requireNonNull(handle, "TableFunctionHandle is null");
   }
 
   public Optional<DescribedSchema> getProperColumnSchema() {
@@ -79,6 +83,10 @@ public class TableFunctionAnalysis {
     return requireRecordSnapshot;
   }
 
+  public TableFunctionHandle getTableFunctionHandle() {
+    return handle;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -87,6 +95,7 @@ public class TableFunctionAnalysis {
     private DescribedSchema properColumnSchema;
     private final Map<String, List<Integer>> requiredColumns = new HashMap<>();
     private boolean requireRecordSnapshot = true;
+    private TableFunctionHandle executionInfo;
 
     private Builder() {}
 
@@ -105,9 +114,17 @@ public class TableFunctionAnalysis {
       return this;
     }
 
+    public Builder handle(TableFunctionHandle executionInfo) {
+      this.executionInfo = executionInfo;
+      return this;
+    }
+
     public TableFunctionAnalysis build() {
       return new TableFunctionAnalysis(
-          Optional.ofNullable(properColumnSchema), requiredColumns, requireRecordSnapshot);
+          Optional.ofNullable(properColumnSchema),
+          requiredColumns,
+          requireRecordSnapshot,
+          executionInfo);
     }
   }
 }

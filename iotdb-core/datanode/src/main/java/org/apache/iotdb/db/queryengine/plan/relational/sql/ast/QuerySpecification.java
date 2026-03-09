@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,12 +31,16 @@ import static java.util.Objects.requireNonNull;
 
 public class QuerySpecification extends QueryBody {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(QuerySpecification.class);
+
   private final Select select;
   private final Optional<Relation> from;
   private final Optional<Expression> where;
   private final Optional<GroupBy> groupBy;
   private final Optional<Expression> having;
   private final Optional<Fill> fill;
+  private final List<WindowDefinition> windows;
   private final Optional<OrderBy> orderBy;
   private final Optional<Offset> offset;
   private final Optional<Node> limit;
@@ -47,10 +52,11 @@ public class QuerySpecification extends QueryBody {
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
       Optional<Fill> fill,
+      List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
-    this(null, select, from, where, groupBy, having, fill, orderBy, offset, limit);
+    this(null, select, from, where, groupBy, having, fill, windows, orderBy, offset, limit);
   }
 
   public QuerySpecification(
@@ -61,6 +67,7 @@ public class QuerySpecification extends QueryBody {
       Optional<GroupBy> groupBy,
       Optional<Expression> having,
       Optional<Fill> fill,
+      List<WindowDefinition> windows,
       Optional<OrderBy> orderBy,
       Optional<Offset> offset,
       Optional<Node> limit) {
@@ -72,6 +79,7 @@ public class QuerySpecification extends QueryBody {
     this.groupBy = requireNonNull(groupBy, "groupBy is null");
     this.having = requireNonNull(having, "having is null");
     this.fill = requireNonNull(fill, "fill is null");
+    this.windows = requireNonNull(windows, "windows is null");
     this.orderBy = requireNonNull(orderBy, "orderBy is null");
     this.offset = requireNonNull(offset, "offset is null");
     this.limit = requireNonNull(limit, "limit is null");
@@ -99,6 +107,10 @@ public class QuerySpecification extends QueryBody {
 
   public Optional<Fill> getFill() {
     return fill;
+  }
+
+  public List<WindowDefinition> getWindows() {
+    return windows;
   }
 
   public Optional<OrderBy> getOrderBy() {
@@ -176,5 +188,23 @@ public class QuerySpecification extends QueryBody {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(select);
+    size += 8 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(from.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(groupBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(having.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(fill.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(windows);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit.orElse(null));
+    return size;
   }
 }

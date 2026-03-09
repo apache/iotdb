@@ -23,7 +23,7 @@
 current_path=$(cd $(dirname $0); pwd)
 iotdb_path=$(cd ${current_path}/../../../../; pwd)
 iotdb_zip_path=${current_path}/../target/
-options="confignode datanode standalone latest"
+options="confignode datanode ainode standalone latest"
 nocache="true"
 do_build="false"
 docker_build="docker build "
@@ -101,16 +101,17 @@ function prepare_buildx(){
             docker_publish="" ;
             return ;
         fi
-        docker_build="docker buildx build --platform linux/amd64,linux/arm64/v8,linux/arm/v7" ;
+        docker_build="docker buildx build --platform linux/amd64,linux/arm64/v8" ;
         docker buildx inspect mybuilder || if [[ $? -ne 0 ]]; then
             docker buildx create --name mybuilder --driver docker-container --bootstrap --use
             docker run --rm --privileged tonistiigi/binfmt:latest --install all
         fi
-        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM eclipse-temurin:17-jre-noble#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-noble#g'
+        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM eclipse-temurin:17-jre-focal#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-focal#g'
     else
         docker_build="docker build" ;
         docker_publish="" ;
-        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-noble#FROM eclipse-temurin:17-jre-noble#g'
+            # for Linux
+        find ${current_path}/../ -name 'Dockerfile-1.0.0*' | xargs sed -i 's#FROM --platform=$TARGETPLATFORM eclipse-temurin:17-jre-focal#FROM eclipse-temurin:17-jre-focal#g'
     fi
 }
 function build_iotdb(){
@@ -119,10 +120,10 @@ function build_iotdb(){
     fi
     echo "##### build IoTDB #####"
     cd $iotdb_path
-    mvn clean package -pl distribution -am -DskipTests
+    mvn clean package -pl distribution -P with-ainode -am -DskipTests
     if [[ ! -d ${iotdb_zip_path} ]]; then mkdir ${iotdb_zip_path}; fi
     cd ${iotdb_path}/distribution/target
-    cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip ${iotdb_zip_path}/
+    cp apache-iotdb-${version}-all-bin.zip apache-iotdb-${version}-confignode-bin.zip apache-iotdb-${version}-datanode-bin.zip apache-iotdb-${version}-ainode-bin.zip ${iotdb_zip_path}/
     do_build=false
     echo "##### done #####"
 }
@@ -150,6 +151,9 @@ function main() {
             ;;
         datanode)
             process_single
+            ;;
+        ainode)
+            process_single all
             ;;
         standalone)
             process_single all

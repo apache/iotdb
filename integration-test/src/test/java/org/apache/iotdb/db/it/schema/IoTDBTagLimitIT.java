@@ -114,7 +114,7 @@ public class IoTDBTagLimitIT extends AbstractSchemaIT {
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < sqls.size(); i++) {
         statement.execute(sqls.get(i));
-        ResultSet resultSet = statement.executeQuery("show timeseries");
+        ResultSet resultSet = statement.executeQuery("show timeseries root.turbine.**");
         int count = 0;
         try {
           while (resultSet.next()) {

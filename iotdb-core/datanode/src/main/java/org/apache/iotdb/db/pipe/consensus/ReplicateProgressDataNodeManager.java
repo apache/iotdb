@@ -44,7 +44,8 @@ import java.util.stream.Collectors;
 
 public class ReplicateProgressDataNodeManager implements ReplicateProgressManager {
   private static final int DATA_NODE_ID = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
-  private static final Map<String, AtomicLong> groupId2ReplicateIndex = new ConcurrentHashMap<>();
+  private static final Map<String, AtomicLong> consensusPipe2ReplicateIndex =
+      new ConcurrentHashMap<>();
   private final Map<ConsensusGroupId, ProgressIndex> groupId2MaxProgressIndex;
   private final Map<ConsensusPipeName, Long> consensusPipe2pinnedCommitIndexForMigration;
 
@@ -55,10 +56,18 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
     recoverMaxProgressIndexFromDataRegion();
   }
 
-  public static long assignReplicateIndexForIoTV2(String groupId) {
-    return groupId2ReplicateIndex
-        .compute(groupId, (k, v) -> v == null ? new AtomicLong(0) : v)
+  public static long assignReplicateIndexForIoTV2(String consensusPipeName) {
+    return consensusPipe2ReplicateIndex
+        .compute(consensusPipeName, (k, v) -> v == null ? new AtomicLong(0) : v)
         .incrementAndGet();
+  }
+
+  public static void resetReplicateIndexForIoTV2(String consensusPipeName) {
+    consensusPipe2ReplicateIndex.put(consensusPipeName, new AtomicLong(0));
+  }
+
+  public static long getReplicateIndexForIoTV2(String consensusPipeName) {
+    return consensusPipe2ReplicateIndex.getOrDefault(consensusPipeName, new AtomicLong(0)).get();
   }
 
   public static ProgressIndex extractLocalSimpleProgressIndex(ProgressIndex progressIndex) {
@@ -151,11 +160,11 @@ public class ReplicateProgressDataNodeManager implements ReplicateProgressManage
   }
 
   @Override
-  public void pinCommitIndexForMigration(
+  public void pinReplicateIndexForRegionMigration(
       ConsensusGroupId consensusGroupId, ConsensusPipeName consensusPipeName) {
     this.consensusPipe2pinnedCommitIndexForMigration.put(
         consensusPipeName,
         PipeConsensusSyncLagManager.getInstance(consensusGroupId.toString())
-            .getCurrentCommitIndex(consensusPipeName));
+            .getCurrentLeaderReplicateIndex(consensusPipeName));
   }
 }

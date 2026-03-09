@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StringLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableSubquery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WhenClause;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowDefinition;
 
 import com.google.common.collect.ImmutableList;
 
@@ -156,6 +157,7 @@ public final class QueryUtil {
             Optional.empty(),
             Optional.empty(),
             Optional.empty(),
+            ImmutableList.of(),
             Optional.empty(),
             Optional.empty(),
             Optional.empty()));
@@ -203,7 +205,41 @@ public final class QueryUtil {
       Optional<Node> limit) {
     return query(
         new QuerySpecification(
-            select, Optional.of(from), where, groupBy, having, fill, orderBy, offset, limit));
+            select,
+            Optional.of(from),
+            where,
+            groupBy,
+            having,
+            fill,
+            ImmutableList.of(),
+            orderBy,
+            offset,
+            limit));
+  }
+
+  public static Query simpleQuery(
+      Select select,
+      Relation from,
+      Optional<Expression> where,
+      Optional<GroupBy> groupBy,
+      Optional<Expression> having,
+      Optional<Fill> fill,
+      List<WindowDefinition> windows,
+      Optional<OrderBy> orderBy,
+      Optional<Offset> offset,
+      Optional<Node> limit) {
+    return query(
+        new QuerySpecification(
+            select,
+            Optional.of(from),
+            where,
+            groupBy,
+            having,
+            fill,
+            windows,
+            orderBy,
+            offset,
+            limit));
   }
 
   public static Query query(QueryBody body) {

@@ -111,6 +111,7 @@ public class IoTDBMaxByIT {
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(12, 9, 9, 9, 9, false, \"1\")",
         "INSERT INTO root.db.d2(timestamp,x1,x2,x3,x4,x5,x6) values(13, 4, 4, 4, 4, false, \"4\")",
         "INSERT INTO root.db.d2(timestamp,y1,y2,y3,y4,y5,y6) values(13, 9, 9, 9, 9, false, \"1\")",
+        "insert into root.sg.d1(time,s1,s2) values(1,1,1);",
         "flush"
       };
 
@@ -300,7 +301,7 @@ public class IoTDBMaxByIT {
             "max_by(root.db.d1.x5, -cos(sin(root.db.d1.y2 / 10)))",
             "max_by(REPLACE(root.db.d1.x6, '3', '4'), -cos(sin(root.db.d1.y2 / 10)))",
           };
-      String[] retArray = new String[] {"1.0,2.0,3.0,3.0,false,4,"};
+      String[] retArray = new String[] {"0.0,1.3333333333333333,2.0,2.0,false,2,"};
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
           String.format(
@@ -330,7 +331,8 @@ public class IoTDBMaxByIT {
           };
       String[] retArray =
           new String[] {
-            "root.db.d1,1.0,2.0,3.0,3.0,false,4,", "root.db.d2,1.0,2.0,3.0,3.0,false,4,"
+            "root.db.d1,0.0,1.3333333333333333,2.0,2.0,false,2,",
+            "root.db.d2,0.0,1.3333333333333333,2.0,2.0,false,2,"
           };
       String y = "-cos(sin(y2 / 10))";
       resultSetEqualTest(
@@ -484,6 +486,21 @@ public class IoTDBMaxByIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void maxMinByTimeTest() {
+    String[] expectedHeader =
+        new String[] {"max_by(Time, root.sg.d1.s1 + 1)", "min_by(Time, root.sg.d1.s1 + 1)"};
+    String[] retArray = new String[] {"1,1,"};
+    resultSetEqualTest(
+        "select max_by(time, s1+1), min_by(time, s1+1)  from root.sg.*", expectedHeader, retArray);
+
+    expectedHeader = new String[] {"max_by(Time, root.sg.d1.s1)", "min_by(Time, root.sg.d1.s1)"};
+    resultSetEqualTest(
+        "select max_by(time, s1), min_by(time, s1) from root.sg.* where s1>0",
+        expectedHeader,
+        retArray);
   }
 
   /**

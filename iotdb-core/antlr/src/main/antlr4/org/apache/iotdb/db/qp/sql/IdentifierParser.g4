@@ -32,7 +32,8 @@ identifier
 // List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
-    : ADD
+    : ACCOUNT
+    | ADD
     | AFTER
     | ALIAS
     | ALIGN
@@ -46,6 +47,7 @@ keyWords
     | AS
     | ASC
     | ATTRIBUTES
+    | AVAILABLE
     | BEFORE
     | BEGIN
     | BETWEEN
@@ -60,6 +62,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CLUSTERID
+    | COMMENT
     | CONCAT
     | CONDITION
     | CONFIGNODE
@@ -87,6 +90,7 @@ keyWords
     | DATASET
     | DEACTIVATE
     | DEBUG
+    | DEFAULT
     | DELETE
     | DESC
     | DESCRIBE
@@ -105,11 +109,13 @@ keyWords
     | EXPLAIN
     | EXTRACTOR
     | FALSE
+    | FIELD
     | FILL
     | FILE
     | FIRST
     | FLUSH
     | FOR
+    | FORCEDLY
     | FROM
     | FULL
     | FUNCTION
@@ -198,6 +204,7 @@ keyWords
     | RESOURCE
     | REPAIR
     | REPLACE
+    | RESTRICT
     | REVOKE
     | ROLE
     | ROUND
@@ -205,8 +212,11 @@ keyWords
     | SCHEMA
     | SCHEMA_REPLICATION_FACTOR
     | SCHEMA_REGION_GROUP_NUM
+    | SECURITY
     | SELECT
     | SERIESSLOTID
+    | SERVICE
+    | SERVICES
     | SESSION
     | SET
     | SETTLE
@@ -225,10 +235,12 @@ keyWords
     | STATELESS
     | STATEMENT
     | STOP
+    | SUBSCRIPTION
     | SUBSCRIPTIONS
     | SUBSTRING
     | SYSTEM
     | TABLE
+    | TAG
     | TAGS
     | TAIL
     | TASK
@@ -254,10 +266,12 @@ keyWords
     | TTL
     | UNLINK
     | UNLOAD
+    | UNLOCK
     | UNSET
     | UPDATE
     | UPSERT
     | URI
+    | URLS
     | USED
     | USER
     | USING

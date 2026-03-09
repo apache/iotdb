@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterFactory;
 import org.apache.iotdb.commons.schema.filter.impl.DeviceFilterUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesS
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.ShowTimeSeriesResult;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -56,6 +56,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_SCOPE;
 
 public class SchemaRegionTestUtil {
@@ -174,7 +175,15 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, templateMap, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern,
+                templateMap,
+                0,
+                0,
+                isPrefixMatch,
+                null,
+                false,
+                ALL_MATCH_SCOPE,
+                null))) {
       long count = 0;
       while (timeSeriesReader.hasNext()) {
         timeSeriesReader.next();
@@ -199,7 +208,15 @@ public class SchemaRegionTestUtil {
     try (final ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, Collections.emptyMap(), 0, 0, false, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern,
+                Collections.emptyMap(),
+                0,
+                0,
+                false,
+                null,
+                false,
+                ALL_MATCH_SCOPE,
+                null))) {
       Assert.assertTrue(timeSeriesReader.hasNext());
       final ITimeSeriesSchemaInfo info = timeSeriesReader.next();
       Assert.assertEquals(isAligned, info.isUnderAlignedDevice());
@@ -236,7 +253,7 @@ public class SchemaRegionTestUtil {
     try (ISchemaReader<ITimeSeriesSchemaInfo> timeSeriesReader =
         schemaRegion.getTimeSeriesReader(
             SchemaRegionReadPlanFactory.getShowTimeSeriesPlan(
-                pathPattern, null, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE))) {
+                pathPattern, null, 0, 0, isPrefixMatch, null, false, ALL_MATCH_SCOPE, null))) {
       Map<PartialPath, Long> countMap = new HashMap<>();
       while (timeSeriesReader.hasNext()) {
         ITimeSeriesSchemaInfo timeSeriesSchemaInfo = timeSeriesReader.next();
@@ -355,7 +372,8 @@ public class SchemaRegionTestUtil {
                 isPrefixMatch,
                 schemaFilter,
                 needViewDetail,
-                ALL_MATCH_SCOPE))) {
+                ALL_MATCH_SCOPE,
+                null))) {
       while (reader.hasNext()) {
         timeSeriesSchemaInfo = reader.next();
         result.add(
@@ -454,10 +472,10 @@ public class SchemaRegionTestUtil {
       final List<SchemaFilter> idDeterminedFilterList) {
     final List<PartialPath> patternList =
         DeviceFilterUtil.convertToDevicePattern(
-            schemaRegion.getDatabaseFullPath(),
-            table,
+            new String[] {PATH_ROOT, schemaRegion.getDatabaseFullPath(), table},
             idColumnNum,
-            Collections.singletonList(idDeterminedFilterList));
+            Collections.singletonList(idDeterminedFilterList),
+            false);
     final List<IDeviceSchemaInfo> result = new ArrayList<>();
     for (final PartialPath pattern : patternList) {
       try (final ISchemaReader<IDeviceSchemaInfo> reader =

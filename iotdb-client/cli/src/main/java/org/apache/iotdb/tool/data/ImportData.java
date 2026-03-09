@@ -38,9 +38,9 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ObjectUtils;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -99,17 +99,17 @@ public class ImportData extends AbstractDataTool {
       System.exit(Constants.CODE_ERROR);
     }
     final List<String> argList = Arrays.asList(args);
-    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
     int sql_dialect = argList.indexOf(Constants.MINUS + Constants.SQL_DIALECT_ARGS); // -sql_dialect
-    if (sql_dialect >= 0
-        && !Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(argList.get(sql_dialect + 1))) {
+    if (sql_dialect >= 0) {
+      // sql_dialect specified (default: tree)
       final String sqlDialectValue = argList.get(sql_dialect + 1);
       if (Constants.SQL_DIALECT_VALUE_TABLE.equalsIgnoreCase(sqlDialectValue)) {
         sqlDialectTree = false;
         tsFileOptions = OptionsUtil.createTableImportTsFileOptions();
         csvOptions = OptionsUtil.createTableImportCsvOptions();
         sqlOptions = OptionsUtil.createTableImportSqlOptions();
-      } else {
+      } else if (!Constants.SQL_DIALECT_VALUE_TREE.equalsIgnoreCase(sqlDialectValue)) {
+        // sql_dialect neither tree nor table
         ioTPrinter.println(String.format("sql_dialect %s is not support", sqlDialectValue));
         printHelpOptions(
             Constants.IMPORT_CLI_HEAD,
@@ -126,9 +126,11 @@ public class ImportData extends AbstractDataTool {
     if (ftIndex < 0) {
       ftIndex = argList.indexOf(Constants.MINUS + Constants.FILE_TYPE_NAME); // -file_type
     }
+    int helpIndex = argList.indexOf(Constants.MINUS + Constants.HELP_ARGS);
     if (helpIndex >= 0) {
       fileType = argList.get(helpIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
+        // print help info according to file type
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           printHelpOptions(null, Constants.IMPORT_CLI_PREFIX, hf, tsFileOptions, null, null, false);
         } else if (Constants.CSV_SUFFIXS.equalsIgnoreCase(fileType)) {
@@ -147,6 +149,7 @@ public class ImportData extends AbstractDataTool {
               true);
         }
       } else {
+        // print help info for all file types
         printHelpOptions(
             Constants.IMPORT_CLI_HEAD,
             Constants.IMPORT_CLI_PREFIX,
@@ -160,6 +163,7 @@ public class ImportData extends AbstractDataTool {
     } else if (ftIndex >= 0) {
       fileType = argList.get(ftIndex + 1);
       if (StringUtils.isNotBlank(fileType)) {
+        // parse command line according to file type
         if (Constants.TSFILE_SUFFIXS.equalsIgnoreCase(fileType)) {
           try {
             commandLine = parser.parse(tsFileOptions, args);
@@ -199,16 +203,12 @@ public class ImportData extends AbstractDataTool {
         }
       } else {
         ioTPrinter.println(
-            String.format(
-                "Invalid args: Required values for option '%s' not provided",
-                Constants.FILE_TYPE_NAME));
+            String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
         System.exit(Constants.CODE_ERROR);
       }
     } else {
       ioTPrinter.println(
-          String.format(
-              "Invalid args: Required values for option '%s' not provided",
-              Constants.FILE_TYPE_NAME));
+          String.format(Constants.REQUIRED_ARGS_ERROR_MSG, Constants.FILE_TYPE_NAME));
       System.exit(Constants.CODE_ERROR);
     }
 

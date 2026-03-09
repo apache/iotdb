@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
@@ -193,7 +195,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   }
 
   protected AlignedChunkWriterImpl constructAlignedChunkWriter() {
-    return new AlignedChunkWriterImpl(timeSchema, schemaList);
+    return new AlignedChunkWriterImpl(
+        timeSchema, schemaList, EncryptUtils.getEncryptParameter(writer.getEncryptParameter()));
   }
 
   public void execute() throws IOException, PageException {
@@ -228,12 +231,19 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     for (int i = 0; i < alignedChunkMetadata.getValueChunkMetadataList().size(); i++) {
       IChunkMetadata chunkMetadata = alignedChunkMetadata.getValueChunkMetadataList().get(i);
       if (chunkMetadata == null
-          || !chunkMetadata.getDataType().equals(schemaList.get(i).getType())) {
+          || !MetadataUtils.canAlter(chunkMetadata.getDataType(), schemaList.get(i).getType())) {
         valueChunks.add(getChunkLoader(reader, null));
         continue;
       }
+      if (chunkMetadata != null && chunkMetadata.getDataType() != schemaList.get(i).getType()) {
+        chunkMetadata.setNewType(schemaList.get(i).getType());
+        valueChunks.add(
+            getRewriteValueChunkLoader(
+                reader, (ChunkMetadata) chunkMetadata, timeChunk.getChunk()));
+      } else {
+        valueChunks.add(getChunkLoader(reader, (ChunkMetadata) chunkMetadata));
+      }
       pointNum += chunkMetadata.getStatistics().getCount();
-      valueChunks.add(getChunkLoader(reader, (ChunkMetadata) chunkMetadata));
     }
     summary.increaseProcessPointNum(pointNum);
     if (flushController.canFlushCurrentChunkWriter()) {
@@ -252,6 +262,24 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       return new InstantChunkLoader();
     }
     Chunk chunk = reader.readMemChunk(chunkMetadata);
+    return new InstantChunkLoader(reader.getFileName(), chunkMetadata, chunk);
+  }
+
+  protected ChunkLoader getRewriteValueChunkLoader(
+      TsFileSequenceReader reader, ChunkMetadata chunkMetadata, Chunk timeChunk)
+      throws IOException {
+    if (chunkMetadata == null || chunkMetadata.getStatistics().getCount() == 0) {
+      return new InstantChunkLoader();
+    }
+    Chunk chunk = reader.readMemChunk(chunkMetadata).rewrite(chunkMetadata.getNewType(), timeChunk);
+
+    if (chunkMetadata.getNewType() != null) {
+      chunkMetadata.setTsDataType(chunkMetadata.getNewType());
+
+      Statistics<?> statistics = Statistics.getStatsByType(chunkMetadata.getNewType());
+      statistics.mergeStatistics(chunk.getChunkStatistic());
+      chunkMetadata.setStatistics(statistics);
+    }
     return new InstantChunkLoader(reader.getFileName(), chunkMetadata, chunk);
   }
 
@@ -563,6 +591,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           size = pageLoader.getHeader().getUncompressedSize();
           break;
         default:

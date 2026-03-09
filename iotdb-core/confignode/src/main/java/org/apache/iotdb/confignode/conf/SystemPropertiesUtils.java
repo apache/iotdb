@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.file.SystemPropertiesHandler;
@@ -63,7 +64,6 @@ public class SystemPropertiesUtils {
     throw new IllegalStateException("Utility class: SystemPropertiesUtils.");
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     systemPropertiesHandler.resetFilePath(
         ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
@@ -88,6 +88,7 @@ public class SystemPropertiesUtils {
    */
   public static void checkSystemProperties() throws IOException {
     Properties systemProperties = systemPropertiesHandler.read();
+    ConfigurationFileUtils.updateAppliedProperties(systemProperties, false);
     final String format =
         "[SystemProperties] The parameter \"{}\" can't be modified after first startup."
             + " Your configuration: {} will be forced update to: {}";
@@ -203,6 +204,15 @@ public class SystemPropertiesUtils {
         COMMON_CONFIG.setTimePartitionInterval(timePartitionInterval);
       }
     }
+    if (systemProperties.getProperty("enable_grant_option", null) != null) {
+      boolean enableGrantOption =
+          Boolean.parseBoolean(systemProperties.getProperty("enable_grant_option"));
+      if (enableGrantOption != COMMON_CONFIG.getEnableGrantOption()) {
+        LOGGER.warn(
+            format, "enable_grant_option", COMMON_CONFIG.getEnableGrantOption(), enableGrantOption);
+        COMMON_CONFIG.setEnableGrantOption(enableGrantOption);
+      }
+    }
   }
 
   /**
@@ -274,7 +284,8 @@ public class SystemPropertiesUtils {
     systemProperties.setProperty("schema_engine_mode", COMMON_CONFIG.getSchemaEngineMode());
     systemProperties.setProperty(
         "tag_attribute_total_size", String.valueOf(COMMON_CONFIG.getTagAttributeTotalSize()));
-
+    systemProperties.setProperty(
+        "enable_grant_option", String.valueOf(COMMON_CONFIG.getEnableGrantOption()));
     systemPropertiesHandler.overwrite(systemProperties);
   }
 

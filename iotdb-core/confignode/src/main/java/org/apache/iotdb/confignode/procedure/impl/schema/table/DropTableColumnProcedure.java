@@ -28,14 +28,14 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.CommitDeleteColumnPlan;
 import org.apache.iotdb.confignode.consensus.request.write.table.PreDeleteColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.CommitDeleteViewColumnPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.PreDeleteViewColumnPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.schema.SchemaUtils;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.DropViewColumnProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DropTableColumnState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
@@ -83,7 +83,7 @@ public class DropTableColumnProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DropTableColumnState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -116,7 +116,7 @@ public class DropTableColumnProcedure
           dropColumn(env);
           return Flow.NO_MORE_STATE;
         default:
-          setFailure(new ProcedureException("Unrecognized CreateTableState " + state));
+          setFailure(new ProcedureException("Unrecognized DropTableColumnState " + state));
           return Flow.NO_MORE_STATE;
       }
       return Flow.HAS_MORE_STATE;
@@ -133,12 +133,16 @@ public class DropTableColumnProcedure
   private void checkAndPreDeleteColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
         SchemaUtils.executeInConsensusLayer(
-            new PreDeleteColumnPlan(database, tableName, columnName), env, LOGGER);
+            this instanceof DropViewColumnProcedure
+                ? new PreDeleteViewColumnPlan(database, tableName, columnName)
+                : new PreDeleteColumnPlan(database, tableName, columnName),
+            env,
+            LOGGER);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       isAttributeColumn = status.isSetMessage();
       setNextState(DropTableColumnState.INVALIDATE_CACHE);
     } else {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -171,7 +175,11 @@ public class DropTableColumnProcedure
       }
     }
 
-    setNextState(DropTableColumnState.EXECUTE_ON_REGIONS);
+    // View does not need to be executed on regions
+    setNextState(
+        this instanceof DropViewColumnProcedure
+            ? DropTableColumnState.DROP_COLUMN
+            : DropTableColumnState.EXECUTE_ON_REGIONS);
   }
 
   private void executeOnRegions(final ConfigNodeProcedureEnv env) {
@@ -200,14 +208,15 @@ public class DropTableColumnProcedure
 
   private void dropColumn(final ConfigNodeProcedureEnv env) {
     final TSStatus status =
-        SchemaUtils.executeInConsensusLayer(
-            isGeneratedByPipe
-                ? new PipeEnrichedPlan(new CommitDeleteColumnPlan(database, tableName, columnName))
-                : new CommitDeleteColumnPlan(database, tableName, columnName),
-            env,
-            LOGGER);
+        env.getConfigManager()
+            .getClusterSchemaManager()
+            .executePlan(
+                this instanceof DropViewColumnProcedure
+                    ? new CommitDeleteViewColumnPlan(database, tableName, columnName)
+                    : new CommitDeleteColumnPlan(database, tableName, columnName),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -245,6 +254,10 @@ public class DropTableColumnProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_DROP_TABLE_COLUMN_PROCEDURE.getTypeCode()
             : ProcedureType.DROP_TABLE_COLUMN_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(columnName, stream);

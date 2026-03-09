@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DecimalLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DoubleLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FloatLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
@@ -125,6 +126,11 @@ public class PredicatePushIntoMetadataChecker extends AstVisitor<Boolean, Void> 
 
   @Override
   protected Boolean visitDoubleLiteral(final DoubleLiteral node, final Void context) {
+    return true;
+  }
+
+  @Override
+  protected Boolean visitFloatLiteral(final FloatLiteral node, final Void context) {
     return true;
   }
 

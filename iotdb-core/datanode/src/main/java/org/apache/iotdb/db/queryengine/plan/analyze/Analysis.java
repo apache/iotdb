@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.model.ModelInformation;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.queryengine.common.DeviceContext;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.NodeRef;
@@ -58,7 +59,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -113,6 +113,10 @@ public class Analysis implements IAnalysis {
 
   // map from device name to series/aggregation under this device
   private Set<Expression> sourceExpressions;
+
+  // In order to perform some optimization, when the source expression is
+  // not used later, nothing will be placed in this structure.
+  private boolean shouldHaveSourceExpression;
 
   // input expressions of aggregations to be calculated
   private Set<Expression> sourceTransformExpressions = new HashSet<>();
@@ -189,7 +193,8 @@ public class Analysis implements IAnalysis {
 
   // indicates whether DeviceView need special process when rewriteSource in DistributionPlan,
   // you can see SourceRewriter#visitDeviceView to get more information
-  // deviceViewSpecialProcess equals true when all Aggregation Functions and DIFF
+  // deviceViewSpecialProcess equals true when all Aggregation Functions and non-mappable UDTF and
+  // DIFF
   private boolean deviceViewSpecialProcess;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +239,9 @@ public class Analysis implements IAnalysis {
   // Key: non-writable view expression, Value: corresponding source expressions
   private Map<Expression, List<Expression>> lastQueryNonWritableViewSourceExpressionMap;
 
-  private Set<Expression> lastQueryBaseExpressions;
+  private Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap;
+
+  private Set<IDeviceID> deviceExistViewSet;
 
   // header of result dataset
   private DatasetHeader respDatasetHeader;
@@ -473,8 +480,7 @@ public class Analysis implements IAnalysis {
 
   @Override
   public boolean canSkipExecute(final MPPQueryContext context) {
-    return isFinishQueryAfterAnalyze()
-        || (context.getQueryType() == QueryType.READ && !hasDataSource());
+    return isFinishQueryAfterAnalyze() || (context.isQuery() && !hasDataSource());
   }
 
   private boolean hasDataSource() {
@@ -617,6 +623,14 @@ public class Analysis implements IAnalysis {
 
   public void setSourceExpressions(Set<Expression> sourceExpressions) {
     this.sourceExpressions = sourceExpressions;
+  }
+
+  public void setShouldHaveSourceExpression(boolean shouldHaveSourceExpression) {
+    this.shouldHaveSourceExpression = shouldHaveSourceExpression;
+  }
+
+  public boolean shouldHaveSourceExpression() {
+    return shouldHaveSourceExpression;
   }
 
   public Set<Expression> getSourceTransformExpressions() {
@@ -886,12 +900,21 @@ public class Analysis implements IAnalysis {
     this.timeseriesOrderingForLastQuery = timeseriesOrderingForLastQuery;
   }
 
-  public Set<Expression> getLastQueryBaseExpressions() {
-    return this.lastQueryBaseExpressions;
+  public Map<IDeviceID, Map<String, Expression>> getLastQueryOutputPathToSourceExpressionMap() {
+    return lastQueryOutputPathToSourceExpressionMap;
   }
 
-  public void setLastQueryBaseExpressions(Set<Expression> lastQueryBaseExpressions) {
-    this.lastQueryBaseExpressions = lastQueryBaseExpressions;
+  public void setLastQueryOutputPathToSourceExpressionMap(
+      Map<IDeviceID, Map<String, Expression>> lastQueryOutputPathToSourceExpressionMap) {
+    this.lastQueryOutputPathToSourceExpressionMap = lastQueryOutputPathToSourceExpressionMap;
+  }
+
+  public Set<IDeviceID> getDeviceExistViewSet() {
+    return deviceExistViewSet;
+  }
+
+  public void setDeviceExistViewSet(Set<IDeviceID> deviceExistViewSet) {
+    this.deviceExistViewSet = deviceExistViewSet;
   }
 
   public Map<Expression, List<Expression>> getLastQueryNonWritableViewSourceExpressionMap() {

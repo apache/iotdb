@@ -20,19 +20,27 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDeviceQuerySource;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class ShowDevice extends AbstractQueryDeviceWithCache {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ShowDevice.class);
+
+  private static final String ALIGNED_HEADER = "__aligned";
+  private static final String DATABASE_HEADER = "__database";
   private Offset offset;
   private Node limit;
 
@@ -57,6 +65,22 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
 
   public Node getLimit() {
     return limit;
+  }
+
+  // This is only true for query related ShowDevice with tree device view
+  public boolean needAligned() {
+    return TreeViewSchema.isTreeViewTable(
+            DataNodeTableCache.getInstance().getTable(database, tableName))
+        && Objects.isNull(table);
+  }
+
+  @Override
+  public void setColumnHeaderList() {
+    super.setColumnHeaderList();
+    if (needAligned()) {
+      columnHeaderList.add(new ColumnHeader(ShowDevice.ALIGNED_HEADER, TSDataType.BOOLEAN));
+      columnHeaderList.add(new ColumnHeader(ShowDevice.DATABASE_HEADER, TSDataType.STRING));
+    }
   }
 
   @Override
@@ -100,7 +124,7 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
         .subList(startIndex, endIndex)
         .forEach(
             result ->
-                TableDeviceQuerySource.transformToTsBlockColumns(
+                TableDeviceQuerySource.transformToTableDeviceTsBlockColumns(
                     result,
                     tsBlockBuilder,
                     columnHeaderList.stream()
@@ -118,5 +142,13 @@ public class ShowDevice extends AbstractQueryDeviceWithCache {
   @Override
   public String toString() {
     return "ShowDevice" + toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + ramBytesUsedForCommonFields()
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(offset)
+        + AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(limit);
   }
 }

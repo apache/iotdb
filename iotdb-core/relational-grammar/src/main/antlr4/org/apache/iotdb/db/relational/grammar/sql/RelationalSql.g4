@@ -38,6 +38,10 @@ standaloneType
     : type EOF
     ;
 
+standaloneRowPattern
+    : rowPattern EOF
+    ;
+
 statement
     // Query Statement
     : queryStatement
@@ -56,6 +60,13 @@ statement
     | descTableStatement
     | alterTableStatement
     | commentStatement
+    | showCreateTableStatement
+
+    // Table View Statement
+    | createViewStatement
+    | alterViewStatement
+    | dropViewStatement
+    | showCreateViewStatement
 
     // Index Statement
     | createIndexStatement
@@ -72,6 +83,13 @@ statement
     | showFunctionsStatement
     | dropFunctionStatement
     | createFunctionStatement
+
+    // ExternalService Statement
+    | createServiceStatement
+    | startServiceStatement
+    | stopServiceStatement
+    | dropServiceStatement
+    | showServiceStatement
 
     // Load Statement
     | loadTsFileStatement
@@ -92,6 +110,7 @@ statement
     | dropTopicStatement
     | showTopicsStatement
     | showSubscriptionsStatement
+    | dropSubscriptionStatement
 
     // Show Statement
     | showDevicesStatement
@@ -101,6 +120,7 @@ statement
     | showClusterStatement
     | showRegionsStatement
     | showDataNodesStatement
+    | showAvailableUrlsStatement
     | showConfigNodesStatement
     | showAINodesStatement
     | showClusterIdStatement
@@ -114,6 +134,7 @@ statement
     | removeRegionStatement
     | removeDataNodeStatement
     | removeConfigNodeStatement
+    | removeAINodeStatement
 
     // Admin Statement
     | showVariablesStatement
@@ -127,6 +148,7 @@ statement
     | killQueryStatement
     | loadConfigurationStatement
     | setConfigurationStatement
+    | showConfigurationStatement
     | showCurrentSqlDialectStatement
     | setSqlDialectStatement
     | showCurrentUserStatement
@@ -143,6 +165,8 @@ statement
     | grantUserRoleStatement
     | revokeUserRoleStatement
     | alterUserStatement
+    | alterUserAccountUnlockStatement
+    | renameUserStatement
     | listUserPrivilegeStatement
     | listRolePrivilegeStatement
     | listUserStatement
@@ -150,9 +174,20 @@ statement
 
     // AI
     | createModelStatement
+    | dropModelStatement
     | showModelsStatement
+    | showLoadedModelsStatement
+    | showAIDevicesStatement
+    | loadModelStatement
+    | unloadModelStatement
 
-    // View, Trigger, pipe, CQ, Quota are not supported yet
+    // Prepared Statement
+    | prepareStatement
+    | executeStatement
+    | executeImmediateStatement
+    | deallocateStatement
+
+    // View, Trigger, CQ, Quota are not supported yet
     ;
 
 
@@ -227,11 +262,69 @@ alterTableStatement
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier                     #dropColumn
     // set TTL can use this
     | ALTER TABLE (IF EXISTS)? tableName=qualifiedName SET PROPERTIES propertyAssignments                #setTableProperties
+    | ALTER TABLE (IF EXISTS)? tableName=qualifiedName ALTER COLUMN (IF EXISTS)? column=identifier SET DATA TYPE new_type=type #alterColumnDataType
     ;
 
 commentStatement
     : COMMENT ON TABLE qualifiedName IS (string | NULL) #commentTable
+    | COMMENT ON VIEW qualifiedName IS (string | NULL) #commentView
     | COMMENT ON COLUMN qualifiedName '.' column=identifier IS (string | NULL) #commentColumn
+    ;
+
+showCreateTableStatement
+    : SHOW CREATE TABLE qualifiedName
+    ;
+
+// ------------------------------------------- Table View Statement ---------------------------------------------------------
+createViewStatement
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        '(' (viewColumnDefinition (',' viewColumnDefinition)*)? ')'
+        comment?
+        (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
+    ;
+
+viewColumnDefinition
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+alterViewStatement
+    : ALTER VIEW (IF EXISTS)? from=qualifiedName RENAME TO to=identifier #renameTableView
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName ADD COLUMN (IF NOT EXISTS)? viewColumnDefinition #addViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName RENAME COLUMN (IF EXISTS)? from=identifier TO to=identifier #renameViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName DROP COLUMN (IF EXISTS)? column=identifier #dropViewColumn
+    | ALTER VIEW (IF EXISTS)? viewName=qualifiedName SET PROPERTIES propertyAssignments #setTableViewProperties
+    ;
+
+dropViewStatement
+    : DROP VIEW (IF EXISTS)? qualifiedName
+    ;
+
+showCreateViewStatement
+    : SHOW CREATE VIEW qualifiedName
+    ;
+
+// IoTDB Objects
+
+prefixPath
+    : ROOT ('.' nodeName)*
+    ;
+
+nodeName
+    : wildcard
+    | nodeNameWithoutWildcard
+    ;
+
+nodeNameWithoutWildcard
+    : identifier
+    ;
+
+wildcard
+    : '*'
+    | '**'
     ;
 
 // ------------------------------------------- Index Statement ---------------------------------------------------------
@@ -288,6 +381,27 @@ showFunctionsStatement
     ;
 
 
+// -------------------------------------------- ExternalService Statement ----------------------------------------------------------
+createServiceStatement
+    : CREATE SERVICE serviceName=identifier
+        AS className=string
+    ;
+
+startServiceStatement
+    : START SERVICE serviceName=identifier
+    ;
+
+stopServiceStatement
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropServiceStatement
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+    ;
+
+showServiceStatement
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_VALUE)?
+    ;
 
 // -------------------------------------------- Load Statement ---------------------------------------------------------
 loadTsFileStatement
@@ -435,6 +549,10 @@ showSubscriptionsStatement
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;
 
+dropSubscriptionStatement
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
+    ;
+
 
 // -------------------------------------------- Show Statement ---------------------------------------------------------
 showDevicesStatement
@@ -463,6 +581,10 @@ showRegionsStatement
 
 showDataNodesStatement
     : SHOW DATANODES
+    ;
+
+showAvailableUrlsStatement
+    : SHOW AVAILABLE URLS
     ;
 
 showConfigNodesStatement
@@ -498,15 +620,15 @@ migrateRegionStatement
     ;
 
 reconstructRegionStatement
-    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (COMMA regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
+    : RECONSTRUCT REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* ON targetDataNodeId=INTEGER_VALUE
     ;
 
 extendRegionStatement
-    : EXTEND REGION regionId=INTEGER_VALUE TO targetDataNodeId=INTEGER_VALUE
+    : EXTEND REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* TO targetDataNodeId=INTEGER_VALUE
     ;
 
 removeRegionStatement
-    : REMOVE REGION regionId=INTEGER_VALUE FROM targetDataNodeId=INTEGER_VALUE
+    : REMOVE REGION regionIds+=INTEGER_VALUE (',' regionIds+=INTEGER_VALUE)* FROM targetDataNodeId=INTEGER_VALUE
     ;
 
 removeDataNodeStatement
@@ -515,6 +637,10 @@ removeDataNodeStatement
 
 removeConfigNodeStatement
     : REMOVE CONFIGNODE configNodeId=INTEGER_VALUE
+    ;
+
+removeAINodeStatement
+    : REMOVE AINODE (aiNodeId=INTEGER_VALUE)?
     ;
 
 // ------------------------------------------- Admin Statement ---------------------------------------------------------
@@ -597,11 +723,15 @@ showCurrentTimestampStatement
     : SHOW CURRENT_TIMESTAMP
     ;
 
+showConfigurationStatement
+    : SHOW (ALL)? CONFIGURATION (ON nodeId=INTEGER_VALUE)? (WITH DESC)?
+    ;
+
 
 // ------------------------------------------- Authority Statement -----------------------------------------------------
 
 createUserStatement
-    : CREATE USER userName=identifier password=string
+    : CREATE USER userName=usernameWithRoot password=string
     ;
 
 createRoleStatement
@@ -609,7 +739,7 @@ createRoleStatement
     ;
 
 dropUserStatement
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 dropRoleStatement
@@ -617,15 +747,32 @@ dropRoleStatement
     ;
 
 alterUserStatement
-    : ALTER USER userName=identifier SET PASSWORD password=string
+    : ALTER USER userName=usernameWithRoot SET PASSWORD password=string
+    ;
+
+alterUserAccountUnlockStatement
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
+usernameWithRoot
+    : ROOT
+    | identifier
+    ;
+
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT_SIGN host=string)?
+    ;
+
+renameUserStatement
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
     ;
 
 grantUserRoleStatement
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 revokeUserRoleStatement
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 
@@ -634,7 +781,7 @@ grantStatement
     ;
 
 listUserPrivilegeStatement
-    : LIST PRIVILEGES OF USER userName=identifier
+    : LIST PRIVILEGES OF USER userName=usernameWithRoot
     ;
 
 listRolePrivilegeStatement
@@ -646,7 +793,7 @@ listUserStatement
     ;
 
 listRoleStatement
-    : LIST ROLE (OF USER userName=identifier)?
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
 
@@ -677,6 +824,8 @@ objectScope
 systemPrivilege
     : MANAGE_USER
     | MANAGE_ROLE
+    | SYSTEM
+    | SECURITY
     ;
 
 objectPrivilege
@@ -709,38 +858,55 @@ revokeGrantOpt
 // ------------------------------------------- AI ---------------------------------------------------------
 
 createModelStatement
-    : CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? (FROM MODEL existingModelId=identifier)? ON DATASET '(' trainingData ')'
-    ;
-
-trainingData
-    : ALL
-    | dataElement(',' dataElement)*
-    ;
-
-dataElement
-    : databaseElement
-    | tableElement
-    ;
-
-databaseElement
-    : DATABASE database=identifier ('(' timeRange ')')?
-    ;
-
-tableElement
-    : TABLE tableName=qualifiedName ('(' timeRange ')')?
-    ;
-
-timeRange
-    : '[' startTime=timeValue ',' endTime=timeValue ']'
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS '(' hparamPair (',' hparamPair)* ')')? FROM MODEL existingModelId=identifier ON DATASET '(' targetData=string ')'
     ;
 
 hparamPair
     : hparamKey=identifier '=' hyparamValue=primaryExpression
     ;
 
+dropModelStatement
+    : DROP MODEL modelId=identifier
+    ;
+
 showModelsStatement
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
+    ;
+
+showLoadedModelsStatement
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=string
+    ;
+
+showAIDevicesStatement
+    : SHOW AI_DEVICES
+    ;
+
+loadModelStatement
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=string
+    ;
+
+unloadModelStatement
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=string
+    ;
+
+// ------------------------------------------- Prepared Statement ---------------------------------------------------------
+prepareStatement
+    : PREPARE statementName=identifier FROM sql=statement
+    ;
+
+executeStatement
+    : EXECUTE statementName=identifier (USING literalExpression (',' literalExpression)*)?
+    ;
+
+executeImmediateStatement
+    : EXECUTE IMMEDIATE sql=string (USING literalExpression (',' literalExpression)*)?
+    ;
+
+deallocateStatement
+    : DEALLOCATE PREPARE statementName=identifier
     ;
 
 // ------------------------------------------- Query Statement ---------------------------------------------------------
@@ -821,8 +987,9 @@ rowCount
     ;
 
 queryTerm
-    : queryPrimary                                                                                #queryTermDefault
-    | left=queryTerm operator=(INTERSECT | UNION | EXCEPT) setQuantifier? right=queryTerm         #setOperation
+    : queryPrimary                                                                 #queryTermDefault
+    | left=queryTerm operator=INTERSECT setQuantifier? right=queryTerm             #setOperation
+    | left=queryTerm operator=(UNION | EXCEPT) setQuantifier? right=queryTerm      #setOperation
     ;
 
 queryPrimary
@@ -842,6 +1009,7 @@ querySpecification
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
       (HAVING having=booleanExpression)?
+      (WINDOW windowDefinition (',' windowDefinition)*)?
     ;
 
 groupBy
@@ -880,7 +1048,7 @@ groupingSet
     ;
 
 namedQuery
-    : name=identifier (columnAliases)? AS '(' query ')'
+    : name=identifier (columnAliases)? AS MATERIALIZED? '(' query ')'
     ;
 
 setQuantifier
@@ -899,8 +1067,10 @@ relation
       ( CROSS JOIN right=aliasedRelation
       | joinType JOIN rightRelation=relation joinCriteria
       | NATURAL joinType JOIN right=aliasedRelation
+      | ASOF ('(' TOLERANCE timeDuration ')')? joinType JOIN rightRelation=relation joinCriteria
       )                                                     #joinRelation
     | aliasedRelation                                       #relationDefault
+    | patternRecognition                                    #patternRecognitionRelation
     ;
 
 joinType
@@ -915,6 +1085,54 @@ joinCriteria
     | USING '(' identifier (',' identifier)* ')'
     ;
 
+patternRecognition
+    : aliasedRelation (
+        MATCH_RECOGNIZE '('
+          (PARTITION BY partition+=expression (',' partition+=expression)*)?
+          (ORDER BY sortItem (',' sortItem)*)?
+          (MEASURES measureDefinition (',' measureDefinition)*)?
+          rowsPerMatch?
+          (AFTER MATCH skipTo)?
+          (INITIAL | SEEK)?
+          PATTERN '(' rowPattern ')'
+          (SUBSET subsetDefinition (',' subsetDefinition)*)?
+          DEFINE variableDefinition (',' variableDefinition)*
+        ')'
+        (AS? identifier columnAliases?)?
+      )?
+    ;
+
+measureDefinition
+    : expression AS identifier
+    ;
+
+rowsPerMatch
+    : ONE ROW PER MATCH
+    | ALL ROWS PER MATCH emptyMatchHandling?
+    ;
+
+emptyMatchHandling
+    : SHOW EMPTY MATCHES
+    | OMIT EMPTY MATCHES
+    | WITH UNMATCHED ROWS
+    ;
+
+skipTo
+    : 'SKIP' TO NEXT ROW
+    | 'SKIP' PAST LAST ROW
+    | 'SKIP' TO FIRST identifier
+    | 'SKIP' TO LAST identifier
+    | 'SKIP' TO identifier
+    ;
+
+subsetDefinition
+    : name=identifier EQ '(' union+=identifier (',' union+=identifier)* ')'
+    ;
+
+variableDefinition
+    : identifier AS expression
+    ;
+
 aliasedRelation
     : relationPrimary (AS? identifier columnAliases?)?
     ;
@@ -927,7 +1145,8 @@ relationPrimary
     : qualifiedName                                                   #tableName
     | '(' query ')'                                                   #subqueryRelation
     | '(' relation ')'                                                #parenthesizedRelation
-    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocation
+    | TABLE '(' tableFunctionCall ')'                                 #tableFunctionInvocationWithTableKeyWord
+    | tableFunctionCall                                               #tableFunctionInvocation
     ;
 
 tableFunctionCall
@@ -945,8 +1164,10 @@ tableArgument
     ;
 
 tableArgumentRelation
-    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTable
-    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
+    : TABLE '(' qualifiedName ')' (AS? identifier columnAliases?)?  #tableArgumentTableWithTableKeyWord
+    | qualifiedName (AS? identifier columnAliases?)?          #tableArgumentTable
+    | TABLE '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQueryWithTableKeyWord
+    | '(' query ')' (AS? identifier columnAliases?)?          #tableArgumentQuery
     ;
 
 scalarArgument
@@ -991,8 +1212,9 @@ primaryExpression
     | '(' expression (',' expression)+ ')'                                                #rowConstructor
     | ROW '(' expression (',' expression)* ')'                                            #rowConstructor
     | COLUMNS '(' (ASTERISK | pattern=string) ')'                                         #columns
-    | qualifiedName '(' (label=identifier '.')? ASTERISK ')'                              #functionCall
-    | qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'                 #functionCall
+    | qualifiedName '(' (label=identifier '.')? ASTERISK ')' over?                        #functionCall
+    | processingMode? qualifiedName '(' (setQuantifier? expression (',' expression)*)?')'
+      (nullTreatment? over)?                                                              #functionCall
     | '(' query ')'                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS '(' query ')'                                                                #exists
@@ -1009,9 +1231,45 @@ primaryExpression
         trimSource=valueExpression ')'                                                    #trim
     | TRIM '(' trimSource=valueExpression ',' trimChar=valueExpression ')'                #trim
     | SUBSTRING '(' valueExpression FROM valueExpression (FOR valueExpression)? ')'       #substring
+    | EXTRACT '(' identifier FROM valueExpression ')'                                     #extract
     | DATE_BIN '(' timeDuration ',' valueExpression (',' timeValue)? ')'                  #dateBin
     | DATE_BIN_GAPFILL '(' timeDuration ',' valueExpression (',' timeValue)? ')'          #dateBinGapFill
     | '(' expression ')'                                                                  #parenthesizedExpression
+    ;
+
+over
+    : OVER (windowName=identifier | '(' windowSpecification ')')
+    ;
+
+windowDefinition
+    : name=identifier AS '(' windowSpecification ')'
+    ;
+
+windowSpecification
+    : (existingWindowName=identifier)?
+      (PARTITION BY partition+=expression (',' partition+=expression)*)?
+      (ORDER BY sortItem (',' sortItem)*)?
+      windowFrame?
+    ;
+
+windowFrame
+    : frameExtent
+    ;
+
+frameExtent
+    : frameType=RANGE start=frameBound
+    | frameType=ROWS start=frameBound
+    | frameType=GROUPS start=frameBound
+    | frameType=RANGE BETWEEN start=frameBound AND end=frameBound
+    | frameType=ROWS BETWEEN start=frameBound AND end=frameBound
+    | frameType=GROUPS BETWEEN start=frameBound AND end=frameBound
+    ;
+
+frameBound
+    : UNBOUNDED boundType=PRECEDING                 #unboundedFrame
+    | UNBOUNDED boundType=FOLLOWING                 #unboundedFrame
+    | CURRENT ROW                                   #currentRowBound
+    | expression boundType=(PRECEDING | FOLLOWING)  #boundedFrame
     ;
 
 literalExpression
@@ -1024,10 +1282,20 @@ literalExpression
     | QUESTION_MARK                                                                       #parameter
     ;
 
+processingMode
+    : RUNNING
+    | FINAL
+    ;
+
 trimsSpecification
     : LEADING
     | TRAILING
     | BOTH
+    ;
+
+nullTreatment
+    : IGNORE NULLS
+    | RESPECT NULLS
     ;
 
 string
@@ -1075,6 +1343,31 @@ typeParameter
 whenClause
     : WHEN condition=expression THEN result=expression
     ;
+
+rowPattern
+    : patternPrimary patternQuantifier?                 #quantifiedPrimary
+    | rowPattern rowPattern                             #patternConcatenation
+    | rowPattern '|' rowPattern                         #patternAlternation
+    ;
+
+patternPrimary
+    : identifier                                        #patternVariable
+    | '(' ')'                                           #emptyPattern
+    | PERMUTE '(' rowPattern (',' rowPattern)* ')'      #patternPermutation
+    | '(' rowPattern ')'                                #groupedPattern
+    | '^'                                               #partitionStartAnchor
+    | '$'                                               #partitionEndAnchor
+    | '{-' rowPattern '-}'                              #excludedPattern
+    ;
+
+patternQuantifier
+    : ASTERISK (reluctant=QUESTION_MARK)?                                                       #zeroOrMoreQuantifier
+    | PLUS (reluctant=QUESTION_MARK)?                                                           #oneOrMoreQuantifier
+    | QUESTION_MARK (reluctant=QUESTION_MARK)?                                                  #zeroOrOneQuantifier
+    | '{' exactly=INTEGER_VALUE '}' (reluctant=QUESTION_MARK)?                                  #rangeQuantifier
+    | '{' (atLeast=INTEGER_VALUE)? ',' (atMost=INTEGER_VALUE)? '}' (reluctant=QUESTION_MARK)?   #rangeQuantifier
+    ;
+
 
 updateAssignment
     : identifier EQ expression
@@ -1158,12 +1451,12 @@ authorizationUser
 
 nonReserved
     // IMPORTANT: this rule must only contain tokens. Nested rules are not supported. See SqlParser.exitNonReserved
-    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUTHORIZATION
+    : ABSENT | ADD | ADMIN | AFTER | ALL | ANALYZE | ANY | ARRAY | ASC | AT | ATTRIBUTE | AUDIT | AUTHORIZATION | AVAILABLE
     | BEGIN | BERNOULLI | BOTH
     | CACHE | CALL | CALLED | CASCADE | CATALOG | CATALOGS | CHAR | CHARACTER | CHARSET | CLEAR | CLUSTER | CLUSTERID | COLUMN | COLUMNS | COMMENT | COMMIT | COMMITTED | CONDITION | CONDITIONAL | CONFIGNODES | CONFIGNODE | CONFIGURATION | CONNECTOR | CONSTANT | COPARTITION | COUNT | CURRENT
     | DATA | DATABASE | DATABASES | DATANODE | DATANODES | DATASET | DATE | DAY | DECLARE | DEFAULT | DEFINE | DEFINER | DENY | DESC | DESCRIPTOR | DETAILS| DETERMINISTIC | DEVICES | DISTRIBUTED | DO | DOUBLE
     | ELSEIF | EMPTY | ENCODING | ERROR | EXCLUDING | EXPLAIN | EXTRACTOR
-    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORMAT | FUNCTION | FUNCTIONS
+    | FETCH | FIELD | FILTER | FINAL | FIRST | FLUSH | FOLLOWING | FORCEDLY | FORMAT | FUNCTION | FUNCTIONS
     | GRACE | GRANT | GRANTED | GRANTS | GRAPHVIZ | GROUPS
     | HOUR | HYPERPARAMETERS
     | INDEX | INDEXES | IF | IGNORE | IMMEDIATE | INCLUDING | INITIAL | INPUT | INTERVAL | INVOKER | IO | ITERATE | ISOLATION
@@ -1175,11 +1468,11 @@ nonReserved
     | OBJECT | OF | OFFSET | OMIT | ONE | ONLY | OPTION | ORDINALITY | OUTPUT | OVER | OVERFLOW
     | PARTITION | PARTITIONS | PASSING | PAST | PATH | PATTERN | PER | PERIOD | PERMUTE | PIPE | PIPEPLUGIN | PIPEPLUGINS | PIPES | PLAN | POSITION | PRECEDING | PRECISION | PRIVILEGES | PREVIOUS | PROCESSLIST | PROCESSOR | PROPERTIES | PRUNE
     | QUERIES | QUERY | QUOTES
-    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT  | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROW | ROWS | RUNNING
-    | SERIESSLOTID | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
-    | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
+    | RANGE | READ | READONLY | RECONSTRUCT | REFRESH | REGION | REGIONID | REGIONS | REMOVE | RENAME | REPAIR | REPEAT | REPEATABLE | REPLACE | RESET | RESPECT | RESTRICT | RETURN | RETURNING | RETURNS | REVOKE | ROLE | ROLES | ROLLBACK | ROOT | ROW | ROWS | RPR_FIRST | RPR_LAST | RUNNING
+    | SERIESSLOTID | SERVICE | SERVICES | SCALAR | SCHEMA | SCHEMAS | SECOND | SECURITY | SEEK | SERIALIZABLE | SESSION | SET | SETS
+    | SECURITY | SHOW | SINK | SOME | SOURCE | START | STATS | STOP | SUBSCRIPTION | SUBSCRIPTIONS | SUBSET | SUBSTRING | SYSTEM
     | TABLES | TABLESAMPLE | TAG | TEXT | TEXT_STRING | TIES | TIME | TIMEPARTITION | TIMER | TIMER_XL | TIMESERIES | TIMESLOTID | TIMESTAMP | TO | TOPIC | TOPICS | TRAILING | TRANSACTION | TRUNCATE | TRY_CAST | TYPE
-    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | USE | USED | USER | UTF16 | UTF32 | UTF8
+    | UNBOUNDED | UNCOMMITTED | UNCONDITIONAL | UNIQUE | UNKNOWN | UNMATCHED | UNTIL | UPDATE | URI | URLS | USE | USED | USER | UTF16 | UTF32 | UTF8
     | VALIDATE | VALUE | VARIABLES | VARIATION | VERBOSE | VERSION | VIEW
     | WEEK | WHILE | WINDOW | WITHIN | WITHOUT | WORK | WRAPPER | WRITE
     | YEAR
@@ -1187,10 +1480,13 @@ nonReserved
     ;
 
 ABSENT: 'ABSENT';
+ACCOUNT: 'ACCOUNT';
 ADD: 'ADD';
 ADMIN: 'ADMIN';
 AFTER: 'AFTER';
+AINODE: 'AINODE';
 AINODES: 'AINODES';
+AI_DEVICES: 'AI_DEVICES';
 ALL: 'ALL';
 ALTER: 'ALTER';
 ANALYZE: 'ANALYZE';
@@ -1199,6 +1495,7 @@ ANY: 'ANY';
 ARRAY: 'ARRAY';
 AS: 'AS';
 ASC: 'ASC';
+ASOF: 'ASOF';
 AT: 'AT';
 ATTRIBUTE: 'ATTRIBUTE';
 AUTHORIZATION: 'AUTHORIZATION';
@@ -1256,6 +1553,8 @@ DATABASE: 'DATABASE';
 DATABASES: 'DATABASES';
 DATANODE: 'DATANODE';
 DATANODES: 'DATANODES';
+AVAILABLE: 'AVAILABLE';
+URLS: 'URLS';
 DATASET: 'DATASET';
 DATE: 'DATE';
 DATE_BIN: 'DATE_BIN';
@@ -1305,6 +1604,7 @@ FIRST: 'FIRST';
 FLUSH: 'FLUSH';
 FOLLOWING: 'FOLLOWING';
 FOR: 'FOR';
+FORCEDLY: 'FORCEDLY';
 FORMAT: 'FORMAT';
 FROM: 'FROM';
 FULL: 'FULL';
@@ -1366,6 +1666,7 @@ LINEAR: 'LINEAR';
 LIST: 'LIST';
 LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
+LOADED: 'LOADED';
 LOCAL: 'LOCAL';
 LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
@@ -1477,8 +1778,11 @@ ROLE: 'ROLE';
 ROLES: 'ROLES';
 ROLLBACK: 'ROLLBACK';
 ROLLUP: 'ROLLUP';
+ROOT: 'ROOT';
 ROW: 'ROW';
 ROWS: 'ROWS';
+RPR_FIRST: 'RPR_FIRST';
+RPR_LAST: 'RPR_LAST';
 RUNNING: 'RUNNING';
 SERIESSLOTID: 'SERIESSLOTID';
 SCALAR: 'SCALAR';
@@ -1489,6 +1793,8 @@ SECURITY: 'SECURITY';
 SEEK: 'SEEK';
 SELECT: 'SELECT';
 SERIALIZABLE: 'SERIALIZABLE';
+SERVICE: 'SERVICE';
+SERVICES: 'SERVICES';
 SESSION: 'SESSION';
 SET: 'SET';
 SETS: 'SETS';
@@ -1501,6 +1807,7 @@ SQL_DIALECT: 'SQL_DIALECT';
 START: 'START';
 STATS: 'STATS';
 STOP: 'STOP';
+SUBSCRIPTION: 'SUBSCRIPTION';
 SUBSCRIPTIONS: 'SUBSCRIPTIONS';
 SUBSET: 'SUBSET';
 SUBSTRING: 'SUBSTRING';
@@ -1523,6 +1830,7 @@ TIMESERIES: 'TIMESERIES';
 TIMESLOTID: 'TIMESLOTID';
 TIMESTAMP: 'TIMESTAMP';
 TO: 'TO';
+TOLERANCE: 'TOLERANCE';
 TOPIC: 'TOPIC';
 TOPICS: 'TOPICS';
 TRAILING: 'TRAILING';
@@ -1540,6 +1848,8 @@ UNCONDITIONAL: 'UNCONDITIONAL';
 UNION: 'UNION';
 UNIQUE: 'UNIQUE';
 UNKNOWN: 'UNKNOWN';
+UNLOAD: 'UNLOAD';
+UNLOCK: 'UNLOCK';
 UNMATCHED: 'UNMATCHED';
 UNNEST: 'UNNEST';
 UNTIL: 'UNTIL';
@@ -1573,7 +1883,9 @@ WRAPPER: 'WRAPPER';
 WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
+AUDIT: 'AUDIT';
 
+AT_SIGN: '@';
 EQ: '=';
 NEQ: '<>' | '!=';
 LT: '<';

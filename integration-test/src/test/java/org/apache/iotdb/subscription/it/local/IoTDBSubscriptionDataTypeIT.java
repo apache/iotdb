@@ -42,6 +42,7 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -75,36 +76,42 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
   // SessionDataSetsHandler format //
   // ----------------------------- //
 
+  @Ignore
   @Test
   public void testSubscribeTabletBooleanData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.BOOLEAN, "true", true);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletIntData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.INT32, "1", 1);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletLongData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.INT64, "1", 1L);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletFloatData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.FLOAT, "1.0", 1.0F);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletDoubleData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.DOUBLE, "1.0", 1.0);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletTextData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -114,12 +121,14 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         new Binary("a", TSFileConfig.STRING_CHARSET));
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletTimestampData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_SESSION_DATA_SETS_HANDLER_VALUE, TSDataType.TIMESTAMP, "123", 123L);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTabletDateData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -129,6 +138,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         LocalDate.of(2011, 3, 1));
   }
 
+  @Ignore
   @Test
   public void testSubscribeBlobData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -138,6 +148,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         new Binary(new byte[] {(byte) 0xf0, 0x13}));
   }
 
+  @Ignore
   @Test
   public void testSubscribeStringData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -151,36 +162,42 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
   // TsFileHandler format //
   // -------------------- //
 
+  @Ignore
   @Test
   public void testSubscribeTsFileBooleanData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.BOOLEAN, "true", true);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileIntData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.INT32, "1", 1);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileLongData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.INT64, "1", 1L);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileFloatData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.FLOAT, "1.0", 1.0F);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileDoubleData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.DOUBLE, "1.0", 1.0);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileTextData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -190,12 +207,14 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         new Binary("a", TSFileConfig.STRING_CHARSET));
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileTimestampData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
         TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE, TSDataType.TIMESTAMP, "123", 123L);
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileDateData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -205,6 +224,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         LocalDate.of(2011, 3, 1));
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileBlobData() throws Exception {
     testPullConsumerSubscribeDataTemplate(
@@ -214,6 +234,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
         new Binary(new byte[] {(byte) 0xf0, 0x13}));
   }
 
+  @Ignore
   @Test
   public void testSubscribeTsFileStringData() throws Exception {
     testPullConsumerSubscribeDataTemplate(

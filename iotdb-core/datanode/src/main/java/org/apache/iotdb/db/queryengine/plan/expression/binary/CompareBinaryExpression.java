@@ -20,9 +20,15 @@
 package org.apache.iotdb.db.queryengine.plan.expression.binary;
 
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
+import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
 import org.apache.iotdb.db.queryengine.plan.expression.visitor.ExpressionVisitor;
 
 import java.nio.ByteBuffer;
+
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.GREATER_EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.GREATER_THAN;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.LESS_EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.LESS_THAN;
 
 public abstract class CompareBinaryExpression extends BinaryExpression {
 
@@ -32,6 +38,24 @@ public abstract class CompareBinaryExpression extends BinaryExpression {
 
   protected CompareBinaryExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
+  }
+
+  public static ExpressionType flipType(ExpressionType origin) {
+    switch (origin) {
+      case EQUAL_TO:
+      case NON_EQUAL:
+        return origin;
+      case GREATER_THAN:
+        return LESS_THAN;
+      case GREATER_EQUAL:
+        return LESS_EQUAL;
+      case LESS_THAN:
+        return GREATER_THAN;
+      case LESS_EQUAL:
+        return GREATER_EQUAL;
+      default:
+        throw new IllegalArgumentException("Unsupported expression type: " + origin);
+    }
   }
 
   @Override

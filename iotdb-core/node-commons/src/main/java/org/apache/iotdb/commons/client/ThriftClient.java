@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.client;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.transport.TTransportException;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.ConnectException;
 import java.net.SocketException;
+import java.nio.channels.ClosedChannelException;
 import java.util.Optional;
 
 /**
@@ -113,7 +114,9 @@ public interface ThriftClient {
         || (cause instanceof IOException
             && (hasExpectedMessage(cause, "Connection reset by peer")
                 || hasExpectedMessage(cause, "Broken pipe")))
-        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused"));
+        || (cause instanceof ConnectException && hasExpectedMessage(cause, "Connection refused")
+            || (cause instanceof ClosedChannelException))
+        || (cause instanceof java.util.concurrent.TimeoutException);
   }
 
   static boolean hasExpectedMessage(Throwable cause, String expectedMessage) {

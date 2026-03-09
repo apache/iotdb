@@ -22,9 +22,9 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionPathUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.AlignedPageElement;
@@ -41,6 +41,7 @@ import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.ChunkHeader;
 import org.apache.tsfile.file.header.PageHeader;
@@ -50,6 +51,7 @@ import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TableDeviceChunkMetadata;
+import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
@@ -107,7 +109,10 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       throws PageException, IllegalPathException, IOException, WriteProcessException {
     compactionWriter.startMeasurement(
         TsFileConstant.TIME_COLUMN_ID,
-        new AlignedChunkWriterImpl(measurementSchemas.remove(0), measurementSchemas),
+        new AlignedChunkWriterImpl(
+            measurementSchemas.remove(0),
+            measurementSchemas,
+            EncryptUtils.getEncryptParameter(compactionWriter.getEncryptParameter())),
         subTaskId);
     compactFiles();
     compactionWriter.endMeasurement(subTaskId);
@@ -172,7 +177,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
             new ChunkMetadataElement(
                 alignedChunkMetadataList.get(i),
                 i == alignedChunkMetadataList.size() - 1,
-                fileElement));
+                fileElement,
+                measurementSchemas));
       }
     }
   }
@@ -241,8 +247,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
       // get time modifications of this file
       List<ModEntry> timeModifications =
-          getModificationsFromCache(
-              resource, CompactionPathUtils.getPath(deviceId, AlignedPath.VECTOR_PLACEHOLDER));
+          getModificationsFromCache(resource, deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       // get value modifications of this file
       List<List<ModEntry>> valueModifications = new ArrayList<>();
       alignedChunkMetadataList
@@ -255,9 +260,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                     valueModifications.add(null);
                   } else {
                     valueModifications.add(
-                        getModificationsFromCache(
-                            resource,
-                            CompactionPathUtils.getPath(deviceId, x.getMeasurementUid())));
+                        getModificationsFromCache(resource, deviceId, x.getMeasurementUid()));
                   }
                 } catch (IllegalPathException e) {
                   throw new RuntimeException(e);
@@ -273,15 +276,21 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
   private boolean isValueChunkDataTypeMatchSchema(
       List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+    boolean isMatch = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
       }
       String measurement = chunkMetadata.getMeasurementUid();
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
-      return schema.getType() == chunkMetadata.getDataType();
+      if (MetadataUtils.canAlter(chunkMetadata.getDataType(), schema.getType())) {
+        if (schema.getType() != chunkMetadata.getDataType()) {
+          chunkMetadata.setNewType(schema.getType());
+        }
+        isMatch = true;
+      }
     }
-    return true;
+    return isMatch;
   }
 
   /**
@@ -362,7 +371,21 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
-      valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      if (valueChunkMetadata.getNewType() != null) {
+        Chunk chunk =
+            readChunk(reader, (ChunkMetadata) valueChunkMetadata)
+                .rewrite(
+                    ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
+        valueChunks.add(chunk);
+
+        ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;
+        chunkMetadata.setTsDataType(valueChunkMetadata.getNewType());
+        Statistics<?> statistics = Statistics.getStatsByType(valueChunkMetadata.getNewType());
+        statistics.mergeStatistics(chunk.getChunkStatistic());
+        chunkMetadata.setStatistics(statistics);
+      } else {
+        valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+      }
     }
     chunkMetadataElement.valueChunks = valueChunks;
     setForceDecoding(chunkMetadataElement);

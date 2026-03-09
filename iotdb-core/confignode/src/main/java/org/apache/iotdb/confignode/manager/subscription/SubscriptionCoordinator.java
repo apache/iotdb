@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.persistence.subscription.SubscriptionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCloseConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateConsumerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateTopicReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDropSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropTopicReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
@@ -42,10 +43,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SubscriptionCoordinator {
@@ -153,28 +156,23 @@ public class SubscriptionCoordinator {
 
   public TSStatus dropTopic(TDropTopicReq req) {
     final String topicName = req.getTopicName();
-    final boolean isTopicExistedBeforeDrop = subscriptionInfo.isTopicExisted(topicName);
-    final TSStatus status = configManager.getProcedureManager().dropTopic(topicName);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn("Failed to drop topic {}. Result status: {}.", topicName, status);
-    }
-
-    // If the `IF EXISTS` condition is not set and the topic does not exist before the drop
-    // operation, return an error status indicating that the topic does not exist.
-    final boolean isIfExistedConditionSet =
+    final boolean isSetIfExistsCondition =
         req.isSetIfExistsCondition() && req.isIfExistsCondition();
-    return isTopicExistedBeforeDrop || isIfExistedConditionSet
-        ? status
-        : RpcUtils.getStatus(
-            TSStatusCode.TOPIC_NOT_EXIST_ERROR,
-            String.format(
-                "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+    if (!subscriptionInfo.isTopicExisted(topicName, req.isTableModel)) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop topic %s. Failures: %s does not exist.", topicName, topicName));
+    }
+    return configManager.getProcedureManager().dropTopic(topicName);
   }
 
   public TShowTopicResp showTopic(TShowTopicReq req) {
     try {
       return ((TopicTableResp) configManager.getConsensusManager().read(new ShowTopicPlan()))
-          .filter(req.getTopicName())
+          .filter(req.topicName, req.isTableModel)
           .convertToTShowTopicResp();
     } catch (Exception e) {
       LOGGER.warn("Failed to show topic info.", e);
@@ -248,11 +246,36 @@ public class SubscriptionCoordinator {
     return status;
   }
 
+  public TSStatus dropSubscription(TDropSubscriptionReq req) {
+    final String subscriptionId = req.getSubsciptionId();
+    final boolean isSetIfExistsCondition =
+        req.isSetIfExistsCondition() && req.isIfExistsCondition();
+    final Optional<Pair<String, String>> topicNameWithConsumerGroupName =
+        subscriptionInfo.parseSubscriptionId(subscriptionId, req.isTableModel);
+    if (!topicNameWithConsumerGroupName.isPresent()) {
+      return isSetIfExistsCondition
+          ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)
+          : RpcUtils.getStatus(
+              TSStatusCode.TOPIC_NOT_EXIST_ERROR,
+              String.format(
+                  "Failed to drop subscription %s. Failures: %s does not exist.",
+                  subscriptionId, subscriptionId));
+    }
+    return configManager
+        .getProcedureManager()
+        .dropSubscription(
+            new TUnsubscribeReq()
+                .setConsumerId(null)
+                .setConsumerGroupId(topicNameWithConsumerGroupName.get().right)
+                .setTopicNames(Collections.singleton(topicNameWithConsumerGroupName.get().left))
+                .setIsTableModel(req.isTableModel));
+  }
+
   public TShowSubscriptionResp showSubscription(TShowSubscriptionReq req) {
     try {
       return ((SubscriptionTableResp)
               configManager.getConsensusManager().read(new ShowSubscriptionPlan()))
-          .filter(req.getTopicName())
+          .filter(req.getTopicName(), req.isTableModel)
           .convertToTShowSubscriptionResp();
     } catch (Exception e) {
       LOGGER.warn("Failed to show subscription info.", e);

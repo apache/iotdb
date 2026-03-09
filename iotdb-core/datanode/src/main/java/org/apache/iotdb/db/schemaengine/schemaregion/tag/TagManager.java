@@ -137,7 +137,7 @@ public class TagManager {
     }
 
     try {
-      org.apache.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
+      org.apache.tsfile.external.commons.io.FileUtils.copyFile(tagSnapshot, tagFile);
       return new TagManager(sgSchemaDirPath, regionStatistics);
     } catch (IOException e) {
       if (!tagFile.delete()) {
@@ -267,17 +267,17 @@ public class TagManager {
   }
 
   public ISchemaReader<ITimeSeriesSchemaInfo> getTimeSeriesReaderWithIndex(
-      IShowTimeSeriesPlan plan) {
+      final IShowTimeSeriesPlan plan) {
     // schemaFilter must not null
-    SchemaFilter schemaFilter = plan.getSchemaFilter();
+    final SchemaFilter schemaFilter = plan.getSchemaFilter();
     // currently, only one TagFilter is supported
     // all IMeasurementMNode in allMatchedNodes satisfied TagFilter
-    Iterator<IMeasurementMNode<?>> allMatchedNodes =
+    final Iterator<IMeasurementMNode<?>> allMatchedNodes =
         getMatchedTimeseriesInIndex(
                 (TagFilter) SchemaFilter.extract(schemaFilter, SchemaFilterType.TAGS_FILTER).get(0))
             .iterator();
-    PartialPath pathPattern = plan.getPath();
-    SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
+    final PartialPath pathPattern = plan.getPath();
+    final SchemaIterator<ITimeSeriesSchemaInfo> schemaIterator =
         new SchemaIterator<ITimeSeriesSchemaInfo>() {
           private ITimeSeriesSchemaInfo nextMatched;
           private Throwable throwable;
@@ -287,7 +287,7 @@ public class TagManager {
             if (throwable == null && nextMatched == null) {
               try {
                 getNext();
-              } catch (Throwable e) {
+              } catch (final Throwable e) {
                 throwable = e;
               }
             }
@@ -299,7 +299,7 @@ public class TagManager {
             if (!hasNext()) {
               throw new NoSuchElementException();
             }
-            ITimeSeriesSchemaInfo result = nextMatched;
+            final ITimeSeriesSchemaInfo result = nextMatched;
             nextMatched = null;
             return result;
           }
@@ -307,11 +307,11 @@ public class TagManager {
           private void getNext() throws IOException {
             nextMatched = null;
             while (allMatchedNodes.hasNext()) {
-              IMeasurementMNode<?> node = allMatchedNodes.next();
+              final IMeasurementMNode<?> node = allMatchedNodes.next();
               if (plan.isPrefixMatch()
                   ? pathPattern.prefixMatchFullPath(node.getPartialPath())
                   : pathPattern.matchFullPath(node.getPartialPath())) {
-                Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
+                final Pair<Map<String, String>, Map<String, String>> tagAndAttributePair =
                     readTagFile(node.getOffset());
                 nextMatched =
                     new ShowTimeSeriesResult(
@@ -341,7 +341,7 @@ public class TagManager {
             // do nothing
           }
         };
-    ISchemaReader<ITimeSeriesSchemaInfo> reader =
+    final ISchemaReader<ITimeSeriesSchemaInfo> reader =
         new TimeseriesReaderWithViewFetch(schemaIterator, schemaFilter);
     if (plan.getLimit() > 0 || plan.getOffset() > 0) {
       return new SchemaReaderLimitOffsetWrapper<>(reader, plan.getLimit(), plan.getOffset());

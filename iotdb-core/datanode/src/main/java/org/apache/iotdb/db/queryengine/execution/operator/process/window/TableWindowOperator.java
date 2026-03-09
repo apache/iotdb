@@ -30,6 +30,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.R
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
@@ -98,8 +99,8 @@ public class TableWindowOperator implements ProcessOperator {
     this.tsBlockBuilder = new TsBlockBuilder(outputDataTypes);
 
     // Basic information part
-    this.windowFunctions = windowFunctions;
-    this.frameInfoList = frameInfoList;
+    this.windowFunctions = ImmutableList.copyOf(windowFunctions);
+    this.frameInfoList = ImmutableList.copyOf(frameInfoList);
 
     // Partition Part
     this.partitionChannels = ImmutableList.copyOf(partitionChannels);
@@ -132,6 +133,11 @@ public class TableWindowOperator implements ProcessOperator {
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public ListenableFuture<?> isBlocked() {
+    return inputOperator.isBlocked();
   }
 
   @Override
@@ -288,7 +294,8 @@ public class TableWindowOperator implements ProcessOperator {
         partitionExecutors.addLast(partitionExecutor);
 
         partitionStartInCurrentBlock = partitionEndInCurrentBlock;
-        partitionEndInCurrentBlock = partitionStartInCurrentBlock + 1;
+        // Reset cross-TsBlock tracking after partition completion
+        startIndexInFirstBlock = -1;
       } else {
         // Last partition of TsBlock
         // The beginning of next TsBlock may have rows in this partition
@@ -308,6 +315,8 @@ public class TableWindowOperator implements ProcessOperator {
   private TsBlock transform(long startTime) {
     while (!cachedPartitionExecutors.isEmpty()) {
       PartitionExecutor partitionExecutor = cachedPartitionExecutors.getFirst();
+      // Reset window functions for new partition
+      partitionExecutor.resetWindowFunctions();
 
       while (System.nanoTime() - startTime < maxRuntime
           && !tsBlockBuilder.isFull()

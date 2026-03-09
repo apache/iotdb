@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
@@ -32,7 +29,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.List;
 
@@ -44,6 +40,7 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
   // the paths of sources
   private ViewPaths sourcePaths;
   private QueryStatement queryStatement;
+  private boolean canSeeAuditDB;
 
   public AlterLogicalViewStatement() {
     super();
@@ -58,41 +55,6 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
   @Override
   public List<PartialPath> getPaths() {
     return this.getTargetPathList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    List<PartialPath> sourcePathList = sourcePaths.fullPathList;
-    if (sourcePathList != null) {
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathListPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkPatternPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathListPermission(
-              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
-          getTargetPathList(),
-          PrivilegeType.WRITE_SCHEMA);
-    }
-    return status;
   }
 
   public ViewPaths getTargetPaths() {
@@ -145,6 +107,14 @@ public class AlterLogicalViewStatement extends Statement implements IConfigState
     this.targetPaths.setPrefixOfPathsGroup(prefixPath);
     this.targetPaths.setSuffixOfPathsGroup(suffixPaths);
     this.targetPaths.generateFullPathsFromPathsGroup();
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 
   // endregion

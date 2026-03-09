@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.receiver.protocol.legacy.loader;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -67,7 +68,13 @@ public class TsFileLoader implements ILoader {
               .executeForTreeModel(
                   statement,
                   queryId,
-                  new SessionInfo(0, AuthorityChecker.SUPER_USER, ZoneId.systemDefault()),
+                  new SessionInfo(
+                      0,
+                      new UserEntity(
+                          AuthorityChecker.SUPER_USER_ID,
+                          AuthorityChecker.SUPER_USER,
+                          IoTDBDescriptor.getInstance().getConfig().getInternalAddress()),
+                      ZoneId.systemDefault()),
                   "",
                   PARTITION_FETCHER,
                   SCHEMA_FETCHER,

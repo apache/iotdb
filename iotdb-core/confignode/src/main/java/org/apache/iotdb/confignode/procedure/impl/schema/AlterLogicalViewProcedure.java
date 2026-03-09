@@ -35,8 +35,6 @@ import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncReques
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.AlterLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -61,6 +59,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 public class AlterLogicalViewProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, AlterLogicalViewState> {
@@ -73,6 +72,8 @@ public class AlterLogicalViewProcedure
 
   private transient PathPatternTree pathPatternTree;
   private transient ByteBuffer patternTreeBytes;
+
+  protected final Map<TDataNodeLocation, TSStatus> failureMap = new HashMap<>();
 
   public AlterLogicalViewProcedure(final boolean isGeneratedByPipe) {
     super(isGeneratedByPipe);
@@ -91,7 +92,7 @@ public class AlterLogicalViewProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final AlterLogicalViewState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -193,7 +194,7 @@ public class AlterLogicalViewProcedure
     patternTree.appendFullPath(viewPath);
     patternTree.constructTree();
     final Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
-        env.getConfigManager().getSchemaPartition(patternTree).schemaPartitionTable;
+        env.getConfigManager().getSchemaPartition(patternTree, false).schemaPartitionTable;
     if (schemaPartitionTable.isEmpty()) {
       throw new ProcedureException(new ViewNotExistException(viewPath.getFullPath()));
     } else {
@@ -392,11 +393,14 @@ public class AlterLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
+                      "Alter view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s, statuses: %s",
                       viewPathToSourceMap.keySet(),
                       taskName,
                       consensusGroupId.id,
-                      dataNodeLocationSet))));
+                      dataNodeLocationSet.stream()
+                          .map(TDataNodeLocation::getDataNodeId)
+                          .collect(Collectors.toSet()),
+                      failureStatusList))));
       interruptTask();
     }
   }

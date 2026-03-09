@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.queryengine.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.runtime.SchemaExecutionException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -27,6 +29,9 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.ISchemaS
 import org.apache.iotdb.db.queryengine.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.IShowDevicesPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.req.SchemaRegionReadPlanFactory;
+import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ISchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 
@@ -96,7 +101,15 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
   private ListenableFuture<?> tryGetNext() {
     ISchemaRegion schemaRegion = getSchemaRegion();
     if (schemaSource.hasSchemaStatistic(schemaRegion)) {
-      next = constructTsBlock(schemaSource.getSchemaStatistic(schemaRegion));
+      long statisticCount = schemaSource.getSchemaStatistic(schemaRegion);
+      // Check if database path itself is counted as a device (bug fix)
+      // This happens when pattern is like "root.db.**" and "root.db" is both database and device
+      if (!schemaSource.checkRegionDatabaseIncluded(schemaRegion)) {
+        if (isDatabaseCountedAsDevice(schemaRegion)) {
+          statisticCount--;
+        }
+      }
+      next = constructTsBlock(statisticCount);
       return NOT_BLOCKED;
     } else {
       if (schemaReader == null) {
@@ -148,6 +161,45 @@ public class SchemaCountOperator<T extends ISchemaInfo> implements SourceOperato
     tsBlockBuilder.getColumnBuilder(0).writeLong(count);
     tsBlockBuilder.declarePosition();
     return tsBlockBuilder.build();
+  }
+
+  /**
+   * Check if the database path itself is incorrectly counted as a device. This occurs when the
+   * database path (e.g., "root.db") is both a database and a device, and the query pattern is
+   * "root.db.**".
+   *
+   * @param schemaRegion the schema region to check
+   * @return true if the first device in the region equals the database path
+   */
+  private boolean isDatabaseCountedAsDevice(ISchemaRegion schemaRegion) {
+    try {
+      String databasePath = schemaRegion.getDatabaseFullPath();
+
+      // Create a plan to query the first device
+      IShowDevicesPlan showDevicesPlan =
+          SchemaRegionReadPlanFactory.getShowDevicesPlan(
+              new PartialPath(databasePath),
+              1, // limit - only need the first device
+              0, // offset
+              false, // isPrefixMatch
+              null, // schemaFilter
+              SchemaConstant.ALL_MATCH_SCOPE // scope
+              );
+
+      // Query the first device
+      try (ISchemaReader<IDeviceSchemaInfo> reader =
+          schemaRegion.getDeviceReader(showDevicesPlan)) {
+        if (reader.hasNext()) {
+          IDeviceSchemaInfo firstDevice = reader.next();
+          String firstDevicePath = firstDevice.getFullPath();
+          return databasePath.equals(firstDevicePath);
+        }
+      }
+    } catch (Exception e) {
+      throw new SchemaExecutionException(e);
+    }
+
+    return false;
   }
 
   @Override

@@ -207,21 +207,6 @@
             <level>INFO</level>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PIPE">
-        <file>${IOTDB_HOME}/logs/log_datanode_pipe.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-datanode-pipe-%d{yyyyMMdd}.log.gz</fileNamePattern>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-        <append>true</append>
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d [%t] %-5p %C{25}:%L - %m %n</pattern>
-            <charset>utf-8</charset>
-        </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
-    </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="EXPLAIN_ANALYZE">
         <file>${IOTDB_HOME}/logs/log_explain_analyze.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -257,10 +242,10 @@
     <logger level="info" name="QUERY_DEBUG">
         <appender-ref ref="QUERY_DEBUG"/>
     </logger>
-    <logger level="info" name="SLOW_SQL">
+    <logger level="info" name="SLOW_SQL" additivity="false">
         <appender-ref ref="SLOW_SQL"/>
     </logger>
-    <logger level="info" name="SAMPLED_QUERIES">
+    <logger level="info" name="SAMPLED_QUERIES" additivity="false">
         <appender-ref ref="SAMPLED_QUERIES"/>
     </logger>
     <logger level="info" name="QUERY_FREQUENCY">
@@ -279,7 +264,7 @@
     <logger level="info" name="org.apache.iotdb.commons.pipe">
         <appender-ref ref="PIPE"/>
     </logger>
-    <logger level="info" name="EXPLAIN_ANALYZE">
+    <logger level="info" name="EXPLAIN_ANALYZE" additivity="false">
         <appender-ref ref="EXPLAIN_ANALYZE"/>
     </logger>
 </configuration>

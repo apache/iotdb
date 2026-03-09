@@ -23,6 +23,9 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PathPatternTreeUtils;
+import org.apache.iotdb.commons.pipe.config.constant.SystemConstant;
+import org.apache.iotdb.commons.schema.table.Audit;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -35,7 +38,6 @@ import org.apache.iotdb.db.queryengine.plan.analyze.lock.SchemaLockType;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -53,7 +55,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class ClusterSchemaFetcher implements ISchemaFetcher {
-
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
@@ -88,7 +89,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ClusterSchemaTree fetchSchema(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     patternTree.constructTree();
     List<PartialPath> pathPatternList = patternTree.getAllPathPatterns();
     List<PartialPath> explicitPathList = new ArrayList<>();
@@ -107,7 +111,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     if (explicitPathList.size() + explicitDevicePatternCount < pathPatternList.size()) {
       return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
-          patternTree, false, withTemplate, context);
+          patternTree, false, withTemplate, context, canSeeAuditDB);
     }
 
     // The schema cache R/W and fetch operation must be locked together thus the cache clean
@@ -121,7 +125,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       Set<String> storageGroupSet = new HashSet<>();
       if (!explicitDevicePatternList.isEmpty()) {
         for (PartialPath explicitDevicePattern : explicitDevicePatternList) {
-          cachedSchema = schemaCache.getMatchedSchemaWithTemplate(explicitDevicePattern);
+          cachedSchema = schemaCache.getMatchedTemplateSchema(explicitDevicePattern);
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -135,11 +139,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       if (isAllCached && !explicitPathList.isEmpty()) {
         for (PartialPath fullPath : explicitPathList) {
           // no path length <= 2
-          if (fullPath.getNodeLength() <= 2) {
+          if (fullPath.getNodeLength() <= 2
+              || (!canSeeAuditDB && Audit.includeByAuditTreeDB(fullPath))) {
             continue;
           }
           cachedSchema =
-              schemaCache.getMatchedSchemaWithoutTemplate(new MeasurementPath(fullPath.getNodes()));
+              schemaCache.getMatchedNormalSchema(new MeasurementPath(fullPath.getNodes()));
           if (cachedSchema.isEmpty()) {
             isAllCached = false;
             break;
@@ -156,7 +161,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       return clusterSchemaFetchExecutor.fetchSchemaOfPreciseMatchOrPreciseDeviceUsingTemplate(
-          pathPatternList, patternTree, withTemplate, context);
+          pathPatternList, patternTree, withTemplate, context, canSeeAuditDB);
 
     } finally {
       schemaCache.releaseReadLock();
@@ -165,25 +170,36 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchRawSchemaInDeviceLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     authorityScope.constructTree();
     return clusterSchemaFetchExecutor.fetchDeviceLevelRawSchema(
-        patternTree, authorityScope, context);
+        patternTree, authorityScope, context, canSeeAuditDB);
   }
 
   @Override
   public ISchemaTree fetchRawSchemaInMeasurementLevel(
-      PathPatternTree patternTree, PathPatternTree authorityScope, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      PathPatternTree authorityScope,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     return clusterSchemaFetchExecutor.fetchMeasurementLevelRawSchema(
-        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, authorityScope), context);
+        PathPatternTreeUtils.intersectWithFullPathPrefixTree(patternTree, authorityScope),
+        context,
+        canSeeAuditDB);
   }
 
   @Override
   public ClusterSchemaTree fetchSchemaWithTags(
-      PathPatternTree patternTree, boolean withTemplate, MPPQueryContext context) {
+      PathPatternTree patternTree,
+      boolean withTemplate,
+      MPPQueryContext context,
+      boolean canSeeAuditDB) {
     patternTree.constructTree();
     return clusterSchemaFetchExecutor.fetchSchemaOfFuzzyMatch(
-        patternTree, true, withTemplate, context);
+        patternTree, true, withTemplate, context, canSeeAuditDB);
   }
 
   @Override
@@ -311,7 +327,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
 
       if (!config.isAutoCreateSchemaEnabled()) {
-        return schemaTree;
+        // disable auto-create for non-system series
+        indexOfDevicesWithMissingMeasurements.removeIf(
+            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.SYSTEM_PREFIX_KEY));
+        indexOfDevicesWithMissingMeasurements.removeIf(
+            i -> !devicePathList.get(i).startsWith("root." + SystemConstant.AUDIT_PREFIX_KEY));
+        if (indexOfDevicesWithMissingMeasurements.isEmpty()) {
+          return schemaTree;
+        }
       }
 
       // Auto create the still missing schema and merge them into schemaTree

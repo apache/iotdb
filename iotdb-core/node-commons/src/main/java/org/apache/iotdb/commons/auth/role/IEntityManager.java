@@ -38,6 +38,15 @@ public interface IEntityManager extends SnapshotProcessor {
   Role getEntity(String entityName) throws AuthException;
 
   /**
+   * Get an entity object.
+   *
+   * @param entityId The id of the entity.
+   * @return An entity object whose index is entityId or null if such entity does not exist.
+   * @throws AuthException if exception is raised while getting the entity.
+   */
+  Role getEntity(long entityId) throws AuthException;
+
+  /**
    * Delete an entity.
    *
    * @param entityName the name of the entity.

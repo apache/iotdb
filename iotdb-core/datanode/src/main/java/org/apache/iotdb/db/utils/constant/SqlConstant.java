@@ -78,6 +78,10 @@ public class SqlConstant {
   public static final String COUNT_TIME = "count_time";
   public static final String COUNT_TIME_HEADER = "count_time(*)";
 
+  public static final String APPROX_COUNT_DISTINCT = "approx_count_distinct";
+  public static final String APPROX_MOST_FREQUENT = "approx_most_frequent";
+  public static final String APPROX_PERCENTILE = "approx_percentile";
+
   // names of scalar functions
   public static final String DIFF = "diff";
 
@@ -96,6 +100,20 @@ public class SqlConstant {
   public static final String SUBSTRING_FROM = "FROM";
   public static final String SUBSTRING_IS_STANDARD = "isStandard";
   public static final String SUBSTRING_FOR = "FOR";
+
+  // names of window functions
+  public static final String RANK = "rank";
+  public static final String DENSE_RANK = "dense_rank";
+  public static final String ROW_NUMBER = "row_number";
+  public static final String PERCENT_RANK = "percent_rank";
+  public static final String CUME_DIST = "cume_dist";
+  public static final String NTILE = "ntile";
+  // Duplicate with aggregation function
+  public static final String TABLE_FIRST_VALUE = "first_value";
+  public static final String TABLE_LAST_VALUE = "last_value";
+  public static final String NTH_VALUE = "nth_value";
+  public static final String LEAD = "lead";
+  public static final String LAG = "lag";
 
   public static String[] getSingleRootArray() {
     return SINGLE_ROOT_ARRAY;

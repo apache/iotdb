@@ -34,6 +34,8 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
+import reactor.util.annotation.Nullable;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -79,11 +81,14 @@ public interface BaseEnv {
   /** Return the {@link ClusterConfig} for developers to set values before test. */
   ClusterConfig getConfig();
 
-  default String getUrlContent(String urlStr) {
+  default String getUrlContent(String urlStr, @Nullable String authHeader) {
     StringBuilder sb = new StringBuilder();
     try {
       URL url = new URL(urlStr);
       HttpURLConnection httpConnection = (HttpURLConnection) url.openConnection();
+      if (authHeader != null) {
+        httpConnection.setRequestProperty("Authorization", authHeader);
+      }
       if (httpConnection.getResponseCode() == HttpURLConnection.HTTP_OK) {
         InputStream in = httpConnection.getInputStream();
         InputStreamReader isr = new InputStreamReader(in);
@@ -105,15 +110,25 @@ public interface BaseEnv {
   }
 
   /** Return the content of prometheus */
-  List<String> getMetricPrometheusReporterContents();
+  List<String> getMetricPrometheusReporterContents(String authHeader);
 
   default Connection getConnection() throws SQLException {
     return getConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
   }
 
+  default Connection getAvailableConnection() throws SQLException {
+    return getAvailableConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TREE_SQL_DIALECT);
+  }
+
   default Connection getTableConnection() throws SQLException {
     return getConnection(
+        SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
+  }
+
+  default Connection getAvailableTableConnection() throws SQLException {
+    return getAvailableConnection(
         SessionConfig.DEFAULT_USER, SessionConfig.DEFAULT_PASSWORD, TABLE_SQL_DIALECT);
   }
 
@@ -150,6 +165,9 @@ public interface BaseEnv {
   }
 
   Connection getConnection(String username, String password, String sqlDialect) throws SQLException;
+
+  Connection getAvailableConnection(String username, String password, String sqlDialect)
+      throws SQLException;
 
   default Connection getWriteOnlyConnectionWithSpecifiedDataNode(DataNodeWrapper dataNode)
       throws SQLException {
@@ -242,6 +260,8 @@ public interface BaseEnv {
 
   /** Shutdown all existed ConfigNodes. */
   void shutdownAllConfigNodes();
+
+  void shutdownForciblyAllConfigNodes();
 
   /**
    * Ensure all the nodes being in the corresponding status.

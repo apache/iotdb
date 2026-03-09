@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.pipe;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,12 +35,12 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   private String pipeName;
   private String userName;
   private boolean ifExistsCondition;
-  private Map<String, String> extractorAttributes;
+  private Map<String, String> sourceAttributes;
   private Map<String, String> processorAttributes;
-  private Map<String, String> connectorAttributes;
-  private boolean isReplaceAllExtractorAttributes;
+  private Map<String, String> sinkAttributes;
+  private boolean isReplaceAllSourceAttributes;
   private boolean isReplaceAllProcessorAttributes;
-  private boolean isReplaceAllConnectorAttributes;
+  private boolean isReplaceAllSinkAttributes;
   private boolean isTableModel;
 
   public AlterPipeStatement(final StatementType alterPipeStatement) {
@@ -59,28 +55,28 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     return ifExistsCondition;
   }
 
-  public Map<String, String> getExtractorAttributes() {
-    return extractorAttributes;
+  public Map<String, String> getSourceAttributes() {
+    return sourceAttributes;
   }
 
   public Map<String, String> getProcessorAttributes() {
     return processorAttributes;
   }
 
-  public Map<String, String> getConnectorAttributes() {
-    return connectorAttributes;
+  public Map<String, String> getSinkAttributes() {
+    return sinkAttributes;
   }
 
-  public boolean isReplaceAllExtractorAttributes() {
-    return isReplaceAllExtractorAttributes;
+  public boolean isReplaceAllSourceAttributes() {
+    return isReplaceAllSourceAttributes;
   }
 
   public boolean isReplaceAllProcessorAttributes() {
     return isReplaceAllProcessorAttributes;
   }
 
-  public boolean isReplaceAllConnectorAttributes() {
-    return isReplaceAllConnectorAttributes;
+  public boolean isReplaceAllSinkAttributes() {
+    return isReplaceAllSinkAttributes;
   }
 
   public boolean isTableModel() {
@@ -99,28 +95,28 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
     this.ifExistsCondition = ifExistsCondition;
   }
 
-  public void setExtractorAttributes(final Map<String, String> extractorAttributes) {
-    this.extractorAttributes = extractorAttributes;
+  public void setSourceAttributes(final Map<String, String> sourceAttributes) {
+    this.sourceAttributes = sourceAttributes;
   }
 
   public void setProcessorAttributes(final Map<String, String> processorAttributes) {
     this.processorAttributes = processorAttributes;
   }
 
-  public void setConnectorAttributes(final Map<String, String> connectorAttributes) {
-    this.connectorAttributes = connectorAttributes;
+  public void setSinkAttributes(final Map<String, String> sinkAttributes) {
+    this.sinkAttributes = sinkAttributes;
   }
 
-  public void setReplaceAllExtractorAttributes(final boolean replaceAllExtractorAttributes) {
-    isReplaceAllExtractorAttributes = replaceAllExtractorAttributes;
+  public void setReplaceAllSourceAttributes(final boolean replaceAllSourceAttributes) {
+    isReplaceAllSourceAttributes = replaceAllSourceAttributes;
   }
 
   public void setReplaceAllProcessorAttributes(final boolean replaceAllProcessorAttributes) {
     isReplaceAllProcessorAttributes = replaceAllProcessorAttributes;
   }
 
-  public void setReplaceAllConnectorAttributes(final boolean replaceAllConnectorAttributes) {
-    isReplaceAllConnectorAttributes = replaceAllConnectorAttributes;
+  public void setReplaceAllSinkAttributes(final boolean replaceAllConnectorAttributes) {
+    isReplaceAllSinkAttributes = replaceAllConnectorAttributes;
   }
 
   public void setTableModel(final boolean tableModel) {
@@ -139,16 +135,6 @@ public class AlterPipeStatement extends Statement implements IConfigStatement {
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkSystemPermission(userName, PrivilegeType.USE_PIPE),
-        PrivilegeType.USE_PIPE);
   }
 
   @Override

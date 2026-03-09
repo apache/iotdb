@@ -28,11 +28,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis.GroupingSetAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.FieldId;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.RelationType;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFillStartAndEndTimeExtractVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Aggregation;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
@@ -40,20 +43,28 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFill
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MeasureDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullLiteral;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QueryBody;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.VariableDefinition;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -85,6 +96,7 @@ import static com.google.common.collect.ImmutableMap.toImmutableMap;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl.isNumericType;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingTranslator.sortItemToSortOrder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.PlanBuilder.newPlanBuilder;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ScopeAware.scopeAwareKey;
@@ -94,6 +106,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GapFill
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.groupingSets;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleAggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.singleGroupingSet;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.GROUPS;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.RANGE;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame.Type.ROWS;
+import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toSqlType;
+import static org.apache.iotdb.db.queryengine.plan.relational.utils.NodeUtils.getSortItemsFromOrderBy;
+import static org.apache.tsfile.read.common.type.BooleanType.BOOLEAN;
 
 public class QueryPlanner {
   private final Analysis analysis;
@@ -105,6 +125,9 @@ public class QueryPlanner {
   private final Optional<TranslationMap> outerContext;
   private final Map<NodeRef<Node>, RelationPlan> recursiveSubqueries;
 
+  private final PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubqueryReconstructor;
+
   // private final Map<NodeRef<LambdaArgumentDeclaration>, Symbol> lambdaDeclarationToSymbolMap;
   // private final SubqueryPlanner subqueryPlanner;
 
@@ -114,13 +137,18 @@ public class QueryPlanner {
       MPPQueryContext queryContext,
       Optional<TranslationMap> outerContext,
       SessionInfo session,
-      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries) {
+      Map<NodeRef<Node>, RelationPlan> recursiveSubqueries,
+      PredicateWithUncorrelatedScalarSubqueryReconstructor
+          predicateWithUncorrelatedScalarSubqueryReconstructor) {
     requireNonNull(analysis, "analysis is null");
     requireNonNull(symbolAllocator, "symbolAllocator is null");
     requireNonNull(queryContext, "queryContext is null");
     requireNonNull(outerContext, "outerContext is null");
     requireNonNull(session, "session is null");
     requireNonNull(recursiveSubqueries, "recursiveSubqueries is null");
+    requireNonNull(
+        predicateWithUncorrelatedScalarSubqueryReconstructor,
+        "predicateWithUncorrelatedScalarSubqueryReconstructor is null");
 
     this.analysis = analysis;
     this.symbolAllocator = symbolAllocator;
@@ -130,8 +158,16 @@ public class QueryPlanner {
     this.outerContext = outerContext;
     this.subqueryPlanner =
         new SubqueryPlanner(
-            analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries);
+            analysis,
+            symbolAllocator,
+            queryContext,
+            outerContext,
+            session,
+            recursiveSubqueries,
+            predicateWithUncorrelatedScalarSubqueryReconstructor);
     this.recursiveSubqueries = recursiveSubqueries;
+    this.predicateWithUncorrelatedScalarSubqueryReconstructor =
+        predicateWithUncorrelatedScalarSubqueryReconstructor;
   }
 
   public RelationPlan plan(Query query) {
@@ -182,6 +218,8 @@ public class QueryPlanner {
     }
     builder = aggregate(builder, node);
     builder = filter(builder, analysis.getHaving(node), node);
+    builder =
+        planWindowFunctions(node, builder, ImmutableList.copyOf(analysis.getWindowFunctions(node)));
 
     if (gapFillColumn != null) {
       if (wherePredicate == null) {
@@ -252,6 +290,11 @@ public class QueryPlanner {
       outputs.stream().map(builder::translate).forEach(newFields::add);
 
       builder = builder.withScope(analysis.getScope(node.getOrderBy().orElse(null)), newFields);
+      builder =
+          planWindowFunctions(
+              node,
+              builder,
+              ImmutableList.copyOf(analysis.getOrderByWindowFunctions(node.getOrderBy().get())));
       analysis.setSortNode(true);
     }
 
@@ -270,9 +313,412 @@ public class QueryPlanner {
     builder = limit(builder, node.getLimit(), orderingScheme);
 
     builder = builder.appendProjections(outputs, symbolAllocator, queryContext);
+    for (Expression expr : expressions) {
+      predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(expr);
+    }
 
     return new RelationPlan(
         builder.getRoot(), analysis.getScope(node), computeOutputs(builder, outputs), outerContext);
+  }
+
+  private PlanBuilder planWindowFunctions(
+      Node node, PlanBuilder subPlan, List<FunctionCall> windowFunctions) {
+    if (windowFunctions.isEmpty()) {
+      return subPlan;
+    }
+
+    Map<Analysis.ResolvedWindow, List<FunctionCall>> functions =
+        scopeAwareDistinct(subPlan, windowFunctions).stream()
+            .collect(Collectors.groupingBy(analysis::getWindow));
+
+    for (Map.Entry<Analysis.ResolvedWindow, List<FunctionCall>> entry : functions.entrySet()) {
+      Analysis.ResolvedWindow window = entry.getKey();
+      List<FunctionCall> functionCalls = entry.getValue();
+
+      // Pre-project inputs.
+      // Predefined window parts (specified in WINDOW clause) can only use source symbols, and no
+      // output symbols.
+      // It matters in case when this window planning takes place in ORDER BY clause, where both
+      // source and output
+      // symbols are visible.
+      // This issue is solved by analyzing window definitions in the source scope. After analysis,
+      // the expressions
+      // are recorded as belonging to the source scope, and consequentially source symbols will be
+      // used to plan them.
+      ImmutableList.Builder<Expression> inputsBuilder =
+          ImmutableList.<Expression>builder()
+              .addAll(window.getPartitionBy())
+              .addAll(
+                  getSortItemsFromOrderBy(window.getOrderBy()).stream()
+                      .map(SortItem::getSortKey)
+                      .iterator());
+
+      if (window.getFrame().isPresent()) {
+        WindowFrame frame = window.getFrame().get();
+        frame.getStart().getValue().ifPresent(inputsBuilder::add);
+
+        if (frame.getEnd().isPresent()) {
+          frame.getEnd().get().getValue().ifPresent(inputsBuilder::add);
+        }
+      }
+
+      for (FunctionCall windowFunction : functionCalls) {
+        inputsBuilder.addAll(new ArrayList<>(windowFunction.getArguments()));
+      }
+
+      List<Expression> inputs = inputsBuilder.build();
+
+      subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
+      subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+      for (Expression input : inputs) {
+        predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(input);
+      }
+
+      // Add projection to coerce inputs to their site-specific types.
+      // This is important because the same lexical expression may need to be coerced
+      // in different ways if it's referenced by multiple arguments to the window function.
+      // For example, given v::integer,
+      //    avg(v) OVER (ORDER BY v)
+      // Needs to be rewritten as
+      //    avg(CAST(v AS double)) OVER (ORDER BY v)
+      PlanAndMappings coercions =
+          coerce(subPlan, inputs, analysis, queryIdAllocator, symbolAllocator);
+      subPlan = coercions.getSubPlan();
+
+      // For frame of type RANGE, append casts and functions necessary for frame bound calculations
+      Optional<Symbol> frameStart = Optional.empty();
+      Optional<Symbol> frameEnd = Optional.empty();
+      Optional<Symbol> sortKeyCoercedForFrameStartComparison = Optional.empty();
+      Optional<Symbol> sortKeyCoercedForFrameEndComparison = Optional.empty();
+
+      if (window.getFrame().isPresent() && window.getFrame().get().getType() == RANGE) {
+        Optional<Expression> startValue = window.getFrame().get().getStart().getValue();
+        Optional<Expression> endValue =
+            window.getFrame().get().getEnd().flatMap(FrameBound::getValue);
+        // record sortKey coercions for reuse
+        Map<Type, Symbol> sortKeyCoercions = new HashMap<>();
+
+        // process frame start
+        FrameBoundPlanAndSymbols plan =
+            planFrameBound(subPlan, coercions, startValue, window, sortKeyCoercions);
+        subPlan = plan.getSubPlan();
+        frameStart = plan.getFrameBoundSymbol();
+        sortKeyCoercedForFrameStartComparison = plan.getSortKeyCoercedForFrameBoundComparison();
+
+        // process frame end
+        plan = planFrameBound(subPlan, coercions, endValue, window, sortKeyCoercions);
+        subPlan = plan.getSubPlan();
+        frameEnd = plan.getFrameBoundSymbol();
+        sortKeyCoercedForFrameEndComparison = plan.getSortKeyCoercedForFrameBoundComparison();
+      } else if (window.getFrame().isPresent()
+          && (window.getFrame().get().getType() == ROWS
+              || window.getFrame().get().getType() == GROUPS)) {
+        Optional<Expression> startValue = window.getFrame().get().getStart().getValue();
+        Optional<Expression> endValue =
+            window.getFrame().get().getEnd().flatMap(FrameBound::getValue);
+
+        // process frame start
+        FrameOffsetPlanAndSymbol plan = planFrameOffset(subPlan, startValue, coercions);
+        subPlan = plan.getSubPlan();
+        frameStart = plan.getFrameOffsetSymbol();
+
+        // process frame end
+        plan = planFrameOffset(subPlan, endValue, coercions);
+        subPlan = plan.getSubPlan();
+        frameEnd = plan.getFrameOffsetSymbol();
+      } else if (window.getFrame().isPresent()) {
+        throw new IllegalArgumentException(
+            "unexpected window frame type: " + window.getFrame().get().getType());
+      }
+
+      subPlan =
+          planWindow(
+              subPlan,
+              functionCalls,
+              window,
+              coercions,
+              frameStart,
+              sortKeyCoercedForFrameStartComparison,
+              frameEnd,
+              sortKeyCoercedForFrameEndComparison);
+    }
+
+    return subPlan;
+  }
+
+  private PlanBuilder planWindow(
+      PlanBuilder subPlan,
+      List<FunctionCall> windowFunctions,
+      Analysis.ResolvedWindow window,
+      PlanAndMappings coercions,
+      Optional<Symbol> frameStartSymbol,
+      Optional<Symbol> sortKeyCoercedForFrameStartComparison,
+      Optional<Symbol> frameEndSymbol,
+      Optional<Symbol> sortKeyCoercedForFrameEndComparison) {
+    WindowFrame.Type frameType = WindowFrame.Type.RANGE;
+    FrameBound.Type frameStartType = FrameBound.Type.UNBOUNDED_PRECEDING;
+    FrameBound.Type frameEndType = FrameBound.Type.CURRENT_ROW;
+
+    Optional<Expression> frameStartExpression = Optional.empty();
+    Optional<Expression> frameEndExpression = Optional.empty();
+
+    if (window.getFrame().isPresent()) {
+      WindowFrame frame = window.getFrame().get();
+      frameType = frame.getType();
+
+      frameStartType = frame.getStart().getType();
+      frameStartExpression = frame.getStart().getValue();
+
+      if (frame.getEnd().isPresent()) {
+        frameEndType = frame.getEnd().get().getType();
+        frameEndExpression = frame.getEnd().get().getValue();
+      }
+    }
+
+    DataOrganizationSpecification specification =
+        planWindowSpecification(window.getPartitionBy(), window.getOrderBy(), coercions::get);
+
+    // Rewrite frame bounds in terms of pre-projected inputs
+    WindowNode.Frame frame =
+        new WindowNode.Frame(
+            frameType,
+            frameStartType,
+            frameStartSymbol,
+            sortKeyCoercedForFrameStartComparison,
+            frameEndType,
+            frameEndSymbol,
+            sortKeyCoercedForFrameEndComparison,
+            frameStartExpression,
+            frameEndExpression);
+
+    ImmutableMap.Builder<ScopeAware<Expression>, Symbol> mappings = ImmutableMap.builder();
+    ImmutableMap.Builder<Symbol, WindowNode.Function> functions = ImmutableMap.builder();
+
+    for (FunctionCall windowFunction : windowFunctions) {
+      Symbol newSymbol =
+          symbolAllocator.newSymbol(windowFunction, analysis.getType(windowFunction));
+
+      FunctionCall.NullTreatment nullTreatment =
+          windowFunction.getNullTreatment().orElse(FunctionCall.NullTreatment.RESPECT);
+
+      WindowNode.Function function =
+          new WindowNode.Function(
+              analysis.getResolvedFunction(windowFunction),
+              windowFunction.getArguments().stream()
+                  .map(argument -> coercions.get(argument).toSymbolReference())
+                  .collect(toImmutableList()),
+              frame,
+              nullTreatment == FunctionCall.NullTreatment.IGNORE);
+
+      functions.put(newSymbol, function);
+      mappings.put(scopeAwareKey(windowFunction, analysis, subPlan.getScope()), newSymbol);
+    }
+
+    // Create GroupNode
+    List<Symbol> sortSymbols = new ArrayList<>();
+    Map<Symbol, SortOrder> sortOrderings = new HashMap<>();
+    for (Symbol symbol : specification.getPartitionBy()) {
+      sortSymbols.add(symbol);
+      sortOrderings.put(symbol, ASC_NULLS_LAST);
+    }
+    int sortKeyOffset = sortSymbols.size();
+    specification
+        .getOrderingScheme()
+        .ifPresent(
+            orderingScheme -> {
+              for (Symbol symbol : orderingScheme.getOrderBy()) {
+                if (!sortOrderings.containsKey(symbol)) {
+                  sortSymbols.add(symbol);
+                  sortOrderings.put(symbol, orderingScheme.getOrdering(symbol));
+                }
+              }
+            });
+
+    PlanBuilder planBuilder = null;
+    if (!sortSymbols.isEmpty()) {
+      GroupNode groupNode =
+          new GroupNode(
+              queryIdAllocator.genPlanNodeId(),
+              subPlan.getRoot(),
+              new OrderingScheme(sortSymbols, sortOrderings),
+              sortKeyOffset);
+      planBuilder =
+          new PlanBuilder(
+              subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()), groupNode);
+    }
+
+    // create window node
+    return new PlanBuilder(
+        subPlan.getTranslations().withAdditionalMappings(mappings.buildOrThrow()),
+        new WindowNode(
+            queryIdAllocator.genPlanNodeId(),
+            planBuilder != null ? planBuilder.getRoot() : subPlan.getRoot(),
+            specification,
+            functions.buildOrThrow(),
+            Optional.empty(),
+            ImmutableSet.of(),
+            0));
+  }
+
+  public static DataOrganizationSpecification planWindowSpecification(
+      List<Expression> partitionBy,
+      Optional<OrderBy> orderBy,
+      Function<Expression, Symbol> expressionRewrite) {
+    // Rewrite PARTITION BY
+    ImmutableList.Builder<Symbol> partitionBySymbols = ImmutableList.builder();
+    for (Expression expression : partitionBy) {
+      partitionBySymbols.add(expressionRewrite.apply(expression));
+    }
+
+    // Rewrite ORDER BY
+    LinkedHashMap<Symbol, SortOrder> orderings = new LinkedHashMap<>();
+    for (SortItem item : getSortItemsFromOrderBy(orderBy)) {
+      Symbol symbol = expressionRewrite.apply(item.getSortKey());
+      // don't override existing keys, i.e. when "ORDER BY a ASC, a DESC" is specified
+      orderings.putIfAbsent(symbol, sortItemToSortOrder(item));
+    }
+
+    Optional<OrderingScheme> orderingScheme = Optional.empty();
+    if (!orderings.isEmpty()) {
+      orderingScheme =
+          Optional.of(new OrderingScheme(ImmutableList.copyOf(orderings.keySet()), orderings));
+    }
+
+    return new DataOrganizationSpecification(partitionBySymbols.build(), orderingScheme);
+  }
+
+  private FrameBoundPlanAndSymbols planFrameBound(
+      PlanBuilder subPlan,
+      PlanAndMappings coercions,
+      Optional<Expression> frameOffset,
+      Analysis.ResolvedWindow window,
+      Map<Type, Symbol> sortKeyCoercions) {
+    // We don't need frameBoundCalculationFunction
+    if (!frameOffset.isPresent()) {
+      return new FrameBoundPlanAndSymbols(subPlan, Optional.empty(), Optional.empty());
+    }
+
+    // Append filter to validate offset values. They mustn't be negative or null.
+    Symbol offsetSymbol = coercions.get(frameOffset.get());
+    Expression zeroOffset = zeroOfType(symbolAllocator.getTypes().getTableModelType(offsetSymbol));
+    Expression predicate =
+        new IfExpression(
+            new ComparisonExpression(
+                GREATER_THAN_OR_EQUAL, offsetSymbol.toSymbolReference(), zeroOffset),
+            TRUE_LITERAL,
+            new Cast(new NullLiteral(), toSqlType(BOOLEAN)));
+    subPlan =
+        subPlan.withNewRoot(
+            new FilterNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+
+    // Then, coerce the sortKey so that we can add / subtract the offset.
+    // Note: for that we cannot rely on the usual mechanism of using the coerce() method. The
+    // coerce() method can only handle one coercion for a node,
+    // while the sortKey node might require several different coercions, e.g. one for frame start
+    // and one for frame end.
+    Expression sortKey =
+        Iterables.getOnlyElement(window.getOrderBy().get().getSortItems()).getSortKey();
+    Symbol sortKeyCoercedForFrameBoundCalculation = coercions.get(sortKey);
+    Optional<Type> coercion = frameOffset.map(analysis::getSortKeyCoercionForFrameBoundCalculation);
+    if (coercion.isPresent()) {
+      Type expectedType = coercion.get();
+      Symbol alreadyCoerced = sortKeyCoercions.get(expectedType);
+      if (alreadyCoerced != null) {
+        sortKeyCoercedForFrameBoundCalculation = alreadyCoerced;
+      } else {
+        Expression cast =
+            new Cast(
+                coercions.get(sortKey).toSymbolReference(),
+                toSqlType(expectedType),
+                false,
+                analysis.getType(sortKey).equals(expectedType));
+        sortKeyCoercedForFrameBoundCalculation = symbolAllocator.newSymbol(cast, expectedType);
+        sortKeyCoercions.put(expectedType, sortKeyCoercedForFrameBoundCalculation);
+        subPlan =
+            subPlan.withNewRoot(
+                new ProjectNode(
+                    queryIdAllocator.genPlanNodeId(),
+                    subPlan.getRoot(),
+                    Assignments.builder()
+                        .putIdentities(subPlan.getRoot().getOutputSymbols())
+                        .put(sortKeyCoercedForFrameBoundCalculation, cast)
+                        .build()));
+      }
+    }
+
+    // Finally, coerce the sortKey to the type of frameBound so that the operator can perform
+    // comparisons on them
+    Optional<Symbol> sortKeyCoercedForFrameBoundComparison = Optional.of(coercions.get(sortKey));
+    coercion = frameOffset.map(analysis::getSortKeyCoercionForFrameBoundComparison);
+    if (coercion.isPresent()) {
+      Type expectedType = coercion.get();
+      Symbol alreadyCoerced = sortKeyCoercions.get(expectedType);
+      if (alreadyCoerced != null) {
+        sortKeyCoercedForFrameBoundComparison = Optional.of(alreadyCoerced);
+      } else {
+        Expression cast =
+            new Cast(
+                coercions.get(sortKey).toSymbolReference(),
+                toSqlType(expectedType),
+                false,
+                analysis.getType(sortKey).equals(expectedType));
+        Symbol castSymbol = symbolAllocator.newSymbol(cast, expectedType);
+        sortKeyCoercions.put(expectedType, castSymbol);
+        subPlan =
+            subPlan.withNewRoot(
+                new ProjectNode(
+                    queryIdAllocator.genPlanNodeId(),
+                    subPlan.getRoot(),
+                    Assignments.builder()
+                        .putIdentities(subPlan.getRoot().getOutputSymbols())
+                        .put(castSymbol, cast)
+                        .build()));
+        sortKeyCoercedForFrameBoundComparison = Optional.of(castSymbol);
+      }
+    }
+
+    Symbol frameBoundSymbol = coercions.get(frameOffset.get());
+    return new FrameBoundPlanAndSymbols(
+        subPlan, Optional.of(frameBoundSymbol), sortKeyCoercedForFrameBoundComparison);
+  }
+
+  private FrameOffsetPlanAndSymbol planFrameOffset(
+      PlanBuilder subPlan, Optional<Expression> frameOffset, PlanAndMappings coercions) {
+    if (!frameOffset.isPresent()) {
+      return new FrameOffsetPlanAndSymbol(subPlan, Optional.empty());
+    }
+
+    // Report error if frame offsets are literals and they are negative or null
+    if (frameOffset.get() instanceof LongLiteral) {
+      long frameOffsetValue = ((LongLiteral) frameOffset.get()).getParsedValue();
+      if (frameOffsetValue < 0) {
+        throw new SemanticException("Window frame offset value must not be negative or null");
+      }
+    }
+
+    Symbol offsetSymbol = frameOffset.map(coercions::get).get();
+    Type offsetType = symbolAllocator.getTypes().getTableModelType(offsetSymbol);
+
+    // Append filter to validate offset values. They mustn't be negative or null.
+    Expression zeroOffset = zeroOfType(offsetType);
+    Expression predicate =
+        new IfExpression(
+            new ComparisonExpression(
+                GREATER_THAN_OR_EQUAL, offsetSymbol.toSymbolReference(), zeroOffset),
+            TRUE_LITERAL,
+            new Cast(new NullLiteral(), toSqlType(BOOLEAN)));
+    subPlan =
+        subPlan.withNewRoot(
+            new FilterNode(queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), predicate));
+
+    return new FrameOffsetPlanAndSymbol(subPlan, Optional.of(offsetSymbol));
+  }
+
+  private static Expression zeroOfType(Type type) {
+    if (isNumericType(type)) {
+      return new Cast(new LongLiteral("0"), toSqlType(type));
+    }
+    throw new IllegalArgumentException("unexpected type: " + type);
   }
 
   private static boolean hasExpressionsToUnfold(List<Analysis.SelectExpression> selectExpressions) {
@@ -311,7 +757,13 @@ public class QueryPlanner {
   private PlanBuilder planQueryBody(QueryBody queryBody) {
     RelationPlan relationPlan =
         new RelationPlanner(
-                analysis, symbolAllocator, queryContext, outerContext, session, recursiveSubqueries)
+                analysis,
+                symbolAllocator,
+                queryContext,
+                outerContext,
+                session,
+                recursiveSubqueries,
+                predicateWithUncorrelatedScalarSubqueryReconstructor)
             .process(queryBody, null);
 
     return newPlanBuilder(relationPlan, analysis);
@@ -326,11 +778,12 @@ public class QueryPlanner {
                   queryContext,
                   outerContext,
                   session,
-                  recursiveSubqueries)
+                  recursiveSubqueries,
+                  predicateWithUncorrelatedScalarSubqueryReconstructor)
               .process(node.getFrom().orElse(null), null);
       return newPlanBuilder(relationPlan, analysis);
     } else {
-      throw new IllegalStateException("From clause must not by empty");
+      throw new SemanticException("From clause must not be empty");
     }
   }
 
@@ -340,9 +793,12 @@ public class QueryPlanner {
     }
 
     subPlan = subqueryPlanner.handleSubqueries(subPlan, predicate, analysis.getSubqueries(node));
-    return subPlan.withNewRoot(
-        new FilterNode(
-            queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    PlanBuilder planBuilder =
+        subPlan.withNewRoot(
+            new FilterNode(
+                queryIdAllocator.genPlanNodeId(), subPlan.getRoot(), subPlan.rewrite(predicate)));
+    predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(predicate);
+    return planBuilder;
   }
 
   private PlanBuilder aggregate(PlanBuilder subPlan, QuerySpecification node) {
@@ -378,6 +834,9 @@ public class QueryPlanner {
     List<Expression> inputs = inputBuilder.build();
     subPlan = subqueryPlanner.handleSubqueries(subPlan, inputs, analysis.getSubqueries(node));
     subPlan = subPlan.appendProjections(inputs, symbolAllocator, queryContext);
+    for (Expression input : inputs) {
+      predicateWithUncorrelatedScalarSubqueryReconstructor.clearShadowExpression(input);
+    }
 
     Function<Expression, Expression> rewrite = subPlan.getTranslations()::rewrite;
 
@@ -610,6 +1069,17 @@ public class QueryPlanner {
     return allSets;
   }
 
+  public static List<Expression> extractPatternRecognitionExpressions(
+      List<VariableDefinition> variableDefinitions, List<MeasureDefinition> measureDefinitions) {
+    ImmutableList.Builder<Expression> expressions = ImmutableList.builder();
+
+    variableDefinitions.stream().map(VariableDefinition::getExpression).forEach(expressions::add);
+
+    measureDefinitions.stream().map(MeasureDefinition::getExpression).forEach(expressions::add);
+
+    return expressions.build();
+  }
+
   public static Expression coerceIfNecessary(
       Analysis analysis, Expression original, Expression rewritten) {
     Type coercion = analysis.getCoercion(original);
@@ -665,6 +1135,49 @@ public class QueryPlanner {
             new ProjectNode(idAllocator.genPlanNodeId(), subPlan.getRoot(), assignments.build()));
 
     return new PlanAndMappings(subPlan, mappings);
+  }
+
+  public static NodeAndMappings coerce(
+      RelationPlan plan, List<Type> types, SymbolAllocator symbolAllocator, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    checkArgument(visibleFields.size() == types.size());
+
+    Assignments.Builder assignments = Assignments.builder();
+    ImmutableList.Builder<Symbol> mappings = ImmutableList.builder();
+    for (int i = 0; i < types.size(); i++) {
+      Symbol input = visibleFields.get(i);
+      Type type = types.get(i);
+
+      if (!symbolAllocator.getTypes().getTableModelType(input).equals(type)) {
+        Symbol coerced = symbolAllocator.newSymbol(input.getName(), type);
+        assignments.put(coerced, new Cast(input.toSymbolReference(), toSqlType(type)));
+        mappings.add(coerced);
+      } else {
+        assignments.putIdentity(input);
+        mappings.add(input);
+      }
+    }
+
+    ProjectNode coerced =
+        new ProjectNode(idAllocator.genPlanNodeId(), plan.getRoot(), assignments.build());
+    return new NodeAndMappings(coerced, mappings.build());
+  }
+
+  public static List<Symbol> visibleFields(RelationPlan subPlan) {
+    RelationType descriptor = subPlan.getDescriptor();
+    return descriptor.getAllFields().stream()
+        .filter(field -> !field.isHidden())
+        .map(descriptor::indexOf)
+        .map(subPlan.getFieldMappings()::get)
+        .collect(toImmutableList());
+  }
+
+  public static NodeAndMappings pruneInvisibleFields(RelationPlan plan, QueryId idAllocator) {
+    List<Symbol> visibleFields = visibleFields(plan);
+    ProjectNode pruned =
+        new ProjectNode(
+            idAllocator.genPlanNodeId(), plan.getRoot(), Assignments.identity(visibleFields));
+    return new NodeAndMappings(pruned, visibleFields);
   }
 
   public static OrderingScheme translateOrderingScheme(
@@ -992,6 +1505,51 @@ public class QueryPlanner {
 
     public Aggregation getRewritten() {
       return aggregation;
+    }
+  }
+
+  private static class FrameBoundPlanAndSymbols {
+    private final PlanBuilder subPlan;
+    private final Optional<Symbol> frameBoundSymbol;
+    private final Optional<Symbol> sortKeyCoercedForFrameBoundComparison;
+
+    public FrameBoundPlanAndSymbols(
+        PlanBuilder subPlan,
+        Optional<Symbol> frameBoundSymbol,
+        Optional<Symbol> sortKeyCoercedForFrameBoundComparison) {
+      this.subPlan = subPlan;
+      this.frameBoundSymbol = frameBoundSymbol;
+      this.sortKeyCoercedForFrameBoundComparison = sortKeyCoercedForFrameBoundComparison;
+    }
+
+    public PlanBuilder getSubPlan() {
+      return subPlan;
+    }
+
+    public Optional<Symbol> getFrameBoundSymbol() {
+      return frameBoundSymbol;
+    }
+
+    public Optional<Symbol> getSortKeyCoercedForFrameBoundComparison() {
+      return sortKeyCoercedForFrameBoundComparison;
+    }
+  }
+
+  private static class FrameOffsetPlanAndSymbol {
+    private final PlanBuilder subPlan;
+    private final Optional<Symbol> frameOffsetSymbol;
+
+    public FrameOffsetPlanAndSymbol(PlanBuilder subPlan, Optional<Symbol> frameOffsetSymbol) {
+      this.subPlan = subPlan;
+      this.frameOffsetSymbol = frameOffsetSymbol;
+    }
+
+    public PlanBuilder getSubPlan() {
+      return subPlan;
+    }
+
+    public Optional<Symbol> getFrameOffsetSymbol() {
+      return frameOffsetSymbol;
     }
   }
 }

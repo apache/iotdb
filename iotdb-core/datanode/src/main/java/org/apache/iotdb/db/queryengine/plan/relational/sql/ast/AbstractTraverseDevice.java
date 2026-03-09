@@ -32,9 +32,11 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.ExtractCommonP
 
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -45,12 +47,14 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQu
 // Show, Count, Update, Delete Devices
 public abstract class AbstractTraverseDevice extends Statement {
 
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AbstractTraverseDevice.class);
+
   protected String database;
 
   protected String tableName;
-
   // Temporary
-  private Table table;
+  protected Table table;
 
   protected Expression where;
 
@@ -62,10 +66,10 @@ public abstract class AbstractTraverseDevice extends Statement {
    * <p>Each inner list represents a device pattern and each expression of it represents one
    * condition on some id column.
    */
-  protected List<List<SchemaFilter>> idDeterminedFilterList;
+  protected List<List<SchemaFilter>> tagDeterminedFilterList;
 
   /** filters/conditions involving non-id columns and concat by OR to id column filters */
-  protected Expression idFuzzyPredicate;
+  protected Expression tagFuzzyPredicate;
 
   private List<IDeviceID> partitionKeyList;
 
@@ -128,8 +132,8 @@ public abstract class AbstractTraverseDevice extends Statement {
     this.where = where;
   }
 
-  public boolean parseRawExpression(
-      final List<DeviceEntry> entries,
+  public boolean parseWhere(
+      final Map<String, List<DeviceEntry>> entries,
       final TsTable tableInstance,
       final List<String> attributeColumns,
       final MPPQueryContext context) {
@@ -139,7 +143,6 @@ public abstract class AbstractTraverseDevice extends Statement {
     where = ExtractCommonPredicatesExpressionRewriter.extractCommonPredicates(where);
     return TableDeviceSchemaFetcher.getInstance()
         .parseFilter4TraverseDevice(
-            database,
             tableInstance,
             (where instanceof LogicalExpression
                     && ((LogicalExpression) where).getOperator() == LogicalExpression.Operator.AND)
@@ -153,23 +156,23 @@ public abstract class AbstractTraverseDevice extends Statement {
             true);
   }
 
-  public List<List<SchemaFilter>> getIdDeterminedFilterList() {
-    if (idDeterminedFilterList == null) {
-      idDeterminedFilterList = Collections.singletonList(Collections.emptyList());
+  public List<List<SchemaFilter>> getTagDeterminedFilterList() {
+    if (tagDeterminedFilterList == null) {
+      tagDeterminedFilterList = Collections.singletonList(Collections.emptyList());
     }
-    return idDeterminedFilterList;
+    return tagDeterminedFilterList;
   }
 
-  public void setIdDeterminedFilterList(final List<List<SchemaFilter>> idDeterminedFilterList) {
-    this.idDeterminedFilterList = idDeterminedFilterList;
+  public void setTagDeterminedFilterList(final List<List<SchemaFilter>> tagDeterminedFilterList) {
+    this.tagDeterminedFilterList = tagDeterminedFilterList;
   }
 
-  public Expression getIdFuzzyPredicate() {
-    return idFuzzyPredicate;
+  public Expression getTagFuzzyPredicate() {
+    return tagFuzzyPredicate;
   }
 
-  public void setIdFuzzyPredicate(final Expression idFuzzyPredicate) {
-    this.idFuzzyPredicate = idFuzzyPredicate;
+  public void setTagFuzzyPredicate(final Expression tagFuzzyPredicate) {
+    this.tagFuzzyPredicate = tagFuzzyPredicate;
   }
 
   public boolean isIdDetermined() {
@@ -186,6 +189,10 @@ public abstract class AbstractTraverseDevice extends Statement {
 
   public void setAttributeColumns(final List<String> attributeColumns) {
     this.attributeColumns = attributeColumns;
+  }
+
+  public List<String> getAttributeColumns() {
+    return attributeColumns;
   }
 
   public List<ColumnHeader> getColumnHeaderList() {
@@ -217,13 +224,13 @@ public abstract class AbstractTraverseDevice extends Statement {
     return Objects.equals(database, that.database)
         && Objects.equals(tableName, that.tableName)
         && Objects.equals(where, that.where)
-        && Objects.equals(idDeterminedFilterList, that.idDeterminedFilterList)
-        && Objects.equals(idFuzzyPredicate, that.idFuzzyPredicate);
+        && Objects.equals(tagDeterminedFilterList, that.tagDeterminedFilterList)
+        && Objects.equals(tagFuzzyPredicate, that.tagFuzzyPredicate);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(database, tableName, where, idDeterminedFilterList, idFuzzyPredicate);
+    return Objects.hash(database, tableName, where, tagDeterminedFilterList, tagFuzzyPredicate);
   }
 
   protected String toStringContent() {
@@ -237,9 +244,49 @@ public abstract class AbstractTraverseDevice extends Statement {
         + ", rawExpression="
         + where
         + ", idDeterminedFilterList="
-        + idDeterminedFilterList
+        + tagDeterminedFilterList
         + ", idFuzzyFilter="
-        + idFuzzyPredicate
+        + tagFuzzyPredicate
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
+  }
+
+  protected long ramBytesUsedForCommonFields() {
+    long size = 0;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(tagFuzzyPredicate);
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(tableName);
+    if (tagDeterminedFilterList != null) {
+      size += RamUsageEstimator.shallowSizeOf(tagDeterminedFilterList);
+      for (List<SchemaFilter> filters : tagDeterminedFilterList) {
+        if (filters != null) {
+          size += RamUsageEstimator.shallowSizeOf(filters);
+          for (SchemaFilter filter : filters) {
+            size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(filter);
+          }
+        }
+      }
+    }
+    if (columnHeaderList != null) {
+      size += RamUsageEstimator.shallowSizeOf(columnHeaderList);
+      for (ColumnHeader header : columnHeaderList) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(header);
+      }
+    }
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(attributeColumns);
+    if (partitionKeyList != null) {
+      size += RamUsageEstimator.shallowSizeOf(partitionKeyList);
+      for (IDeviceID deviceID : partitionKeyList) {
+        size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(deviceID);
+      }
+    }
+    return size;
   }
 }

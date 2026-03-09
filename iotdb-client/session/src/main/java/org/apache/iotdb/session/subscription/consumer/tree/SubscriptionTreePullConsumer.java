@@ -205,6 +205,11 @@ public class SubscriptionTreePullConsumer extends AbstractSubscriptionPullConsum
     return super.getConsumerGroupId();
   }
 
+  @Override
+  public boolean allTopicMessagesHaveBeenConsumed() {
+    return super.allTopicMessagesHaveBeenConsumed();
+  }
+
   /////////////////////////////// builder ///////////////////////////////
 
   @Deprecated // keep for forward compatibility

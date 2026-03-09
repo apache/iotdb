@@ -45,7 +45,7 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-20.04, ubuntu-22.04, ubuntu-24.04, windows-2019, windows-2022, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-latest, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -56,12 +56,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install libboost-all-dev
+          sudo apt-get install openssl libssl-dev
       - name: Install CPP Dependencies (Mac)
         # remove some xcode to release disk space
         if: runner.os == 'macOS'
         shell: bash
         run: |
           brew install boost
+          brew install openssl
           sudo rm -rf /Applications/Xcode_14.3.1.app
           sudo rm -rf /Applications/Xcode_15.0.1.app
           sudo rm -rf /Applications/Xcode_15.1.app
@@ -71,13 +73,14 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install winflexbison3
-          if ("${{ matrix.os }}" -eq "windows-2019") {
-            choco install boost-msvc-14.2
-          } else {
-            choco install boost-msvc-14.3
-          }
+          choco install boost-msvc-14.3
           $boost_path = (Get-ChildItem -Path 'C:\local\' -Filter 'boost_*').FullName
           echo $boost_path >> $env:GITHUB_PATH
+          
+          choco install openssl
+          $sslPath = (Get-ChildItem 'C:\Program Files\OpenSSL*' -Directory | Select-Object -First 1).FullName
+          echo "$sslPath\bin" >> $env:GITHUB_PATH
+          echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -93,13 +96,7 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-glibc223-SNAPSHOT
-          elif [[ "${{ matrix.os }}" == "windows-2019" ]]; then
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Diotdb-tools-thrift.version=0.14.1.1-msvc142-SNAPSHOT -Dcmake.generator="Visual Studio 16 2019"
-          else
-            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
-          fi
+          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
       - name: Upload Artifact
         if: failure()
         uses: actions/upload-artifact@v4
@@ -137,8 +134,8 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        python: [ '3.6', '3.x']
-    runs-on: ${{ (matrix.python == '3.6' && 'ubuntu-20.04') || 'ubuntu-latest' }}
+        python: ['3.x']
+    runs-on: ${{ 'ubuntu-latest' }}
 
     steps:
       - uses: actions/setup-python@v5

@@ -25,6 +25,10 @@ import java.util.List;
 public interface DataNodeConfig {
   DataNodeConfig setMetricReporterType(List<String> metricReporterTypes);
 
+  DataNodeConfig setMetricPrometheusReporterUsername(String username);
+
+  DataNodeConfig setMetricPrometheusReporterPassword(String password);
+
   DataNodeConfig setEnableRestService(boolean enableRestService);
 
   DataNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS);
@@ -37,4 +41,16 @@ public interface DataNodeConfig {
   DataNodeConfig setEnableMQTTService(boolean enableMQTTService);
 
   DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter);
+
+  DataNodeConfig setLoadLastCacheStrategy(String strategyName);
+
+  DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad);
+
+  DataNodeConfig setWalThrottleSize(long walThrottleSize);
+
+  DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs);
+
+  DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion);
+
+  DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow);
 }

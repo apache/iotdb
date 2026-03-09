@@ -204,6 +204,7 @@ public class WritePlanNodeSplitTest {
     insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
     insertTabletNode.setColumns(
         new Object[] {new int[] {-20, -10, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+    insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
 
     DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
     dataPartitionQueryParam.setDeviceID(
@@ -314,6 +315,7 @@ public class WritePlanNodeSplitTest {
       insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertTabletNode.setColumns(
           new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+      insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
       insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, 2 * i);
 
       insertTabletNode = new InsertTabletNode(new PlanNodeId("plan node 3"));
@@ -322,6 +324,7 @@ public class WritePlanNodeSplitTest {
       insertTabletNode.setDataTypes(new TSDataType[] {TSDataType.INT32});
       insertTabletNode.setColumns(
           new Object[] {new int[] {10, 20, 30, 40, 50, 60, 70, 80, 90, 100}});
+      insertTabletNode.setRowCount(insertTabletNode.getTimes().length);
       insertMultiTabletsNode.addInsertTabletNode(insertTabletNode, 2 * i);
     }
 

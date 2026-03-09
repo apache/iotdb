@@ -189,7 +189,7 @@ public class InsertNodeMemoryEstimator {
     // MeasurementSchemas
     size += sizeOfMeasurementSchemas(node.getMeasurementSchemas());
     // Measurement
-    size += sizeOfStringArray(node.getMeasurements());
+    size += RamUsageEstimator.sizeOf(node.getMeasurements());
     // dataTypes
     size += RamUsageEstimator.shallowSizeOf(node.getDataTypes());
     // columnCategories
@@ -231,7 +231,7 @@ public class InsertNodeMemoryEstimator {
     long size = INSERT_TABLET_NODE_SIZE;
     size += calculateFullInsertNodeSize(node);
     size += RamUsageEstimator.sizeOf(node.getTimes());
-    size += sizeOfBitMapArray(node.getBitMaps());
+    size += RamUsageEstimator.sizeOf(node.getBitMaps());
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
     final List<Integer> range = node.getRange();
     if (range != null) {
@@ -247,7 +247,7 @@ public class InsertNodeMemoryEstimator {
 
     size += RamUsageEstimator.sizeOf(node.getTimes());
 
-    size += sizeOfBitMapArray(node.getBitMaps());
+    size += RamUsageEstimator.sizeOf(node.getBitMaps());
 
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
 
@@ -390,7 +390,7 @@ public class InsertNodeMemoryEstimator {
 
     size += RamUsageEstimator.sizeOf(node.getTimes());
 
-    size += sizeOfBitMapArray(node.getBitMaps());
+    size += RamUsageEstimator.sizeOf(node.getBitMaps());
 
     size += sizeOfColumns(node.getColumns(), node.getMeasurementSchemas());
 
@@ -413,7 +413,7 @@ public class InsertNodeMemoryEstimator {
     if (nodes != null) {
       // Since fullPath may be lazy loaded, lazy loading will not be triggered here, so it is
       // assumed that the memory size of fullPath is the same as that of nodes.
-      size += sizeOfStringArray(nodes) * 2;
+      size += RamUsageEstimator.sizeOf(nodes) * 2;
       size += TsFileConstant.PATH_SEPARATOR.length() * (nodes.length - 1) + NUM_BYTES_OBJECT_HEADER;
     }
     return size;
@@ -555,34 +555,6 @@ public class InsertNodeMemoryEstimator {
     return Objects.nonNull(binary) ? binary.ramBytesUsed() : 0L;
   }
 
-  public static long sizeOfStringArray(final String[] values) {
-    return Objects.nonNull(values) ? RamUsageEstimator.sizeOf(values) : 0L;
-  }
-
-  public static long sizeOfBitMapArray(BitMap[] bitMaps) {
-    if (bitMaps == null) {
-      return 0L;
-    }
-    long size =
-        RamUsageEstimator.alignObjectSize(
-            NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * bitMaps.length);
-    for (BitMap bitMap : bitMaps) {
-      size += sizeOfBitMap(bitMap);
-    }
-    return size;
-  }
-
-  private static long sizeOfBitMap(final BitMap bitMaps) {
-    if (bitMaps == null) {
-      return 0L;
-    }
-    long size = BIT_MAP_SIZE;
-
-    size +=
-        RamUsageEstimator.alignObjectSize(NUM_BYTES_ARRAY_HEADER + bitMaps.getByteArray().length);
-    return size;
-  }
-
   public static long sizeOfColumns(
       final Object[] columns, final MeasurementSchema[] measurementSchemas) {
     // Directly calculate if measurementSchemas are absent
@@ -630,8 +602,9 @@ public class InsertNodeMemoryEstimator {
         case STRING:
         case TEXT:
         case BLOB:
+        case OBJECT:
           {
-            size += getBinarySize((Binary[]) columns[i]);
+            size += RamUsageEstimator.sizeOf((Binary[]) columns[i]);
             break;
           }
       }
@@ -641,15 +614,8 @@ public class InsertNodeMemoryEstimator {
 
   private static long getNumBytesUnknownObject(final Object obj) {
     return obj instanceof Binary[]
-        ? getBinarySize((Binary[]) obj)
+        ? RamUsageEstimator.sizeOf((Binary[]) obj)
         : RamUsageEstimator.sizeOfObject(obj);
-  }
-
-  private static long getBinarySize(final Binary[] binaries) {
-    return RamUsageEstimator.shallowSizeOf(binaries)
-        + Arrays.stream(binaries)
-            .mapToLong(InsertNodeMemoryEstimator::sizeOfBinary)
-            .reduce(0L, Long::sum);
   }
 
   public static long sizeOfValues(
@@ -665,6 +631,10 @@ public class InsertNodeMemoryEstimator {
         RamUsageEstimator.alignObjectSize(
             NUM_BYTES_ARRAY_HEADER + NUM_BYTES_OBJECT_REF * values.length);
     for (int i = 0; i < values.length; i++) {
+      if (measurementSchemas[i] == null || measurementSchemas[i].getType() == null) {
+        size += NUM_BYTES_OBJECT_HEADER;
+        continue;
+      }
       switch (measurementSchemas[i].getType()) {
         case INT64:
         case TIMESTAMP:

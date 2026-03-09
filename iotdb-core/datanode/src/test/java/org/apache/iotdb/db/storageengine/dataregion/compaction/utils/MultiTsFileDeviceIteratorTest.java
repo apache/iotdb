@@ -81,10 +81,10 @@ public class MultiTsFileDeviceIteratorTest extends AbstractCompactionTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     for (TsFileResource tsFileResource : seqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     for (TsFileResource tsFileResource : unseqResources) {
-      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFileID());
     }
     Thread.currentThread().setName(oldThreadName);
   }

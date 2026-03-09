@@ -49,32 +49,34 @@ public abstract class AbstractNodeAllocationStrategy implements NodeAllocationSt
           new FolderManager(
               Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
     } catch (DiskSpaceInsufficientException e) {
+      // folderManager remains null when disk space is insufficient during initialization
+      // It will be lazily initialized later when disk space becomes available
       logger.error(
           "Fail to create wal node allocation strategy because all disks of wal folders are full.",
           e);
     }
   }
 
-  protected IWALNode createWALNode(String identifier) {
-    String folder;
-    // get wal folder
+  protected synchronized IWALNode createWALNode(String identifier) {
     try {
-      folder = folderManager.getNextFolder();
+      // Lazy initialization of folderManager: if it was null during constructor
+      // (due to insufficient disk space), try to initialize it now when disk space
+      // might have become available
+      if (folderManager == null) {
+        folderManager =
+            new FolderManager(
+                Arrays.asList(commonConfig.getWalDirs()), DirectoryStrategyType.SEQUENCE_STRATEGY);
+      }
+      return folderManager.getNextWithRetry(
+          folder -> new WALNode(identifier, folder + File.separator + identifier));
     } catch (DiskSpaceInsufficientException e) {
       logger.error("Fail to create wal node because all disks of wal folders are full.", e);
       return WALFakeNode.getFailureInstance(e);
-    }
-    folder = folder + File.separator + identifier;
-    // create new wal node
-    return createWALNode(identifier, folder);
-  }
-
-  protected IWALNode createWALNode(String identifier, String folder) {
-    try {
-      return new WALNode(identifier, folder);
-    } catch (IOException e) {
-      logger.error("Meet exception when creating wal node", e);
-      return WALFakeNode.getFailureInstance(e);
+    } catch (Exception e) {
+      logger.warn("Failed to create WAL node after retries for identifier: " + identifier, e);
+      return WALFakeNode.getFailureInstance(
+          new IOException(
+              "Failed to create WAL node after retries for identifier: " + identifier, e));
     }
   }
 

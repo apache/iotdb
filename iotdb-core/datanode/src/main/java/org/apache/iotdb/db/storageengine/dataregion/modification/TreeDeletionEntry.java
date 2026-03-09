@@ -23,12 +23,17 @@ import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternUtil;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.utils.ModificationUtils;
 
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -43,6 +48,8 @@ import java.util.Objects;
 
 public class TreeDeletionEntry extends ModEntry {
 
+  public static final long SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TreeDeletionEntry.class);
   private static final Logger LOGGER = LoggerFactory.getLogger(TreeDeletionEntry.class);
   private MeasurementPath pathPattern;
 
@@ -103,7 +110,7 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(InputStream stream) throws IOException {
     super.deserialize(stream);
     try {
-      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(stream));
+      this.pathPattern = getMeasurementPath(ReadWriteIOUtils.readVarIntString(stream));
     } catch (IllegalPathException e) {
       throw new IOException(e);
     }
@@ -113,9 +120,20 @@ public class TreeDeletionEntry extends ModEntry {
   public void deserialize(ByteBuffer buffer) {
     super.deserialize(buffer);
     try {
-      this.pathPattern = new MeasurementPath(ReadWriteIOUtils.readVarIntString(buffer));
+      this.pathPattern = getMeasurementPath(ReadWriteIOUtils.readVarIntString(buffer));
     } catch (IllegalPathException e) {
       throw new IllegalArgumentException(e);
+    }
+  }
+
+  private MeasurementPath getMeasurementPath(String path) throws IllegalPathException {
+    // In this place, we can be sure that the path pattern here has been checked by antlr before, so
+    // when conditions permit, a lighter split method can be used here.
+    if (path.contains(TsFileConstant.BACK_QUOTE_STRING)) {
+      return new MeasurementPath(PathUtils.splitPathToDetachedNodes(path));
+    } else {
+      String[] nodes = path.split(TsFileConstant.PATH_SEPARATER_NO_REGEX);
+      return new MeasurementPath(nodes);
     }
   }
 
@@ -133,8 +151,9 @@ public class TreeDeletionEntry extends ModEntry {
   @Override
   public boolean affects(IDeviceID deviceID) {
     try {
+      PartialPath deviceIdPath =
+          DataNodeDevicePathCache.getInstance().getPartialPath(deviceID.toString());
       if (pathPattern.endWithMultiLevelWildcard()) {
-        PartialPath deviceIdPath = new PartialPath(deviceID);
         // pattern: root.db1.d1.**, deviceId: root.db1.d1, match
         return pathPattern.getDevicePath().matchFullPath(deviceIdPath)
             // pattern: root.db1.**, deviceId: root.db1.d1, match
@@ -142,7 +161,7 @@ public class TreeDeletionEntry extends ModEntry {
       } else {
         // pattern: root.db1.d1.s1, deviceId: root.db1.d1, match
         // pattern: root.db1.d1, deviceId: root.db1.d1, not match
-        return pathPattern.getDevicePath().matchFullPath(new PartialPath(deviceID));
+        return pathPattern.getDevicePath().matchFullPath(deviceIdPath);
       }
     } catch (IllegalPathException e) {
       return false;
@@ -223,5 +242,12 @@ public class TreeDeletionEntry extends ModEntry {
   @Override
   public int hashCode() {
     return Objects.hash(pathPattern, timeRange);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return SHALLOW_SIZE
+        + MemoryEstimationHelper.TIME_RANGE_INSTANCE_SIZE
+        + MemoryEstimationHelper.getEstimatedSizeOfMeasurementPathNodes(pathPattern);
   }
 }

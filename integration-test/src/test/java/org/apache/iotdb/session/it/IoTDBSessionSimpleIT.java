@@ -24,6 +24,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.db.protocol.thrift.OperationType;
 import org.apache.iotdb.isession.ISession;
 import org.apache.iotdb.isession.SessionDataSet;
+import org.apache.iotdb.isession.SessionDataSet.DataIterator;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -33,11 +34,11 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -45,6 +46,7 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.Tablet;
@@ -52,7 +54,6 @@ import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -62,7 +63,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -72,11 +76,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -211,7 +217,7 @@ public class IoTDBSessionSimpleIT {
       }
       fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
+      assertTrue(e.getMessage().contains("data type of root.sg.d2.s2 is not consistent"));
     }
   }
 
@@ -240,7 +246,7 @@ public class IoTDBSessionSimpleIT {
       expected.add(TSDataType.TEXT.name());
 
       Set<String> actual = new HashSet<>();
-      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.**");
+      SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
       while (dataSet.hasNext()) {
         actual.add(dataSet.next().getFields().get(3).getStringValue());
       }
@@ -400,11 +406,11 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.存储组1";
+      String database = "root.存储组1";
       String[] devices = new String[] {"设备1.指标1", "设备1.s2", "d2.s1", "d2.指标2"};
-      session.setStorageGroup(storageGroup);
+      session.setStorageGroup(database);
       for (String path : devices) {
-        String fullPath = storageGroup + TsFileConstant.PATH_SEPARATOR + path;
+        String fullPath = database + TsFileConstant.PATH_SEPARATOR + path;
         session.createTimeseries(
             fullPath, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
       }
@@ -412,7 +418,7 @@ public class IoTDBSessionSimpleIT {
       for (String path : devices) {
         for (int i = 0; i < 10; i++) {
           String[] ss = path.split("\\.");
-          StringBuilder deviceId = new StringBuilder(storageGroup);
+          StringBuilder deviceId = new StringBuilder(database);
           for (int j = 0; j < ss.length - 1; j++) {
             deviceId.append(TsFileConstant.PATH_SEPARATOR).append(ss[j]);
           }
@@ -435,7 +441,7 @@ public class IoTDBSessionSimpleIT {
         count++;
       }
       assertEquals(10, count);
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -710,7 +716,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
+      assertTrue(e.getMessage().contains("Current system timestamp precision is ms"));
     }
   }
 
@@ -738,7 +744,7 @@ public class IoTDBSessionSimpleIT {
         tablet.reset();
       }
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s0"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s0"));
     }
   }
 
@@ -751,8 +757,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setStorageGroup(database);
 
       session.createTimeseries(
           "root.sg.`my.device.with.colon:`.s",
@@ -763,7 +769,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES");
       assertTrue(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -779,8 +785,8 @@ public class IoTDBSessionSimpleIT {
         session.close();
         return;
       }
-      String storageGroup = "root.sg";
-      session.setStorageGroup(storageGroup);
+      String database = "root.sg";
+      session.setStorageGroup(database);
 
       try {
         session.createTimeseries(
@@ -798,7 +804,7 @@ public class IoTDBSessionSimpleIT {
       final SessionDataSet dataSet = session.executeQueryStatement("SHOW TIMESERIES root.sg.**");
       assertFalse(dataSet.hasNext());
 
-      session.deleteStorageGroup(storageGroup);
+      session.deleteDatabase(database);
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -1120,7 +1126,7 @@ public class IoTDBSessionSimpleIT {
           Boolean.TRUE);
       session.insertRecordsOfOneDevice("root.sg.d1", times, measurements, datatypes, values);
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
     }
   }
 
@@ -1175,7 +1181,7 @@ public class IoTDBSessionSimpleIT {
           Boolean.TRUE);
       session.insertRecords(devices, times, measurements, datatypes, values);
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
+      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: s2"));
     }
   }
 
@@ -1208,11 +1214,11 @@ public class IoTDBSessionSimpleIT {
         session.insertRecords(devices, times, measurements, datatypes, values);
         fail();
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("less than ttl time bound"));
+        assertTrue(e.getMessage().contains("less than ttl time bound"));
       }
       session.executeNonQueryStatement("unset ttl to root.sg.d1");
       SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1");
-      Assert.assertFalse(dataSet.hasNext());
+      assertFalse(dataSet.hasNext());
     }
   }
 
@@ -1886,19 +1892,19 @@ public class IoTDBSessionSimpleIT {
         session.createDatabase("");
         fail();
       } catch (StatementExecutionException e) {
-        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+        assertTrue(e.getMessage().contains(" is not a legal path"));
       }
 
       try {
         session.deleteDatabases(Arrays.asList("root.db", ""));
         fail();
       } catch (StatementExecutionException e) {
-        Assert.assertTrue(e.getMessage().contains(" is not a legal path"));
+        assertTrue(e.getMessage().contains(" is not a legal path"));
       }
 
       session.deleteDatabase("root.db");
 
-      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES");
+      final SessionDataSet dataSet = session.executeQueryStatement("SHOW DATABASES root.db");
       assertFalse(dataSet.hasNext());
 
     } catch (Exception e) {
@@ -2125,6 +2131,353 @@ public class IoTDBSessionSimpleIT {
       dataSet = session.executeQueryStatement("SELECT * FROM root.sg1.d1");
       RowRecord record = dataSet.next();
       assertEquals(3, record.getFields().size());
+    }
+  }
+
+  @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
+  public void testQueryAllDataType() throws IoTDBConnectionException, StatementExecutionException {
+    Tablet tablet =
+        new Tablet(
+            "root.sg.d1",
+            Arrays.asList(
+                new MeasurementSchema("s1", TSDataType.INT32),
+                new MeasurementSchema("s2", TSDataType.INT64),
+                new MeasurementSchema("s3", TSDataType.FLOAT),
+                new MeasurementSchema("s4", TSDataType.DOUBLE),
+                new MeasurementSchema("s5", TSDataType.TEXT),
+                new MeasurementSchema("s6", TSDataType.BOOLEAN),
+                new MeasurementSchema("s7", TSDataType.TIMESTAMP),
+                new MeasurementSchema("s8", TSDataType.BLOB),
+                new MeasurementSchema("s9", TSDataType.STRING),
+                new MeasurementSchema("s10", TSDataType.DATE),
+                new MeasurementSchema("s11", TSDataType.TIMESTAMP)),
+            10);
+    tablet.addTimestamp(0, 0L);
+    tablet.addValue("s1", 0, 1);
+    tablet.addValue("s2", 0, 1L);
+    tablet.addValue("s3", 0, 0f);
+    tablet.addValue("s4", 0, 0d);
+    tablet.addValue("s5", 0, "text_value");
+    tablet.addValue("s6", 0, true);
+    tablet.addValue("s7", 0, 1L);
+    tablet.addValue("s8", 0, new Binary(new byte[] {1}));
+    tablet.addValue("s9", 0, "string_value");
+    tablet.addValue("s10", 0, DateUtils.parseIntToLocalDate(20250403));
+
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.insertTablet(tablet);
+
+      try (SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg.d1")) {
+        DataIterator iterator = dataSet.iterator();
+        int count = 0;
+        while (iterator.next()) {
+          count++;
+          assertFalse(iterator.isNull("root.sg.d1.s1"));
+          assertEquals(1, iterator.getInt("root.sg.d1.s1"));
+          assertFalse(iterator.isNull("root.sg.d1.s2"));
+          assertEquals(1L, iterator.getLong("root.sg.d1.s2"));
+          assertFalse(iterator.isNull("root.sg.d1.s3"));
+          assertEquals(0, iterator.getFloat("root.sg.d1.s3"), 0.01);
+          assertFalse(iterator.isNull("root.sg.d1.s4"));
+          assertEquals(0, iterator.getDouble("root.sg.d1.s4"), 0.01);
+          assertFalse(iterator.isNull("root.sg.d1.s5"));
+          assertEquals("text_value", iterator.getString("root.sg.d1.s5"));
+          assertFalse(iterator.isNull("root.sg.d1.s6"));
+          assertTrue(iterator.getBoolean("root.sg.d1.s6"));
+          assertFalse(iterator.isNull("root.sg.d1.s7"));
+          assertEquals(new Timestamp(1), iterator.getTimestamp("root.sg.d1.s7"));
+          assertFalse(iterator.isNull("root.sg.d1.s8"));
+          assertEquals(new Binary(new byte[] {1}), iterator.getBlob("root.sg.d1.s8"));
+          assertFalse(iterator.isNull("root.sg.d1.s9"));
+          assertEquals("string_value", iterator.getString("root.sg.d1.s9"));
+          assertFalse(iterator.isNull("root.sg.d1.s10"));
+          assertEquals(DateUtils.parseIntToLocalDate(20250403), iterator.getDate("root.sg.d1.s10"));
+          assertTrue(iterator.isNull("root.sg.d1.s11"));
+          assertNull(iterator.getTimestamp("root.sg.d1.s11"));
+
+          assertEquals(new Timestamp(0), iterator.getTimestamp("Time"));
+          assertFalse(iterator.isNull("Time"));
+        }
+        assertEquals(tablet.getRowSize(), count);
+      }
+    }
+  }
+
+  @Test
+  public void testInsertWrongTypeRecord() throws IoTDBConnectionException {
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      assertThrows(
+          ClassCastException.class,
+          () ->
+              session.insertRecord(
+                  "root.db1.d1",
+                  0,
+                  Collections.singletonList("s1"),
+                  Collections.singletonList(TSDataType.INT32),
+                  Collections.singletonList(1L)));
+    }
+  }
+
+  @Test
+  public void testAlterDefaultCompression()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // auto-create
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+      List<Object> values =
+          Arrays.asList(
+              false,
+              1,
+              LocalDate.of(1000, 1, 1),
+              1L,
+              1L,
+              1.0f,
+              1.0,
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)));
+      String device1 = "root.test.d1";
+      session.insertRecord(device1, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d1.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='GZIP'", configName));
+      }
+
+      String device2 = "root.test.d2";
+      session.insertRecord(device2, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d2.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
+    }
+
+    // manual create
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+
+      String device3 = "root.test.d3";
+      for (int i = 0; i < types.size(); i++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "CREATE TIMESERIES %s.%s WITH DATATYPE=%s",
+                device3, measurements.get(i), types.get(i)));
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d3.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='LZ4'", configName));
+      }
+
+      String device4 = "root.test.d4";
+      for (int i = 0; i < types.size(); i++) {
+        session.executeNonQueryStatement(
+            String.format(
+                "CREATE TIMESERIES %s.%s WITH DATATYPE=%s",
+                device4, measurements.get(i), types.get(i)));
+      }
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d4.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+    }
+
+    // template
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      List<TSDataType> types =
+          Arrays.asList(
+              TSDataType.BOOLEAN,
+              TSDataType.INT32,
+              TSDataType.DATE,
+              TSDataType.INT64,
+              TSDataType.TIMESTAMP,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.TEXT,
+              TSDataType.STRING,
+              TSDataType.BLOB);
+      List<String> measurements =
+          types.stream().map(dataType -> "__" + dataType.toString()).collect(Collectors.toList());
+      List<Object> values =
+          Arrays.asList(
+              false,
+              1,
+              LocalDate.of(1000, 1, 1),
+              1L,
+              1L,
+              1.0f,
+              1.0,
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)),
+              new Binary("1".getBytes(StandardCharsets.UTF_8)));
+
+      String createTemplateSql = "CREATE DEVICE TEMPLATE t1 (";
+      for (int i = 0; i < types.size(); i++) {
+        createTemplateSql += measurements.get(i) + " " + types.get(i).name();
+        if (i != types.size() - 1) {
+          createTemplateSql += ",";
+        }
+      }
+      createTemplateSql += ")";
+      session.executeNonQueryStatement(createTemplateSql);
+
+      session.executeNonQueryStatement("SET DEVICE TEMPLATE t1 TO root.test.d5");
+      String device5 = "root.test.d5";
+      session.insertRecord(device5, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d5.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("LZ4", compressionField.getStringValue());
+        }
+      }
+
+      for (TSDataType type : types) {
+        String configName = null;
+        switch (type) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case TEXT:
+          case BOOLEAN:
+            configName = type.name().toLowerCase();
+            break;
+          case STRING:
+          case BLOB:
+            configName = "text";
+            break;
+          case DATE:
+            configName = "int32";
+            break;
+          case TIMESTAMP:
+            configName = "int64";
+            break;
+        }
+        session.executeNonQueryStatement(
+            String.format("SET CONFIGURATION '%s_compressor'='GZIP'", configName));
+      }
+
+      createTemplateSql = createTemplateSql.replace("t1", "t2");
+      session.executeNonQueryStatement(createTemplateSql);
+      session.executeNonQueryStatement("SET DEVICE TEMPLATE t2 TO root.test.d6");
+
+      String device6 = "root.test.d6";
+      session.insertRecord(device6, 0, measurements, types, values);
+
+      try (SessionDataSet dataSet =
+          session.executeQueryStatement("SHOW TIMESERIES root.test.d6.**")) {
+        int compressionIndex = dataSet.getColumnNames().indexOf("Compression");
+        while (dataSet.hasNext()) {
+          RowRecord rec = dataSet.next();
+          Field compressionField = rec.getFields().get(compressionIndex);
+          assertEquals("GZIP", compressionField.getStringValue());
+        }
+      }
     }
   }
 }

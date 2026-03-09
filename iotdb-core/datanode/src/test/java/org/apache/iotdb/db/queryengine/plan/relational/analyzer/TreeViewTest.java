@@ -19,19 +19,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.commons.schema.table.TreeViewSchema;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.Optional;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.DEVICE_VIEW_TEST_TABLE;
-import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMatadata.TREE_VIEW_DB;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.DEVICE_VIEW_TEST_TABLE;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestMetadata.TREE_VIEW_DB;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -57,6 +62,20 @@ public class TreeViewTest {
   // ==================================================================
   // ===================== Device View Test =======================
   // ==================================================================
+
+  @Before
+  public void setup() {
+    TsTable tsTable = new TsTable(DEVICE_VIEW_TEST_TABLE);
+    tsTable.addProp(TsTable.TTL_PROPERTY, Long.MAX_VALUE + "");
+    tsTable.addProp(TreeViewSchema.TREE_PATH_PATTERN, "root.test" + ".**");
+    DataNodeTableCache.getInstance().preUpdateTable(TREE_VIEW_DB, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(TREE_VIEW_DB, DEVICE_VIEW_TEST_TABLE, null);
+  }
+
+  @After
+  public void tearDown() {
+    DataNodeTableCache.getInstance().invalid(TREE_VIEW_DB);
+  }
 
   @Test
   public void rawDataQueryTest() {

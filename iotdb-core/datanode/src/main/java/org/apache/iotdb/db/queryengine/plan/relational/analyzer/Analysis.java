@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.memory.StatementMemorySour
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceContext;
 import org.apache.iotdb.db.queryengine.plan.execution.memory.TableModelStatementMemorySourceVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.TimePredicate;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.PatternRecognitionAnalysis.PatternFunctionAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.tablefunction.TableFunctionInvocationAnalysis;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -46,6 +47,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -57,12 +59,18 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuantifiedComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QuerySpecification;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RangeQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Relation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RowPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubqueryExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubsetDefinition;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.TableFunctionInvocation;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WindowFrame;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.With;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 
 import com.google.common.collect.ArrayListMultimap;
@@ -94,6 +102,7 @@ import java.util.Set;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
@@ -116,6 +125,10 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Table>, Query> namedQueries = new LinkedHashMap<>();
 
+  // WITH clause stored during analyze phase. Required for constant folding and CTE materialization
+  // subqueries, which cannot directly access the WITH clause
+  private With with;
+
   // map expandable query to the node being the inner recursive reference
   private final Map<NodeRef<Query>, Node> expandableNamedQueries = new LinkedHashMap<>();
 
@@ -132,6 +145,25 @@ public class Analysis implements IAnalysis {
   // a map of users to the columns per table that they access
   private final Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>>
       tableColumnReferences = new LinkedHashMap<>();
+
+  // Record fields prefixed with labels in row pattern recognition context
+  private final Map<NodeRef<Expression>, Optional<String>> labels = new LinkedHashMap<>();
+  private final Map<NodeRef<RangeQuantifier>, Range> ranges = new LinkedHashMap<>();
+  private final Map<NodeRef<RowPattern>, Set<String>> undefinedLabels = new LinkedHashMap<>();
+
+  // Pattern function analysis (classifier, match_number, aggregations and prev/next/first/last) in
+  // the context of the given node
+  private final Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> patternFunctionAnalysis =
+      new LinkedHashMap<>();
+
+  // FunctionCall nodes corresponding to any of the special pattern recognition functions
+  private final Set<NodeRef<FunctionCall>> patternRecognitionFunctionCalls = new LinkedHashSet<>();
+
+  // FunctionCall nodes corresponding to any of the navigation functions (prev/next/first/last)
+  private final Set<NodeRef<FunctionCall>> patternNavigationFunctions = new LinkedHashSet<>();
+
+  private final Map<NodeRef<Identifier>, String> resolvedLabels = new LinkedHashMap<>();
+  private final Map<NodeRef<SubsetDefinition>, Set<String>> subsets = new LinkedHashMap<>();
 
   private final Map<NodeRef<Fill>, FillAnalysis> fill = new LinkedHashMap<>();
   private final Map<NodeRef<Offset>, Long> offset = new LinkedHashMap<>();
@@ -151,6 +183,12 @@ public class Analysis implements IAnalysis {
 
   private final Map<NodeRef<Expression>, Type> coercions = new LinkedHashMap<>();
   private final Set<NodeRef<Expression>> typeOnlyCoercions = new LinkedHashSet<>();
+  private final Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundCalculation =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundComparison =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<Expression>, ResolvedFunction> frameBoundCalculations =
+      new LinkedHashMap<>();
 
   private final Map<NodeRef<Relation>, List<Type>> relationCoercions = new LinkedHashMap<>();
   private final Map<NodeRef<Node>, RoutineEntry> resolvedFunctions = new LinkedHashMap<>();
@@ -187,6 +225,17 @@ public class Analysis implements IAnalysis {
   private final Map<QualifiedObjectName, Map<Symbol, ColumnSchema>> tableColumnSchemas =
       new HashMap<>();
 
+  private final Map<
+          NodeRef<QuerySpecification>, Map<CanonicalizationAware<Identifier>, ResolvedWindow>>
+      windowDefinitions = new LinkedHashMap<>();
+  private final Map<NodeRef<Node>, ResolvedWindow> windows = new LinkedHashMap<>();
+  private final Map<NodeRef<QuerySpecification>, List<FunctionCall>> windowFunctions =
+      new LinkedHashMap<>();
+  private final Map<NodeRef<OrderBy>, List<FunctionCall>> orderByWindowFunctions =
+      new LinkedHashMap<>();
+
+  private Insert insert;
+
   private DataPartition dataPartition;
 
   // only be used in write plan and won't be used in query
@@ -208,6 +257,11 @@ public class Analysis implements IAnalysis {
   private boolean emptyDataSource = false;
 
   private boolean isQuery = false;
+
+  // SqlParser is needed during query planning phase for executing uncorrelated scalar subqueries
+  // in advance (predicate folding). The planner needs to parse and execute these subqueries
+  // independently to utilize predicate pushdown optimization.
+  private SqlParser sqlParser;
 
   public Analysis(@Nullable Statement root, Map<NodeRef<Parameter>, Expression> parameters) {
     this.root = root;
@@ -231,8 +285,28 @@ public class Analysis implements IAnalysis {
     this.updateType = updateType;
   }
 
+  public SqlParser getSqlParser() {
+    return sqlParser;
+  }
+
+  public void setSqlParser(SqlParser sqlParser) {
+    this.sqlParser = sqlParser;
+  }
+
   public Query getNamedQuery(Table table) {
     return namedQueries.get(NodeRef.of(table));
+  }
+
+  public Map<NodeRef<Table>, Query> getNamedQueries() {
+    return namedQueries;
+  }
+
+  public With getWith() {
+    return with;
+  }
+
+  public void setWith(With with) {
+    this.with = with;
   }
 
   public boolean isAnalyzed(Expression expression) {
@@ -396,9 +470,31 @@ public class Analysis implements IAnalysis {
   }
 
   public void addCoercions(
-      Map<NodeRef<Expression>, Type> coercions, Set<NodeRef<Expression>> typeOnlyCoercions) {
+      Map<NodeRef<Expression>, Type> coercions,
+      Set<NodeRef<Expression>> typeOnlyCoercions,
+      Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundCalculation,
+      Map<NodeRef<Expression>, Type> sortKeyCoercionsForFrameBoundComparison) {
     this.coercions.putAll(coercions);
     this.typeOnlyCoercions.addAll(typeOnlyCoercions);
+    this.sortKeyCoercionsForFrameBoundCalculation.putAll(sortKeyCoercionsForFrameBoundCalculation);
+    this.sortKeyCoercionsForFrameBoundComparison.putAll(sortKeyCoercionsForFrameBoundComparison);
+  }
+
+  public Type getSortKeyCoercionForFrameBoundCalculation(Expression frameOffset) {
+    return sortKeyCoercionsForFrameBoundCalculation.get(NodeRef.of(frameOffset));
+  }
+
+  public Type getSortKeyCoercionForFrameBoundComparison(Expression frameOffset) {
+    return sortKeyCoercionsForFrameBoundComparison.get(NodeRef.of(frameOffset));
+  }
+
+  public void addFrameBoundCalculations(
+      Map<NodeRef<Expression>, ResolvedFunction> frameBoundCalculations) {
+    this.frameBoundCalculations.putAll(frameBoundCalculations);
+  }
+
+  public ResolvedFunction getFrameBoundCalculation(Expression frameOffset) {
+    return frameBoundCalculations.get(NodeRef.of(frameOffset));
   }
 
   public Set<NodeRef<Expression>> getTypeOnlyCoercions() {
@@ -633,6 +729,91 @@ public class Analysis implements IAnalysis {
 
   public Map<AccessControlInfo, Map<QualifiedObjectName, Set<String>>> getTableColumnReferences() {
     return tableColumnReferences;
+  }
+
+  public void addLabels(Map<NodeRef<Expression>, Optional<String>> labels) {
+    this.labels.putAll(labels);
+  }
+
+  public Optional<String> getLabel(Expression expression) {
+    return labels.get(NodeRef.of(expression));
+  }
+
+  public void setRanges(Map<NodeRef<RangeQuantifier>, Range> quantifierRanges) {
+    ranges.putAll(quantifierRanges);
+  }
+
+  public Range getRange(RangeQuantifier quantifier) {
+    Range range = ranges.get(NodeRef.of(quantifier));
+    checkNotNull(range, "missing range for quantifier %s", quantifier);
+    return range;
+  }
+
+  public void setUndefinedLabels(RowPattern pattern, Set<String> labels) {
+    undefinedLabels.put(NodeRef.of(pattern), labels);
+  }
+
+  public void setUndefinedLabels(Map<NodeRef<RowPattern>, Set<String>> labels) {
+    undefinedLabels.putAll(labels);
+  }
+
+  public Set<String> getUndefinedLabels(RowPattern pattern) {
+    Set<String> labels = undefinedLabels.get(NodeRef.of(pattern));
+    checkNotNull(labels, "missing undefined labels for %s", pattern);
+    return labels;
+  }
+
+  public void addPatternRecognitionInputs(
+      Map<NodeRef<Expression>, List<PatternFunctionAnalysis>> functions) {
+    patternFunctionAnalysis.putAll(functions);
+
+    functions.values().stream()
+        .flatMap(List::stream)
+        .map(PatternFunctionAnalysis::getExpression)
+        .filter(FunctionCall.class::isInstance)
+        .map(FunctionCall.class::cast)
+        .map(NodeRef::of)
+        .forEach(patternRecognitionFunctionCalls::add);
+  }
+
+  public List<PatternFunctionAnalysis> getPatternInputsAnalysis(Expression expression) {
+    return patternFunctionAnalysis.get(NodeRef.of(expression));
+  }
+
+  public void addPatternNavigationFunctions(Set<NodeRef<FunctionCall>> functions) {
+    patternNavigationFunctions.addAll(functions);
+  }
+
+  public boolean isPatternRecognitionFunction(FunctionCall functionCall) {
+    return patternRecognitionFunctionCalls.contains(NodeRef.of(functionCall));
+  }
+
+  public boolean isPatternNavigationFunction(FunctionCall node) {
+    return patternNavigationFunctions.contains(NodeRef.of(node));
+  }
+
+  public void addResolvedLabel(Identifier label, String resolved) {
+    resolvedLabels.put(NodeRef.of(label), resolved);
+  }
+
+  public void addResolvedLabels(Map<NodeRef<Identifier>, String> labels) {
+    resolvedLabels.putAll(labels);
+  }
+
+  public String getResolvedLabel(Identifier identifier) {
+    return resolvedLabels.get(NodeRef.of(identifier));
+  }
+
+  public void addSubsetLabels(SubsetDefinition subset, Set<String> labels) {
+    subsets.put(NodeRef.of(subset), labels);
+  }
+
+  public void addSubsetLabels(Map<NodeRef<SubsetDefinition>, Set<String>> subsets) {
+    this.subsets.putAll(subsets);
+  }
+
+  public Set<String> getSubsetLabels(SubsetDefinition subset) {
+    return subsets.get(NodeRef.of(subset));
   }
 
   public RelationType getOutputDescriptor() {
@@ -1154,6 +1335,137 @@ public class Analysis implements IAnalysis {
     }
   }
 
+  public void addWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name, ResolvedWindow window) {
+    windowDefinitions
+        .computeIfAbsent(NodeRef.of(query), key -> new LinkedHashMap<>())
+        .put(name, window);
+  }
+
+  public ResolvedWindow getWindowDefinition(
+      QuerySpecification query, CanonicalizationAware<Identifier> name) {
+    Map<CanonicalizationAware<Identifier>, ResolvedWindow> windows =
+        windowDefinitions.get(NodeRef.of(query));
+    if (windows != null) {
+      return windows.get(name);
+    }
+
+    return null;
+  }
+
+  public void setWindow(Node node, ResolvedWindow window) {
+    windows.put(NodeRef.of(node), window);
+  }
+
+  public ResolvedWindow getWindow(Node node) {
+    return windows.get(NodeRef.of(node));
+  }
+
+  public void setWindowFunctions(QuerySpecification node, List<FunctionCall> functions) {
+    windowFunctions.put(NodeRef.of(node), ImmutableList.copyOf(functions));
+  }
+
+  public List<FunctionCall> getWindowFunctions(QuerySpecification query) {
+    return windowFunctions.get(NodeRef.of(query));
+  }
+
+  public void setOrderByWindowFunctions(OrderBy node, List<FunctionCall> functions) {
+    orderByWindowFunctions.put(NodeRef.of(node), ImmutableList.copyOf(functions));
+  }
+
+  public List<FunctionCall> getOrderByWindowFunctions(OrderBy query) {
+    return orderByWindowFunctions.get(NodeRef.of(query));
+  }
+
+  public static class ResolvedWindow {
+    private final List<Expression> partitionBy;
+    private final Optional<OrderBy> orderBy;
+    private final Optional<WindowFrame> frame;
+    private final boolean partitionByInherited;
+    private final boolean orderByInherited;
+    private final boolean frameInherited;
+
+    public ResolvedWindow(
+        List<Expression> partitionBy,
+        Optional<OrderBy> orderBy,
+        Optional<WindowFrame> frame,
+        boolean partitionByInherited,
+        boolean orderByInherited,
+        boolean frameInherited) {
+      this.partitionBy = requireNonNull(partitionBy, "partitionBy is null");
+      this.orderBy = requireNonNull(orderBy, "orderBy is null");
+      this.frame = requireNonNull(frame, "frame is null");
+      this.partitionByInherited = partitionByInherited;
+      this.orderByInherited = orderByInherited;
+      this.frameInherited = frameInherited;
+    }
+
+    public List<Expression> getPartitionBy() {
+      return partitionBy;
+    }
+
+    public Optional<OrderBy> getOrderBy() {
+      return orderBy;
+    }
+
+    public Optional<WindowFrame> getFrame() {
+      return frame;
+    }
+
+    public boolean isPartitionByInherited() {
+      return partitionByInherited;
+    }
+
+    public boolean isOrderByInherited() {
+      return orderByInherited;
+    }
+
+    public boolean isFrameInherited() {
+      return frameInherited;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      ResolvedWindow that = (ResolvedWindow) o;
+      return partitionByInherited == that.partitionByInherited
+          && orderByInherited == that.orderByInherited
+          && frameInherited == that.frameInherited
+          && partitionBy.equals(that.partitionBy)
+          && orderBy.equals(that.orderBy)
+          && frame.equals(that.frame);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(
+          partitionBy, orderBy, frame, partitionByInherited, orderByInherited, frameInherited);
+    }
+  }
+
+  public static class Range {
+    private final Optional<Integer> atLeast;
+    private final Optional<Integer> atMost;
+
+    public Range(Optional<Integer> atLeast, Optional<Integer> atMost) {
+      this.atLeast = requireNonNull(atLeast, "atLeast is null");
+      this.atMost = requireNonNull(atMost, "atMost is null");
+    }
+
+    public Optional<Integer> getAtLeast() {
+      return atLeast;
+    }
+
+    public Optional<Integer> getAtMost() {
+      return atMost;
+    }
+  }
+
   public static class FillAnalysis {
     protected final FillPolicy fillMethod;
 
@@ -1234,5 +1546,32 @@ public class Analysis implements IAnalysis {
   @Override
   public String getDatabaseName() {
     return databaseName;
+  }
+
+  public void setInsert(Insert insert) {
+    this.insert = insert;
+  }
+
+  public Insert getInsert() {
+    return insert;
+  }
+
+  public static final class Insert {
+    private final Table table;
+    private final List<ColumnSchema> columns;
+
+    public Insert(Table table, List<ColumnSchema> columns) {
+      this.table = requireNonNull(table, "table is null");
+      this.columns = requireNonNull(columns, "columns is null");
+      checkArgument(!columns.isEmpty(), "No columns given to insert");
+    }
+
+    public Table getTable() {
+      return table;
+    }
+
+    public List<ColumnSchema> getColumns() {
+      return columns;
+    }
   }
 }

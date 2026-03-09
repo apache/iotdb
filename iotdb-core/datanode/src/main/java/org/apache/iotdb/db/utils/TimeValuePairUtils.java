@@ -62,6 +62,7 @@ public class TimeValuePairUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         to.getValue().setBinary(from.getValue().getBinary());
         break;
       case BOOLEAN:
@@ -89,6 +90,7 @@ public class TimeValuePairUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return new TimeValuePair(0, new TsBinary(new Binary("", TSFileConfig.STRING_CHARSET)));
       default:
         throw new UnsupportedOperationException("Unrecognized datatype: " + dataType);

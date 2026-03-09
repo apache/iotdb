@@ -32,9 +32,12 @@ import java.util.Arrays;
 
 public class ModelInformation {
 
+  private static final int[] DEFAULT_MODEL_INPUT_SHAPE = new int[] {2880, 1};
+  private static final int[] DEFAULT_MODEL_OUTPUT_SHAPE = new int[] {720, 1};
+
   ModelType modelType;
 
-  private final String modelName;
+  private final String modelId;
 
   private final int[] inputShape;
 
@@ -48,9 +51,17 @@ public class ModelInformation {
 
   String attribute = "";
 
+  public ModelInformation(String modelId) {
+    this.modelId = modelId;
+    this.inputShape = DEFAULT_MODEL_INPUT_SHAPE;
+    this.inputDataType = new TSDataType[] {TSDataType.DOUBLE};
+    this.outputShape = DEFAULT_MODEL_OUTPUT_SHAPE;
+    this.outputDataType = new TSDataType[] {TSDataType.DOUBLE};
+  }
+
   public ModelInformation(
       ModelType modelType,
-      String modelName,
+      String modelId,
       int[] inputShape,
       int[] outputShape,
       TSDataType[] inputDataType,
@@ -58,7 +69,7 @@ public class ModelInformation {
       String attribute,
       ModelStatus status) {
     this.modelType = modelType;
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.inputShape = inputShape;
     this.outputShape = outputShape;
     this.inputDataType = inputDataType;
@@ -68,14 +79,14 @@ public class ModelInformation {
   }
 
   public ModelInformation(
-      String modelName,
+      String modelId,
       int[] inputShape,
       int[] outputShape,
       TSDataType[] inputDataType,
       TSDataType[] outputDataType,
       String attribute) {
     this.modelType = ModelType.USER_DEFINED;
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.inputShape = inputShape;
     this.outputShape = outputShape;
     this.inputDataType = inputDataType;
@@ -83,9 +94,9 @@ public class ModelInformation {
     this.attribute = attribute;
   }
 
-  public ModelInformation(String modelName, ModelStatus status) {
-    this.modelType = ModelType.USER_DEFINED;
-    this.modelName = modelName;
+  public ModelInformation(String modelId, ModelStatus status) {
+    this.modelType = ModelType.BUILT_IN_FORECAST;
+    this.modelId = modelId;
     this.inputShape = new int[0];
     this.outputShape = new int[0];
     this.outputDataType = new TSDataType[0];
@@ -94,9 +105,9 @@ public class ModelInformation {
   }
 
   // init built-in modelInformation
-  public ModelInformation(ModelType modelType, String modelName) {
+  public ModelInformation(ModelType modelType, String modelId) {
     this.modelType = modelType;
-    this.modelName = modelName;
+    this.modelId = modelId;
     this.inputShape = new int[2];
     this.outputShape = new int[2];
     this.inputDataType = new TSDataType[0];
@@ -116,8 +127,8 @@ public class ModelInformation {
     this.status = status;
   }
 
-  public String getModelName() {
-    return modelName;
+  public String getModelId() {
+    return modelId;
   }
 
   public void setInputLength(int length) {
@@ -197,7 +208,7 @@ public class ModelInformation {
   public void serialize(DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(modelType.ordinal(), stream);
     ReadWriteIOUtils.write(status.ordinal(), stream);
-    ReadWriteIOUtils.write(modelName, stream);
+    ReadWriteIOUtils.write(modelId, stream);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -222,7 +233,7 @@ public class ModelInformation {
   public void serialize(FileOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(modelType.ordinal(), stream);
     ReadWriteIOUtils.write(status.ordinal(), stream);
-    ReadWriteIOUtils.write(modelName, stream);
+    ReadWriteIOUtils.write(modelId, stream);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -247,7 +258,7 @@ public class ModelInformation {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(modelType.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(status.ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(modelName, byteBuffer);
+    ReadWriteIOUtils.write(modelId, byteBuffer);
     if (status == ModelStatus.UNAVAILABLE) {
       return;
     }
@@ -353,7 +364,7 @@ public class ModelInformation {
   public ByteBuffer serializeShowModelResult() throws IOException {
     PublicBAOS buffer = new PublicBAOS();
     DataOutputStream stream = new DataOutputStream(buffer);
-    ReadWriteIOUtils.write(modelName, stream);
+    ReadWriteIOUtils.write(modelId, stream);
     ReadWriteIOUtils.write(modelType.toString(), stream);
     ReadWriteIOUtils.write(status.toString(), stream);
     ReadWriteIOUtils.write(Arrays.toString(inputShape), stream);
@@ -370,7 +381,7 @@ public class ModelInformation {
   public boolean equals(Object obj) {
     if (obj instanceof ModelInformation) {
       ModelInformation other = (ModelInformation) obj;
-      return modelName.equals(other.modelName)
+      return modelId.equals(other.modelId)
           && modelType.equals(other.modelType)
           && Arrays.equals(inputShape, other.inputShape)
           && Arrays.equals(outputShape, other.outputShape)

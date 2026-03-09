@@ -20,25 +20,26 @@
 // This file is a translation of the Java file iotdb-client/session/src/main/java/org/apache/iotdb/session/TableSession.java
 
 #include "TableSession.h"
+#include "SessionDataSet.h"
 
 void TableSession::insert(Tablet &tablet, bool sorted) {
-    session->insertRelationalTablet(tablet, sorted);
+    session_->insertRelationalTablet(tablet, sorted);
 }
 void TableSession::executeNonQueryStatement(const string &sql) {
-    session->executeNonQueryStatement(sql);
+    session_->executeNonQueryStatement(sql);
 }
 unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql) {
-    return session->executeQueryStatement(sql);
+    return session_->executeQueryStatement(sql);
 }
 unique_ptr<SessionDataSet> TableSession::executeQueryStatement(const string &sql, int64_t timeoutInMs) {
-    return session->executeQueryStatement(sql, timeoutInMs);
+    return session_->executeQueryStatement(sql, timeoutInMs);
 }
 string TableSession::getDatabase() {
-    return session->getDatabase();
+    return session_->getDatabase();
 }
 void TableSession::open(bool enableRPCCompression) {
-    session->open(enableRPCCompression);
+    session_->open(enableRPCCompression);
 }
 void TableSession::close() {
-    session->close();
+    session_->close();
 }

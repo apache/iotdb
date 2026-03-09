@@ -60,12 +60,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
 
@@ -97,15 +99,16 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
-  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
-    try (final ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      patternTree.constructTree();
-      final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, false, null);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
-      if (null == schemaPartition) {
+  public SchemaPartition getSchemaPartition(
+      final PathPatternTree patternTree, String userName, boolean needAuditDB) {
+    patternTree.constructTree();
+    final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+        partitionCache.getDatabaseToDevice(deviceIDs, true, false, userName);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    if (null == schemaPartition) {
+      try (final ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
@@ -118,25 +121,38 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               schemaPartitionTableResp.getStatus().getMessage(),
               schemaPartitionTableResp.getStatus().getCode());
         }
+      } catch (final ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getSchemaPartition():" + e.getMessage());
       }
-      return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getSchemaPartition():" + e.getMessage());
     }
+    if (!needAuditDB) {
+      schemaPartition.removeDB(TREE_MODEL_AUDIT_DATABASE);
+    }
+    return schemaPartition;
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(final PathPatternTree patternTree) {
+    return getSchemaPartition(patternTree, true);
+  }
+
+  @Override
+  public SchemaPartition getSchemaPartition(PathPatternTree patternTree, boolean needAuditDB) {
+    return getSchemaPartition(patternTree, null, needAuditDB);
   }
 
   @Override
   public SchemaPartition getOrCreateSchemaPartition(
       final PathPatternTree patternTree, final String userName) {
-    try (final ConfigNodeClient client =
-        configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-      patternTree.constructTree();
-      final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
-      final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
-          partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
-      SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
-      if (null == schemaPartition) {
+    patternTree.constructTree();
+    final List<IDeviceID> deviceIDs = patternTree.getAllDevicePatterns();
+    final Map<String, List<IDeviceID>> storageGroupToDeviceMap =
+        partitionCache.getDatabaseToDevice(deviceIDs, true, true, userName);
+    SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
+    if (null == schemaPartition) {
+      try (final ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
         final TSchemaPartitionTableResp schemaPartitionTableResp =
             client.getOrCreateSchemaPartitionTable(constructSchemaPartitionReq(patternTree));
         if (schemaPartitionTableResp.getStatus().getCode()
@@ -149,23 +165,26 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
               schemaPartitionTableResp.getStatus().getMessage(),
               schemaPartitionTableResp.getStatus().getCode());
         }
+      } catch (final ClientManagerException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
       }
-      return schemaPartition;
-    } catch (final ClientManagerException | TException e) {
-      throw new StatementAnalyzeException(
-          "An error occurred when executing getOrCreateSchemaPartition():" + e.getMessage());
     }
+    return schemaPartition;
   }
 
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
-      final PathPatternTree patternTree, final PathPatternTree scope, final Integer level) {
+      final PathPatternTree patternTree,
+      final PathPatternTree scope,
+      final Integer level,
+      final boolean canSeeAuditDB) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
       patternTree.constructTree();
       final TSchemaNodeManagementResp schemaNodeManagementResp =
           client.getSchemaNodeManagementPartition(
-              constructSchemaNodeManagementPartitionReq(patternTree, scope, level));
+              constructSchemaNodeManagementPartitionReq(patternTree, scope, level, canSeeAuditDB));
 
       return parseSchemaNodeManagementPartitionResp(schemaNodeManagementResp);
     } catch (final ClientManagerException | TException e) {
@@ -289,6 +308,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     return partitionCache.updateGroupIdToReplicaSetMap(req.getTimestamp(), req.getRegionRouteMap());
   }
 
+  public List<TRegionReplicaSet> getRegionReplicaSet(List<TConsensusGroupId> consensusGroupIds) {
+    return partitionCache.getRegionReplicaSet(consensusGroupIds);
+  }
+
   @Override
   public void invalidAllCache() {
     partitionCache.invalidAllCache();
@@ -393,11 +416,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   private TSchemaNodeManagementReq constructSchemaNodeManagementPartitionReq(
-      final PathPatternTree patternTree, final PathPatternTree scope, final Integer level) {
+      final PathPatternTree patternTree,
+      final PathPatternTree scope,
+      final Integer level,
+      boolean needAuditDB) {
     try {
       final TSchemaNodeManagementReq schemaNodeManagementReq =
           new TSchemaNodeManagementReq(patternTree.serialize());
       schemaNodeManagementReq.setScopePatternTree(scope.serialize());
+      schemaNodeManagementReq.setNeedAuditDB(needAuditDB);
       if (null == level) {
         schemaNodeManagementReq.setLevel(-1);
       } else {
@@ -490,16 +517,21 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         new HashMap<>();
     for (final Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
         schemaPartitionTableResp.getSchemaPartitionTable().entrySet()) {
+      String database = entry1.getKey();
       final Map<TSeriesPartitionSlot, TRegionReplicaSet> result1 =
-          regionReplicaMap.computeIfAbsent(entry1.getKey(), k -> new HashMap<>());
-      for (final Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 :
-          entry1.getValue().entrySet()) {
-        final TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-        final TConsensusGroupId consensusGroupId = entry2.getValue();
-        result1.put(seriesPartitionSlot, partitionCache.getRegionReplicaSet(consensusGroupId));
+          regionReplicaMap.computeIfAbsent(database, k -> new HashMap<>());
+
+      Map<TSeriesPartitionSlot, TConsensusGroupId> orderedMap =
+          new LinkedHashMap<>(entry1.getValue());
+      List<TConsensusGroupId> orderedGroupIds = new ArrayList<>(orderedMap.values());
+      List<TRegionReplicaSet> regionReplicaSets =
+          partitionCache.getRegionReplicaSet(orderedGroupIds);
+
+      int index = 0;
+      for (Map.Entry<TSeriesPartitionSlot, TConsensusGroupId> entry2 : orderedMap.entrySet()) {
+        result1.put(entry2.getKey(), regionReplicaSets.get(index++));
       }
     }
-
     return new SchemaPartition(
         regionReplicaMap,
         IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
@@ -517,6 +549,29 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private DataPartition parseDataPartitionResp(
       final TDataPartitionTableResp dataPartitionTableResp) {
+    final Set<TConsensusGroupId> uniqueConsensusGroupIds = new HashSet<>();
+    for (final Map<
+            String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+        partitionTable : Collections.singleton(dataPartitionTableResp.getDataPartitionTable())) {
+      for (final Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          seriesPartitionMap : partitionTable.values()) {
+        for (final Map<TTimePartitionSlot, List<TConsensusGroupId>> timePartitionMap :
+            seriesPartitionMap.values()) {
+          for (final List<TConsensusGroupId> consensusGroupIds : timePartitionMap.values()) {
+            uniqueConsensusGroupIds.addAll(consensusGroupIds);
+          }
+        }
+      }
+    }
+
+    final List<TRegionReplicaSet> allRegionReplicaSets =
+        partitionCache.getRegionReplicaSet(new ArrayList<>(uniqueConsensusGroupIds));
+    final List<TConsensusGroupId> consensusGroupIds = new ArrayList<>(uniqueConsensusGroupIds);
+    final Map<TConsensusGroupId, TRegionReplicaSet> regionReplicaSetMap = new HashMap<>();
+    for (int i = 0; i < allRegionReplicaSets.size(); i++) {
+      regionReplicaSetMap.put(consensusGroupIds.get(i), allRegionReplicaSets.get(i));
+    }
+
     final Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
         regionReplicaSet = new HashMap<>();
     for (final Map.Entry<
@@ -530,9 +585,9 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             result1.computeIfAbsent(entry2.getKey(), k -> new HashMap<>());
         for (final Map.Entry<TTimePartitionSlot, List<TConsensusGroupId>> entry3 :
             entry2.getValue().entrySet()) {
-          final List<TRegionReplicaSet> regionReplicaSets = new LinkedList<>();
-          for (final TConsensusGroupId consensusGroupId : entry3.getValue()) {
-            regionReplicaSets.add(partitionCache.getRegionReplicaSet(consensusGroupId));
+          final List<TRegionReplicaSet> regionReplicaSets = new ArrayList<>();
+          for (TConsensusGroupId groupId : entry3.getValue()) {
+            regionReplicaSets.add(regionReplicaSetMap.get(groupId));
           }
           result2.put(entry3.getKey(), regionReplicaSets);
         }

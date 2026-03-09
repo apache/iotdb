@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.memory.StorageEngineMemoryMetrics;
 import org.apache.iotdb.db.utils.datastructure.TVListSortAlgorithm;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -153,9 +154,12 @@ public class PrimitiveArrayManager {
     synchronized (POOLED_ARRAYS[order]) {
       array = POOLED_ARRAYS[order].poll();
     }
+    StorageEngineMemoryMetrics.getInstance().incPamAllocation();
     if (array == null) {
       array = createPrimitiveArray(dataType);
+      StorageEngineMemoryMetrics.getInstance().incPamAllocationFailure();
     }
+
     return array;
   }
 
@@ -245,6 +249,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         dataArray = new Binary[ARRAY_SIZE];
         break;
       default:
@@ -278,10 +283,13 @@ public class PrimitiveArrayManager {
       throw new UnSupportedDataTypeException(array.getClass().toString());
     }
 
+    StorageEngineMemoryMetrics.getInstance().incPamRelease();
     synchronized (POOLED_ARRAYS[order]) {
       ArrayDeque<Object> arrays = POOLED_ARRAYS[order];
       if (arrays.size() < LIMITS[order]) {
         arrays.add(array);
+      } else {
+        StorageEngineMemoryMetrics.getInstance().incPamReleaseFailure();
       }
     }
   }
@@ -335,6 +343,7 @@ public class PrimitiveArrayManager {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[][] binaries = new Binary[arrayNumber][];
         for (int i = 0; i < arrayNumber; i++) {
           binaries[i] = new Binary[ARRAY_SIZE];

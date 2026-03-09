@@ -120,7 +120,8 @@ public class SimpleNestedLoopCrossJoinOperator extends AbstractOperator {
       cachedProbeBlock = null;
       return null;
     }
-    while (probeIndex < cachedProbeBlock.getPositionCount()
+    while (!resultBuilder.isFull()
+        && probeIndex < cachedProbeBlock.getPositionCount()
         && System.nanoTime() - start < maxRuntime) {
       for (TsBlock buildBlock : buildBlocks) {
         appendValueToResult(probeIndex, buildBlock);

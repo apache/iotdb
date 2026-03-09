@@ -23,7 +23,9 @@ import org.apache.iotdb.udf.api.exception.UDFArgumentNotValidException;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -66,22 +68,31 @@ public class MyRepeatWithIndex implements TableFunction {
       throw new UDFArgumentNotValidException(
           "count argument for function repeat() must be positive");
     }
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder().addProperty(N_PARAM, count.getValue()).build();
     return TableFunctionAnalysis.builder()
         .properColumnSchema(DescribedSchema.builder().addField("repeat_index", Type.INT32).build())
         .requiredColumns(
             TBL_PARAM,
             Collections.singletonList(0)) // per spec, function must require at least one column
+        .handle(handle)
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
-    ScalarArgument count = (ScalarArgument) arguments.get("N");
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new TableFunctionDataProcessor() {
-          private final int n = (int) count.getValue();
+          private final int n =
+              (int) ((MapTableFunctionHandle) tableFunctionHandle).getProperty(N_PARAM);
           private long recordIndex = 0;
 
           @Override

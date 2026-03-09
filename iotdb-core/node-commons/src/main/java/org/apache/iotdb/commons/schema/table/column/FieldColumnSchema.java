@@ -30,15 +30,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
 
 public class FieldColumnSchema extends TsTableColumnSchema {
 
-  private final TSEncoding encoding;
+  private TSEncoding encoding;
 
   private final CompressionType compressor;
 
-  // Only for information schema
+  // Only for information schema and tree view field
   public FieldColumnSchema(final String columnName, final TSDataType dataType) {
     super(columnName, dataType);
     this.encoding = TSEncoding.PLAIN;
@@ -66,6 +67,12 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     this.compressor = compressor;
   }
 
+  // Only for table view
+  @Override
+  public void setDataType(final TSDataType dataType) {
+    this.dataType = dataType;
+  }
+
   @Override
   public TsTableColumnCategory getColumnCategory() {
     return TsTableColumnCategory.FIELD;
@@ -75,10 +82,15 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     return encoding;
   }
 
+  public void setEncoding(TSEncoding encoding) {
+    this.encoding = encoding;
+  }
+
   public CompressionType getCompressor() {
     return compressor;
   }
 
+  @Override
   public IMeasurementSchema getMeasurementSchema() {
     return new MeasurementSchema(columnName, dataType, encoding, compressor, props);
   }
@@ -108,5 +120,11 @@ public class FieldColumnSchema extends TsTableColumnSchema {
     final CompressionType compressor = ReadWriteIOUtils.readCompressionType(buffer);
     final Map<String, String> props = ReadWriteIOUtils.readMap(buffer);
     return new FieldColumnSchema(columnName, dataType, encoding, compressor, props);
+  }
+
+  @Override
+  public TsTableColumnSchema copy() {
+    return new FieldColumnSchema(
+        columnName, dataType, encoding, compressor, props == null ? null : new HashMap<>(props));
   }
 }

@@ -43,7 +43,7 @@ public class ConstantColumnTransformer extends LeafColumnTransformer {
     int positionCount = input.getPositionCount();
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     for (int i = 0; i < positionCount; i++) {
-      if (!selection[i] || value.isNull(i)) {
+      if (!selection[i] || value.isNull(0)) {
         builder.appendNull();
       } else {
         builder.write(value, 0);

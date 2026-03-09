@@ -32,16 +32,11 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.tsfile.read.common.block.column.LongColumn;
-import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -147,11 +142,19 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
          * 2. consume chunk data secondly
          * 3. consume next file finally
          */
-        if (!readPageData() && !readChunkData() && !readFileData()) {
-          currentDeviceNoMoreData = true;
-          break;
+        if (readPageData()) {
+          continue;
         }
-
+        Optional<Boolean> b = readChunkData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        b = readFileData();
+        if (!b.isPresent() || b.get()) {
+          continue;
+        }
+        currentDeviceNoMoreData = true;
+        break;
       } while (System.nanoTime() - start < maxRuntime
           && !measurementDataBuilder.isFull()
           && measurementDataBlock == null);
@@ -200,56 +203,17 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
   }
 
   private void constructResultTsBlock() {
-    int positionCount = measurementDataBlock.getPositionCount();
     DeviceEntry currentDeviceEntry = deviceEntries.get(currentDeviceIndex);
-    Column[] valueColumns = new Column[columnsIndexArray.length];
-    for (int i = 0; i < columnsIndexArray.length; i++) {
-      switch (columnSchemas.get(i).getColumnCategory()) {
-        case TAG:
-          String idColumnValue = getNthIdColumnValue(currentDeviceEntry, columnsIndexArray[i]);
-
-          valueColumns[i] =
-              getIdOrAttributeValueColumn(
-                  idColumnValue == null
-                      ? null
-                      : new Binary(idColumnValue, TSFileConfig.STRING_CHARSET),
-                  positionCount);
-          break;
-        case ATTRIBUTE:
-          Binary attributeColumnValue =
-              currentDeviceEntry.getAttributeColumnValues()[columnsIndexArray[i]];
-          valueColumns[i] = getIdOrAttributeValueColumn(attributeColumnValue, positionCount);
-          break;
-        case FIELD:
-          valueColumns[i] = measurementDataBlock.getColumn(columnsIndexArray[i]);
-          break;
-        case TIME:
-          valueColumns[i] = measurementDataBlock.getTimeColumn();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + columnSchemas.get(i).getColumnCategory());
-      }
-    }
     this.resultTsBlock =
-        new TsBlock(
-            positionCount,
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, positionCount),
-            valueColumns);
+        MeasurementToTableViewAdaptorUtils.toTableBlock(
+            measurementDataBlock,
+            columnsIndexArray,
+            columnSchemas,
+            deviceEntries.get(currentDeviceIndex),
+            idColumnIndex -> getNthIdColumnValue(currentDeviceEntry, idColumnIndex));
   }
 
   abstract String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex);
-
-  private RunLengthEncodedColumn getIdOrAttributeValueColumn(Binary value, int positionCount) {
-    if (value == null) {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.of(new boolean[] {true}), new Binary[] {null}),
-          positionCount);
-    } else {
-      return new RunLengthEncodedColumn(
-          new BinaryColumn(1, Optional.empty(), new Binary[] {value}), positionCount);
-    }
-  }
 
   @Override
   public boolean hasNext() throws Exception {

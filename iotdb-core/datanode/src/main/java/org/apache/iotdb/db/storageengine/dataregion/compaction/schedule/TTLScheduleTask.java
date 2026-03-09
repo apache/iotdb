@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.schedule;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 
@@ -63,6 +64,17 @@ public class TTLScheduleTask implements Callable<Void> {
           }
           if (i % workerNum == workerId) {
             dataRegionListSnapshot.get(i).executeTTLCheck();
+          }
+        }
+        // check for object files
+        for (int i = 0; i < dataRegionListSnapshot.size(); i++) {
+          if (Thread.interrupted()) {
+            throw new InterruptedException();
+          }
+          DataRegion region = dataRegionListSnapshot.get(i);
+          if (i % workerNum == workerId
+              && PathUtils.isTableModelDatabase(region.getDatabaseName())) {
+            dataRegionListSnapshot.get(i).executeTTLCheckForObjectFiles();
           }
         }
       } catch (InterruptedException ignored) {

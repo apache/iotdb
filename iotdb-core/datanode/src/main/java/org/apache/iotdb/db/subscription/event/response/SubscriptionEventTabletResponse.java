@@ -35,12 +35,14 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -175,25 +177,27 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
     }
 
     CachedSubscriptionPollResponse response = null;
-    final List<Tablet> currentTablets = new ArrayList<>();
+    final Map<String, List<Tablet>> currentTablets = new HashMap<>();
     long currentBufferSize = 0;
 
     // TODO: TBD.
     // waitForResourceEnough4Parsing(SubscriptionAgent.receiver().remainingMs());
 
     while (batch.hasNext()) {
-      final List<Tablet> tablets = batch.next();
+      final Pair<String, List<Tablet>> tablets = batch.next();
       if (Objects.isNull(tablets)) {
         continue;
       }
 
-      currentTablets.addAll(tablets);
+      currentTablets
+          .computeIfAbsent(tablets.left, databaseName -> new ArrayList<>())
+          .addAll(tablets.right);
       final long bufferSize =
-          tablets.stream()
+          tablets.right.stream()
               .map(PipeMemoryWeightUtil::calculateTabletSizeInBytes)
               .reduce(Long::sum)
               .orElse(0L);
-      totalTablets += tablets.size();
+      totalTablets += tablets.right.size();
       totalBufferSize += bufferSize;
       currentBufferSize += bufferSize;
 
@@ -206,7 +210,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
+                new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
                 commitContext);
         break;
       }
@@ -216,7 +220,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
+                new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
                 commitContext);
         break;
       }
@@ -244,7 +248,7 @@ public class SubscriptionEventTabletResponse extends SubscriptionEventExtendable
         response =
             new CachedSubscriptionPollResponse(
                 SubscriptionPollResponseType.TABLETS.getType(),
-                new TabletsPayload(new ArrayList<>(currentTablets), nextOffset.incrementAndGet()),
+                new TabletsPayload(new HashMap<>(currentTablets), nextOffset.incrementAndGet()),
                 commitContext);
       }
     }

@@ -60,6 +60,8 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP = new EnumMap<>(CNSnapshotFileType.class);
   private CNSnapshotFileType fileType;
 
+  private String authUserName = "";
+
   static {
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.ROLE,
@@ -96,7 +98,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
                     ConfigPhysicalPlanType.CreateDatabase.getPlanType(),
                     ConfigPhysicalPlanType.CreateSchemaTemplate.getPlanType(),
                     ConfigPhysicalPlanType.CommitSetSchemaTemplate.getPlanType(),
-                    ConfigPhysicalPlanType.PipeCreateTable.getPlanType()))));
+                    ConfigPhysicalPlanType.PipeCreateTableOrView.getPlanType()))));
     SNAPSHOT_FILE_TYPE_2_CONFIG_PHYSICAL_PLAN_TYPE_MAP.put(
         CNSnapshotFileType.TTL, Collections.singleton(ConfigPhysicalPlanType.SetTTL.getPlanType()));
   }
@@ -108,7 +110,7 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
 
   public PipeConfigRegionSnapshotEvent(
       final String snapshotPath, final String templateFilePath, final CNSnapshotFileType type) {
-    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, true);
+    this(snapshotPath, templateFilePath, type, null, 0, null, null, null, null, null, null, true);
   }
 
   public PipeConfigRegionSnapshotEvent(
@@ -120,7 +122,9 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges) {
     super(
         pipeName,
@@ -128,12 +132,22 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         PipeConfigNodeResourceManager.snapshot());
     this.snapshotPath = snapshotPath;
     this.templateFilePath = Objects.nonNull(templateFilePath) ? templateFilePath : "";
     this.fileType = type;
+  }
+
+  public String getAuthUserName() {
+    return authUserName;
+  }
+
+  public void setAuthUserName(String authUserName) {
+    this.authUserName = authUserName;
   }
 
   public File getSnapshotFile() {
@@ -191,21 +205,28 @@ public class PipeConfigRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
-    return new PipeConfigRegionSnapshotEvent(
-        snapshotPath,
-        templateFilePath,
-        fileType,
-        pipeName,
-        creationTime,
-        pipeTaskMeta,
-        treePattern,
-        tablePattern,
-        userName,
-        skipIfNoPrivileges);
+    PipeConfigRegionSnapshotEvent pipeConfigRegionSnapshotEvent =
+        new PipeConfigRegionSnapshotEvent(
+            snapshotPath,
+            templateFilePath,
+            fileType,
+            pipeName,
+            creationTime,
+            pipeTaskMeta,
+            treePattern,
+            tablePattern,
+            userId,
+            userName,
+            cliHostname,
+            skipIfNoPrivileges);
+    pipeConfigRegionSnapshotEvent.setAuthUserName(authUserName);
+    return pipeConfigRegionSnapshotEvent;
   }
 
   @Override

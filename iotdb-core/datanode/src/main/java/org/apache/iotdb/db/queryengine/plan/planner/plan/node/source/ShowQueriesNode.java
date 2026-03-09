@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -42,8 +43,12 @@ public class ShowQueriesNode extends VirtualSourceNode {
           ColumnHeaderConstant.ELAPSED_TIME,
           ColumnHeaderConstant.STATEMENT);
 
-  public ShowQueriesNode(PlanNodeId id, TDataNodeLocation dataNodeLocation) {
+  private final String allowedUsername;
+
+  public ShowQueriesNode(
+      PlanNodeId id, TDataNodeLocation dataNodeLocation, String allowedUsername) {
     super(id, dataNodeLocation);
+    this.allowedUsername = allowedUsername;
   }
 
   @Override
@@ -63,7 +68,11 @@ public class ShowQueriesNode extends VirtualSourceNode {
 
   @Override
   public PlanNode clone() {
-    return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation());
+    return new ShowQueriesNode(getPlanNodeId(), getDataNodeLocation(), allowedUsername);
+  }
+
+  public String getAllowedUsername() {
+    return allowedUsername;
   }
 
   @Override
@@ -86,16 +95,19 @@ public class ShowQueriesNode extends VirtualSourceNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SHOW_QUERIES.serialize(byteBuffer);
+    ReadWriteIOUtils.write(this.allowedUsername, byteBuffer);
   }
 
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.SHOW_QUERIES.serialize(stream);
+    ReadWriteIOUtils.write(this.allowedUsername, stream);
   }
 
   public static ShowQueriesNode deserialize(ByteBuffer byteBuffer) {
+    String allowedUsername = ReadWriteIOUtils.readString(byteBuffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new ShowQueriesNode(planNodeId, null);
+    return new ShowQueriesNode(planNodeId, null, allowedUsername);
   }
 
   @Override

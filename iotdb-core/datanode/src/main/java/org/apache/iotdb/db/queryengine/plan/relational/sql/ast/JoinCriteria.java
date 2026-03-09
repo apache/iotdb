@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.Accountable;
+
 import java.util.List;
 
-public abstract class JoinCriteria {
+public abstract class JoinCriteria implements Accountable {
 
   // Force subclasses to have a proper equals and hashcode implementation
   @Override

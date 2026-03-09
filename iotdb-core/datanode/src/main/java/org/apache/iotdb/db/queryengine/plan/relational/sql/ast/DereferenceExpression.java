@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -30,6 +31,9 @@ import java.util.Optional;
 import static java.util.Objects.requireNonNull;
 
 public class DereferenceExpression extends Expression {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DereferenceExpression.class);
 
   private final Expression base;
   @Nullable private final Identifier field;
@@ -147,5 +151,14 @@ public class DereferenceExpression extends Expression {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(base);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(field);
+    return size;
   }
 }

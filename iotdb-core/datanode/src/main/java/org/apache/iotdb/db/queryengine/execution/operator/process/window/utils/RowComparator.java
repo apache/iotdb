@@ -50,6 +50,14 @@ public class RowComparator {
   }
 
   private boolean equal(Column column, TSDataType dataType, int offset1, int offset2) {
+    if (offset1 == offset2) {
+      return true;
+    }
+
+    if (column.isNull(offset1) || column.isNull(offset2)) {
+      return column.isNull(offset1) && column.isNull(offset2);
+    }
+
     switch (dataType) {
       case BOOLEAN:
         boolean bool1 = column.getBoolean(offset1);
@@ -59,6 +67,7 @@ public class RowComparator {
         }
         break;
       case INT32:
+      case DATE:
         int int1 = column.getInt(offset1);
         int int2 = column.getInt(offset2);
         if (int1 != int2) {
@@ -66,6 +75,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -86,7 +96,10 @@ public class RowComparator {
           return false;
         }
         break;
+      case STRING:
       case TEXT:
+      case BLOB:
+      case OBJECT:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -117,6 +130,14 @@ public class RowComparator {
   }
 
   private boolean equal(ColumnList column, TSDataType dataType, int offset1, int offset2) {
+    if (offset1 == offset2) {
+      return true;
+    }
+
+    if (column.isNull(offset1) || column.isNull(offset2)) {
+      return column.isNull(offset1) && column.isNull(offset2);
+    }
+
     switch (dataType) {
       case BOOLEAN:
         boolean bool1 = column.getBoolean(offset1);
@@ -126,6 +147,7 @@ public class RowComparator {
         }
         break;
       case INT32:
+      case DATE:
         int int1 = column.getInt(offset1);
         int int2 = column.getInt(offset2);
         if (int1 != int2) {
@@ -133,6 +155,7 @@ public class RowComparator {
         }
         break;
       case INT64:
+      case TIMESTAMP:
         long long1 = column.getLong(offset1);
         long long2 = column.getLong(offset2);
         if (long1 != long2) {
@@ -154,6 +177,9 @@ public class RowComparator {
         }
         break;
       case TEXT:
+      case STRING:
+      case BLOB:
+      case OBJECT:
         Binary bin1 = column.getBinary(offset1);
         Binary bin2 = column.getBinary(offset2);
         if (!bin1.equals(bin2)) {
@@ -173,6 +199,10 @@ public class RowComparator {
       Column column1 = columns1.get(i);
       Column column2 = columns2.get(i);
 
+      if (column1.isNull(offset1) || column2.isNull(offset2)) {
+        return column1.isNull(offset1) && column2.isNull(offset2);
+      }
+
       switch (dataType) {
         case BOOLEAN:
           boolean bool1 = column1.getBoolean(offset1);
@@ -182,6 +212,7 @@ public class RowComparator {
           }
           break;
         case INT32:
+        case DATE:
           int int1 = column1.getInt(offset1);
           int int2 = column2.getInt(offset2);
           if (int1 != int2) {
@@ -189,6 +220,7 @@ public class RowComparator {
           }
           break;
         case INT64:
+        case TIMESTAMP:
           long long1 = column1.getLong(offset1);
           long long2 = column2.getLong(offset2);
           if (long1 != long2) {
@@ -210,6 +242,9 @@ public class RowComparator {
           }
           break;
         case TEXT:
+        case STRING:
+        case BLOB:
+        case OBJECT:
           Binary bin1 = column1.getBinary(offset1);
           Binary bin2 = column2.getBinary(offset2);
           if (!bin1.equals(bin2)) {

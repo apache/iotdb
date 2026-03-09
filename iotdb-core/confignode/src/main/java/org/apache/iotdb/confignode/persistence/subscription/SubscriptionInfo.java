@@ -44,6 +44,8 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
+import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,9 +56,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -263,6 +267,15 @@ public class SubscriptionInfo implements SnapshotProcessor {
     acquireReadLock();
     try {
       return topicMetaKeeper.containsTopicMeta(topicName);
+    } finally {
+      releaseReadLock();
+    }
+  }
+
+  public boolean isTopicExisted(String topicName, boolean isTableModel) {
+    acquireReadLock();
+    try {
+      return topicMetaKeeper.containsTopicMeta(topicName, isTableModel);
     } finally {
       releaseReadLock();
     }
@@ -567,23 +580,39 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private void checkBeforeSubscribeInternal(TSubscribeReq subscribeReq)
       throws SubscriptionException {
+    String consumerId = subscribeReq.getConsumerId();
+    String consumerGroupId = subscribeReq.getConsumerGroupId();
+
     // 1. Check if the consumer exists
-    if (!isConsumerExisted(subscribeReq.getConsumerGroupId(), subscribeReq.getConsumerId())) {
+    if (!isConsumerExisted(consumerGroupId, consumerId)) {
       // There is no consumer with the same consumerId and consumerGroupId,
       // we should end the procedure
       final String exceptionMessage =
           String.format(
               "Failed to subscribe because the consumer %s in consumer group %s does not exist",
-              subscribeReq.getConsumerId(), subscribeReq.getConsumerGroupId());
+              consumerId, consumerGroupId);
       LOGGER.warn(exceptionMessage);
       throw new SubscriptionException(exceptionMessage);
     }
 
-    // 2. Check if all topics exist. No need to check if already subscribed.
-    for (String topic : subscribeReq.getTopicNames()) {
-      if (!isTopicExisted(topic)) {
+    ConsumerGroupMeta consumerGroupMeta = getConsumerGroupMeta(consumerGroupId);
+
+    // 2. Check all topics will be subscribed
+    for (String topicName : subscribeReq.getTopicNames()) {
+      // 2.1. check if exist
+      if (!isTopicExisted(topicName, subscribeReq.isTableModel)) {
         final String exceptionMessage =
-            String.format("Failed to subscribe because the topic %s does not exist", topic);
+            String.format("Failed to subscribe because the topic %s does not exist", topicName);
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
+
+      // 2.2. check username
+      if (!consumerGroupMeta.allowSubscribeTopicForConsumer(topicName, consumerId)) {
+        final String exceptionMessage =
+            String.format(
+                "Failed to subscribe topic %s for consumer %s because inconsistent username under the same consumer group",
+                topicName, consumerId);
         LOGGER.warn(exceptionMessage);
         throw new SubscriptionException(exceptionMessage);
       }
@@ -603,20 +632,23 @@ public class SubscriptionInfo implements SnapshotProcessor {
   private void checkBeforeUnsubscribeInternal(TUnsubscribeReq unsubscribeReq)
       throws SubscriptionException {
     // 1. Check if the consumer exists
-    if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
-      // There is no consumer with the same consumerId and consumerGroupId,
-      // we should end the procedure
-      final String exceptionMessage =
-          String.format(
-              "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
-              unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
-      LOGGER.warn(exceptionMessage);
-      throw new SubscriptionException(exceptionMessage);
+    // NOTE: consumer id may be null if drop subscription by session
+    if (Objects.nonNull(unsubscribeReq.getConsumerId())) {
+      if (!isConsumerExisted(unsubscribeReq.getConsumerGroupId(), unsubscribeReq.getConsumerId())) {
+        // There is no consumer with the same consumerId and consumerGroupId,
+        // we should end the procedure
+        final String exceptionMessage =
+            String.format(
+                "Failed to unsubscribe because the consumer %s in consumer group %s does not exist",
+                unsubscribeReq.getConsumerId(), unsubscribeReq.getConsumerGroupId());
+        LOGGER.warn(exceptionMessage);
+        throw new SubscriptionException(exceptionMessage);
+      }
     }
 
     // 2. Check if all topics exist. No need to check if already subscribed.
     for (String topic : unsubscribeReq.getTopicNames()) {
-      if (!isTopicExisted(topic)) {
+      if (!isTopicExisted(topic, unsubscribeReq.isTableModel)) {
         final String exceptionMessage =
             String.format("Failed to unsubscribe because the topic %s does not exist", topic);
         LOGGER.warn(exceptionMessage);
@@ -638,17 +670,28 @@ public class SubscriptionInfo implements SnapshotProcessor {
   }
 
   private List<SubscriptionMeta> getAllSubscriptionMeta() {
+    return getAllSubscriptionMetaInternal(null);
+  }
+
+  private List<SubscriptionMeta> getAllSubscriptionMetaInternal(
+      @Nullable Predicate<TopicMeta> predicate) {
     List<SubscriptionMeta> allSubscriptions = new ArrayList<>();
     for (TopicMeta topicMeta : topicMetaKeeper.getAllTopicMeta()) {
+      if (Objects.nonNull(predicate) && !predicate.test(topicMeta)) {
+        continue;
+      }
       for (String consumerGroupId :
           consumerGroupMetaKeeper.getSubscribedConsumerGroupIds(topicMeta.getTopicName())) {
         Set<String> subscribedConsumerIDs =
             consumerGroupMetaKeeper.getConsumersSubscribingTopic(
                 consumerGroupId, topicMeta.getTopicName());
+        Optional<Long> creationTime =
+            consumerGroupMetaKeeper.getSubscriptionCreationTime(
+                consumerGroupId, topicMeta.getTopicName());
         if (!subscribedConsumerIDs.isEmpty()) {
           allSubscriptions.add(
               new SubscriptionMeta(
-                  topicMeta.getTopicName(), consumerGroupId, subscribedConsumerIDs));
+                  topicMeta, consumerGroupId, subscribedConsumerIDs, creationTime.orElse(null)));
         }
       }
     }
@@ -659,6 +702,26 @@ public class SubscriptionInfo implements SnapshotProcessor {
     return StreamSupport.stream(
             consumerGroupMetaKeeper.getAllConsumerGroupMeta().spliterator(), false)
         .collect(Collectors.toList());
+  }
+
+  public Optional<Pair<String, String>> parseSubscriptionId(
+      String subscriptionId, boolean isTableModel) {
+    acquireReadLock();
+    try {
+      List<SubscriptionMeta> allSubscriptions =
+          getAllSubscriptionMetaInternal(topicMeta -> topicMeta.visibleUnder(isTableModel));
+      for (SubscriptionMeta subscriptionMeta : allSubscriptions) {
+        if (Objects.equals(subscriptionId, subscriptionMeta.getSubscriptionId())) {
+          return Optional.of(
+              new Pair<>(
+                  subscriptionMeta.getTopicMeta().getTopicName(),
+                  subscriptionMeta.getConsumerGroupId()));
+        }
+      }
+      return Optional.empty();
+    } finally {
+      releaseReadLock();
+    }
   }
 
   /////////////////////////////////  Snapshot  /////////////////////////////////

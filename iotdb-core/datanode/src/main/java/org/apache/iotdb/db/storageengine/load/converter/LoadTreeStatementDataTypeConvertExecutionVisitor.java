@@ -22,21 +22,19 @@ package org.apache.iotdb.db.storageengine.load.converter;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.connector.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.event.common.tsfile.parser.scan.TsFileInsertionEventScanParser;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryBlock;
 import org.apache.iotdb.db.storageengine.load.memory.LoadTsFileMemoryManager;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
@@ -93,7 +91,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       for (final File file : loadTsFileStatement.getTsFiles()) {
         try (final TsFileInsertionEventScanParser parser =
             new TsFileInsertionEventScanParser(
-                file, new IoTDBTreePattern(null), Long.MIN_VALUE, Long.MAX_VALUE, null, null)) {
+                file,
+                new IoTDBTreePattern(null),
+                Long.MIN_VALUE,
+                Long.MAX_VALUE,
+                null,
+                null,
+                true)) {
           for (final Pair<Tablet, Boolean> tabletWithIsAligned : parser.toTabletWithIsAligneds()) {
             final PipeTransferTabletRawReq tabletRawReq =
                 PipeTransferTabletRawReq.toTPipeTransferRawReq(
@@ -117,7 +121,7 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
             tabletRawReqSizes.clear();
 
             if (!handleTSStatus(result, loadTsFileStatement)) {
-              return Optional.empty();
+              return Optional.of(result);
             }
 
             tabletRawReqs.add(tabletRawReq);
@@ -127,7 +131,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
 
@@ -144,12 +150,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
           tabletRawReqSizes.clear();
 
           if (!handleTSStatus(result, loadTsFileStatement)) {
-            return Optional.empty();
+            return Optional.of(result);
           }
         } catch (final Exception e) {
           LOGGER.warn(
               "Failed to convert data type for LoadTsFileStatement: {}.", loadTsFileStatement, e);
-          return Optional.empty();
+          return Optional.of(
+              loadTsFileStatement.accept(
+                  LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e));
         }
       }
     } finally {
@@ -168,9 +176,9 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
               tsfile -> {
                 FileUtils.deleteQuietly(tsfile);
                 final String tsFilePath = tsfile.getAbsolutePath();
-                FileUtils.deleteQuietly(new File(tsFilePath + TsFileResource.RESOURCE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFileV1.FILE_SUFFIX));
-                FileUtils.deleteQuietly(new File(tsFilePath + ModificationFile.FILE_SUFFIX));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileResourcePath(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV1Path(tsFilePath)));
+                FileUtils.deleteQuietly(new File(LoadUtil.getTsFileModsV2Path(tsFilePath)));
               });
     }
 
@@ -181,14 +189,14 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
   }
 
   private TSStatus executeInsertMultiTabletsWithRetry(
-      final List<PipeTransferTabletRawReq> tabletRawReqs, boolean isConvertOnTypeMismatch) {
+      final List<PipeTransferTabletRawReq> tabletRawReqs, final boolean isConvertedOnTypeMismatch) {
     final InsertMultiTabletsStatement batchStatement = new InsertMultiTabletsStatement();
     batchStatement.setInsertTabletStatementList(
         tabletRawReqs.stream()
             .map(
                 req ->
                     new LoadConvertedInsertTabletStatement(
-                        req.constructStatement(), isConvertOnTypeMismatch))
+                        req.constructStatement(), isConvertedOnTypeMismatch))
             .collect(Collectors.toList()));
 
     TSStatus result;
@@ -214,13 +222,13 @@ public class LoadTreeStatementDataTypeConvertExecutionVisitor
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      result = batchStatement.accept(LoadTsFileDataTypeConverter.STATEMENT_EXCEPTION_VISITOR, e);
+      result =
+          batchStatement.accept(LoadTsFileDataTypeConverter.TREE_STATEMENT_EXCEPTION_VISITOR, e);
     }
     return result;
   }
 
-  private static boolean handleTSStatus(
-      final TSStatus result, final LoadTsFileStatement loadTsFileStatement) {
+  public static boolean handleTSStatus(final TSStatus result, final Object loadTsFileStatement) {
     if (!(result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()
         || result.getCode() == TSStatusCode.LOAD_IDEMPOTENT_CONFLICT_EXCEPTION.getStatusCode())) {

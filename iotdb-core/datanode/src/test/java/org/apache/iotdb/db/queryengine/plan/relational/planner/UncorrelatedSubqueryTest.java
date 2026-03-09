@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -31,7 +32,9 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.Optional;
@@ -39,11 +42,8 @@ import java.util.Optional;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationTableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.any;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.anyTree;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.enforceSingleRow;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.filter;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.join;
@@ -55,189 +55,89 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.FINAL;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.INTERMEDIATE;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.PARTIAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode.Step.SINGLE;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.EQUAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.GREATER_THAN;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression.Operator.LESS_THAN_OR_EQUAL;
 
 public class UncorrelatedSubqueryTest {
+  private PlanTester planTester;
+  private PredicateWithUncorrelatedScalarSubqueryReconstructor
+      predicateWithUncorrelatedScalarSubquery;
+
+  @Before
+  public void setUp() throws Exception {
+    planTester = new PlanTester();
+    mockPredicateWithUncorrelatedScalarSubquery();
+  }
+
+  private void mockPredicateWithUncorrelatedScalarSubquery() {
+    predicateWithUncorrelatedScalarSubquery =
+        Mockito.spy(new PredicateWithUncorrelatedScalarSubqueryReconstructor());
+    Mockito.when(
+            predicateWithUncorrelatedScalarSubquery.fetchUncorrelatedSubqueryResultForPredicate(
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+        .thenReturn(Optional.of(new LongLiteral("1")));
+  }
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClause() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 = (select max(s1) from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
-
-    Expression filterPredicate =
-        new ComparisonExpression(EQUAL, new SymbolReference("s1"), new SymbolReference("max"));
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan =
-        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+        tableScan(
+            "testdb.table1",
+            ImmutableList.of("s1"),
+            ImmutableSet.of("s1"),
+            new ComparisonExpression(EQUAL, new SymbolReference("s1"), new LongLiteral("1")));
 
     // Verify full LogicalPlan
     /*
-    *   └──OutputNode
-    *           └──ProjectNode
-    *             └──FilterNode
-    *               └──JoinNode
-    *                   |──TableScanNode
-    *                   ├──AggregationNode
-    *                   │   └──AggregationTableScanNode
-
-    */
-    assertPlan(
-        logicalQueryPlan,
-        output(
-            project(
-                filter(
-                    filterPredicate,
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder ->
-                            builder
-                                .left(tableScan)
-                                .right(
-                                    aggregation(
-                                        singleGroupingSet(),
-                                        ImmutableMap.of(
-                                            Optional.of("max"),
-                                            aggregationFunction("max", ImmutableList.of("max_9"))),
-                                        Collections.emptyList(),
-                                        Optional.empty(),
-                                        FINAL,
-                                        aggregationTableScan(
-                                            singleGroupingSet(),
-                                            Collections.emptyList(),
-                                            Optional.empty(),
-                                            PARTIAL,
-                                            "testdb.table1",
-                                            ImmutableList.of("max_9"),
-                                            ImmutableSet.of("s1_6")))))))));
+     *   └──OutputNode
+     *           └──DeviceTableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(tableScan));
 
     // Verify DistributionPlan
-    assertPlan(
-        planTester.getFragmentPlan(0),
-        output(
-            project(
-                filter(
-                    filterPredicate,
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder -> builder.left(exchange()).right(exchange()))))));
+    assertPlan(planTester.getFragmentPlan(0), output(collect(exchange(), exchange(), exchange())));
 
-    assertPlan(planTester.getFragmentPlan(1), collect(exchange(), exchange(), exchange()));
+    assertPlan(planTester.getFragmentPlan(1), tableScan);
     assertPlan(planTester.getFragmentPlan(2), tableScan);
     assertPlan(planTester.getFragmentPlan(3), tableScan);
-    assertPlan(planTester.getFragmentPlan(4), tableScan);
-
-    assertPlan(
-        planTester.getFragmentPlan(5),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("max"), aggregationFunction("max", ImmutableList.of("max_10"))),
-            Collections.emptyList(),
-            Optional.empty(),
-            FINAL,
-            collect(exchange(), exchange(), exchange())));
-
-    assertPlan(
-        planTester.getFragmentPlan(6),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("max_10"), aggregationFunction("max", ImmutableList.of("max_9"))),
-            Collections.emptyList(),
-            Optional.empty(),
-            INTERMEDIATE,
-            aggregationTableScan(
-                singleGroupingSet(),
-                Collections.emptyList(),
-                Optional.empty(),
-                PARTIAL,
-                "testdb.table1",
-                ImmutableList.of("max_9"),
-                ImmutableSet.of("s1_6"))));
-
-    assertPlan(
-        planTester.getFragmentPlan(7),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("max_10"), aggregationFunction("max", ImmutableList.of("max_9"))),
-            Collections.emptyList(),
-            Optional.empty(),
-            INTERMEDIATE,
-            aggregationTableScan(
-                singleGroupingSet(),
-                Collections.emptyList(),
-                Optional.empty(),
-                PARTIAL,
-                "testdb.table1",
-                ImmutableList.of("max_9"),
-                ImmutableSet.of("s1_6"))));
-
-    assertPlan(
-        planTester.getFragmentPlan(8),
-        aggregation(
-            singleGroupingSet(),
-            ImmutableMap.of(
-                Optional.of("max_10"), aggregationFunction("max", ImmutableList.of("max_9"))),
-            Collections.emptyList(),
-            Optional.empty(),
-            INTERMEDIATE,
-            aggregationTableScan(
-                singleGroupingSet(),
-                Collections.emptyList(),
-                Optional.empty(),
-                PARTIAL,
-                "testdb.table1",
-                ImmutableList.of("max_9"),
-                ImmutableSet.of("s1_6"))));
   }
 
   @Test
   public void testUncorrelatedScalarSubqueryInWhereClauseWithEnforceSingleRowNode() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 = (select s2 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
-    PlanMatchPattern tableScan1 =
-        tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
+    PlanMatchPattern tableScan =
+        tableScan(
+            "testdb.table1",
+            ImmutableList.of("s1"),
+            ImmutableSet.of("s1"),
+            new ComparisonExpression(EQUAL, new SymbolReference("s1"), new LongLiteral("1")));
 
     // Verify LogicalPlan
     /*
-    *   └──OutputNode
-    *           └──ProjectNode
-    *             └──FilterNode
-    *               └──JoinNode
-    *                   |──TableScanNode
-    *                   ├──EnforceSingleRowNode
-    *                   │   └──TableScanNode
-
-    */
-    assertPlan(
-        logicalQueryPlan,
-        output(
-            project(
-                anyTree(
-                    join(
-                        JoinNode.JoinType.INNER,
-                        builder -> builder.left(tableScan1).right(enforceSingleRow(any())))))));
+     *   └──OutputNode
+     *           └──DeviceTableScanNode
+     */
+    assertPlan(logicalQueryPlan, output(tableScan));
   }
 
   @Test
   public void testUncorrelatedInPredicateSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 in (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new SymbolReference("expr");
 
@@ -286,11 +186,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedNotInPredicateSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 not in (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new NotExpression(new SymbolReference("expr"));
 
@@ -322,11 +221,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedAnyComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 > any (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -451,11 +349,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedEqualsSomeComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 = some (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     Expression filterPredicate = new SymbolReference("expr");
 
@@ -487,11 +384,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedAllComparisonSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where s1 != all (select s1 from table1)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -518,11 +414,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedExistsSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where exists(select s2 from table2)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -567,11 +462,10 @@ public class UncorrelatedSubqueryTest {
 
   @Test
   public void testUncorrelatedNotExistsSubquery() {
-    PlanTester planTester = new PlanTester();
-
     String sql = "SELECT s1 FROM table1 where not exists(select s2 from table2)";
 
-    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
 
     PlanMatchPattern tableScan1 =
         tableScan("testdb.table1", ImmutableList.of("s1"), ImmutableSet.of("s1"));
@@ -579,9 +473,8 @@ public class UncorrelatedSubqueryTest {
     PlanMatchPattern tableScan2 = tableScan("testdb.table2", ImmutableList.of(), ImmutableSet.of());
 
     Expression filterPredicate =
-        new NotExpression(
-            new ComparisonExpression(
-                GREATER_THAN, new SymbolReference("count"), new LongLiteral("0")));
+        new ComparisonExpression(
+            LESS_THAN_OR_EQUAL, new SymbolReference("count"), new LongLiteral("0"));
     // Verify full LogicalPlan
     /*
     *   └──OutputNode
@@ -590,7 +483,8 @@ public class UncorrelatedSubqueryTest {
     *         |
     *         ├──ProjectNode
     *         │   └──FilterNode
-    *         |      └──TableScanNode
+    *         │      └──Aggregation
+    *         |          └──TableScanNode
 
     */
     assertPlan(
@@ -614,5 +508,39 @@ public class UncorrelatedSubqueryTest {
                                         Optional.empty(),
                                         SINGLE,
                                         tableScan2)))))));
+  }
+
+  @Test
+  public void testUncorrelatedHavingSubquery() {
+    String sql =
+        "SELECT min(time) as min FROM table1 group by s1 having min(time) > (select max(time) from table2)";
+    LogicalQueryPlan logicalQueryPlan =
+        planTester.createPlan(sql, predicateWithUncorrelatedScalarSubquery);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableList.of("time", "s1"), ImmutableSet.of("time", "s1"));
+    PlanMatchPattern agg =
+        aggregation(
+            singleGroupingSet("s1"),
+            ImmutableMap.of(
+                Optional.of("min"), aggregationFunction("min", ImmutableList.of("time"))),
+            ImmutableList.of(),
+            Optional.empty(),
+            SINGLE,
+            tableScan);
+
+    Expression filterPredicate =
+        new ComparisonExpression(GREATER_THAN, new SymbolReference("min"), new LongLiteral("1"));
+
+    // Verify full LogicalPlan
+    /*
+     *   └──OutputNode
+     *      └──FilterNode
+     *         ├──ProjectNode
+     *            └──Aggregation
+     *               └──TableScanNode
+     */
+
+    assertPlan(logicalQueryPlan, output(filter(filterPredicate, project(agg))));
   }
 }

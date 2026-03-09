@@ -39,5 +39,15 @@
             <directory>src/assembly/resources</directory>
             <outputDirectory>${file.separator}</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/sbin</directory>
+            <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*cli.*</include>
+                <include>**/*cli.*</include>
+                <include>**/*cli-table.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
     </fileSets>
 </assembly>

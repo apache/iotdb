@@ -39,7 +39,7 @@ ddlStatement
     // Database
     : createDatabase | dropDatabase | dropPartition | alterDatabase | showDatabases | countDatabases
     // Timeseries & Path
-    | createTimeseries | dropTimeseries | alterTimeseries
+    | createTimeseries | dropTimeseries | alterTimeseries | alterEncodingCompressor
     | showDevices | showTimeseries | showChildPaths | showChildNodes | countDevices | countTimeseries | countNodes
     // Device Template
     | createSchemaTemplate | createTimeseriesUsingSchemaTemplate | dropSchemaTemplate | dropTimeseriesOfSchemaTemplate
@@ -52,25 +52,30 @@ ddlStatement
     | createFunction | dropFunction | showFunctions
     // Trigger
     | createTrigger | dropTrigger | showTriggers | startTrigger | stopTrigger
+    // ExternalService
+    | createService | startService | stopService | dropService | showService
     // Pipe Task
     | createPipe | alterPipe | dropPipe | startPipe | stopPipe | showPipes
     // Pipe Plugin
     | createPipePlugin | dropPipePlugin | showPipePlugins
     // Subscription
-    | createTopic | dropTopic | showTopics | showSubscriptions
+    | createTopic | dropTopic | showTopics | showSubscriptions | dropSubscription
     // CQ
     | createContinuousQuery | dropContinuousQuery | showContinuousQueries
     // Cluster
-    | showVariables | showCluster | showRegions | showDataNodes | showConfigNodes | showClusterId
+    | showVariables | showCluster | showRegions | showDataNodes | showAvailableUrls | showConfigNodes | showClusterId
     | getRegionId | getTimeSlotList | countTimeSlotList | getSeriesSlotList
-    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode
+    | migrateRegion | reconstructRegion | extendRegion | removeRegion  | removeDataNode | removeConfigNode | removeAINode
     | verifyConnection
     // AINode
-    | showAINodes | createModel | dropModel | showModels | callInference
+    | showAINodes | createModel | dropModel | showModels | showLoadedModels | showAIDevices
+    | callInference | loadModel | unloadModel
     // Quota
     | setSpaceQuota | showSpaceQuota | setThrottleQuota | showThrottleQuota
     // View
     | createLogicalView | dropLogicalView | showLogicalView | renameLogicalView | alterLogicalView
+    // Table View
+    | createTableView
     ;
 
 dmlStatement
@@ -78,7 +83,7 @@ dmlStatement
     ;
 
 dclStatement
-    : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
+    : createUser | createRole | alterUser | renameUser | grantUser | grantRole | grantRoleToUser | alterUserAccountUnlock
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
     ;
@@ -167,11 +172,17 @@ alterTimeseries
 
 alterClause
     : RENAME beforeName=attributeKey TO currentName=attributeKey
+    // Change into new data type
+    | SET DATA TYPE newType=attributeValue
     | SET attributePair (COMMA attributePair)*
     | DROP attributeKey (COMMA attributeKey)*
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
+    ;
+
+alterEncodingCompressor
+    : ALTER TIMESERIES (IF EXISTS)? (IF PERMITTED)? prefixPath (COMMA prefixPath)* SET STORAGE_PROPERTIES attributePair (COMMA attributePair)*
     ;
 
 aliasClause
@@ -189,7 +200,12 @@ showDevices
 
 // ---- Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? rowPaginationClause?
+    : SHOW LATEST? TIMESERIES prefixPath? timeseriesWhereClause? timeConditionClause? orderByTimeseriesClause? rowPaginationClause?
+    ;
+
+// order by timeseries for SHOW TIMESERIES
+orderByTimeseriesClause
+    : ORDER BY TIMESERIES (ASC | DESC)?
     ;
 
 // ---- Show Child Paths
@@ -428,6 +444,28 @@ stopTrigger
     : STOP TRIGGER triggerName=identifier
     ;
 
+// ExternalService =========================================================================================
+createService
+    : CREATE SERVICE serviceName=identifier
+        AS className=STRING_LITERAL
+    ;
+
+startService
+    : START SERVICE serviceName=identifier
+    ;
+
+stopService
+    : STOP SERVICE serviceName=identifier
+    ;
+
+dropService
+    : DROP SERVICE serviceName=identifier FORCEDLY?
+
+    ;
+
+showService
+    : SHOW SERVICES (ON targetDataNodeId=INTEGER_LITERAL)?
+    ;
 
 // CQ ==============================================================================================
 // ---- Create Continuous Query
@@ -482,6 +520,11 @@ showRegions
 // ---- Show Data Nodes
 showDataNodes
     : SHOW DATANODES
+    ;
+
+// ---- Show Available Urls
+showAvailableUrls
+    : SHOW AVAILABLE URLS
     ;
 
 // ---- Show Config Nodes
@@ -539,11 +582,11 @@ reconstructRegion
     ;
 
 extendRegion
-    : EXTEND REGION regionId=INTEGER_LITERAL TO targetDataNodeId=INTEGER_LITERAL
+    : EXTEND REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* TO targetDataNodeId=INTEGER_LITERAL
     ;
 
 removeRegion
-    : REMOVE REGION regionId=INTEGER_LITERAL FROM targetDataNodeId=INTEGER_LITERAL
+    : REMOVE REGION regionIds+=INTEGER_LITERAL (COMMA regionIds+=INTEGER_LITERAL)* FROM targetDataNodeId=INTEGER_LITERAL
     ;
 
 verifyConnection
@@ -560,24 +603,29 @@ removeConfigNode
     : REMOVE CONFIGNODE configNodeId=INTEGER_LITERAL
     ;
 
+// ---- Remove AINode
+removeAINode
+    : REMOVE AINODE (aiNodeId=INTEGER_LITERAL)?
+    ;
+
 // Pipe Task =========================================================================================
 createPipe
     : CREATE PIPE  (IF NOT EXISTS)? pipeName=identifier
-        ((extractorAttributesClause?
+        ((sourceAttributesClause?
         processorAttributesClause?
-        connectorAttributesClause)
-        |connectorAttributesWithoutWithSinkClause)
+        sinkAttributesClause)
+        |sinkAttributesWithoutWithSinkClause)
     ;
 
-extractorAttributesClause
+sourceAttributesClause
     : WITH (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
-extractorAttributeClause
-    : extractorKey=STRING_LITERAL OPERATOR_SEQ extractorValue=STRING_LITERAL
+sourceAttributeClause
+    : sourceKey=STRING_LITERAL OPERATOR_SEQ sourceValue=STRING_LITERAL
     ;
 
 processorAttributesClause
@@ -591,32 +639,32 @@ processorAttributeClause
     : processorKey=STRING_LITERAL OPERATOR_SEQ processorValue=STRING_LITERAL
     ;
 
-connectorAttributesClause
+sinkAttributesClause
     : WITH (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 
-connectorAttributesWithoutWithSinkClause
-    : LR_BRACKET (connectorAttributeClause COMMA)* connectorAttributeClause? RR_BRACKET
+sinkAttributesWithoutWithSinkClause
+    : LR_BRACKET (sinkAttributeClause COMMA)* sinkAttributeClause? RR_BRACKET
     ;
 
-connectorAttributeClause
-    : connectorKey=STRING_LITERAL OPERATOR_SEQ connectorValue=STRING_LITERAL
+sinkAttributeClause
+    : sinkKey=STRING_LITERAL OPERATOR_SEQ sinkValue=STRING_LITERAL
     ;
 
 alterPipe
     : ALTER PIPE (IF EXISTS)? pipeName=identifier
-        alterExtractorAttributesClause?
+        alterSourceAttributesClause?
         alterProcessorAttributesClause?
-        alterConnectorAttributesClause?
+        alterSinkAttributesClause?
     ;
 
-alterExtractorAttributesClause
+alterSourceAttributesClause
     : (MODIFY | REPLACE) (EXTRACTOR | SOURCE)
         LR_BRACKET
-        (extractorAttributeClause COMMA)* extractorAttributeClause?
+        (sourceAttributeClause COMMA)* sourceAttributeClause?
         RR_BRACKET
     ;
 
@@ -627,10 +675,10 @@ alterProcessorAttributesClause
         RR_BRACKET
     ;
 
-alterConnectorAttributesClause
+alterSinkAttributesClause
     : (MODIFY | REPLACE) (CONNECTOR | SINK)
         LR_BRACKET
-        (connectorAttributeClause COMMA)* connectorAttributeClause?
+        (sinkAttributeClause COMMA)* sinkAttributeClause?
         RR_BRACKET
     ;
 
@@ -689,12 +737,15 @@ showSubscriptions
     : SHOW SUBSCRIPTIONS (ON topicName=identifier)?
     ;
 
+dropSubscription
+    : DROP SUBSCRIPTION (IF EXISTS)? subscriptionId=identifier
+    ;
 
 // AI Model =========================================================================================
 // ---- Create Model
 createModel
-    : CREATE MODEL modelName=identifier uriClause
-    | CREATE MODEL modelType=identifier modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? (FROM MODEL existingModelId=identifier)? ON DATASET LR_BRACKET trainingData RR_BRACKET
+    : CREATE MODEL modelId=identifier uriClause
+    | CREATE MODEL modelId=identifier (WITH HYPERPARAMETERS LR_BRACKET hparamPair (COMMA hparamPair)* RR_BRACKET)? FROM MODEL existingModelId=identifier ON DATASET LR_BRACKET trainingData RR_BRACKET
     ;
 
 trainingData
@@ -728,6 +779,14 @@ hparamValue
     | windowFunction
     ;
 
+loadModel
+    : LOAD MODEL existingModelId=identifier TO DEVICES deviceIdList=STRING_LITERAL
+    ;
+
+unloadModel
+    : UNLOAD MODEL existingModelId=identifier FROM DEVICES deviceIdList=STRING_LITERAL
+    ;
+
 // ---- Drop Model
 dropModel
     : DROP MODEL modelId=identifier
@@ -737,6 +796,15 @@ dropModel
 showModels
     : SHOW MODELS
     | SHOW MODELS modelId=identifier
+    ;
+
+showLoadedModels
+    : SHOW LOADED MODELS
+    | SHOW LOADED MODELS deviceIdList=STRING_LITERAL
+    ;
+
+showAIDevices
+    : SHOW AI_DEVICES
     ;
 
 // Create Logical View
@@ -774,6 +842,61 @@ viewSourcePaths
     : fullPath (COMMA fullPath)*
     | prefixPath LR_BRACKET viewSuffixPaths (COMMA viewSuffixPaths)* RR_BRACKET
     | selectClause fromClause
+    ;
+
+// Table view
+createTableView
+    : CREATE (OR REPLACE)? VIEW qualifiedName
+        LR_BRACKET (viewColumnDefinition (COMMA viewColumnDefinition)*)? RR_BRACKET
+        comment?
+        (RESTRICT)?
+        (WITH properties)?
+        AS prefixPath
+    ;
+
+viewColumnDefinition
+    : identifier columnCategory=(TAG | TIME | FIELD) comment?
+    | identifier type (columnCategory=(TAG | TIME | FIELD))? comment?
+    | identifier (type)? (columnCategory=FIELD)? FROM original_measurement=identifier comment?
+    ;
+
+type
+    : identifier (LR_BRACKET typeParameter (COMMA typeParameter)* RR_BRACKET)?                     #genericType
+    ;
+
+typeParameter
+    : INTEGER_LITERAL | type
+    ;
+
+qualifiedName
+    : identifier (DOT identifier)*
+    ;
+
+properties
+    : LR_BRACKET propertyAssignments RR_BRACKET
+    ;
+
+propertyAssignments
+    : property (COMMA property)*
+    ;
+
+property
+    : identifier OPERATOR_SEQ propertyValue
+    ;
+
+comment
+    : COMMENT STRING_LITERAL
+    ;
+
+propertyValue
+    : DEFAULT       #defaultPropertyValue
+    | literalExpression    #nonDefaultPropertyValue
+    ;
+
+// Currently only support this in table property values
+literalExpression
+    : INTEGER_LITERAL
+    | STRING_LITERAL
     ;
 
 /**
@@ -963,7 +1086,7 @@ deleteStatement
 
 // Create User
 createUser
-    : CREATE USER userName=identifier password=STRING_LITERAL
+    : CREATE USER userName=usernameWithRoot password=STRING_LITERAL
     ;
 
 // Create Role
@@ -976,9 +1099,19 @@ alterUser
     : ALTER USER userName=usernameWithRoot SET PASSWORD password=STRING_LITERAL
     ;
 
+// Rename user
+renameUser
+    : ALTER USER username=usernameWithRoot RENAME TO newUsername=usernameWithRoot
+    ;
+
+// ---- Alter User Account Unlock
+alterUserAccountUnlock
+    : ALTER USER userName=usernameWithRootWithOptionalHost ACCOUNT UNLOCK
+    ;
+
 // Grant User Privileges
 grantUser
-    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=identifier (grantOpt)?
+    : GRANT privileges ON prefixPath (COMMA prefixPath)* TO USER userName=usernameWithRoot (grantOpt)?
     ;
 
 // Grant Role Privileges
@@ -993,12 +1126,12 @@ grantOpt
 
 // Grant User Role
 grantRoleToUser
-    : GRANT ROLE roleName=identifier TO userName=identifier
+    : GRANT ROLE roleName=identifier TO userName=usernameWithRoot
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=identifier
+    : REVOKE privileges ON prefixPath (COMMA prefixPath)* FROM USER userName=usernameWithRoot
     ;
 
 // Revoke Role Privileges
@@ -1008,12 +1141,12 @@ revokeRole
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE ROLE roleName=identifier FROM userName=identifier
+    : REVOKE ROLE roleName=identifier FROM userName=usernameWithRoot
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=identifier
+    : DROP USER userName=usernameWithRoot
     ;
 
 // Drop Role
@@ -1049,6 +1182,8 @@ privilegeValue
     : ALL
     | READ
     | WRITE
+    | SYSTEM
+    | SECURITY
     | PRIVILEGE_VALUE
     ;
 
@@ -1057,6 +1192,9 @@ usernameWithRoot
     | identifier
     ;
 
+usernameWithRootWithOptionalHost
+    : usernameWithRoot (AT host=STRING_LITERAL)?
+    ;
 
 /**
  * 5. Utility Statements

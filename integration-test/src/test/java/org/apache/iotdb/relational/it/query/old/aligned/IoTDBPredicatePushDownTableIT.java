@@ -79,6 +79,19 @@ public class IoTDBPredicatePushDownTableIT {
         retArray1,
         database);
 
+    tableResultSetEqualTest(
+        "select Time,s2, s3 from table0 where device='d1' and 9 <= s2 - 1 and 30 > s2",
+        expectedHeader1,
+        retArray1,
+        database);
+
+    retArray1 = new String[] {"1970-01-01T00:00:00.020Z,20,20,"};
+    tableResultSetEqualTest(
+        "select Time,s2, s3 from table0 where device='d1' and 9 <= s2 - 1 and 30 > s2 and 19 < time",
+        expectedHeader1,
+        retArray1,
+        database);
+
     String[] expectedHeader2 = new String[] {"Time", "s3"};
     String[] retArray2 =
         new String[] {

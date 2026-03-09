@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.consensus.pipe.consensuspipe;
 
+import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferReq;
 import org.apache.iotdb.consensus.pipe.thrift.TPipeConsensusTransferResp;
 
 public interface ConsensusPipeReceiver {
   TPipeConsensusTransferResp receive(TPipeConsensusTransferReq req);
 
-  void handleDropPipeConsensusTask(ConsensusPipeName pipeName);
+  void releaseReceiverResource(DataRegionId regionId);
 }

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -30,10 +31,13 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class SetProperties extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(SetProperties.class);
 
   public enum Type {
     TABLE,
-    MATERIALIZED_VIEW
+    MATERIALIZED_VIEW,
+    TREE_VIEW,
   }
 
   private final Type type;
@@ -108,5 +112,14 @@ public class SetProperties extends Statement {
         .add("properties", properties)
         .add("ifExists", ifExists)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
+    return size;
   }
 }

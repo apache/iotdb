@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -39,20 +40,18 @@ import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchema
 import org.apache.iotdb.confignode.consensus.response.template.TemplateInfoResp;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTemplateState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIncompatibleException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.schemaengine.template.TemplateInternalRPCUtil;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckTimeSeriesExistenceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -100,7 +99,7 @@ public class SetTemplateProcedure
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final SetTemplateState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -170,9 +169,7 @@ public class SetTemplateProcedure
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setNextState(SetTemplateState.PRE_SET);
     } else {
-      setFailure(
-          new ProcedureException(
-              new IoTDBException(resp.getStatus().getMessage(), resp.getStatus().getCode())));
+      setFailure(new ProcedureException(new IoTDBException(resp.getStatus())));
     }
   }
 
@@ -195,7 +192,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -297,6 +294,7 @@ public class SetTemplateProcedure
                 respList.add(response);
                 final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -312,6 +310,12 @@ public class SetTemplateProcedure
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -324,11 +328,11 @@ public class SetTemplateProcedure
                         new MetadataException(
                             String.format(
                                 "Set template %s to %s failed when [check time series existence on DataNode] because "
-                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failure nodes: %s",
+                                    + "failed to check time series existence in all replicaset of schemaRegion %s. Failures: %s",
                                 templateName,
                                 templateSetPath,
                                 consensusGroupId.id,
-                                dataNodeLocationSet))));
+                                printFailureMap()))));
                 interruptTask();
               }
             };
@@ -370,7 +374,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -472,7 +476,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -531,7 +535,7 @@ public class SetTemplateProcedure
           templateName,
           templateSetPath,
           status.getMessage());
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 

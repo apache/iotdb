@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.commons.conf;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,25 +39,24 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class ConfigurationFileUtils {
 
   private static final String lockFileSuffix = ".lock";
   private static final long maxTimeMillsToAcquireLock = TimeUnit.SECONDS.toMillis(20);
   private static final long waitTimeMillsPerCheck = TimeUnit.MILLISECONDS.toMillis(100);
-  private static Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
+  private static final Logger logger = LoggerFactory.getLogger(ConfigurationFileUtils.class);
   private static final String lineSeparator = "\n";
   private static final String license =
       new StringJoiner(lineSeparator)
@@ -75,37 +77,106 @@ public class ConfigurationFileUtils {
           .add("# specific language governing permissions and limitations")
           .add("# under the License.")
           .toString();
-  private static Map<String, String> configuration2DefaultValue;
+  private static final String EFFECTIVE_MODE_PREFIX = "effectiveMode:";
+  private static final String DATATYPE_PREFIX = "Datatype:";
+  private static final String PRIVILEGE_PREFIX = "Privilege:";
+  private static Map<String, DefaultConfigurationItem> configuration2DefaultValue;
 
-  // This is a temporary implementations
-  private static final Set<String> ignoreConfigKeys =
-      new HashSet<>(
-          Arrays.asList(
-              "cn_internal_address",
-              "cn_internal_port",
-              "cn_consensus_port",
-              "cn_seed_config_node",
-              "dn_internal_address",
-              "dn_internal_port",
-              "dn_mpp_data_exchange_port",
-              "dn_schema_region_consensus_port",
-              "dn_data_region_consensus_port",
-              "dn_seed_config_node",
-              "dn_session_timeout_threshold",
-              "config_node_consensus_protocol_class",
-              "schema_replication_factor",
-              "data_replication_factor",
-              "data_region_consensus_protocol_class",
-              "series_slot_num",
-              "series_partition_executor_class",
-              "time_partition_interval",
-              "schema_engine_mode",
-              "tag_attribute_flush_interval",
-              "tag_attribute_total_size",
-              "timestamp_precision",
-              "iotdb_server_encrypt_decrypt_provider",
-              "iotdb_server_encrypt_decrypt_provider_parameter",
-              "pipe_lib_dir"));
+  // Used to display in showConfigurationStatement
+  private static final Map<String, String> lastAppliedProperties = new HashMap<>();
+  private static final String displayValueOfHidedParameter = "******";
+  private static final Set<String> hidedParameters = new HashSet<>();
+
+  static {
+    hidedParameters.add("key_store_pwd");
+    hidedParameters.add("trust_store_pwd");
+  }
+
+  public static void updateAppliedProperties(Properties properties, boolean isHotReloading) {
+    try {
+      loadConfigurationDefaultValueFromTemplate();
+    } catch (IOException e) {
+      logger.error("Failed to update applied properties", e);
+      return;
+    }
+    for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+      String key = entry.getKey().toString();
+      DefaultConfigurationItem defaultConfigurationItem = configuration2DefaultValue.get(key);
+      if (defaultConfigurationItem == null) {
+        continue;
+      }
+      if (isHotReloading
+          && defaultConfigurationItem.effectiveMode != EffectiveModeType.HOT_RELOAD) {
+        continue;
+      }
+      String value = entry.getValue() == null ? null : entry.getValue().toString();
+      lastAppliedProperties.put(
+          key, hidedParameters.contains(key) ? displayValueOfHidedParameter : value);
+    }
+  }
+
+  public static void updateAppliedPropertiesFromCN(TSystemConfigurationResp resp) {
+    if (resp.getGlobalConfig().isSetTimestampPrecision()) {
+      lastAppliedProperties.put(
+          "timestamp_precision", resp.getGlobalConfig().getTimestampPrecision());
+    }
+    if (resp.getGlobalConfig().isSetTimePartitionInterval()) {
+      lastAppliedProperties.put(
+          "time_partition_interval",
+          String.valueOf(resp.getGlobalConfig().getTimePartitionInterval()));
+    }
+    if (resp.getGlobalConfig().isSetTimePartitionOrigin()) {
+      lastAppliedProperties.put(
+          "time_partition_origin", String.valueOf(resp.getGlobalConfig().getTimePartitionOrigin()));
+    }
+    if (resp.getGlobalConfig().isSetSchemaEngineMode()) {
+      lastAppliedProperties.put("schema_engine_mode", resp.getGlobalConfig().getSchemaEngineMode());
+    }
+    if (resp.getGlobalConfig().isSetTagAttributeTotalSize()) {
+      lastAppliedProperties.put(
+          "tag_attribute_total_size",
+          String.valueOf(resp.getGlobalConfig().getTagAttributeTotalSize()));
+    }
+    if (resp.getGlobalConfig().isSetSeriesPartitionExecutorClass()) {
+      lastAppliedProperties.put(
+          "series_partition_executor_class",
+          resp.getGlobalConfig().getSeriesPartitionExecutorClass());
+    }
+    if (resp.getGlobalConfig().isSetSeriesPartitionSlotNum()) {
+      lastAppliedProperties.put(
+          "series_slot_num", String.valueOf(resp.getGlobalConfig().getSeriesPartitionSlotNum()));
+    }
+    if (resp.getGlobalConfig().isSetDataRegionConsensusProtocolClass()) {
+      lastAppliedProperties.put(
+          "data_region_consensus_protocol_class",
+          resp.getGlobalConfig().getDataRegionConsensusProtocolClass());
+    }
+    if (resp.getGlobalConfig().isSetSchemaRegionConsensusProtocolClass()) {
+      lastAppliedProperties.put(
+          "schema_region_consensus_protocol_class",
+          resp.getGlobalConfig().getSchemaRegionConsensusProtocolClass());
+    }
+    if (resp.getGlobalConfig().isSetReadConsistencyLevel()) {
+      lastAppliedProperties.put(
+          "read_consistency_level", resp.getGlobalConfig().getReadConsistencyLevel());
+    }
+    if (resp.getGlobalConfig().isSetDiskSpaceWarningThreshold()) {
+      lastAppliedProperties.put(
+          "disk_space_warning_threshold",
+          String.valueOf(resp.getGlobalConfig().getDiskSpaceWarningThreshold()));
+    }
+  }
+
+  // This method may not be used in the current version directly, but should not be removed to
+  // reduce conflicts
+  @SuppressWarnings("unused")
+  public static void updateAppliedProperties(String key, String value) {
+    lastAppliedProperties.put(key, value);
+  }
+
+  public static Map<String, String> getAppliedProperties() {
+    return lastAppliedProperties;
+  }
 
   public static void checkAndMayUpdate(
       URL systemUrl, URL configNodeUrl, URL dataNodeUrl, URL commonUrl)
@@ -163,30 +234,9 @@ public class ConfigurationFileUtils {
     if (configuration2DefaultValue != null) {
       return;
     }
-    configuration2DefaultValue = new HashMap<>();
-    try (InputStream inputStream =
-            ConfigurationFileUtils.class
-                .getClassLoader()
-                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
-        InputStreamReader isr = new InputStreamReader(inputStream);
-        BufferedReader reader = new BufferedReader(isr)) {
-      String line;
-      Pattern pattern = Pattern.compile("^[^#].*?=.*$");
-      while ((line = reader.readLine()) != null) {
-        Matcher matcher = pattern.matcher(line);
-        if (matcher.find()) {
-          String[] parts = line.split("=");
-          if (parts.length == 2) {
-            configuration2DefaultValue.put(parts[0].trim(), parts[1].trim());
-          } else if (parts.length == 1) {
-            configuration2DefaultValue.put(parts[0].trim(), null);
-          } else {
-            logger.error("Failed to parse configuration template: {}", line);
-          }
-        }
-      }
+    try {
+      configuration2DefaultValue = getConfigurationItemsFromTemplate(false);
     } catch (IOException e) {
-      configuration2DefaultValue = null;
       logger.warn("Failed to read configuration template", e);
       throw e;
     }
@@ -196,12 +246,27 @@ public class ConfigurationFileUtils {
   // modification.
   public static String getConfigurationDefaultValue(String parameterName) throws IOException {
     parameterName = parameterName.trim();
-    if (configuration2DefaultValue != null) {
-      return configuration2DefaultValue.get(parameterName);
-    } else {
+    if (configuration2DefaultValue == null) {
       loadConfigurationDefaultValueFromTemplate();
-      return configuration2DefaultValue.getOrDefault(parameterName, null);
     }
+    DefaultConfigurationItem defaultConfigurationItem =
+        configuration2DefaultValue.get(parameterName);
+    return defaultConfigurationItem == null ? null : defaultConfigurationItem.value;
+  }
+
+  public static PrivilegeType getConfigurationItemPrivilege(String parameterName)
+      throws IOException {
+    parameterName = parameterName.trim();
+    if (configuration2DefaultValue == null) {
+      loadConfigurationDefaultValueFromTemplate();
+    }
+    DefaultConfigurationItem defaultConfigurationItem =
+        configuration2DefaultValue.get(parameterName);
+    return defaultConfigurationItem == null ? null : defaultConfigurationItem.privilege;
+  }
+
+  public static boolean parameterNeedKeepConsistentInCluster(String key) {
+    return false;
   }
 
   public static void releaseDefault() {
@@ -234,13 +299,15 @@ public class ConfigurationFileUtils {
     } catch (IOException e) {
       successLoadDefaultValueMap = false;
     }
+    if (!successLoadDefaultValueMap) {
+      return Collections.emptyList();
+    }
 
     List<String> ignoredConfigItems = new ArrayList<>();
     for (String key : configItems.keySet()) {
-      if (ignoreConfigKeys.contains(key)) {
-        ignoredConfigItems.add(key);
-      }
-      if (successLoadDefaultValueMap && !configuration2DefaultValue.containsKey(key)) {
+      DefaultConfigurationItem defaultConfigurationItem = configuration2DefaultValue.get(key);
+      if (defaultConfigurationItem == null
+          || defaultConfigurationItem.effectiveMode == EffectiveModeType.FIRST_START) {
         ignoredConfigItems.add(key);
       }
     }
@@ -360,5 +427,136 @@ public class ConfigurationFileUtils {
   public interface LoadHotModifiedPropsFunc {
     void loadHotModifiedProperties(TrimProperties properties)
         throws IOException, InterruptedException;
+  }
+
+  public static Map<String, DefaultConfigurationItem> getConfigurationItemsFromTemplate(
+      boolean withDesc) throws IOException {
+    if (configuration2DefaultValue != null && !withDesc) {
+      return configuration2DefaultValue;
+    }
+    Map<String, DefaultConfigurationItem> items = new LinkedHashMap<>();
+    try (InputStream inputStream =
+            ConfigurationFileUtils.class
+                .getClassLoader()
+                .getResourceAsStream(CommonConfig.SYSTEM_CONFIG_TEMPLATE_NAME);
+        InputStreamReader isr = new InputStreamReader(inputStream);
+        BufferedReader reader = new BufferedReader(isr)) {
+      List<String> independentLines = new ArrayList<>();
+      EffectiveModeType effectiveMode = null;
+      PrivilegeType privilege = null;
+      StringBuilder description = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        // Clean up when encountering a blank line.
+        // For some parameters that are continuous, they share the same properties
+        // example:
+        // # min election timeout for leader election
+        // # effectiveMode: restart
+        // # Datatype: int
+        // config_node_ratis_rpc_leader_election_timeout_min_ms=2000
+        // schema_region_ratis_rpc_leader_election_timeout_min_ms=2000
+        if (line.isEmpty()) {
+          description = new StringBuilder();
+          effectiveMode = null;
+          privilege = null;
+          independentLines.clear();
+          continue;
+        }
+        if (line.startsWith("#")) {
+          String comment = line.substring(1).trim();
+          if (comment.isEmpty()) {
+            continue;
+          }
+          if (comment.startsWith(EFFECTIVE_MODE_PREFIX)) {
+            effectiveMode =
+                EffectiveModeType.getEffectiveMode(
+                    comment.substring(EFFECTIVE_MODE_PREFIX.length()).trim());
+            independentLines.add(comment);
+            continue;
+          } else if (comment.startsWith(DATATYPE_PREFIX)) {
+            independentLines.add(comment);
+            continue;
+          } else if (comment.startsWith(PRIVILEGE_PREFIX)) {
+            privilege =
+                PrivilegeType.valueOf(
+                    comment.substring(PRIVILEGE_PREFIX.length()).trim().toUpperCase());
+            independentLines.add(comment);
+            continue;
+          } else {
+            description.append(" ");
+          }
+          if (withDesc) {
+            description.append(comment);
+          }
+        } else {
+          int equalsIndex = line.indexOf('=');
+          if (equalsIndex == -1) {
+            // Skip lines without '=' to avoid StringIndexOutOfBoundsException
+            continue;
+          }
+          String key = line.substring(0, equalsIndex).trim();
+          String value = line.substring(equalsIndex + 1).trim();
+          for (String independentLine : independentLines) {
+            description.append(lineSeparator).append(independentLine);
+          }
+          items.put(
+              key,
+              new DefaultConfigurationItem(
+                  key,
+                  value,
+                  withDesc ? description.toString().trim() : null,
+                  effectiveMode,
+                  privilege));
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to read configuration template", e);
+      throw e;
+    }
+    return items;
+  }
+
+  public static class DefaultConfigurationItem {
+    public String name;
+    public String value;
+    public String description;
+    public EffectiveModeType effectiveMode;
+    public PrivilegeType privilege;
+
+    public DefaultConfigurationItem(
+        String name,
+        String value,
+        String description,
+        EffectiveModeType effectiveMode,
+        PrivilegeType privilegeType) {
+      this.name = name;
+      this.value = value;
+      this.description = description;
+      this.effectiveMode = effectiveMode == null ? EffectiveModeType.UNKNOWN : effectiveMode;
+      this.privilege = privilegeType == null ? PrivilegeType.SYSTEM : privilegeType;
+    }
+  }
+
+  public enum EffectiveModeType {
+    HOT_RELOAD,
+    FIRST_START,
+    FIRST_START_OR_SET_CONFIGURATION,
+    RESTART,
+    UNKNOWN;
+
+    public static EffectiveModeType getEffectiveMode(String effectiveMode) {
+      if (HOT_RELOAD.name().equalsIgnoreCase(effectiveMode)) {
+        return HOT_RELOAD;
+      } else if (FIRST_START.name().equalsIgnoreCase(effectiveMode)) {
+        return FIRST_START;
+      } else if (FIRST_START_OR_SET_CONFIGURATION.name().equalsIgnoreCase(effectiveMode)) {
+        return FIRST_START_OR_SET_CONFIGURATION;
+      } else if (RESTART.name().equalsIgnoreCase(effectiveMode)) {
+        return RESTART;
+      } else {
+        return UNKNOWN;
+      }
+    }
   }
 }

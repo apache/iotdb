@@ -30,10 +30,10 @@ import org.apache.iotdb.commons.schema.node.role.IDeviceMNode;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeIterator;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.MeasurementInBlackListException;
@@ -42,6 +42,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.template.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.queryengine.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.metric.SchemaRegionCachedMetric;
 import org.apache.iotdb.db.schemaengine.rescon.CachedSchemaRegionStatistics;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.pbtree.mnode.ICachedMNode;
@@ -64,9 +65,10 @@ import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.impl.Timeser
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.ISchemaReader;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.SchemaReaderLimitOffsetWrapper;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.reader.impl.TimeseriesReaderWithViewFetch;
+import org.apache.iotdb.db.schemaengine.schemaregion.utils.MNodeUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.MetaFormatUtils;
 import org.apache.iotdb.db.schemaengine.schemaregion.utils.filter.DeviceFilterVisitor;
-import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
@@ -83,16 +85,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
+
+import static org.apache.iotdb.commons.schema.SchemaConstant.NON_TEMPLATE;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -120,14 +127,14 @@ public class MTreeBelowSGCachedImpl {
   private final CachedMTreeStore store;
 
   @SuppressWarnings("java:S3077")
-  private volatile ICachedMNode storageGroupMNode;
+  private volatile ICachedMNode databaseMNode;
 
   private final ICachedMNode rootNode;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> tagGetter;
   private final Function<IMeasurementMNode<ICachedMNode>, Map<String, String>> attributeGetter;
   private final IMNodeFactory<ICachedMNode> nodeFactory =
       MNodeFactoryLoader.getInstance().getCachedMNodeIMNodeFactory();
-  private final int levelOfSG;
+  private final int levelOfDB;
   private final CachedSchemaRegionStatistics regionStatistics;
 
   // region MTree initialization, clear and serialization
@@ -149,16 +156,16 @@ public class MTreeBelowSGCachedImpl {
         PBTreeFactory.getInstance()
             .createNewCachedMTreeStore(
                 storageGroupPath, schemaRegionId, regionStatistics, metric, flushCallback);
-    this.storageGroupMNode = store.getRoot();
-    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    this.databaseMNode = store.getRoot();
+    this.databaseMNode.setParent(databaseMNode.getParent());
     this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupPath.getNodeLength() - 1;
+    levelOfDB = storageGroupPath.getNodeLength() - 1;
 
     // recover MNode
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(storageGroupMNode.getFullPath()),
+            new PartialPath(databaseMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -188,9 +195,9 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     this.store = store;
     this.regionStatistics = regionStatistics;
-    this.storageGroupMNode = store.getRoot();
+    this.databaseMNode = store.getRoot();
     this.rootNode = store.generatePrefix(storageGroupPath);
-    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    levelOfDB = databaseMNode.getPartialPath().getNodeLength() - 1;
     this.tagGetter = tagGetter;
     this.attributeGetter = attributeGetter;
 
@@ -198,7 +205,7 @@ public class MTreeBelowSGCachedImpl {
     try (MNodeCollector<Void, ICachedMNode> collector =
         new MNodeCollector<Void, ICachedMNode>(
             this.rootNode,
-            new PartialPath(storageGroupMNode.getFullPath()),
+            new PartialPath(databaseMNode.getFullPath()),
             this.store,
             true,
             SchemaConstant.ALL_MATCH_SCOPE) {
@@ -218,7 +225,7 @@ public class MTreeBelowSGCachedImpl {
 
   public void clear() {
     store.clear();
-    storageGroupMNode = null;
+    databaseMNode = null;
   }
 
   public boolean createSnapshot(File snapshotDir) {
@@ -267,7 +274,8 @@ public class MTreeBelowSGCachedImpl {
       String alias)
       throws MetadataException {
     IMeasurementMNode<ICachedMNode> measurementMNode =
-        createTimeSeriesWithPinnedReturn(path, dataType, encoding, compressor, props, alias, false);
+        createTimeSeriesWithPinnedReturn(
+            path, dataType, encoding, compressor, props, alias, false, null);
     unPinMNode(measurementMNode.getAsMNode());
     return measurementMNode;
   }
@@ -290,7 +298,8 @@ public class MTreeBelowSGCachedImpl {
       final CompressionType compressor,
       final Map<String, String> props,
       final String alias,
-      final boolean withMerge)
+      final boolean withMerge,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final String[] nodeNames = path.getNodes();
     if (nodeNames.length <= 2) {
@@ -305,6 +314,12 @@ public class MTreeBelowSGCachedImpl {
       // only write on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
@@ -332,14 +347,6 @@ public class MTreeBelowSGCachedImpl {
             } else {
               throw new PathAlreadyExistException(path.getFullPath());
             }
-          }
-
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "Time series under this device is aligned, please use createAlignedTimeSeries or change device.",
-                device.getFullPath());
           }
 
           final IDeviceMNode<ICachedMNode> entityMNode;
@@ -396,7 +403,8 @@ public class MTreeBelowSGCachedImpl {
       final List<CompressionType> compressors,
       final List<String> aliasList,
       final boolean withMerge,
-      final Set<Integer> existingMeasurementIndexes)
+      final Set<Integer> existingMeasurementIndexes,
+      final AtomicBoolean isAligned)
       throws MetadataException {
     final List<IMeasurementMNode<ICachedMNode>> measurementMNodeList = new ArrayList<>();
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
@@ -407,6 +415,12 @@ public class MTreeBelowSGCachedImpl {
       // only write operations on mTree will be synchronized
       synchronized (this) {
         ICachedMNode device = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), deviceParent);
+
+        if (device.isDevice()
+            && device.getAsDeviceMNode().isAlignedNullable() != null
+            && isAligned != null) {
+          isAligned.set(device.getAsDeviceMNode().isAligned());
+        }
 
         try {
           for (int i = 0; i < measurements.size(); i++) {
@@ -438,14 +452,6 @@ public class MTreeBelowSGCachedImpl {
               throw new AliasAlreadyExistException(
                   devicePath.getFullPath() + "." + measurements.get(i), aliasList.get(i));
             }
-          }
-
-          if (device.isDevice()
-              && device.getAsDeviceMNode().isAlignedNullable() != null
-              && !device.getAsDeviceMNode().isAligned()) {
-            throw new AlignedTimeseriesException(
-                "TimeSeries under this device is not aligned, please use createTimeSeries or change device.",
-                devicePath.getFullPath());
           }
 
           final IDeviceMNode<ICachedMNode> entityMNode;
@@ -592,15 +598,15 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     String[] nodeNames = devicePath.getNodes();
     MetaFormatUtils.checkTimeseries(devicePath);
-    if (nodeNames.length == levelOfSG + 1) {
+    if (nodeNames.length == levelOfDB + 1) {
       return null;
     }
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     String childName;
     try {
       // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to sg node, parent of d1
-      for (int i = levelOfSG + 1; i < nodeNames.length - 1; i++) {
+      for (int i = levelOfDB + 1; i < nodeNames.length - 1; i++) {
         childName = nodeNames[i];
         child = store.getChild(cur, childName);
         if (child == null) {
@@ -623,8 +629,8 @@ public class MTreeBelowSGCachedImpl {
       throws MetadataException {
     if (deviceParent == null) {
       // device is sg
-      pinMNode(storageGroupMNode);
-      return storageGroupMNode;
+      pinMNode(databaseMNode);
+      return databaseMNode;
     }
     ICachedMNode device = store.getChild(deviceParent, deviceName);
     if (device == null) {
@@ -832,12 +838,21 @@ public class MTreeBelowSGCachedImpl {
   public ICachedMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
     MetaFormatUtils.checkTimeseries(deviceId);
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     try {
-      for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
+      for (int i = levelOfDB + 1; i < nodeNames.length; i++) {
         child = store.getChild(cur, nodeNames[i]);
         if (child == null) {
+          if (cur.isDevice() && cur.getAsDeviceMNode().getSchemaTemplateId() != NON_TEMPLATE) {
+            final Template template =
+                ClusterTemplateManager.getInstance()
+                    .getTemplate(cur.getAsDeviceMNode().getSchemaTemplateId());
+            if (Objects.nonNull(template) && template.getSchema(nodeNames[i]) != null) {
+              throw new PathAlreadyExistException(
+                  new PartialPath(Arrays.copyOf(deviceId.getNodes(), i + 1)).getFullPath());
+            }
+          }
           child =
               store.addChild(cur, nodeNames[i], nodeFactory.createInternalMNode(cur, nodeNames[i]));
         }
@@ -985,10 +1000,10 @@ public class MTreeBelowSGCachedImpl {
    */
   public ICachedMNode getNodeByPath(PartialPath path) throws MetadataException {
     String[] nodes = path.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode next;
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         next = store.getChild(cur, nodes[i]);
         if (next == null) {
           throw new PathNotExistException(path.getFullPath(), true);
@@ -1166,12 +1181,12 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplate(PartialPath activatePath, Template template)
       throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         child = store.getChild(cur, nodes[i]);
         if (child == null) {
           throw new PathNotExistException(activatePath.getFullPath());
@@ -1213,12 +1228,12 @@ public class MTreeBelowSGCachedImpl {
   public void activateTemplateWithoutCheck(
       PartialPath activatePath, int templateId, boolean isAligned) throws MetadataException {
     String[] nodes = activatePath.getNodes();
-    ICachedMNode cur = storageGroupMNode;
+    ICachedMNode cur = databaseMNode;
     ICachedMNode child;
     IDeviceMNode<ICachedMNode> entityMNode;
 
     try {
-      for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      for (int i = levelOfDB + 1; i < nodes.length; i++) {
         child = store.getChild(cur, nodes[i]);
         if (child == null) {
           throw new PathNotExistException(activatePath.getFullPath());
@@ -1494,6 +1509,150 @@ public class MTreeBelowSGCachedImpl {
                     node, getPartialPath(), getTags(), getAttributes(), isUnderAlignedDevice());
               }
             };
+          }
+
+          @Override
+          protected Iterator<ICachedMNode> getChildrenIterator(final ICachedMNode parent)
+              throws MetadataException {
+            Ordering timeseriesOrdering = showTimeSeriesPlan.getTimeseriesOrdering();
+            if (timeseriesOrdering == null || timeseriesOrdering == Ordering.DESC) {
+              return super.getChildrenIterator(parent);
+            }
+
+            final Iterator<ICachedMNode> templateIterator = getSortedTemplateChildren(parent);
+            if (!templateIterator.hasNext()) {
+              return super.getChildrenIterator(parent);
+            }
+
+            return new IMNodeIterator<ICachedMNode>() {
+              private ICachedMNode next = null;
+              private ICachedMNode nextDirect = null;
+              private ICachedMNode nextTemplate = null;
+              private boolean skipTemplateChildren = false;
+              // Lazy init: avoid prefetching direct iterator before template collection/sort.
+              private IMNodeIterator<ICachedMNode> directIterator = null;
+
+              @Override
+              public boolean hasNext() {
+                if (next != null) {
+                  return true;
+                }
+                next = computeNext();
+                return next != null;
+              }
+
+              @Override
+              public ICachedMNode next() {
+                if (!hasNext()) {
+                  throw new NoSuchElementException();
+                }
+                ICachedMNode result = next;
+                next = null;
+                return result;
+              }
+
+              @Override
+              public void skipTemplateChildren() {
+                skipTemplateChildren = true;
+                nextTemplate = null;
+              }
+
+              @Override
+              public void close() {
+                if (directIterator != null) {
+                  directIterator.close();
+                }
+              }
+
+              private ICachedMNode computeNext() {
+                if (nextDirect == null) {
+                  nextDirect = fetchNextDirect();
+                }
+                if (nextTemplate == null && !skipTemplateChildren) {
+                  nextTemplate = fetchNextTemplate();
+                }
+
+                if (nextDirect == null && (skipTemplateChildren || nextTemplate == null)) {
+                  return null;
+                }
+                if (nextDirect == null) {
+                  ICachedMNode result = nextTemplate;
+                  nextTemplate = null;
+                  return result;
+                }
+                if (skipTemplateChildren || nextTemplate == null) {
+                  ICachedMNode result = nextDirect;
+                  nextDirect = null;
+                  return result;
+                }
+
+                int cmp = nextDirect.getName().compareTo(nextTemplate.getName());
+                if (cmp <= 0) {
+                  ICachedMNode result = nextDirect;
+                  nextDirect = null;
+                  return result;
+                } else {
+                  ICachedMNode result = nextTemplate;
+                  nextTemplate = null;
+                  return result;
+                }
+              }
+
+              private ICachedMNode fetchNextDirect() {
+                if (directIterator == null) {
+                  try {
+                    directIterator = store.getChildrenIterator(parent);
+                  } catch (MetadataException e) {
+                    throw new RuntimeException(e);
+                  }
+                }
+                while (directIterator.hasNext()) {
+                  ICachedMNode node = directIterator.next();
+                  if (!skipPreDeletedSchema
+                      || !node.isMeasurement()
+                      || !node.getAsMeasurementMNode().isPreDeleted()) {
+                    return node;
+                  }
+                }
+                return null;
+              }
+
+              private ICachedMNode fetchNextTemplate() {
+                while (templateIterator.hasNext()) {
+                  ICachedMNode node = templateIterator.next();
+                  if (!skipPreDeletedSchema
+                      || !node.isMeasurement()
+                      || !node.getAsMeasurementMNode().isPreDeleted()) {
+                    return node;
+                  }
+                }
+                return null;
+              }
+            };
+          }
+
+          private Iterator<ICachedMNode> getSortedTemplateChildren(final ICachedMNode parent) {
+            if (templateMap == null || templateMap.isEmpty() || !parent.isDevice()) {
+              return Collections.emptyIterator();
+            }
+            final IDeviceMNode<ICachedMNode> deviceNode = parent.getAsDeviceMNode();
+            if (deviceNode.getSchemaTemplateId() == SchemaConstant.NON_TEMPLATE) {
+              return Collections.emptyIterator();
+            }
+            if (skipPreDeletedSchema && deviceNode.isPreDeactivateSelfOrTemplate()) {
+              return Collections.emptyIterator();
+            }
+            final Template template = templateMap.get(deviceNode.getSchemaTemplateId());
+            if (template == null) {
+              return Collections.emptyIterator();
+            }
+            final List<ICachedMNode> children = new ArrayList<>();
+            final Iterator<ICachedMNode> iterator = MNodeUtils.getChildren(template, nodeFactory);
+            while (iterator.hasNext()) {
+              children.add(iterator.next());
+            }
+            children.sort(Comparator.comparing(ICachedMNode::getName));
+            return children.iterator();
           }
         };
 

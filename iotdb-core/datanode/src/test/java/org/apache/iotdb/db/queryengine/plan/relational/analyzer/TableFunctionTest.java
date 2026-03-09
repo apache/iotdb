@@ -19,19 +19,29 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlanTester;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
+import org.apache.iotdb.udf.api.relational.EmptyTableFunctionHandle;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.function.Consumer;
 
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.AnalyzerTest.analyzeSQL;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.QUERY_CONTEXT;
+import static org.apache.iotdb.db.queryengine.plan.relational.analyzer.TestUtils.TEST_MATADATA;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_INTERVAL;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.ForecastTableFunction.DEFAULT_OUTPUT_START_TIME;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregation;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.aggregationFunction;
@@ -44,10 +54,16 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.output;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.project;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.sort;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.specification;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableFunctionProcessor;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.TableFunctionProcessorMatcher.TableArgumentValue.Builder.tableArgument;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.topK;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.FIRST;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.NullOrdering.LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
+import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
+import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class TableFunctionTest {
 
@@ -73,16 +89,12 @@ public class TableFunctionTest {
                 .name("hop")
                 .properOutputs("window_start", "window_end")
                 .requiredSymbols("time")
-                .addScalarArgument("TIMECOL", "time")
-                .addScalarArgument("SIZE", 3600000L)
-                .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("ORIGIN", 0L)
-                .addTableArgument(
-                    "DATA",
-                    tableArgument()
-                        .rowSemantics()
-                        .passThroughSymbols(
-                            "time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 3600000L)
+                        .addProperty("SLIDE", 1800000L)
+                        .addProperty("ORIGIN", 0L)
+                        .build());
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
     assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, tableScan)));
@@ -129,14 +141,7 @@ public class TableFunctionTest {
                 .properOutputs("time", "tag1", "tag2", "tag3", "attr2", "s1", "s2", "s3")
                 .requiredSymbols(
                     "time_0", "tag1_1", "tag2_2", "tag3_3", "attr2_4", "s1_5", "s2_6", "s3_7")
-                .addScalarArgument("EXCLUDE", "attr1")
-                .addTableArgument(
-                    "DATA",
-                    tableArgument()
-                        .specification(
-                            specification(
-                                ImmutableList.of(), ImmutableList.of(), ImmutableMap.of()))
-                        .rowSemantics());
+                .handle(new EmptyTableFunctionHandle());
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
     assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher, tableScan)));
@@ -185,17 +190,7 @@ public class TableFunctionTest {
                 .name("repeat")
                 .properOutputs("repeat_index")
                 .requiredSymbols("time")
-                .addScalarArgument("N", 2)
-                .addTableArgument(
-                    "DATA",
-                    tableArgument()
-                        .specification(
-                            specification(
-                                ImmutableList.of("tag1", "tag2", "tag3"),
-                                ImmutableList.of(),
-                                ImmutableMap.of()))
-                        .passThroughSymbols(
-                            "time", "tag1", "tag2", "tag3", "attr1", "attr2", "s1", "s2", "s3"));
+                .handle(new MapTableFunctionHandle.Builder().addProperty("N", 2).build());
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - GroupNode - TableScan
     assertPlan(
@@ -241,7 +236,11 @@ public class TableFunctionTest {
                 .name("split")
                 .properOutputs("output")
                 .requiredSymbols()
-                .addScalarArgument("INPUT", "1,2,3,4,5");
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("INPUT", "1,2,3,4,5")
+                        .addProperty("SPLIT", ",")
+                        .build());
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
     assertPlan(logicalQueryPlan, anyTree(tableFunctionProcessor(tableFunctionMatcher)));
@@ -255,14 +254,22 @@ public class TableFunctionTest {
                 .name("split")
                 .properOutputs("output")
                 .requiredSymbols()
-                .addScalarArgument("INPUT", "1,2,4,5");
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("INPUT", "1,2,4,5")
+                        .addProperty("SPLIT", ",")
+                        .build());
     Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher2 =
         builder ->
             builder
                 .name("split")
                 .properOutputs("output_0")
                 .requiredSymbols()
-                .addScalarArgument("INPUT", "2,3,4");
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("INPUT", "2,3,4")
+                        .addProperty("SPLIT", ",")
+                        .build());
     // Verify full LogicalPlan
     // Output - TableFunctionProcessor - TableScan
     assertPlan(
@@ -301,21 +308,19 @@ public class TableFunctionTest {
                 .properOutputs("time", "tag1", "tag2", "tag3", "attr2", "s1", "s2", "s3")
                 .requiredSymbols(
                     "time_0", "tag1_1", "tag2_2", "tag3_3", "attr2_4", "s1_5", "s2_6", "s3_7")
-                .addScalarArgument("EXCLUDE", "attr1")
-                .addTableArgument("DATA", tableArgument().rowSemantics());
+                .handle(new EmptyTableFunctionHandle());
     Consumer<TableFunctionProcessorMatcher.Builder> hopMatcher =
         builder ->
             builder
                 .name("hop")
                 .properOutputs("window_start", "window_end")
                 .requiredSymbols("time")
-                .addScalarArgument("TIMECOL", "time")
-                .addScalarArgument("SIZE", 3600000L)
-                .addScalarArgument("SLIDE", 1800000L)
-                .addScalarArgument("ORIGIN", 0L)
-                .addTableArgument(
-                    "DATA",
-                    tableArgument().rowSemantics().passThroughSymbols("tag1", "tag2", "tag3"));
+                .handle(
+                    new MapTableFunctionHandle.Builder()
+                        .addProperty("SIZE", 3600000L)
+                        .addProperty("SLIDE", 1800000L)
+                        .addProperty("ORIGIN", 0L)
+                        .build());
     // Verify full LogicalPlan
     // Output - Aggregation - HOP - Project - EXCLUDE - TableScan
     assertPlan(
@@ -325,5 +330,157 @@ public class TableFunctionTest {
                 ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of())),
                 tableFunctionProcessor(
                     hopMatcher, project(tableFunctionProcessor(excludeMatcher, tableScan))))));
+  }
+
+  @Test
+  public void testSerDeserializeMapTableFunctionHandle() {
+    MapTableFunctionHandle mapTableFunctionHandle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty("key1", "value1")
+            .addProperty("key2", 2)
+            .addProperty("key3", 1L)
+            .addProperty("key4", 3.0)
+            .addProperty("key5", true)
+            .addProperty("key6", 2.3f)
+            .build();
+    byte[] serialized = mapTableFunctionHandle.serialize();
+    MapTableFunctionHandle deserialized = new MapTableFunctionHandle();
+    deserialized.deserialize(serialized);
+    assert mapTableFunctionHandle.equals(deserialized);
+  }
+
+  @Test
+  public void testForecastFunction() {
+    // default order by time asc
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM FORECAST("
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl')";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "s3_1", "s3"));
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("forecast")
+                .properOutputs("time", "s3")
+                .requiredSymbols("time_0", "s3_1")
+                .handle(
+                    new ForecastTableFunction.ForecastTableFunctionHandle(
+                        false,
+                        2880,
+                        "timer_xl",
+                        Collections.emptyMap(),
+                        96,
+                        DEFAULT_OUTPUT_START_TIME,
+                        DEFAULT_OUTPUT_INTERVAL,
+                        Collections.singletonList(DOUBLE)));
+    // Verify full LogicalPlan
+    // Output - TableFunctionProcessor - TableScan
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(
+                    ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
+                    0,
+                    topK(
+                        1440,
+                        ImmutableList.of(sort("time_0", DESCENDING, LAST)),
+                        false,
+                        tableScan)))));
+    // Verify DistributionPlan
+
+    /*
+     *   └──OutputNode
+     *         └──TableFunctionProcessor
+     *               └──GroupNode
+     *                   └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+  }
+
+  @Test
+  public void testForecastFunctionWithNoLowerCase() {
+    // default order by time asc
+    PlanTester planTester = new PlanTester();
+
+    String sql =
+        "SELECT * FROM FORECAST("
+            + "targets => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl', timecol=>'TiME')";
+    LogicalQueryPlan logicalQueryPlan = planTester.createPlan(sql);
+
+    PlanMatchPattern tableScan =
+        tableScan("testdb.table1", ImmutableMap.of("time_0", "time", "s3_1", "s3"));
+    Consumer<TableFunctionProcessorMatcher.Builder> tableFunctionMatcher =
+        builder ->
+            builder
+                .name("forecast")
+                .properOutputs("time", "s3")
+                .requiredSymbols("time_0", "s3_1")
+                .handle(
+                    new ForecastTableFunction.ForecastTableFunctionHandle(
+                        false,
+                        2880,
+                        "timer_xl",
+                        Collections.emptyMap(),
+                        96,
+                        DEFAULT_OUTPUT_START_TIME,
+                        DEFAULT_OUTPUT_INTERVAL,
+                        Collections.singletonList(DOUBLE)));
+    // Verify full LogicalPlan
+    // Output - TableFunctionProcessor - TableScan
+    assertPlan(
+        logicalQueryPlan,
+        anyTree(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(
+                    ImmutableList.of(sort("time_0", ASCENDING, FIRST)),
+                    0,
+                    topK(
+                        1440,
+                        ImmutableList.of(sort("time_0", DESCENDING, LAST)),
+                        false,
+                        tableScan)))));
+    // Verify DistributionPlan
+
+    /*
+     *   └──OutputNode
+     *         └──TableFunctionProcessor
+     *               └──GroupNode
+     *                   └──TableScan
+     */
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            tableFunctionProcessor(
+                tableFunctionMatcher,
+                group(ImmutableList.of(sort("time_0", ASCENDING, FIRST)), 0, tableScan))));
+  }
+
+  @Test
+  public void testForecastFunctionAbnormal() {
+    // default order by time asc
+    String sql =
+        "SELECT * FROM FORECAST("
+            + "input => (SELECT time,s3 FROM table1 WHERE tag1='shanghai' AND tag2='A3' AND tag3='YY' ORDER BY time DESC LIMIT 1440), "
+            + "model_id => 'timer_xl', timecol => '')";
+    try {
+      analyzeSQL(sql, TEST_MATADATA, QUERY_CONTEXT);
+      fail();
+    } catch (SemanticException e) {
+      assertEquals("TIMECOL should never be null or empty.", e.getMessage());
+    }
   }
 }

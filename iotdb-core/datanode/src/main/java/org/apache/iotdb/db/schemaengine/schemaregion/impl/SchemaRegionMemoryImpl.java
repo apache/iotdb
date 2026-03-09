@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.node.role.IMeasurementMNode;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.schema.view.LogicalViewSchema;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -38,6 +39,7 @@ import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.SchemaDirCreationFailureException;
 import org.apache.iotdb.db.exception.metadata.SchemaQuotaExceededException;
 import org.apache.iotdb.db.exception.metadata.SeriesOverflowException;
@@ -49,10 +51,12 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.TableDev
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.AlterEncodingCompressorNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateTimeSeriesNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.ConstructTableDevicesBlackListNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.CreateOrUpdateTableDeviceNode;
@@ -121,15 +125,16 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -152,7 +157,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.planner.TableOperatorGenerator.makeLayout;
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 import static org.apache.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
@@ -193,12 +198,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private boolean isRecovering = true;
   private volatile boolean initialized = false;
 
-  private final String storageGroupDirPath;
+  private final String databaseDirPath;
   private final String schemaRegionDirPath;
 
   // For table model db: without "root."
   // For tree model db: with "root."
-  private final String storageGroupFullPath;
+  private final String databaseFullPath;
   private final SchemaRegionId schemaRegionId;
 
   // the log file writer
@@ -219,11 +224,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public SchemaRegionMemoryImpl(final ISchemaRegionParams schemaRegionParams)
       throws MetadataException {
 
-    storageGroupFullPath = schemaRegionParams.getDatabase();
+    databaseFullPath = schemaRegionParams.getDatabase();
     this.schemaRegionId = schemaRegionParams.getSchemaRegionId();
 
-    storageGroupDirPath = config.getSchemaDir() + File.separator + storageGroupFullPath;
-    schemaRegionDirPath = storageGroupDirPath + File.separator + schemaRegionId.getId();
+    databaseDirPath = config.getSchemaDir() + File.separator + databaseFullPath;
+    schemaRegionDirPath = databaseDirPath + File.separator + schemaRegionId.getId();
 
     // In ratis mode, no matter create schemaRegion or recover schemaRegion, the working dir should
     // be clear first
@@ -236,7 +241,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     this.regionStatistics =
         new MemSchemaRegionStatistics(
             schemaRegionId.getId(), schemaRegionParams.getSchemaEngineStatistics());
-    this.metric = new SchemaRegionMemMetric(regionStatistics, storageGroupFullPath);
+    this.metric = new SchemaRegionMemMetric(regionStatistics, databaseFullPath);
     init();
   }
 
@@ -267,11 +272,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       deviceAttributeStore = new DeviceAttributeStore(regionStatistics);
       deviceAttributeCacheUpdater =
           new DeviceAttributeCacheUpdater(
-              regionStatistics, PathUtils.unQualifyDatabaseName(storageGroupFullPath));
+              regionStatistics, PathUtils.unQualifyDatabaseName(databaseFullPath));
       tagManager = new TagManager(schemaRegionDirPath, regionStatistics);
       mTree =
           new MTreeBelowSGMemoryImpl(
-              PartialPath.getQualifiedDatabasePartialPath(storageGroupFullPath),
+              PartialPath.getQualifiedDatabasePartialPath(databaseFullPath),
               tagManager::readTags,
               tagManager::readAttributes,
               regionStatistics,
@@ -297,14 +302,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void initDir() throws SchemaDirCreationFailureException {
-    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(storageGroupDirPath);
+    final File sgSchemaFolder = SystemFileFactory.INSTANCE.getFile(databaseDirPath);
     if (!sgSchemaFolder.exists()) {
       if (sgSchemaFolder.mkdirs()) {
-        logger.info("create database schema folder {}", storageGroupDirPath);
+        logger.info("create database schema folder {}", databaseDirPath);
       } else {
         if (!sgSchemaFolder.exists()) {
-          logger.error("create database schema folder {} failed.", storageGroupDirPath);
-          throw new SchemaDirCreationFailureException(storageGroupDirPath);
+          logger.error("create database schema folder {} failed.", databaseDirPath);
+          throw new SchemaDirCreationFailureException(databaseDirPath);
         }
       }
     }
@@ -394,11 +399,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         logger.debug(
             "spend {} ms to deserialize {} mtree from mlog.bin",
             System.currentTimeMillis() - time,
-            storageGroupFullPath);
+            databaseFullPath);
         return idx;
       } catch (final Exception e) {
-        e.printStackTrace();
-        throw new IOException("Failed to parse " + storageGroupFullPath + " mlog.bin for err:" + e);
+        throw new IOException("Failed to parse " + databaseFullPath + " mlog.bin", e);
       }
     } else {
       return 0;
@@ -465,7 +469,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public String getDatabaseFullPath() {
-    return storageGroupFullPath;
+    return databaseFullPath;
   }
 
   @Override
@@ -570,7 +574,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
       snapshotStartTime = System.currentTimeMillis();
       deviceAttributeCacheUpdater =
-          new DeviceAttributeCacheUpdater(regionStatistics, storageGroupFullPath);
+          new DeviceAttributeCacheUpdater(regionStatistics, databaseFullPath);
       deviceAttributeCacheUpdater.loadFromSnapshot(latestSnapshotRootDir);
       logger.info(
           "Device attribute remote updater snapshot loading of schemaRegion {} costs {}ms.",
@@ -589,7 +593,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       mTree =
           MTreeBelowSGMemoryImpl.loadFromSnapshot(
               latestSnapshotRootDir,
-              storageGroupFullPath,
+              databaseFullPath,
               regionStatistics,
               metric,
               measurementMNode -> {
@@ -606,7 +610,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                 } catch (final IOException e) {
                   logger.error(
                       "Failed to recover tagIndex for {} in schemaRegion {}.",
-                      storageGroupFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
+                      databaseFullPath + PATH_SEPARATOR + measurementMNode.getFullPath(),
                       schemaRegionId);
                 }
               },
@@ -698,7 +702,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               plan instanceof CreateTimeSeriesPlanImpl
                       && ((CreateTimeSeriesPlanImpl) plan).isWithMerge()
                   || plan instanceof CreateTimeSeriesNode
-                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe());
+                      && ((CreateTimeSeriesNode) plan).isGeneratedByPipe(),
+              plan instanceof CreateTimeSeriesPlanImpl
+                  ? ((CreateTimeSeriesPlanImpl) plan).getAligned()
+                  : null);
 
       // Should merge
       if (Objects.isNull(leafMNode)) {
@@ -782,7 +789,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               aliasList,
               (plan instanceof CreateAlignedTimeSeriesPlanImpl
                   && ((CreateAlignedTimeSeriesPlanImpl) plan).isWithMerge()),
-              existingMeasurementIndexes);
+              existingMeasurementIndexes,
+              (plan instanceof CreateAlignedTimeSeriesPlanImpl
+                  ? ((CreateAlignedTimeSeriesPlanImpl) plan).getAligned()
+                  : null));
 
       // update statistics and schemaDataTypeNumMap
       regionStatistics.addMeasurement(measurementMNodeList.size());
@@ -870,7 +880,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public Map<Integer, MetadataException> checkMeasurementExistence(
       PartialPath devicePath, List<String> measurementList, List<String> aliasList) {
-    return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    try {
+      return mTree.checkMeasurementExistence(devicePath, measurementList, aliasList);
+    } catch (final Exception e) {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
@@ -888,10 +902,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws SchemaQuotaExceededException {
     final int notExistNum = mTree.getTableDeviceNotExistNum(tableName, deviceIdList);
     schemaQuotaManager.check(
-        (long)
-                DataNodeTableCache.getInstance()
-                    .getTable(storageGroupFullPath, tableName)
-                    .getMeasurementNum()
+        (long) DataNodeTableCache.getInstance().getTable(databaseFullPath, tableName).getFieldNum()
             * notExistNum,
         notExistNum);
   }
@@ -942,19 +953,34 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void deleteTimeseriesInBlackList(PathPatternTree patternTree) throws MetadataException {
-    for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-      for (PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
+  public void deleteTimeseriesInBlackList(final PathPatternTree patternTree)
+      throws MetadataException {
+    for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+      for (final PartialPath path : mTree.getPreDeletedTimeSeries(pathPattern)) {
         try {
           deleteSingleTimeseriesInBlackList(path);
           writeToMLog(
               SchemaRegionWritePlanFactory.getDeleteTimeSeriesPlan(
                   Collections.singletonList(path)));
-        } catch (IOException e) {
+        } catch (final IOException e) {
           throw new MetadataException(e);
         }
       }
     }
+  }
+
+  @Override
+  public void alterEncodingCompressor(final AlterEncodingCompressorNode node)
+      throws MetadataException {
+    boolean exist = false;
+    for (final PartialPath pathPattern : node.getPatternTree().getAllPathPatterns()) {
+      exist |=
+          mTree.alterEncodingCompressor(pathPattern, node.getEncoding(), node.getCompressionType());
+    }
+    if (!exist) {
+      throw new PathNotExistException(node.getPatternTree().getAllPathPatterns().toString(), true);
+    }
+    writeToMLog(node);
   }
 
   @Override
@@ -1340,6 +1366,22 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     tagManager.renameTagOrAttributeKey(oldKey, newKey, fullPath, leafMNode);
   }
 
+  /**
+   * Set/change the data type of measurement
+   *
+   * @param newDataType the new data type
+   * @param fullPath timeseries
+   * @throws MetadataException write error or data type do not exist
+   */
+  @Override
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void alterTimeSeriesDataType(final TSDataType newDataType, final PartialPath fullPath)
+      throws MetadataException {
+    final IMeasurementMNode<IMemMNode> leafMNode = mTree.getMeasurementMNode(fullPath);
+    mTree.alterTimeSeriesDataType(
+        leafMNode.getMeasurementPath(), leafMNode.getPartialPath().getMeasurement(), newDataType);
+  }
+
   /** remove the node from the tag inverted index */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void removeFromTagInvertedIndex(final IMeasurementMNode<IMemMNode> node)
@@ -1408,11 +1450,27 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return result;
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta)
+      throws MetadataException {
+    if (delta == 0 || mTree == null) {
+      return;
+    }
+    mTree.updateSubtreeMeasurementCountForTemplate(templateId, delta);
+  }
+
+  @Override
+  public int fillLastQueryMap(
+      final PartialPath pattern,
+      final Map<TableId, Map<IDeviceID, Map<String, Pair<TSDataType, TimeValuePair>>>> mapToFill)
+      throws MetadataException {
+    return mTree.fillLastQueryMap(pattern, mapToFill);
+  }
+
   @Override
   public void createOrUpdateTableDevice(final CreateOrUpdateTableDeviceNode node)
       throws MetadataException {
     for (int i = 0; i < node.getDeviceIdList().size(); i++) {
-      final String databaseName = storageGroupFullPath;
+      final String databaseName = databaseFullPath;
       final String tableName = node.getTableName();
       final String[] deviceId =
           Arrays.stream(node.getDeviceIdList().get(i))
@@ -1449,7 +1507,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (!isRecovering) {
       TableDeviceSchemaCache.getInstance()
           .updateAttributes(
-              databaseName, convertIdValuesToDeviceID(tableName, deviceId), resultMap);
+              databaseName, convertTagValuesToDeviceID(tableName, deviceId), resultMap);
     }
     deviceAttributeCacheUpdater.update(tableName, deviceId, resultMap);
   }
@@ -1461,8 +1519,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       for (final PartialPath pattern :
           TableDeviceQuerySource.getDevicePatternList(
               updateNode.getDatabase(),
-              updateNode.getTableName(),
-              updateNode.getIdDeterminedFilterList())) {
+              DataNodeTableCache.getInstance()
+                  .getTable(updateNode.getDatabase(), updateNode.getTableName()),
+              updateNode.getTagDeterminedFilterList())) {
         mTree.updateTableDevice(pattern, batchUpdater);
       }
     }
@@ -1475,7 +1534,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     final String database = updateNode.getDatabase();
     final String tableName = updateNode.getTableName();
     final TsTable table = DataNodeTableCache.getInstance().getTable(database, tableName);
-    final Expression predicate = updateNode.getIdFuzzyPredicate();
+    final Expression predicate = updateNode.getTagFuzzyPredicate();
     final List<TsTableColumnSchema> columnSchemaList =
         updateNode.getColumnHeaderList().stream()
             .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
@@ -1514,7 +1573,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                     ImmutableList.of(),
                     0,
                     mockTypeProvider,
-                    metadata))
+                    metadata,
+                    null))
             : null;
 
     final List<TSDataType> filterOutputDataTypes =
@@ -1541,7 +1601,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             filterOutputDataTypes,
             inputLocations.size(),
             mockTypeProvider,
-            metadata);
+            metadata,
+            null);
 
     final List<String> attributeNames =
         updateNode.getAssignments().stream()
@@ -1564,7 +1625,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
         (deviceId, pointer, values) ->
             updateAttribute(database, tableName, deviceId, pointer, attributeNames, values),
-        attributeNames);
+        attributeNames,
+        database,
+        table);
   }
 
   @Override
@@ -1600,15 +1663,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            databaseFullPath,
             constructTableDevicesBlackListNode.getTableName(),
             constructTableDevicesBlackListNode.getPatternInfo());
     final DeviceBlackListConstructor constructor =
         DeleteDevice.constructDevicePredicateUpdater(
+            databaseFullPath,
             DataNodeTableCache.getInstance()
-                .getTable(
-                    PathUtils.unQualifyDatabaseName(storageGroupFullPath),
-                    constructTableDevicesBlackListNode.getTableName()),
+                .getTable(databaseFullPath, constructTableDevicesBlackListNode.getTableName()),
             constructTableDevicesBlackListNode.getFilterInfo(),
             (pointer, name) -> deviceAttributeStore.getAttributes(pointer, name),
             regionStatistics);
@@ -1629,7 +1691,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            PathUtils.unQualifyDatabaseName(databaseFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
@@ -1644,7 +1706,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throws MetadataException {
     final List<PartialPath> paths =
         DeleteDevice.constructPaths(
-            PathUtils.unQualifyDatabaseName(storageGroupFullPath),
+            PathUtils.unQualifyDatabaseName(databaseFullPath),
             rollbackTableDevicesBlackListNode.getTableName(),
             rollbackTableDevicesBlackListNode.getPatternInfo());
     for (final PartialPath pattern : paths) {
@@ -1678,7 +1740,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           offset -> {
             try {
               return tagManager.readTagFile(offset);
-            } catch (IOException e) {
+            } catch (final IOException e) {
               logger.error("Failed to read tag and attribute info because {}", e.getMessage(), e);
               return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
             }
@@ -2044,6 +2106,18 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         final SchemaRegionMemoryImpl context) {
       try {
         dropTableAttribute(dropTableAttributePlan);
+        return RecoverOperationResult.SUCCESS;
+      } catch (final MetadataException e) {
+        return new RecoverOperationResult(e);
+      }
+    }
+
+    @Override
+    public RecoverOperationResult visitAlterEncodingCompressor(
+        final AlterEncodingCompressorNode alterEncodingCompressorNode,
+        final SchemaRegionMemoryImpl context) {
+      try {
+        alterEncodingCompressor(alterEncodingCompressorNode);
         return RecoverOperationResult.SUCCESS;
       } catch (final MetadataException e) {
         return new RecoverOperationResult(e);

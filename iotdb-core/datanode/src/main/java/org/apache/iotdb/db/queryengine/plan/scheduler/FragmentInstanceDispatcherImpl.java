@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
@@ -29,6 +30,7 @@ import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
+import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.RatisReadUnavailableException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,8 +40,10 @@ import org.apache.iotdb.db.queryengine.execution.executor.RegionExecutionResult;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionReadExecutor;
 import org.apache.iotdb.db.queryengine.execution.executor.RegionWriteExecutor;
 import org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet;
+import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.SubPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQuerySuccessfulCallbackVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableSchemaQueryWriteVisitor;
@@ -54,18 +58,23 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.thrift.TException;
+import org.apache.tsfile.external.commons.lang3.exception.ExceptionUtils;
+import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
+import java.util.Optional;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.DISPATCH_READ;
@@ -76,9 +85,6 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       LoggerFactory.getLogger(FragmentInstanceDispatcherImpl.class);
 
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
-
-  private final ExecutorService executor;
-  private final ExecutorService writeOperationExecutor;
   private final QueryType type;
   private final MPPQueryContext queryContext;
   private final String localhostIpAddr;
@@ -97,36 +103,130 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   private static final String UNEXPECTED_ERRORS = "Unexpected errors: ";
 
+  private final long maxRetryDurationInNs;
+
   public FragmentInstanceDispatcherImpl(
       QueryType type,
       MPPQueryContext queryContext,
-      ExecutorService executor,
-      ExecutorService writeOperationExecutor,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> syncInternalServiceClientManager,
       IClientManager<TEndPoint, AsyncDataNodeInternalServiceClient>
           asyncInternalServiceClientManager) {
     this.type = type;
     this.queryContext = queryContext;
-    this.executor = executor;
-    this.writeOperationExecutor = writeOperationExecutor;
     this.syncInternalServiceClientManager = syncInternalServiceClientManager;
     this.asyncInternalServiceClientManager = asyncInternalServiceClientManager;
     this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
     this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+    this.maxRetryDurationInNs =
+        COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
+            ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
+            : 0;
   }
 
   @Override
-  public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-    if (type == QueryType.READ) {
-      return dispatchRead(instances);
+  public Future<FragInstanceDispatchResult> dispatch(
+      SubPlan root, List<FragmentInstance> instances) {
+    if (isQuery()) {
+      return instances.size() == 1 || root == null
+          ? dispatchRead(instances)
+          : topologicalParallelDispatchRead(root, instances);
     } else {
-      return dispatchWriteAsync(instances);
+      return dispatchWrite(instances);
     }
   }
 
-  // TODO: (xingtanzjr) currently we use a sequential dispatch policy for READ, which is
-  //  unsafe for current FragmentInstance scheduler framework. We need to implement the
-  //  topological dispatch according to dependency relations between FragmentInstances
+  private Future<FragInstanceDispatchResult> topologicalParallelDispatchRead(
+      SubPlan root, List<FragmentInstance> instances) {
+    long startTime = System.nanoTime();
+    LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue = new LinkedBlockingQueue<>(instances.size());
+    List<Future<FragInstanceDispatchResult>> futures = new ArrayList<>(instances.size());
+    queue.add(new Pair<>(root, true));
+    try {
+      while (futures.size() < instances.size()) {
+        Pair<SubPlan, Boolean> pair = queue.take();
+        SubPlan next = pair.getLeft();
+        boolean previousSuccess = pair.getRight();
+        if (!previousSuccess) {
+          break;
+        }
+        FragmentInstance fragmentInstance =
+            instances.get(next.getPlanFragment().getIndexInFragmentInstanceList());
+        futures.add(asyncDispatchOneInstance(next, fragmentInstance, queue));
+      }
+      FragInstanceDispatchResult failedResult = null;
+      for (Future<FragInstanceDispatchResult> future : futures) {
+        // Make sure all executing tasks are finished to avoid concurrency issues
+        FragInstanceDispatchResult result = future.get();
+        if (!result.isSuccessful() && failedResult == null) {
+          failedResult = result;
+        }
+      }
+      if (failedResult != null) {
+        return immediateFuture(failedResult);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.warn("Interrupted when dispatching read async", e);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
+    } catch (Throwable t) {
+      LOGGER.warn(DISPATCH_FAILED, t);
+      return immediateFuture(
+          new FragInstanceDispatchResult(
+              RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
+    } finally {
+      long queryDispatchReadTime = System.nanoTime() - startTime;
+      QUERY_EXECUTION_METRIC_SET.recordExecutionCost(DISPATCH_READ, queryDispatchReadTime);
+      queryContext.recordDispatchCost(queryDispatchReadTime);
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
+  }
+
+  private Future<FragInstanceDispatchResult> asyncDispatchOneInstance(
+      SubPlan plan, FragmentInstance instance, LinkedBlockingQueue<Pair<SubPlan, Boolean>> queue) {
+    return Coordinator.getInstance()
+        .getDispatchExecutor()
+        .submit(
+            () -> {
+              boolean success = false;
+              try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+                dispatchOneInstance(instance);
+                success = true;
+              } catch (FragmentInstanceDispatchException e) {
+                return new FragInstanceDispatchResult(e.getFailureStatus());
+              } catch (Throwable t) {
+                LOGGER.warn(DISPATCH_FAILED, t);
+                return new FragInstanceDispatchResult(
+                    RpcUtils.getStatus(
+                        TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
+              } finally {
+                if (!success) {
+                  // In case of failure, only one notification needs to be sent to the outer layer.
+                  // If the failure is not notified and the child FI is not sent, the outer loop
+                  // won't be able to exit.
+                  queue.add(new Pair<>(null, false));
+                } else {
+                  for (SubPlan child : plan.getChildren()) {
+                    queue.add(new Pair<>(child, true));
+                  }
+                }
+                // friendly for gc, clear the plan node tree, for some queries select all devices,
+                // it will release lots of memory
+                if (!queryContext.isExplainAnalyze()) {
+                  // EXPLAIN ANALYZE will use these instances, so we can't clear them
+                  instance.getFragment().clearUselessField();
+                } else {
+                  // TypeProvider is not used in EXPLAIN ANALYZE, so we can clear it
+                  instance.getFragment().clearTypeProvider();
+                }
+              }
+              return new FragInstanceDispatchResult(true);
+            });
+  }
+
   private Future<FragInstanceDispatchResult> dispatchRead(List<FragmentInstance> instances) {
     long startTime = System.nanoTime();
 
@@ -163,111 +263,59 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     }
   }
 
-  private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
-    List<TSStatus> failureStatusList = new ArrayList<>();
-    for (FragmentInstance instance : instances) {
-      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
-        dispatchOneInstance(instance);
-      } catch (FragmentInstanceDispatchException e) {
-        TSStatus failureStatus = e.getFailureStatus();
-        if (instances.size() == 1) {
-          failureStatusList.add(failureStatus);
-        } else {
-          if (failureStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-            failureStatusList.addAll(failureStatus.getSubStatus());
-          } else {
-            failureStatusList.add(failureStatus);
-          }
-        }
-      } catch (Throwable t) {
-        LOGGER.warn(DISPATCH_FAILED, t);
-        failureStatusList.add(
-            RpcUtils.getStatus(
-                TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
-      }
-    }
-    if (failureStatusList.isEmpty()) {
-      return immediateFuture(new FragInstanceDispatchResult(true));
-    } else {
-      if (instances.size() == 1) {
-        return immediateFuture(new FragInstanceDispatchResult(failureStatusList.get(0)));
-      } else {
-        return immediateFuture(
-            new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
-      }
-    }
-  }
+  /** Entrypoint for dispatching write fragment instances. */
+  private Future<FragInstanceDispatchResult> dispatchWrite(List<FragmentInstance> instances) {
+    final List<TSStatus> dispatchFailures = new ArrayList<>();
+    int replicaNum = 0;
 
-  private Future<FragInstanceDispatchResult> dispatchWriteAsync(List<FragmentInstance> instances) {
-    List<TSStatus> dataNodeFailureList = new ArrayList<>();
-    // split local and remote instances
-    List<FragmentInstance> localInstances = new ArrayList<>();
-    List<FragmentInstance> remoteInstances = new ArrayList<>();
-    for (FragmentInstance instance : instances) {
-      if (instance.getHostDataNode() == null) {
-        dataNodeFailureList.add(
+    // 1. do not dispatch if the RegionReplicaSet is empty
+    final List<FragmentInstance> shouldDispatch = new ArrayList<>();
+    for (final FragmentInstance instance : instances) {
+      if (instance.getHostDataNode() == null
+          || Optional.ofNullable(instance.getRegionReplicaSet())
+                  .map(TRegionReplicaSet::getDataNodeLocationsSize)
+                  .orElse(0)
+              == 0) {
+        dispatchFailures.add(
             new TSStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()));
-        continue;
-      }
-      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-      if (isDispatchedToLocal(endPoint)) {
-        localInstances.add(instance);
       } else {
-        remoteInstances.add(instance);
+        replicaNum =
+            Math.max(replicaNum, instance.getRegionReplicaSet().getDataNodeLocationsSize());
+        shouldDispatch.add(instance);
       }
     }
-    // async dispatch to remote
-    AsyncPlanNodeSender asyncPlanNodeSender =
-        new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
-    asyncPlanNodeSender.sendAll();
 
-    if (!localInstances.isEmpty()) {
-      // sync dispatch to local
-      long localScheduleStartTime = System.nanoTime();
-      for (FragmentInstance localInstance : localInstances) {
-        try (SetThreadName threadName = new SetThreadName(localInstance.getId().getFullId())) {
-          dispatchLocally(localInstance);
-        } catch (FragmentInstanceDispatchException e) {
-          dataNodeFailureList.add(e.getFailureStatus());
-        } catch (Throwable t) {
-          LOGGER.warn(DISPATCH_FAILED, t);
-          dataNodeFailureList.add(
-              RpcUtils.getStatus(
-                  TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage()));
-        }
-      }
-      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
-          System.nanoTime() - localScheduleStartTime);
-    }
-    // wait until remote dispatch done
     try {
-      asyncPlanNodeSender.waitUntilCompleted();
-      final long maxRetryDurationInNs =
-          COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() > 0
-              ? COMMON_CONFIG.getRemoteWriteMaxRetryDurationInMs() * 1_000_000L
-              : 0;
-      if (maxRetryDurationInNs > 0 && asyncPlanNodeSender.needRetry()) {
-        // retry failed remote FIs
-        int retryCount = 0;
-        long waitMillis = getRetrySleepTime(retryCount);
-        long retryStartTime = System.nanoTime();
+      // 2. try the dispatch
+      final List<FailedFragmentInstanceWithStatus> failedInstances =
+          dispatchWriteOnce(shouldDispatch);
 
-        while (asyncPlanNodeSender.needRetry()) {
-          retryCount++;
-          asyncPlanNodeSender.retry();
-          // if !(still need retry and current time + next sleep time < maxRetryDurationInNs)
-          if (!(asyncPlanNodeSender.needRetry()
-              && (System.nanoTime() - retryStartTime + waitMillis * 1_000_000L)
-                  < maxRetryDurationInNs)) {
-            break;
-          }
-          // still need to retry, sleep some time before make another retry.
-          Thread.sleep(waitMillis);
-          PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
-          waitMillis = getRetrySleepTime(retryCount);
+      // 3. decide if we need retry (we may decide the retry condition instance-wise, if needed)
+      Iterator<FailedFragmentInstanceWithStatus> iterator = failedInstances.iterator();
+      while (iterator.hasNext()) {
+        FailedFragmentInstanceWithStatus failedFragmentInstanceWithStatus = iterator.next();
+        if (!RetryUtils.needRetryForWrite(
+            failedFragmentInstanceWithStatus.getFailureStatus().getCode())) {
+          dispatchFailures.add(failedFragmentInstanceWithStatus.getFailureStatus());
+          iterator.remove();
         }
       }
 
+      final boolean shouldRetry =
+          !failedInstances.isEmpty() && maxRetryDurationInNs > 0 && replicaNum > 1;
+      if (!shouldRetry) {
+        failedInstances.forEach(fi -> dispatchFailures.add(fi.getFailureStatus()));
+      } else {
+        // 4. retry the instance on other replicas
+        final List<FragmentInstance> retryInstances =
+            failedInstances.stream()
+                .map(FailedFragmentInstanceWithStatus::getInstance)
+                .collect(Collectors.toList());
+        // here we only retry over each replica once
+        final List<FailedFragmentInstanceWithStatus> failedAfterRetry =
+            dispatchRetryWrite(retryInstances, replicaNum);
+        failedAfterRetry.forEach(fi -> dispatchFailures.add(fi.getFailureStatus()));
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error("Interrupted when dispatching write async", e);
@@ -277,16 +325,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   TSStatusCode.INTERNAL_SERVER_ERROR, "Interrupted errors: " + e.getMessage())));
     }
 
-    dataNodeFailureList.addAll(asyncPlanNodeSender.getFailureStatusList());
-
-    if (dataNodeFailureList.isEmpty()) {
+    if (dispatchFailures.isEmpty()) {
       return immediateFuture(new FragInstanceDispatchResult(true));
     }
-    if (instances.size() == 1) {
-      return immediateFuture(new FragInstanceDispatchResult(dataNodeFailureList.get(0)));
+    if (instances.size() == 1 || dispatchFailures.size() == 1) {
+      return immediateFuture(new FragInstanceDispatchResult(dispatchFailures.get(0)));
     } else {
       List<TSStatus> failureStatusList = new ArrayList<>();
-      for (TSStatus dataNodeFailure : dataNodeFailureList) {
+      for (TSStatus dataNodeFailure : dispatchFailures) {
         if (dataNodeFailure.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
           failureStatusList.addAll(dataNodeFailure.getSubStatus());
         } else {
@@ -295,6 +341,102 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       }
       return immediateFuture(new FragInstanceDispatchResult(RpcUtils.getStatus(failureStatusList)));
     }
+  }
+
+  /**
+   * Dispatch the given write instances once. It will dispatch the given instances locally or
+   * remotely, give the host datanode.
+   */
+  private List<FailedFragmentInstanceWithStatus> dispatchWriteOnce(List<FragmentInstance> instances)
+      throws InterruptedException {
+    if (instances.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    final List<FragmentInstance> localInstances = new ArrayList<>();
+    final List<FragmentInstance> remoteInstances = new ArrayList<>();
+    for (FragmentInstance instance : instances) {
+      if (isDispatchedToLocal(instance.getHostDataNode().getInternalEndPoint())) {
+        localInstances.add(instance);
+      } else {
+        remoteInstances.add(instance);
+      }
+    }
+
+    final List<FailedFragmentInstanceWithStatus> failedFragmentInstanceWithStatuses =
+        new ArrayList<>();
+
+    // 1. async dispatch to remote
+    final AsyncPlanNodeSender asyncPlanNodeSender =
+        new AsyncPlanNodeSender(asyncInternalServiceClientManager, remoteInstances);
+    asyncPlanNodeSender.sendAll();
+
+    // 2. sync dispatch to local
+    if (!localInstances.isEmpty()) {
+      long localScheduleStartTime = System.nanoTime();
+      for (FragmentInstance localInstance : localInstances) {
+        try (SetThreadName ignored = new SetThreadName(localInstance.getId().getFullId())) {
+          dispatchLocally(localInstance);
+        } catch (FragmentInstanceDispatchException e) {
+          failedFragmentInstanceWithStatuses.add(
+              new FailedFragmentInstanceWithStatus(localInstance, e.getFailureStatus()));
+        } catch (Throwable t) {
+          LOGGER.warn(DISPATCH_FAILED, t);
+          failedFragmentInstanceWithStatuses.add(
+              new FailedFragmentInstanceWithStatus(
+                  localInstance,
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR, UNEXPECTED_ERRORS + t.getMessage())));
+        }
+      }
+      PERFORMANCE_OVERVIEW_METRICS.recordScheduleLocalCost(
+          System.nanoTime() - localScheduleStartTime);
+    }
+
+    // 3. wait for remote dispatch results
+    asyncPlanNodeSender.waitUntilCompleted();
+
+    // 4. collect remote dispatch results
+    failedFragmentInstanceWithStatuses.addAll(asyncPlanNodeSender.getFailedInstancesWithStatuses());
+
+    return failedFragmentInstanceWithStatuses;
+  }
+
+  private List<FailedFragmentInstanceWithStatus> dispatchRetryWrite(
+      List<FragmentInstance> retriedInstances, int maxRetryAttempts) throws InterruptedException {
+    Preconditions.checkArgument(maxRetryAttempts > 0);
+
+    final long retryStartTime = System.nanoTime();
+    int retryAttempt = 0;
+    List<FragmentInstance> nextDispatch = new ArrayList<>(retriedInstances);
+    List<FailedFragmentInstanceWithStatus> failedFragmentInstanceWithStatuses =
+        Collections.emptyList();
+
+    while (retryAttempt < maxRetryAttempts) {
+      // 1. let's retry on next replica location
+      nextDispatch.forEach(FragmentInstance::getNextRetriedHostDataNode);
+
+      // 2. dispatch the instances
+      failedFragmentInstanceWithStatuses = dispatchWriteOnce(nextDispatch);
+
+      // 3. decide if to continue the retry
+      final long waitMillis = getRetrySleepTime(retryAttempt);
+      if (failedFragmentInstanceWithStatuses.isEmpty()
+          || waitMillis + System.nanoTime() >= retryStartTime + maxRetryDurationInNs) {
+        break;
+      }
+
+      // 4. sleep and do the next retry
+      Thread.sleep(waitMillis);
+      PERFORMANCE_OVERVIEW_METRICS.recordRemoteRetrySleepCost(waitMillis * 1_000_000L);
+      retryAttempt++;
+      nextDispatch =
+          failedFragmentInstanceWithStatuses.stream()
+              .map(FailedFragmentInstanceWithStatus::getInstance)
+              .collect(Collectors.toList());
+    }
+
+    return failedFragmentInstanceWithStatuses;
   }
 
   private long getRetrySleepTime(int retryTimes) {
@@ -346,8 +488,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               } else if (sendFragmentInstanceResp.status.getCode()
                   == TSStatusCode.CONSENSUS_GROUP_NOT_EXIST.getStatusCode()) {
                 throw new ConsensusGroupNotExistException(sendFragmentInstanceResp.message);
-              } else if (sendFragmentInstanceResp.status.getCode()
-                  == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+              } else {
                 throw new FragmentInstanceDispatchException(sendFragmentInstanceResp.status);
               }
             } else if (sendFragmentInstanceResp.status != null) {
@@ -485,9 +626,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         if (!executionResult.isAccepted()) {
           LOGGER.warn(executionResult.getMessage());
           if (executionResult.isReadNeedRetry()) {
-            if (executionResult.getStatus() != null
-                && executionResult.getStatus().getCode()
-                    == TSStatusCode.TOO_MANY_CONCURRENT_QUERIES_ERROR.getStatusCode()) {
+            if (executionResult.getStatus() != null) {
               throw new FragmentInstanceDispatchException(executionResult.getStatus());
             }
             throw new FragmentInstanceDispatchException(
@@ -541,4 +680,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public void abort() {}
+
+  private boolean isQuery() {
+    return type != QueryType.WRITE;
+  }
 }

@@ -51,20 +51,20 @@ public abstract class IntTVList extends TVList {
     values = new ArrayList<>();
   }
 
-  public static IntTVList newList() {
+  public static IntTVList newList(TSDataType dataType) {
     switch (TVLIST_SORT_ALGORITHM) {
       case QUICK:
-        return new QuickIntTVList();
+        return new QuickIntTVList(dataType);
       case BACKWARD:
-        return new BackIntTVList();
+        return new BackIntTVList(dataType);
       default:
-        return new TimIntTVList();
+        return new TimIntTVList(dataType);
     }
   }
 
   @Override
   public synchronized IntTVList clone() {
-    IntTVList cloneList = IntTVList.newList();
+    IntTVList cloneList = IntTVList.newList(dataType);
     cloneAs(cloneList);
     cloneBitMap(cloneList);
     for (int[] valueArray : values) {
@@ -125,9 +125,9 @@ public abstract class IntTVList extends TVList {
   @Override
   protected void expandValues() {
     if (indices != null) {
-      indices.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+      indices.add((int[]) getPrimitiveArraysByType(dataType));
     }
-    values.add((int[]) getPrimitiveArraysByType(TSDataType.INT32));
+    values.add((int[]) getPrimitiveArraysByType(dataType));
     if (bitMap != null) {
       bitMap.add(null);
     }
@@ -135,14 +135,13 @@ public abstract class IntTVList extends TVList {
 
   @Override
   public TimeValuePair getTimeValuePair(int index) {
-    return new TimeValuePair(
-        getTime(index), TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));
+    return new TimeValuePair(getTime(index), TsPrimitiveType.getByType(dataType, getInt(index)));
   }
 
   @Override
   protected TimeValuePair getTimeValuePair(
       int index, long time, Integer floatPrecision, TSEncoding encoding) {
-    return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.INT32, getInt(index)));
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, getInt(index)));
   }
 
   @Override
@@ -265,12 +264,14 @@ public abstract class IntTVList extends TVList {
 
   @Override
   public TSDataType getDataType() {
-    return TSDataType.INT32;
+    return dataType;
   }
 
   @Override
   public int serializedSize() {
-    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Integer.BYTES + Byte.BYTES);
+    return Byte.BYTES
+        + Integer.BYTES
+        + rowCount * (Long.BYTES + java.lang.Integer.BYTES + Byte.BYTES);
   }
 
   @Override
@@ -284,8 +285,9 @@ public abstract class IntTVList extends TVList {
     }
   }
 
-  public static IntTVList deserialize(DataInputStream stream) throws IOException {
-    IntTVList tvList = IntTVList.newList();
+  public static IntTVList deserialize(DataInputStream stream, TSDataType dataType)
+      throws IOException {
+    IntTVList tvList = IntTVList.newList(dataType);
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     int[] values = new int[rowCount];
@@ -301,8 +303,9 @@ public abstract class IntTVList extends TVList {
     return tvList;
   }
 
-  public static IntTVList deserializeWithoutBitMap(DataInputStream stream) throws IOException {
-    IntTVList tvList = IntTVList.newList();
+  public static IntTVList deserializeWithoutBitMap(DataInputStream stream, TSDataType dataType)
+      throws IOException {
+    IntTVList tvList = IntTVList.newList(dataType);
     int rowCount = stream.readInt();
     long[] times = new long[rowCount];
     int[] values = new int[rowCount];

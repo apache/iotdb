@@ -35,6 +35,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,9 +135,10 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   public SubscriptionEvent(
       final SubscriptionPipeEvents pipeEvents,
       final File tsFile,
+      @Nullable final String databaseName,
       final SubscriptionCommitContext commitContext) {
     this.pipeEvents = pipeEvents;
-    this.response = new SubscriptionEventTsFileResponse(tsFile, commitContext);
+    this.response = new SubscriptionEventTsFileResponse(tsFile, databaseName, commitContext);
     this.commitContext = commitContext;
 
     this.fileName = tsFile.getName();

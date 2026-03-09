@@ -22,6 +22,8 @@ package org.apache.iotdb.udf.api.type;
 import org.apache.tsfile.utils.Binary;
 
 import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
 
 /** A substitution class for TsDataType in UDF APIs. */
 public enum Type {
@@ -54,7 +56,11 @@ public enum Type {
   BLOB((byte) 10),
 
   /* STRING */
-  STRING((byte) 11);
+  STRING((byte) 11),
+
+  /* OBJECT */
+  OBJECT((byte) 12);
+
   private final byte dataType;
 
   Type(byte type) {
@@ -90,6 +96,7 @@ public enum Type {
       case DATE:
         return o instanceof LocalDate;
       case BLOB:
+      case OBJECT:
         return o instanceof Binary;
       case STRING:
       case TEXT:
@@ -97,5 +104,14 @@ public enum Type {
       default:
         return false;
     }
+  }
+
+  public static List<Type> allTypes() {
+    return Arrays.asList(
+        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, TIMESTAMP, DATE, BLOB, STRING, OBJECT);
+  }
+
+  public static List<Type> numericTypes() {
+    return Arrays.asList(INT32, INT64, FLOAT, DOUBLE);
   }
 }

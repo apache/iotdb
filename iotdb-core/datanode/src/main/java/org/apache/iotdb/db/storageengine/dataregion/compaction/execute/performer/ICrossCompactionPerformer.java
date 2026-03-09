@@ -19,11 +19,17 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer;
 
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractCrossSpaceEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ICrossCompactionPerformer extends ICompactionPerformer {
   @Override
   void setSourceFiles(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles);
+
+  default Optional<AbstractCrossSpaceEstimator> getCrossSpaceEstimator() {
+    return Optional.empty();
+  }
 }

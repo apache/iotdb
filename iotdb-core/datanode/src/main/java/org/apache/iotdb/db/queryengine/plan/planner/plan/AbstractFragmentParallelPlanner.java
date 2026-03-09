@@ -22,8 +22,11 @@ package org.apache.iotdb.db.queryengine.plan.planner.plan;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.enums.ReadConsistencyLevel;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.partition.QueryExecutor;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -32,9 +35,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.IFragmentParallelPlaner;
 import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableModelQueryFragmentPlanner;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.tsfile.external.commons.collections4.CollectionUtils;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,24 +46,27 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 public abstract class AbstractFragmentParallelPlanner implements IFragmentParallelPlaner {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(TableModelQueryFragmentPlanner.class);
+      LoggerFactory.getLogger(AbstractFragmentParallelPlanner.class);
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final ReadConsistencyLevel readConsistencyLevel;
 
-  protected MPPQueryContext queryContext;
+  protected final MPPQueryContext queryContext;
 
   protected AbstractFragmentParallelPlanner(MPPQueryContext queryContext) {
     this.queryContext = queryContext;
+    this.readConsistencyLevel = CONFIG.getReadConsistencyLevel();
   }
 
   protected void selectExecutorAndHost(
       PlanFragment fragment,
       FragmentInstance fragmentInstance,
       Supplier<TRegionReplicaSet> replicaSetProvider,
-      Function<TRegionReplicaSet, TRegionReplicaSet> validator,
+      UnaryOperator<TRegionReplicaSet> validator,
       Map<TDataNodeLocation, List<FragmentInstance>> dataNodeFIMap) {
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
@@ -69,7 +75,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
         && !CollectionUtils.isEmpty(regionReplicaSet.getDataNodeLocations())) {
       regionReplicaSet = validator.apply(regionReplicaSet);
       if (regionReplicaSet.getDataNodeLocations().isEmpty()) {
-        throw new ReplicaSetUnreachableException(fragment.getTargetRegionForTreeModel());
+        throw new ReplicaSetUnreachableException(replicaSetProvider.get());
       }
     }
     // Set ExecutorType and target host for the instance
@@ -110,11 +116,7 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
       throw new IllegalArgumentException(
           String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
     }
-    String readConsistencyLevel =
-        IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
-    // TODO: (Chen Rongzhao) need to make the values of ReadConsistencyLevel as static variable or
-    // enums
-    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
+    boolean selectRandomDataNode = ReadConsistencyLevel.WEAK == this.readConsistencyLevel;
 
     // When planning fragment onto specific DataNode, the DataNode whose endPoint is in
     // black list won't be considered because it may have connection issue now.
@@ -125,7 +127,8 @@ public abstract class AbstractFragmentParallelPlanner implements IFragmentParall
           String.format(
               "All replicas for region[%s] are not available in these DataNodes[%s]",
               regionReplicaSet.getRegionId(), regionReplicaSet.getDataNodeLocations());
-      throw new IllegalArgumentException(errorMsg);
+      throw new IoTDBRuntimeException(
+          errorMsg, TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode(), true);
     }
     if (regionReplicaSet.getDataNodeLocationsSize() != availableDataNodes.size()) {
       LOGGER.info("available replicas: {}", availableDataNodes);

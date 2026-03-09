@@ -29,11 +29,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 
 import java.util.Map;
 
@@ -107,7 +109,11 @@ public class TransformSortToStreamSort implements PlanOptimizer {
 
       if (streamSortIndex >= 0) {
         boolean orderByAllIdsAndTime =
-            isOrderByAllIdsAndTime(tableColumnSchema, orderingScheme, streamSortIndex);
+            isOrderByAllIdsAndTime(
+                tableColumnSchema,
+                deviceTableScanNode.getAssignments(),
+                orderingScheme,
+                streamSortIndex);
 
         return new StreamSortNode(
             queryContext.getQueryId().genPlanNodeId(),
@@ -124,6 +130,12 @@ public class TransformSortToStreamSort implements PlanOptimizer {
     @Override
     public PlanNode visitGroup(GroupNode node, Context context) {
       return visitSingleChildProcess(node, context);
+    }
+
+    @Override
+    public PlanNode visitCteScan(CteScanNode node, Context context) {
+      context.setCanTransform(false);
+      return node;
     }
 
     @Override
@@ -150,20 +162,41 @@ public class TransformSortToStreamSort implements PlanOptimizer {
       context.setCanTransform(false);
       return visitTableScan(node, context);
     }
+
+    @Override
+    public PlanNode visitUnion(UnionNode node, Context context) {
+      context.setCanTransform(false);
+      return visitMultiChildProcess(node, context);
+    }
   }
 
+  /**
+   * @param tableColumnSchema The ColumnSchema of original Table, but the symbol name maybe rewrite
+   *     by Join
+   * @param nodeColumnSchema The ColumnSchema of current node, which has been column pruned
+   */
   public static boolean isOrderByAllIdsAndTime(
       Map<Symbol, ColumnSchema> tableColumnSchema,
+      Map<Symbol, ColumnSchema> nodeColumnSchema,
       OrderingScheme orderingScheme,
       int streamSortIndex) {
-    for (Map.Entry<Symbol, ColumnSchema> entry : tableColumnSchema.entrySet()) {
-      if (entry.getValue().getColumnCategory() == TsTableColumnCategory.TAG
-          && !orderingScheme.getOrderings().containsKey(entry.getKey())) {
-        return false;
+    int tagCount = 0;
+    for (ColumnSchema columnSchema : tableColumnSchema.values()) {
+      if (columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount++;
       }
     }
-    return orderingScheme.getOrderings().size() == streamSortIndex + 1
-        || isTimeColumn(orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema);
+
+    for (Symbol orderBy : orderingScheme.getOrderBy()) {
+      ColumnSchema columnSchema = nodeColumnSchema.get(orderBy);
+      if (columnSchema != null && columnSchema.getColumnCategory() == TsTableColumnCategory.TAG) {
+        tagCount--;
+      }
+    }
+    return tagCount == 0
+        && (orderingScheme.getOrderings().size() == streamSortIndex + 1
+            || isTimeColumn(
+                orderingScheme.getOrderBy().get(streamSortIndex + 1), tableColumnSchema));
   }
 
   private static class Context {

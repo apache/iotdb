@@ -29,8 +29,6 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.state.AddRegionPeerState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.db.utils.DateTimeUtils;
@@ -75,7 +73,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
 
   @Override
   protected Flow executeFromState(ConfigNodeProcedureEnv env, AddRegionPeerState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     if (regionId == null) {
       return Flow.NO_MORE_STATE;
     }
@@ -114,7 +112,7 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           TRegionMigrateResult result = handler.waitTaskFinish(this.getProcId(), coordinator);
           switch (result.getTaskStatus()) {
             case TASK_NOT_EXIST:
-              // coordinator crashed and lost its task table
+            // coordinator crashed and lost its task table
             case FAIL:
               // maybe some DataNode crash
               return warnAndRollBackAndNoMoreState(

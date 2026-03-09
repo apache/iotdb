@@ -33,8 +33,8 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.MatchResult.NO_MATCH;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.Util.orderingSchemeMatches;
 
-final class SortMatcher implements Matcher {
-  private final List<Ordering> orderBy;
+class SortMatcher implements Matcher {
+  protected final List<Ordering> orderBy;
 
   public SortMatcher(List<Ordering> orderBy) {
     this.orderBy = requireNonNull(orderBy, "orderBy is null");

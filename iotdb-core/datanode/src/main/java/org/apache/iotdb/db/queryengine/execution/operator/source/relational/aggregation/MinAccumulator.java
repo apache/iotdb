@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -206,24 +209,31 @@ public class MinAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntMinValue((int) statistics[0].getMinValue());
+        updateIntMinValue(((Number) statistics[0].getMinValue()).intValue());
         break;
       case INT64:
-        updateLongMinValue((long) statistics[0].getMinValue());
-        break;
       case TIMESTAMP:
-        updateLongMinValue(statistics[0].getStartTime());
+        updateLongMinValue(((Number) statistics[0].getMinValue()).longValue());
         break;
       case FLOAT:
-        updateFloatMinValue((float) statistics[0].getMinValue());
+        updateFloatMinValue(((Number) statistics[0].getMinValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleMinValue((double) statistics[0].getMinValue());
+        updateDoubleMinValue(((Number) statistics[0].getMinValue()).doubleValue());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryMinValue((Binary) statistics[0].getMinValue());
+        if (statistics[0] instanceof BinaryStatistics) {
+          updateBinaryMinValue((Binary) statistics[0].getMinValue());
+        } else {
+          if (statistics[0].getMinValue() instanceof Binary) {
+            updateBinaryMinValue((Binary) statistics[0].getMinValue());
+          } else {
+            updateBinaryMinValue(
+                new Binary(String.valueOf(statistics[0].getMinValue()), StandardCharsets.UTF_8));
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanMinValue((boolean) statistics[0].getMinValue());

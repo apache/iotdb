@@ -29,11 +29,11 @@ class PipeLogStatus {
 
   private final Logger logger;
 
-  private final int maxAverageScale;
+  private final double maxAverageScale;
   private final int maxLogInterval;
   private final AtomicLong currentRounds = new AtomicLong(0);
 
-  PipeLogStatus(final Class<?> logClass, final int maxAverageScale, final int maxLogInterval) {
+  PipeLogStatus(final Class<?> logClass, final double maxAverageScale, final int maxLogInterval) {
     logger = LoggerFactory.getLogger(logClass);
 
     this.maxAverageScale = maxAverageScale;
@@ -42,7 +42,7 @@ class PipeLogStatus {
 
   synchronized Optional<Logger> schedule(final int scale) {
     if (currentRounds.incrementAndGet()
-        >= Math.min((int) Math.ceil((double) scale / maxAverageScale), maxLogInterval)) {
+        >= Math.min((int) Math.ceil(scale / maxAverageScale), maxLogInterval)) {
       currentRounds.set(0);
       return Optional.of(logger);
     }

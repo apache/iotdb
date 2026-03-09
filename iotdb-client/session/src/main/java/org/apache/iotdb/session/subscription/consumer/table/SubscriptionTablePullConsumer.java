@@ -159,4 +159,9 @@ public class SubscriptionTablePullConsumer extends AbstractSubscriptionPullConsu
   public String getConsumerGroupId() {
     return super.getConsumerGroupId();
   }
+
+  @Override
+  public boolean allTopicMessagesHaveBeenConsumed() {
+    return super.allTopicMessagesHaveBeenConsumed();
+  }
 }

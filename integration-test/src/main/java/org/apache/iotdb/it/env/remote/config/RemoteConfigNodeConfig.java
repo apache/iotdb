@@ -28,4 +28,19 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   public ConfigNodeConfig setMetricReporterType(List<String> metricReporterTypes) {
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setMetricPrometheusReporterUsername(String username) {
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setMetricPrometheusReporterPassword(String password) {
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
+    return this;
+  }
 }

@@ -32,8 +32,8 @@ import org.apache.iotdb.tool.data.ImportData;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.DateUtils;
 
@@ -200,7 +200,8 @@ public abstract class AbstractCli {
     Option password =
         Option.builder(PW_ARGS)
             .argName(PW_NAME)
-            .hasArg()
+            .hasArg(true)
+            .optionalArg(true)
             .desc("Password. Default is root. (optional)")
             .build();
     options.addOption(password);
@@ -212,22 +213,6 @@ public abstract class AbstractCli {
             .desc("Use SSL statement. (optional)")
             .build();
     options.addOption(useSSL);
-
-    Option trustStore =
-        Option.builder(TRUST_STORE_ARGS)
-            .argName(TRUST_STORE)
-            .hasArg()
-            .desc("Trust store statement. (optional)")
-            .build();
-    options.addOption(trustStore);
-
-    Option trustStorePwd =
-        Option.builder(TRUST_STORE_PWD_ARGS)
-            .argName(TRUST_STORE_PWD)
-            .hasArg()
-            .desc("Trust store password statement. (optional)")
-            .build();
-    options.addOption(trustStorePwd);
 
     Option execute =
         Option.builder(EXECUTE_ARGS)
@@ -335,10 +320,10 @@ public abstract class AbstractCli {
         break;
       }
     }
-    if (index >= 0
-        && ((index + 1 >= args.length)
-            || (index + 1 < args.length && keywordSet.contains(args[index + 1])))) {
-      return ArrayUtils.remove(args, index);
+    if (index >= 0) {
+      if (index + 1 >= args.length || keywordSet.contains(args[index + 1])) {
+        return ArrayUtils.remove(args, index);
+      }
     }
     return args;
   }
@@ -573,8 +558,6 @@ public abstract class AbstractCli {
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       long costTime = System.currentTimeMillis() - startTime;
-      updateSqlDialectAndUsingDatabase(
-          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -632,6 +615,8 @@ public abstract class AbstractCli {
       ctx.getPrinter().println("Msg: " + e);
       executeStatus = CODE_ERROR;
     } finally {
+      updateSqlDialectAndUsingDatabase(
+          connection.getParams().getSqlDialect(), connection.getParams().getDb().orElse(null));
       resetArgs();
     }
     return executeStatus;
@@ -755,6 +740,7 @@ public abstract class AbstractCli {
       case DOUBLE:
       case TEXT:
       case STRING:
+      case OBJECT:
         return resultSet.getString(columnIndex);
       case BLOB:
         byte[] v = resultSet.getBytes(columnIndex);

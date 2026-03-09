@@ -22,12 +22,17 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.JVMCommonUtils;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import static org.apache.iotdb.db.storageengine.rescon.disk.FolderManager.FolderState.HEALTHY;
 
 /**
  * The basic class of all the strategies of multiple directories. If a user wants to define his own
@@ -61,6 +66,35 @@ public abstract class DirectoryStrategy {
     }
 
     this.folders = folders;
+  }
+
+  /**
+   * Map storing the state of each folder (HEALTHY/ABNORMAL). Key: folder path as String Value:
+   * corresponding FolderState enum value
+   */
+  Map<String, FolderManager.FolderState> foldersStates = new HashMap<>();
+
+  /**
+   * Replaces the entire folder states mapping with a new one.
+   *
+   * @param foldersStates new mapping of folder paths to their states
+   */
+  public void setFoldersStates(Map<String, FolderManager.FolderState> foldersStates) {
+    this.foldersStates = foldersStates;
+  }
+
+  /**
+   * Updates the state of a specific folder if it exists in the mapping.
+   *
+   * @param folder path of the folder to update
+   * @param state new state to set for the folder
+   */
+  public void updateFolderState(String folder, FolderManager.FolderState state) {
+    foldersStates.replace(folder, state);
+  }
+
+  public boolean isUnavailableFolder(String dir) {
+    return (foldersStates.getOrDefault(dir, HEALTHY) != HEALTHY);
   }
 
   /**

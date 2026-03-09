@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.service.metrics.WritingMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.Checkpoint;
@@ -178,11 +179,12 @@ public class WALBuffer extends AbstractWALBuffer {
     buffersLock.lock();
     try {
       MmapUtil.clean(workingBuffer);
-      MmapUtil.clean(workingBuffer);
+      MmapUtil.clean(idleBuffer);
       MmapUtil.clean(syncingBuffer);
       MmapUtil.clean(compressedByteBuffer);
       workingBuffer = ByteBuffer.allocateDirect(capacity);
       idleBuffer = ByteBuffer.allocateDirect(capacity);
+      syncingBuffer = null;
       compressedByteBuffer = ByteBuffer.allocateDirect(getCompressedByteBufferSize(capacity));
       currentWALFileWriter.setCompressedByteBuffer(compressedByteBuffer);
     } catch (OutOfMemoryError e) {
@@ -331,6 +333,8 @@ public class WALBuffer extends AbstractWALBuffer {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
         } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
           searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
+        } else if (walEntry.getType() == WALEntryType.OBJECT_FILE_NODE) {
+          searchIndex = ((ObjectNode) walEntry.getValue()).getSearchIndex();
         } else {
           searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
         }
@@ -344,7 +348,6 @@ public class WALBuffer extends AbstractWALBuffer {
       info.metaData.add(size, searchIndex, walEntry.getMemTableId());
       info.memTableId2WalDiskUsage.compute(
           walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
-      walEntry.getWalFlushListener().getWalEntryHandler().setSize(size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
     }
 
@@ -605,13 +608,8 @@ public class WALBuffer extends AbstractWALBuffer {
 
       // notify all waiting listeners
       if (forceSuccess) {
-        long position = lastFsyncPosition;
         for (WALFlushListener fsyncListener : info.fsyncListeners) {
           fsyncListener.succeed();
-          if (fsyncListener.getWalEntryHandler() != null) {
-            fsyncListener.getWalEntryHandler().setEntryPosition(walFileVersionId, position);
-            position += fsyncListener.getWalEntryHandler().getSize();
-          }
         }
         lastFsyncPosition = currentWALFileWriter.originalSize();
       }
@@ -719,9 +717,13 @@ public class WALBuffer extends AbstractWALBuffer {
     checkpointManager.close();
 
     MmapUtil.clean(workingBuffer);
-    MmapUtil.clean(workingBuffer);
+    MmapUtil.clean(idleBuffer);
     MmapUtil.clean(syncingBuffer);
     MmapUtil.clean(compressedByteBuffer);
+    workingBuffer = null;
+    idleBuffer = null;
+    syncingBuffer = null;
+    compressedByteBuffer = null;
   }
 
   private void shutdownThread(ExecutorService thread, ThreadName threadName) {

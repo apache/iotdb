@@ -39,7 +39,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
+import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByKey;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
@@ -60,6 +63,7 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ShowNode
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.UnsetSchemaTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.view.CreateLogicalViewStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ShowQueriesStatement;
 import org.apache.iotdb.isession.template.TemplateNode;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSAggregationQueryReq;
@@ -82,13 +86,13 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
-import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -115,6 +119,35 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class StatementGeneratorTest {
+
+  @Test
+  public void testShowQueries() {
+    Statement showQueries =
+        StatementGenerator.createStatement(
+            "show queries order by time, queryid, datanodeid, elapsedtime, statement",
+            ZonedDateTime.now().getOffset());
+    Assert.assertTrue(showQueries instanceof ShowQueriesStatement);
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(0),
+        new SortItem(OrderByKey.TIME, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(1),
+        new SortItem(OrderByKey.QUERYID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(2),
+        new SortItem(OrderByKey.DATANODEID, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(3),
+        new SortItem(OrderByKey.ELAPSEDTIME, Ordering.ASC));
+    Assert.assertEquals(
+        ((ShowQueriesStatement) showQueries).getSortItemList().get(4),
+        new SortItem(OrderByKey.STATEMENT, Ordering.ASC));
+    Assert.assertThrows(
+        SemanticException.class,
+        () ->
+            StatementGenerator.createStatement(
+                "show queries order by a", ZonedDateTime.now().getOffset()));
+  }
 
   @Test
   public void testRawDataQuery() throws IllegalPathException {
@@ -213,11 +246,8 @@ public class StatementGeneratorTest {
   public void testInsertRelationalTablet() throws IllegalPathException {
     List<String> measurements = Arrays.asList("id1", "attr1", "m1");
     List<TSDataType> dataTypes = Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.DOUBLE);
-    List<Tablet.ColumnCategory> tsfileColumnCategories =
-        Arrays.asList(
-            Tablet.ColumnCategory.TAG,
-            Tablet.ColumnCategory.ATTRIBUTE,
-            Tablet.ColumnCategory.FIELD);
+    List<ColumnCategory> tsfileColumnCategories =
+        Arrays.asList(ColumnCategory.TAG, ColumnCategory.ATTRIBUTE, ColumnCategory.FIELD);
     List<TsTableColumnCategory> columnCategories =
         tsfileColumnCategories.stream()
             .map(TsTableColumnCategory::fromTsFileColumnCategory)
@@ -633,6 +663,11 @@ public class StatementGeneratorTest {
 
   @Test
   public void testDCLUserOperation() {
+    AuthorStatement unlockDcl = createAuthDclStmt("ALTER USER test @ '127.0.0.1' ACCOUNT UNLOCK;");
+    assertEquals("test", unlockDcl.getUserName());
+    assertEquals("127.0.0.1", unlockDcl.getLoginAddr());
+    assertEquals(StatementType.ACCOUNT_UNLOCK, unlockDcl.getType());
+
     // 1. create user and drop user
     AuthorStatement userDcl = createAuthDclStmt("create user `user1` 'password1';");
     assertEquals("user1", userDcl.getUserName());
@@ -718,7 +753,7 @@ public class StatementGeneratorTest {
 
     // 1. check simple privilege grant to user/role with/without grant option.
     for (PrivilegeType privilege : PrivilegeType.values()) {
-      if (privilege.isRelationalPrivilege()) {
+      if (privilege.isRelationalPrivilege() || privilege.isDeprecated() || privilege.isHided()) {
         continue;
       }
       testGrant.checkParser(privilege.toString(), name, true, path, true);
@@ -756,7 +791,7 @@ public class StatementGeneratorTest {
 
     // 3. check simple privilege revoke from user/role on simple path
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isDeprecated() || type.isHided()) {
         continue;
       }
       testRevoke.checkParser(type.toString(), name, true, path, false);
@@ -783,14 +818,14 @@ public class StatementGeneratorTest {
     // 1. test complex privilege on single path :"root.**"
     Set<String> allPriv = new HashSet<>();
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isDeprecated() || type.isHided()) {
         continue;
       }
       allPriv.add(type.toString());
     }
 
     for (PrivilegeType type : PrivilegeType.values()) {
-      if (type.isRelationalPrivilege()) {
+      if (type.isRelationalPrivilege() || type.isDeprecated() || type.isHided()) {
         continue;
       }
       {

@@ -33,7 +33,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +73,7 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  public @NonNull SubscriptionEvent pollTsFileInternal(
+  public SubscriptionEvent pollTsFileInternal(
       final String consumerId,
       final SubscriptionCommitContext commitContext,
       final long writingOffset) {
@@ -84,6 +83,16 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         (key, ev) -> {
           // 1. Extract current event and check it
           if (Objects.isNull(ev)) {
+            if (isCommitContextOutdated(commitContext)) {
+              LOGGER.warn(
+                  "SubscriptionPrefetchingTsFileQueue {} detected outdated poll request, consumer {}, commit context {}, writing offset {}",
+                  this,
+                  consumerId,
+                  commitContext,
+                  writingOffset);
+              eventRef.set(generateSubscriptionPollOutdatedErrorResponse());
+              return null;
+            }
             final String errorMessage =
                 String.format(
                     "SubscriptionPrefetchingTsFileQueue %s is currently not transferring any file to consumer %s, commit context: %s, writing offset: %s",
@@ -240,6 +249,9 @@ public class SubscriptionPrefetchingTsFileQueue extends SubscriptionPrefetchingQ
         new SubscriptionEvent(
             new SubscriptionPipeTsFilePlainEvent((PipeTsFileInsertionEvent) event),
             ((PipeTsFileInsertionEvent) event).getTsFile(),
+            ((PipeTsFileInsertionEvent) event).isTableModelEvent()
+                ? ((PipeTsFileInsertionEvent) event).getTableModelDatabaseName()
+                : null,
             commitContext);
     super.prefetchEvent(ev);
     return true;

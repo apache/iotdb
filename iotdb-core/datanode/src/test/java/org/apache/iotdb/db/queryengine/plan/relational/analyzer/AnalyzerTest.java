@@ -29,7 +29,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
+import org.apache.iotdb.commons.schema.table.InsertNodeMeasurementInfo;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.InternalClientSession;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -49,6 +53,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.OperatorNotFoundException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableHeaderSchemaValidator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolAllocator;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableLogicalPlanner;
@@ -68,13 +73,16 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LogicalExpression
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
+import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertRowStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Binary;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -88,6 +96,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -110,12 +119,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.eq;
 
 public class AnalyzerTest {
 
   private static final AccessControl nopAccessControl = new AllowAllAccessControl();
+  final String database = "db";
+  final String table = "table1";
 
   QueryId queryId = new QueryId("test_query");
   SessionInfo sessionInfo =
@@ -124,9 +134,9 @@ public class AnalyzerTest {
           "iotdb-user",
           ZoneId.systemDefault(),
           IoTDBConstant.ClientVersion.V_1_0,
-          "db",
+          database,
           IClientSession.SqlDialect.TABLE);
-  Metadata metadata = new TestMatadata();
+  Metadata metadata = new TestMetadata();
   WarningCollector warningCollector = NOOP;
   String sql;
   Analysis analysis;
@@ -138,6 +148,11 @@ public class AnalyzerTest {
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
 
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
+
   @Test
   public void testMockQuery() throws OperatorNotFoundException {
     final String sql =
@@ -147,7 +162,7 @@ public class AnalyzerTest {
 
     final Map<String, ColumnHandle> map = new HashMap<>();
     final TableSchema tableSchema = Mockito.mock(TableSchema.class);
-    Mockito.when(tableSchema.getTableName()).thenReturn("table1");
+    Mockito.when(tableSchema.getTableName()).thenReturn(table);
     final ColumnSchema column1 =
         ColumnSchema.builder().setName("time").setType(INT64).setHidden(false).build();
     final ColumnHandle column1Handle = Mockito.mock(ColumnHandle.class);
@@ -164,7 +179,7 @@ public class AnalyzerTest {
     Mockito.when(tableSchema.getColumns()).thenReturn(columnSchemaList);
 
     Mockito.when(
-            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", "table1"))))
+            metadata.getTableSchema(Mockito.any(), eq(new QualifiedObjectName("testdb", table))))
         .thenReturn(Optional.of(tableSchema));
 
     Mockito.when(
@@ -204,7 +219,7 @@ public class AnalyzerTest {
     assertEquals(9, deviceTableScanNode.getOutputSymbols().size());
     assertEquals(9, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(5, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
 
     distributionPlanner =
@@ -244,7 +259,7 @@ public class AnalyzerTest {
         this.deviceTableScanNode.getOutputColumnNames());
     assertEquals(9, this.deviceTableScanNode.getAssignments().size());
     assertEquals(6, this.deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(5, this.deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(5, this.deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(
         "(\"time\" > 1)",
         this.deviceTableScanNode.getTimePredicate().map(Expression::toString).orElse(null));
@@ -293,8 +308,8 @@ public class AnalyzerTest {
     assertFalse(deviceTableScanNode.getTimePredicate().isPresent());
     assertTrue(
         Stream.of(Symbol.of("tag1"), Symbol.of("tag2"), Symbol.of("tag3"), Symbol.of("attr2"))
-            .allMatch(deviceTableScanNode.getIdAndAttributeIndexMap()::containsKey));
-    assertEquals(0, (int) deviceTableScanNode.getIdAndAttributeIndexMap().get(Symbol.of("attr2")));
+            .allMatch(deviceTableScanNode.getTagAndAttributeIndexMap()::containsKey));
+    assertEquals(0, (int) deviceTableScanNode.getTagAndAttributeIndexMap().get(Symbol.of("attr2")));
     assertEquals(Arrays.asList("tag1", "attr2", "s2"), deviceTableScanNode.getOutputColumnNames());
     assertEquals(
         ImmutableSet.of("tag1", "attr2", "s1", "s2"),
@@ -602,7 +617,7 @@ public class AnalyzerTest {
     assertTrue(rootNode.getChildren().get(0) instanceof DeviceTableScanNode);
     deviceTableScanNode = (DeviceTableScanNode) rootNode.getChildren().get(0);
     assertEquals(Arrays.asList("tag2", "attr2", "s2"), deviceTableScanNode.getOutputColumnNames());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
   }
 
   @Test
@@ -1039,17 +1054,39 @@ public class AnalyzerTest {
   }
 
   private Metadata mockMetadataForInsertion() {
-    return new TestMatadata() {
+    final TsTable tsTable = StatementTestUtils.genTsTable();
+    DataNodeTableCache.getInstance().preUpdateTable(database, tsTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, table, null);
+    return new TestMetadata() {
       @Override
-      public Optional<TableSchema> validateTableHeaderSchema(
+      public Optional<TableSchema> validateTableHeaderSchema4TsFile(
           String database,
           TableSchema schema,
           MPPQueryContext context,
           boolean allowCreateTable,
-          boolean isStrictIdColumn) {
+          boolean isStrictTagColumn,
+          final AtomicBoolean needDecode4DifferentTimeColumn) {
         TableSchema tableSchema = StatementTestUtils.genTableSchema();
         assertEquals(tableSchema, schema);
         return Optional.of(tableSchema);
+      }
+
+      @Override
+      public void validateInsertNodeMeasurements(
+          final String database,
+          final InsertNodeMeasurementInfo measurementInfo,
+          final MPPQueryContext context,
+          final boolean allowCreateTable,
+          final TableHeaderSchemaValidator.MeasurementValidator measurementValidator,
+          final TableHeaderSchemaValidator.TagColumnHandler tagColumnHandler) {
+        TableHeaderSchemaValidator.getInstance()
+            .validateInsertNodeMeasurements(
+                database,
+                measurementInfo,
+                context,
+                allowCreateTable,
+                measurementValidator,
+                tagColumnHandler);
       }
 
       @Override
@@ -1217,7 +1254,9 @@ public class AnalyzerTest {
 
   public static Analysis analyzeSQL(String sql, Metadata metadata, final MPPQueryContext context) {
     SqlParser sqlParser = new SqlParser();
-    Statement statement = sqlParser.createStatement(sql, ZoneId.systemDefault(), null);
+    Statement statement =
+        sqlParser.createStatement(
+            sql, ZoneId.systemDefault(), new InternalClientSession("testClient"));
     SessionInfo session =
         new SessionInfo(
             0, "test", ZoneId.systemDefault(), "testdb", IClientSession.SqlDialect.TABLE);
@@ -1232,7 +1271,8 @@ public class AnalyzerTest {
       final SessionInfo session) {
     try {
       final StatementAnalyzerFactory statementAnalyzerFactory =
-          new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+          new StatementAnalyzerFactory(
+              metadata, sqlParser, nopAccessControl, new InternalTypeManager());
 
       Analyzer analyzer =
           new Analyzer(
@@ -1241,14 +1281,12 @@ public class AnalyzerTest {
               statementAnalyzerFactory,
               Collections.emptyList(),
               Collections.emptyMap(),
-              new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
+              new StatementRewriteFactory().getStatementRewrite(),
               NOOP);
       return analyzer.analyze(statement);
     } catch (final Exception e) {
-      e.printStackTrace();
-      fail(statement + ", " + e.getMessage());
+      throw e;
     }
-    return null;
   }
 
   public static Analysis analyzeStatementWithException(
@@ -1258,7 +1296,8 @@ public class AnalyzerTest {
       final SqlParser sqlParser,
       final SessionInfo session) {
     final StatementAnalyzerFactory statementAnalyzerFactory =
-        new StatementAnalyzerFactory(metadata, sqlParser, nopAccessControl);
+        new StatementAnalyzerFactory(
+            metadata, sqlParser, nopAccessControl, new InternalTypeManager());
     Analyzer analyzer =
         new Analyzer(
             context,
@@ -1266,7 +1305,7 @@ public class AnalyzerTest {
             statementAnalyzerFactory,
             Collections.emptyList(),
             Collections.emptyMap(),
-            new StatementRewriteFactory(metadata, nopAccessControl).getStatementRewrite(),
+            new StatementRewriteFactory().getStatementRewrite(),
             NOOP);
     return analyzer.analyze(statement);
   }

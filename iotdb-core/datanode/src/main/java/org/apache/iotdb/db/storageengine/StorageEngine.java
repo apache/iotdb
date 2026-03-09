@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetConfigurationReq;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.ExceptionalCountDownLatch;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -37,7 +38,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.schema.ttl.TTLCache;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -67,6 +67,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairLogg
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.UnsortedFileRepairTaskScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
+import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
@@ -75,12 +76,16 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
+import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.exception.write.PageException;
+import org.apache.tsfile.external.commons.io.FileUtils;
+import org.apache.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.tsfile.utils.FilePathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +93,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -104,6 +111,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -116,6 +124,8 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private static final WritingMetrics WRITING_METRICS = WritingMetrics.getInstance();
+
+  private final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /**
    * a folder (system/databases/ by default) that persist system info. Each database will have a
@@ -153,6 +163,8 @@ public class StorageEngine implements IService {
   private int recoverDataRegionNum = 0;
 
   private final LoadTsFileManager loadTsFileManager = new LoadTsFileManager();
+
+  public final AtomicLong objectFileId = new AtomicLong(0);
 
   private StorageEngine() {}
 
@@ -218,18 +230,14 @@ public class StorageEngine implements IService {
               LOGGER.info(
                   "Storage Engine recover cost: {}s.",
                   (System.currentTimeMillis() - startRecoverTime) / 1000);
-
-              PipeDataNodeAgent.runtime()
-                  .registerPeriodicalJob(
-                      "StorageEngine#operateFlush",
-                      () -> operateFlush(new TFlushReq()),
-                      PipeConfig.getInstance().getPipeStorageEngineFlushTimeIntervalMs() / 1000);
             },
             ThreadName.STORAGE_ENGINE_RECOVER_TRIGGER.getName());
     recoverEndTrigger.start();
   }
 
   private void asyncRecover(List<Future<Void>> futures) {
+    checkObjectFiles();
+
     Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
     localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
@@ -533,7 +541,7 @@ public class StorageEngine implements IService {
   public void syncCloseProcessorsInRegion(List<String> dataRegionIds) {
     List<Future<Void>> tasks = new ArrayList<>();
     for (DataRegion dataRegion : dataRegionMap.values()) {
-      if (dataRegion != null && dataRegionIds.contains(dataRegion.getDataRegionId())) {
+      if (dataRegion != null && dataRegionIds.contains(dataRegion.getDataRegionIdString())) {
         tasks.add(
             cachedThreadPool.submit(
                 () -> {
@@ -775,19 +783,23 @@ public class StorageEngine implements IService {
     DataRegion region =
         deletingDataRegionMap.computeIfAbsent(regionId, k -> dataRegionMap.remove(regionId));
     if (region != null) {
+      LOGGER.info("Removing data region {}", regionId);
       region.markDeleted();
       try {
         region.abortCompaction();
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         region.deleteDALFolderAndClose();
+        PipeDataNodeAgent.receiver().pipeConsensus().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:
             // delete wal
             WALManager.getInstance()
                 .deleteWALNode(
-                    region.getDatabaseName() + FILE_NAME_SEPARATOR + region.getDataRegionId());
+                    region.getDatabaseName()
+                        + FILE_NAME_SEPARATOR
+                        + region.getDataRegionIdString());
             // delete snapshot
             for (String dataDir : CONFIG.getLocalDataDirs()) {
               File regionSnapshotDir =
@@ -807,7 +819,7 @@ public class StorageEngine implements IService {
             // delete region information in wal and may delete wal
             WALManager.getInstance()
                 .deleteRegionAndMayDeleteWALNode(
-                    region.getDatabaseName(), region.getDataRegionId());
+                    region.getDatabaseName(), region.getDataRegionIdString());
             break;
           case ConsensusFactory.RATIS_CONSENSUS:
           default:
@@ -816,12 +828,15 @@ public class StorageEngine implements IService {
         WRITING_METRICS.removeDataRegionMemoryCostMetrics(regionId);
         WRITING_METRICS.removeFlushingMemTableStatusMetrics(regionId);
         WRITING_METRICS.removeActiveMemtableCounterMetrics(regionId);
-        FileMetrics.getInstance().deleteRegion(region.getDatabaseName(), region.getDataRegionId());
+        FileMetrics.getInstance()
+            .deleteRegion(region.getDatabaseName(), region.getDataRegionIdString());
+        CompressionRatio.getInstance().removeDataRegionRatio(String.valueOf(regionId.getId()));
+        LOGGER.info("Removed data region {}", regionId);
       } catch (Exception e) {
         LOGGER.error(
             "Error occurs when deleting data region {}-{}",
             region.getDatabaseName(),
-            region.getDataRegionId(),
+            region.getDataRegionIdString(),
             e);
       } finally {
         deletingDataRegionMap.remove(regionId);
@@ -952,7 +967,7 @@ public class StorageEngine implements IService {
 
     try {
       loadTsFileManager.writeToDataRegion(dataRegion, pieceNode, uuid);
-    } catch (IOException e) {
+    } catch (IOException | PageException e) {
       LOGGER.warn(
           "IO error when writing piece node of TsFile {} to DataRegion {}.",
           pieceNode.getTsFile(),
@@ -979,13 +994,13 @@ public class StorageEngine implements IService {
       LoadTsFileScheduler.LoadCommand loadCommand,
       String uuid,
       boolean isGeneratedByPipe,
-      ProgressIndex progressIndex) {
+      Map<TTimePartitionSlot, ProgressIndex> timePartitionProgressIndexMap) {
     TSStatus status = new TSStatus();
 
     try {
       switch (loadCommand) {
         case EXECUTE:
-          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, progressIndex)) {
+          if (loadTsFileManager.loadAll(uuid, isGeneratedByPipe, timePartitionProgressIndexMap)) {
             status = RpcUtils.SUCCESS_STATUS;
           } else {
             status.setCode(TSStatusCode.LOAD_FILE_ERROR.getStatusCode());
@@ -1061,6 +1076,41 @@ public class StorageEngine implements IService {
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
     return SystemFileFactory.INSTANCE.getFile(
         systemDir + File.separator + dataBaseName, dataRegionId);
+  }
+
+  private void checkObjectFiles() {
+    List<String> folders = TierManager.getInstance().getAllObjectFileFolders();
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      try (Stream<Path> paths = Files.walk(fileFolder.toPath())) {
+        paths
+            .filter(Files::isRegularFile)
+            .filter(
+                path -> {
+                  String name = path.getFileName().toString();
+                  return name.endsWith(".bin.back") || name.endsWith(".bin");
+                })
+            .forEach(
+                path -> {
+                  String name = path.getFileName().toString();
+                  if (name.endsWith(".bin.back")) {
+                    try {
+                      Files.delete(path);
+                    } catch (IOException e) {
+                      LOGGER.error("Failed to delete: {} -> {}", path, e.getMessage());
+                    }
+                  } else if (name.endsWith(".bin")) {
+                    FileMetrics.getInstance().increaseObjectFileNum(1);
+                    FileMetrics.getInstance().increaseObjectFileSize(path.toFile().length());
+                  }
+                });
+      } catch (IOException e) {
+        LOGGER.error("Failed to check Object Files: {}", e.getMessage());
+      }
+    }
   }
 
   public Runnable executeCompactFileTimeIndexCache() {

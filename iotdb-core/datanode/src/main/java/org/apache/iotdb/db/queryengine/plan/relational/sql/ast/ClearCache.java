@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 import org.apache.iotdb.commons.schema.cache.CacheClearOptions;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,8 @@ import java.util.Set;
 import static com.google.common.base.MoreObjects.toStringHelper;
 
 public class ClearCache extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ClearCache.class);
 
   private final boolean onCluster;
   private final Set<CacheClearOptions> options;
@@ -79,5 +82,13 @@ public class ClearCache extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOfCollection(options);
+    return size;
   }
 }

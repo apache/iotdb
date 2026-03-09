@@ -93,7 +93,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
           region.getDatabaseName(),
-          region.getDataRegionId(),
+          region.getDataRegionIdString(),
           snapshotDir,
           e);
       return false;
@@ -109,7 +109,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
           region.getDatabaseName(),
-          region.getDataRegionId(),
+          region.getDataRegionIdString(),
           snapshotDir,
           e);
       return false;
@@ -127,7 +127,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
                 region.getDatabaseName(),
-                region.getDataRegionId())
+                region.getDataRegionIdString())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
       logger.error("Fail to load snapshot from {}", latestSnapshotRootDir);
@@ -136,7 +136,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
     this.region = newRegion;
     try {
       StorageEngine.getInstance()
-          .setDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())), region);
+          .setDataRegion(
+              new DataRegionId(Integer.parseInt(region.getDataRegionIdString())), region);
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
       BloomFilterCache.getInstance().clear();
@@ -185,13 +186,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return new SnapshotLoader(
               latestSnapshotRootDir.getAbsolutePath(),
               region.getDatabaseName(),
-              region.getDataRegionId())
+              region.getDataRegionIdString())
           .getSnapshotFileInfo();
     } catch (IOException e) {
       logger.error(
           "Meets error when getting snapshot files for {}-{}",
           region.getDatabaseName(),
-          region.getDataRegionId(),
+          region.getDataRegionIdString(),
           e);
       return null;
     }
@@ -230,6 +231,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
           Thread.currentThread().interrupt();
         }
       } else {
+        if (TSStatusCode.TABLE_NOT_EXISTS.getStatusCode() == result.getCode()
+            || TSStatusCode.TABLE_IS_LOST.getStatusCode() == result.getCode()) {
+          logger.info("table is not exists or lost, result code is {}", result.getCode());
+        }
         break;
       }
     }
@@ -272,7 +277,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
               + File.separator
               + region.getDatabaseName()
               + "-"
-              + region.getDataRegionId();
+              + region.getDataRegionIdString();
       return new File(snapshotDir).getCanonicalFile();
     } catch (IOException | NullPointerException e) {
       logger.warn("{}: cannot get the canonical file of {} due to {}", this, snapshotDir, e);

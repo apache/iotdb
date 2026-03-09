@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
@@ -63,6 +64,17 @@ public class NodeGroupContext {
   }
 
   private void countRegionOfSourceNodes(PlanNode root, Map<TRegionReplicaSet, Long> result) {
+    if (root instanceof LastQueryNode) {
+      // At this point, there should only be LastSeriesSourceNode in LastQueryNode, and all of them
+      // have been grouped in the rewriteSource stage by region.
+      TRegionReplicaSet regionReplicaSet = ((LastQueryNode) root).getRegionReplicaSetByFirstChild();
+      if (regionReplicaSet != DataPartition.NOT_ASSIGNED) {
+        result.compute(
+            regionReplicaSet,
+            (region, count) -> (count == null) ? 1 : count + root.getChildren().size());
+      }
+      return;
+    }
     root.getChildren().forEach(child -> countRegionOfSourceNodes(child, result));
     if (root instanceof SourceNode) {
       TRegionReplicaSet regionReplicaSet = ((SourceNode) root).getRegionReplicaSet();

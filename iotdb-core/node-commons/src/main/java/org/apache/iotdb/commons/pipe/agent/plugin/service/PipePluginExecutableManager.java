@@ -22,9 +22,10 @@ package org.apache.iotdb.commons.pipe.agent.plugin.service;
 import org.apache.iotdb.commons.executable.ExecutableManager;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.pipe.agent.plugin.meta.PipePluginMeta;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.tsfile.external.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +122,14 @@ public class PipePluginExecutableManager extends ExecutableManager {
 
   public String getPluginInstallPathV1(String fileName) {
     return this.libRoot + File.separator + INSTALL_DIR + File.separator + fileName;
+  }
+
+  public void linkExistedPlugin(
+      final String oldPluginName, final String newPluginName, final String fileName)
+      throws IOException {
+    FileUtils.createHardLink(
+        new File(getPluginsDirPath(oldPluginName), fileName),
+        new File(getPluginsDirPath(newPluginName), fileName));
   }
 
   /**

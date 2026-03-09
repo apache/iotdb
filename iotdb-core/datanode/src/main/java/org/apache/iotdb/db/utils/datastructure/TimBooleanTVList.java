@@ -26,7 +26,7 @@ public class TimBooleanTVList extends BooleanTVList {
   }
 
   @Override
-  public synchronized void sort() {
+  public synchronized int sort() {
     policy.checkSortedTimestampsAndIndices();
     if (!sorted) {
       policy.sort(0, rowCount);
@@ -35,6 +35,7 @@ public class TimBooleanTVList extends BooleanTVList {
     policy.clearSortedTime();
     sorted = true;
     seqRowCount = rowCount;
+    return rowCount;
   }
 
   @Override

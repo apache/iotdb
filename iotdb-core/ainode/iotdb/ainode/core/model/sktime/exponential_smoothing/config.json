@@ -1,0 +1,11 @@
+{
+  "model_type": "sktime",
+  "model_id": "exponential_smoothing",
+  "output_length": 1,
+  "damped_trend": false,
+  "initialization_method": "estimated",
+  "optimized": true,
+  "remove_bias": false,
+  "use_brute": false
+}
+

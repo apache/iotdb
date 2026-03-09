@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.plan.Coordinator;
@@ -46,14 +45,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertIdValuesToDeviceID;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.TableDeviceSchemaFetcher.convertTagValuesToDeviceID;
 
 public class TableDeviceSchemaValidator {
   private final SqlParser relationSqlParser = new SqlParser();
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableDeviceSchemaValidator.class);
-
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
 
@@ -127,7 +124,7 @@ public class TableDeviceSchemaValidator {
           TableDeviceSchemaCache.getInstance()
               .getDeviceAttribute(
                   schemaValidation.getDatabase(),
-                  convertIdValuesToDeviceID(
+                  convertTagValuesToDeviceID(
                       schemaValidation.getTableName(), (String[]) deviceIdList.get(i)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(i);
@@ -165,7 +162,7 @@ public class TableDeviceSchemaValidator {
     for (final int index : previousValidateResult.missingDeviceIndexList) {
       final Map<String, Binary> attributeMap =
           fetchedDeviceSchema.get(
-              convertIdValuesToDeviceID(
+              convertTagValuesToDeviceID(
                   schemaValidation.getTableName(), (String[]) deviceIdList.get(index)));
       if (attributeMap == null) {
         result.missingDeviceIndexList.add(index);
@@ -237,18 +234,23 @@ public class TableDeviceSchemaValidator {
             relationSqlParser,
             SessionManager.getInstance().getCurrSession(),
             SessionManager.getInstance().requestQueryId(),
-            SessionManager.getInstance()
-                .getSessionInfo(SessionManager.getInstance().getCurrSession()),
+            context == null
+                ? SessionManager.getInstance()
+                    .getSessionInfo(SessionManager.getInstance().getCurrSession())
+                : context.getSession(),
             "Create device or update device attribute for insert",
             LocalExecutionPlanner.getInstance().metadata,
             // Never timeout for write statement
             Long.MAX_VALUE,
             false);
     if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          new IoTDBException(
-              executionResult.status.getMessage(), executionResult.status.getCode()));
+      throw new IoTDBRuntimeException(
+          executionResult.status.getMessage(), executionResult.status.getCode());
     }
+  }
+
+  public static void checkObject4DeviceId(final Object[] deviceId) {
+    throw new SemanticException("The object type column is not supported.");
   }
 
   private static class ValidateResult {

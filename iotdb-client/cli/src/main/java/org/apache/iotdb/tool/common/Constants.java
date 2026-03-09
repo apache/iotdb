@@ -56,6 +56,18 @@ public class Constants {
   public static final String USERNAME_DESC = "Username (optional)";
   public static final String USERNAME_DEFAULT_VALUE = "root";
 
+  public static final String USE_SSL_ARGS = "usessl";
+  public static final String USE_SSL_NAME = "use_ssl";
+  public static final String USE_SSL_DESC = "Use SSL statement. (optional)";
+
+  public static final String TRUST_STORE_ARGS = "ts";
+  public static final String TRUST_STORE_NAME = "trust_store";
+  public static final String TRUST_STORE_DESC = "Trust store. (optional)";
+
+  public static final String TRUST_STORE_PWD_ARGS = "tpw";
+  public static final String TRUST_STORE_PWD_NAME = "trust_store_password";
+  public static final String TRUST_STORE_PWD_DESC = "Trust store password. (optional)";
+
   public static final String FILE_TYPE_ARGS = "ft";
   public static final String FILE_TYPE_NAME = "file_type";
   public static final String FILE_TYPE_ARGS_NAME = "format";
@@ -98,7 +110,7 @@ public class Constants {
   public static final String DB_ARGS = "db";
   public static final String DB_NAME = "database";
   public static final String DB_DESC =
-      "The database to be exported,only takes effect and required when sql_dialect is table .(optional)";
+      "The database to be exported,only takes effect when sql_dialect is table and required when file_type is csv and tsfile.(optional)";
 
   public static final String TABLE_ARGS = "table";
   public static final String TABLE_DESC =
@@ -204,6 +216,11 @@ public class Constants {
   public static final String TARGET_FILE_NAME = "prefix_file_name";
   public static final String TARGET_FILE_DESC = "Export file name .(optional)";
 
+  public static final String RPC_MAX_FRAME_SIZE_ARGS = "mfs";
+  public static final String RPC_MAX_FRAME_SIZE_NAME = "rpc_max_frame_size";
+  public static final String RPC_MAX_FRAME_SIZE_DESC =
+      "The max frame size of RPC, default is 536870912 bytes.(optional)";
+
   public static final String DATA_TYPE_ARGS = "dt";
   public static final String DATA_TYPE_NAME = "datatype";
   public static final String DATA_TYPE_DESC =
@@ -228,6 +245,8 @@ public class Constants {
       "The target database %s does not exist";
   public static final String TARGET_TABLE_NOT_EXIST_MSG =
       "There are no tables or the target table %s does not exist";
+  public static final String TARGET_TABLE_EMPTY_MSG =
+      "There are no tables to export. Please check if the tables in the target database exist and if you have permission to access them.";
 
   public static final String[] TIME_FORMAT =
       new String[] {"default", "long", "number", "timestamp"};
@@ -285,7 +304,6 @@ public class Constants {
   public static final String MODE = "snapshot";
   public static final boolean AUTO_COMMIT = false;
   public static final String TABLE_MODEL = "table";
-  public static final long AUTO_COMMIT_INTERVAL = 5000;
   public static final long POLL_MESSAGE_TIMEOUT = 10000;
   public static final String TOPIC_NAME_PREFIX = "topic_";
   public static final String GROUP_NAME_PREFIX = "group_";
@@ -299,9 +317,13 @@ public class Constants {
   public static final String EXPORT_SCHEMA_TABLES_SELECT =
       "select * from information_schema.tables where database = '%s'";
   public static final String EXPORT_SCHEMA_TABLES_SHOW = "show tables details from %s";
+  public static final String EXPORT_SCHEMA_TABLES_SHOW_DATABASES = "show databases";
   public static final String EXPORT_SCHEMA_COLUMNS_SELECT =
       "select * from information_schema.columns where database like '%s' and table_name like '%s'";
   public static final String EXPORT_SCHEMA_COLUMNS_DESC = "desc %s.%s details";
+  public static final String SHOW_CREATE_TABLE = "SHOW CREATE TABLE %s.%s";
+  public static final String DROP_TABLE_IF_EXIST = "DROP TABLE IF EXISTS %s";
+  public static final String PROCESSED_PROGRESS = "\rProcessed %d rows";
 
   // import constants
   public static final String IMPORT_SCHEMA_CLI_PREFIX = "ImportSchema";
@@ -378,4 +400,8 @@ public class Constants {
       "Lines per failed file,only takes effect and required when sql_dialect is table .(option)";
   public static final String IMPORT_COMPLETELY = "Import completely!";
   public static final int BATCH_POINT_SIZE = 10000;
+
+  public static final String IMPORT_INIT_MEET_ERROR_MSG = "Meet error when init import because ";
+  public static final String REQUIRED_ARGS_ERROR_MSG =
+      "Invalid args: Required values for option '%s' not provided";
 }

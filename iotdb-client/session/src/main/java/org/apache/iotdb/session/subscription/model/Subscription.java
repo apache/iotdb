@@ -21,15 +21,24 @@ package org.apache.iotdb.session.subscription.model;
 
 public class Subscription {
 
+  private final String subscriptionId;
   private final String topicName;
   private final String consumerGroupId;
   private final String consumerIds;
 
   public Subscription(
-      final String topicName, final String consumerGroupId, final String consumerIds) {
+      final String subscriptionId,
+      final String topicName,
+      final String consumerGroupId,
+      final String consumerIds) {
+    this.subscriptionId = subscriptionId;
     this.topicName = topicName;
     this.consumerGroupId = consumerGroupId;
     this.consumerIds = consumerIds;
+  }
+
+  public String getSubscriptionId() {
+    return subscriptionId;
   }
 
   public String getTopicName() {
@@ -46,7 +55,9 @@ public class Subscription {
 
   @Override
   public String toString() {
-    return "Subscription{topicName="
+    return "Subscription{subscriptionId="
+        + subscriptionId
+        + ", topicName="
         + topicName
         + ", consumerGroupId="
         + consumerGroupId

@@ -36,12 +36,21 @@ services:
       - dn_schema_region_consensus_port=10750
       - dn_data_region_consensus_port=10760
       - dn_seed_config_node=iotdb-service:10710
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
+      - CONFIGNODE_JMX_OPTS=-Xms1G -Xmx1G -XX:MaxDirectMemorySize=256M
     volumes:
         - ./data:/iotdb/data
         - ./logs:/iotdb/logs
     networks:
       iotdb:
         ipv4_address: 172.18.0.6
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
 networks:
   iotdb:

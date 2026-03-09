@@ -74,8 +74,7 @@ public class CorrelatedSubqueryTest {
     *         |  └──TableScanNode
     *         ├──SortNode
     *         │   └──AggregationNode
-    *         |      └──FilterNode
-    *         |         └──TableScanNode
+    *         |      └──TableScanNode
 
     */
     assertPlan(
@@ -95,7 +94,7 @@ public class CorrelatedSubqueryTest {
                                     Collections.emptyList(),
                                     Optional.empty(),
                                     SINGLE,
-                                    filter(filterPredicate, tableScan2)))))));
+                                    tableScan2))))));
 
     // not exists with other filter
     sql =

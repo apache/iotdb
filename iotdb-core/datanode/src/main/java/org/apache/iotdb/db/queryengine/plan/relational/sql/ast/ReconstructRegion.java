@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
 
 public class ReconstructRegion extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(ReconstructRegion.class);
   final int dataNodeId;
   final List<Integer> regionIds;
 
@@ -72,5 +75,13 @@ public class ReconstructRegion extends Statement {
 
   public List<Integer> getRegionIds() {
     return regionIds;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.shallowSizeOf(regionIds);
+    return size;
   }
 }

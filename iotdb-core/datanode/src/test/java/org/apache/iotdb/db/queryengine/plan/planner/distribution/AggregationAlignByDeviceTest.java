@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.analyze.Analysis;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationMergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.HorizontallyConcatNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.MergeSortNode;
@@ -38,8 +39,12 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.join.LeftO
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.source.SeriesAggregationScanNode;
+import org.apache.iotdb.db.queryengine.plan.statement.component.SortItem;
 
+import com.google.common.collect.ImmutableList;
 import org.junit.Test;
+
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -427,5 +432,57 @@ public class AggregationAlignByDeviceTest {
     assertTrue(firstFiTopNode.getChildren().get(0) instanceof ProjectNode);
     assertTrue(
         firstFiTopNode.getChildren().get(0).getChildren().get(0) instanceof HorizontallyConcatNode);
+  }
+
+  @Test
+  public void crossRegionTest() {
+    // one aggregation measurement, two devices
+    sql = "select last_value(s1),last_value(s2)from root.sg.d1 align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertTrue(firstFiRoot instanceof AggregationMergeSortNode);
+    assertTrue(firstFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    if (firstFiRoot.getChildren().get(0).getChildren().get(0) instanceof ProjectNode) {
+      assertEquals(
+          firstFiRoot.getChildren().get(0).getChildren().get(0).getOutputColumnNames(),
+          ImmutableList.of(
+              "last_value(root.sg.d1.s1)",
+              "max_time(root.sg.d1.s1)",
+              "last_value(root.sg.d1.s2)",
+              "max_time(root.sg.d1.s2)"));
+    }
+
+    secondFiRoot = plan.getInstances().get(1).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertTrue(secondFiRoot instanceof DeviceViewNode);
+    if (secondFiRoot.getChildren().get(0) instanceof ProjectNode) {
+      assertEquals(
+          firstFiRoot.getChildren().get(0).getChildren().get(0).getOutputColumnNames(),
+          ImmutableList.of(
+              "last_value(root.sg.d1.s1)",
+              "max_time(root.sg.d1.s1)",
+              "last_value(root.sg.d1.s2)",
+              "max_time(root.sg.d1.s2)"));
+    }
+
+    // order by time
+    sql = "select last_value(s1),last_value(s2)from root.sg.d1 order by time align by device";
+    analysis = Util.analyze(sql, context);
+    logicalPlanNode = Util.genLogicalPlan(analysis, context);
+    planner = new DistributionPlanner(analysis, new LogicalQueryPlan(context, logicalPlanNode));
+    plan = planner.planFragments();
+    assertEquals(2, plan.getInstances().size());
+
+    firstFiRoot = plan.getInstances().get(0).getFragment().getPlanNodeTree().getChildren().get(0);
+    assertTrue(firstFiRoot instanceof AggregationMergeSortNode);
+    assertTrue(firstFiRoot.getChildren().get(0) instanceof DeviceViewNode);
+    List<SortItem> sortItemList =
+        ((AggregationMergeSortNode) firstFiRoot).getMergeOrderParameter().getSortItemList();
+    assertEquals(sortItemList.get(0).getSortKey().toLowerCase(), "device");
+    assertEquals(sortItemList.get(1).getSortKey().toLowerCase(), "time");
   }
 }

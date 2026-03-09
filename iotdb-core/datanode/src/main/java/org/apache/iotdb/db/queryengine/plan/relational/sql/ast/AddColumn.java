@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -27,38 +29,30 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AddColumn extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AddColumn.class);
 
   private final QualifiedName tableName;
   private final ColumnDefinition column;
 
   private final boolean tableIfExists;
   private final boolean columnIfNotExists;
-
-  public AddColumn(
-      final QualifiedName tableName,
-      final ColumnDefinition column,
-      final boolean tableIfExists,
-      final boolean columnIfNotExists) {
-    super(null);
-
-    this.tableName = requireNonNull(tableName, "tableName is null");
-    this.column = requireNonNull(column, "column is null");
-    this.tableIfExists = tableIfExists;
-    this.columnIfNotExists = columnIfNotExists;
-  }
+  private final boolean view;
 
   public AddColumn(
       final NodeLocation location,
       final QualifiedName tableName,
       final ColumnDefinition column,
       final boolean tableIfExists,
-      final boolean columnIfNotExists) {
+      final boolean columnIfNotExists,
+      final boolean view) {
     super(requireNonNull(location, "location is null"));
 
     this.tableName = requireNonNull(tableName, "tableName is null");
     this.column = requireNonNull(column, "column is null");
     this.tableIfExists = tableIfExists;
     this.columnIfNotExists = columnIfNotExists;
+    this.view = view;
   }
 
   public QualifiedName getTableName() {
@@ -77,6 +71,10 @@ public class AddColumn extends Statement {
     return columnIfNotExists;
   }
 
+  public boolean isView() {
+    return view;
+  }
+
   @Override
   public <R, C> R accept(final AstVisitor<R, C> visitor, final C context) {
     return visitor.visitAddColumn(this, context);
@@ -89,7 +87,7 @@ public class AddColumn extends Statement {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists);
+    return Objects.hash(tableName, column, tableIfExists, columnIfNotExists, view);
   }
 
   @Override
@@ -104,7 +102,8 @@ public class AddColumn extends Statement {
     return tableIfExists == that.tableIfExists
         && columnIfNotExists == that.columnIfNotExists
         && Objects.equals(tableName, that.tableName)
-        && Objects.equals(column, that.column);
+        && Objects.equals(column, that.column)
+        && view == that.view;
   }
 
   @Override
@@ -114,6 +113,16 @@ public class AddColumn extends Statement {
         .add("column", column)
         .add("tableIfExists", tableIfExists)
         .add("columnIfNotExists", columnIfNotExists)
+        .add("view", view)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += tableName == null ? 0L : tableName.ramBytesUsed();
+    size += column == null ? 0L : column.ramBytesUsed();
+    return size;
   }
 }

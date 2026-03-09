@@ -22,10 +22,11 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
+import org.apache.iotdb.commons.exception.QuerySchemaFetchFailedException;
+import org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
-import org.apache.iotdb.db.exception.ainode.ModelException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
@@ -69,7 +71,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(ERROR_OPERATION_LOG, statusCode, operation, e);
     }
     if (e instanceof SemanticException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       if (e.getCause() instanceof IoTDBException) {
         return RpcUtils.getStatus(
             ((IoTDBException) e.getCause()).getErrorCode(), rootCause.getMessage());
@@ -84,13 +86,6 @@ public class ErrorHandlingUtils {
   public static TSStatus onNpeOrUnexpectedException(
       Exception e, OperationType operation, TSStatusCode statusCode) {
     return onNpeOrUnexpectedException(e, operation.getName(), statusCode);
-  }
-
-  public static Throwable getRootCause(Throwable e) {
-    while (e.getCause() != null) {
-      e = e.getCause();
-    }
-    return e;
   }
 
   public static TSStatus onQueryException(Exception e, String operation, TSStatusCode statusCode) {
@@ -115,7 +110,15 @@ public class ErrorHandlingUtils {
             || status.getCode() == TSStatusCode.COLUMN_ALREADY_EXISTS.getStatusCode()
             || status.getCode() == TSStatusCode.UDF_LOAD_CLASS_ERROR.getStatusCode()
             || status.getCode() == TSStatusCode.PLAN_FAILED_NETWORK_PARTITION.getStatusCode()
-            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()) {
+            || status.getCode() == TSStatusCode.SYNC_CONNECTION_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.NO_AVAILABLE_REPLICA.getStatusCode()
+            || status.getCode() == TSStatusCode.CANNOT_FETCH_FI_STATE.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode()
+            || status.getCode() == TSStatusCode.EXECUTE_UDF_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.TEMPLATE_INCOMPATIBLE.getStatusCode()
+            || status.getCode() == TSStatusCode.PATH_ALREADY_EXIST.getStatusCode()
+            || status.getCode() == TSStatusCode.PIPE_NOT_EXIST_ERROR.getStatusCode()
+            || status.getCode() == TSStatusCode.QUERY_TIMEOUT.getStatusCode()) {
           LOGGER.info(message);
         } else {
           LOGGER.warn(message, e);
@@ -137,7 +140,7 @@ public class ErrorHandlingUtils {
   }
 
   private static TSStatus tryCatchQueryException(Exception e) {
-    Throwable rootCause = getRootCause(e);
+    Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_ENGINE_NOT_READY, rootCause.getMessage());
@@ -156,10 +159,15 @@ public class ErrorHandlingUtils {
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + rootCause.getMessage());
     } else if (t instanceof RootFIPlacementException
-        || t instanceof ReplicaSetUnreachableException) {
+        || t instanceof ReplicaSetUnreachableException
+        || (t instanceof QuerySchemaFetchFailedException
+            && ((QuerySchemaFetchFailedException) t).getErrorCode()
+                != TSStatusCode.QUERY_EXECUTION_MEMORY_NOT_ENOUGH.getStatusCode())) {
       return RpcUtils.getStatus(TSStatusCode.PLAN_FAILED_NETWORK_PARTITION, rootCause.getMessage());
     } else if (t instanceof IoTDBException) {
-      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
+      return Objects.nonNull(((IoTDBException) t).getStatus())
+          ? ((IoTDBException) t).getStatus()
+          : RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), rootCause.getMessage());
     } else if (t instanceof TsFileRuntimeException) {
       return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, rootCause.getMessage());
     } else if (t instanceof SemanticException) {
@@ -169,9 +177,9 @@ public class ErrorHandlingUtils {
       }
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     } else if (t instanceof IoTDBRuntimeException) {
-      return RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
-    } else if (t instanceof ModelException) {
-      return RpcUtils.getStatus(((ModelException) t).getStatusCode(), rootCause.getMessage());
+      return Objects.nonNull(((IoTDBRuntimeException) t).getStatus())
+          ? ((IoTDBRuntimeException) t).getStatus()
+          : RpcUtils.getStatus(((IoTDBRuntimeException) t).getErrorCode(), t.getMessage());
     }
 
     if (t instanceof RuntimeException && rootCause instanceof IoTDBException) {
@@ -209,7 +217,7 @@ public class ErrorHandlingUtils {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(batchException.getFailingStatus()));
     } else if (e instanceof IoTDBException) {
-      Throwable rootCause = getRootCause(e);
+      Throwable rootCause = ErrorHandlingCommonUtils.getRootCause(e);
       // ignore logging sg not ready exception
       if (!(rootCause instanceof StorageGroupNotReadyException)) {
         LOGGER.warn(message, e);

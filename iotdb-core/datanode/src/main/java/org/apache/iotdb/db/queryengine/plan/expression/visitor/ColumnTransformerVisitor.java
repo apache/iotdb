@@ -54,6 +54,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareL
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.CompareNonEqualColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicAndColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LogicOrColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongDivisionLongColumnTransformer;
+import org.apache.iotdb.db.queryengine.transformation.dag.column.binary.LongModulusLongColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.IdentityColumnTransformer;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumnTransformer;
@@ -84,6 +86,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.expression.ExpressionType.BETWEEN;
 import static org.apache.tsfile.enums.TSDataType.UNKNOWN;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
 public class ColumnTransformerVisitor
@@ -474,9 +477,17 @@ public class ColumnTransformerVisitor
         return new ArithmeticMultiplicationColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case DIVISION:
+        if (returnType == INT64) {
+          return new LongDivisionLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticDivisionColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case MODULO:
+        if (returnType == INT64) {
+          return new LongModulusLongColumnTransformer(
+              returnType, leftColumnTransformer, rightColumnTransformer);
+        }
         return new ArithmeticModuloColumnTransformer(
             returnType, leftColumnTransformer, rightColumnTransformer);
       case EQUAL_TO:

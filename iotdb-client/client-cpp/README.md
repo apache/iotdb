@@ -129,7 +129,7 @@ mentioned above, the header file and the dynamic library:
     unzip client-cpp-${project.version}-cpp-${os}.zip
 
 3. Write C++ code to call the operation interface of the cpp client to operate IoTDB,
-    for detail interface information, please refer to the link: https://iotdb.apache.org/zh/UserGuide/Master/API/Programming-Cpp-Native-API.html
+    for detail interface information, please refer to the link: https://iotdb.apache.org/UserGuide/latest/API/Programming-Cpp-Native-API.html
 
    E.g:
     #include "include/Session.h"

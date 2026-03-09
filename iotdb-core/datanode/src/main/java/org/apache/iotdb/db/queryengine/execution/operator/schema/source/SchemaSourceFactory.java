@@ -23,11 +23,13 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
 import org.apache.iotdb.commons.schema.filter.SchemaFilter;
+import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.INodeSchemaInfo;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.ITimeSeriesSchemaInfo;
-import org.apache.iotdb.db.schemaengine.template.Template;
 
 import java.util.List;
 import java.util.Map;
@@ -46,7 +48,7 @@ public class SchemaSourceFactory {
       Map<Integer, Template> templateMap,
       PathPatternTree scope) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope);
+        pathPattern, isPrefixMatch, 0, 0, schemaFilter, templateMap, false, scope, null);
   }
 
   // show time series
@@ -57,9 +59,18 @@ public class SchemaSourceFactory {
       long offset,
       SchemaFilter schemaFilter,
       Map<Integer, Template> templateMap,
-      PathPatternTree scope) {
+      PathPatternTree scope,
+      Ordering timeseriesOrdering) {
     return new TimeSeriesSchemaSource(
-        pathPattern, isPrefixMatch, limit, offset, schemaFilter, templateMap, true, scope);
+        pathPattern,
+        isPrefixMatch,
+        limit,
+        offset,
+        schemaFilter,
+        templateMap,
+        true,
+        scope,
+        timeseriesOrdering);
   }
 
   // count device
@@ -111,12 +122,19 @@ public class SchemaSourceFactory {
 
   public static ISchemaSource<IDeviceSchemaInfo> getTableDeviceQuerySource(
       final String database,
-      final String tableName,
+      final TsTable table,
       final List<List<SchemaFilter>> idDeterminedFilterList,
       final List<ColumnHeader> columnHeaderList,
       final List<TsTableColumnSchema> columnSchemaList,
-      final DevicePredicateFilter filter) {
+      final DevicePredicateFilter filter,
+      final boolean needAligned) {
     return new TableDeviceQuerySource(
-        database, tableName, idDeterminedFilterList, columnHeaderList, columnSchemaList, filter);
+        database,
+        table,
+        idDeterminedFilterList,
+        columnHeaderList,
+        columnSchemaList,
+        filter,
+        needAligned);
   }
 }

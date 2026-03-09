@@ -119,7 +119,8 @@ class SimpleConsensus implements IConsensus {
     SimpleConsensusServerImpl impl =
         Optional.ofNullable(stateMachineMap.get(groupId))
             .orElseThrow(() -> new ConsensusGroupNotExistException(groupId));
-    if (impl.isReadOnly()) {
+    // Schema Write when readOnly is handled at RegionWriteExecutor
+    if (impl.isReadOnly() && groupId instanceof DataRegionId) {
       return StatusUtils.getStatus(TSStatusCode.SYSTEM_READ_ONLY);
     } else {
       TSStatus status;

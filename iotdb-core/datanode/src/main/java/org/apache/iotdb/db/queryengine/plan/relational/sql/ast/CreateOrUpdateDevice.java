@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import javax.annotation.Nonnull;
 
 import java.util.Arrays;
@@ -31,6 +33,8 @@ import java.util.stream.IntStream;
 import static org.apache.iotdb.db.storageengine.dataregion.memtable.DeviceIDFactory.truncateTailingNull;
 
 public class CreateOrUpdateDevice extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateOrUpdateDevice.class);
 
   private final String database;
 
@@ -136,5 +140,17 @@ public class CreateOrUpdateDevice extends Statement {
         + ", attributeValueList="
         + attributeValueList
         + '}';
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += RamUsageEstimator.sizeOf(database);
+    size += RamUsageEstimator.sizeOf(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(deviceIdList);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(attributeNameList);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfObjectArrayList(attributeValueList);
+    return size;
   }
 }

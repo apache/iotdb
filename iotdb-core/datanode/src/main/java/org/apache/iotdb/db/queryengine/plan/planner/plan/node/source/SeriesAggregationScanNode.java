@@ -105,6 +105,7 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
+  // used by clone & deserialize
   public SeriesAggregationScanNode(
       PlanNodeId id,
       MeasurementPath seriesPath,
@@ -114,14 +115,12 @@ public class SeriesAggregationScanNode extends SeriesAggregationSourceNode {
       @Nullable Expression pushDownPredicate,
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet) {
-    this(
-        id,
-        seriesPath,
-        aggregationDescriptorList,
-        scanOrder,
-        pushDownPredicate,
-        groupByTimeParameter,
-        dataRegionReplicaSet);
+    super(id, aggregationDescriptorList);
+    this.seriesPath = seriesPath;
+    this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.pushDownPredicate = pushDownPredicate;
+    this.regionReplicaSet = dataRegionReplicaSet;
     setOutputEndTime(outputEndTime);
   }
 

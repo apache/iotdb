@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.commons.subscription.meta.topic;
 
-import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.Visibility;
+import org.apache.iotdb.commons.pipe.datastructure.visibility.VisibilityUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.rpc.subscription.config.TopicConfig;
 
@@ -181,14 +182,16 @@ public class TopicMeta {
 
   /////////////////////////////// utilities ///////////////////////////////
 
-  public Map<String, String> generateExtractorAttributes() {
+  public Map<String, String> generateExtractorAttributes(final String username) {
     final Map<String, String> extractorAttributes = new HashMap<>();
     // disable meta sync
     extractorAttributes.put("source", "iotdb-source");
     extractorAttributes.put("inclusion", "data.insert");
     extractorAttributes.put("inclusion.exclusion", "data.delete");
-    // Currently use root in subscription pipes
-    extractorAttributes.put("username", CommonDescriptor.getInstance().getConfig().getAdminName());
+    // user
+    extractorAttributes.put("username", username);
+    // TODO: currently set skipif to no-privileges
+    extractorAttributes.put("skipif", "no-privileges");
     // sql dialect
     extractorAttributes.putAll(config.getAttributeWithSqlDialect());
     if (config.isTableTopic()) {
@@ -218,12 +221,19 @@ public class TopicMeta {
   public Map<String, String> generateConnectorAttributes(final String consumerGroupId) {
     final Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put("sink", "subscription-sink");
-    connectorAttributes.put(PipeConnectorConstant.SINK_TOPIC_KEY, topicName);
-    connectorAttributes.put(PipeConnectorConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
+    connectorAttributes.put(PipeSinkConstant.SINK_TOPIC_KEY, topicName);
+    connectorAttributes.put(PipeSinkConstant.SINK_CONSUMER_GROUP_KEY, consumerGroupId);
     connectorAttributes.putAll(config.getAttributesWithSinkFormat());
     // backdoor configs
     connectorAttributes.putAll(config.getAttributesWithSinkPrefix());
     return connectorAttributes;
+  }
+
+  /////////////////////////////////  Tree & Table Isolation  /////////////////////////////////
+
+  public boolean visibleUnder(final boolean isTableModel) {
+    final Visibility visibility = VisibilityUtils.calculateFromTopicConfig(config);
+    return VisibilityUtils.isCompatible(visibility, isTableModel);
   }
 
   ////////////////////////////////////// Object ////////////////////////////////

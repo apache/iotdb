@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,9 +31,12 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.util.ExpressionFormatter.formatSortItems;
 
 public class TableFunctionTableArgument extends Node {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(TableFunctionTableArgument.class);
+
   private final Relation table;
   private final Optional<List<Expression>> partitionBy; // it is allowed to partition by empty list
-  private final Optional<OrderBy> orderBy;
+  private Optional<OrderBy> orderBy;
 
   public TableFunctionTableArgument(
       NodeLocation location,
@@ -55,6 +59,10 @@ public class TableFunctionTableArgument extends Node {
 
   public Optional<OrderBy> getOrderBy() {
     return orderBy;
+  }
+
+  public void updateOrderBy(OrderBy orderBy) {
+    this.orderBy = Optional.of(orderBy);
   }
 
   @Override
@@ -115,5 +123,16 @@ public class TableFunctionTableArgument extends Node {
   @Override
   public boolean shallowEquals(Node o) {
     return sameClass(this, o);
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += 2 * AstMemoryEstimationHelper.OPTIONAL_INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(partitionBy.orElse(null));
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(orderBy.orElse(null));
+    return size;
   }
 }

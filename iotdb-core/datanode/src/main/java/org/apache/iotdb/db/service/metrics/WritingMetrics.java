@@ -42,6 +42,7 @@ import org.apache.iotdb.metrics.utils.MetricType;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class WritingMetrics implements IMetricSet {
   private static final WritingMetrics INSTANCE = new WritingMetrics();
@@ -184,11 +185,13 @@ public class WritingMetrics implements IMetricSet {
   public static final String READ_WAL_BUFFER_COST_NS = "read_wal_buffer_cost";
   public static final String WRITE_WAL_BUFFER_COST_NS = "write_wal_buffer_cost";
   public static final String ENTRIES_COUNT = "entries_count";
+  public static final String WAL_ENTRY_NUM_FOR_ONE_TSFILE = "wal_entry_num_for_one_tsfile";
   public static final String WAL_QUEUE_CURRENT_MEM_COST = "wal_queue_current_mem_cost";
   public static final String WAL_QUEUE_MAX_MEM_COST = "wal_queue_max_mem_cost";
 
   private Histogram usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+  private Histogram walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram serializedWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram wroteWALBufferSizeHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   private Histogram walCompressCostHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
@@ -215,6 +218,12 @@ public class WritingMetrics implements IMetricSet {
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             ENTRIES_COUNT);
+    walEntryNumForOneTsFileHistogram =
+        metricService.getOrCreateHistogram(
+            Metric.WAL_BUFFER.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            WAL_ENTRY_NUM_FOR_ONE_TSFILE);
 
     serializedWALBufferSizeHistogram =
         metricService.getOrCreateHistogram(
@@ -279,6 +288,7 @@ public class WritingMetrics implements IMetricSet {
         MetricType.AUTO_GAUGE, Metric.WAL_NODE_NUM.toString(), Tag.NAME.toString(), WAL_NODES_NUM);
     usedRatioHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     entriesCountHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+    walEntryNumForOneTsFileHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
     Arrays.asList(
             USED_RATIO,
             ENTRIES_COUNT,
@@ -447,6 +457,8 @@ public class WritingMetrics implements IMetricSet {
   private Counter manualFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
+  private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
     List<DataRegionId> allDataRegionIds = StorageEngine.getInstance().getAllDataRegionIds();
@@ -508,7 +520,8 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {
-    DataRegionId dataRegionId = new DataRegionId(Integer.parseInt(dataRegion.getDataRegionId()));
+    DataRegionId dataRegionId =
+        new DataRegionId(Integer.parseInt(dataRegion.getDataRegionIdString()));
     MetricService.getInstance()
         .createAutoGauge(
             Metric.DATA_REGION_MEM_COST.toString(),
@@ -563,13 +576,7 @@ public class WritingMetrics implements IMetricSet {
   }
 
   public void createFlushingMemTableStatusMetrics(DataRegionId dataRegionId) {
-    Arrays.asList(
-            MEM_TABLE_SIZE,
-            SERIES_NUM,
-            POINTS_NUM,
-            AVG_SERIES_POINT_NUM,
-            COMPRESSION_RATIO,
-            FLUSH_TSFILE_SIZE)
+    Arrays.asList(MEM_TABLE_SIZE, SERIES_NUM, POINTS_NUM, COMPRESSION_RATIO, FLUSH_TSFILE_SIZE)
         .forEach(
             name ->
                 MetricService.getInstance()
@@ -580,6 +587,15 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram =
+        MetricService.getInstance()
+            .getOrCreateHistogram(
+                Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
+                MetricLevel.IMPORTANT,
+                Tag.NAME.toString(),
+                AVG_SERIES_POINT_NUM,
+                Tag.REGION.toString(),
+                dataRegionId.toString());
   }
 
   public Counter createWalFlushMemTableCounterMetrics() {
@@ -700,6 +716,7 @@ public class WritingMetrics implements IMetricSet {
                         name,
                         Tag.REGION.toString(),
                         dataRegionId.toString()));
+    avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
   }
 
   public void recordWALNodeEffectiveInfoRatio(String walNodeId, double ratio) {
@@ -785,15 +802,7 @@ public class WritingMetrics implements IMetricSet {
             POINTS_NUM,
             Tag.REGION.toString(),
             dataRegionId.toString());
-    MetricService.getInstance()
-        .histogram(
-            avgSeriesNum,
-            Metric.FLUSHING_MEM_TABLE_STATUS.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            AVG_SERIES_POINT_NUM,
-            Tag.REGION.toString(),
-            dataRegionId.toString());
+    avgPointHistogram.update(avgSeriesNum);
   }
 
   public void recordFlushTsFileSize(String storageGroup, long size) {
@@ -813,6 +822,9 @@ public class WritingMetrics implements IMetricSet {
   }
 
   private DataRegionId getDataRegionIdFromStorageGroupStr(String storageGroup) {
+    if (Objects.isNull(storageGroup)) {
+      return null;
+    }
     int idx = storageGroup.lastIndexOf('-');
     if (idx == -1) {
       return null;
@@ -916,6 +928,10 @@ public class WritingMetrics implements IMetricSet {
     entriesCountHistogram.update(count);
   }
 
+  public void recordWALEntryNumForOneTsFile(long count) {
+    walEntryNumForOneTsFileHistogram.update(count);
+  }
+
   public void recordWALQueueMaxMemorySize(long size) {
     walQueueMaxMemSizeGauge.set(size);
   }
@@ -985,5 +1001,9 @@ public class WritingMetrics implements IMetricSet {
 
   public static WritingMetrics getInstance() {
     return INSTANCE;
+  }
+
+  public Histogram getAvgPointHistogram() {
+    return avgPointHistogram;
   }
 }

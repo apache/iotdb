@@ -24,6 +24,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.UrlUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.encoding.encoder.Encoder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Binary;
@@ -34,7 +35,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -44,6 +49,7 @@ import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
 
 public class SessionUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SessionUtils.class);
   private static final byte TYPE_NULL = -2;
   private static final int EMPTY_DATE_INT = 10000101;
 
@@ -129,6 +135,7 @@ public class SessionUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         valueOccupation += rowSize * 4;
         Binary[] binaries = (Binary[]) values[columnIndex];
         for (int rowIndex = 0; rowIndex < rowSize; rowIndex++) {
@@ -145,14 +152,15 @@ public class SessionUtils {
     return valueOccupation;
   }
 
-  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
+  public static ByteBuffer getValueBuffer(
+      List<TSDataType> types, List<Object> values, List<String> measurements)
       throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
-    SessionUtils.putValues(types, values, buffer);
+    SessionUtils.putValues(types, values, buffer, measurements);
     return buffer;
   }
 
-  private static int calculateLength(List<TSDataType> types, List<Object> values)
+  public static int calculateLength(List<TSDataType> types, List<? extends Object> values)
       throws IoTDBConnectionException {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
@@ -178,6 +186,7 @@ public class SessionUtils {
           break;
         case TEXT:
         case STRING:
+        case OBJECT:
           res += Integer.BYTES;
           if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;
@@ -204,53 +213,63 @@ public class SessionUtils {
    * @param buffer buffer to insert
    * @throws IoTDBConnectionException
    */
-  private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+  public static void putValues(
+      List<TSDataType> types,
+      List<? extends Object> values,
+      ByteBuffer buffer,
+      List<String> measurements)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
-      if (values.get(i) == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
-        continue;
-      }
-      ReadWriteIOUtils.write(types.get(i), buffer);
-      switch (types.get(i)) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
-          break;
-        case DATE:
-          ReadWriteIOUtils.write(
-              DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
-          break;
-        case INT64:
-        case TIMESTAMP:
-          ReadWriteIOUtils.write((Long) values.get(i), buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values.get(i), buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values.get(i), buffer);
-          break;
-        case TEXT:
-        case STRING:
-          byte[] bytes;
-          if (values.get(i) instanceof Binary) {
+      try {
+        if (values.get(i) == null) {
+          ReadWriteIOUtils.write(TYPE_NULL, buffer);
+          continue;
+        }
+        ReadWriteIOUtils.write(types.get(i), buffer);
+        switch (types.get(i)) {
+          case BOOLEAN:
+            ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
+            break;
+          case INT32:
+            ReadWriteIOUtils.write((Integer) values.get(i), buffer);
+            break;
+          case DATE:
+            ReadWriteIOUtils.write(
+                DateUtils.parseDateExpressionToInt((LocalDate) values.get(i)), buffer);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            ReadWriteIOUtils.write((Long) values.get(i), buffer);
+            break;
+          case FLOAT:
+            ReadWriteIOUtils.write((Float) values.get(i), buffer);
+            break;
+          case DOUBLE:
+            ReadWriteIOUtils.write((Double) values.get(i), buffer);
+            break;
+          case TEXT:
+          case STRING:
+            byte[] bytes;
+            if (values.get(i) instanceof Binary) {
+              bytes = ((Binary) values.get(i)).getValues();
+            } else {
+              bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+            }
+            ReadWriteIOUtils.write(bytes.length, buffer);
+            buffer.put(bytes);
+            break;
+          case BLOB:
             bytes = ((Binary) values.get(i)).getValues();
-          } else {
-            bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-          }
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        case BLOB:
-          bytes = ((Binary) values.get(i)).getValues();
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+            ReadWriteIOUtils.write(bytes.length, buffer);
+            buffer.put(bytes);
+            break;
+          default:
+            throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+        }
+      } catch (Throwable e) {
+        LOGGER.error(
+            "Cannot put values for measurement {}, type={}", measurements.get(i), types.get(i), e);
+        throw e;
       }
     }
     buffer.flip();
@@ -319,6 +338,7 @@ public class SessionUtils {
       case TEXT:
       case STRING:
       case BLOB:
+      case OBJECT:
         Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
         for (int index = 0; index < tablet.getRowSize(); index++) {
           if (!tablet.isNull(index, i) && binaryValues[index] != null) {
@@ -343,6 +363,100 @@ public class SessionUtils {
       default:
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
+    }
+  }
+
+  @SuppressWarnings({"java:S3776", "java:S6541"})
+  public static void encodeValue(
+      TSDataType dataType,
+      Tablet tablet,
+      int i,
+      Encoder encoder,
+      ByteArrayOutputStream outputStream) {
+
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) tablet.getValues()[i];
+        int lastNonNullIntValue = 0;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullIntValue = intValues[index];
+          }
+          encoder.encode(lastNonNullIntValue, outputStream);
+        }
+        break;
+      case INT64:
+      case TIMESTAMP:
+        long[] longValues = (long[]) tablet.getValues()[i];
+        long lastNonNullLongValue = 0;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullLongValue = longValues[index];
+          }
+          encoder.encode(lastNonNullLongValue, outputStream);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) tablet.getValues()[i];
+        float lastNonNullFloatValue = 0.0f;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullFloatValue = floatValues[index];
+          }
+          encoder.encode(lastNonNullFloatValue, outputStream);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) tablet.getValues()[i];
+        double lastNonNullDoubleValue = 0.0;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullDoubleValue = doubleValues[index];
+          }
+          encoder.encode(lastNonNullDoubleValue, outputStream);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) tablet.getValues()[i];
+        boolean lastNonNullBooleanValue = false;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullBooleanValue = boolValues[index];
+          }
+          encoder.encode(lastNonNullBooleanValue, outputStream);
+        }
+        break;
+      case TEXT:
+      case STRING:
+      case BLOB:
+        Binary[] binaryValues = (Binary[]) tablet.getValues()[i];
+        Binary lastNonNullBinaryValue = Binary.EMPTY_VALUE;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i) && binaryValues[index] != null) {
+            lastNonNullBinaryValue = binaryValues[index];
+          }
+          encoder.encode(lastNonNullBinaryValue, outputStream);
+        }
+        break;
+      case DATE:
+        LocalDate[] dateValues = (LocalDate[]) tablet.getValues()[i];
+        int lastNonNullDateValue = EMPTY_DATE_INT;
+        for (int index = 0; index < tablet.getRowSize(); index++) {
+          if (!tablet.isNull(index, i)) {
+            lastNonNullDateValue = DateUtils.parseDateExpressionToInt(dateValues[index]);
+          }
+          // use the previous value as the placeholder of nulls to increase encoding performance
+          encoder.encode(lastNonNullDateValue, outputStream);
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+    try {
+      encoder.flush(outputStream);
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
     }
   }
 

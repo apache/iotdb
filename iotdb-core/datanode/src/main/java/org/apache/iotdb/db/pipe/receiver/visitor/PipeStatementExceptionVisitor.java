@@ -39,6 +39,8 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.Activate
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.BatchActivateTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.Objects;
+
 /**
  * This visitor translated some exceptions to pipe related {@link TSStatus} to help sender classify
  * them and apply different error handling tactics. Please DO NOT modify the exceptions returned by
@@ -130,7 +132,11 @@ public class PipeStatementExceptionVisitor extends StatementVisitor<TSStatus, Ex
   private TSStatus visitGeneralActivateTemplate(
       final Statement activateTemplateStatement, final Exception context) {
     if (context instanceof MetadataException || context instanceof StatementAnalyzeException) {
-      return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+      return (Objects.nonNull(context.getMessage())
+                  && context.getMessage().contains("has not been set any template")
+              ? new TSStatus(
+                  TSStatusCode.PIPE_RECEIVER_PARALLEL_OR_USER_CONFLICT_EXCEPTION.getStatusCode())
+              : new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode()))
           .setMessage(context.getMessage());
     } else if (isAutoCreateConflict(context)) {
       return new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())

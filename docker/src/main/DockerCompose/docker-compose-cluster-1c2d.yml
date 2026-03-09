@@ -27,12 +27,20 @@ services:
       - cn_internal_port=10710
       - cn_consensus_port=10720
       - cn_seed_config_node=iotdb-confignode:10710
+      - CONFIGNODE_JMX_OPTS=-Xms1G -Xmx1G -XX:MaxDirectMemorySize=256M
     volumes:
         - ./data/confignode:/iotdb/data
         - ./logs/confignode:/iotdb/logs
     networks:
       iotdb:
         ipv4_address: 172.18.0.2
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
   iotdb-datanode1:
     image: apache/iotdb:1.1.0-datanode
@@ -48,12 +56,20 @@ services:
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
       - dn_data_region_consensus_port=10760
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
     volumes:
       - ./data/datanode1:/iotdb/data/
       - ./logs/datanode1:/iotdb/logs/
     networks:
       iotdb:
         ipv4_address: 172.18.0.3
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
   iotdb-datanode2:
     image: apache/iotdb:1.1.0-datanode
@@ -67,12 +83,20 @@ services:
       - dn_mpp_data_exchange_port=10740
       - dn_schema_region_consensus_port=10750
       - dn_data_region_consensus_port=10760
+      - IOTDB_JMX_OPTS=-Xms4G -Xmx4G -XX:MaxDirectMemorySize=1G
     volumes:
       - ./data/datanode2:/iotdb/data/
       - ./logs/datanode2:/iotdb/logs/
     networks:
       iotdb:
         ipv4_address: 172.18.0.4
+    # Note: Some environments set an extremely high container nofile limit (~2^30 = 1073741824).
+    # This can make the startup step "Checking whether the ports are already occupied..." appear to hang (lsof slow).
+    # If you see that line for a long time, lower the nofile limit by uncommenting below:
+    # ulimits:
+    #   nofile:
+    #     soft: 1048576
+    #     hard: 1048576
 
 networks:
   iotdb:

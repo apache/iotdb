@@ -57,6 +57,18 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   }
 
   @Override
+  public DataNodeConfig setMetricPrometheusReporterUsername(String username) {
+    properties.setProperty("metric_prometheus_reporter_username", username);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setMetricPrometheusReporterPassword(String password) {
+    properties.setProperty("metric_prometheus_reporter_password", password);
+    return this;
+  }
+
+  @Override
   public DataNodeConfig setEnableRestService(boolean enableRestService) {
     properties.setProperty("enable_rest_service", String.valueOf(enableRestService));
     return this;
@@ -93,6 +105,42 @@ public class MppDataNodeConfig extends MppBaseConfig implements DataNodeConfig {
   @Override
   public DataNodeConfig setMqttPayloadFormatter(String mqttPayloadFormatter) {
     setProperty("mqtt_payload_formatter", String.valueOf(mqttPayloadFormatter));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setLoadLastCacheStrategy(String strategyName) {
+    setProperty("last_cache_operation_on_load", strategyName);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setCacheLastValuesForLoad(boolean cacheLastValuesForLoad) {
+    setProperty("cache_last_values_for_load", String.valueOf(cacheLastValuesForLoad));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setWalThrottleSize(long walThrottleSize) {
+    setProperty("wal_throttle_threshold_in_byte", String.valueOf(walThrottleSize));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDeleteWalFilesPeriodInMs(long deleteWalFilesPeriodInMs) {
+    setProperty("delete_wal_files_period_in_ms", String.valueOf(deleteWalFilesPeriodInMs));
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setDataNodeMemoryProportion(String dataNodeMemoryProportion) {
+    setProperty("datanode_memory_proportion", dataNodeMemoryProportion);
+    return this;
+  }
+
+  @Override
+  public DataNodeConfig setQueryCostStatWindow(int queryCostStatWindow) {
+    setProperty("query_cost_stat_window", String.valueOf(queryCostStatWindow));
     return this;
   }
 }

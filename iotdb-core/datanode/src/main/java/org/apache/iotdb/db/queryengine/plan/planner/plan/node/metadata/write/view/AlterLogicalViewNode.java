@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.view;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.commons.schema.view.viewExpression.leaf.TimeSeriesViewOperand;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -39,9 +37,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class AlterLogicalViewNode extends PlanNode {
 
@@ -61,19 +61,33 @@ public class AlterLogicalViewNode extends PlanNode {
     return viewPathToSourceMap;
   }
 
-  // For pipe
-  // TODO: Add auth check for source paths
-  public TSStatus checkPermissionBeforeProcess(final String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
+  public List<PartialPath> getTargetPaths() {
+    return new ArrayList<>(viewPathToSourceMap.keySet());
+  }
 
-    final List<PartialPath> targetPathList = new ArrayList<>(viewPathToSourceMap.keySet());
-    return AuthorityChecker.getTSStatus(
-        AuthorityChecker.checkFullPathListPermission(
-            userName, targetPathList, PrivilegeType.WRITE_SCHEMA),
-        targetPathList,
-        PrivilegeType.WRITE_SCHEMA);
+  public List<PartialPath> getSourcePaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ViewExpression viewExpression : viewPathToSourceMap.values()) {
+      collectAllSourcePaths(viewExpression, authPaths);
+    }
+    return new ArrayList<>(authPaths);
+  }
+
+  private void collectAllSourcePaths(ViewExpression viewExpression, Set<PartialPath> sourcePaths) {
+    if (viewExpression.isLeafOperand()) {
+      if (viewExpression instanceof TimeSeriesViewOperand) {
+        try {
+          sourcePaths.add(
+              new PartialPath(((TimeSeriesViewOperand) viewExpression).getPathString()));
+        } catch (IllegalPathException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    } else {
+      for (ViewExpression child : viewExpression.getChildViewExpressions()) {
+        collectAllSourcePaths(child, sourcePaths);
+      }
+    }
   }
 
   // region Interfaces in WritePlanNode or PlanNode

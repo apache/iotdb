@@ -21,6 +21,8 @@ package org.apache.iotdb.db.consensus;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
@@ -50,14 +52,14 @@ public class SchemaRegionConsensusImpl {
     return SchemaRegionConsensusImplHolder.INSTANCE;
   }
 
-  // TODO: This needs removal of statics ...
   public static void reinitializeStatics() {
     SchemaRegionConsensusImplHolder.reinitializeStatics();
   }
 
   private static class SchemaRegionConsensusImplHolder {
 
-    private static IoTDBConfig CONF;
+    private static final IoTDBConfig CONF = IoTDBDescriptor.getInstance().getConfig();
+    private static final CommonConfig COMMON_CONF = CommonDescriptor.getInstance().getConfig();
     private static IConsensus INSTANCE;
 
     // Make sure both statics are initialized.
@@ -66,7 +68,6 @@ public class SchemaRegionConsensusImpl {
     }
 
     private static void reinitializeStatics() {
-      CONF = IoTDBDescriptor.getInstance().getConfig();
       INSTANCE =
           ConsensusFactory.getConsensusImpl(
                   CONF.getSchemaRegionConsensusProtocolClass(),
@@ -78,6 +79,11 @@ public class SchemaRegionConsensusImpl {
                       .setConsensusGroupType(TConsensusGroupType.SchemaRegion)
                       .setRatisConfig(
                           RatisConfig.newBuilder()
+                              .setUtils(
+                                  RatisConfig.Utils.newBuilder()
+                                      .setTransferLeaderTimeoutMs(
+                                          CONF.getRatisTransferLeaderTimeoutMs())
+                                      .build())
                               .setSnapshot(
                                   RatisConfig.Snapshot.newBuilder()
                                       .setAutoTriggerThreshold(
@@ -103,6 +109,11 @@ public class SchemaRegionConsensusImpl {
                                       .setLeaderOutstandingAppendsMax(
                                           CONF
                                               .getSchemaRatisConsensusGrpcLeaderOutstandingAppendsMax())
+                                      .setEnableSSL(COMMON_CONF.isEnableInternalSSL())
+                                      .setSslKeyStorePath(COMMON_CONF.getKeyStorePath())
+                                      .setSslKeyStorePassword(COMMON_CONF.getKeyStorePwd())
+                                      .setSslTrustStorePath(COMMON_CONF.getTrustStorePath())
+                                      .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                                       .build())
                               .setRpc(
                                   RatisConfig.Rpc.newBuilder()

@@ -23,15 +23,19 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-import org.apache.commons.io.FileUtils;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.utils.FilePathUtils;
+import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -50,10 +54,10 @@ public class CompressionRatio {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  static final String COMPRESSION_RATIO_DIR = "compression_ratio";
+  public static final String COMPRESSION_RATIO_DIR = "compression_ratio";
 
   private static final String FILE_PREFIX_BEFORE_V121 = "Ratio-";
-  private static final String FILE_PREFIX = "Compress-";
+  public static final String FILE_PREFIX = "Compress-";
 
   private static final String SEPARATOR = "-";
 
@@ -64,6 +68,9 @@ public class CompressionRatio {
 
   /** The data size on disk */
   private long totalDiskSize = 0L;
+
+  /** DataRegionId -> (memorySize, diskSize) */
+  private Map<String, Pair<Long, Long>> dataRegionRatioMap = new ConcurrentHashMap<>();
 
   private File directory;
 
@@ -84,8 +91,9 @@ public class CompressionRatio {
    * Whenever the task of closing a file ends, the compression ratio of the file is calculated and
    * call this method.
    */
-  public synchronized void updateRatio(long memorySize, long diskSize) throws IOException {
-    File oldFile = SystemFileFactory.INSTANCE.getFile(directory, oldFileName);
+  public synchronized void updateRatio(long memorySize, long diskSize, String dataRegionId)
+      throws IOException {
+    File oldDataNodeFile = SystemFileFactory.INSTANCE.getFile(directory, oldFileName);
 
     totalMemorySize.addAndGet(memorySize);
     totalDiskSize += diskSize;
@@ -95,17 +103,78 @@ public class CompressionRatio {
           memorySize,
           totalMemorySize);
     }
-    File newFile =
+    File newDataNodeFile =
         SystemFileFactory.INSTANCE.getFile(
             directory,
             String.format(
                 Locale.ENGLISH, RATIO_FILE_PATH_FORMAT, totalMemorySize.get(), totalDiskSize));
-    persist(oldFile, newFile);
+    persist(oldDataNodeFile, newDataNodeFile);
+    this.oldFileName = newDataNodeFile.getName();
+
+    Pair<Long, Long> dataRegionCompressionRatio =
+        dataRegionRatioMap.computeIfAbsent(dataRegionId, id -> new Pair<>(0L, 0L));
+    File oldDataRegionFile =
+        SystemFileFactory.INSTANCE.getFile(
+            directory,
+            String.format(
+                    Locale.ENGLISH,
+                    RATIO_FILE_PATH_FORMAT,
+                    dataRegionCompressionRatio.getLeft(),
+                    dataRegionCompressionRatio.getRight())
+                + "."
+                + dataRegionId);
+    dataRegionCompressionRatio.setLeft(dataRegionCompressionRatio.getLeft() + memorySize);
+    dataRegionCompressionRatio.setRight(dataRegionCompressionRatio.getRight() + diskSize);
+    File newDataRegionFile =
+        SystemFileFactory.INSTANCE.getFile(
+            directory,
+            String.format(
+                    Locale.ENGLISH,
+                    RATIO_FILE_PATH_FORMAT,
+                    dataRegionCompressionRatio.getLeft(),
+                    dataRegionCompressionRatio.getRight())
+                + "."
+                + dataRegionId);
+    persist(oldDataRegionFile, newDataRegionFile);
+  }
+
+  public synchronized void removeDataRegionRatio(String dataRegionId) {
+    Pair<Long, Long> dataRegionCompressionRatio = dataRegionRatioMap.remove(dataRegionId);
+    if (dataRegionCompressionRatio == null) {
+      return;
+    }
+    File oldDataRegionFile =
+        SystemFileFactory.INSTANCE.getFile(
+            directory,
+            String.format(
+                    Locale.ENGLISH,
+                    RATIO_FILE_PATH_FORMAT,
+                    dataRegionCompressionRatio.getLeft(),
+                    dataRegionCompressionRatio.getRight())
+                + "."
+                + dataRegionId);
+    if (!oldDataRegionFile.delete() && oldDataRegionFile.exists()) {
+      LOGGER.warn("Can't delete old data region compression file {}", oldDataRegionFile);
+    }
   }
 
   /** Get the average compression ratio for all closed files */
   public double getRatio() {
     return (double) totalMemorySize.get() / totalDiskSize;
+  }
+
+  public double getRatio(String dataRegionId) {
+    Pair<Long, Long> ratioPair =
+        dataRegionRatioMap.compute(
+            dataRegionId,
+            (dId, oldPair) -> {
+              if (oldPair == null) {
+                return new Pair<>(0L, 0L);
+              }
+              // return a copy to avoid concurrent modification
+              return new Pair<>(oldPair.left, oldPair.right);
+            });
+    return (double) ratioPair.left / ratioPair.right;
   }
 
   private void persist(File oldFile, File newFile) throws IOException {
@@ -123,7 +192,6 @@ public class CompressionRatio {
           oldFile.getAbsolutePath(),
           newFile.getAbsolutePath());
     }
-    this.oldFileName = newFile.getName();
   }
 
   private void checkDirectoryExist() throws IOException {
@@ -132,12 +200,47 @@ public class CompressionRatio {
     }
   }
 
-  /** Restore compression ratio statistics from disk when system restart */
-  void restore() throws IOException {
-    if (!directory.exists()) {
+  private void recoverDataRegionRatio(File[] ratioFiles) {
+    if (ratioFiles == null) {
       return;
     }
-    File[] ratioFiles = directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX));
+
+    Map<String, Integer> validFileIndex = new HashMap<>();
+    for (int i = 0, ratioFilesLength = ratioFiles.length; i < ratioFilesLength; i++) {
+      File ratioFile = ratioFiles[i];
+      String fileName = ratioFile.getName();
+      String ratioPart = fileName.substring(0, fileName.lastIndexOf("."));
+      String dataRegionId = fileName.substring(fileName.lastIndexOf(".") + 1);
+
+      String[] fileNameArray = ratioPart.split("-");
+      // fileNameArray.length != 3 means the compression ratio may be negative, ignore it
+      if (fileNameArray.length == 3) {
+        try {
+          Pair<Long, Long> regionRatioPair =
+              dataRegionRatioMap.computeIfAbsent(dataRegionId, id -> new Pair<>(0L, 0L));
+          long diskSize = Long.parseLong(fileNameArray[2]);
+          if (diskSize > regionRatioPair.getRight()) {
+            regionRatioPair.setRight(diskSize);
+            regionRatioPair.setLeft(Long.parseLong(fileNameArray[1]));
+            validFileIndex.put(dataRegionId, i);
+          }
+        } catch (NumberFormatException ignore) {
+          // ignore illegal compression file name
+        }
+      }
+    }
+    validFileIndex.values().forEach(i -> ratioFiles[i] = null);
+
+    for (File ratioFile : ratioFiles) {
+      if (ratioFile != null) {
+        if (!ratioFile.delete()) {
+          LOGGER.warn("Cannot delete ratio file {}", ratioFile.getAbsolutePath());
+        }
+      }
+    }
+  }
+
+  private void recoverDataNodeRatio(File[] ratioFiles) throws IOException {
     // First try to recover from the new version of the file, parse the file name, and get the file
     // with the largest disk size value
     if (ratioFiles != null && ratioFiles.length > 0) {
@@ -191,6 +294,19 @@ public class CompressionRatio {
     }
   }
 
+  /** Restore compression ratio statistics from disk when system restart */
+  void restore() throws IOException {
+    if (!directory.exists()) {
+      return;
+    }
+    File[] dataNodeRatioFiles =
+        directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX) && !name.contains("."));
+    recoverDataNodeRatio(dataNodeRatioFiles);
+    File[] dataRegionRatioFiles =
+        directory.listFiles((dir, name) -> name.startsWith(FILE_PREFIX) && name.contains("."));
+    recoverDataRegionRatio(dataRegionRatioFiles);
+  }
+
   public static void deleteRedundantFilesByIndex(File[] files, int index) throws IOException {
     for (int i = 0; i < files.length; i++) {
       if (i != index) {
@@ -200,7 +316,7 @@ public class CompressionRatio {
   }
 
   @TestOnly
-  void reset() throws IOException {
+  public void reset() throws IOException {
     if (!directory.exists()) {
       return;
     }
@@ -212,7 +328,28 @@ public class CompressionRatio {
       Files.delete(file.toPath());
     }
     totalMemorySize = new AtomicLong(0);
+    dataRegionRatioMap.clear();
     totalDiskSize = 0L;
+  }
+
+  public synchronized File getCompressionRatioFile(String dataRegionId) {
+    Pair<Long, Long> dataRegionCompressionRatio = dataRegionRatioMap.get(dataRegionId);
+    if (dataRegionCompressionRatio == null) {
+      return null;
+    }
+    return SystemFileFactory.INSTANCE.getFile(
+        directory,
+        String.format(
+                Locale.ENGLISH,
+                RATIO_FILE_PATH_FORMAT,
+                dataRegionCompressionRatio.getLeft(),
+                dataRegionCompressionRatio.getRight())
+            + "."
+            + dataRegionId);
+  }
+
+  public Map<String, Pair<Long, Long>> getDataRegionRatioMap() {
+    return dataRegionRatioMap;
   }
 
   public static CompressionRatio getInstance() {

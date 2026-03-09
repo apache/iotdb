@@ -21,25 +21,29 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata;
 
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
-import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
 public class TableSchema {
 
   private final String tableName;
-
-  private final List<ColumnSchema> columns;
+  protected final List<ColumnSchema> columns;
+  protected Map<String, String> props;
 
   public TableSchema(final String tableName, final List<ColumnSchema> columns) {
     this.tableName = tableName;
@@ -54,25 +58,52 @@ public class TableSchema {
     return columns;
   }
 
+  public Map<String, ColumnSchema> getColumnSchemaMap() {
+    // return a map column name -> ColumnSchema
+    return columns.stream().collect(Collectors.toMap(ColumnSchema::getName, Function.identity()));
+  }
+
+  public void setProps(final Map<String, String> props) {
+    this.props = props;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
+  }
+
   /** Get the column with the specified name and category, return null if not found. */
   public ColumnSchema getColumn(
       final String columnName, final TsTableColumnCategory columnCategory) {
-    for (final ColumnSchema column : columns) {
-      if (column.getName().equals(columnName) && column.getColumnCategory() == columnCategory) {
-        return column;
-      }
+    return columns.stream()
+        .filter(
+            column ->
+                column.getName().equals(columnName) && column.getColumnCategory() == columnCategory)
+        .findAny()
+        .orElse(null);
+  }
+
+  public ColumnSchema getColumn(final String columnName) {
+    List<ColumnSchema> columnScheme =
+        columns.stream()
+            .filter(column -> column.getName().equals(columnName))
+            .collect(toImmutableList());
+    if (columnScheme.isEmpty()) {
+      return null;
+    } else if (columnScheme.size() > 1) {
+      throw new SemanticException(
+          String.format("Columns in table shall not share the same name %s.", columnName));
     }
-    return null;
+    return columnScheme.get(0);
   }
 
   /**
-   * Given the name of an ID column, return the index of this column among all ID columns, return -1
-   * if not found.
+   * Given the name of an TAG column, return the index of this column among all TAG columns, return
+   * -1 if not found.
    */
-  public int getIndexAmongIdColumns(final String idColumnName) {
+  public int getIndexAmongTagColumns(final String tagColumnName) {
     int index = 0;
-    for (final ColumnSchema column : getIdColumns()) {
-      if (column.getName().equals(idColumnName)) {
+    for (final ColumnSchema column : getTagColumns()) {
+      if (column.getName().equals(tagColumnName)) {
         return index;
       }
       index++;
@@ -81,20 +112,22 @@ public class TableSchema {
   }
 
   public static TableSchema of(final TsTable tsTable) {
-    final String tableName = tsTable.getTableName();
-    final List<ColumnSchema> columns = new ArrayList<>();
-    for (final TsTableColumnSchema tsTableColumnSchema : tsTable.getColumnList()) {
-      columns.add(ColumnSchema.ofTsColumnSchema(tsTableColumnSchema));
-    }
-    return new TableSchema(tableName, columns);
+    final TableSchema schema =
+        new TableSchema(
+            tsTable.getTableName(),
+            tsTable.getColumnList().stream()
+                .map(ColumnSchema::ofTsColumnSchema)
+                .collect(Collectors.toList()));
+    schema.setProps(tsTable.getProps());
+    return schema;
   }
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchema() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME) {
         continue;
       }
@@ -109,10 +142,10 @@ public class TableSchema {
 
   public org.apache.tsfile.file.metadata.TableSchema toTsFileTableSchemaNoAttribute() {
     // TODO-Table: unify redundant definitions
-    String tableName = this.getTableName();
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    List<ColumnCategory> columnTypes = new ArrayList<>();
-    for (ColumnSchema column : columns) {
+    final String tableName = this.getTableName();
+    final List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+    final List<ColumnCategory> columnTypes = new ArrayList<>();
+    for (final ColumnSchema column : columns) {
       if (column.getColumnCategory() == TsTableColumnCategory.TIME
           || column.getColumnCategory() == TsTableColumnCategory.ATTRIBUTE) {
         continue;
@@ -189,7 +222,7 @@ public class TableSchema {
     return "TableSchema{" + "tableName='" + tableName + '\'' + ", columns=" + columns + '}';
   }
 
-  public List<ColumnSchema> getIdColumns() {
+  public List<ColumnSchema> getTagColumns() {
     return columns.stream()
         .filter(c -> c.getColumnCategory() == TsTableColumnCategory.TAG)
         .collect(Collectors.toList());

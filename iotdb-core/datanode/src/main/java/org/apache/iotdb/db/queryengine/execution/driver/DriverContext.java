@@ -50,6 +50,12 @@ public class DriverContext {
     this.fragmentInstanceContext = null;
   }
 
+  @TestOnly
+  // should only be used by executeGroupByQueryInternal
+  public DriverContext(FragmentInstanceContext fragmentInstanceContext) {
+    this.fragmentInstanceContext = fragmentInstanceContext;
+  }
+
   public DriverContext(FragmentInstanceContext fragmentInstanceContext, int pipelineId) {
     this.fragmentInstanceContext = fragmentInstanceContext;
     this.driverTaskID = new DriverTaskId(fragmentInstanceContext.getId(), pipelineId);

@@ -113,6 +113,7 @@ public enum ConfigPhysicalPlanType {
   // For version after and equal 1.2
   CreateUser((short) 621),
   CreateRole((short) 622),
+  @Deprecated
   DropUser((short) 623),
   DropRole((short) 624),
   GrantRole((short) 625),
@@ -121,6 +122,7 @@ public enum ConfigPhysicalPlanType {
   RevokeUser((short) 628),
   RevokeRole((short) 629),
   RevokeRoleFromUser((short) 630),
+  @Deprecated
   UpdateUser((short) 631),
   ListUser((short) 632),
   ListRole((short) 633),
@@ -131,11 +133,16 @@ public enum ConfigPhysicalPlanType {
   @Deprecated
   ListRoleUsers((short) 637),
   CreateUserWithRawPassword((short) 638),
+  UpdateUserMaxSession((short) 639),
+  UpdateUserMinSession((short) 640),
+  AccountUnlock((short) 641),
 
   /** Table Author */
   RCreateUser((short) 641),
   RCreateRole((short) 642),
+  @Deprecated
   RUpdateUser((short) 643),
+  @Deprecated
   RDropUser((short) 644),
   RDropRole((short) 645),
   RGrantUserRole((short) 646),
@@ -164,6 +171,9 @@ public enum ConfigPhysicalPlanType {
   RListRole((short) 670),
   RListUserPrivilege((short) 671),
   RListRolePrivilege((short) 672),
+  RUpdateUserMaxSession((short) 673),
+  RUpdateUserMinSession((short) 674),
+  RAccountUnlock((short) 675),
 
   /** Function. */
   CreateFunction((short) 700),
@@ -191,7 +201,7 @@ public enum ConfigPhysicalPlanType {
   CommitSetSchemaTemplate((short) 813),
   ExtendSchemaTemplate((short) 814),
 
-  /* Table */
+  /* Table or View */
   PreCreateTable((short) 850),
   RollbackCreateTable((short) 851),
   CommitCreateTable((short) 852),
@@ -209,6 +219,18 @@ public enum ConfigPhysicalPlanType {
   DescTable4InformationSchema((short) 864),
   SetTableColumnComment((short) 865),
   SetTableComment((short) 866),
+  RenameTable((short) 867),
+  PreCreateTableView((short) 868),
+  SetViewComment((short) 869),
+  AddViewColumn((short) 870),
+  CommitDeleteViewColumn((short) 871),
+  CommitDeleteView((short) 872),
+  RenameView((short) 873),
+  SetViewProperties((short) 874),
+  PreDeleteViewColumn((short) 875),
+  PreDeleteView((short) 876),
+  RenameViewColumn((short) 877),
+  AlterColumnDataType((short) 878),
 
   /** Deprecated types for sync, restored them for upgrade. */
   @Deprecated
@@ -284,8 +306,10 @@ public enum ConfigPhysicalPlanType {
   PipeDeleteLogicalView((short) 1703),
   PipeDeactivateTemplate((short) 1704),
   PipeSetTTL((short) 1705),
-  PipeCreateTable((short) 1706),
+  PipeCreateTableOrView((short) 1706),
   PipeDeleteDevices((short) 1707),
+  PipeAlterEncodingCompressor((short) 1708),
+  PipeAlterTimeSeries((short) 1709),
 
   /** Subscription */
   CreateTopic((short) 1800),
@@ -299,6 +323,22 @@ public enum ConfigPhysicalPlanType {
   ConsumerGroupHandleMetaChange((short) 1901),
 
   ShowSubscription((short) 2000),
+
+  // Authority version after and equal 2.0
+  DropUserV2((short) 2100),
+  UpdateUserV2((short) 2101),
+  RUpdateUserV2((short) 2102),
+  RDropUserV2((short) 2103),
+  RenameUser((short) 2104),
+  RRenameUser((short) 2105),
+
+  EnableSeparationOfAdminPowers((short) 2200),
+
+  CreateExternalService((short) 2301),
+  StartExternalService((short) 2302),
+  StopExternalService((short) 2303),
+  DropExternalService((short) 2304),
+  ShowExternalService((short) 2305),
 
   /** Test Only. */
   TestOnly((short) 30000),

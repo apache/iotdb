@@ -38,6 +38,7 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.block.column.LongColumnBuilder;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -48,6 +49,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.TIME_COLUMN_TEMPLATE;
@@ -70,6 +72,7 @@ public class TableFunctionOperator implements ProcessOperator {
   private final boolean needPassThrough;
   private final PartitionCache partitionCache;
   private final boolean requireRecordSnapshot;
+  private final boolean isDeclaredAsPassThrough;
 
   private TableFunctionDataProcessor processor;
   private PartitionState partitionState;
@@ -87,6 +90,7 @@ public class TableFunctionOperator implements ProcessOperator {
       int properChannelCount,
       List<Integer> requiredChannels,
       List<Integer> passThroughChannels,
+      boolean isDeclaredAsPassThrough,
       List<Integer> partitionChannels,
       boolean requireRecordSnapshot) {
     this.operatorContext = operatorContext;
@@ -96,6 +100,7 @@ public class TableFunctionOperator implements ProcessOperator {
     this.partitionRecognizer =
         new PartitionRecognizer(
             partitionChannels, requiredChannels, passThroughChannels, inputDataTypes);
+    this.isDeclaredAsPassThrough = isDeclaredAsPassThrough;
     this.needPassThrough = properChannelCount != outputDataTypes.size();
     this.partitionState = null;
     this.properBlockBuilder = new TsBlockBuilder(outputDataTypes.subList(0, properChannelCount));
@@ -169,6 +174,7 @@ public class TableFunctionOperator implements ProcessOperator {
           processor.finish(properColumnBuilders, passThroughIndexBuilder);
           resultTsBlocks.addAll(buildTsBlock(properColumnBuilders, passThroughIndexBuilder));
           partitionCache.clear();
+          processor.beforeDestroy();
           processor = null;
           return resultTsBlocks.poll();
         } else {
@@ -192,7 +198,7 @@ public class TableFunctionOperator implements ProcessOperator {
   }
 
   private ColumnBuilder getPassThroughIndexBuilder() {
-    return new LongColumnBuilder(null, 1);
+    return isDeclaredAsPassThrough ? new LongColumnBuilder(null, 1) : null;
   }
 
   private List<TsBlock> buildTsBlock(
@@ -201,7 +207,7 @@ public class TableFunctionOperator implements ProcessOperator {
     if (properChannelCount > 0) {
       // if there is proper column, use its position count
       positionCount = properColumnBuilders.get(0).getPositionCount();
-    } else if (needPassThrough) {
+    } else if (isDeclaredAsPassThrough) {
       // if there is no proper column, use pass through column's position count
       positionCount = passThroughIndexBuilder.getPositionCount();
     }
@@ -215,7 +221,14 @@ public class TableFunctionOperator implements ProcessOperator {
     if (needPassThrough) {
       // handle pass through column only if needed
       int builtCount = 0;
-      Column passThroughIndex = passThroughIndexBuilder.build();
+      Column passThroughIndex;
+      if (isDeclaredAsPassThrough) {
+        passThroughIndex = passThroughIndexBuilder.build();
+      } else {
+        passThroughIndex =
+            new RunLengthEncodedColumn(
+                new LongColumn(1, Optional.empty(), new long[] {0}), positionCount);
+      }
       for (Column[] passThroughColumns : partitionCache.getPassThroughResult(passThroughIndex)) {
         int subBlockPositionCount = passThroughColumns[0].getPositionCount();
         TsBlock subProperBlock = properBlock.getRegion(builtCount, subBlockPositionCount);
@@ -247,6 +260,9 @@ public class TableFunctionOperator implements ProcessOperator {
   public void close() throws Exception {
     partitionCache.close();
     inputOperator.close();
+    if (processor != null) {
+      processor.beforeDestroy();
+    }
   }
 
   @Override

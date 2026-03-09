@@ -16,6 +16,7 @@
 # under the License.
 #
 import logging
+from typing import Optional
 
 from iotdb.utils.Field import Field
 
@@ -45,13 +46,14 @@ class SessionDataSet(object):
         time_out,
         more_data,
         fetch_size,
+        zone_id,
+        time_precision,
         column_index_2_tsblock_column_index_list,
     ):
         self.iotdb_rpc_data_set = IoTDBRpcDataSet(
             sql,
             column_name_list,
             column_type_list,
-            column_name_index,
             ignore_timestamp,
             more_data,
             query_id,
@@ -61,16 +63,26 @@ class SessionDataSet(object):
             query_result,
             fetch_size,
             time_out,
+            zone_id,
+            time_precision,
             column_index_2_tsblock_column_index_list,
         )
         if ignore_timestamp:
             self.__field_list = [
-                Field(data_type)
+                (
+                    Field(data_type, timezone=zone_id, precision=time_precision)
+                    if data_type == 8
+                    else Field(data_type)
+                )
                 for data_type in self.iotdb_rpc_data_set.get_column_types()
             ]
         else:
             self.__field_list = [
-                Field(data_type)
+                (
+                    Field(data_type, timezone=zone_id, precision=time_precision)
+                    if data_type == 8
+                    else Field(data_type)
+                )
                 for data_type in self.iotdb_rpc_data_set.get_column_types()[1:]
             ]
         self.row_index = 0
@@ -132,6 +144,24 @@ class SessionDataSet(object):
     def close_operation_handle(self):
         self.iotdb_rpc_data_set.close()
 
+    def has_next_df(self) -> bool:
+        """
+        Evaluate if there are more DataFrames to be fetched.
+        :return: whether there are more DataFrames to be fetched
+        """
+        # Check if buffer has data or if there are more results to fetch
+        rpc_ds = self.iotdb_rpc_data_set
+        return rpc_ds._has_buffered_data() or rpc_ds._has_next_result_set()
+
+    def next_df(self) -> Optional[pd.DataFrame]:
+        """
+        Get the next DataFrame from the result set.
+        Each returned DataFrame contains exactly fetch_size rows,
+        except for the last DataFrame which may contain fewer rows.
+        :return: the next DataFrame, or None if no more data
+        """
+        return self.iotdb_rpc_data_set.next_dataframe()
+
     def todf(self) -> pd.DataFrame:
         return result_set_to_pandas(self)
 
@@ -155,7 +185,7 @@ def get_typed_point(field: Field, none_value=None):
         TSDataType.INT32: lambda f: f.get_int_value(),
         TSDataType.DOUBLE: lambda f: f.get_double_value(),
         TSDataType.INT64: lambda f: f.get_long_value(),
-        TSDataType.TIMESTAMP: lambda f: f.get_long_value(),
+        TSDataType.TIMESTAMP: lambda f: f.get_timestamp_value(),
         TSDataType.STRING: lambda f: f.get_string_value(),
         TSDataType.DATE: lambda f: f.get_date_value(),
         TSDataType.BLOB: lambda f: f.get_binary_value(),

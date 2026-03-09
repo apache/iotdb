@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.impl.StringValueFilterVisitor;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AbstractSingleChildFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -53,13 +53,13 @@ public class SchemaPredicateUtil {
 
   // pair.left is Expressions only contain ID columns
   // pair.right is Expressions contain at least one ATTRIBUTE column
-  static Pair<List<Expression>, List<Expression>> separateIdDeterminedPredicate(
+  static Pair<List<Expression>, List<Expression>> separateTagDeterminedPredicate(
       final List<Expression> expressionList,
       final TsTable table,
       final MPPQueryContext queryContext,
       final boolean isDirectDeviceQuery) {
-    final List<Expression> idDeterminedList = new ArrayList<>();
-    final List<Expression> idFuzzyList = new ArrayList<>();
+    final List<Expression> tagDeterminedList = new ArrayList<>();
+    final List<Expression> tagFuzzyList = new ArrayList<>();
     final CheckSchemaPredicateVisitor visitor = new CheckSchemaPredicateVisitor();
     final CheckSchemaPredicateVisitor.Context context =
         new CheckSchemaPredicateVisitor.Context(table, queryContext, isDirectDeviceQuery);
@@ -70,15 +70,15 @@ public class SchemaPredicateUtil {
       if (expression instanceof BetweenPredicate) {
         final BetweenPredicate predicate = (BetweenPredicate) expression;
 
-        // Separate the between predicate to simply the logic and to handle cases like
-        // '2' between id1 and attr2 / id1 between '2' and attr1
+        // Separate the between predicate to simplify the logic and to handle cases like '2' between
+        // id1 and attr2 / id1 between '2' and attr1
         separateExpression(
             new ComparisonExpression(
                 ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
                 predicate.getMin(),
                 predicate.getValue()),
-            idDeterminedList,
-            idFuzzyList,
+            tagDeterminedList,
+            tagFuzzyList,
             visitor,
             context);
         separateExpression(
@@ -86,27 +86,27 @@ public class SchemaPredicateUtil {
                 ComparisonExpression.Operator.LESS_THAN_OR_EQUAL,
                 predicate.getValue(),
                 predicate.getMax()),
-            idDeterminedList,
-            idFuzzyList,
+            tagDeterminedList,
+            tagFuzzyList,
             visitor,
             context);
         continue;
       }
-      separateExpression(expression, idDeterminedList, idFuzzyList, visitor, context);
+      separateExpression(expression, tagDeterminedList, tagFuzzyList, visitor, context);
     }
-    return new Pair<>(idDeterminedList, idFuzzyList);
+    return new Pair<>(tagDeterminedList, tagFuzzyList);
   }
 
   private static void separateExpression(
       final Expression expression,
-      final List<Expression> idDeterminedList,
-      final List<Expression> idFuzzyList,
+      final List<Expression> tagDeterminedList,
+      final List<Expression> tagFuzzyList,
       final CheckSchemaPredicateVisitor visitor,
       final CheckSchemaPredicateVisitor.Context context) {
     if (Boolean.TRUE.equals(expression.accept(visitor, context))) {
-      idFuzzyList.add(expression);
+      tagFuzzyList.add(expression);
     } else {
-      idDeterminedList.add(expression);
+      tagDeterminedList.add(expression);
     }
   }
 
@@ -167,7 +167,7 @@ public class SchemaPredicateUtil {
   private static boolean handleFilter(
       final AbstractSingleChildFilter filter,
       final Map<Integer, List<SchemaFilter>> index2FilterMap) {
-    // We assume that only "not" and "IdFilter" is possible here to be the root filter
+    // We assume that only "not" and "TagFilter" is possible here to be the root filter
     // There won't be any attribute filters here currently
 
     // First refactor the not filters
@@ -178,7 +178,7 @@ public class SchemaPredicateUtil {
       isNotFilter = !isNotFilter;
     }
 
-    final int index = ((IdFilter) currentFilter).getIndex();
+    final int index = ((TagFilter) currentFilter).getIndex();
     final SchemaFilter childFilter = currentFilter.getChild();
 
     // Compress the not filters and put them after idFilter,
@@ -203,15 +203,15 @@ public class SchemaPredicateUtil {
       }
     } else {
       final SchemaFilter firstFilter = index2FilterMap.get(index).get(0);
-      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.ID))
-          && ((IdFilter) firstFilter)
+      if ((firstFilter.getSchemaFilterType().equals(SchemaFilterType.TAG))
+          && ((TagFilter) firstFilter)
               .getChild()
               .getSchemaFilterType()
               .equals(SchemaFilterType.PRECISE)) {
         return Boolean.TRUE.equals(
             currentFilter.accept(
                 StringValueFilterVisitor.getInstance(),
-                ((PreciseFilter) ((IdFilter) firstFilter).getChild()).getValue()));
+                ((PreciseFilter) ((TagFilter) firstFilter).getChild()).getValue()));
       } else {
         index2FilterMap.get(index).add(currentFilter);
       }
@@ -219,19 +219,19 @@ public class SchemaPredicateUtil {
     return true;
   }
 
-  static List<Integer> extractIdSingleMatchExpressionCases(
+  static List<Integer> extractTagSingleMatchExpressionCases(
       final List<Map<Integer, List<SchemaFilter>>> index2FilterMapList,
       final TsTable tableInstance) {
     final List<Integer> selectedExpressionCases = new ArrayList<>();
-    final int idCount = tableInstance.getIdNums();
+    final int idCount = tableInstance.getTagNum();
     for (int i = 0; i < index2FilterMapList.size(); i++) {
       final Map<Integer, List<SchemaFilter>> filterMap = index2FilterMapList.get(i);
       if (filterMap.size() == idCount
           && filterMap.values().stream()
               .allMatch(
                   filterList ->
-                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.ID)
-                          && ((IdFilter) filterList.get(0))
+                      filterList.get(0).getSchemaFilterType().equals(SchemaFilterType.TAG)
+                          && ((TagFilter) filterList.get(0))
                               .getChild()
                               .getSchemaFilterType()
                               .equals(SchemaFilterType.PRECISE))) {

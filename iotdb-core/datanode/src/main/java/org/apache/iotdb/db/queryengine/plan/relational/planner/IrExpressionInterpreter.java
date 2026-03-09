@@ -37,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.IfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.InListExpression;
@@ -80,6 +81,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.MINUS;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticUnaryExpression.Sign.PLUS;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.TypeSignatureTranslator.toTypeSignature;
+import static org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.ExtractTransformer.constructEvaluateFunction;
 
 public class IrExpressionInterpreter {
 
@@ -640,6 +642,58 @@ public class IrExpressionInterpreter {
             toExpression(left, type(leftExpression)),
             toExpression(right, type(rightExpression)));
       } else {
+        if (!(left instanceof Number) || !(right instanceof Number)) {
+          throw new IllegalArgumentException("Both object must be type of number");
+        }
+
+        if (left instanceof Integer && right instanceof Integer) {
+          Integer leftNum = (Integer) left;
+          Integer rightNum = (Integer) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Long && right instanceof Long) {
+          Long leftNum = (Long) left;
+          Long rightNum = (Long) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Float && right instanceof Float) {
+          Float leftNum = (Float) left;
+          Float rightNum = (Float) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
+        if (left instanceof Double && right instanceof Double) {
+          Double leftNum = (Double) left;
+          Double rightNum = (Double) right;
+          if (operator == ComparisonExpression.Operator.LESS_THAN) {
+            return leftNum < rightNum;
+          } else if (operator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL) {
+            return leftNum <= rightNum;
+          } else if (operator == ComparisonExpression.Operator.EQUAL) {
+            return leftNum.equals(rightNum);
+          }
+        }
+
         return new ComparisonExpression(
             operator,
             toExpression(left, type(leftExpression)),
@@ -862,6 +916,23 @@ public class IrExpressionInterpreter {
         }
         throw e;
       }
+    }
+
+    @Override
+    protected Object visitExtract(Extract node, Object context) {
+      Object value = processWithExceptionHandling(node.getExpression(), context);
+      if (value == null) {
+        return null;
+      }
+
+      // if is Extract from constant, the constant must be INT64 type, so it will be Long after the
+      // process
+      if (value instanceof Long) {
+        return constructEvaluateFunction(node.getField(), session.getZoneId()).apply((Long) value);
+      }
+
+      checkState(value instanceof Expression, "Value reach here must be Expression");
+      return new Extract((Expression) value, node.getField());
     }
 
     @Override

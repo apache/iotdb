@@ -20,13 +20,18 @@
 package org.apache.iotdb.db.storageengine.dataregion.memtable;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
+import org.apache.tsfile.encrypt.EncryptUtils;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -39,9 +44,16 @@ import java.util.Map.Entry;
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
+  private EncryptParameter encryptParameter;
 
   public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
+    encryptParameter = EncryptUtils.getEncryptParameter();
+  }
+
+  public WritableMemChunkGroup(EncryptParameter encryptParameter) {
+    memChunkMap = new HashMap<>();
+    this.encryptParameter = encryptParameter;
   }
 
   @Override
@@ -54,7 +66,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       int end,
       TSStatus[] results) {
     for (int i = 0; i < columns.length; i++) {
-      if (columns[i] == null) {
+      if (columns[i] == null || schemaList.get(i) == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
@@ -70,7 +82,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementName(), k -> new WritableMemChunk(schema));
+        schema.getMeasurementName(), k -> new WritableMemChunk(schema, encryptParameter));
   }
 
   @Override
@@ -97,7 +109,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public void writeRow(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     for (int i = 0; i < objectValue.length; i++) {
-      if (objectValue[i] == null) {
+      if (objectValue[i] == null || schemaList.get(i) == null) {
         continue;
       }
       IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
@@ -183,6 +195,14 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
     }
   }
 
+  @Override
+  public void setEncryptParameter(EncryptParameter encryptParameter) {
+    this.encryptParameter = encryptParameter;
+    for (IWritableMemChunk memChunk : memChunkMap.values()) {
+      memChunk.setEncryptParameter(encryptParameter);
+    }
+  }
+
   public static WritableMemChunkGroup deserialize(DataInputStream stream) throws IOException {
     WritableMemChunkGroup memChunkGroup = new WritableMemChunkGroup();
     int memChunkMapSize = stream.readInt();
@@ -192,6 +212,21 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       memChunkGroup.memChunkMap.put(measurement, memChunk);
     }
     return memChunkGroup;
+  }
+
+  @Override
+  public void checkDataType(InsertNode node) throws DataTypeInconsistentException {
+    for (MeasurementSchema incomingSchema : node.getMeasurementSchemas()) {
+      if (incomingSchema == null) {
+        continue;
+      }
+
+      IWritableMemChunk memChunk = memChunkMap.get(incomingSchema.getMeasurementName());
+      if (memChunk != null && memChunk.getSchema().getType() != incomingSchema.getType()) {
+        throw new DataTypeInconsistentException(
+            memChunk.getWorkingTVList().getDataType(), incomingSchema.getType());
+      }
+    }
   }
 
   public static WritableMemChunkGroup deserializeSingleTVListMemChunks(DataInputStream stream)

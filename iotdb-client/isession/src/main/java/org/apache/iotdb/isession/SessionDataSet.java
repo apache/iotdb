@@ -29,10 +29,12 @@ import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
 
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -187,6 +189,7 @@ public class SessionDataSet implements ISessionDataSet {
           case TEXT:
           case BLOB:
           case STRING:
+          case OBJECT:
             field.setBinaryV(ioTDBRpcDataSet.getBinary(columnName));
             break;
           default:
@@ -313,6 +316,38 @@ public class SessionDataSet implements ISessionDataSet {
 
     public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
       return ioTDBRpcDataSet.getTimestamp(columnName);
+    }
+
+    public LocalDate getDate(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getDate(columnIndex);
+    }
+
+    public LocalDate getDate(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getDate(columnName);
+    }
+
+    public Binary getBlob(int columnIndex) throws StatementExecutionException {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnIndex);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new StatementExecutionException("OBJECT Type only support getString");
+      }
+      return ioTDBRpcDataSet.getBinary(columnIndex);
+    }
+
+    public Binary getBlob(String columnName) throws StatementExecutionException {
+      final TSDataType dataType = ioTDBRpcDataSet.getDataType(columnName);
+      if (dataType == null) {
+        return null;
+      }
+
+      if (dataType.equals(TSDataType.OBJECT)) {
+        throw new StatementExecutionException("OBJECT Type only support getString");
+      }
+      return ioTDBRpcDataSet.getBinary(columnName);
     }
 
     public int findColumn(String columnName) {

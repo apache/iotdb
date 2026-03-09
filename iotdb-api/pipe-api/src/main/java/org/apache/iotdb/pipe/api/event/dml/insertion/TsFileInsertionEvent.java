@@ -21,6 +21,8 @@ package org.apache.iotdb.pipe.api.event.dml.insertion;
 
 import org.apache.iotdb.pipe.api.event.Event;
 
+import java.io.File;
+
 /**
  * {@link TsFileInsertionEvent} is used to define the event of writing TsFile. Event data stores in
  * disks, which is compressed and encoded, and requires IO cost for computational processing.
@@ -34,4 +36,12 @@ public interface TsFileInsertionEvent extends Event, AutoCloseable {
    * @return {@code Iterable<TabletInsertionEvent>} the list of {@link TabletInsertionEvent}
    */
   Iterable<TabletInsertionEvent> toTabletInsertionEvents();
+
+  /**
+   * Get the file that stores the data of this {@link TsFileInsertionEvent}. The file is compressed
+   * and encoded, and requires IO cost for computational processing.
+   *
+   * @return the file that stores the data of this {@link TsFileInsertionEvent}
+   */
+  File getTsFile();
 }

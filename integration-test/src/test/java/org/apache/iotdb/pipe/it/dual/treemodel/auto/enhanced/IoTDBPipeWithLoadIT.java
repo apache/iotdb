@@ -52,7 +52,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -62,17 +61,23 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
         // Disable sender compaction to test mods
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false);
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
     receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+
+    senderEnv.getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -90,16 +95,17 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
     final String receiverIp = receiverDataNode.getIp();
     final int receiverPort = receiverDataNode.getPort();
 
-    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> sourceAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
-    final Map<String, String> connectorAttributes = new HashMap<>();
+    final Map<String, String> sinkAttributes = new HashMap<>();
 
     // Enable mods transfer
-    extractorAttributes.put("source.mods.enable", "true");
+    sourceAttributes.put("source.mods.enable", "true");
+    sourceAttributes.put("user", "root");
 
-    connectorAttributes.put("connector.batch.enable", "false");
-    connectorAttributes.put("connector.ip", receiverIp);
-    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    sinkAttributes.put("sink.batch.enable", "false");
+    sinkAttributes.put("sink.ip", receiverIp);
+    sinkAttributes.put("sink.port", Integer.toString(receiverPort));
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
@@ -107,33 +113,44 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeDualTreeModelAutoIT {
       // Time-series not affected by mods: d1.s1, d2.s1
       // Time-series partially deleted by mods: d1.s2, d3.s1
       // Time-series completely deleted by mods: d1.s3, d4.s1 (should not be loaded by receiver)
-      if (!TestUtils.tryExecuteNonQueriesWithRetry(
+      TestUtils.executeNonQueries(
           senderEnv,
           Arrays.asList(
               "insert into root.db.d1 (time, s1, s2, s3) values (1, 1, 1, 1), (3, 3, 3, 3)",
               "insert into root.db.d2 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d3 (time, s1) values (1, 1), (3, 3)",
               "insert into root.db.d4 (time, s1) values (1, 1), (3, 3)",
-              "flush",
+              "flush"),
+          null);
+      // adding new devices may create a new region, and thus trigger leader re-balancing
+      // the old leader may not have synced data to the new leader, and the result is that
+      // the following deletions performed on the new leader can not delete anything
+      // wait for a while to increase the chance that data has been synced to the new leader
+      Thread.sleep(5000);
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
               "delete from root.db.d1.s2 where time <= 2",
               "delete from root.db.d1.s3 where time >= 1 and time <= 3",
               "delete from root.db.d3.** where time <= 2",
               "delete from root.db.d4.** where time >= 1 and time <= 3",
-              "flush"))) {
-        return;
-      }
+              "flush"),
+          null);
 
       TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("p1", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("p1", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+          receiverEnv,
+          "count timeseries root.db.**",
+          "count(timeseries),",
+          Collections.singleton("4,"));
     }
   }
 }

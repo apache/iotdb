@@ -20,9 +20,10 @@
 package org.apache.iotdb.db.queryengine.execution.fragment;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.path.AlignedPath;
 import org.apache.iotdb.commons.path.PatternTreeMap;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.ModificationUtils;
@@ -41,7 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 /** QueryContext contains the shared information with in a query. */
@@ -51,12 +52,14 @@ public class QueryContext {
   private QueryStatistics queryStatistics = new QueryStatistics();
 
   /**
-   * The key is the path of a ModificationFile and the value is all Modifications in this file. We
-   * use this field because each call of Modification.getModifications() return a copy of the
-   * Modifications, and we do not want it to create multiple copies within a query.
+   * The key is TsFileID and the value is all Modifications in this file. We use this field because
+   * each call of Modification.getModifications() return a copy of the Modifications, and we do not
+   * want it to create multiple copies within a query.
    */
-  private final Map<String, PatternTreeMap<ModEntry, ModsSerializer>> fileModCache =
+  protected Map<TsFileID, PatternTreeMap<ModEntry, ModsSerializer>> fileModCache =
       new ConcurrentHashMap<>();
+
+  protected AtomicLong cachedModEntriesSize = new AtomicLong(0);
 
   protected long queryId;
 
@@ -71,10 +74,10 @@ public class QueryContext {
   // for tree model, it will be true
   private boolean ignoreAllNullRows = true;
 
-  private final Set<TsFileID> nonExistentModFiles = new CopyOnWriteArraySet<>();
-
   // referenced TVLists for the query
   protected final Set<TVList> tvListSet = new HashSet<>();
+
+  protected Set<String> tables;
 
   public QueryContext() {}
 
@@ -90,30 +93,48 @@ public class QueryContext {
     this.timeout = timeout;
   }
 
-  // if the mods file does not exist, do not add it to the cache
-  private boolean checkIfModificationExists(TsFileResource tsFileResource) {
-    if (nonExistentModFiles.contains(tsFileResource.getTsFileID())) {
-      return false;
+  // Only used for query with table data(Tree view is not included)
+  public boolean collectTable(String table) {
+    // In the current version (2025.08.14), there is only one table under one FI
+    // Therefore, SingletonSet is initially used here for better performance
+    if (tables == null) {
+      tables = Collections.singleton(table);
+      return true;
     }
-
-    if (!tsFileResource.anyModFileExists()) {
-      nonExistentModFiles.add(tsFileResource.getTsFileID());
-      return false;
+    if (!(tables instanceof HashSet)) {
+      tables = new HashSet<>(tables);
     }
-    return true;
+    return tables.add(table);
   }
 
-  private PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
+  // if the mods file does not exist, do not add it to the cache
+  protected boolean checkIfModificationExists(TsFileResource tsFileResource) {
+    // The exists state of ModificationFile is maintained in memory, and ModificationFile instance
+    // is set to the related TsFileResource instance after it is constructed.
+    return tsFileResource.anyModFileExists();
+  }
+
+  protected PatternTreeMap<ModEntry, ModsSerializer> getAllModifications(TsFileResource resource) {
     return fileModCache.computeIfAbsent(
-        resource.getTsFilePath(),
-        k -> {
-          PatternTreeMap<ModEntry, ModsSerializer> modifications =
-              PatternTreeMapFactory.getModsPatternTreeMap();
-          for (ModEntry modification : resource.getAllModEntries()) {
-            modifications.append(modification.keyOfPatternTree(), modification);
-          }
-          return modifications;
-        });
+        resource.getTsFileID(), k -> loadAllModificationsFromDisk(resource));
+  }
+
+  public PatternTreeMap<ModEntry, ModsSerializer> loadAllModificationsFromDisk(
+      TsFileResource resource) {
+    PatternTreeMap<ModEntry, ModsSerializer> modifications =
+        PatternTreeMapFactory.getModsPatternTreeMap();
+    TsFileResource.ModIterator modEntryIterator = resource.getModEntryIterator();
+    while (modEntryIterator.hasNext()) {
+      ModEntry modification = modEntryIterator.next();
+      if (tables != null && modification instanceof TableDeletionEntry) {
+        String tableName = ((TableDeletionEntry) modification).getTableName();
+        if (!tables.contains(tableName)) {
+          continue;
+        }
+      }
+      modifications.append(modification.keyOfPatternTree(), modification);
+    }
+    return modifications;
   }
 
   public List<ModEntry> getPathModifications(
@@ -123,8 +144,17 @@ public class QueryContext {
       return Collections.emptyList();
     }
 
-    List<ModEntry> modEntries =
-        getAllModifications(tsFileResource).getOverlapped(deviceID, measurement);
+    return getPathModifications(getAllModifications(tsFileResource), deviceID, measurement);
+  }
+
+  public List<ModEntry> getPathModifications(
+      PatternTreeMap<ModEntry, ModsSerializer> fileModEntries,
+      IDeviceID deviceID,
+      String measurement) {
+    if (fileModEntries == null) {
+      return Collections.emptyList();
+    }
+    List<ModEntry> modEntries = fileModEntries.getOverlapped(deviceID, measurement);
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering
@@ -144,8 +174,17 @@ public class QueryContext {
     if (!checkIfModificationExists(tsFileResource)) {
       return Collections.emptyList();
     }
+    return getPathModifications(getAllModifications(tsFileResource), deviceID);
+  }
+
+  public List<ModEntry> getPathModifications(
+      PatternTreeMap<ModEntry, ModsSerializer> fileModEntries, IDeviceID deviceID)
+      throws IllegalPathException {
+    if (fileModEntries == null) {
+      return Collections.emptyList();
+    }
     List<ModEntry> modEntries =
-        getAllModifications(tsFileResource).getOverlapped(new PartialPath(deviceID));
+        fileModEntries.getOverlapped(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
     if (deviceID.isTableModel()) {
       // the pattern tree has false-positive for table model deletion, so we do a further
       //     filtering

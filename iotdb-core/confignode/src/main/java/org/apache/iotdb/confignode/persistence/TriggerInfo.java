@@ -247,7 +247,6 @@ public class TriggerInfo implements SnapshotProcessor {
       return false;
     }
 
-    acquireTriggerTableLock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
 
       serializeExistedJarToMD5(fileOutputStream);
@@ -257,8 +256,6 @@ public class TriggerInfo implements SnapshotProcessor {
       // fsync
       fileOutputStream.getFD().sync();
       return true;
-    } finally {
-      releaseTriggerTableLock();
     }
   }
 

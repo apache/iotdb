@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,14 +30,10 @@ import static java.util.Objects.requireNonNull;
 
 public class DropDB extends Statement {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(DropDB.class);
+
   private final Identifier dbName;
   private final boolean exists;
-
-  public DropDB(Identifier catalogName, boolean exists) {
-    super(null);
-    this.dbName = requireNonNull(catalogName, "catalogName is null");
-    this.exists = exists;
-  }
 
   public DropDB(NodeLocation location, Identifier catalogName, boolean exists) {
     super(requireNonNull(location, "location is null"));
@@ -82,5 +79,13 @@ public class DropDB extends Statement {
   @Override
   public String toString() {
     return toStringHelper(this).add("catalogName", dbName).add("exists", exists).toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(dbName);
+    return size;
   }
 }

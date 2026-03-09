@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
@@ -34,11 +35,11 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.PreSetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.persistence.auth.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.schema.CNPhysicalPlanGenerator;
 import org.apache.iotdb.confignode.persistence.schema.CNSnapshotFileType;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -178,7 +179,7 @@ public class CNPhysicalPlanGeneratorTest {
                 + ".profile");
 
     final CNPhysicalPlanGenerator planGenerator =
-        new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE);
+        new CNPhysicalPlanGenerator(roleProfile.toPath(), CNSnapshotFileType.ROLE, "");
     int count = 0;
     for (ConfigPhysicalPlan authPlan : planGenerator) {
       Assert.assertTrue(answerSet.contains(authPlan.hashCode()));
@@ -193,14 +194,37 @@ public class CNPhysicalPlanGeneratorTest {
     final Set<Integer> answerSet = new HashSet<>();
     setupAuthorInfo();
     AuthorTreePlan plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUser);
-    plan.setPassword("password");
+    plan.setPassword("password123456");
     plan.setUserName(userName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
     // Create user plan 1
     authorInfo.authorNonQuery(plan);
     plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
-    plan.setPassword(AuthUtils.encryptPassword("password"));
+    plan.setPassword(AuthUtils.encryptPassword("password123456"));
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMaxSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMinSession);
+    plan.setUserName(userName);
+    plan.setPermissions(new HashSet<>());
+    plan.setNodeNameList(new ArrayList<>());
+    plan.setMinSessionPerUser(-1);
+    authorInfo.authorNonQuery(plan);
+    answerSet.add(plan.hashCode());
+
+    plan = new AuthorTreePlan(ConfigPhysicalPlanType.CreateUserWithRawPassword);
+    plan.setPassword(AuthUtils.encryptPassword("password123456"));
     plan.setUserName(userName);
     plan.setPermissions(new HashSet<>());
     plan.setNodeNameList(new ArrayList<>());
@@ -260,28 +284,29 @@ public class CNPhysicalPlanGeneratorTest {
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + ".profile");
 
     CNPhysicalPlanGenerator planGenerator =
-        new CNPhysicalPlanGenerator(userProfile.toPath(), CNSnapshotFileType.USER);
+        new CNPhysicalPlanGenerator(userProfile.toPath(), CNSnapshotFileType.USER, userName);
     int count = 0;
     // plan 1-4
     for (ConfigPhysicalPlan authPlan : planGenerator) {
       Assert.assertTrue(answerSet.contains(authPlan.hashCode()));
       count++;
     }
-    Assert.assertEquals(4, count);
+    Assert.assertEquals(6, count);
     final File roleListProfile =
         SystemFileFactory.INSTANCE.getFile(
             snapshotDir
                 + File.separator
                 + USER_SNAPSHOT_FILE_NAME
                 + File.separator
-                + userName
+                + 10000
                 + "_role.profile");
     planGenerator =
-        new CNPhysicalPlanGenerator(roleListProfile.toPath(), CNSnapshotFileType.USER_ROLE);
+        new CNPhysicalPlanGenerator(
+            roleListProfile.toPath(), CNSnapshotFileType.USER_ROLE, userName);
     count = 0;
     // plan 5
     for (ConfigPhysicalPlan authPlan : planGenerator) {
@@ -345,7 +370,7 @@ public class CNPhysicalPlanGeneratorTest {
     }
     planGenerator.checkException();
     Assert.assertEquals(5, count);
-    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL);
+    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL, "");
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
         if (!new PartialPath(((SetTTLPlan) plan).getPathPattern())
@@ -510,7 +535,7 @@ public class CNPhysicalPlanGeneratorTest {
     }
     Assert.assertEquals(8, count);
 
-    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL);
+    planGenerator = new CNPhysicalPlanGenerator(ttlInfo.toPath(), CNSnapshotFileType.TTL, "");
     for (ConfigPhysicalPlan plan : planGenerator) {
       if (plan.getType() == ConfigPhysicalPlanType.SetTTL) {
         if (!new PartialPath(((SetTTLPlan) plan).getPathPattern())

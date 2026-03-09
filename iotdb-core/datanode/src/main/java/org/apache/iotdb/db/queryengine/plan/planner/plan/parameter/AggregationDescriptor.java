@@ -332,7 +332,7 @@ public class AggregationDescriptor {
       inputExpressions.add(Expression.deserialize(byteBuffer));
       inputExpressionsSize--;
     }
-    Map<String, String> inputAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    Map<String, String> inputAttributes = ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
     return new AggregationDescriptor(aggregationFuncName, step, inputExpressions, inputAttributes);
   }
 

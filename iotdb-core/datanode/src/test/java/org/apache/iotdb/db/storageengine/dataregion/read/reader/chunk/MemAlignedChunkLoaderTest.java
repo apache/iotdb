@@ -57,6 +57,7 @@ import static org.junit.Assert.fail;
 public class MemAlignedChunkLoaderTest {
 
   private static final String BINARY_STR = "ty love zm";
+  private static final int maxNumberOfPointsInPage = 1000;
 
   @Test
   public void testMemAlignedChunkLoader() throws IOException {
@@ -78,7 +79,6 @@ public class MemAlignedChunkLoaderTest {
     Mockito.when(timeStatistics.getCount()).thenReturn(2);
     timeStatitsticsList.add(timeStatistics);
     Mockito.when(chunk.getTimeStatisticsList()).thenReturn(timeStatitsticsList);
-    Mockito.when(chunk.getMaxNumberOfPointsInPage()).thenReturn(1000);
 
     List<Statistics<? extends Serializable>[]> valuesStatitsticsList = new ArrayList<>();
     Statistics<? extends Serializable>[] valuesStatistics = new Statistics[6];
@@ -115,7 +115,9 @@ public class MemAlignedChunkLoaderTest {
     List<AlignedTVList> alignedTvLists =
         alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
     MemPointIterator timeValuePairIterator =
-        MemPointIteratorFactory.create(dataTypes, null, alignedTvLists, false);
+        MemPointIteratorFactory.create(
+            dataTypes, null, alignedTvLists, false, maxNumberOfPointsInPage);
+    timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);
 

@@ -21,12 +21,16 @@ package org.apache.iotdb.consensus.iot.logdispatcher;
 
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
 public class SyncStatus {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SyncStatus.class);
   private final IoTConsensusConfig config;
   private final IndexController controller;
   private final LinkedList<Batch> pendingBatches = new LinkedList<>();
@@ -44,9 +48,18 @@ public class SyncStatus {
    * @throws InterruptedException
    */
   public synchronized void addNextBatch(Batch batch) throws InterruptedException {
-    while (pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
-        || !iotConsensusMemoryManager.reserve(batch.getSerializedSize(), false)) {
+    while ((pendingBatches.size() >= config.getReplication().getMaxPendingBatchesNum()
+            || !iotConsensusMemoryManager.reserve(batch))
+        && !Thread.interrupted()) {
       wait();
+    }
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Reserved {} bytes for batch {}-{}, current total usage {}",
+          batch.getMemorySize(),
+          batch.getStartIndex(),
+          batch.getEndIndex(),
+          iotConsensusMemoryManager.getMemorySizeInByte());
     }
     pendingBatches.add(batch);
   }
@@ -64,7 +77,7 @@ public class SyncStatus {
       while (current.isSynced()) {
         controller.update(current.getEndIndex(), false);
         iterator.remove();
-        iotConsensusMemoryManager.free(current.getSerializedSize(), false);
+        iotConsensusMemoryManager.free(current);
         if (iterator.hasNext()) {
           current = iterator.next();
         } else {
@@ -77,13 +90,11 @@ public class SyncStatus {
   }
 
   public synchronized void free() {
-    long size = 0;
     for (Batch pendingBatch : pendingBatches) {
-      size += pendingBatch.getSerializedSize();
+      iotConsensusMemoryManager.free(pendingBatch);
     }
     pendingBatches.clear();
     controller.update(0L, true);
-    iotConsensusMemoryManager.free(size, false);
   }
 
   /** Gets the first index that is not currently synchronized. */

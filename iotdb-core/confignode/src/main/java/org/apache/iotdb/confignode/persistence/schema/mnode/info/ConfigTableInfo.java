@@ -23,9 +23,12 @@ import org.apache.iotdb.commons.schema.table.TableNodeStatus;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.impl.mem.mnode.info.BasicMNodeInfo;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class ConfigTableInfo extends BasicMNodeInfo {
@@ -37,6 +40,7 @@ public class ConfigTableInfo extends BasicMNodeInfo {
 
   // This shall be only one because concurrent modifications of one table is not allowed
   private final Set<String> preDeletedColumns = new HashSet<>();
+  private final Map<String, TSDataType> preAlteredColumns = new HashMap<>();
 
   public ConfigTableInfo(final String name) {
     super(name);
@@ -50,6 +54,12 @@ public class ConfigTableInfo extends BasicMNodeInfo {
     this.table = table;
   }
 
+  @Override
+  public void setName(final String name) {
+    super.setName(name);
+    table.renameTable(name);
+  }
+
   public TableNodeStatus getStatus() {
     return status;
   }
@@ -60,6 +70,10 @@ public class ConfigTableInfo extends BasicMNodeInfo {
 
   public Set<String> getPreDeletedColumns() {
     return preDeletedColumns;
+  }
+
+  public Map<String, TSDataType> getPreAlteredColumns() {
+    return preAlteredColumns;
   }
 
   public void addPreDeletedColumn(final String column) {
@@ -80,5 +94,13 @@ public class ConfigTableInfo extends BasicMNodeInfo {
         + preDeletedColumns.stream()
             .map(column -> (int) RamUsageEstimator.sizeOf(column))
             .reduce(0, Integer::sum);
+  }
+
+  public void addPreAlteredColumn(String column, TSDataType dataType) {
+    preAlteredColumns.put(column, dataType);
+  }
+
+  public void removePreAlteredColumn(String column) {
+    preAlteredColumns.remove(column);
   }
 }

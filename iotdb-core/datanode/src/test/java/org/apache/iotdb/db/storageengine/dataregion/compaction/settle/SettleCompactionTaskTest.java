@@ -40,10 +40,12 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.Inne
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.SettleCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.impl.SettleSelectorImpl;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -405,6 +407,36 @@ public class SettleCompactionTaskTest extends AbstractCompactionTest {
 
     DataNodeTTLCache.getInstance().clearAllTTLForTree();
     validateTargetDatas(sourceDatas, Collections.emptyList());
+  }
+
+  @Test
+  public void getModsFileAfterSettleCompaction()
+      throws IOException, MetadataException, WriteProcessException {
+    createFiles(6, 5, 10, 100, 0, 0, 0, 0, isAligned, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    List<TsFileResource> partialDeletedFiles = new ArrayList<>();
+    partialDeletedFiles.addAll(seqResources);
+    SettleCompactionTask task =
+        new SettleCompactionTask(
+            0,
+            tsFileManager,
+            Collections.emptyList(),
+            partialDeletedFiles,
+            true,
+            getPerformer(),
+            0);
+    Assert.assertTrue(task.start());
+    List<TsFileResource> tsFileList = tsFileManager.getTsFileList(true);
+    for (TsFileResource resource : tsFileList) {
+      Assert.assertTrue(
+          resource
+              .getExclusiveModFile()
+              .getFile()
+              .getName()
+              .endsWith(TsFileConstant.TSFILE_SUFFIX + ModificationFile.FILE_SUFFIX));
+    }
   }
 
   @Test

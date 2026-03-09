@@ -50,6 +50,11 @@ public class MemoryReader implements SortReader {
   }
 
   @Override
+  public void releaseMemory() {
+    // do nothing, memory reader will not occupy sort buffer
+  }
+
+  @Override
   public void close() throws IoTDBException {
     // do nothing
   }

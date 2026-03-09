@@ -33,12 +33,9 @@ import org.apache.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -209,6 +206,10 @@ public class MeasurementPath extends PartialPath {
     return isUnderAlignedEntity;
   }
 
+  public void setDevice(IDeviceID device) {
+    this.device = device;
+  }
+
   public void setUnderAlignedEntity(Boolean underAlignedEntity) {
     isUnderAlignedEntity = underAlignedEntity;
   }
@@ -330,26 +331,40 @@ public class MeasurementPath extends PartialPath {
     return measurementPath;
   }
 
+  public static MeasurementPath deserializeDirectly(ByteBuffer byteBuffer) {
+    PartialPath partialPath = PartialPath.deserialize(byteBuffer);
+    MeasurementPath measurementPath = new MeasurementPath();
+    byte isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      byte type = ReadWriteIOUtils.readByte(byteBuffer);
+      if (type == MeasurementSchemaType.MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.VECTOR_MEASUREMENT_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = VectorMeasurementSchema.deserializeFrom(byteBuffer);
+      } else if (type
+          == MeasurementSchemaType.LOGICAL_VIEW_SCHEMA.getMeasurementSchemaTypeInByteEnum()) {
+        measurementPath.measurementSchema = LogicalViewSchema.deserializeFrom(byteBuffer);
+      } else {
+        throw new RuntimeException(
+            new UnexpectedException("Type (" + type + ") of measurementSchema is unknown."));
+      }
+    }
+    isNull = ReadWriteIOUtils.readByte(byteBuffer);
+    if (isNull == 1) {
+      measurementPath.tagMap = ReadWriteIOUtils.readMap(byteBuffer);
+    }
+    measurementPath.isUnderAlignedEntity = ReadWriteIOUtils.readBoolObject(byteBuffer);
+    measurementPath.measurementAlias = ReadWriteIOUtils.readString(byteBuffer);
+    measurementPath.nodes = partialPath.getNodes();
+    measurementPath.device = measurementPath.getIDeviceID();
+    measurementPath.fullPath = measurementPath.getFullPath();
+    return measurementPath;
+  }
+
   @Override
   public PartialPath transformToPartialPath() {
     return getDevicePath().concatNode(getTailNode());
-  }
-
-  /**
-   * In specific scenarios, like internal create timeseries, the message can only be passed as
-   * String format.
-   */
-  public static String transformDataToString(MeasurementPath measurementPath) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
-      measurementPath.serialize(dataOutputStream);
-    } catch (IOException ignored) {
-      // this exception won't happen.
-    }
-    byte[] bytes = byteArrayOutputStream.toByteArray();
-    // must use single-byte char sets
-    return new String(bytes, StandardCharsets.ISO_8859_1);
   }
 
   @Override
@@ -357,12 +372,6 @@ public class MeasurementPath extends PartialPath {
     // remove measurement
     nodes = Arrays.copyOfRange(nodes, 0, nodes.length - 1);
     return super.toDeviceID(nodes);
-  }
-
-  public static MeasurementPath parseDataFromString(String measurementPathData) {
-    return (MeasurementPath)
-        PathDeserializeUtil.deserialize(
-            ByteBuffer.wrap(measurementPathData.getBytes(StandardCharsets.ISO_8859_1)));
   }
 
   @Override

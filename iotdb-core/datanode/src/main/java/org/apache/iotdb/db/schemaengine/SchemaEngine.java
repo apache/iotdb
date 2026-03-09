@@ -43,6 +43,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegionParams;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionLoader;
 import org.apache.iotdb.db.schemaengine.schemaregion.SchemaRegionParams;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
@@ -78,7 +79,7 @@ public class SchemaEngine {
   private final SchemaRegionLoader schemaRegionLoader;
 
   @SuppressWarnings("java:S3077")
-  private volatile Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
+  private final Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = new ConcurrentHashMap<>();
 
   private ScheduledExecutorService timedForceMLogThread;
 
@@ -116,8 +117,6 @@ public class SchemaEngine {
     // CachedSchemaEngineMetric depend on CacheMemoryManager, so it should be initialized after
     // CacheMemoryManager
     schemaMetricManager = new SchemaMetricManager(schemaEngineStatistics);
-
-    schemaRegionMap = new ConcurrentHashMap<>();
 
     initSchemaRegion();
 
@@ -213,15 +212,12 @@ public class SchemaEngine {
   }
 
   public void forceMlog() {
-    Map<SchemaRegionId, ISchemaRegion> schemaRegionMap = this.schemaRegionMap;
-    if (schemaRegionMap != null) {
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
-        schemaRegion.forceMlog();
-      }
+    for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      schemaRegion.forceMlog();
     }
   }
 
-  public void clear() {
+  public synchronized void clear() {
     schemaRegionLoader.clear();
 
     // clearSchemaResource will shut down release and flush task in PBTree mode, which must be
@@ -232,14 +228,13 @@ public class SchemaEngine {
       timedForceMLogThread = null;
     }
 
-    if (schemaRegionMap != null) {
-      // SchemaEngineStatistics will be clear after clear all schema region
-      for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
-        schemaRegion.clear();
-      }
-      schemaRegionMap.clear();
-      schemaRegionMap = null;
+    // SchemaEngineStatistics will be clear after clear all schema region
+    for (ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      schemaRegion.clear();
     }
+    schemaRegionMap.clear();
+    logger.info("clear schema region map.");
+
     // SchemaMetric should be cleared lastly
     if (schemaMetricManager != null) {
       schemaMetricManager.clear();
@@ -259,9 +254,32 @@ public class SchemaEngine {
     return new ArrayList<>(schemaRegionMap.keySet());
   }
 
+  public void updateSubtreeMeasurementCountForTemplate(final int templateId, final long delta) {
+    if (delta == 0) {
+      return;
+    }
+    for (final ISchemaRegion schemaRegion : schemaRegionMap.values()) {
+      if (schemaRegion instanceof SchemaRegionMemoryImpl) {
+        try {
+          ((SchemaRegionMemoryImpl) schemaRegion)
+              .updateSubtreeMeasurementCountForTemplate(templateId, delta);
+        } catch (MetadataException e) {
+          logger.warn(
+              "Failed to update subtree measurement count for template {} in schemaRegion {}",
+              templateId,
+              schemaRegion.getSchemaRegionId(),
+              e);
+        }
+      }
+    }
+  }
+
   public synchronized void createSchemaRegion(
       final String storageGroup, final SchemaRegionId schemaRegionId) throws MetadataException {
-    final ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    if (this.schemaRegionMap == null) {
+      throw new MetadataException("Peer is shutting down now.");
+    }
+    final ISchemaRegion schemaRegion = this.schemaRegionMap.get(schemaRegionId);
     if (schemaRegion != null) {
       if (schemaRegion.getDatabaseFullPath().equals(storageGroup)) {
         return;
@@ -273,7 +291,7 @@ public class SchemaEngine {
                 schemaRegionId, schemaRegion.getDatabaseFullPath(), storageGroup));
       }
     }
-    schemaRegionMap.put(
+    this.schemaRegionMap.put(
         schemaRegionId, createSchemaRegionWithoutExistenceCheck(storageGroup, schemaRegionId));
   }
 
@@ -344,7 +362,7 @@ public class SchemaEngine {
   }
 
   public int getSchemaRegionNumber() {
-    return schemaRegionMap == null ? 0 : schemaRegionMap.size();
+    return schemaRegionMap.size();
   }
 
   public Map<Integer, Long> countDeviceNumBySchemaRegion(final List<Integer> schemaIds) {
@@ -386,10 +404,16 @@ public class SchemaEngine {
                       DataNodeTableCache.getInstance()
                           .getTable(
                               PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
-                              tableEntry.getKey());
-                  return Objects.nonNull(table)
-                      ? table.getMeasurementNum() * tableEntry.getValue()
-                      : 0;
+                              tableEntry.getKey(),
+                              false);
+                  if (Objects.isNull(table)) {
+                    logger.warn(
+                        "Failed to get table {}.{} when calculating the time series number. Maybe the cluster is restarting or the table is being dropped.",
+                        PathUtils.unQualifyDatabaseName(schemaRegion.getDatabaseFullPath()),
+                        tableEntry.getKey());
+                    return 0L;
+                  }
+                  return table.getFieldNum() * tableEntry.getValue();
                 })
             .reduce(0L, Long::sum);
   }

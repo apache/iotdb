@@ -29,6 +29,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -110,7 +111,8 @@ public class RepairDataFileScanUtil {
             tsfile.getPath(),
             resource.isSeq()
                 ? CompactionType.INNER_SEQ_COMPACTION
-                : CompactionType.INNER_UNSEQ_COMPACTION)) {
+                : CompactionType.INNER_UNSEQ_COMPACTION,
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsfile.getAbsolutePath()))) {
       TsFileDeviceIterator deviceInFileIterator = reader.getAllDevicesIteratorWithIsAligned();
       Set<IDeviceID> deviceIdsInTimeIndex =
           checkTsFileResource ? new HashSet<>(timeIndex.getDevices()) : Collections.emptySet();
@@ -281,7 +283,7 @@ public class RepairDataFileScanUtil {
       throws IOException {
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     reader.getDeviceTimeseriesMetadata(
-        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true);
+        timeseriesMetadataList, metadataIndexNode, Collections.emptySet(), true, null);
     long actualDeviceStartTime = Long.MAX_VALUE;
     long actualDeviceEndTime = Long.MIN_VALUE;
     for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
@@ -450,6 +452,7 @@ public class RepairDataFileScanUtil {
       List<TsFileResource> resources, boolean printOverlappedDevices) {
     List<TsFileResource> overlapResources = new ArrayList<>();
     Map<IDeviceID, Long> deviceEndTimeMap = new HashMap<>();
+    Map<IDeviceID, TsFileResource> device2PreviousResourceMap = new HashMap<>();
     for (TsFileResource resource : resources) {
       if (resource.getStatus() == TsFileResourceStatus.UNCLOSED
           || resource.getStatus() == TsFileResourceStatus.DELETED) {
@@ -478,9 +481,11 @@ public class RepairDataFileScanUtil {
         if (deviceStartTimeInCurrentFile <= deviceEndTimeInPreviousFile) {
           if (printOverlappedDevices) {
             logger.error(
-                "Device {} has overlapped data, start time in current file is {}, end time in previous file is {}",
+                "Device {} has overlapped data, start time in current file {} is {}, end time in previous file {} is {}",
                 device,
+                resource.getTsFile(),
                 deviceStartTimeInCurrentFile,
+                device2PreviousResourceMap.get(device),
                 deviceEndTimeInPreviousFile);
           }
           fileHasOverlap = true;
@@ -491,6 +496,7 @@ public class RepairDataFileScanUtil {
       // update end time map
       if (!fileHasOverlap) {
         for (IDeviceID device : devices) {
+          device2PreviousResourceMap.put(device, resource);
           deviceEndTimeMap.put(device, deviceTimeIndex.getEndTime(device).get());
         }
       }

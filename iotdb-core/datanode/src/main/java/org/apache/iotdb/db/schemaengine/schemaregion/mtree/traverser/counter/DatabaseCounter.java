@@ -25,25 +25,36 @@ import org.apache.iotdb.commons.schema.node.IMNode;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.IMTreeStore;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.traverser.basic.DatabaseTraverser;
 
+import static org.apache.iotdb.commons.schema.table.Audit.TREE_MODEL_AUDIT_DATABASE_PATH;
+
 // This class implement database counter.
 public class DatabaseCounter<N extends IMNode<N>> extends DatabaseTraverser<Void, N>
     implements Counter {
 
   private int count;
+  private final boolean needAuditDB;
 
   public DatabaseCounter(
       N startNode,
       PartialPath path,
       IMTreeStore<N> store,
       boolean isPrefixMatch,
-      PathPatternTree scope)
+      PathPatternTree scope,
+      boolean needAuditDB)
       throws MetadataException {
     super(startNode, path, store, isPrefixMatch, scope);
+    this.needAuditDB = needAuditDB;
   }
 
   @Override
   protected Void generateResult(N nextMatchedNode) {
     count++;
+    if (!needAuditDB) {
+      PartialPath dbName = nextMatchedNode.getAsDatabaseMNode().getPartialPath();
+      if (TREE_MODEL_AUDIT_DATABASE_PATH.equals(dbName)) {
+        count--;
+      }
+    }
     return null;
   }
 

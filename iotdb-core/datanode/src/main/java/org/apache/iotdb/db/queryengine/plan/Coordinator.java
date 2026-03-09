@@ -26,17 +26,25 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.memory.IMemoryBlock;
+import org.apache.iotdb.commons.memory.MemoryBlockType;
+import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
+import org.apache.iotdb.db.protocol.session.PreparedStatementInfo;
 import org.apache.iotdb.db.queryengine.common.DataNodeEndPoints;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
+import org.apache.iotdb.db.queryengine.common.MPPQueryContext.ExplainType;
 import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
 import org.apache.iotdb.db.queryengine.execution.QueryIdGenerator;
+import org.apache.iotdb.db.queryengine.execution.QueryState;
 import org.apache.iotdb.db.queryengine.plan.analyze.IPartitionFetcher;
 import org.apache.iotdb.db.queryengine.plan.analyze.lock.DataNodeSchemaLockManager;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ISchemaFetcher;
@@ -48,6 +56,7 @@ import org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisi
 import org.apache.iotdb.db.queryengine.plan.execution.config.TreeConfigTaskVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.planner.TreeModelPlanner;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.PlannerContext;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.TableModelPlanner;
@@ -55,43 +64,61 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControlImpl;
-import org.apache.iotdb.db.queryengine.plan.relational.security.ITableAuthCheckerImpl;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ParameterExtractor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AddColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterColumnDataType;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AlterDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ClearCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTraining;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Deallocate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DeleteDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropTable;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Execute;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExecuteImmediate;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadConfiguration;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.MigrateRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Prepare;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ReconstructRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveAINode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveConfigNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveDataNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RemoveRegion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameColumn;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RenameTable;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetColumnComment;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetProperties;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetSystemStatus;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SetTableComment;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAIDevices;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAINodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowAvailableUrls;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCluster;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowClusterId;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfigNodes;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowConfiguration;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentDatabase;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentSqlDialect;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentTimestamp;
@@ -99,36 +126,62 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowCurrentUser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDB;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDataNodes;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowFunctions;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowLoadedModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowModels;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowRegions;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StartRepairData;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopExternalService;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.StopRepairData;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SubscriptionStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.UnloadModel;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Use;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.WrappedInsertStatement;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.parser.SqlParser;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewrite;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.rewrite.StatementRewriteFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.utils.SetThreadName;
 
+import org.apache.thrift.TBase;
+import org.apache.tsfile.utils.Accountable;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.LongSupplier;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.utils.StatusUtils.needRetry;
+import static org.apache.iotdb.db.queryengine.plan.Coordinator.QueryInfo.DEFAULT_END_TIME;
 import static org.apache.iotdb.db.utils.CommonUtils.getContentOfRequest;
+import static org.apache.tsfile.utils.RamUsageEstimator.shallowSizeOfInstance;
+import static org.apache.tsfile.utils.RamUsageEstimator.sizeOfCharArray;
 
 /**
  * The coordinator for MPP. It manages all the queries which are executed in current Node. And it
@@ -163,38 +216,78 @@ public class Coordinator {
   private final ExecutorService executor;
   private final ExecutorService writeOperationExecutor;
   private final ScheduledExecutorService scheduledExecutor;
+  private final ExecutorService dispatchExecutor;
 
   private final QueryIdGenerator queryIdGenerator =
       new QueryIdGenerator(IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
 
   private static final Coordinator INSTANCE = new Coordinator();
 
+  private static final IMemoryBlock coordinatorMemoryBlock;
+
   private final ConcurrentHashMap<Long, IQueryExecution> queryExecutionMap;
+
+  private final BlockingDeque<QueryInfo> currentQueriesInfo = new LinkedBlockingDeque<>();
+  private final AtomicInteger[] currentQueriesCostHistogram = new AtomicInteger[61];
+  private final ScheduledExecutorService retryFailTasksExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.EXPIRED_QUERIES_INFO_CLEAR.getName());
 
   private final StatementRewrite statementRewrite;
   private final List<PlanOptimizer> logicalPlanOptimizers;
   private final List<PlanOptimizer> distributionPlanOptimizers;
-  private final AccessControl accessControl;
   private final DataNodeLocationSupplierFactory.DataNodeLocationSupplier dataNodeLocationSupplier;
+  private final TypeManager typeManager;
+
+  {
+    for (int i = 0; i < 61; i++) {
+      currentQueriesCostHistogram[i] = new AtomicInteger();
+    }
+
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        retryFailTasksExecutor,
+        this::clearExpiredQueriesInfoTask,
+        1_000L,
+        1_000L,
+        TimeUnit.MILLISECONDS);
+    LOGGER.info("Expired-Queries-Info-Clear thread is successfully started.");
+  }
+
+  static {
+    coordinatorMemoryBlock =
+        IoTDBDescriptor.getInstance()
+            .getMemoryConfig()
+            .getCoordinatorMemoryManager()
+            .exactAllocate("Coordinator", MemoryBlockType.DYNAMIC);
+
+    if (LOGGER.isDebugEnabled()) {
+      LOGGER.debug(
+          "Initialized shared MemoryBlock 'Coordinator' with all available memory: {} bytes",
+          coordinatorMemoryBlock.getTotalMemorySizeInBytes());
+    }
+  }
 
   private Coordinator() {
     this.queryExecutionMap = new ConcurrentHashMap<>();
+    this.typeManager = new InternalTypeManager();
     this.executor = getQueryExecutor();
     this.writeOperationExecutor = getWriteExecutor();
     this.scheduledExecutor = getScheduledExecutor();
-    this.accessControl = new AccessControlImpl(new ITableAuthCheckerImpl());
-    this.statementRewrite =
-        new StatementRewriteFactory(LocalExecutionPlanner.getInstance().metadata, accessControl)
-            .getStatementRewrite();
+    int dispatchThreadNum = Math.max(20, Runtime.getRuntime().availableProcessors() * 2);
+    this.dispatchExecutor =
+        IoTDBThreadPoolFactory.newCachedThreadPool(
+            ThreadName.FRAGMENT_INSTANCE_DISPATCH.getName(),
+            dispatchThreadNum,
+            dispatchThreadNum,
+            new ThreadPoolExecutor.CallerRunsPolicy());
+    this.statementRewrite = new StatementRewriteFactory().getStatementRewrite();
     this.logicalPlanOptimizers =
         new LogicalOptimizeFactory(
-                new PlannerContext(
-                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+                new PlannerContext(LocalExecutionPlanner.getInstance().metadata, typeManager))
             .getPlanOptimizers();
     this.distributionPlanOptimizers =
         new DistributedOptimizeFactory(
-                new PlannerContext(
-                    LocalExecutionPlanner.getInstance().metadata, new InternalTypeManager()))
+                new PlannerContext(LocalExecutionPlanner.getInstance().metadata, typeManager))
             .getPlanOptimizers();
     this.dataNodeLocationSupplier = DataNodeLocationSupplierFactory.getSupplier();
   }
@@ -209,7 +302,7 @@ public class Coordinator {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     MPPQueryContext queryContext = null;
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && !sql.isEmpty()) {
+      if (LOGGER.isDebugEnabled() && sql != null && !sql.isEmpty()) {
         LOGGER.debug("[QueryStart] sql: {}", sql);
       }
       queryContext =
@@ -309,6 +402,50 @@ public class Coordinator {
     return new QueryExecution(treeModelPlanner, queryContext, executor);
   }
 
+  /**
+   * This method is specifically used following subquery:
+   *
+   * <p>1. When uncorrelated scalar subquery is handled
+   * (fetchUncorrelatedSubqueryResultForPredicate), we try to fold it and get constant value. Since
+   * CTE might be referenced, we need to add CTE materialization result into subquery's
+   * MPPQueryContext.
+   *
+   * <p>2. When CTE subquery is handled (fetchCteQueryResult), the main query, however, might be
+   * 'Explain' or 'Explain Analyze' statement. So we need to keep explain/explain analyze results
+   * along with CTE query dataset.
+   */
+  public ExecutionResult executeForTableModel(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
+      SqlParser sqlParser,
+      IClientSession clientSession,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      Metadata metadata,
+      Map<NodeRef<Table>, Query> cteQueries,
+      ExplainType explainType,
+      long timeOut,
+      boolean userQuery) {
+    return execution(
+        queryId,
+        session,
+        sql,
+        userQuery,
+        ((queryContext, startTime) -> {
+          queryContext.setInnerTriggeredQuery(true);
+          queryContext.setCteQueries(cteQueries);
+          queryContext.setExplainType(explainType);
+          return createQueryExecutionForTableModel(
+              statement,
+              sqlParser,
+              clientSession,
+              queryContext,
+              metadata,
+              timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold(),
+              startTime);
+        }));
+  }
+
   public ExecutionResult executeForTableModel(
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statement,
       SqlParser sqlParser,
@@ -375,16 +512,17 @@ public class Coordinator {
             statement.toRelationalStatement(queryContext),
             sqlParser,
             metadata,
-            executor,
-            writeOperationExecutor,
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl,
-            dataNodeLocationSupplier);
+            AuthorityChecker.getAccessControl(),
+            dataNodeLocationSupplier,
+            Collections.emptyList(),
+            Collections.emptyMap(),
+            typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -407,20 +545,25 @@ public class Coordinator {
         || statement instanceof DescribeTable
         || statement instanceof ShowTables
         || statement instanceof AddColumn
+        || statement instanceof AlterColumnDataType
         || statement instanceof SetProperties
         || statement instanceof DropColumn
         || statement instanceof DropTable
         || statement instanceof SetTableComment
         || statement instanceof SetColumnComment
         || statement instanceof DeleteDevice
+        || statement instanceof RenameColumn
+        || statement instanceof RenameTable
         || statement instanceof ShowCluster
         || statement instanceof ShowRegions
         || statement instanceof ShowDataNodes
+        || statement instanceof ShowAvailableUrls
         || statement instanceof ShowConfigNodes
         || statement instanceof ShowAINodes
         || statement instanceof Flush
         || statement instanceof ClearCache
         || statement instanceof SetConfiguration
+        || statement instanceof ShowConfiguration
         || statement instanceof LoadConfiguration
         || statement instanceof SetSystemStatus
         || statement instanceof StartRepairData
@@ -428,6 +571,7 @@ public class Coordinator {
         || statement instanceof PipeStatement
         || statement instanceof RemoveDataNode
         || statement instanceof RemoveConfigNode
+        || statement instanceof RemoveAINode
         || statement instanceof SubscriptionStatement
         || statement instanceof ShowCurrentSqlDialect
         || statement instanceof SetSqlDialect
@@ -441,38 +585,95 @@ public class Coordinator {
         || statement instanceof CreateFunction
         || statement instanceof DropFunction
         || statement instanceof ShowFunctions
+        || statement instanceof CreateExternalService
+        || statement instanceof StartExternalService
+        || statement instanceof StopExternalService
+        || statement instanceof DropExternalService
         || statement instanceof RelationalAuthorStatement
         || statement instanceof MigrateRegion
         || statement instanceof ReconstructRegion
         || statement instanceof ExtendRegion
+        || statement instanceof CreateModel
         || statement instanceof CreateTraining
         || statement instanceof ShowModels
-        || statement instanceof RemoveRegion) {
+        || statement instanceof ShowAIDevices
+        || statement instanceof DropModel
+        || statement instanceof LoadModel
+        || statement instanceof UnloadModel
+        || statement instanceof ShowLoadedModels
+        || statement instanceof RemoveRegion
+        || statement instanceof Prepare
+        || statement instanceof Deallocate) {
       return new ConfigExecution(
           queryContext,
           null,
           executor,
           statement.accept(
-              new TableConfigTaskVisitor(clientSession, metadata, accessControl), queryContext));
+              new TableConfigTaskVisitor(
+                  clientSession, metadata, AuthorityChecker.getAccessControl(), typeManager),
+              queryContext));
     }
+    // Initialize variables for TableModelPlanner
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement statementToUse = statement;
+    List<Expression> parameters = Collections.emptyList();
+    Map<NodeRef<Parameter>, Expression> parameterLookup = Collections.emptyMap();
+
+    if (statement instanceof Execute) {
+      Execute executeStatement = (Execute) statement;
+      String statementName = executeStatement.getStatementName().getValue();
+
+      // Get prepared statement from session (contains cached AST)
+      PreparedStatementInfo preparedInfo = clientSession.getPreparedStatement(statementName);
+      if (preparedInfo == null) {
+        throw new SemanticException(
+            String.format("Prepared statement '%s' does not exist", statementName));
+      }
+
+      // Use cached AST
+      statementToUse = preparedInfo.getSql();
+
+      // Bind parameters: create parameterLookup map
+      // Note: bindParameters() internally validates parameter count
+      parameterLookup =
+          ParameterExtractor.bindParameters(statementToUse, executeStatement.getParameters());
+      parameters = new ArrayList<>(executeStatement.getParameters());
+
+    } else if (statement instanceof ExecuteImmediate) {
+      ExecuteImmediate executeImmediateStatement = (ExecuteImmediate) statement;
+
+      // EXECUTE IMMEDIATE needs to parse SQL first
+      String sql = executeImmediateStatement.getSqlString();
+      List<Literal> literalParameters = executeImmediateStatement.getParameters();
+
+      statementToUse = sqlParser.createStatement(sql, clientSession.getZoneId(), clientSession);
+
+      if (!literalParameters.isEmpty()) {
+        parameterLookup = ParameterExtractor.bindParameters(statementToUse, literalParameters);
+        parameters = new ArrayList<>(literalParameters);
+      }
+    }
+
     if (statement instanceof WrappedInsertStatement) {
       ((WrappedInsertStatement) statement).setContext(queryContext);
     }
-    final TableModelPlanner tableModelPlanner =
+
+    // Create QueryExecution with TableModelPlanner
+    TableModelPlanner tableModelPlanner =
         new TableModelPlanner(
-            statement,
+            statementToUse,
             sqlParser,
             metadata,
-            executor,
-            writeOperationExecutor,
             scheduledExecutor,
             SYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             ASYNC_INTERNAL_SERVICE_CLIENT_MANAGER,
             statementRewrite,
             logicalPlanOptimizers,
             distributionPlanOptimizers,
-            accessControl,
-            dataNodeLocationSupplier);
+            AuthorityChecker.getAccessControl(),
+            dataNodeLocationSupplier,
+            parameters,
+            parameterLookup,
+            typeManager);
     return new QueryExecution(tableModelPlanner, queryContext, executor);
   }
 
@@ -510,43 +711,90 @@ public class Coordinator {
     return queryIdGenerator.createNextQueryId();
   }
 
+  public void cleanupQueryExecution(Long queryId, Supplier<String> contentSupplier, Throwable t) {
+    IQueryExecution queryExecution = getQueryExecution(queryId);
+    if (queryExecution != null) {
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
+    }
+  }
+
   public void cleanupQueryExecution(
       Long queryId, org.apache.thrift.TBase<?, ?> nativeApiRequest, Throwable t) {
     IQueryExecution queryExecution = getQueryExecution(queryId);
     if (queryExecution != null) {
-      try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
-        LOGGER.debug("[CleanUpQuery]]");
-        queryExecution.stopAndCleanup(t);
-        queryExecutionMap.remove(queryId);
-        if (queryExecution.isQuery() && queryExecution.isUserQuery()) {
-          long costTime = queryExecution.getTotalExecutionTime();
-          // print slow query
-          if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
-            SLOW_SQL_LOGGER.info(
-                "Cost: {} ms, {}",
-                costTime / 1_000_000,
-                getContentOfRequest(nativeApiRequest, queryExecution));
-          }
+      Supplier<String> contentSupplier =
+          new ContentOfQuerySupplier(nativeApiRequest, queryExecution);
+      cleanupQueryExecutionInternal(queryId, queryExecution, contentSupplier, t);
+    }
+  }
 
-          // only sample successful query
-          if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
-            String queryRequest = getContentOfRequest(nativeApiRequest, queryExecution);
-            if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
-              if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
-                SAMPLED_QUERIES_LOGGER.info(queryRequest);
-              }
-            } else {
-              // no limit, always sampled
-              SAMPLED_QUERIES_LOGGER.info(queryRequest);
-            }
-          }
+  private void cleanupQueryExecutionInternal(
+      Long queryId,
+      IQueryExecution queryExecution,
+      Supplier<String> contentOfQuerySupplier,
+      Throwable t) {
+    try (SetThreadName threadName = new SetThreadName(queryExecution.getQueryId())) {
+      LOGGER.debug("[CleanUpQuery]]");
+      queryExecution.stopAndCleanup(t);
+      boolean isUserQuery = queryExecution.isQuery() && queryExecution.isUserQuery();
+      if (isUserQuery) {
+        recordCurrentQueries(
+            queryExecution.getQueryId(),
+            queryExecution.getStartExecutionTime(),
+            System.currentTimeMillis(),
+            queryExecution.getTotalExecutionTime(),
+            contentOfQuerySupplier,
+            queryExecution.getUser(),
+            queryExecution.getClientHostname());
+      }
+      queryExecutionMap.remove(queryId);
+      if (isUserQuery) {
+        recordQueries(queryExecution::getTotalExecutionTime, contentOfQuerySupplier, t);
+      }
+    }
+  }
+
+  private static class ContentOfQuerySupplier implements Supplier<String> {
+
+    private final TBase<?, ?> nativeApiRequest;
+    private final IQueryExecution queryExecution;
+
+    private ContentOfQuerySupplier(TBase<?, ?> nativeApiRequest, IQueryExecution queryExecution) {
+      this.nativeApiRequest = nativeApiRequest;
+      this.queryExecution = queryExecution;
+    }
+
+    @Override
+    public String get() {
+      return getContentOfRequest(nativeApiRequest, queryExecution);
+    }
+  }
+
+  public static void recordQueries(
+      LongSupplier executionTime, Supplier<String> contentOfQuerySupplier, Throwable t) {
+
+    long costTime = executionTime.getAsLong();
+    // print slow query
+    if (costTime / 1_000_000 >= CONFIG.getSlowQueryThreshold()) {
+      SLOW_SQL_LOGGER.info("Cost: {} ms, {}", costTime / 1_000_000, contentOfQuerySupplier.get());
+    }
+
+    // only sample successful query
+    if (t == null && COMMON_CONFIG.isEnableQuerySampling()) { // sampling is enabled
+      String queryRequest = contentOfQuerySupplier.get();
+      if (COMMON_CONFIG.isQuerySamplingHasRateLimit()) {
+        if (COMMON_CONFIG.getQuerySamplingRateLimiter().tryAcquire(queryRequest.length())) {
+          SAMPLED_QUERIES_LOGGER.info(queryRequest);
         }
+      } else {
+        // no limit, always sampled
+        SAMPLED_QUERIES_LOGGER.info(queryRequest);
       }
     }
   }
 
   public void cleanupQueryExecution(Long queryId) {
-    cleanupQueryExecution(queryId, null, null);
+    cleanupQueryExecution(queryId, (org.apache.thrift.TBase<?, ?>) null, null);
   }
 
   public IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
@@ -558,8 +806,8 @@ public class Coordinator {
     return INSTANCE;
   }
 
-  public AccessControl getAccessControl() {
-    return accessControl;
+  public static IMemoryBlock getCoordinatorMemoryBlock() {
+    return coordinatorMemoryBlock;
   }
 
   public void recordExecutionTime(long queryId, long executionTime) {
@@ -587,5 +835,287 @@ public class Coordinator {
 
   public DataNodeLocationSupplierFactory.DataNodeLocationSupplier getDataNodeLocationSupplier() {
     return dataNodeLocationSupplier;
+  }
+
+  public ExecutorService getDispatchExecutor() {
+    return dispatchExecutor;
+  }
+
+  /** record query info in memory data structure */
+  public void recordCurrentQueries(
+      String queryId,
+      long startTime,
+      long endTime,
+      long costTimeInNs,
+      Supplier<String> contentOfQuerySupplier,
+      String user,
+      String clientHost) {
+    if (CONFIG.getQueryCostStatWindow() <= 0) {
+      return;
+    }
+
+    if (queryId == null) {
+      // fast Last query API executeFastLastDataQueryForOnePrefixPath will enter this
+      queryId = queryIdGenerator.createNextQueryId().getId();
+    }
+
+    // ns -> s
+    float costTimeInSeconds = costTimeInNs * 1e-9f;
+
+    QueryInfo queryInfo =
+        new QueryInfo(
+            queryId,
+            startTime,
+            endTime,
+            costTimeInSeconds,
+            contentOfQuerySupplier.get(),
+            user,
+            clientHost);
+
+    while (!coordinatorMemoryBlock.allocate(RamUsageEstimator.sizeOfObject(queryInfo))) {
+      // try to release memory from the head of queue
+      QueryInfo queryInfoToRelease = currentQueriesInfo.poll();
+      if (queryInfoToRelease == null) {
+        // no element in the queue and the memory is still not enough, skip this record
+        return;
+      } else {
+        // release memory and unrecord in histogram
+        coordinatorMemoryBlock.release(RamUsageEstimator.sizeOfObject(queryInfoToRelease));
+        unrecordInHistogram(queryInfoToRelease.costTime);
+      }
+    }
+
+    currentQueriesInfo.addLast(queryInfo);
+    recordInHistogram(costTimeInSeconds);
+  }
+
+  private void recordInHistogram(float costTimeInSeconds) {
+    int bucket = (int) costTimeInSeconds;
+    if (bucket < 60) {
+      currentQueriesCostHistogram[bucket].getAndIncrement();
+    } else {
+      currentQueriesCostHistogram[60].getAndIncrement();
+    }
+  }
+
+  private void unrecordInHistogram(float costTimeInSeconds) {
+    int bucket = (int) costTimeInSeconds;
+    if (bucket < 60) {
+      currentQueriesCostHistogram[bucket].getAndDecrement();
+    } else {
+      currentQueriesCostHistogram[60].getAndDecrement();
+    }
+  }
+
+  private void clearExpiredQueriesInfoTask() {
+    int queryCostStatWindow = CONFIG.getQueryCostStatWindow();
+    if (queryCostStatWindow <= 0 && currentQueriesInfo.isEmpty()) {
+      return;
+    }
+
+    // the QueryInfo smaller than expired time will be cleared
+    long expiredTime = System.currentTimeMillis() - 1_000L * 60 * queryCostStatWindow;
+    // peek head, the head QueryInfo is in the time window, return directly
+    QueryInfo queryInfo = currentQueriesInfo.peekFirst();
+    if (queryInfo == null || queryInfo.endTime >= expiredTime) {
+      return;
+    }
+
+    queryInfo = currentQueriesInfo.poll();
+    while (queryInfo != null) {
+      if (queryInfo.endTime < expiredTime) {
+        // out of time window, clear queryInfo
+        coordinatorMemoryBlock.release(RamUsageEstimator.sizeOfObject(queryInfo));
+        unrecordInHistogram(queryInfo.costTime);
+        queryInfo = currentQueriesInfo.poll();
+      } else {
+        // the head of the queue is not expired, add back
+        currentQueriesInfo.addFirst(queryInfo);
+        //  there is no more candidate to clear
+        return;
+      }
+    }
+  }
+
+  public List<StatedQueriesInfo> getRunningQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    return getAllQueryExecutions().stream()
+        .map(
+            queryExecution ->
+                new StatedQueriesInfo(
+                    QueryState.RUNNING,
+                    queryExecution.getQueryId(),
+                    queryExecution.getStartExecutionTime(),
+                    DEFAULT_END_TIME,
+                    (currentTime - queryExecution.getStartExecutionTime()) / 1000,
+                    queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+                    queryExecution.getUser(),
+                    queryExecution.getClientHostname()))
+        .collect(Collectors.toList());
+  }
+
+  public List<StatedQueriesInfo> getFinishedQueriesInfos() {
+    long currentTime = System.currentTimeMillis();
+    List<StatedQueriesInfo> result = new ArrayList<>();
+    Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
+    while (historyQueriesIterator.hasNext()) {
+      QueryInfo queryInfo = historyQueriesIterator.next();
+      if (queryInfo.endTime < needRecordTime) {
+        // out of time window, ignore it
+      } else {
+        result.add(new StatedQueriesInfo(QueryState.FINISHED, queryInfo));
+      }
+    }
+    return result;
+  }
+
+  public List<StatedQueriesInfo> getCurrentQueriesInfo() {
+    List<IQueryExecution> runningQueries = getAllQueryExecutions();
+    Set<String> runningQueryIdSet =
+        runningQueries.stream().map(IQueryExecution::getQueryId).collect(Collectors.toSet());
+    List<StatedQueriesInfo> result = new ArrayList<>();
+
+    // add History queries (satisfy the time window) info
+    Iterator<QueryInfo> historyQueriesIterator = currentQueriesInfo.iterator();
+    Set<String> repetitionQueryIdSet = new HashSet<>();
+    long currentTime = System.currentTimeMillis();
+    long needRecordTime = currentTime - 1_000L * 60 * CONFIG.getQueryCostStatWindow();
+    while (historyQueriesIterator.hasNext()) {
+      QueryInfo queryInfo = historyQueriesIterator.next();
+      if (queryInfo.endTime < needRecordTime) {
+        // out of time window, ignore it
+      } else {
+        if (runningQueryIdSet.contains(queryInfo.queryId)) {
+          repetitionQueryIdSet.add(queryInfo.queryId);
+        }
+        result.add(new StatedQueriesInfo(QueryState.FINISHED, queryInfo));
+      }
+    }
+
+    // add Running queries info after remove the repetitions which has recorded in History queries
+    result.addAll(
+        runningQueries.stream()
+            .filter(queryExecution -> !repetitionQueryIdSet.contains(queryExecution.getQueryId()))
+            .map(
+                queryExecution ->
+                    new StatedQueriesInfo(
+                        QueryState.RUNNING,
+                        queryExecution.getQueryId(),
+                        queryExecution.getStartExecutionTime(),
+                        DEFAULT_END_TIME,
+                        (currentTime - queryExecution.getStartExecutionTime()) / 1000,
+                        queryExecution.getExecuteSQL().orElse("UNKNOWN"),
+                        queryExecution.getUser(),
+                        queryExecution.getClientHostname()))
+            .collect(Collectors.toList()));
+    return result;
+  }
+
+  public int[] getCurrentQueriesCostHistogram() {
+    return Arrays.stream(currentQueriesCostHistogram).mapToInt(AtomicInteger::get).toArray();
+  }
+
+  public static class QueryInfo implements Accountable {
+    public static final long DEFAULT_END_TIME = -1L;
+    private static final long INSTANCE_SIZE = shallowSizeOfInstance(QueryInfo.class);
+
+    private final String queryId;
+
+    // unit: millisecond
+    private final long startTime;
+    private final long endTime;
+    // unit: second
+    private final float costTime;
+
+    private final String statement;
+    private final String user;
+    private final String clientHost;
+
+    public QueryInfo(
+        String queryId,
+        long startTime,
+        long endTime,
+        float costTime,
+        String statement,
+        String user,
+        String clientHost) {
+      this.queryId = queryId;
+      this.startTime = startTime;
+      this.endTime = endTime;
+      this.costTime = costTime;
+      this.statement = statement;
+      this.user = user;
+      this.clientHost = clientHost;
+    }
+
+    public String getClientHost() {
+      return clientHost;
+    }
+
+    public String getUser() {
+      return user;
+    }
+
+    public long getStartTime() {
+      return startTime;
+    }
+
+    public long getEndTime() {
+      return endTime;
+    }
+
+    public float getCostTime() {
+      return costTime;
+    }
+
+    public String getQueryId() {
+      return queryId;
+    }
+
+    public String getStatement() {
+      return statement;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return INSTANCE_SIZE
+          + sizeOfCharArray(statement.length())
+          + sizeOfCharArray(user.length())
+          + sizeOfCharArray(clientHost.length());
+    }
+  }
+
+  public static class StatedQueriesInfo extends QueryInfo {
+    private final QueryState queryState;
+
+    private StatedQueriesInfo(QueryState queryState, QueryInfo queryInfo) {
+      super(
+          queryInfo.queryId,
+          queryInfo.startTime,
+          queryInfo.endTime,
+          queryInfo.costTime,
+          queryInfo.statement,
+          queryInfo.user,
+          queryInfo.clientHost);
+      this.queryState = queryState;
+    }
+
+    private StatedQueriesInfo(
+        QueryState queryState,
+        String queryId,
+        long startTime,
+        long endTime,
+        long costTime,
+        String statement,
+        String user,
+        String clientHost) {
+      super(queryId, startTime, endTime, costTime, statement, user, clientHost);
+      this.queryState = queryState;
+    }
+
+    public String getQueryState() {
+      return queryState.name();
+    }
   }
 }

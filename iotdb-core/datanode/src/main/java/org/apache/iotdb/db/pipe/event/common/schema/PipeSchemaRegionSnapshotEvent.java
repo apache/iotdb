@@ -108,6 +108,8 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         null,
         null,
         null,
+        null,
+        null,
         true);
   }
 
@@ -121,7 +123,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges) {
     super(
         pipeName,
@@ -129,7 +133,9 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         PipeDataNodeResourceManager.snapshot());
     this.mTreeSnapshotPath = mTreeSnapshotPath;
@@ -204,21 +210,25 @@ public class PipeSchemaRegionSnapshotEvent extends PipeSnapshotEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
     return new PipeSchemaRegionSnapshotEvent(
         mTreeSnapshotPath,
-        treePattern.isTreeModelDataAllowedToBeCaptured() ? tagLogSnapshotPath : null,
-        tablePattern.isTableModelDataAllowedToBeCaptured() ? attributeSnapshotPath : null,
+        tagLogSnapshotPath,
+        attributeSnapshotPath,
         databaseName,
         pipeName,
         creationTime,
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges);
   }
 

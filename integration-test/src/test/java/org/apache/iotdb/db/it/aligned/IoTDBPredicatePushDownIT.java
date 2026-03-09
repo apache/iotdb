@@ -74,6 +74,15 @@ public class IoTDBPredicatePushDownIT {
     resultSetEqualTest(
         "select s2, s3 from root.sg1.d1 where s2 - 1 >= 9 and s2 < 30", expectedHeader1, retArray1);
 
+    resultSetEqualTest(
+        "select s2, s3 from root.sg1.d1 where 9 <= s2 - 1 and 30 > s2", expectedHeader1, retArray1);
+
+    retArray1 = new String[] {"20,20,20,"};
+    resultSetEqualTest(
+        "select s2, s3 from root.sg1.d1 where 9 <= s2 - 1 and 30 > s2 and 19 < time",
+        expectedHeader1,
+        retArray1);
+
     String expectedHeader2 = "Time,root.sg1.d1.s3,";
     String[] retArray2 =
         new String[] {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze;
 
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.expression.Expression;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionFactory;
 import org.apache.iotdb.db.queryengine.plan.expression.ExpressionType;
@@ -54,6 +55,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class PredicateUtils {
@@ -282,13 +284,15 @@ public class PredicateUtils {
   }
 
   public static Filter convertPredicateToTimeFilter(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate) {
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
+      ZoneId zoneId,
+      TimeUnit currPrecision) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
-            .ConvertPredicateToTimeFilterVisitor(),
+            .ConvertPredicateToTimeFilterVisitor(zoneId, currPrecision),
         null);
   }
 
@@ -311,13 +315,15 @@ public class PredicateUtils {
       org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression predicate,
       Map<String, Integer> measurementColumnsIndexMap,
       Map<Symbol, ColumnSchema> schemaMap,
-      String timeColumnName) {
+      String timeColumnName,
+      ZoneId zoneId,
+      TimeUnit currPrecision) {
     if (predicate == null) {
       return null;
     }
     return predicate.accept(
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
-            .ConvertPredicateToFilterVisitor(timeColumnName),
+            .ConvertPredicateToFilterVisitor(timeColumnName, zoneId, currPrecision),
         new org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate
             .ConvertPredicateToFilterVisitor.Context(measurementColumnsIndexMap, schemaMap));
   }
@@ -332,6 +338,12 @@ public class PredicateUtils {
     if (conjuncts.size() == 1) {
       return conjuncts.get(0);
     }
+
+    if (conjuncts.size() > 1000) {
+      throw new SemanticException(
+          "There are too many conjuncts (more than 1000) in predicate after rewriting, this may be caused by too many devices in query, try to use ALIGN BY DEVICE");
+    }
+
     return constructRightDeepTreeWithAnd(conjuncts);
   }
 

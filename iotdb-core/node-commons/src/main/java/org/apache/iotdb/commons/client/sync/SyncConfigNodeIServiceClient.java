@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ThriftClient;
 import org.apache.iotdb.commons.client.factory.ThriftClientFactory;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.DeepCopyRpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
@@ -42,6 +44,7 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
   private final boolean printLogWhenEncounterException;
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   public SyncConfigNodeIServiceClient(
       ThriftClientProperty property,
@@ -52,16 +55,27 @@ public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
         property
             .getProtocolFactory()
             .getProtocol(
-                DeepCopyRpcTransportFactory.INSTANCE.getTransport(
-                    new TSocket(
-                        TConfigurationConst.defaultTConfiguration,
+                commonConfig.isEnableInternalSSL()
+                    ? DeepCopyRpcTransportFactory.INSTANCE.getTransport(
                         endPoint.getIp(),
                         endPoint.getPort(),
-                        property.getConnectionTimeoutMs()))));
+                        property.getConnectionTimeoutMs(),
+                        commonConfig.getTrustStorePath(),
+                        commonConfig.getTrustStorePwd(),
+                        commonConfig.getKeyStorePath(),
+                        commonConfig.getKeyStorePwd())
+                    : DeepCopyRpcTransportFactory.INSTANCE.getTransport(
+                        new TSocket(
+                            TConfigurationConst.defaultTConfiguration,
+                            endPoint.getIp(),
+                            endPoint.getPort(),
+                            property.getConnectionTimeoutMs()))));
     this.printLogWhenEncounterException = property.isPrintLogWhenEncounterException();
     this.endpoint = endPoint;
     this.clientManager = clientManager;
-    getInputProtocol().getTransport().open();
+    if (!getInputProtocol().getTransport().isOpen()) {
+      getInputProtocol().getTransport().open();
+    }
   }
 
   public int getTimeout() throws SocketException {

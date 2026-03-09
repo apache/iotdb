@@ -31,7 +31,6 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseTy
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 
 import org.apache.tsfile.utils.Pair;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +69,7 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
     }
   }
 
-  private @NonNull SubscriptionEvent pollTabletsInternal(
+  private SubscriptionEvent pollTabletsInternal(
       final String consumerId, final SubscriptionCommitContext commitContext, final int offset) {
     final AtomicReference<SubscriptionEvent> eventRef = new AtomicReference<>();
     inFlightEvents.compute(
@@ -78,6 +77,16 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
         (key, ev) -> {
           // 1. Extract current event and check it
           if (Objects.isNull(ev)) {
+            if (isCommitContextOutdated(commitContext)) {
+              LOGGER.warn(
+                  "SubscriptionPrefetchingTabletQueue {} detected outdated poll request, consumer {}, commit context {}, offset {}",
+                  this,
+                  consumerId,
+                  commitContext,
+                  offset);
+              eventRef.set(generateSubscriptionPollOutdatedErrorResponse());
+              return null;
+            }
             final String errorMessage =
                 String.format(
                     "SubscriptionPrefetchingTabletQueue %s is currently not transferring any tablet to consumer %s, commit context: %s, offset: %s",
@@ -183,7 +192,12 @@ public class SubscriptionPrefetchingTabletQueue extends SubscriptionPrefetchingQ
 
   @Override
   protected boolean onEvent(final TsFileInsertionEvent event) {
-    return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    try {
+      return batches.onEvent((EnrichedEvent) event, this::prefetchEvent);
+    } catch (final Exception e) {
+      LOGGER.error("Subscription: unexpected exception (broken invariant) {}", e, e);
+    }
+    return false;
   }
 
   /////////////////////////////// stringify ///////////////////////////////

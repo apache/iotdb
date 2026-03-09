@@ -221,6 +221,7 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
     statement.setAlias(node.getAlias());
     statement.setTagsMap(node.getTagsMap());
     statement.setPath(node.getPath());
+    statement.setDataType(node.getDataType());
     return statement;
   }
 
@@ -306,8 +307,8 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
             new Table(QualifiedName.of(node.getDatabase(), node.getTableName())),
             node.getAssignments(),
             null);
-    update.setIdDeterminedFilterList(node.getIdDeterminedFilterList());
-    update.setIdFuzzyPredicate(node.getIdFuzzyPredicate());
+    update.setTagDeterminedFilterList(node.getTagDeterminedFilterList());
+    update.setTagFuzzyPredicate(node.getTagFuzzyPredicate());
     update.setDatabase(node.getDatabase());
     update.setTableName(node.getTableName());
     return update;
@@ -315,7 +316,11 @@ public class PipePlanToStatementVisitor extends PlanVisitor<Object, Void> {
 
   @Override
   public Delete visitDeleteData(final RelationalDeleteDataNode node, final Void context) {
-    final Delete statement = new Delete();
+    final Delete statement =
+        new Delete(
+            new Table(
+                QualifiedName.of(
+                    node.getDatabaseName(), node.getModEntries().get(0).getTableName())));
     statement.setDatabaseName(node.getDatabaseName());
     statement.setTableDeletionEntries(node.getModEntries());
     return statement;

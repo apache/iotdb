@@ -132,8 +132,7 @@ public class SubscriptionTablePushConsumerBuilder extends AbstractSubscriptionPu
     return this;
   }
 
-  @Override
-  public ISubscriptionTablePushConsumer buildTablePushConsumer() {
+  public ISubscriptionTablePushConsumer build() {
     return new SubscriptionTablePushConsumer(this);
   }
 }

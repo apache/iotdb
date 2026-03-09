@@ -41,7 +41,7 @@ public class JVMCommonUtils {
 
   private static final int CPUS = Runtime.getRuntime().availableProcessors();
 
-  private static final double diskSpaceWarningThreshold =
+  private static double diskSpaceWarningThreshold =
       CommonDescriptor.getInstance().getConfig().getDiskSpaceWarningThreshold();
 
   /**
@@ -65,32 +65,44 @@ public class JVMCommonUtils {
    * @return
    */
   public static long getUsableSpace(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    dirFile.mkdirs();
-    return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
+    try {
+      File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+      dirFile.mkdirs();
+      return IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0)
+          .orElse(0L);
+    } catch (Exception e) {
+      LOGGER.error("Unexpected error checking disk space for directory: {}", dir, e);
+      return 0L;
+    }
   }
 
   public static double getDiskFreeRatio(String dir) {
-    File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
-    if (!dirFile.mkdirs()) {
-      // This may solve getFreeSpace() == 0?
-      dirFile = new File(dir);
+    try {
+      File dirFile = FSFactoryProducer.getFSFactory().getFile(dir);
+      if (!dirFile.mkdirs()) {
+        // This may solve getFreeSpace() == 0?
+        dirFile = new File(dir);
+      }
+      long freeSpace =
+          IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
+      if (freeSpace == 0) {
+        LOGGER.warn(
+            "Cannot get free space for {} after retries, please check the disk status", dir);
+      }
+      long totalSpace = dirFile.getTotalSpace();
+      double ratio = 1.0 * freeSpace / totalSpace;
+      if (ratio <= diskSpaceWarningThreshold) {
+        LOGGER.warn(
+            "{} is above the warning threshold, free space {}, total space {}",
+            dir,
+            freeSpace,
+            totalSpace);
+      }
+      return ratio;
+    } catch (Exception e) {
+      LOGGER.error("Unexpected error checking disk space for {}", dir, e);
+      return 0;
     }
-    long freeSpace =
-        IOUtils.retryNoException(5, 2000L, dirFile::getFreeSpace, space -> space > 0).orElse(0L);
-    if (freeSpace == 0) {
-      LOGGER.warn("Cannot get free space for {} after retries, please check the disk status", dir);
-    }
-    long totalSpace = dirFile.getTotalSpace();
-    double ratio = 1.0 * freeSpace / totalSpace;
-    if (ratio <= diskSpaceWarningThreshold) {
-      LOGGER.warn(
-          "{} is above the warning threshold, free space {}, total space {}",
-          dir,
-          freeSpace,
-          totalSpace);
-    }
-    return ratio;
   }
 
   public static boolean hasSpace(String dir) {
@@ -110,5 +122,10 @@ public class JVMCommonUtils {
 
   public static int getMaxExecutorPoolSize() {
     return MAX_EXECUTOR_POOL_SIZE;
+  }
+
+  @TestOnly
+  public static void setDiskSpaceWarningThreshold(double threshold) {
+    diskSpaceWarningThreshold = threshold;
   }
 }

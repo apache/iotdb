@@ -62,6 +62,10 @@ public class SubscriptionRuntimeAgent implements IService {
 
   @Override
   public void start() throws StartupException {
+    if (!SubscriptionConfig.getInstance().getSubscriptionEnabled()) {
+      return;
+    }
+
     SubscriptionConfig.getInstance().printAllConfigs();
 
     SubscriptionAgentLauncher.launchSubscriptionTopicAgent();

@@ -27,12 +27,14 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.ZoneId;
+import java.util.concurrent.TimeUnit;
 
 public interface TimePredicate {
 
   void serialize(DataOutputStream stream) throws IOException;
 
-  Filter convertPredicateToTimeFilter();
+  Filter convertPredicateToTimeFilter(ZoneId zoneId, TimeUnit currPrecision);
 
   static TimePredicate deserialize(ByteBuffer byteBuffer) {
     // 0 for tree model, 1 for table model

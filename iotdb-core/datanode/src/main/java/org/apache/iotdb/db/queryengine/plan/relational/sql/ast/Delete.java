@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -36,6 +37,8 @@ import static java.util.Objects.requireNonNull;
 
 public class Delete extends Statement {
 
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(Delete.class);
+
   private Table table;
   @Nullable private Expression where;
 
@@ -44,8 +47,9 @@ public class Delete extends Statement {
   private String databaseName;
   private Collection<TRegionReplicaSet> replicaSets;
 
-  public Delete() {
+  public Delete(final Table table) {
     super(null);
+    this.table = requireNonNull(table, "table is null");
   }
 
   public Delete(final NodeLocation location, final Table table) {
@@ -127,5 +131,14 @@ public class Delete extends Statement {
 
   public void setReplicaSets(final Collection<TRegionReplicaSet> replicaSets) {
     this.replicaSets = replicaSets;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(table);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(where);
+    return size;
   }
 }

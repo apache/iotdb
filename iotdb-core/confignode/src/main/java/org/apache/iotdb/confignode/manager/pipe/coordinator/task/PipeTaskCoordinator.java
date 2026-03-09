@@ -54,7 +54,6 @@ public class PipeTaskCoordinator {
   private final PipeTaskInfo pipeTaskInfo;
 
   private final PipeTaskCoordinatorLock pipeTaskCoordinatorLock;
-  private AtomicReference<PipeTaskInfo> pipeTaskInfoHolder;
 
   public PipeTaskCoordinator(ConfigManager configManager, PipeTaskInfo pipeTaskInfo) {
     this.configManager = configManager;
@@ -69,12 +68,7 @@ public class PipeTaskCoordinator {
    *     null if the lock is not acquired.
    */
   public AtomicReference<PipeTaskInfo> tryLock() {
-    if (pipeTaskCoordinatorLock.tryLock()) {
-      pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-      return pipeTaskInfoHolder;
-    }
-
-    return null;
+    return pipeTaskCoordinatorLock.tryLock() ? new AtomicReference<>(pipeTaskInfo) : null;
   }
 
   /**
@@ -85,8 +79,7 @@ public class PipeTaskCoordinator {
    */
   public AtomicReference<PipeTaskInfo> lock() {
     pipeTaskCoordinatorLock.lock();
-    pipeTaskInfoHolder = new AtomicReference<>(pipeTaskInfo);
-    return pipeTaskInfoHolder;
+    return new AtomicReference<>(pipeTaskInfo);
   }
 
   /**
@@ -97,11 +90,6 @@ public class PipeTaskCoordinator {
    *     the lock.
    */
   public boolean unlock() {
-    if (pipeTaskInfoHolder != null) {
-      pipeTaskInfoHolder.set(null);
-      pipeTaskInfoHolder = null;
-    }
-
     try {
       pipeTaskCoordinatorLock.unlock();
       return true;
@@ -241,7 +229,7 @@ public class PipeTaskCoordinator {
   public TShowPipeResp showPipes(final TShowPipeReq req) {
     try {
       return ((PipeTableResp) configManager.getConsensusManager().read(new ShowPipePlanV2()))
-          .filter(req.whereClause, req.pipeName, req.isTableModel)
+          .filter(req.whereClause, req.pipeName, req.isTableModel, req.userName)
           .convertToTShowPipeResp();
     } catch (final ConsensusException e) {
       LOGGER.warn("Failed in the read API executing the consensus layer due to: ", e);

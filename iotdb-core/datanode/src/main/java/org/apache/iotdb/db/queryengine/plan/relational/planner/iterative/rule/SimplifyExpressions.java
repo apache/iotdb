@@ -74,14 +74,14 @@ public class SimplifyExpressions extends ExpressionRewriteRuleSet {
   @Override
   public Set<Rule<?>> rules() {
     return ImmutableSet.of(
-        projectExpressionRewrite(), filterExpressionRewrite()
+        projectExpressionRewrite(),
+        filterExpressionRewrite(),
         // TODO add it back after we support JoinNode
         //        joinExpressionRewrite(),
         // TODO add it back after we support ValuesNode
         //        valuesExpressionRewrite(),
-        // TODO add it back after we support PatternRecognitionNode
-        //        patternRecognitionExpressionRewrite()
-        ); // ApplyNode and AggregationNode are not supported, because ExpressionInterpreter doesn't
+        patternRecognitionExpressionRewrite()); // ApplyNode and AggregationNode are not supported,
+    // because ExpressionInterpreter doesn't
     // support them
   }
 

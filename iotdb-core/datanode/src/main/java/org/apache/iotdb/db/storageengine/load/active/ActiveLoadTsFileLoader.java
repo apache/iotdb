@@ -40,10 +40,10 @@ import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.pipe.PipeEnrichedStatement;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesNumberMetricsSet;
 import org.apache.iotdb.db.storageengine.load.metrics.ActiveLoadingFilesSizeMetricsSet;
+import org.apache.iotdb.db.storageengine.load.util.LoadUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +57,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -84,12 +85,13 @@ public class ActiveLoadTsFileLoader {
     return MAX_PENDING_SIZE - pendingQueue.size();
   }
 
-  public void tryTriggerTsFileLoad(String absolutePath, boolean isGeneratedByPipe) {
+  public void tryTriggerTsFileLoad(
+      String absolutePath, String pendingDir, boolean isTabletMode, boolean isGeneratedByPipe) {
     if (CommonDescriptor.getInstance().getConfig().isReadOnly()) {
       return;
     }
 
-    if (pendingQueue.enqueue(absolutePath, isGeneratedByPipe)) {
+    if (pendingQueue.enqueue(absolutePath, pendingDir, isGeneratedByPipe, isTabletMode)) {
       initFailDirIfNecessary();
       adjustExecutorIfNecessary();
     }
@@ -165,28 +167,28 @@ public class ActiveLoadTsFileLoader {
 
     try {
       while (true) {
-        final Optional<Pair<String, Boolean>> filePair = tryGetNextPendingFile();
-        if (!filePair.isPresent()) {
+        final Optional<ActiveLoadPendingQueue.ActiveLoadEntry> loadEntry = tryGetNextPendingFile();
+        if (!loadEntry.isPresent()) {
           return;
         }
 
         try {
-          final TSStatus result = loadTsFile(filePair.get(), session);
+          final TSStatus result = loadTsFile(loadEntry.get(), session);
           if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
               || result.getCode() == TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
             LOGGER.info(
                 "Successfully auto load tsfile {} (isGeneratedByPipe = {})",
-                filePair.get().getLeft(),
-                filePair.get().getRight());
+                loadEntry.get().getFile(),
+                loadEntry.get().isGeneratedByPipe());
           } else {
-            handleLoadFailure(filePair.get(), result);
+            handleLoadFailure(loadEntry.get(), result);
           }
         } catch (final FileNotFoundException e) {
-          handleFileNotFoundException(filePair.get());
+          handleFileNotFoundException(loadEntry.get());
         } catch (final Exception e) {
-          handleOtherException(filePair.get(), e);
+          handleOtherException(loadEntry.get(), e);
         } finally {
-          pendingQueue.removeFromLoading(filePair.get().getLeft());
+          pendingQueue.removeFromLoading(loadEntry.get().getFile());
         }
       }
     } finally {
@@ -194,15 +196,15 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private Optional<Pair<String, Boolean>> tryGetNextPendingFile() {
+  private Optional<ActiveLoadPendingQueue.ActiveLoadEntry> tryGetNextPendingFile() {
     final long maxRetryTimes =
         Math.max(1, IOTDB_CONFIG.getLoadActiveListeningCheckIntervalSeconds() << 1);
     long currentRetryTimes = 0;
 
     while (true) {
-      final Pair<String, Boolean> filePair = pendingQueue.dequeueFromPending();
-      if (Objects.nonNull(filePair)) {
-        return Optional.of(filePair);
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry = pendingQueue.dequeueFromPending();
+      if (Objects.nonNull(entry)) {
+        return Optional.of(entry);
       }
 
       LockSupport.parkNanos(TimeUnit.SECONDS.toNanos(1));
@@ -213,20 +215,34 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private TSStatus loadTsFile(final Pair<String, Boolean> filePair, final IClientSession session)
+  private TSStatus loadTsFile(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final IClientSession session)
       throws FileNotFoundException {
-    final LoadTsFileStatement statement = new LoadTsFileStatement(filePair.getLeft());
+    final File tsFile = new File(entry.getFile());
+    final LoadTsFileStatement statement = new LoadTsFileStatement(tsFile.getAbsolutePath());
     final List<File> files = statement.getTsFiles();
-    if (!files.isEmpty()) {
-      final File parentFile = files.get(0).getParentFile();
-      statement.setDatabase(parentFile == null ? "null" : parentFile.getName());
-    }
+
     statement.setDeleteAfterLoad(true);
-    statement.setConvertOnTypeMismatch(true);
-    statement.setVerifySchema(isVerify);
-    statement.setAutoCreateDatabase(false);
+    statement.setAutoCreateDatabase(
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
+
+    final File pendingDir =
+        entry.getPendingDir() == null
+            ? ActiveLoadPathHelper.findPendingDirectory(tsFile)
+            : new File(entry.getPendingDir());
+    final Map<String, String> attributes = ActiveLoadPathHelper.parseAttributes(tsFile, pendingDir);
+    ActiveLoadPathHelper.applyAttributesToStatement(attributes, statement, isVerify);
+
+    final File parentFile;
+    if (statement.getDatabase() == null && entry.isTableModel()) {
+      statement.setDatabase(
+          files.isEmpty() || (parentFile = files.get(0).getParentFile()) == null
+              ? null
+              : parentFile.getName());
+    }
+
     return executeStatement(
-        filePair.getRight() ? new PipeEnrichedStatement(statement) : statement, session);
+        entry.isGeneratedByPipe() ? new PipeEnrichedStatement(statement) : statement, session);
   }
 
   private TSStatus executeStatement(final Statement statement, final IClientSession session) {
@@ -248,41 +264,43 @@ public class ActiveLoadTsFileLoader {
     }
   }
 
-  private void handleLoadFailure(final Pair<String, Boolean> filePair, final TSStatus status) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(
-        filePair, status.getMessage())) {
+  private void handleLoadFailure(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final TSStatus status) {
+    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, status.getMessage())) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}), status: {}. File will be moved to fail directory.",
-          filePair.getLeft(),
-          filePair.getRight(),
+          entry.getFile(),
+          entry.isGeneratedByPipe(),
           status);
-      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+      removeFileAndResourceAndModsToFailDir(entry.getFile());
     }
   }
 
-  private void handleFileNotFoundException(final Pair<String, Boolean> filePair) {
+  private void handleFileNotFoundException(final ActiveLoadPendingQueue.ActiveLoadEntry entry) {
     LOGGER.warn(
         "Failed to auto load tsfile {} (isGeneratedByPipe = {}) due to file not found, will skip this file.",
-        filePair.getLeft(),
-        filePair.getRight());
-    removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+        entry.getFile(),
+        entry.isGeneratedByPipe());
+    removeFileAndResourceAndModsToFailDir(entry.getFile());
   }
 
-  private void handleOtherException(final Pair<String, Boolean> filePair, final Exception e) {
-    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(filePair, e.getMessage())) {
+  private void handleOtherException(
+      final ActiveLoadPendingQueue.ActiveLoadEntry entry, final Exception e) {
+    if (!ActiveLoadFailedMessageHandler.isExceptionMessageShouldRetry(entry, e.getMessage())) {
       LOGGER.warn(
           "Failed to auto load tsfile {} (isGeneratedByPipe = {}) because of an unexpected exception. File will be moved to fail directory.",
-          filePair.getLeft(),
-          filePair.getRight(),
+          entry.getFile(),
+          entry.isGeneratedByPipe(),
           e);
-      removeFileAndResourceAndModsToFailDir(filePair.getLeft());
+      removeFileAndResourceAndModsToFailDir(entry.getFile());
     }
   }
 
   private void removeFileAndResourceAndModsToFailDir(final String filePath) {
     removeToFailDir(filePath);
-    removeToFailDir(filePath + ".resource");
-    removeToFailDir(filePath + ".mods");
+    removeToFailDir(LoadUtil.getTsFileResourcePath(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV1Path(filePath));
+    removeToFailDir(LoadUtil.getTsFileModsV2Path(filePath));
   }
 
   private void removeToFailDir(final String filePath) {

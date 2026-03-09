@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
+import java.util.function.Function;
 
 public class ClientManager<K, V> implements IClientManager<K, V> {
 
@@ -64,15 +65,43 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
    * return of a client is automatic whenever a particular client is used.
    */
   public void returnClient(K node, V client) {
-    Optional.ofNullable(node)
-        .ifPresent(
-            x -> {
-              try {
-                pool.returnObject(node, client);
-              } catch (Exception e) {
-                LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
-              }
-            });
+    if (node != null) {
+      try {
+        pool.returnObject(node, client);
+      } catch (Exception e) {
+        LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+      }
+    } else if (client instanceof ThriftClient) {
+      ((ThriftClient) client).invalidateAll();
+      LOGGER.warn(
+          "Return client {} to pool failed because the node is null. "
+              + "This may cause resource leak, please check your code.",
+          client);
+    }
+  }
+
+  /**
+   * return a client V for node K to the {@link ClientManager}, and ignore some exception
+   *
+   * <p>Note: We do not define this interface in {@link IClientManager} to make you aware that the
+   * return of a client is automatic whenever a particular client is used.
+   */
+  public void returnClient(K node, V client, Function<Exception, Boolean> ignoreError) {
+    if (node != null) {
+      try {
+        pool.returnObject(node, client);
+      } catch (Exception e) {
+        if (!Boolean.TRUE.equals(ignoreError.apply(e))) {
+          LOGGER.warn("Return client {} for node {} to pool failed.", client, node, e);
+        }
+      }
+    } else if (client instanceof ThriftClient) {
+      ((ThriftClient) client).invalidateAll();
+      LOGGER.warn(
+          "Return client {} to pool failed because the node is null. "
+              + "This may cause resource leak, please check your code.",
+          client);
+    }
   }
 
   @Override
@@ -86,6 +115,11 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
                 LOGGER.warn("Clear all client in pool for node {} failed.", node, e);
               }
             });
+  }
+
+  @Override
+  public void clearAll() {
+    pool.clear();
   }
 
   @Override

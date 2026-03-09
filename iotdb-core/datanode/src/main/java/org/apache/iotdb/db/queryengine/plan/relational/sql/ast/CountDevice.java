@@ -26,10 +26,13 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Analysis;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.Collections;
 
 public class CountDevice extends AbstractQueryDeviceWithCache {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CountDevice.class);
 
   public static final String COUNT_DEVICE_HEADER_STRING = "count(devices)";
 
@@ -64,5 +67,10 @@ public class CountDevice extends AbstractQueryDeviceWithCache {
   @Override
   public String toString() {
     return "CountDevice" + toStringContent();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
   }
 }

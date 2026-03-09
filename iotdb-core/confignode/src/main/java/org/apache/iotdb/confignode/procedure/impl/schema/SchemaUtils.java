@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCType;
 import org.apache.iotdb.commons.schema.table.TsTableInternalRPCUtil;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeAsyncRequestContext;
@@ -37,16 +38,18 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCheckSchemaRegionUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCountPathsUsingTemplateResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
+
+import javax.annotation.Nullable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -180,6 +183,7 @@ public class SchemaUtils {
                 respList.add(response);
                 List<TConsensusGroupId> failedRegionList = new ArrayList<>();
                 if (response.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                  failureMap.remove(dataNodeLocation);
                   return failedRegionList;
                 }
 
@@ -193,6 +197,12 @@ public class SchemaUtils {
                 } else {
                   failedRegionList.addAll(consensusGroupIdList);
                 }
+                if (!failedRegionList.isEmpty()) {
+                  failureMap.put(
+                      dataNodeLocation, RpcUtils.extractFailureStatues(response.getStatus()));
+                } else {
+                  failureMap.remove(dataNodeLocation);
+                }
                 return failedRegionList;
               }
 
@@ -202,8 +212,8 @@ public class SchemaUtils {
                 exception[0] =
                     new MetadataException(
                         String.format(
-                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failure nodes: %s",
-                            consensusGroupId.id, deleteDatabasePatternPaths, dataNodeLocationSet));
+                            "Failed to execute in all replicaset of schemaRegion %s when checking templates on path %s. Failures: %s",
+                            consensusGroupId.id, deleteDatabasePatternPaths, printFailureMap()));
                 interruptTask();
               }
             };
@@ -223,10 +233,14 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> preReleaseTable(
-      final String database, final TsTable table, final ConfigManager configManager) {
+      final String database,
+      final TsTable table,
+      final ConfigManager configManager,
+      final String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -240,7 +254,10 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> commitReleaseTable(
-      final String database, final String tableName, final ConfigManager configManager) {
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.COMMIT_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -251,6 +268,7 @@ public class SchemaUtils {
       // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
@@ -264,7 +282,10 @@ public class SchemaUtils {
   }
 
   public static Map<Integer, TSStatus> rollbackPreRelease(
-      final String database, final String tableName, final ConfigManager configManager) {
+      final String database,
+      final String tableName,
+      final ConfigManager configManager,
+      final @Nullable String oldName) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.ROLLBACK_UPDATE_TABLE.getOperationType());
     final ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -275,6 +296,7 @@ public class SchemaUtils {
       // ByteArrayOutputStream will not throw IOException
     }
     req.setTableInfo(outputStream.toByteArray());
+    req.setOldName(oldName);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();

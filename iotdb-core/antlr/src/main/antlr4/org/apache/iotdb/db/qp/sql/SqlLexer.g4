@@ -37,12 +37,20 @@ WS
 
 // Common Keywords
 
+ACCOUNT
+    : A C C O U N T
+    ;
+
 ADD
     : A D D
     ;
 
 AFTER
     : A F T E R
+    ;
+
+AI_DEVICES
+    : A I '_' D E V I C E S
     ;
 
 ALIAS
@@ -153,6 +161,10 @@ CLUSTERID
     : C L U S T E R I D
     ;
 
+COMMENT
+    : C O M M E N T
+    ;
+
 CONCAT
     : C O N C A T
     ;
@@ -221,6 +233,10 @@ DATA
     : D A T A
     ;
 
+TYPE
+    : T Y P E
+    ;
+
 DATABASE
     : D A T A B A S E
     ;
@@ -242,6 +258,14 @@ DATANODES
     : D A T A N O D E S
     ;
 
+AVAILABLE
+    : A V A I L A B L E
+    ;
+
+URLS
+    : U R L S
+    ;
+
 DATASET
     : D A T A S E T
     ;
@@ -256,6 +280,10 @@ DEBUG
 
 DELETE
     : D E L E T E
+    ;
+
+DEFAULT
+    : D E F A U L T
     ;
 
 DESC
@@ -330,6 +358,10 @@ FALSE
     : F A L S E
     ;
 
+FIELD
+    : F I E L D
+    ;
+
 FILL
     : F I L L
     ;
@@ -349,6 +381,11 @@ FLUSH
 FOR
     : F O R
     ;
+
+FORCEDLY
+    : F O R C E D L Y
+    ;
+
 
 FROM
     : F R O M
@@ -466,6 +503,10 @@ LOAD
     : L O A D
     ;
 
+LOADED
+    : L O A D E D
+    ;
+
 LOCAL
     : L O C A L
     ;
@@ -484,6 +525,10 @@ METADATA
 
 MIGRATE
     : M I G R A T E
+    ;
+
+AINODE
+    : A I N O D E
     ;
 
 AINODES
@@ -580,6 +625,10 @@ PATH
 
 PATHS
     : P A T H S
+    ;
+
+PERMITTED
+    : P E R M I T T E D
     ;
 
 PIPE
@@ -706,6 +755,10 @@ REPLACE
     : R E P L A C E
     ;
 
+RESTRICT
+    : R E S T R I C T
+    ;
+
 REVOKE
     : R E V O K E
     ;
@@ -736,6 +789,14 @@ SELECT
 
 SERIESSLOTID
     : S E R I E S S L O T I D
+    ;
+
+SERVICE
+    : S E R V I C E
+    ;
+
+SERVICES
+    : S E R V I C E S
     ;
 
 SESSION
@@ -810,6 +871,14 @@ STOP
     : S T O P
     ;
 
+STORAGE_PROPERTIES
+    : S T O R A G E '_' P R O P E R T I E S
+    ;
+
+SUBSCRIPTION
+    : S U B S C R I P T I O N
+    ;
+
 SUBSCRIPTIONS
     : S U B S C R I P T I O N S
     ;
@@ -824,6 +893,10 @@ SYSTEM
 
 TABLE
     : T A B L E
+    ;
+
+TAG
+    : T A G
     ;
 
 TAGS
@@ -924,6 +997,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNLOCK
+    : U N L O C K
     ;
 
 UNSET
@@ -1102,6 +1179,14 @@ MAINTAIN
     : M A I N T A I N
     ;
 
+SECURITY
+    : S E C U R I T Y
+    ;
+
+AUDIT
+    : A U D I T
+    ;
+
 REPAIR
     : R E P A I R
     ;
@@ -1166,6 +1251,7 @@ OPERATOR_NOT : '!';
  * 4. Constructors Symbols
  */
 
+AT : '@';
 DOT : '.';
 COMMA : ',';
 SEMI: ';';

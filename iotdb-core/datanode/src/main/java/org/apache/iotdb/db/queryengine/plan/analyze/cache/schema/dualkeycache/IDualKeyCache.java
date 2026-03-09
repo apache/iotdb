@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache;
 
-import org.apache.iotdb.commons.utils.TestOnly;
-
 import javax.annotation.concurrent.GuardedBy;
 
+import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
@@ -37,22 +37,10 @@ import java.util.function.ToIntFunction;
 public interface IDualKeyCache<FK, SK, V> {
 
   /** Get the cache value with given first key and second key. */
-  V get(FK firstKey, SK secondKey);
+  V get(final FK firstKey, final SK secondKey);
 
-  /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. The computation is read only.
-   */
-  void compute(IDualKeyCacheComputation<FK, SK, V> computation);
-
-  /**
-   * Traverse target cache values via given first key and second keys provided in computation and
-   * execute the defined computation logic. Value can be updated in this computation.
-   */
-  void updateWithLock(final IDualKeyCacheUpdating<FK, SK, V> updating);
-
-  /** put the cache value into cache */
-  void put(final FK firstKey, final SK secondKey, final V value);
+  <R> boolean batchApply(
+      final Map<FK, Map<SK, R>> inputMap, final BiFunction<V, R, Boolean> mappingFunction);
 
   /**
    * Update the existing value. The updater shall return the difference caused by the update,
@@ -102,17 +90,8 @@ public interface IDualKeyCache<FK, SK, V> {
   @GuardedBy("DataNodeSchemaCache#writeLock")
   void invalidateAll();
 
-  /**
-   * Clean up all data and info of this cache, including cache keys, cache values and cache stats.
-   */
-  @GuardedBy("DataNodeSchemaCache#writeLock")
-  void cleanUp();
-
   /** Return all the current cache status and statistics. */
   IDualKeyCacheStats stats();
-
-  @TestOnly
-  void evictOneEntry();
 
   /** remove all entries for firstKey */
   @GuardedBy("DataNodeSchemaCache#writeLock")

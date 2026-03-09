@@ -20,10 +20,10 @@ import logging
 import random
 import sys
 import struct
-import time
 import warnings
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
+from tzlocal import get_localzone_name
 
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
@@ -71,7 +71,7 @@ class Session(object):
     DEFAULT_FETCH_SIZE = 5000
     DEFAULT_USER = "root"
     DEFAULT_PASSWORD = "root"
-    DEFAULT_ZONE_ID = time.strftime("%z")
+    DEFAULT_ZONE_ID = get_localzone_name()
     RETRY_NUM = 3
     SQL_DIALECT = "tree"
 
@@ -95,7 +95,13 @@ class Session(object):
         self.__default_endpoint = TEndPoint(self.__host, self.__port)
         self.__user = user
         self.__password = password
-        self.__fetch_size = fetch_size
+        if fetch_size > 0:
+            self.__fetch_size = fetch_size
+        else:
+            logger.warning(
+                f"fetch_size {fetch_size} is illegal, use default fetch_size {self.DEFAULT_FETCH_SIZE}"
+            )
+            self.__fetch_size = self.DEFAULT_FETCH_SIZE
         self.__is_close = True
         self.__client = None
         self.__default_connection = None
@@ -112,6 +118,7 @@ class Session(object):
         self.__use_ssl = use_ssl
         self.__ca_certs = ca_certs
         self.__connection_timeout_in_ms = connection_timeout_in_ms
+        self.__time_precision = "ms"
 
     @classmethod
     def init_from_node_urls(
@@ -206,6 +213,11 @@ class Session(object):
         try:
             open_resp = client.openSession(open_req)
             rpc_utils.verify_success(open_resp.status)
+            if open_resp.configuration is not None:
+                if "timestamp_precision" in open_resp.configuration:
+                    self.__time_precision = open_resp.configuration[
+                        "timestamp_precision"
+                    ]
 
             if self.protocol_version != open_resp.serverProtocolVersion:
                 logger.exception(
@@ -1518,6 +1530,8 @@ class Session(object):
             timeout,
             resp.moreData,
             self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
             resp.columnIndex2TsBlockColumnIndexList,
         )
 
@@ -1587,6 +1601,8 @@ class Session(object):
                 timeout,
                 resp.moreData,
                 self.__fetch_size,
+                self.__zone_id,
+                self.__time_precision,
                 resp.columnIndex2TsBlockColumnIndexList,
             )
         else:
@@ -1748,6 +1764,8 @@ class Session(object):
             0,
             resp.moreData,
             self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
             resp.columnIndex2TsBlockColumnIndexList,
         )
 
@@ -1793,6 +1811,8 @@ class Session(object):
             0,
             resp.moreData,
             self.__fetch_size,
+            self.__zone_id,
+            self.__time_precision,
             resp.columnIndex2TsBlockColumnIndexList,
         )
 

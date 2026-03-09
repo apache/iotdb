@@ -73,49 +73,50 @@ public class ShowDatabaseStatement extends ShowStatement implements IConfigState
   }
 
   public void buildTSBlock(
-      final Map<String, TDatabaseInfo> storageGroupInfoMap,
+      final Map<String, TDatabaseInfo> databaseInfoMap,
       final SettableFuture<ConfigTaskResult> future) {
 
     final List<TSDataType> outputDataTypes =
         isDetailed
-            ? ColumnHeaderConstant.showStorageGroupsDetailColumnHeaders.stream()
+            ? ColumnHeaderConstant.showDatabasesDetailColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList())
-            : ColumnHeaderConstant.showStorageGroupsColumnHeaders.stream()
+            : ColumnHeaderConstant.showDatabasesColumnHeaders.stream()
                 .map(ColumnHeader::getColumnType)
                 .collect(Collectors.toList());
 
     final TsBlockBuilder builder = new TsBlockBuilder(outputDataTypes);
-    for (final Map.Entry<String, TDatabaseInfo> entry : storageGroupInfoMap.entrySet()) {
-      final String storageGroup = entry.getKey();
-      final TDatabaseInfo storageGroupInfo = entry.getValue();
+    for (final Map.Entry<String, TDatabaseInfo> entry :
+        databaseInfoMap.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .collect(Collectors.toList())) {
+      final String database = entry.getKey();
+      final TDatabaseInfo databaseInfo = entry.getValue();
 
       builder.getTimeColumnBuilder().writeLong(0L);
-      builder
-          .getColumnBuilder(0)
-          .writeBinary(new Binary(storageGroup, TSFileConfig.STRING_CHARSET));
-      builder.getColumnBuilder(1).writeInt(storageGroupInfo.getSchemaReplicationFactor());
-      builder.getColumnBuilder(2).writeInt(storageGroupInfo.getDataReplicationFactor());
-      builder.getColumnBuilder(3).writeLong(storageGroupInfo.getTimePartitionOrigin());
-      builder.getColumnBuilder(4).writeLong(storageGroupInfo.getTimePartitionInterval());
+      builder.getColumnBuilder(0).writeBinary(new Binary(database, TSFileConfig.STRING_CHARSET));
+      builder.getColumnBuilder(1).writeInt(databaseInfo.getSchemaReplicationFactor());
+      builder.getColumnBuilder(2).writeInt(databaseInfo.getDataReplicationFactor());
+      builder.getColumnBuilder(3).writeLong(databaseInfo.getTimePartitionOrigin());
+      builder.getColumnBuilder(4).writeLong(databaseInfo.getTimePartitionInterval());
       if (isDetailed) {
-        builder.getColumnBuilder(5).writeInt(storageGroupInfo.getSchemaRegionNum());
-        builder.getColumnBuilder(6).writeInt(storageGroupInfo.getMinSchemaRegionNum());
-        builder.getColumnBuilder(7).writeInt(storageGroupInfo.getMaxSchemaRegionNum());
-        builder.getColumnBuilder(8).writeInt(storageGroupInfo.getDataRegionNum());
-        builder.getColumnBuilder(9).writeInt(storageGroupInfo.getMinDataRegionNum());
-        builder.getColumnBuilder(10).writeInt(storageGroupInfo.getMaxDataRegionNum());
+        builder.getColumnBuilder(5).writeInt(databaseInfo.getSchemaRegionNum());
+        builder.getColumnBuilder(6).writeInt(databaseInfo.getMinSchemaRegionNum());
+        builder.getColumnBuilder(7).writeInt(databaseInfo.getMaxSchemaRegionNum());
+        builder.getColumnBuilder(8).writeInt(databaseInfo.getDataRegionNum());
+        builder.getColumnBuilder(9).writeInt(databaseInfo.getMinDataRegionNum());
+        builder.getColumnBuilder(10).writeInt(databaseInfo.getMaxDataRegionNum());
       }
       builder.declarePosition();
     }
 
-    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowStorageGroupHeader(isDetailed);
+    final DatasetHeader datasetHeader = DatasetHeaderFactory.getShowDatabaseHeader(isDetailed);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 
   @Override
   public <R, C> R accept(final StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitShowStorageGroup(this, context);
+    return visitor.visitShowDatabase(this, context);
   }
 
   @Override

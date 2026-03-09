@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped;
 
-import org.apache.iotdb.commons.udf.access.RecordIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationMask;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.MaskedRecordIterator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.RecordIterator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.array.ObjectBigArray;
 import org.apache.iotdb.udf.api.State;
 import org.apache.iotdb.udf.api.relational.AggregateFunction;
@@ -82,13 +82,23 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
             ? new RecordIterator(
                 Arrays.asList(arguments), inputDataTypes, arguments[0].getPositionCount())
             : new MaskedRecordIterator(Arrays.asList(arguments), inputDataTypes, mask);
-    int[] selectedPositions = mask.getSelectedPositions();
+
     int index = 0;
-    while (iterator.hasNext()) {
-      int groupId = groupIds[selectedPositions[index]];
-      index++;
-      State state = getOrCreateState(groupId);
-      aggregateFunction.addInput(state, iterator.next());
+    if (mask.isSelectAll()) {
+      while (iterator.hasNext()) {
+        int groupId = groupIds[index];
+        index++;
+        State state = getOrCreateState(groupId);
+        aggregateFunction.addInput(state, iterator.next());
+      }
+    } else {
+      int[] selectedPositions = mask.getSelectedPositions();
+      while (iterator.hasNext()) {
+        int groupId = groupIds[selectedPositions[index]];
+        index++;
+        State state = getOrCreateState(groupId);
+        aggregateFunction.addInput(state, iterator.next());
+      }
     }
   }
 
@@ -141,6 +151,11 @@ public class GroupedUserDefinedAggregateAccumulator implements GroupedAccumulato
   @Override
   public void close() {
     aggregateFunction.beforeDestroy();
-    stateArray.forEach(State::destroyState);
+    stateArray.forEach(
+        state -> {
+          if (state != null) {
+            state.destroyState();
+          }
+        });
   }
 }

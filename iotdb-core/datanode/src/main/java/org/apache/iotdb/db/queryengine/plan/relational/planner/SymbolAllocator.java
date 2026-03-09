@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
+import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinScalarFunction;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.Field;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -39,6 +40,9 @@ public class SymbolAllocator {
   public static final String GROUP_KEY_SUFFIX = "gid";
 
   public static final String SEPARATOR = "$";
+
+  public static final String DATE_BIN_PREFIX =
+      TableBuiltinScalarFunction.DATE_BIN.getFunctionName() + SEPARATOR;
 
   private final Map<Symbol, Type> symbolMap;
   private int nextId;

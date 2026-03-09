@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.tsfile.utils.Binary;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,6 +32,9 @@ import java.util.Objects;
 import static java.util.Objects.requireNonNull;
 
 public class DecimalLiteral extends Literal {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DecimalLiteral.class);
 
   private final String value;
 
@@ -99,5 +103,12 @@ public class DecimalLiteral extends Literal {
   @Override
   public Object getTsValue() {
     return new Binary(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE
+        + AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal())
+        + RamUsageEstimator.sizeOf(value);
   }
 }

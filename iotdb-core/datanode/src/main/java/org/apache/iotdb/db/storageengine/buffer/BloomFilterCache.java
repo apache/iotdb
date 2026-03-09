@@ -210,7 +210,12 @@ public class BloomFilterCache {
       try {
         cacheMiss = true;
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(bloomFilterCacheKey.filePath, true, ioSizeRecorder);
+            FileReaderManager.getInstance()
+                .get(
+                    bloomFilterCacheKey.filePath,
+                    bloomFilterCacheKey.tsFileID,
+                    true,
+                    ioSizeRecorder);
         return reader.readBloomFilter(ioSizeRecorder);
       } catch (IOException e) {
         throw new IoTDBIORuntimeException(e);

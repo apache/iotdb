@@ -71,7 +71,7 @@ public interface ISink extends Accountable {
    *
    * <p>Should only be called in abnormal case
    */
-  void abort();
+  boolean abort();
 
   /**
    * Close the ISink. If this is an ISinkHandle, we should close all its channels. If this is an
@@ -80,7 +80,7 @@ public interface ISink extends Accountable {
    *
    * <p>Should only be called in normal case.
    */
-  void close();
+  boolean close();
 
   /** Return true if this ISink has been closed. Used in {@link Driver#isFinishedInternal()}. */
   boolean isClosed();

@@ -21,9 +21,10 @@ package org.apache.iotdb.db.pipe.metric.overview;
 
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
-import org.apache.iotdb.db.pipe.extractor.dataregion.IoTDBDataRegionExtractor;
+import org.apache.iotdb.db.pipe.source.dataregion.IoTDBDataRegionSource;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -48,6 +49,9 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
   private final ConcurrentSkipListSet<String> pipe = new ConcurrentSkipListSet<>();
   private final Map<String, Timer> pipeTimerMap = new ConcurrentHashMap<>();
   private final Map<String, Rate> pipeRateMap = new ConcurrentHashMap<>();
+  private final Map<String, Counter> pipeTabletCountMap = new ConcurrentHashMap<>();
+  private final Map<String, Counter> pipeTabletMemoryMap = new ConcurrentHashMap<>();
+  private final Map<String, Counter> pipeParseFileCountMap = new ConcurrentHashMap<>();
 
   //////////////////////////// bindTo & unbindFrom (metric framework) ////////////////////////////
 
@@ -69,6 +73,27 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
         pipeID,
         metricService.getOrCreateRate(
             Metric.PIPE_TSFILE_TO_TABLETS_RATE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeID));
+    pipeTabletCountMap.putIfAbsent(
+        pipeID,
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_TO_TABLETS_COUNT.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeID));
+    pipeTabletMemoryMap.putIfAbsent(
+        pipeID,
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_TO_TABLETS_TOTAL_MEMORY.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            pipeID));
+    pipeParseFileCountMap.putIfAbsent(
+        pipeID,
+        metricService.getOrCreateCounter(
+            Metric.PIPE_TSFILE_PARSE_FILE_COUNT.toString(),
             MetricLevel.IMPORTANT,
             Tag.NAME.toString(),
             pipeID));
@@ -98,11 +123,32 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
         Tag.NAME.toString(),
         pipeID);
     pipeRateMap.remove(pipeID);
+
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PIPE_TSFILE_TO_TABLETS_COUNT.toString(),
+        Tag.NAME.toString(),
+        pipeID);
+    pipeTabletCountMap.remove(pipeID);
+
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PIPE_TSFILE_TO_TABLETS_TOTAL_MEMORY.toString(),
+        Tag.NAME.toString(),
+        pipeID);
+    pipeTabletMemoryMap.remove(pipeID);
+
+    metricService.remove(
+        MetricType.COUNTER,
+        Metric.PIPE_TSFILE_PARSE_FILE_COUNT.toString(),
+        Tag.NAME.toString(),
+        pipeID);
+    pipeParseFileCountMap.remove(pipeID);
   }
 
   //////////////////////////// register & deregister ////////////////////////////
 
-  public void register(final IoTDBDataRegionExtractor extractor) {
+  public void register(final IoTDBDataRegionSource extractor) {
     final String pipeID = extractor.getPipeName() + "_" + extractor.getCreationTime();
     pipe.add(pipeID);
     if (Objects.nonNull(metricService)) {
@@ -151,6 +197,27 @@ public class PipeTsFileToTabletsMetrics implements IMetricSet {
       return;
     }
     timer.updateNanos(costTimeInNanos);
+    // Increment file count for this pipe when parsing ends
+    final Counter fileCount = pipeParseFileCountMap.get(taskID);
+    if (fileCount != null) {
+      fileCount.inc();
+    }
+  }
+
+  public void recordTabletGenerated(final String taskID, long tabletMemorySize) {
+    if (Objects.isNull(metricService)) {
+      return;
+    }
+    final Counter tabletCount = pipeTabletCountMap.get(taskID);
+    if (tabletCount == null) {
+      LOGGER.info("Failed to record tablet generated, pipeID({}) does not exist", taskID);
+      return;
+    }
+    tabletCount.inc();
+    final Counter tabletMemory = pipeTabletMemoryMap.get(taskID);
+    if (tabletMemory != null) {
+      tabletMemory.inc(tabletMemorySize);
+    }
   }
 
   //////////////////////////// singleton ////////////////////////////

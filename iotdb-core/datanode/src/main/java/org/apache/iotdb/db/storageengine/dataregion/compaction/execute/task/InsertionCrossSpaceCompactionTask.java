@@ -225,7 +225,7 @@ public class InsertionCrossSpaceCompactionTask extends AbstractCompactionTask {
 
     targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
     targetFile.deserialize();
-    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndexAfterClose());
+    targetFile.setProgressIndex(unseqFileToInsert.getMaxProgressIndex());
   }
 
   private boolean recoverTaskInfoFromLogFile() throws IOException {

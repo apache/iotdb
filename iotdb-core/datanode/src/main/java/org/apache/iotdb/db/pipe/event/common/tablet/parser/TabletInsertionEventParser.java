@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet.parser;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
@@ -26,8 +27,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNod
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.StringArrayDeviceID;
@@ -38,7 +41,6 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +72,7 @@ public abstract class TabletInsertionEventParser {
   protected String[] columnNameStringList;
 
   protected long[] timestampColumn;
-  protected Tablet.ColumnCategory[] valueColumnTypes;
+  protected ColumnCategory[] valueColumnTypes;
   protected TSDataType[] valueColumnDataTypes;
   // Each column of Object[] is a column of primitive type array
   protected Object[] valueColumns;
@@ -135,7 +137,7 @@ public abstract class TabletInsertionEventParser {
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
     this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
@@ -153,7 +155,7 @@ public abstract class TabletInsertionEventParser {
         this.valueColumnTypes[filteredColumnIndex] =
             originColumnCategories != null && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
-                : Tablet.ColumnCategory.FIELD;
+                : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValues[i]) || Objects.isNull(originValueDataTypes[i])) {
@@ -189,7 +191,7 @@ public abstract class TabletInsertionEventParser {
     }
   }
 
-  protected void parse(final InsertTabletNode insertTabletNode) {
+  protected void parse(final InsertTabletNode insertTabletNode) throws IllegalPathException {
     final int originColumnSize = insertTabletNode.getMeasurements().length;
     final Integer[] originColumnIndex2FilteredColumnIndexMapperList = new Integer[originColumnSize];
 
@@ -214,7 +216,7 @@ public abstract class TabletInsertionEventParser {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
     this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
@@ -246,7 +248,7 @@ public abstract class TabletInsertionEventParser {
         this.valueColumnTypes[filteredColumnIndex] =
             originColumnCategories != null && originColumnCategories[i] != null
                 ? originColumnCategories[i].toTsFileColumnType()
-                : Tablet.ColumnCategory.FIELD;
+                : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
@@ -316,20 +318,20 @@ public abstract class TabletInsertionEventParser {
 
     this.measurementSchemaList = new MeasurementSchema[filteredColumnSize];
     this.columnNameStringList = new String[filteredColumnSize];
-    this.valueColumnTypes = new Tablet.ColumnCategory[filteredColumnSize];
+    this.valueColumnTypes = new ColumnCategory[filteredColumnSize];
     this.valueColumnDataTypes = new TSDataType[filteredColumnSize];
     this.valueColumns = new Object[filteredColumnSize];
     this.nullValueColumnBitmaps = new BitMap[filteredColumnSize];
 
     final String[] originColumnNameStringList = new String[originColumnSize];
-    final Tablet.ColumnCategory[] originColumnTypes = new Tablet.ColumnCategory[originColumnSize];
+    final ColumnCategory[] originColumnTypes = new ColumnCategory[originColumnSize];
     final TSDataType[] originValueColumnDataTypes = new TSDataType[originColumnSize];
     for (int i = 0; i < originColumnSize; i++) {
       originColumnNameStringList[i] = originMeasurementSchemaList.get(i).getMeasurementName();
       originColumnTypes[i] =
           tablet.getColumnTypes() != null && tablet.getColumnTypes().get(i) != null
               ? tablet.getColumnTypes().get(i)
-              : Tablet.ColumnCategory.FIELD;
+              : ColumnCategory.FIELD;
       originValueColumnDataTypes[i] = originMeasurementSchemaList.get(i).getType();
     }
     final Object[] originValueColumns =
@@ -353,7 +355,7 @@ public abstract class TabletInsertionEventParser {
         this.measurementSchemaList[filteredColumnIndex] = originMeasurementSchemaList.get(i);
         this.columnNameStringList[filteredColumnIndex] = originColumnNameStringList[i];
         this.valueColumnTypes[filteredColumnIndex] =
-            originColumnTypes[i] != null ? originColumnTypes[i] : Tablet.ColumnCategory.FIELD;
+            originColumnTypes[i] != null ? originColumnTypes[i] : ColumnCategory.FIELD;
         this.valueColumnDataTypes[filteredColumnIndex] = originValueColumnDataTypes[i];
         final BitMap bitMap = new BitMap(this.timestampColumn.length);
         if (Objects.isNull(originValueColumns[i])
@@ -425,12 +427,12 @@ public abstract class TabletInsertionEventParser {
   }
 
   private static Object filterValueColumnsByRowIndexList(
-      @NonNull final TSDataType type,
-      @NonNull final Object originValueColumn,
-      @NonNull final List<Integer> rowIndexList,
+      final TSDataType type,
+      final Object originValueColumn,
+      final List<Integer> rowIndexList,
       final boolean isSingleOriginValueColumn,
-      @NonNull final BitMap originNullValueColumnBitmap,
-      @NonNull final BitMap nullValueColumnBitmap /* output parameters */) {
+      final BitMap originNullValueColumnBitmap,
+      final BitMap nullValueColumnBitmap /* output parameters */) {
     switch (type) {
       case INT32:
         {
@@ -635,6 +637,9 @@ public abstract class TabletInsertionEventParser {
 
   public abstract List<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer);
+
+  public abstract List<TabletInsertionEvent> processTabletWithCollect(
+      final BiConsumer<Tablet, TabletCollector> consumer);
 
   public abstract Tablet convertToTablet();
 }

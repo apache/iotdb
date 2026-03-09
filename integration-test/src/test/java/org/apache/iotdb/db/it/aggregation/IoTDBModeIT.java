@@ -49,13 +49,17 @@ public class IoTDBModeIT {
         "CREATE TIMESERIES root.db.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.s7 WITH DATATYPE=BLOB, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.s8 WITH DATATYPE=STRING, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.s9 WITH DATATYPE=TIMESTAMP, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.db.d1.s10 WITH DATATYPE=DATE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s1 WITH DATATYPE=INT32, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s2 WITH DATATYPE=INT64, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
         "CREATE TIMESERIES root.db.d2.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(1, 1, 1, true, 1, 1, \"1\")",
+        "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6,s7,s8,s9,s10) values(1, 1, 1, true, 1, 1, \"1\", X'12', 'test', 1, '2025-10-15')",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(2, 2, 2, false, 2, 2, \"2\")",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(3, 2, 2, false, 2, 2, \"2\")",
         "INSERT INTO root.db.d1(timestamp,s1,s2,s3,s4,s5,s6) values(10000000000, 1, 1, true, 1, 1, \"1\")",
@@ -98,13 +102,27 @@ public class IoTDBModeIT {
           mode("root.db.d1.s4"),
           mode("root.db.d1.s5"),
           mode("root.db.d1.s6"),
+          mode("root.db.d1.s7"),
+          mode("root.db.d1.s8"),
+          mode("root.db.d1.s9"),
+          mode("root.db.d1.s10"),
         };
-    String[] retArray = new String[] {"1,1,true,1.0,1.0,1,"};
+    String[] retArray =
+        new String[] {"1,1,true,1.0,1.0,1,0x12,test,1970-01-01T00:00:00.001Z,2025-10-15,"};
     resultSetEqualTest(
-        "select mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6) from root.db.d1",
+        "select mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6),mode(s7),mode(s8),mode(s9),mode(s10) from root.db.d1",
         expectedHeader,
         retArray);
 
+    expectedHeader =
+        new String[] {
+          mode("root.db.d1.s1"),
+          mode("root.db.d1.s2"),
+          mode("root.db.d1.s3"),
+          mode("root.db.d1.s4"),
+          mode("root.db.d1.s5"),
+          mode("root.db.d1.s6"),
+        };
     retArray = new String[] {"2,2,false,2.0,2.0,2,"};
     resultSetEqualTest(
         "select mode(s1),mode(s2),mode(s3),mode(s4),mode(s5),mode(s6) from root.db.d1 where time < 10",

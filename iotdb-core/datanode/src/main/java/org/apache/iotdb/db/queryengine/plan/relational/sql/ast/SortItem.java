@@ -20,7 +20,12 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
 
@@ -28,6 +33,8 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class SortItem extends Node {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(SortItem.class);
 
   public enum Ordering {
     ASCENDING,
@@ -118,5 +125,33 @@ public class SortItem extends Node {
 
     SortItem otherItem = (SortItem) other;
     return ordering == otherItem.ordering && nullOrdering == otherItem.nullOrdering;
+  }
+
+  void serialize(ByteBuffer buffer) {
+    Expression.serialize(sortKey, buffer);
+    ReadWriteIOUtils.write((byte) ordering.ordinal(), buffer);
+    ReadWriteIOUtils.write((byte) nullOrdering.ordinal(), buffer);
+  }
+
+  void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(sortKey, stream);
+    ReadWriteIOUtils.write((byte) ordering.ordinal(), stream);
+    ReadWriteIOUtils.write((byte) nullOrdering.ordinal(), stream);
+  }
+
+  public SortItem(ByteBuffer byteBuffer) {
+    super(null);
+    this.sortKey = Expression.deserialize(byteBuffer);
+
+    ordering = Ordering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+    nullOrdering = NullOrdering.values()[ReadWriteIOUtils.readByte(byteBuffer)];
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sortKey);
+    return size;
   }
 }

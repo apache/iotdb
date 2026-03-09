@@ -21,24 +21,23 @@ package org.apache.iotdb.db.schemaengine.schemaregion;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.SchemaConstant;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionMemoryImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.impl.SchemaRegionPBTreeImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.mtree.loader.MNodeFactoryLoader;
 
-import org.reflections.Reflections;
-import org.reflections.util.ConfigurationBuilder;
-import org.reflections.util.FilterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class SchemaRegionLoader {
   private static final Logger logger = LoggerFactory.getLogger(SchemaRegionLoader.class);
-
-  private static final String PACKAGE_NAME = "org.apache.iotdb.db.schemaengine";
 
   private final Map<String, Constructor<ISchemaRegion>> constructorMap = new ConcurrentHashMap<>();
 
@@ -48,13 +47,8 @@ public class SchemaRegionLoader {
 
   @SuppressWarnings("unchecked")
   public SchemaRegionLoader() {
-    Reflections reflections =
-        new Reflections(
-            new ConfigurationBuilder()
-                .forPackages(PACKAGE_NAME)
-                .filterInputsBy(new FilterBuilder().includePackage(PACKAGE_NAME)));
-
-    Set<Class<?>> annotatedSchemaRegionSet = reflections.getTypesAnnotatedWith(SchemaRegion.class);
+    Set<Class<?>> annotatedSchemaRegionSet =
+        new HashSet<>(Arrays.asList(SchemaRegionMemoryImpl.class, SchemaRegionPBTreeImpl.class));
 
     for (Class<?> annotatedSchemaRegion : annotatedSchemaRegionSet) {
       boolean isSchemaRegion = false;

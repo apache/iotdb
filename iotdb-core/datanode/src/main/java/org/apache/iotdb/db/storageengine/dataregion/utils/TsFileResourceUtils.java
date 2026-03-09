@@ -26,6 +26,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -42,12 +43,15 @@ import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.BatchData;
 import org.apache.tsfile.read.reader.page.PageReader;
 import org.apache.tsfile.read.reader.page.TimePageReader;
 import org.apache.tsfile.read.reader.page.ValuePageReader;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +66,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class TsFileResourceUtils {
+
   private static final Logger logger = LoggerFactory.getLogger(TsFileResourceUtils.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String VALIDATE_FAILED = "validate failed,";
@@ -126,7 +131,10 @@ public class TsFileResourceUtils {
   }
 
   public static boolean validateTsFileDataCorrectness(TsFileResource resource) {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(resource.getTsFilePath())) {
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(
+            resource.getTsFilePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(resource.getTsFilePath()))) {
       if (!reader.isComplete()) {
         logger.error("{} {} illegal tsfile", resource.getTsFilePath(), VALIDATE_FAILED);
         return false;
@@ -410,26 +418,85 @@ public class TsFileResourceUtils {
 
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
-    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource);
+    updateTsFileResource(reader.getAllTimeseriesMetadata(false), tsFileResource, false);
     tsFileResource.updatePlanIndexes(reader.getMinPlanIndex());
     tsFileResource.updatePlanIndexes(reader.getMaxPlanIndex());
   }
 
   public static void updateTsFileResource(
-      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata, TsFileResource tsFileResource) {
+      Map<IDeviceID, List<TimeseriesMetadata>> device2Metadata,
+      TsFileResource tsFileResource,
+      boolean cacheLastValue) {
     // For async recover tsfile, there might be a FileTimeIndex, we need a new newTimeIndex
     ITimeIndex newTimeIndex =
         tsFileResource.getTimeIndex().getTimeIndexType() == ITimeIndex.FILE_TIME_INDEX_TYPE
             ? config.getTimeIndexLevel().getTimeIndex()
             : tsFileResource.getTimeIndex();
+    Map<IDeviceID, List<Pair<String, TimeValuePair>>> deviceLastValues =
+        tsFileResource.getLastValues();
+    long lastValueMemCost = 0;
+    if (cacheLastValue && deviceLastValues == null) {
+      deviceLastValues = new HashMap<>(device2Metadata.size());
+    }
     for (Map.Entry<IDeviceID, List<TimeseriesMetadata>> entry : device2Metadata.entrySet()) {
+      List<Pair<String, TimeValuePair>> seriesLastValues = null;
+      if (deviceLastValues != null) {
+        seriesLastValues = new ArrayList<>(entry.getValue().size());
+      }
+
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         newTimeIndex.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
         newTimeIndex.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
+        if (deviceLastValues != null) {
+          if (timeseriesMetaData.getTsDataType() != TSDataType.BLOB) {
+            TsPrimitiveType value;
+            value =
+                TsPrimitiveType.getByType(
+                    timeseriesMetaData.getTsDataType() == TSDataType.VECTOR
+                        ? TSDataType.INT64
+                        : timeseriesMetaData.getTsDataType(),
+                    timeseriesMetaData.getStatistics().getLastValue());
+            seriesLastValues.add(
+                new Pair<>(
+                    timeseriesMetaData.getMeasurementId(),
+                    new TimeValuePair(timeseriesMetaData.getStatistics().getEndTime(), value)));
+          } else {
+            seriesLastValues.add(new Pair<>(timeseriesMetaData.getMeasurementId(), null));
+          }
+        }
+      }
+      if (deviceLastValues != null) {
+        lastValueMemCost += entry.getKey().ramBytesUsed();
+        for (Pair<String, TimeValuePair> lastValue : seriesLastValues) {
+          if (lastValue == null) {
+            continue;
+          }
+          // pair
+          lastValueMemCost += RamUsageEstimator.shallowSizeOf(lastValue);
+          // measurement name
+          lastValueMemCost += RamUsageEstimator.sizeOf(lastValue.left);
+          TimeValuePair right = lastValue.getRight();
+          lastValueMemCost +=
+              right != null ? right.getSize() : RamUsageEstimator.NUM_BYTES_OBJECT_REF;
+        }
+        // ArrayList
+        lastValueMemCost +=
+            (long) seriesLastValues.size() * RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                + RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+                + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+        lastValueMemCost += RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
+        if (lastValueMemCost <= config.getCacheLastValuesMemoryBudgetInByte()) {
+          deviceLastValues
+              .computeIfAbsent(entry.getKey(), deviceID -> new ArrayList<>())
+              .addAll(seriesLastValues);
+        } else {
+          deviceLastValues = null;
+        }
       }
     }
     tsFileResource.setTimeIndex(newTimeIndex);
+    tsFileResource.setLastValues(deviceLastValues);
   }
 
   /**

@@ -20,27 +20,30 @@
 package org.apache.iotdb.commons.pipe.receiver;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.audit.IAuditEntity;
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.config.PipeConfig;
-import org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.common.PipeTransferHandshakeConstant;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.IoTDBConnectorRequestVersion;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeRequestType;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFilePieceReq;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV1;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferFileSealReqV2;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV1Req;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.request.PipeTransferHandshakeV2Req;
-import org.apache.iotdb.commons.pipe.connector.payload.thrift.response.PipeTransferFilePieceResp;
+import org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant;
+import org.apache.iotdb.commons.pipe.resource.log.PipeLogger;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.common.PipeTransferHandshakeConstant;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.IoTDBSinkRequestVersion;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeRequestType;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFilePieceReq;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV1;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFileSealReqV2;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV1Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferHandshakeV2Req;
+import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.utils.RetryUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.constant.TsFileConstant;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,9 +57,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
-import static org.apache.iotdb.commons.pipe.config.constant.PipeConnectorConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_EXCEPTION_DATA_CONVERT_ON_TYPE_MISMATCH_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+import static org.apache.iotdb.commons.pipe.config.constant.PipeSinkConstant.CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
 
 /**
  * {@link IoTDBFileReceiver} is the parent class of receiver on both configNode and DataNode,
@@ -71,15 +74,17 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private static final AtomicLong RECEIVER_ID_GENERATOR = new AtomicLong(0);
   protected final AtomicLong receiverId = new AtomicLong(0);
 
+  // Used to restore the original thread name when the receiver is closed.
+  private String originalThreadName;
+
   protected String username = CONNECTOR_IOTDB_USER_DEFAULT_VALUE;
   protected String password = CONNECTOR_IOTDB_PASSWORD_DEFAULT_VALUE;
+  protected IAuditEntity userEntity;
 
-  private static final long LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS =
-      PipeConfig.getInstance().getPipeReceiverLoginPeriodicVerificationIntervalMs();
   protected long lastSuccessfulLoginTime = Long.MIN_VALUE;
 
-  private static final boolean IS_FSYNC_ENABLED =
-      PipeConfig.getInstance().getPipeFileReceiverFsyncEnabled();
+  private static final PipeConfig PIPE_CONFIG = PipeConfig.getInstance();
+
   private File writingFile;
   private RandomAccessFile writingFileWriter;
 
@@ -91,10 +96,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected final AtomicBoolean validateTsFile = new AtomicBoolean(true);
 
   protected final AtomicBoolean shouldMarkAsPipeRequest = new AtomicBoolean(true);
+  protected final AtomicBoolean skipIfNoPrivileges = new AtomicBoolean(false);
 
   @Override
-  public IoTDBConnectorRequestVersion getVersion() {
-    return IoTDBConnectorRequestVersion.VERSION_1;
+  public IoTDBSinkRequestVersion getVersion() {
+    return IoTDBSinkRequestVersion.VERSION_1;
   }
 
   protected TPipeTransferResp handleTransferHandshakeV1(final PipeTransferHandshakeV1Req req) {
@@ -110,10 +116,13 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                       + "connector's timestamp precision %s. Validation fails.",
                   CommonDescriptor.getInstance().getConfig().getTimestampPrecision(),
                   req.getTimestampPrecision()));
-      LOGGER.warn("Handshake failed, response status = {}.", status);
+      PipeLogger.log(LOGGER::warn, "Handshake failed, response status = %s.", status);
       return new TPipeTransferResp(status);
     }
 
+    if (originalThreadName == null) {
+      originalThreadName = Thread.currentThread().getName();
+    }
     receiverId.set(RECEIVER_ID_GENERATOR.incrementAndGet());
     Thread.currentThread()
         .setName(
@@ -134,8 +143,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath());
         } catch (Exception e) {
-          LOGGER.warn(
-              "Receiver id = {}: Failed to delete original receiver file dir {}, because {}.",
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failed to delete original receiver file dir %s, because %s.",
               receiverId.get(),
               receiverFileDirWithIdSuffix.get().getPath(),
               e.getMessage(),
@@ -158,47 +168,58 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       }
     }
 
-    final String receiverFileBaseDir;
-    try {
-      receiverFileBaseDir = getReceiverFileBaseDir();
-      if (Objects.isNull(receiverFileBaseDir)) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to init pipe receiver file folder manager because all disks of folders are full.",
-            receiverId.get());
+    String receiverFileBaseDir;
+    File newReceiverDir = null;
+    for (int retryTimes = 0; retryTimes <= 1; retryTimes++) {
+      try {
+        receiverFileBaseDir = getReceiverFileBaseDir();
+        if (Objects.isNull(receiverFileBaseDir)) {
+          PipeLogger.log(
+              LOGGER::warn,
+              "Receiver id = %s: Failed to init pipe receiver file folder manager because all disks of folders are full.",
+              receiverId.get());
+          return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
+        }
+      } catch (Exception e) {
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to create pipe receiver file folder because all disks of folders are full.",
+            receiverId.get(),
+            e);
         return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
       }
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to create pipe receiver file folder because all disks of folders are full.",
-          receiverId.get(),
-          e);
-      return new TPipeTransferResp(StatusUtils.getStatus(TSStatusCode.DISK_SPACE_INSUFFICIENT));
-    }
 
-    // Create a new receiver file dir
-    final File newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
-    if (!newReceiverDir.exists() && !newReceiverDir.mkdirs()) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to create receiver file dir {}.",
+      try {
+        // Create a new receiver file dir
+        newReceiverDir = new File(receiverFileBaseDir, Long.toString(receiverId.get()));
+        if (newReceiverDir.exists() || newReceiverDir.mkdirs()) {
+          receiverFileDirWithIdSuffix.set(newReceiverDir);
+          LOGGER.info(
+              "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
+              receiverId.get(),
+              getSenderHost(),
+              getSenderPort(),
+              newReceiverDir.getPath());
+          return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+        }
+      } catch (Exception ignored) {
+      }
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to create receiver file dir %s.",
           receiverId.get(),
-          newReceiverDir.getPath());
-      return new TPipeTransferResp(
-          RpcUtils.getStatus(
-              TSStatusCode.PIPE_HANDSHAKE_ERROR,
-              String.format("Failed to create receiver file dir %s.", newReceiverDir.getPath())));
+          Objects.nonNull(newReceiverDir) ? newReceiverDir.getPath() : null);
+      markFileBaseDirStateAbnormal(receiverFileBaseDir);
     }
-    receiverFileDirWithIdSuffix.set(newReceiverDir);
-
-    LOGGER.info(
-        "Receiver id = {}: Handshake successfully! Sender's host = {}, port = {}. Receiver's file dir = {}.",
-        receiverId.get(),
-        getSenderHost(),
-        getSenderPort(),
-        newReceiverDir.getPath());
-    return new TPipeTransferResp(RpcUtils.SUCCESS_STATUS);
+    return new TPipeTransferResp(
+        RpcUtils.getStatus(
+            TSStatusCode.PIPE_HANDSHAKE_ERROR,
+            String.format("Failed to create receiver file dir %s.", newReceiverDir.getPath())));
   }
 
   protected abstract String getReceiverFileBaseDir() throws Exception;
+
+  protected abstract void markFileBaseDirStateAbnormal(String dir);
 
   protected abstract String getSenderHost();
 
@@ -213,8 +234,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR,
               "Receiver can not get clusterId from config node.");
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Handshake failed, response status = %s.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     }
 
@@ -225,8 +249,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR, "Handshake request does not contain clusterId.");
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Handshake failed, response status = %s.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     }
 
@@ -238,8 +265,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               String.format(
                   "Receiver and sender are from the same cluster %s.",
                   clusterIdFromHandshakeRequest));
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Handshake failed, response status = %s.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     }
 
@@ -251,16 +281,35 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_HANDSHAKE_ERROR,
               "Handshake request does not contain timestampPrecision.");
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed, response status = {}.", receiverId.get(), status);
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Handshake failed, response status = %s.",
+          receiverId.get(),
+          status);
       return new TPipeTransferResp(status);
     }
 
+    long userId = -1;
+    String cliHostname = "";
+
+    final String userIdString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USER_ID);
+    if (userIdString != null) {
+      userId = Long.parseLong(userIdString);
+    }
     final String usernameString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_USERNAME);
     if (usernameString != null) {
       username = usernameString;
     }
+    final String cliHostnameString =
+        req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_CLI_HOSTNAME);
+    if (cliHostnameString != null) {
+      cliHostname = cliHostnameString;
+    }
+
+    userEntity = new UserEntity(userId, username, cliHostname);
+
     final String passwordString =
         req.getParams().get(PipeTransferHandshakeConstant.HANDSHAKE_KEY_PASSWORD);
     if (passwordString != null) {
@@ -268,8 +317,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     }
     final TSStatus status = loginIfNecessary();
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.warn(
-          "Receiver id = {}: Handshake failed because login failed, response status = {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Handshake failed because login failed, response status = %s.",
           receiverId.get(),
           status);
       return new TPipeTransferResp(status);
@@ -289,7 +339,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     if (loadTsFileStrategyString != null) {
       isUsingAsyncLoadTsFileStrategy.set(
           Objects.equals(
-              PipeConnectorConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
+              PipeSinkConstant.CONNECTOR_LOAD_TSFILE_STRATEGY_ASYNC_VALUE,
               loadTsFileStrategyString));
     }
 
@@ -304,6 +354,11 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             req.getParams()
                 .getOrDefault(
                     PipeTransferHandshakeConstant.HANDSHAKE_KEY_MARK_AS_PIPE_REQUEST, "true")));
+
+    skipIfNoPrivileges.set(
+        Boolean.parseBoolean(
+            req.getParams()
+                .getOrDefault(PipeTransferHandshakeConstant.HANDSHAKE_KEY_SKIP_IF, "false")));
 
     // Handle the handshake request as a v1 request.
     // Here we construct a fake "dataNode" request to valid from v1 validation logic, though
@@ -320,17 +375,20 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   protected abstract String getClusterId();
 
   protected boolean shouldLogin() {
-    return LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS >= 0
+    final long pipeReceiverLoginPeriodicVerificationIntervalMs =
+        PIPE_CONFIG.getPipeReceiverLoginPeriodicVerificationIntervalMs();
+    return pipeReceiverLoginPeriodicVerificationIntervalMs >= 0
         && lastSuccessfulLoginTime
-            < System.currentTimeMillis() - LOGIN_PERIODIC_VERIFICATION_INTERVAL_MS;
+            < System.currentTimeMillis() - pipeReceiverLoginPeriodicVerificationIntervalMs;
   }
 
   protected TSStatus loginIfNecessary() {
     if (shouldLogin()) {
       final TSStatus permissionCheckStatus = login();
       if (permissionCheckStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to login, username = {}, response = {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to login, username = %s, response = %s.",
             receiverId.get(),
             username,
             permissionCheckStatus);
@@ -372,8 +430,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 String.format(
                     "Request sender to reset file reader's offset from %s to %s.",
                     req.getStartWritingOffset(), writingFileWriter.length()));
-        LOGGER.warn(
-            "Receiver id = {}: File offset reset requested by receiver, response status = {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: File offset reset requested by receiver, response status = %s.",
             receiverId.get(),
             status);
         return PipeTransferFilePieceResp.toTPipeTransferResp(status, writingFileWriter.length());
@@ -383,8 +442,12 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       return PipeTransferFilePieceResp.toTPipeTransferResp(
           RpcUtils.SUCCESS_STATUS, writingFileWriter.length());
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to write file piece from req {}.", receiverId.get(), req, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          e,
+          "Receiver id = %s: Failed to write file piece from req %s.",
+          receiverId.get(),
+          req);
       final TSStatus status =
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
@@ -449,7 +512,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {
     if (writingFileWriter != null) {
       try {
-        if (IS_FSYNC_ENABLED && fsyncBeforeClose) {
+        if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled() && fsyncBeforeClose) {
           writingFileWriter.getFD().sync();
         }
         writingFileWriter.close();
@@ -459,8 +522,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             writingFile == null ? "null" : writingFile.getPath(),
             writingFile == null ? 0 : writingFile.length());
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to close current writing file writer {}, because {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to close current writing file writer %s, because %s.",
             receiverId.get(),
             writingFile == null ? "null" : writingFile.getPath(),
             e.getMessage(),
@@ -497,8 +561,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
             receiverId.get(),
             file.getPath());
       } catch (final Exception e) {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to delete original writing file {}, because {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to delete original writing file %s, because %s.",
             receiverId.get(),
             file.getPath(),
             e.getMessage(),
@@ -517,8 +582,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   private boolean isWritingFileOffsetCorrect(final long offset) throws IOException {
     final boolean offsetCorrect = writingFileWriter.length() == offset;
     if (!offsetCorrect) {
-      LOGGER.warn(
-          "Receiver id = {}: Writing file {}'s offset is {}, but request sender's offset is {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Writing file %s's offset is %s, but request sender's offset is %s.",
           receiverId.get(),
           writingFile.getPath(),
           writingFileWriter.length(),
@@ -535,7 +601,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
                 String.format(
                     "Failed to seal file, because writing file %s is not available.", writingFile));
-        LOGGER.warn(status.getMessage());
+        PipeLogger.log(LOGGER::warn, status.getMessage());
         return new TPipeTransferResp(status);
       }
 
@@ -549,7 +615,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -571,16 +637,18 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         LOGGER.info(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePath);
       } else {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to seal file {}, because {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to seal file %s, because %s.",
             receiverId.get(),
             fileAbsolutePath,
             status.getMessage());
       }
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {} from req {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s from req %s.",
           receiverId.get(),
           writingFile,
           req,
@@ -617,7 +685,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                 String.format(
                     "Failed to seal file %s, because writing file %s is not available.",
                     req.getFileNames(), writingFile));
-        LOGGER.warn(status.getMessage());
+        PipeLogger.log(LOGGER::warn, status.getMessage());
         return new TPipeTransferResp(status);
       }
 
@@ -639,7 +707,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
       // Sync here is necessary to ensure that the data is written to the disk. Or data region may
       // load the file before the data is written to the disk and cause unexpected behavior after
       // system restart. (e.g., empty file in data region's data directory)
-      if (IS_FSYNC_ENABLED) {
+      if (PIPE_CONFIG.getPipeFileReceiverFsyncEnabled()) {
         writingFileWriter.getFD().sync();
       }
       // 1. The writing file writer must be closed, otherwise it may cause concurrent errors during
@@ -666,16 +734,22 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
         LOGGER.info(
             "Receiver id = {}: Seal file {} successfully.", receiverId.get(), fileAbsolutePaths);
       } else {
-        LOGGER.warn(
-            "Receiver id = {}: Failed to seal file {}, status is {}.",
+        PipeLogger.log(
+            LOGGER::warn,
+            "Receiver id = %s: Failed to seal file %s, status is %s.",
             receiverId.get(),
             fileAbsolutePaths,
             status);
       }
       return new TPipeTransferResp(status);
     } catch (final Exception e) {
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {} from req {}.", receiverId.get(), files, req, e);
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s from req %s.",
+          receiverId.get(),
+          files,
+          req,
+          e);
       return new TPipeTransferResp(
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
@@ -698,8 +772,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
           RpcUtils.getStatus(
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
               String.format("Failed to seal file %s, the file does not exist.", fileName));
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {}, because the file does not exist.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s, because the file does not exist.",
           receiverId.get(),
           fileName);
       return new TPipeTransferResp(status);
@@ -713,9 +788,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                   "Failed to seal file %s, because the length of file is not correct. "
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {}, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s, because the length of file is not correct. "
+              + "The original file has length %s, but receiver file has length %s.",
           receiverId.get(),
           fileName,
           fileLength,
@@ -734,8 +810,9 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
               TSStatusCode.PIPE_TRANSFER_FILE_ERROR,
               String.format(
                   "Failed to seal file %s, because writing file is %s.", fileName, writingFile));
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {}, because writing file is {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s, because writing file is %s.",
           receiverId.get(),
           fileName,
           writingFile);
@@ -750,9 +827,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
                   "Failed to seal file %s, because the length of file is not correct. "
                       + "The original file has length %s, but receiver file has length %s.",
                   fileName, fileLength, writingFileWriter.length()));
-      LOGGER.warn(
-          "Receiver id = {}: Failed to seal file {}, because the length of file is not correct. "
-              + "The original file has length {}, but receiver file has length {}.",
+      PipeLogger.log(
+          LOGGER::warn,
+          "Receiver id = %s: Failed to seal file %s, because the length of file is not correct. "
+              + "The original file has length %s, but receiver file has length %s.",
           receiverId.get(),
           fileName,
           fileLength,
@@ -872,6 +950,10 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
     closeSession();
 
     LOGGER.info("Receiver id = {}: Handling exit: Receiver exited.", receiverId.get());
+
+    if (originalThreadName != null) {
+      Thread.currentThread().setName(originalThreadName);
+    }
   }
 
   protected abstract void closeSession();

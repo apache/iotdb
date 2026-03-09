@@ -54,6 +54,10 @@ public abstract class MultiChildProcessNode extends ProcessNode {
     this.children.add(child);
   }
 
+  public void addChildren(List<? extends PlanNode> children) {
+    this.children.addAll(children);
+  }
+
   @Override
   public int allowedChildCount() {
     return CHILD_COUNT_NO_LIMIT;

@@ -44,6 +44,8 @@ import java.util.Set;
 public class Role {
 
   protected String name;
+  protected int maxSessionPerUser = -1;
+  protected int minSessionPerUser = -1;
   protected List<PathPrivilege> pathPrivilegeList;
 
   protected Map<String, DatabasePrivilege> objectPrivilegeMap;
@@ -79,6 +81,14 @@ public class Role {
   /** ------------- get func -----------------* */
   public String getName() {
     return name;
+  }
+
+  public int getMaxSessionPerUser() {
+    return maxSessionPerUser;
+  }
+
+  public int getMinSessionPerUser() {
+    return minSessionPerUser;
   }
 
   public List<PathPrivilege> getPathPrivilegeList() {
@@ -248,6 +258,14 @@ public class Role {
   /** -------------- set func ----------------* */
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void setMaxSessionPerUser(int maxSessionPerUser) {
+    this.maxSessionPerUser = maxSessionPerUser;
+  }
+
+  public void setMinSessionPerUser(int minSessionPerUser) {
+    this.minSessionPerUser = minSessionPerUser;
   }
 
   public void setPrivilegeList(List<PathPrivilege> privilegeList) {
@@ -515,7 +533,8 @@ public class Role {
   }
 
   public boolean checkSysPrivilege(PrivilegeType priv) {
-    return sysPrivilegeSet.contains(priv);
+    return priv.getAllPrivilegesContainingCurrentPrivilege().stream()
+        .anyMatch(sysPrivilegeSet::contains);
   }
 
   public boolean checkSysPriGrantOpt(PrivilegeType priv) {

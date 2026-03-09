@@ -22,11 +22,12 @@ package org.apache.iotdb.db.metadata.schemaRegion;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.column.ColumnHeader;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.schema.table.column.AttributeColumnSchema;
 import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.SessionInfo;
@@ -44,7 +45,6 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWrite
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.isession.SessionConfig;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -285,8 +285,8 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             testTable.addColumnSchema(
                 new TagColumnSchema(columnHeader.getColumnName(), columnHeader.getColumnType())));
     testTable.addColumnSchema(new AttributeColumnSchema(attributeName, TSDataType.STRING));
-    DataNodeTableCache.getInstance().preUpdateTable(database, testTable);
-    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName);
+    DataNodeTableCache.getInstance().preUpdateTable(database, testTable, null);
+    DataNodeTableCache.getInstance().commitUpdateTable(database, tableName, null);
 
     schemaRegion.updateTableDeviceAttribute(
         new TableDeviceAttributeUpdateNode(
@@ -295,7 +295,7 @@ public class SchemaRegionSimpleRecoverTest extends AbstractSchemaRegionTest {
             tableName,
             Collections.singletonList(
                 Collections.singletonList(
-                    new IdFilter(new InFilter(Collections.singleton("d_1")), 2))),
+                    new TagFilter(new InFilter(Collections.singleton("d_1")), 2))),
             null,
             columnHeaderList,
             null,

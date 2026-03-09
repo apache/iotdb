@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.queryengine.common;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.conf.IoTDBConstant.ClientVersion;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.plan.relational.security.Identity;
 
@@ -36,7 +38,7 @@ import java.util.Optional;
 
 public class SessionInfo {
   private final long sessionId;
-  private final String userName;
+  private final UserEntity userEntity;
   private final ZoneId zoneId;
 
   @Nullable private final String databaseName;
@@ -45,9 +47,9 @@ public class SessionInfo {
 
   private ClientVersion version = ClientVersion.V_1_0;
 
-  public SessionInfo(long sessionId, String userName, ZoneId zoneId) {
+  public SessionInfo(long sessionId, UserEntity userEntity, ZoneId zoneId) {
     this.sessionId = sessionId;
-    this.userName = userName;
+    this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.databaseName = null;
     this.sqlDialect = IClientSession.SqlDialect.TREE;
@@ -55,34 +57,72 @@ public class SessionInfo {
 
   public SessionInfo(
       long sessionId,
-      String userName,
+      UserEntity userEntity,
       ZoneId zoneId,
       @Nullable String databaseName,
       IClientSession.SqlDialect sqlDialect) {
-    this(sessionId, userName, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
+    this(sessionId, userEntity, zoneId, ClientVersion.V_1_0, databaseName, sqlDialect);
   }
 
   public SessionInfo(
       long sessionId,
-      String userName,
+      UserEntity userEntity,
       ZoneId zoneId,
       ClientVersion version,
       @Nullable String databaseName,
       IClientSession.SqlDialect sqlDialect) {
     this.sessionId = sessionId;
-    this.userName = userName;
+    this.userEntity = userEntity;
     this.zoneId = zoneId;
     this.version = version;
     this.databaseName = databaseName;
     this.sqlDialect = sqlDialect;
   }
 
+  @TestOnly
+  public SessionInfo(long sessionId, String username, ZoneId zoneId) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, null, IClientSession.SqlDialect.TREE);
+  }
+
+  @TestOnly
+  public SessionInfo(
+      long sessionId,
+      String username,
+      ZoneId zoneId,
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, databaseName, sqlDialect);
+  }
+
+  @TestOnly
+  public SessionInfo(
+      long sessionId,
+      String username,
+      ZoneId zoneId,
+      ClientVersion version,
+      @Nullable String databaseName,
+      IClientSession.SqlDialect sqlDialect) {
+    this(sessionId, new UserEntity(-1, username, ""), zoneId, version, databaseName, sqlDialect);
+  }
+
   public long getSessionId() {
     return sessionId;
   }
 
+  public UserEntity getUserEntity() {
+    return userEntity;
+  }
+
+  public long getUserId() {
+    return userEntity.getUserId();
+  }
+
   public String getUserName() {
-    return userName;
+    return userEntity.getUsername();
+  }
+
+  public String getCliHostname() {
+    return userEntity.getCliHostname();
   }
 
   public ZoneId getZoneId() {
@@ -94,7 +134,7 @@ public class SessionInfo {
   }
 
   public Identity getIdentity() {
-    return new Identity(userName);
+    return new Identity(userEntity.getUsername());
   }
 
   public Optional<String> getDatabaseName() {
@@ -107,7 +147,9 @@ public class SessionInfo {
 
   public static SessionInfo deserializeFrom(final ByteBuffer buffer) {
     final long sessionId = ReadWriteIOUtils.readLong(buffer);
+    final long userId = ReadWriteIOUtils.readLong(buffer);
     final String userName = ReadWriteIOUtils.readString(buffer);
+    final String cliHostname = ReadWriteIOUtils.readString(buffer);
     final ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(buffer)));
     final boolean hasDatabaseName = ReadWriteIOUtils.readBool(buffer);
     String databaseName = null;
@@ -115,12 +157,19 @@ public class SessionInfo {
       databaseName = ReadWriteIOUtils.readString(buffer);
     }
     final IClientSession.SqlDialect sqlDialect1 = IClientSession.SqlDialect.deserializeFrom(buffer);
-    return new SessionInfo(sessionId, userName, zoneId, databaseName, sqlDialect1);
+    return new SessionInfo(
+        sessionId,
+        new UserEntity(userId, userName, cliHostname),
+        zoneId,
+        databaseName,
+        sqlDialect1);
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(sessionId, stream);
-    ReadWriteIOUtils.write(userName, stream);
+    ReadWriteIOUtils.write(userEntity.getUserId(), stream);
+    ReadWriteIOUtils.write(userEntity.getUsername(), stream);
+    ReadWriteIOUtils.write(userEntity.getCliHostname(), stream);
     ReadWriteIOUtils.write(zoneId.getId(), stream);
     if (databaseName == null) {
       ReadWriteIOUtils.write((byte) 0, stream);
@@ -133,7 +182,9 @@ public class SessionInfo {
 
   public void serialize(final ByteBuffer buffer) {
     ReadWriteIOUtils.write(sessionId, buffer);
-    ReadWriteIOUtils.write(userName, buffer);
+    ReadWriteIOUtils.write(userEntity.getUserId(), buffer);
+    ReadWriteIOUtils.write(userEntity.getUsername(), buffer);
+    ReadWriteIOUtils.write(userEntity.getCliHostname(), buffer);
     ReadWriteIOUtils.write(zoneId.getId(), buffer);
     if (databaseName == null) {
       ReadWriteIOUtils.write((byte) 0, buffer);

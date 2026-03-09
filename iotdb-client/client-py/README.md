@@ -73,7 +73,7 @@ session.close()
 * Initialize a Session
 
 ```python
-session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="UTC+8")
+session = Session(ip, port_, username_, password_, fetch_size=1024, zone_id="Asia/Shanghai")
 ```
 
 * Open a session, with a parameter to specify whether to enable RPC compression
@@ -375,7 +375,7 @@ ip = "127.0.0.1"
 port_ = "6667"
 username_ = "root"
 password_ = "root"
-conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="UTC+8",sqlalchemy_mode=False)
+conn = connect(ip, port_, username_, password_,fetch_size=1024,zone_id="Asia/Shanghai",sqlalchemy_mode=False)
 cursor = conn.cursor()
 ```
 + simple SQL statement execution
@@ -604,5 +604,7 @@ Namely, these are
 * Run Tests via pytest (optional)
 * Build
 * Release to pypi
+
+
 
 

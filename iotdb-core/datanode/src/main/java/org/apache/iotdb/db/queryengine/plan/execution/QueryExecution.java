@@ -71,9 +71,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
+import static org.apache.iotdb.commons.utils.ErrorHandlingCommonUtils.getRootCause;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.metric.QueryExecutionMetricSet.WAIT_FOR_RESULT;
-import static org.apache.iotdb.db.utils.ErrorHandlingUtils.getRootCause;
 import static org.apache.iotdb.rpc.TSStatusCode.DATE_OUT_OF_RANGE;
 
 /**
@@ -185,7 +185,7 @@ public class QueryExecution implements IQueryExecution {
     doDistributedPlan();
 
     stateMachine.transitionToPlanned();
-    if (context.getQueryType() == QueryType.READ) {
+    if (context.isQuery()) {
       initResultHandle();
     }
     PERFORMANCE_OVERVIEW_METRICS.recordPlanCost(System.nanoTime() - startTime);
@@ -462,23 +462,25 @@ public class QueryExecution implements IQueryExecution {
   private void dealWithException(Throwable t) throws IoTDBException {
     t = getRootCause(t);
     stateMachine.transitionToFailed(t);
-    if (stateMachine.getFailureStatus() != null) {
-      throw new IoTDBException(
-          stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
-    } else if (stateMachine.getFailureException() != null) {
-      Throwable rootCause = stateMachine.getFailureException();
-      if (rootCause instanceof IoTDBRuntimeException) {
-        throw (IoTDBRuntimeException) rootCause;
-      } else if (rootCause instanceof IoTDBException) {
-        throw (IoTDBException) rootCause;
-      } else if (rootCause instanceof DateTimeParseException) {
-        throw new IoTDBRuntimeException(
-            rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
-      }
-      throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    TSStatus status = stateMachine.getFailureStatus();
+    if (status != null) {
+      throw new IoTDBException(status);
     } else {
-      throwIfUnchecked(t);
-      throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      Throwable rootCause = stateMachine.getFailureException();
+      if (rootCause != null) {
+        if (rootCause instanceof IoTDBRuntimeException) {
+          throw (IoTDBRuntimeException) rootCause;
+        } else if (rootCause instanceof IoTDBException) {
+          throw (IoTDBException) rootCause;
+        } else if (rootCause instanceof DateTimeParseException) {
+          throw new IoTDBRuntimeException(
+              rootCause.getMessage(), DATE_OUT_OF_RANGE.getStatusCode(), true);
+        }
+        throw new IoTDBException(rootCause, TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      } else {
+        throwIfUnchecked(t);
+        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+      }
     }
   }
 
@@ -621,8 +623,12 @@ public class QueryExecution implements IQueryExecution {
     // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
     // not null. We should only return the failure status when QueryExecution is in Done state.
     // a partial insert also returns an error code but the QueryState is FINISHED
-    if (state.isDone() && stateMachine.getFailureStatus() != null) {
-      tsstatus = stateMachine.getFailureStatus();
+    if (state.isDone()) {
+      if (analysis.getFailStatus() != null) {
+        tsstatus = analysis.getFailStatus();
+      } else if (stateMachine.getFailureStatus() != null) {
+        tsstatus = stateMachine.getFailureStatus();
+      }
     }
 
     // collect redirect info to client for writing
@@ -641,7 +647,12 @@ public class QueryExecution implements IQueryExecution {
 
   @Override
   public boolean isQuery() {
-    return context.getQueryType() == QueryType.READ;
+    return context.getQueryType() != QueryType.WRITE;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return context.getQueryType();
   }
 
   @Override
@@ -687,6 +698,11 @@ public class QueryExecution implements IQueryExecution {
   @Override
   public String getUser() {
     return context.getSession().getUserName();
+  }
+
+  @Override
+  public String getClientHostname() {
+    return context.getCliHostname();
   }
 
   public MPPQueryContext getContext() {

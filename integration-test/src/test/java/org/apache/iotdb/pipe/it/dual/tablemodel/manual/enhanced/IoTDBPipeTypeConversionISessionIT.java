@@ -32,6 +32,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
@@ -39,10 +40,10 @@ import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.DateUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -84,6 +85,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
   }
 
   @Test
+  @Ignore("The receiver conversion is currently banned, will ignore conflict")
   public void insertTabletReceiveByTsFile() {
     prepareTypeConversionTest(
         (ITableSession senderSession, ITableSession receiverSession, Tablet tablet) -> {
@@ -126,6 +128,8 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         createDataPipe(true);
       } else {
         // Send Tablet data to receiver
+        // Write once to create data regions, guarantee that no any tsFiles will be sent
+        executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
         createDataPipe(false);
         // The actual implementation logic of inserting data
         executeDataWriteOperation.accept(senderSession, receiverSession, tablet);
@@ -167,7 +171,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
   private void createDatabaseAndTable(
       List<Pair<MeasurementSchema, MeasurementSchema>> measurementSchemas,
       boolean isLeft,
-      List<Tablet.ColumnCategory> categories,
+      List<ColumnCategory> categories,
       BaseEnv env) {
     StringBuilder builder = new StringBuilder();
     for (int i = 0; i < measurementSchemas.size(); i++) {
@@ -181,26 +185,28 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     builder.deleteCharAt(builder.length() - 1);
     String tableCreation =
         String.format("create table if not exists test (%s)", builder.toString());
-    TestUtils.tryExecuteNonQueriesWithRetry(
+    TestUtils.executeNonQueries(
         null,
         "table",
         env,
-        Arrays.asList("create database if not exists test", "use test", tableCreation));
+        Arrays.asList("create database if not exists test", "use test", tableCreation),
+        null);
   }
 
   private void createDataPipe(boolean isTSFile) {
     String sql =
         String.format(
             "create pipe test"
-                + " with source ('source'='iotdb-source','realtime.mode'='%s')"
+                + " with source ('source'='iotdb-source','realtime.mode'='%s','history.enable'='%s')"
                 + " with processor ('processor'='do-nothing-processor')"
                 + " with sink ('node-urls'='%s:%s','batch.enable'='false','sink.format'='%s')",
             isTSFile ? "file" : "forced-log",
+            isTSFile,
             receiverEnv.getIP(),
             receiverEnv.getPort(),
             isTSFile ? "tsfile" : "tablet");
-    TestUtils.tryExecuteNonQueriesWithRetry(
-        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql));
+    TestUtils.executeNonQueries(
+        null, BaseEnv.TABLE_SQL_DIALECT, senderEnv, Collections.singletonList(sql), null);
   }
 
   private void validateResultSet(
@@ -361,71 +367,83 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
         switch (sourceType) {
           case INT64:
           case TIMESTAMP:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((long[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case INT32:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((int[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DOUBLE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((double[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case FLOAT:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((float[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case DATE:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i)
-                        ? null
-                        : DateUtils.parseDateExpressionToInt(((LocalDate[]) values[j])[i]));
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((LocalDate[]) values[j])[i];
+            if (targetType == TSDataType.DATE) {
+              insertRecord.add(value);
+              break;
+            }
+            if (value != null) {
+              value = DateUtils.parseDateExpressionToInt((LocalDate) value);
+            }
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case TEXT:
           case STRING:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
-            break;
           case BLOB:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((Binary[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
           case BOOLEAN:
-            value =
-                ValueConverter.convert(
-                    sourceType,
-                    targetType,
-                    tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i]);
-            insertRecord.add(convert(value, targetType));
+            value = tablet.getBitMaps()[j].isMarked(i) ? null : ((boolean[]) values[j])[i];
+            if (targetType.isCompatible(sourceType)) {
+              value = targetType.castFromSingleValue(sourceType, value);
+            } else {
+              value = ValueConverter.convert(sourceType, targetType, value);
+              value = convert(value, targetType);
+            }
+            insertRecord.add(value);
             break;
         }
       }
@@ -457,7 +475,7 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
       schemaList.add(pair.left);
     }
 
-    final List<Tablet.ColumnCategory> columnTypes = generateTabletColumnCategory(pairs.size());
+    final List<ColumnCategory> columnTypes = generateTabletColumnCategory(pairs.size());
     Tablet tablet =
         new Tablet(
             tableName,
@@ -502,12 +520,12 @@ public class IoTDBPipeTypeConversionISessionIT extends AbstractPipeTableModelDua
     return tablet;
   }
 
-  private List<Tablet.ColumnCategory> generateTabletColumnCategory(int size) {
-    List<Tablet.ColumnCategory> columnTypes = new ArrayList<>(size);
-    columnTypes.add(Tablet.ColumnCategory.TAG);
-    columnTypes.add(Tablet.ColumnCategory.TAG);
-    columnTypes.add(Tablet.ColumnCategory.TAG);
-    columnTypes.add(Tablet.ColumnCategory.TAG);
+  private List<ColumnCategory> generateTabletColumnCategory(int size) {
+    List<ColumnCategory> columnTypes = new ArrayList<>(size);
+    columnTypes.add(ColumnCategory.TAG);
+    columnTypes.add(ColumnCategory.TAG);
+    columnTypes.add(ColumnCategory.TAG);
+    columnTypes.add(ColumnCategory.TAG);
     for (int i = 0; i < size - 4; i++) {
       columnTypes.add(ColumnCategory.FIELD);
     }

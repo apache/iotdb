@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -72,6 +73,20 @@ public class ConfigurationFileUtilsTest {
     Assert.assertEquals("1", properties.getProperty("a"));
     Assert.assertEquals("2", properties.getProperty("b"));
     Assert.assertEquals("3", properties.getProperty("c"));
+  }
+
+  @Test
+  public void checkIoTDBSystemTemplateFileFormat() throws IOException {
+    Map<String, ConfigurationFileUtils.DefaultConfigurationItem> configurationItemsFromTemplate =
+        ConfigurationFileUtils.getConfigurationItemsFromTemplate(false);
+    for (Map.Entry<String, ConfigurationFileUtils.DefaultConfigurationItem> entry :
+        configurationItemsFromTemplate.entrySet()) {
+      String key = entry.getKey();
+      ConfigurationFileUtils.DefaultConfigurationItem value = entry.getValue();
+      Assert.assertFalse(
+          "The format of configuration item [" + key + "] is incorrect",
+          value.effectiveMode == ConfigurationFileUtils.EffectiveModeType.UNKNOWN);
+    }
   }
 
   private void generateFile(File file, String content) throws IOException {

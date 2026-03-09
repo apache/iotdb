@@ -47,51 +47,24 @@
             <directory>${project.basedir}/../iotdb-core/ainode/resources/conf</directory>
         </fileSet>
         <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/sbin</directory>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${project.basedir}/../scripts/conf</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/confignode/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/ainode/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>venv</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/ainode/venv</directory>
+            <directory>${project.basedir}/../scripts/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/tools</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>sbin</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/sbin</directory>
-            <fileMode>0755</fileMode>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>tools</outputDirectory>
-            <directory>${project.basedir}/../iotdb-client/cli/src/assembly/resources/tools</directory>
+            <directory>${project.basedir}/../scripts/tools</directory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
             <outputDirectory>lib</outputDirectory>
-            <directory>${project.basedir}/../iotdb-core/ainode/dist/</directory>
+            <directory>${project.basedir}/../iotdb-core/ainode/dist/ainode/</directory>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
-    <files>
-        <file>
-            <source>${project.basedir}/../iotdb-core/datanode/src/assembly/resources/conf/datanode-env.sh</source>
-            <destName>conf/datanode-env.sh</destName>
-            <fileMode>0755</fileMode>
-        </file>
-    </files>
 </assembly>

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.planner;
 
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.memory.IMemoryBlock;
 import org.apache.iotdb.commons.memory.MemoryBlockType;
 import org.apache.iotdb.commons.path.IFullPath;
@@ -42,6 +43,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImp
 import org.apache.iotdb.db.schemaengine.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSourceType;
 import org.apache.iotdb.db.utils.SetThreadName;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
@@ -50,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.iotdb.db.protocol.session.IClientSession.SqlDialect.TREE;
 
@@ -98,6 +101,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       DataNodeQueryContext dataNodeQueryContext)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, dataNodeQueryContext);
 
@@ -132,6 +140,11 @@ public class LocalExecutionPlanner {
       FragmentInstanceContext instanceContext,
       ISchemaRegion schemaRegion)
       throws MemoryNotEnoughException {
+    if (Objects.isNull(plan)) {
+      throw new IoTDBRuntimeException(
+          "The planNode is null during local execution, maybe caused by closing of the current dataNode",
+          TSStatusCode.CLOSE_OPERATION_ERROR.getStatusCode());
+    }
     LocalExecutionPlanContext context =
         new LocalExecutionPlanContext(types, instanceContext, schemaRegion);
 
@@ -260,11 +273,14 @@ public class LocalExecutionPlanner {
     }
   }
 
-  public synchronized long tryAllocateFreeMemoryForOperators(long memoryInBytes) {
+  public synchronized long tryAllocateFreeMemory4Load(final long memoryInBytes) {
     if (OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - memoryInBytes
         <= MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD) {
-      long result =
+      final long result =
           OPERATORS_MEMORY_BLOCK.getFreeMemoryInBytes() - MIN_REST_MEMORY_FOR_QUERY_AFTER_LOAD;
+      if (result <= 0) {
+        return 0;
+      }
       OPERATORS_MEMORY_BLOCK.forceAllocateWithoutLimitation(result);
       return result;
     } else {
@@ -278,6 +294,10 @@ public class LocalExecutionPlanner {
       final long reservedBytes,
       final String queryId,
       final String contextHolder) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to reserve from free memory for operators should be larger than 0");
+    }
     if (OPERATORS_MEMORY_BLOCK.allocate(memoryInBytes)) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug(
@@ -301,6 +321,10 @@ public class LocalExecutionPlanner {
   }
 
   public void releaseToFreeMemoryForOperators(final long memoryInBytes) {
+    if (memoryInBytes <= 0) {
+      throw new IllegalArgumentException(
+          "Bytes to release to free memory for operators should be larger than 0");
+    }
     OPERATORS_MEMORY_BLOCK.release(memoryInBytes);
   }
 

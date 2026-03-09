@@ -26,16 +26,18 @@
 
 class TableSession {
 private:
-    Session* session;
+    std::shared_ptr<Session> session_;
+    string getDatabase();
 public:
-    TableSession(Session* session) {
-        this->session = session;
+    TableSession(std::shared_ptr<Session> session) {
+        this->session_ = session;
     }
+    ~TableSession() {}
+
     void insert(Tablet& tablet, bool sorted = false);
     void executeNonQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql);
     unique_ptr<SessionDataSet> executeQueryStatement(const std::string& sql, int64_t timeoutInMs);
-    string getDatabase();
     void open(bool enableRPCCompression = false);
     void close();
 };

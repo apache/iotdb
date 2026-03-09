@@ -21,19 +21,19 @@ package org.apache.iotdb.commons.schema.filter;
 
 import org.apache.iotdb.commons.schema.filter.impl.DataTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.PathContainsFilter;
-import org.apache.iotdb.commons.schema.filter.impl.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.TemplateFilter;
 import org.apache.iotdb.commons.schema.filter.impl.ViewTypeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.AndFilter;
 import org.apache.iotdb.commons.schema.filter.impl.multichildren.OrFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.AttributeFilter;
-import org.apache.iotdb.commons.schema.filter.impl.singlechild.IdFilter;
 import org.apache.iotdb.commons.schema.filter.impl.singlechild.NotFilter;
+import org.apache.iotdb.commons.schema.filter.impl.singlechild.TagFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.ComparisonFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.InFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.LikeFilter;
 import org.apache.iotdb.commons.schema.filter.impl.values.PreciseFilter;
 
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -42,7 +42,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class SchemaFilter {
+public abstract class SchemaFilter implements Accountable {
 
   public static void serialize(final SchemaFilter schemaFilter, final ByteBuffer byteBuffer) {
     if (schemaFilter == null) {
@@ -70,7 +70,7 @@ public abstract class SchemaFilter {
       case NULL:
         return null;
       case TAGS_FILTER:
-        return new TagFilter(byteBuffer);
+        return new org.apache.iotdb.commons.schema.filter.impl.TagFilter(byteBuffer);
       case PATH_CONTAINS:
         return new PathContainsFilter(byteBuffer);
       case DATA_TYPE:
@@ -85,8 +85,8 @@ public abstract class SchemaFilter {
         return new OrFilter(byteBuffer);
       case NOT:
         return new NotFilter(byteBuffer);
-      case ID:
-        return new IdFilter(byteBuffer);
+      case TAG:
+        return new TagFilter(byteBuffer);
       case ATTRIBUTE:
         return new AttributeFilter(byteBuffer);
       case PRECISE:

@@ -81,37 +81,39 @@ public class PipeConsensusConfig {
   }
 
   public static class RPC {
-    private final int rpcSelectorThreadNum;
-    private final int rpcMinConcurrentClientNum;
     private final int rpcMaxConcurrentClientNum;
     private final int thriftServerAwaitTimeForStopService;
     private final boolean isRpcThriftCompressionEnabled;
     private final int connectionTimeoutInMs;
     private final int thriftMaxFrameSize;
 
+    private boolean isEnableSSL = false;
+    private String sslTrustStorePath = "";
+    private String sslTrustStorePassword = "";
+    private String sslKeyStorePath = "";
+    private String sslKeyStorePassword = "";
+
     public RPC(
-        int rpcSelectorThreadNum,
-        int rpcMinConcurrentClientNum,
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int connectionTimeoutInMs,
-        int thriftMaxFrameSize) {
-      this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-      this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
+        int thriftMaxFrameSize,
+        boolean isEnableSSL,
+        String sslTrustStorePath,
+        String sslTrustStorePassword,
+        String sslKeyStorePath,
+        String sslKeyStorePassword) {
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
       this.thriftMaxFrameSize = thriftMaxFrameSize;
-    }
-
-    public int getRpcSelectorThreadNum() {
-      return rpcSelectorThreadNum;
-    }
-
-    public int getRpcMinConcurrentClientNum() {
-      return rpcMinConcurrentClientNum;
+      this.isEnableSSL = isEnableSSL;
+      this.sslTrustStorePath = sslTrustStorePath;
+      this.sslTrustStorePassword = sslTrustStorePassword;
+      this.sslKeyStorePath = sslKeyStorePath;
+      this.sslKeyStorePassword = sslKeyStorePassword;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -134,28 +136,42 @@ public class PipeConsensusConfig {
       return thriftMaxFrameSize;
     }
 
+    public boolean isEnableSSL() {
+      return isEnableSSL;
+    }
+
+    public String getSslTrustStorePath() {
+      return sslTrustStorePath;
+    }
+
+    public String getSslTrustStorePassword() {
+      return sslTrustStorePassword;
+    }
+
+    public String getSslKeyStorePath() {
+      return sslKeyStorePath;
+    }
+
+    public String getSslKeyStorePassword() {
+      return sslKeyStorePassword;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
 
     public static class Builder {
-      private int rpcSelectorThreadNum = 1;
-      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(60);
       private int thriftMaxFrameSize = 536870912;
 
-      public RPC.Builder setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
-        this.rpcSelectorThreadNum = rpcSelectorThreadNum;
-        return this;
-      }
-
-      public RPC.Builder setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
-        this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
-        return this;
-      }
+      private boolean isEnableSSL = false;
+      private String sslTrustStorePath = "";
+      private String sslTrustStorePassword = "";
+      private String sslKeyStorePath = "";
+      private String sslKeyStorePassword = "";
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -183,15 +199,43 @@ public class PipeConsensusConfig {
         return this;
       }
 
+      public Builder setEnableSSL(boolean isEnableSSL) {
+        this.isEnableSSL = isEnableSSL;
+        return this;
+      }
+
+      public Builder setSslTrustStorePath(String sslTrustStorePath) {
+        this.sslTrustStorePath = sslTrustStorePath;
+        return this;
+      }
+
+      public Builder setSslTrustStorePassword(String sslTrustStorePassword) {
+        this.sslTrustStorePassword = sslTrustStorePassword;
+        return this;
+      }
+
+      public Builder setSslKeyStorePath(String sslKeyStorePath) {
+        this.sslKeyStorePath = sslKeyStorePath;
+        return this;
+      }
+
+      public Builder setSslKeyStorePassword(String sslKeyStorePassword) {
+        this.sslKeyStorePassword = sslKeyStorePassword;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
-            rpcSelectorThreadNum,
-            rpcMinConcurrentClientNum,
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
             connectionTimeoutInMs,
-            thriftMaxFrameSize);
+            thriftMaxFrameSize,
+            isEnableSSL,
+            sslTrustStorePath,
+            sslTrustStorePassword,
+            sslKeyStorePath,
+            sslKeyStorePassword);
       }
     }
   }

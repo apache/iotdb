@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
@@ -99,6 +100,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
     this.regionReplicaSet = dataRegionReplicaSet;
   }
 
+  // used by clone & deserialize
   public AlignedSeriesAggregationScanNode(
       PlanNodeId id,
       AlignedPath alignedPath,
@@ -109,14 +111,12 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       @Nullable GroupByTimeParameter groupByTimeParameter,
       TRegionReplicaSet dataRegionReplicaSet,
       byte descriptorType) {
-    this(
-        id,
-        alignedPath,
-        aggregationDescriptorList,
-        scanOrder,
-        pushDownPredicate,
-        groupByTimeParameter,
-        dataRegionReplicaSet);
+    super(id, aggregationDescriptorList);
+    this.alignedPath = alignedPath;
+    this.scanOrder = scanOrder;
+    this.groupByTimeParameter = groupByTimeParameter;
+    this.pushDownPredicate = pushDownPredicate;
+    this.regionReplicaSet = dataRegionReplicaSet;
     setOutputEndTime(outputEndTime);
     setDescriptorType(descriptorType);
   }
@@ -287,6 +287,7 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       ReadWriteIOUtils.write(node, stream);
     }
     ReadWriteIOUtils.write(descriptorType, stream);
+    aggregationDescriptorList.get(0).getStep().serialize(stream);
   }
 
   public static AlignedSeriesAggregationScanNode deserializeUseTemplate(
@@ -307,7 +308,11 @@ public class AlignedSeriesAggregationScanNode extends SeriesAggregationSourceNod
       aggregationDescriptorList = typeProvider.getTemplatedInfo().getAscendingDescriptorList();
     } else if (descriptorType == 1) {
       aggregationDescriptorList = typeProvider.getTemplatedInfo().getDescendingDescriptorList();
+    } else {
+      throw new IllegalStateException("Unexpected descriptorType: " + descriptorType);
     }
+    AggregationStep step = AggregationStep.deserialize(byteBuffer);
+    aggregationDescriptorList.forEach(aggregationDescriptor -> aggregationDescriptor.setStep(step));
 
     return new AlignedSeriesAggregationScanNode(
         planNodeId,

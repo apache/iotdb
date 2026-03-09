@@ -38,9 +38,9 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.utils.constant.TestConstant;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.compress.ICompressor;
 import org.apache.tsfile.compress.IUnCompressor;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.PublicBAOS;
@@ -80,6 +80,7 @@ public class WALCompressionTest {
       FileUtils.delete(walFile);
     }
     originalMinCompressionSize = WALTestUtils.getMinCompressionSize();
+    WALTestUtils.setMinCompressionSize(0);
     if (new File(compressionDir).exists()) {
       FileUtils.forceDelete(new File(compressionDir));
     }
@@ -125,29 +126,33 @@ public class WALCompressionTest {
 
   public void testSkipToGivenPosition()
       throws QueryProcessException, IllegalPathException, IOException {
-    LogWriter writer = new WALWriter(walFile);
-    ByteBuffer buffer = ByteBuffer.allocate(1024 * 4);
-    List<Pair<Long, Integer>> positionAndEntryPairList = new ArrayList<>();
-    int memTableId = 0;
-    long fileOffset = 0;
-    for (int i = 0; i < 100; ) {
-      InsertRowNode insertRowNode = WALTestUtils.getInsertRowNode(devicePath + memTableId, i);
-      if (buffer.remaining() >= buffer.capacity() / 4) {
-        int pos = buffer.position();
-        insertRowNode.serialize(buffer);
-        int size = buffer.position() - pos;
-        positionAndEntryPairList.add(new Pair<>(fileOffset, size));
-        fileOffset += size;
-        i++;
-      } else {
+    List<Pair<Long, Integer>> positionAndEntryPairList;
+    int memTableId;
+    try (LogWriter writer = new WALWriter(walFile)) {
+      writer.setCompressedByteBuffer(
+          ByteBuffer.allocateDirect(WALBuffer.ONE_THIRD_WAL_BUFFER_SIZE));
+      ByteBuffer buffer = ByteBuffer.allocate(1024 * 4);
+      positionAndEntryPairList = new ArrayList<>();
+      memTableId = 0;
+      long fileOffset = 0;
+      for (int i = 0; i < 100; ) {
+        InsertRowNode insertRowNode = WALTestUtils.getInsertRowNode(devicePath + memTableId, i);
+        if (buffer.remaining() >= buffer.capacity() / 4) {
+          int pos = buffer.position();
+          insertRowNode.serialize(buffer);
+          int size = buffer.position() - pos;
+          positionAndEntryPairList.add(new Pair<>(fileOffset, size));
+          fileOffset += size;
+          i++;
+        } else {
+          writer.write(buffer);
+          buffer.clear();
+        }
+      }
+      if (buffer.position() != 0) {
         writer.write(buffer);
-        buffer.clear();
       }
     }
-    if (buffer.position() != 0) {
-      writer.write(buffer);
-    }
-    writer.close();
     try (WALInputStream stream = new WALInputStream(walFile)) {
       for (int i = 0; i < 100; ++i) {
         Pair<Long, Integer> positionAndNodePair = positionAndEntryPairList.get(i);

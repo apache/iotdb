@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 import org.apache.iotdb.db.queryengine.execution.warnings.WarningCollector;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.DistributedQueryPlan;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNo
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.util.List;
@@ -64,7 +66,7 @@ import static org.junit.Assert.assertTrue;
 
 public class SortTest {
 
-  static Metadata metadata = new TestMatadata();
+  static Metadata metadata = new TestMetadata();
   String sql;
   Analysis analysis;
   MPPQueryContext context;
@@ -77,6 +79,11 @@ public class SortTest {
   TableDistributedPlanner distributionPlanner;
   DistributedQueryPlan distributedQueryPlan;
   DeviceTableScanNode deviceTableScanNode;
+
+  @BeforeClass
+  public static void setUp() {
+    IoTDBDescriptor.getInstance().getConfig().setDataNodeId(1);
+  }
 
   // order by some_ids, time, others; has filter
   @Test
@@ -106,7 +113,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
     assertEquals(0, deviceTableScanNode.getPushDownLimit());
     assertEquals(0, deviceTableScanNode.getPushDownOffset());
@@ -322,7 +329,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(ASC, deviceTableScanNode.getScanOrder());
     assertEquals(0, deviceTableScanNode.getPushDownLimit());
     assertEquals(0, deviceTableScanNode.getPushDownOffset());
@@ -387,7 +394,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
 
     // DistributePlan: optimize
     // `Output-Offset-Limit-Project-MergeSort-StreamSort-Project-Filter-TableScan`
@@ -708,7 +715,7 @@ public class SortTest {
     assertEquals("testdb.table1", deviceTableScanNode.getQualifiedObjectName().toString());
     assertEquals(8, deviceTableScanNode.getAssignments().size());
     assertEquals(6, deviceTableScanNode.getDeviceEntries().size());
-    assertEquals(4, deviceTableScanNode.getIdAndAttributeIndexMap().size());
+    assertEquals(4, deviceTableScanNode.getTagAndAttributeIndexMap().size());
     assertEquals(expectedPushDownLimit, deviceTableScanNode.getPushDownLimit());
     assertEquals(expectedPushDownOffset, deviceTableScanNode.getPushDownOffset());
     assertEquals(isPushLimitToEachDevice, deviceTableScanNode.isPushLimitToEachDevice());

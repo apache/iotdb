@@ -19,26 +19,26 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.ai;
 
+import org.apache.iotdb.ainode.rpc.thrift.TInferenceReq;
 import org.apache.iotdb.ainode.rpc.thrift.TInferenceResp;
-import org.apache.iotdb.ainode.rpc.thrift.TWindowParams;
-import org.apache.iotdb.commons.client.ainode.AINodeClient;
-import org.apache.iotdb.commons.client.ainode.AINodeClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.db.exception.ainode.AINodeConnectionException;
 import org.apache.iotdb.db.exception.runtime.ModelInferenceProcessException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
+import org.apache.iotdb.db.protocol.client.an.AINodeClient;
+import org.apache.iotdb.db.protocol.client.an.AINodeClientManager;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
 import org.apache.iotdb.db.queryengine.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.BottomInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.CountInferenceWindowParameter;
-import org.apache.iotdb.db.queryengine.execution.operator.window.ainode.InferenceWindowType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.model.ModelInferenceDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.thrift.TException;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.tsfile.read.common.block.column.TimeColumnBuilder;
@@ -47,12 +47,9 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
@@ -74,13 +71,11 @@ public class InferenceOperator implements ProcessOperator {
 
   private final long maxRetainedSize;
   private final long maxReturnSize;
-  private final List<String> inputColumnNames;
-  private final List<String> targetColumnNames;
+  private final int[] columnIndexes;
   private long totalRow;
   private int resultIndex = 0;
   private List<ByteBuffer> results;
   private final TsBlockSerde serde = new TsBlockSerde();
-  private InferenceWindowType windowType = null;
 
   private final boolean generateTimeColumn;
   private long maxTimestamp;
@@ -105,15 +100,14 @@ public class InferenceOperator implements ProcessOperator {
         new TsBlockBuilder(
             Arrays.asList(modelInferenceDescriptor.getModelInformation().getInputDataType()));
     this.modelInferenceExecutor = modelInferenceExecutor;
-    this.targetColumnNames = targetColumnNames;
-    this.inputColumnNames = inputColumnNames;
+    this.columnIndexes = new int[inputColumnNames.size()];
+    for (int i = 0; i < inputColumnNames.size(); i++) {
+      columnIndexes[i] = targetColumnNames.indexOf(inputColumnNames.get(i));
+    }
+
     this.maxRetainedSize = maxRetainedSize;
     this.maxReturnSize = maxReturnSize;
     this.totalRow = 0;
-
-    if (modelInferenceDescriptor.getInferenceWindowParameter() != null) {
-      windowType = modelInferenceDescriptor.getInferenceWindowParameter().getWindowType();
-    }
 
     if (generateTimeColumn) {
       this.interval = 0;
@@ -132,10 +126,11 @@ public class InferenceOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     ListenableFuture<?> childBlocked = child.isBlocked();
+    boolean childDone = childBlocked.isDone();
     boolean executionDone = forecastExecutionDone();
-    if (executionDone && childBlocked.isDone()) {
+    if (executionDone && childDone) {
       return NOT_BLOCKED;
-    } else if (childBlocked.isDone()) {
+    } else if (childDone) {
       return inferenceExecutionFuture;
     } else if (executionDone) {
       return childBlocked;
@@ -231,66 +226,17 @@ public class InferenceOperator implements ProcessOperator {
         maxTimestamp = Math.max(maxTimestamp, timestamp);
       }
       timeColumnBuilder.writeLong(timestamp);
+      if (inputTsBlock.getValueColumnCount() > 1) {
+        throw new SemanticException(
+            String.format(
+                "Call inference function should not contain more than one input column, found [%d] input columns.",
+                inputTsBlock.getValueColumnCount()));
+      }
       for (int columnIndex = 0; columnIndex < inputTsBlock.getValueColumnCount(); columnIndex++) {
-        columnBuilders[columnIndex].write(inputTsBlock.getColumn(columnIndex), i);
+        columnBuilders[columnIndexes[columnIndex]].write(inputTsBlock.getColumn(columnIndex), i);
       }
       inputTsBlockBuilder.declarePosition();
     }
-  }
-
-  private TWindowParams getWindowParams() {
-    TWindowParams windowParams;
-    if (windowType == null) {
-      return null;
-    }
-    if (windowType == InferenceWindowType.COUNT) {
-      CountInferenceWindowParameter countInferenceWindowParameter =
-          (CountInferenceWindowParameter) modelInferenceDescriptor.getInferenceWindowParameter();
-      windowParams = new TWindowParams();
-      windowParams.setWindowInterval((int) countInferenceWindowParameter.getInterval());
-      windowParams.setWindowStep((int) countInferenceWindowParameter.getStep());
-    } else {
-      windowParams = null;
-    }
-    return windowParams;
-  }
-
-  private TsBlock preProcess(TsBlock inputTsBlock) {
-    boolean notBuiltIn = !modelInferenceDescriptor.getModelInformation().isBuiltIn();
-    if (windowType == null || windowType == InferenceWindowType.HEAD) {
-      if (notBuiltIn
-          && totalRow != modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data does not match the model input %s. Try to use LIMIT in SQL or WINDOW in CALL INFERENCE",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      return inputTsBlock;
-    } else if (windowType == InferenceWindowType.COUNT) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-    } else if (windowType == InferenceWindowType.TAIL) {
-      if (notBuiltIn
-          && totalRow < modelInferenceDescriptor.getModelInformation().getInputShape()[0]) {
-        throw new ModelInferenceProcessException(
-            String.format(
-                "The number of rows %s in the input data is less than the model input %s. ",
-                totalRow, modelInferenceDescriptor.getModelInformation().getInputShape()[0]));
-      }
-      // Tail window logic: get the latest data for inference
-      long windowSize =
-          (int)
-              ((BottomInferenceWindowParameter)
-                      modelInferenceDescriptor.getInferenceWindowParameter())
-                  .getWindowSize();
-      return inputTsBlock.subTsBlock((int) (totalRow - windowSize));
-    }
-    return inputTsBlock;
   }
 
   private void submitInferenceTask() {
@@ -301,33 +247,18 @@ public class InferenceOperator implements ProcessOperator {
 
     TsBlock inputTsBlock = inputTsBlockBuilder.build();
 
-    TsBlock finalInputTsBlock = preProcess(inputTsBlock);
-    TWindowParams windowParams = getWindowParams();
-
-    Map<String, Integer> columnNameIndexMap = new HashMap<>();
-
-    for (int i = 0; i < inputColumnNames.size(); i++) {
-      columnNameIndexMap.put(inputColumnNames.get(i), i);
-    }
-
     inferenceExecutionFuture =
         Futures.submit(
             () -> {
               try (AINodeClient client =
                   AINodeClientManager.getInstance()
-                      .borrowClient(modelInferenceDescriptor.getTargetAINode())) {
+                      .borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
                 return client.inference(
-                    modelInferenceDescriptor.getModelName(),
-                    targetColumnNames,
-                    Arrays.stream(modelInferenceDescriptor.getModelInformation().getInputDataType())
-                        .map(TSDataType::toString)
-                        .collect(Collectors.toList()),
-                    columnNameIndexMap,
-                    finalInputTsBlock,
-                    modelInferenceDescriptor.getInferenceAttributes(),
-                    windowParams);
-              } catch (Exception e) {
-                throw new ModelInferenceProcessException(e.getMessage());
+                    new TInferenceReq(
+                            modelInferenceDescriptor.getModelId(), serde.serialize(inputTsBlock))
+                        .setInferenceAttributes(modelInferenceDescriptor.getInferenceAttributes()));
+              } catch (ClientManagerException | TException e) {
+                throw new AINodeConnectionException(e);
               }
             },
             modelInferenceExecutor);
@@ -367,11 +298,6 @@ public class InferenceOperator implements ProcessOperator {
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + inputTsBlockBuilder.getRetainedSizeInBytes()
-        + (inputColumnNames == null
-            ? 0
-            : inputColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum())
-        + (targetColumnNames == null
-            ? 0
-            : targetColumnNames.stream().mapToLong(RamUsageEstimator::sizeOf).sum());
+        + (long) columnIndexes.length * Integer.BYTES;
   }
 }

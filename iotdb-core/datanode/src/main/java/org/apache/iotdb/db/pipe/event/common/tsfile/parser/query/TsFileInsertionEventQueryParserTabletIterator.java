@@ -19,9 +19,13 @@
 
 package org.apache.iotdb.db.pipe.event.common.tsfile.parser.query;
 
+import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.db.pipe.event.common.tsfile.parser.util.ModsOperationUtil;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 
 import org.apache.tsfile.common.constant.TsFileConstant;
@@ -62,13 +66,19 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
 
   private final PipeMemoryBlock allocatedBlockForTablet;
 
+  // Maintain sorted mods list and current index for each measurement
+  private final List<ModsOperationUtil.ModsInfo> measurementModsList;
+
+  private RowRecord rowRecord;
+
   TsFileInsertionEventQueryParserTabletIterator(
       final TsFileReader tsFileReader,
       final Map<String, TSDataType> measurementDataTypeMap,
       final IDeviceID deviceId,
       final List<String> measurements,
       final IExpression timeFilterExpression,
-      final PipeMemoryBlock allocatedBlockForTablet)
+      final PipeMemoryBlock allocatedBlockForTablet,
+      final PatternTreeMap<ModEntry, PatternTreeMapFactory.ModsSerializer> currentModifications)
       throws IOException {
     this.tsFileReader = tsFileReader;
     this.measurementDataTypeMap = measurementDataTypeMap;
@@ -88,6 +98,10 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
     this.queryDataSet = buildQueryDataSet();
 
     this.allocatedBlockForTablet = Objects.requireNonNull(allocatedBlockForTablet);
+
+    this.measurementModsList =
+        ModsOperationUtil.initializeMeasurementMods(
+            deviceId, this.measurements, currentModifications);
   }
 
   private QueryDataSet buildQueryDataSet() throws IOException {
@@ -135,16 +149,15 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
               // Used for tree model
               deviceId.toString(), schemas, 1);
       tablet.initBitMaps();
-      // Ignore the memory cost of tablet
-      PipeDataNodeResourceManager.memory().forceResize(allocatedBlockForTablet, 0);
       return tablet;
     }
 
     boolean isFirstRow = true;
     while (queryDataSet.hasNext()) {
-      final RowRecord rowRecord = queryDataSet.next();
+      final RowRecord rowRecord = this.rowRecord != null ? this.rowRecord : queryDataSet.next();
       if (isFirstRow) {
         // Calculate row count and memory size of the tablet based on the first row
+        this.rowRecord = rowRecord; // Save the first row for later use
         Pair<Integer, Integer> rowCountAndMemorySize =
             PipeMemoryWeightUtil.calculateTabletRowCountAndMemory(rowRecord);
         tablet =
@@ -152,23 +165,33 @@ public class TsFileInsertionEventQueryParserTabletIterator implements Iterator<T
                 // Used for tree model
                 deviceId.toString(), schemas, rowCountAndMemorySize.getLeft());
         tablet.initBitMaps();
-        PipeDataNodeResourceManager.memory()
-            .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+        if (allocatedBlockForTablet.getMemoryUsageInBytes() < rowCountAndMemorySize.getRight()) {
+          PipeDataNodeResourceManager.memory()
+              .forceResize(allocatedBlockForTablet, rowCountAndMemorySize.getRight());
+        }
+        this.rowRecord = null; // Clear the saved first row
         isFirstRow = false;
       }
 
       final int rowIndex = tablet.getRowSize();
 
-      tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
-
+      boolean isNeedFillTime = false;
       final List<Field> fields = rowRecord.getFields();
       final int fieldSize = fields.size();
       for (int i = 0; i < fieldSize; i++) {
         final Field field = fields.get(i);
-        tablet.addValue(
-            measurements.get(i),
-            rowIndex,
-            field == null ? null : field.getObjectValue(schemas.get(i).getType()));
+        final String measurement = measurements.get(i);
+        // Check if this value is deleted by mods
+        if (field == null
+            || ModsOperationUtil.isDelete(rowRecord.getTimestamp(), measurementModsList.get(i))) {
+          tablet.getBitMaps()[i].mark(rowIndex);
+        } else {
+          tablet.addValue(measurement, rowIndex, field.getObjectValue(schemas.get(i).getType()));
+          isNeedFillTime = true;
+        }
+      }
+      if (isNeedFillTime) {
+        tablet.addTimestamp(rowIndex, rowRecord.getTimestamp());
       }
 
       if (tablet.getRowSize() == tablet.getMaxRowNumber()) {

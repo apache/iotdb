@@ -22,11 +22,14 @@ package org.apache.iotdb.db.queryengine.execution.operator.source.relational.agg
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.file.metadata.statistics.BinaryStatistics;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.nio.charset.StandardCharsets;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
@@ -206,24 +209,31 @@ public class MaxAccumulator implements TableAccumulator {
     switch (seriesDataType) {
       case INT32:
       case DATE:
-        updateIntMaxValue((int) statistics[0].getMaxValue());
+        updateIntMaxValue(((Number) statistics[0].getMaxValue()).intValue());
         break;
       case INT64:
-        updateLongMaxValue((long) statistics[0].getMaxValue());
-        break;
       case TIMESTAMP:
-        updateLongMaxValue(statistics[0].getEndTime());
+        updateLongMaxValue(((Number) statistics[0].getMaxValue()).longValue());
         break;
       case FLOAT:
-        updateFloatMaxValue((float) statistics[0].getMaxValue());
+        updateFloatMaxValue(((Number) statistics[0].getMaxValue()).floatValue());
         break;
       case DOUBLE:
-        updateDoubleMaxValue((double) statistics[0].getMaxValue());
+        updateDoubleMaxValue(((Number) statistics[0].getMaxValue()).doubleValue());
         break;
       case TEXT:
       case BLOB:
       case STRING:
-        updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        if (statistics[0] instanceof BinaryStatistics) {
+          updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+        } else {
+          if (statistics[0].getMaxValue() instanceof Binary) {
+            updateBinaryMaxValue((Binary) statistics[0].getMaxValue());
+          } else {
+            updateBinaryMaxValue(
+                new Binary(String.valueOf(statistics[0].getMaxValue()), StandardCharsets.UTF_8));
+          }
+        }
         break;
       case BOOLEAN:
         updateBooleanMaxValue((boolean) statistics[0].getMaxValue());

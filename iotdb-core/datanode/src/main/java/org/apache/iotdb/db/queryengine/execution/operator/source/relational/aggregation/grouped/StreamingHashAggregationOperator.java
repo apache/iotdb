@@ -159,7 +159,7 @@ public class StreamingHashAggregationOperator extends AbstractOperator {
     TsBlock block;
     if (child.hasNextWithTimer()) {
       block = child.nextWithTimer();
-      if (block == null) {
+      if (block == null || block.isEmpty()) {
         return null;
       }
 

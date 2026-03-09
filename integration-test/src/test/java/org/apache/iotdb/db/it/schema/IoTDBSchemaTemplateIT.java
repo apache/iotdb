@@ -177,7 +177,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       expectedResult =
           new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true", "root.sg1.d3,true"));
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg1.**")) {
         while (resultSet.next()) {
           String actualResult =
               resultSet.getString(ColumnHeaderConstant.DEVICE)
@@ -258,7 +258,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
 
       expectedResult = new HashSet<>(Arrays.asList("root.sg1.d1,false", "root.sg1.d2,true"));
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW DEVICES root.sg1.**")) {
         while (resultSet.next()) {
           String actualResult =
               resultSet.getString(ColumnHeaderConstant.DEVICE)
@@ -556,7 +556,7 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       // created
       statement.execute("INSERT INTO root.sg1.d1(time,s1,s2,s3) VALUES (2,1,1,1)");
 
-      try (ResultSet resultSet = statement.executeQuery("count timeseries")) {
+      try (ResultSet resultSet = statement.executeQuery("count timeseries root.sg1.**")) {
         Assert.assertTrue(resultSet.next());
         long resultRecord = resultSet.getLong(1);
         Assert.assertEquals(3, resultRecord);
@@ -850,6 +850,23 @@ public class IoTDBSchemaTemplateIT extends AbstractSchemaIT {
       statement.execute("UNSET DEVICE TEMPLATE e_t FROM root.sg1.t.d1;");
       try (ResultSet resultSet = statement.executeQuery("show paths set device template e_t")) {
         Assert.assertFalse(resultSet.next());
+      }
+    }
+  }
+
+  @Test
+  public void testTemplatePathConflict() throws Exception {
+    try (final Connection connection = EnvFactory.getEnv().getConnection();
+        final Statement statement = connection.createStatement()) {
+      // set device template
+      statement.execute("SET DEVICE TEMPLATE t1 TO root.sg1");
+      // activate device template
+      statement.execute("create timeSeries using device template on root.sg1.d1");
+      try {
+        statement.execute("create timeSeries using device template on root.sg1.d1.s1");
+        fail();
+      } catch (final Exception e) {
+        Assert.assertEquals("506: Path [root.sg1.d1.s1] already exist", e.getMessage());
       }
     }
   }

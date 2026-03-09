@@ -26,14 +26,16 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.TableSessionPoolBuilder;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.write.record.Tablet;
-import org.apache.tsfile.write.record.Tablet.ColumnCategory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import static org.apache.iotdb.SessionExample.printDataSet;
 
 public class TableModelSessionPoolExample {
 
@@ -77,21 +79,13 @@ public class TableModelSessionPoolExample {
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // show tables by specifying another database
       // using SHOW tables FROM
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES FROM test1")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // insert table data by tablet
@@ -119,7 +113,7 @@ public class TableModelSessionPoolExample {
         int rowIndex = tablet.getRowSize();
         tablet.addTimestamp(rowIndex, timestamp);
         tablet.addValue("region_id", rowIndex, "1");
-        tablet.addValue("plant_id", rowIndex, "5");
+        tablet.addValue("plant_id", rowIndex, null);
         tablet.addValue("device_id", rowIndex, "3");
         tablet.addValue("model", rowIndex, "A");
         tablet.addValue("temperature", rowIndex, 37.6F);
@@ -139,11 +133,7 @@ public class TableModelSessionPoolExample {
           session.executeQueryStatement(
               "select * from test1 "
                   + "where region_id = '1' and plant_id in ('3', '5') and device_id = '3'")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {
@@ -168,11 +158,7 @@ public class TableModelSessionPoolExample {
 
       // show tables from current database
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
       // change database to test2
@@ -181,11 +167,7 @@ public class TableModelSessionPoolExample {
       // show tables by specifying another database
       // using SHOW tables FROM
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {
@@ -198,11 +180,7 @@ public class TableModelSessionPoolExample {
 
       // show tables from default database test1
       try (SessionDataSet dataSet = session.executeQueryStatement("SHOW TABLES")) {
-        System.out.println(dataSet.getColumnNames());
-        System.out.println(dataSet.getColumnTypes());
-        while (dataSet.hasNext()) {
-          System.out.println(dataSet.next());
-        }
+        printDataSet(dataSet);
       }
 
     } catch (IoTDBConnectionException e) {

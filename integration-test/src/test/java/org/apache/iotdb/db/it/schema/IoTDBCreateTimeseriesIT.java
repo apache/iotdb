@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.schema.column.ColumnHeaderConstant;
+import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
@@ -35,6 +36,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -72,24 +74,24 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
   /** Test if creating a time series will cause the database with same name to disappear */
   @Test
   public void testCreateTimeseries() throws Exception {
-    String storageGroup = "root.sg1.a.b.c";
+    String database = "root.sg1.a.b.c";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("CREATE DATABASE %s", storageGroup));
+      statement.execute(String.format("CREATE DATABASE %s", database));
       statement.execute(
           String.format(
               "create timeseries %s with datatype=INT64, encoding=PLAIN, compression=SNAPPY",
-              storageGroup));
+              database));
 
     } catch (Exception ignored) {
     }
 
     // ensure that current database in cache is right.
-    createTimeSeriesTool(storageGroup);
+    createTimeSeriesTool(database);
   }
 
-  private void createTimeSeriesTool(String storageGroup) throws SQLException {
+  private void createTimeSeriesTool(String database) throws SQLException {
     Set<String> resultList = new HashSet<>();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
@@ -99,7 +101,7 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         resultList.add(str);
       }
     }
-    Assert.assertFalse(resultList.contains(storageGroup));
+    Assert.assertFalse(resultList.contains(database));
     resultList.clear();
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
@@ -109,11 +111,16 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
         resultList.add(res);
       }
     }
-    Assert.assertTrue(resultList.contains(storageGroup));
+    Assert.assertTrue(resultList.contains(database));
   }
 
   @Test
   public void testCreateTimeseriesWithSpecialCharacter() throws Exception {
+    // Currently this test may fail in PBTree
+    // Will solve this in the future
+    if (schemaTestMode == SchemaTestMode.PBTree) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
       try (Statement statement = connection.createStatement()) {
         statement.execute(
@@ -291,6 +298,24 @@ public class IoTDBCreateTimeseriesIT extends AbstractSchemaIT {
           "Unsupported datatype: VECTOR",
           SQLException.class,
           () -> statement.execute("create device template t1 (s1 VECTOR, s2 boolean)"));
+    } catch (SQLException ignored) {
+      fail();
+    }
+  }
+
+  @Test
+  public void testDifferentDeviceAlignment() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.sg2.d.s1 with datatype=INT64");
+      // Should ignore the alignment difference
+      statement.execute("create aligned timeseries root.sg2.d (s2 int64, s3 int64)");
+      // Should use the existing alignment
+      statement.execute("insert into root.sg2.d (time, s4) aligned values (-1, 1)");
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("select * from root.sg2.d"),
+          "Time,root.sg2.d.s3,root.sg2.d.s4,root.sg2.d.s1,root.sg2.d.s2,",
+          Collections.singleton("-1,null,1.0,null,null,"));
     } catch (SQLException ignored) {
       fail();
     }

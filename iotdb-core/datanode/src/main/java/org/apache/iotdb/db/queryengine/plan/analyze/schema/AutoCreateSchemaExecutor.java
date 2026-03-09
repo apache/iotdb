@@ -20,16 +20,17 @@
 package org.apache.iotdb.db.queryengine.plan.analyze.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadAnalyzeTypeMismatchException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.protocol.session.SessionManager;
 import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
@@ -45,7 +46,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.internal.InternalCreateTim
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.template.AlterSchemaTemplateStatement;
 import org.apache.iotdb.db.schemaengine.template.ITemplateManager;
-import org.apache.iotdb.db.schemaengine.template.Template;
 import org.apache.iotdb.db.schemaengine.template.TemplateAlterOperationType;
 import org.apache.iotdb.db.schemaengine.template.alter.TemplateExtendInfo;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -123,7 +123,7 @@ class AutoCreateSchemaExecutor {
             dataTypesOfMissingMeasurement.add(tsDataType);
             encodingsOfMissingMeasurement.add(getDefaultEncoding(tsDataType));
             compressionTypesOfMissingMeasurement.add(
-                TSFileDescriptor.getInstance().getConfig().getCompressor());
+                TSFileDescriptor.getInstance().getConfig().getCompressor(tsDataType));
           }
         });
 
@@ -180,14 +180,16 @@ class AutoCreateSchemaExecutor {
                   measurements[measurementIndex],
                   tsDataTypes[measurementIndex],
                   getDefaultEncoding(tsDataTypes[measurementIndex]),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor());
+                  TSFileDescriptor.getInstance()
+                      .getConfig()
+                      .getCompressor(tsDataTypes[measurementIndex]));
             }
             return v;
           });
     }
 
     if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
-      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context);
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context, false);
     }
   }
 
@@ -199,15 +201,10 @@ class AutoCreateSchemaExecutor {
       MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      String userName = context.getSession().getUserName();
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
-                PrivilegeType.EXTEND_TEMPLATE);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-        }
+      TSStatus status =
+          AuthorityChecker.getAccessControl().checkCanAlterTemplate(context, () -> templateName);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -220,15 +217,12 @@ class AutoCreateSchemaExecutor {
       Map<String, TemplateExtendInfo> templateExtendInfoMap, MPPQueryContext context) {
     long startTime = System.nanoTime();
     try {
-      String userName = context.getSession().getUserName();
-      if (!AuthorityChecker.SUPER_USER.equals(userName)) {
-        TSStatus status =
-            AuthorityChecker.getTSStatus(
-                AuthorityChecker.checkSystemPermission(userName, PrivilegeType.EXTEND_TEMPLATE),
-                PrivilegeType.EXTEND_TEMPLATE);
-        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
-        }
+      TSStatus status =
+          AuthorityChecker.getAccessControl()
+              .checkCanAlterTemplate(
+                  context, () -> String.join(",", templateExtendInfoMap.keySet()));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
       }
     } finally {
       PerformanceOverviewMetrics.getInstance().recordAuthCost(System.nanoTime() - startTime);
@@ -345,7 +339,9 @@ class AutoCreateSchemaExecutor {
                         ? getDefaultEncoding(tsDataTypes[measurementIndex])
                         : encodings[measurementIndex],
                     compressionTypes == null
-                        ? TSFileDescriptor.getInstance().getConfig().getCompressor()
+                        ? TSFileDescriptor.getInstance()
+                            .getConfig()
+                            .getCompressor(tsDataTypes[measurementIndex])
                         : compressionTypes[measurementIndex]);
               }
               return v;
@@ -389,7 +385,8 @@ class AutoCreateSchemaExecutor {
                       && compressionTypesList.get(finalDeviceIndex1) != null) {
                     compressionType = compressionTypesList.get(finalDeviceIndex1)[index];
                   } else {
-                    compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+                    compressionType =
+                        TSFileDescriptor.getInstance().getConfig().getCompressor(dataType);
                   }
                   templateExtendInfo.addMeasurement(
                       measurement, dataType, encoding, compressionType);
@@ -429,7 +426,7 @@ class AutoCreateSchemaExecutor {
     }
 
     if (!devicesNeedAutoCreateTimeSeries.isEmpty()) {
-      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context);
+      internalCreateTimeSeries(schemaTree, devicesNeedAutoCreateTimeSeries, context, true);
     }
   }
 
@@ -467,11 +464,15 @@ class AutoCreateSchemaExecutor {
       List<CompressionType> compressors,
       boolean isAligned,
       MPPQueryContext context) {
+    final Map<PartialPath, Pair<Boolean, MeasurementGroup>> input =
+        Collections.singletonMap(devicePath, new Pair<>(isAligned, null));
     List<MeasurementPath> measurementPathList =
-        executeInternalCreateTimeseriesStatement(
+        executeInternalCreateTimeSeriesStatement(
+            input,
             new InternalCreateTimeSeriesStatement(
                 devicePath, measurements, tsDataTypes, encodings, compressors, isAligned),
-            context);
+            context,
+            false);
 
     Set<Integer> alreadyExistingMeasurementIndexSet =
         measurementPathList.stream()
@@ -492,15 +493,17 @@ class AutoCreateSchemaExecutor {
           null,
           null,
           null,
-          isAligned);
+          input.get(devicePath).getLeft());
     }
   }
 
-  // Auto create timeseries and return the existing timeseries info
-  private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
-      final Statement statement, final MPPQueryContext context) {
-    final TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+  // Auto create timeSeries and return the existing timeSeries info
+  private List<MeasurementPath> executeInternalCreateTimeSeriesStatement(
+      final Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
+      final Statement statement,
+      final MPPQueryContext context,
+      final boolean isLoad) {
+    final TSStatus status = AuthorityChecker.checkAuthority(statement, context);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -521,7 +524,23 @@ class AutoCreateSchemaExecutor {
     for (final TSStatus subStatus : executionResult.status.subStatus) {
       if (subStatus.code == TSStatusCode.TIMESERIES_ALREADY_EXIST.getStatusCode()) {
         alreadyExistingMeasurements.add(
-            MeasurementPath.parseDataFromString(subStatus.getMessage()));
+            (MeasurementPath) PartialPath.parseDataFromString(subStatus.getMessage()));
+      } else if (subStatus.code == TSStatusCode.ALIGNED_TIMESERIES_ERROR.getStatusCode()) {
+        final PartialPath devicePath = PartialPath.parseDataFromString(subStatus.getMessage());
+        final Pair<Boolean, MeasurementGroup> pair =
+            devicesNeedAutoCreateTimeSeries.get(devicePath);
+        if (!isLoad) {
+          pair.setLeft(!pair.getLeft());
+        } else {
+          // Load does not tolerate the device alignment mismatch
+          throw new SemanticException(
+              new LoadAnalyzeTypeMismatchException(
+                  String.format(
+                      "TimeSeries under this device is%s aligned, please use create%sTimeSeries or change device. (Path: %s)",
+                      !pair.getLeft() ? "" : " not",
+                      !pair.getLeft() ? "Aligned" : "",
+                      devicePath.getFullPath())));
+        }
       } else {
         failedCreationSet.add(subStatus);
       }
@@ -541,7 +560,7 @@ class AutoCreateSchemaExecutor {
   private void internalActivateTemplate(PartialPath devicePath, MPPQueryContext context) {
     ActivateTemplateStatement statement = new ActivateTemplateStatement(devicePath);
     TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -549,7 +568,7 @@ class AutoCreateSchemaExecutor {
     status = executionResult.status;
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
@@ -559,7 +578,7 @@ class AutoCreateSchemaExecutor {
     InternalBatchActivateTemplateStatement statement =
         new InternalBatchActivateTemplateStatement(devicesNeedActivateTemplate);
     TSStatus status =
-        AuthorityChecker.checkAuthority(statement, context.getSession().getUserName());
+        AuthorityChecker.checkAuthority(statement, context.getSession().getUserEntity());
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new IoTDBRuntimeException(status.getMessage(), status.getCode());
     }
@@ -581,18 +600,31 @@ class AutoCreateSchemaExecutor {
         throw new SemanticException(new MetadataException(String.join("; ", failedActivationSet)));
       }
     } else {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 
   private void internalCreateTimeSeries(
       ClusterSchemaTree schemaTree,
       Map<PartialPath, Pair<Boolean, MeasurementGroup>> devicesNeedAutoCreateTimeSeries,
-      MPPQueryContext context) {
+      MPPQueryContext context,
+      final boolean isLoad) {
 
-    List<MeasurementPath> measurementPathList =
-        executeInternalCreateTimeseriesStatement(
-            new InternalCreateMultiTimeSeriesStatement(devicesNeedAutoCreateTimeSeries), context);
+    // Deep copy to avoid changes to the original map
+    final List<MeasurementPath> measurementPathList =
+        executeInternalCreateTimeSeriesStatement(
+            devicesNeedAutoCreateTimeSeries,
+            new InternalCreateMultiTimeSeriesStatement(
+                devicesNeedAutoCreateTimeSeries.entrySet().stream()
+                    .collect(
+                        Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry ->
+                                new Pair<>(
+                                    entry.getValue().getLeft(),
+                                    entry.getValue().getRight().deepCopy())))),
+            context,
+            isLoad);
 
     schemaTree.appendMeasurementPaths(measurementPathList);
 
@@ -650,7 +682,7 @@ class AutoCreateSchemaExecutor {
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
         && status.getCode()
             != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
-      throw new SemanticException(new IoTDBException(status.getMessage(), status.getCode()));
+      throw new SemanticException(new IoTDBException(status));
     }
   }
 }

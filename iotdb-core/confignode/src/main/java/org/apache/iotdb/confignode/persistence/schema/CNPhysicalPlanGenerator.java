@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.node.role.IDatabaseMNode;
 import org.apache.iotdb.commons.schema.node.utils.IMNodeFactory;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.template.Template;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
@@ -35,15 +37,15 @@ import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorRelational
 import org.apache.iotdb.confignode.consensus.request.write.auth.AuthorTreePlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.DatabaseSchemaPlan;
 import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
-import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTablePlan;
+import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeCreateTableOrViewPlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CommitSetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.mnode.IConfigMNode;
 import org.apache.iotdb.confignode.persistence.schema.mnode.factory.ConfigMNodeFactory;
 import org.apache.iotdb.confignode.persistence.schema.mnode.impl.ConfigTableNode;
-import org.apache.iotdb.db.schemaengine.template.Template;
+import org.apache.iotdb.confignode.rpc.thrift.TDatabaseSchema;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.tsfile.external.commons.io.IOUtils;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -72,8 +74,8 @@ import java.util.Set;
 import java.util.Stack;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.commons.schema.SchemaConstant.DATABASE_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.INTERNAL_MNODE_TYPE;
-import static org.apache.iotdb.commons.schema.SchemaConstant.STORAGE_GROUP_MNODE_TYPE;
 import static org.apache.iotdb.commons.schema.SchemaConstant.TABLE_MNODE_TYPE;
 import static org.apache.iotdb.commons.utils.IOUtils.readString;
 
@@ -103,14 +105,15 @@ public class CNPhysicalPlanGenerator
   private Exception latestException = null;
   private String userName;
 
-  public CNPhysicalPlanGenerator(final Path snapshotFilePath, final CNSnapshotFileType fileType)
+  public CNPhysicalPlanGenerator(
+      final Path snapshotFilePath, final CNSnapshotFileType fileType, final String userName)
       throws IOException {
     if (fileType == CNSnapshotFileType.SCHEMA) {
       logger.warn("schema_template need two files");
       return;
     }
     if (fileType == CNSnapshotFileType.USER_ROLE) {
-      userName = snapshotFilePath.getFileName().toString().split("_role.profile")[0];
+      this.userName = userName;
     }
     snapshotFileType = fileType;
     inputStream = Files.newInputStream(snapshotFilePath);
@@ -198,11 +201,15 @@ public class CNPhysicalPlanGenerator
     try (final DataInputStream dataInputStream =
         new DataInputStream(new BufferedInputStream(inputStream))) {
       int tag = dataInputStream.readInt();
-      boolean fromOldVersion = tag < 0;
       String user;
-      if (fromOldVersion) {
+      if (tag < 0) {
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal, -1 * tag);
+      } else if (tag == 1) {
+        user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       } else {
+        if (isUser) {
+          dataInputStream.readLong(); // skip userId since authorPlan do not demand it.
+        }
         user = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
       }
 
@@ -215,6 +222,23 @@ public class CNPhysicalPlanGenerator
         createUser.setPermissions(new HashSet<>());
         createUser.setNodeNameList(new ArrayList<>());
         planDeque.add(createUser);
+        if (tag == 2) {
+          final AuthorTreePlan updateUserMaxSession =
+              new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMaxSession);
+          updateUserMaxSession.setMaxSessionPerUser(dataInputStream.readInt());
+          updateUserMaxSession.setUserName(user);
+          updateUserMaxSession.setPermissions(new HashSet<>());
+          updateUserMaxSession.setNodeNameList(new ArrayList<>());
+          planDeque.add(updateUserMaxSession);
+          final AuthorTreePlan updateUserMinSession =
+              new AuthorTreePlan(ConfigPhysicalPlanType.UpdateUserMinSession);
+          updateUserMinSession.setMinSessionPerUser(dataInputStream.readInt());
+          updateUserMinSession.setUserName(user);
+          updateUserMinSession.setPermissions(new HashSet<>());
+          updateUserMinSession.setNodeNameList(new ArrayList<>());
+          planDeque.add(updateUserMinSession);
+        }
+
       } else {
         final AuthorTreePlan createRole = new AuthorTreePlan(ConfigPhysicalPlanType.CreateRole);
         createRole.setRoleName(user);
@@ -226,7 +250,7 @@ public class CNPhysicalPlanGenerator
       final int privilegeMask = dataInputStream.readInt();
       generateGrantSysPlan(user, isUser, privilegeMask);
 
-      if (fromOldVersion) {
+      if (tag < 0) {
         while (dataInputStream.available() != 0) {
           final String path = readString(dataInputStream, STRING_ENCODING, strBufferLocal);
           final PartialPath priPath;
@@ -418,7 +442,7 @@ public class CNPhysicalPlanGenerator
 
       final Set<TsTable> tableSet = new HashSet<>();
 
-      if (type == STORAGE_GROUP_MNODE_TYPE) {
+      if (type == DATABASE_MNODE_TYPE) {
         databaseMNode = deserializeDatabaseMNode(bufferedInputStream);
         name = databaseMNode.getName();
         stack.push(new Pair<>(databaseMNode, true));
@@ -450,7 +474,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(internalMNode, hasDB));
             name = internalMNode.getName();
             break;
-          case STORAGE_GROUP_MNODE_TYPE:
+          case DATABASE_MNODE_TYPE:
             databaseMNode = deserializeDatabaseMNode(bufferedInputStream).getAsMNode();
             while (!stack.isEmpty() && !stack.peek().right) {
               databaseMNode.addChild(stack.pop().left);
@@ -458,7 +482,7 @@ public class CNPhysicalPlanGenerator
             stack.push(new Pair<>(databaseMNode, true));
             name = databaseMNode.getName();
             for (final TsTable table : tableSet) {
-              planDeque.add(new PipeCreateTablePlan(name, table));
+              planDeque.add(new PipeCreateTableOrViewPlan(name, table));
             }
             tableSet.clear();
             break;
@@ -526,10 +550,13 @@ public class CNPhysicalPlanGenerator
       templateNodeList.add((IConfigMNode) databaseMNode);
     }
 
-    final DatabaseSchemaPlan createDBPlan =
-        new DatabaseSchemaPlan(
-            ConfigPhysicalPlanType.CreateDatabase, databaseMNode.getAsMNode().getDatabaseSchema());
-    planDeque.add(createDBPlan);
+    final TDatabaseSchema schema = databaseMNode.getAsMNode().getDatabaseSchema();
+    if (!schema.getName().equals(SchemaConstant.AUDIT_DATABASE)
+        && !schema.getName().equals(SchemaConstant.SYSTEM_DATABASE)) {
+      final DatabaseSchemaPlan createDBPlan =
+          new DatabaseSchemaPlan(ConfigPhysicalPlanType.CreateDatabase, schema);
+      planDeque.add(createDBPlan);
+    }
     return databaseMNode.getAsMNode();
   }
 

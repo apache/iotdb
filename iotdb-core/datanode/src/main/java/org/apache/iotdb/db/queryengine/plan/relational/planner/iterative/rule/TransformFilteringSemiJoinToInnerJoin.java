@@ -131,6 +131,7 @@ public class TransformFilteringSemiJoinToInnerJoin implements Rule<FilterNode> {
             ImmutableList.of(
                 new JoinNode.EquiJoinClause(
                     semiJoin.getSourceJoinSymbol(), semiJoin.getFilteringSourceJoinSymbol())),
+            Optional.empty(),
             semiJoin.getSource().getOutputSymbols(),
             ImmutableList.of(),
             joinFilter,

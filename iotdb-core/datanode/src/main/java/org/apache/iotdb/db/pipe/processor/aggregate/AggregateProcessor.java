@@ -162,8 +162,9 @@ public class AggregateProcessor implements PipeProcessor {
                 PROCESSOR_OUTPUT_DATABASE_KEY, PROCESSOR_OUTPUT_DATABASE_DEFAULT_VALUE))
         .validate(
             arg ->
-                Arrays.stream(((String) arg).replace(" ", "").split(","))
-                    .allMatch(this::isLegalMeasurement),
+                ((String) arg).isEmpty()
+                    || Arrays.stream(((String) arg).replace(" ", "").split(","))
+                        .allMatch(this::isLegalMeasurement),
             String.format(
                 "The output measurements %s contains illegal measurements, the measurements must be the last level of a legal path",
                 parameters.getStringOrDefault(
@@ -497,6 +498,7 @@ public class AggregateProcessor implements PipeProcessor {
                       timestamp, row.getString(index), outputMinReportIntervalMilliseconds);
               break;
             case BLOB:
+            case OBJECT:
               result =
                   state.updateWindows(
                       timestamp, row.getBinary(index), outputMinReportIntervalMilliseconds);
@@ -524,9 +526,26 @@ public class AggregateProcessor implements PipeProcessor {
       final TsFileInsertionEvent tsFileInsertionEvent, final EventCollector eventCollector)
       throws Exception {
     try {
-      for (final TabletInsertionEvent tabletInsertionEvent :
-          tsFileInsertionEvent.toTabletInsertionEvents()) {
-        process(tabletInsertionEvent, eventCollector);
+      if (tsFileInsertionEvent instanceof PipeTsFileInsertionEvent) {
+        final AtomicReference<Exception> ex = new AtomicReference<>();
+        ((PipeTsFileInsertionEvent) tsFileInsertionEvent)
+            .consumeTabletInsertionEventsWithRetry(
+                event -> {
+                  try {
+                    process(event, eventCollector);
+                  } catch (Exception e) {
+                    ex.set(e);
+                  }
+                },
+                "AggregateProcessor::process");
+        if (ex.get() != null) {
+          throw ex.get();
+        }
+      } else {
+        for (final TabletInsertionEvent tabletInsertionEvent :
+            tsFileInsertionEvent.toTabletInsertionEvents()) {
+          process(tabletInsertionEvent, eventCollector);
+        }
       }
     } finally {
       tsFileInsertionEvent.close();
@@ -667,6 +686,7 @@ public class AggregateProcessor implements PipeProcessor {
                 break;
               case TEXT:
               case BLOB:
+              case OBJECT:
               case STRING:
                 valueColumns[columnIndex] = new Binary[distinctOutputs.size()];
                 break;
@@ -716,6 +736,7 @@ public class AggregateProcessor implements PipeProcessor {
                           TSFileConfig.STRING_CHARSET);
               break;
             case BLOB:
+            case OBJECT:
               ((Binary[]) valueColumns[columnIndex])[rowIndex] =
                   (Binary) aggregatedResults.get(columnNameStringList[columnIndex]).getRight();
               break;

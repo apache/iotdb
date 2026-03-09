@@ -23,8 +23,10 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.AlignedFullPath;
+import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
@@ -39,6 +41,9 @@ import org.apache.iotdb.db.queryengine.execution.exchange.sink.DownStreamChannel
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ISinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.sink.ShuffleSinkHandle;
 import org.apache.iotdb.db.queryengine.execution.exchange.source.ISourceHandle;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
+import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.queryengine.execution.operator.EmptyDataOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.ExplainAnalyzeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.Operator;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
@@ -47,15 +52,19 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.CollectOperato
 import org.apache.iotdb.db.queryengine.execution.operator.process.EnforceSingleRowOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.LimitOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollectOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillWithGroupOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableMergeSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableStreamSortOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableTopKOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.ValuesOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.queryengine.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -70,9 +79,36 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFil
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWGroupWoMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWMoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.gapfill.GapFillWoGroupWoMoOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.FullOuterTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.InnerTimeJoinOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.SimpleNestedLoopCrossJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.TableLeftOuterTimeJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.AscTimeComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.ColumnMerger;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.SingleColumnMerger;
 import org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.comparator.JoinKeyComparatorFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.process.last.LastQueryUtil;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.LogicalIndexNavigation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregationTracker;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PatternVariableRecognizer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalAggregationPointer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValueAccessor;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.Computation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.expression.PatternExpressionComputation;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.IrRowPatternToProgramRewriter;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Matcher;
+import org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.matcher.Program;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.RowNumberOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TableWindowOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.TopKRankingOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.WindowFunctionFactory;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.AggregationWindowFunction;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.function.aggregate.WindowAggregator;
+import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.frame.FrameInfo;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaCountOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.schema.SchemaQueryScanOperator;
@@ -81,9 +117,14 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSo
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortInnerJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AsofMergeSortLeftJoinOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.CteScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DefaultAggTableScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.DeviceIteratorScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.LastQueryAggTableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MarkDistinctOperator;
@@ -94,6 +135,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.Merg
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewAggregationScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeAlignedDeviceViewScanOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.TreeToTableViewAdaptorOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastByDescAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.LastDescAccumulator;
@@ -106,6 +148,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.StreamingHashAggregationOperator;
 import org.apache.iotdb.db.queryengine.execution.relational.ColumnTransformerBuilder;
 import org.apache.iotdb.db.queryengine.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeDevicePathCache;
 import org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.DataNodeTTLCache;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
@@ -116,9 +159,14 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.analyzer.predicate.ConvertPredicateToTimeFilterVisitor;
+import org.apache.iotdb.db.queryengine.plan.relational.function.BoundSignature;
+import org.apache.iotdb.db.queryengine.plan.relational.function.FunctionKind;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.NonAlignedDeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.ResolvedFunction;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceSchemaCache;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBlobLiteralVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToBooleanLiteralVisitor;
@@ -132,11 +180,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.CastToTimestampLi
 import org.apache.iotdb.db.queryengine.plan.relational.planner.OrderingScheme;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.SymbolsExtractor;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.IrUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
@@ -145,31 +196,51 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GapFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.GroupNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntoNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.Measure;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SemiJoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.StreamSortNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableFunctionProcessorNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TopKRankingNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TreeNonAlignedDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.UnionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValuesNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceFetchNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryCountNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationLabelSet;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.AggregationValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ClassifierValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ExpressionAndValuePointers;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.IrLabel;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.LogicalIndexPointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.MatchNumberValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ScalarValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.rowpattern.ValuePointer;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LongLiteral;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SymbolReference;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
@@ -177,6 +248,8 @@ import org.apache.iotdb.db.queryengine.transformation.dag.column.leaf.LeafColumn
 import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar.DateBinFunctionColumnTransformer;
 import org.apache.iotdb.db.schemaengine.schemaregion.read.resp.info.IDeviceSchemaInfo;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTreeViewSchemaUtils;
+import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.db.utils.datastructure.SortKey;
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
@@ -184,6 +257,7 @@ import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ListMultimap;
 import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
@@ -203,7 +277,9 @@ import org.apache.tsfile.read.common.block.column.LongColumn;
 import org.apache.tsfile.read.common.type.BinaryType;
 import org.apache.tsfile.read.common.type.BlobType;
 import org.apache.tsfile.read.common.type.BooleanType;
+import org.apache.tsfile.read.common.type.ObjectType;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -214,7 +290,9 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 import javax.validation.constraints.NotNull;
 
 import java.io.File;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -229,19 +307,24 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.FIELD;
 import static org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory.TIME;
 import static org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction.getAggregationTypeByFuncName;
 import static org.apache.iotdb.db.queryengine.common.DataNodeEndPoints.isSameNode;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparatorForTable;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
+import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
-import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.TableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createBuiltinAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createGroupedAccumulator;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.hash.GroupByHash.DEFAULT_GROUP_NUMBER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
@@ -249,9 +332,16 @@ import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.UNKNOWN_DATATYPE;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getLinearFill;
 import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.getPreviousFill;
+import static org.apache.iotdb.db.queryengine.plan.planner.OperatorTreeGenerator.isFilterGtOrGe;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions.updateFilterUsingTTL;
+import static org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TableDeviceLastCache.EMPTY_PRIMITIVE_TYPE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_FIRST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.ASC_NULLS_LAST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_FIRST;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.SortOrder.DESC_NULLS_LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.ir.GlobalTimePredicateExtractVisitor.isTimeColumn;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch.ONE;
+import static org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition.LAST;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.BooleanLiteral.TRUE_LITERAL;
 import static org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager.getTSDataType;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.AVG;
@@ -264,12 +354,17 @@ import static org.apache.iotdb.db.utils.constant.SqlConstant.LAST_BY_AGGREGATION
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MAX;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.MIN;
 import static org.apache.iotdb.db.utils.constant.SqlConstant.SUM;
+import static org.apache.tsfile.read.common.type.LongType.INT64;
+import static org.apache.tsfile.read.common.type.StringType.STRING;
 import static org.apache.tsfile.read.common.type.TimestampType.TIMESTAMP;
 
 /** This Visitor is responsible for transferring Table PlanNode Tree to Table Operator Tree. */
 public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecutionPlanContext> {
 
   private final Metadata metadata;
+
+  private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
+      DataNodeDevicePathCache.getInstance();
 
   public TableOperatorGenerator(Metadata metadata) {
     this.metadata = metadata;
@@ -306,13 +401,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             localInstanceId.toThrift(),
             node.getPlanNodeId().getId(),
             context.getInstanceContext());
-    sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
-    context.getDriverContext().setSink(sinkHandle);
 
     if (node.getChildren().size() == 1) {
       Operator child = node.getChildren().get(0).accept(this, context);
       List<Operator> children = new ArrayList<>(1);
       children.add(child);
+      sinkHandle.setMaxBytesCanReserve(context.getMaxBytesOneHandleCanReserve());
+      context.getDriverContext().setSink(sinkHandle);
       return new IdentitySinkOperator(
           operatorContext, children, downStreamChannelIndex, sinkHandle);
     } else {
@@ -365,8 +460,582 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitTreeNonAlignedDeviceViewScan(
       TreeNonAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
-    throw new UnsupportedOperationException(
-        "view for non aligned devices in tree is not supported");
+
+    boolean containsFieldColumn = false;
+    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+      if (entry.getValue().getColumnCategory() == FIELD) {
+        containsFieldColumn = true;
+        break;
+      }
+    }
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(
+                node.getQualifiedObjectName().getDatabaseName(),
+                node.getQualifiedObjectName().getObjectName());
+    if (!containsFieldColumn) {
+      Map<Symbol, ColumnSchema> newAssignments = new LinkedHashMap<>(node.getAssignments());
+      for (TsTableColumnSchema columnSchema : tsTable.getColumnList()) {
+        if (columnSchema.getColumnCategory() == FIELD) {
+          newAssignments.put(
+              new Symbol(columnSchema.getColumnName()),
+              new ColumnSchema(
+                  columnSchema.getColumnName(),
+                  TypeFactory.getType(columnSchema.getDataType()),
+                  false,
+                  columnSchema.getColumnCategory()));
+          containsFieldColumn = true;
+        }
+      }
+      node.setAssignments(newAssignments);
+    }
+    // For non-aligned series, scan cannot be performed when no field columns
+    // can be obtained, so an empty result set is returned.
+    if (!containsFieldColumn || node.getDeviceEntries().isEmpty()) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+    String treePrefixPath = DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable);
+    IDeviceID.TreeDeviceIdColumnValueExtractor extractor =
+        TableOperatorGenerator.createTreeDeviceIdColumnValueExtractor(treePrefixPath);
+    long viewTTL = tsTable.getCachedTableTTL();
+
+    DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters parameter =
+        constructTreeNonAlignedDeviceViewScanOperatorParameter(
+            node,
+            context,
+            TreeNonAlignedDeviceViewScanNode.class.getSimpleName(),
+            node.getMeasurementColumnNameMap(),
+            extractor,
+            viewTTL);
+
+    DeviceIteratorScanOperator treeNonAlignedDeviceIteratorScanOperator =
+        new DeviceIteratorScanOperator(
+            parameter.context, parameter.deviceEntries, parameter.generator);
+    addSource(
+        treeNonAlignedDeviceIteratorScanOperator,
+        context,
+        node,
+        parameter.measurementColumnNames,
+        parameter.measurementSchemas,
+        parameter.allSensors,
+        TreeNonAlignedDeviceViewScanNode.class.getSimpleName());
+
+    if (!parameter.generator.keepOffsetAndLimitOperatorAfterDeviceIterator()) {
+      return treeNonAlignedDeviceIteratorScanOperator;
+    }
+    Operator operator = treeNonAlignedDeviceIteratorScanOperator;
+    if (node.getPushDownOffset() > 0) {
+      operator = new OffsetOperator(parameter.context, node.getPushDownOffset(), operator);
+    }
+    if (node.getPushDownLimit() > 0) {
+      operator = new LimitOperator(parameter.context, node.getPushDownLimit(), operator);
+    }
+    return operator;
+  }
+
+  private DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters
+      constructTreeNonAlignedDeviceViewScanOperatorParameter(
+          TreeNonAlignedDeviceViewScanNode node,
+          LocalExecutionPlanContext context,
+          String className,
+          Map<String, String> fieldColumnsRenameMap,
+          IDeviceID.TreeDeviceIdColumnValueExtractor extractor,
+          long viewTTL) {
+    if (node.isPushLimitToEachDevice() && node.getPushDownOffset() > 0) {
+      throw new IllegalArgumentException(
+          "PushDownOffset should not be set when isPushLimitToEachDevice is true.");
+    }
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, true);
+    List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
+    List<Symbol> measurementSchemaIndex2Symbols = commonParameter.measurementSchemaIndex2Symbol;
+    List<String> measurementColumnNames = commonParameter.measurementColumnNames;
+    List<ColumnSchema> fullColumnSchemas = commonParameter.columnSchemas;
+    List<Symbol> symbolInputs = commonParameter.symbolInputs;
+    int[] columnsIndexArray = commonParameter.columnsIndexArray;
+
+    boolean isSingleColumn = measurementSchemas.size() == 1;
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(context.getNextOperatorId(), node.getPlanNodeId(), className);
+
+    Set<String> allSensors = new HashSet<>(measurementColumnNames);
+
+    DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator deviceChildOperatorTreeGenerator =
+        new DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator() {
+
+          private Operator operator;
+          private List<SeriesScanOptions> seriesScanOptionsList;
+          private List<Operator> seriesScanOperators;
+          private FilterAndProjectOperator filterAndProjectOperator;
+          private OffsetOperator reuseOffsetOperator;
+          private LimitOperator reuseLimitOperator;
+          private Operator startCloseInternalOperator;
+
+          private List<Expression> cannotPushDownConjuncts;
+          private boolean removeUpperOffsetAndLimitOperator;
+
+          @Override
+          public boolean keepOffsetAndLimitOperatorAfterDeviceIterator() {
+            calculateSeriesScanOptionsList();
+            return !removeUpperOffsetAndLimitOperator && !node.isPushLimitToEachDevice();
+          }
+
+          @Override
+          public void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry) {
+            calculateSeriesScanOptionsList();
+            operator = constructTreeToTableViewAdaptorOperator(deviceEntry);
+            boolean needToPruneColumn =
+                node.getAssignments().size() != node.getOutputSymbols().size();
+            if (isSingleColumn) {
+              operator = needToPruneColumn ? getFilterAndProjectOperator(operator) : operator;
+              return;
+            }
+            if (!cannotPushDownConjuncts.isEmpty() || needToPruneColumn) {
+              operator = getFilterAndProjectOperator(operator);
+            }
+            if (!node.isPushLimitToEachDevice() || removeUpperOffsetAndLimitOperator) {
+              return;
+            }
+            if (node.getPushDownLimit() > 0) {
+              operator = new LimitOperator(operatorContext, node.getPushDownLimit(), operator);
+            }
+          }
+
+          private void calculateSeriesScanOptionsList() {
+            if (seriesScanOptionsList != null) {
+              return;
+            }
+            seriesScanOptionsList = new ArrayList<>(measurementSchemas.size());
+            cannotPushDownConjuncts = new ArrayList<>();
+            Map<Symbol, List<Expression>> pushDownConjunctsForEachMeasurement = new HashMap<>();
+            if (node.getPushDownPredicate() != null) {
+              List<Expression> conjuncts = IrUtils.extractConjuncts(node.getPushDownPredicate());
+              for (Expression conjunct : conjuncts) {
+                Set<Symbol> symbols = SymbolsExtractor.extractUnique(conjunct);
+                boolean containsMultiDataSource = symbols.size() > 1;
+                if (containsMultiDataSource) {
+                  cannotPushDownConjuncts.add(conjunct);
+                  continue;
+                }
+                Symbol symbol = symbols.iterator().next();
+                pushDownConjunctsForEachMeasurement
+                    .computeIfAbsent(symbol, k -> new ArrayList<>())
+                    .add(conjunct);
+              }
+            }
+
+            // Using getSeriesScanOptionsBuilder to create SeriesScanBuilder will cause multiple
+            // calls to setTimeFilterForTableModel and generate a deeply nested Or filter.
+            // Therefore, a separate setting is made here
+            Filter timeFilter = null;
+            if (node.getTimePredicate().isPresent()) {
+              Expression timePredicate = node.getTimePredicate().get();
+              timeFilter =
+                  timePredicate.accept(
+                      new ConvertPredicateToTimeFilterVisitor(
+                          context.getZoneId(), TimestampPrecisionUtils.currPrecision),
+                      null);
+              context
+                  .getDriverContext()
+                  .getFragmentInstanceContext()
+                  .setTimeFilterForTableModel(timeFilter);
+            }
+
+            boolean canPushDownLimit = cannotPushDownConjuncts.isEmpty();
+            // only use full outer time join
+            boolean canPushDownLimitToAllSeriesScanOptions =
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.isEmpty();
+            // the left child of LeftOuterTimeJoinOperator is SeriesScanOperator
+            boolean pushDownOffsetAndLimitToLeftChildSeriesScanOperator =
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.size() == 1;
+            // the left child of LeftOuterTimeJoinOperator is InnerTimeJoinOperator
+            boolean pushDownOffsetAndLimitAfterInnerJoinOperator =
+                canPushDownLimit && pushDownConjunctsForEachMeasurement.size() > 1;
+            removeUpperOffsetAndLimitOperator =
+                pushDownOffsetAndLimitToLeftChildSeriesScanOperator
+                    || pushDownOffsetAndLimitAfterInnerJoinOperator
+                    || isSingleColumn;
+            for (Symbol symbol : measurementSchemaIndex2Symbols) {
+              List<Expression> pushDownPredicatesForCurrentMeasurement =
+                  pushDownConjunctsForEachMeasurement.get(symbol);
+              Expression pushDownPredicateForCurrentMeasurement =
+                  isSingleColumn
+                      ? node.getPushDownPredicate()
+                      : (pushDownPredicatesForCurrentMeasurement == null
+                          ? null
+                          : IrUtils.combineConjuncts(pushDownPredicatesForCurrentMeasurement));
+              SeriesScanOptions.Builder builder = new SeriesScanOptions.Builder();
+              // time filter may be stateful, so we need to copy it
+              builder.withGlobalTimeFilter(timeFilter == null ? null : timeFilter.copy());
+              builder.withIsTableViewForTreeModel(true).withAllSensors(allSensors);
+              if (pushDownPredicateForCurrentMeasurement != null) {
+                builder.withPushDownFilter(
+                    convertPredicateToFilter(
+                        pushDownPredicateForCurrentMeasurement,
+                        Collections.singletonMap(symbol.getName(), 0),
+                        commonParameter.columnSchemaMap,
+                        commonParameter.timeColumnName,
+                        context.getZoneId(),
+                        TimestampPrecisionUtils.currPrecision));
+              }
+              if (isSingleColumn
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
+                      && pushDownPredicateForCurrentMeasurement != null)) {
+                builder.withPushDownLimit(node.getPushDownLimit());
+                builder.withPushLimitToEachDevice(node.isPushLimitToEachDevice());
+              }
+
+              // In the case of single column, both offset and limit are pushed down to the
+              // SeriesScanOperator
+              if (!isSingleColumn && canPushDownLimitToAllSeriesScanOptions) {
+                builder.withPushDownLimit(node.getPushDownLimit() + node.getPushDownOffset());
+              }
+              if (isSingleColumn
+                  || (pushDownOffsetAndLimitToLeftChildSeriesScanOperator
+                      && pushDownPredicateForCurrentMeasurement != null)) {
+                builder.withPushDownOffset(
+                    node.isPushLimitToEachDevice() ? 0 : node.getPushDownOffset());
+              }
+              SeriesScanOptions options = builder.build();
+              options.setTTLForTableView(viewTTL);
+              seriesScanOptionsList.add(options);
+            }
+          }
+
+          private Operator constructTreeToTableViewAdaptorOperator(DeviceEntry deviceEntry) {
+            seriesScanOperators = new ArrayList<>(measurementSchemas.size());
+            operator = constructAndJoinScanOperators(deviceEntry);
+            return new TreeToTableViewAdaptorOperator(
+                operatorContext,
+                deviceEntry,
+                columnsIndexArray,
+                fullColumnSchemas,
+                operator,
+                extractor);
+          }
+
+          private Operator constructAndJoinScanOperators(DeviceEntry deviceEntry) {
+            List<Operator> childrenWithPushDownPredicate = new ArrayList<>();
+            List<TSDataType> innerJoinDataTypeList = new ArrayList<>();
+            List<Operator> childrenWithoutPushDownPredicate = new ArrayList<>();
+            List<TSDataType> fullOuterTimeJoinDataTypeList = new ArrayList<>();
+            Map<InputLocation, Integer> leftOuterJoinColumnIndexMap = new HashMap<>();
+            for (int i = 0; i < measurementSchemas.size(); i++) {
+              IMeasurementSchema measurementSchema = measurementSchemas.get(i);
+              NonAlignedFullPath path =
+                  new NonAlignedFullPath(deviceEntry.getDeviceID(), measurementSchema);
+              SeriesScanOptions seriesScanOptions = seriesScanOptionsList.get(i);
+              Operator seriesScanOperator =
+                  new SeriesScanOperator(
+                      operatorContext,
+                      node.getPlanNodeId(),
+                      path,
+                      node.getScanOrder(),
+                      seriesScanOptions);
+              seriesScanOperators.add(seriesScanOperator);
+              if (seriesScanOptions.getPushDownFilter() != null) {
+                childrenWithPushDownPredicate.add(seriesScanOperator);
+                innerJoinDataTypeList.add(measurementSchema.getType());
+                leftOuterJoinColumnIndexMap.put(
+                    new InputLocation(0, childrenWithPushDownPredicate.size() - 1), i);
+              } else {
+                childrenWithoutPushDownPredicate.add(seriesScanOperator);
+                fullOuterTimeJoinDataTypeList.add(measurementSchema.getType());
+                leftOuterJoinColumnIndexMap.put(
+                    new InputLocation(1, childrenWithoutPushDownPredicate.size() - 1), i);
+              }
+            }
+            Operator leftChild =
+                generateInnerTimeJoinOperator(childrenWithPushDownPredicate, innerJoinDataTypeList);
+            Operator rightChild =
+                generateFullOuterTimeJoinOperator(
+                    childrenWithoutPushDownPredicate, fullOuterTimeJoinDataTypeList);
+            return generateLeftOuterTimeJoinOperator(
+                leftChild,
+                rightChild,
+                childrenWithPushDownPredicate.size(),
+                leftOuterJoinColumnIndexMap,
+                IMeasurementSchema.getDataTypeList(measurementSchemas));
+          }
+
+          private Operator generateInnerTimeJoinOperator(
+              List<Operator> operators, List<TSDataType> dataTypes) {
+            if (operators.isEmpty()) {
+              return null;
+            }
+            if (operators.size() == 1) {
+              return operators.get(0);
+            }
+            Map<InputLocation, Integer> outputColumnMap = new HashMap<>();
+            for (int i = 0; i < operators.size(); i++) {
+              outputColumnMap.put(new InputLocation(i, 0), i);
+            }
+            Operator currentOperator =
+                new InnerTimeJoinOperator(
+                    operatorContext,
+                    operators,
+                    dataTypes,
+                    node.getScanOrder() == Ordering.ASC
+                        ? new AscTimeComparator()
+                        : new DescTimeComparator(),
+                    outputColumnMap);
+            boolean addOffsetAndLimitOperatorAfterLeftChild =
+                operators.size() > 1 && cannotPushDownConjuncts.isEmpty();
+            if (addOffsetAndLimitOperatorAfterLeftChild) {
+              if (node.getPushDownOffset() > 0) {
+                currentOperator = getReuseOffsetOperator(currentOperator);
+              }
+              if (node.getPushDownLimit() > 0) {
+                currentOperator = getReuseLimitOperator(currentOperator);
+              }
+            }
+            return currentOperator;
+          }
+
+          private Operator generateFullOuterTimeJoinOperator(
+              List<Operator> operators, List<TSDataType> dataTypes) {
+            if (operators.isEmpty()) {
+              return null;
+            }
+            if (operators.size() == 1) {
+              return operators.get(0);
+            }
+            List<ColumnMerger> columnMergers = new ArrayList<>(operators.size());
+            for (int i = 0; i < operators.size(); i++) {
+              columnMergers.add(
+                  new SingleColumnMerger(
+                      new InputLocation(i, 0),
+                      node.getScanOrder() == Ordering.ASC
+                          ? new AscTimeComparator()
+                          : new DescTimeComparator()));
+            }
+            return new FullOuterTimeJoinOperator(
+                operatorContext,
+                operators,
+                node.getScanOrder(),
+                dataTypes,
+                columnMergers,
+                node.getScanOrder() == Ordering.ASC
+                    ? new AscTimeComparator()
+                    : new DescTimeComparator());
+          }
+
+          private Operator generateLeftOuterTimeJoinOperator(
+              Operator left,
+              Operator right,
+              int leftColumnCount,
+              Map<InputLocation, Integer> outputColumnMap,
+              List<TSDataType> dataTypes) {
+            if (left == null) {
+              return right;
+            } else if (right == null) {
+              return left;
+            } else {
+              return new TableLeftOuterTimeJoinOperator(
+                  operatorContext,
+                  left,
+                  right,
+                  leftColumnCount,
+                  outputColumnMap,
+                  dataTypes,
+                  node.getScanOrder() == Ordering.ASC
+                      ? new AscTimeComparator()
+                      : new DescTimeComparator());
+            }
+          }
+
+          private Operator getReuseOffsetOperator(Operator child) {
+            this.reuseOffsetOperator =
+                reuseOffsetOperator == null
+                    ? new OffsetOperator(operatorContext, node.getPushDownOffset(), child)
+                    : new OffsetOperator(reuseOffsetOperator, child);
+            return this.reuseOffsetOperator;
+          }
+
+          private Operator getReuseLimitOperator(Operator child) {
+            this.reuseLimitOperator =
+                reuseLimitOperator == null
+                    ? new LimitOperator(operatorContext, node.getPushDownLimit(), child)
+                    : new LimitOperator(reuseLimitOperator, child);
+            return this.reuseLimitOperator;
+          }
+
+          private Operator getFilterAndProjectOperator(Operator childOperator) {
+            startCloseInternalOperator = childOperator;
+            if (filterAndProjectOperator != null) {
+              return new FilterAndProjectOperator(filterAndProjectOperator, childOperator);
+            }
+            List<TSDataType> inputDataTypeList = new ArrayList<>(fullColumnSchemas.size());
+            Map<Symbol, List<InputLocation>> symbolInputLocationMap =
+                new HashMap<>(fullColumnSchemas.size());
+            for (int i = 0; i < fullColumnSchemas.size(); i++) {
+              ColumnSchema columnSchema = fullColumnSchemas.get(i);
+              symbolInputLocationMap
+                  .computeIfAbsent(
+                      new Symbol(symbolInputs.get(i).getName()), key -> new ArrayList<>())
+                  .add(new InputLocation(0, i));
+              inputDataTypeList.add(getTSDataType(columnSchema.getType()));
+            }
+            Expression combinedCannotPushDownPredicates =
+                cannotPushDownConjuncts.isEmpty()
+                    ? null
+                    : IrUtils.combineConjuncts(cannotPushDownConjuncts);
+            filterAndProjectOperator =
+                (FilterAndProjectOperator)
+                    TableOperatorGenerator.this.constructFilterAndProjectOperator(
+                        Optional.ofNullable(combinedCannotPushDownPredicates),
+                        childOperator,
+                        node.getOutputSymbols().stream()
+                            .map(Symbol::toSymbolReference)
+                            .toArray(Expression[]::new),
+                        inputDataTypeList,
+                        symbolInputLocationMap,
+                        node.getPlanNodeId(),
+                        context);
+            return filterAndProjectOperator;
+          }
+
+          @Override
+          public Operator getCurrentDeviceRootOperator() {
+            return operator;
+          }
+
+          @Override
+          public List<Operator> getCurrentDeviceDataSourceOperators() {
+            return seriesScanOperators;
+          }
+
+          @Override
+          public Operator getCurrentDeviceStartCloseOperator() {
+            return startCloseInternalOperator == null ? operator : startCloseInternalOperator;
+          }
+        };
+
+    return new DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters(
+        allSensors,
+        operatorContext,
+        node.getDeviceEntries(),
+        measurementColumnNames,
+        measurementSchemas,
+        deviceChildOperatorTreeGenerator);
+  }
+
+  private static class CommonTableScanOperatorParameters {
+
+    List<Symbol> outputColumnNames;
+    List<ColumnSchema> columnSchemas;
+    List<Symbol> symbolInputs;
+    int[] columnsIndexArray;
+    Map<Symbol, ColumnSchema> columnSchemaMap;
+    Map<Symbol, Integer> tagAndAttributeColumnsIndexMap;
+    List<String> measurementColumnNames;
+    Map<String, Integer> measurementColumnsIndexMap;
+    String timeColumnName;
+    List<IMeasurementSchema> measurementSchemas;
+    List<Symbol> measurementSchemaIndex2Symbol;
+    int measurementColumnCount;
+    int idx;
+
+    private CommonTableScanOperatorParameters(
+        DeviceTableScanNode node,
+        Map<String, String> fieldColumnsRenameMap,
+        boolean keepNonOutputMeasurementColumns) {
+      outputColumnNames = node.getOutputSymbols();
+      int outputColumnCount =
+          keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
+      columnSchemas = new ArrayList<>(outputColumnCount);
+      symbolInputs = new ArrayList<>(outputColumnCount);
+      columnsIndexArray = new int[outputColumnCount];
+      columnSchemaMap = node.getAssignments();
+      tagAndAttributeColumnsIndexMap = node.getTagAndAttributeIndexMap();
+      measurementColumnNames = new ArrayList<>();
+      measurementColumnsIndexMap = new HashMap<>();
+      measurementSchemas = new ArrayList<>();
+      measurementSchemaIndex2Symbol = new ArrayList<>();
+      measurementColumnCount = 0;
+      idx = 0;
+
+      boolean addedTimeColumn = false;
+      for (Symbol columnName : outputColumnNames) {
+        ColumnSchema schema =
+            requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
+
+        symbolInputs.add(columnName);
+        switch (schema.getColumnCategory()) {
+          case TAG:
+          case ATTRIBUTE:
+            columnsIndexArray[idx++] =
+                requireNonNull(
+                    tagAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
+            columnSchemas.add(schema);
+            break;
+          case FIELD:
+            columnsIndexArray[idx++] = measurementColumnCount;
+            measurementColumnCount++;
+
+            String realMeasurementName =
+                fieldColumnsRenameMap.getOrDefault(schema.getName(), schema.getName());
+
+            measurementColumnNames.add(realMeasurementName);
+            measurementSchemas.add(
+                new MeasurementSchema(realMeasurementName, getTSDataType(schema.getType())));
+            measurementSchemaIndex2Symbol.add(columnName);
+            columnSchemas.add(schema);
+            measurementColumnsIndexMap.put(columnName.getName(), measurementColumnCount - 1);
+            break;
+          case TIME:
+            columnsIndexArray[idx++] = -1;
+            columnSchemas.add(schema);
+            timeColumnName = columnName.getName();
+            addedTimeColumn = true;
+            break;
+          default:
+            throw new IllegalArgumentException(
+                "Unexpected column category: " + schema.getColumnCategory());
+        }
+      }
+      Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
+      for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
+        if (!outputSet.contains(entry.getKey()) && entry.getValue().getColumnCategory() == FIELD) {
+          if (keepNonOutputMeasurementColumns) {
+            columnSchemas.add(entry.getValue());
+            columnsIndexArray[idx++] = measurementColumnCount;
+            symbolInputs.add(entry.getKey());
+          }
+          measurementColumnCount++;
+          String realMeasurementName =
+              fieldColumnsRenameMap.getOrDefault(
+                  entry.getValue().getName(), entry.getValue().getName());
+
+          measurementColumnNames.add(realMeasurementName);
+          measurementSchemas.add(
+              new MeasurementSchema(
+                  realMeasurementName, getTSDataType(entry.getValue().getType())));
+          measurementSchemaIndex2Symbol.add(entry.getKey());
+          measurementColumnsIndexMap.put(entry.getKey().getName(), measurementColumnCount - 1);
+        } else if (entry.getValue().getColumnCategory() == TIME) {
+          timeColumnName = entry.getKey().getName();
+          // for non aligned series table view scan, here the time column will not be obtained
+          // through this structure, but we need to ensure that the length of columnSchemas is
+          // consistent with the length of columnsIndexArray
+          if (keepNonOutputMeasurementColumns && !addedTimeColumn) {
+            columnSchemas.add(entry.getValue());
+            columnsIndexArray[idx++] = -1;
+            symbolInputs.add(entry.getKey());
+          }
+        }
+      }
+    }
   }
 
   public static IDeviceID.TreeDeviceIdColumnValueExtractor createTreeDeviceIdColumnValueExtractor(
@@ -374,7 +1043,10 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     try {
       PartialPath db = new PartialPath(treeDBName);
       int dbLevel = db.getNodes().length;
-      if (dbLevel == 2) {
+      // For the path of 'root.**', we can only get the root level in this place
+      // In this case, we still need to support deviceId such as 'root.db'
+      // The relevant deviceId must be two level db, but we can't get it now
+      if (dbLevel == 1 || dbLevel == 2) {
         return new TwoLevelDBExtractor(treeDBName.length());
       } else if (dbLevel == 3) {
         return new ThreeLevelDBExtractor(treeDBName.length());
@@ -392,16 +1064,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitTreeAlignedDeviceViewScan(
       TreeAlignedDeviceViewScanNode node, LocalExecutionPlanContext context) {
-
+    QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
-        createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
+        createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
     AbstractTableScanOperator.AbstractTableScanOperatorParameter parameter =
         constructAbstractTableScanOperatorParameter(
             node,
             context,
             TreeAlignedDeviceViewScanOperator.class.getSimpleName(),
-            node.getMeasurementColumnNameMap());
+            node.getMeasurementColumnNameMap(),
+            tsTable.getCachedTableTTL());
 
     TreeAlignedDeviceViewScanOperator treeAlignedDeviceViewScanOperator =
         new TreeAlignedDeviceViewScanOperator(parameter, idColumnValueExtractor);
@@ -430,17 +1106,23 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(sourceOperator);
 
     for (int i = 0, size = node.getDeviceEntries().size(); i < size; i++) {
-      if (node.getDeviceEntries().get(i) == null) {
+      DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
+      if (deviceEntry == null) {
         throw new IllegalStateException(
             "Device entries of index " + i + " in " + planNodeName + " is empty");
       }
-      AlignedFullPath alignedPath =
-          constructAlignedPath(
-              node.getDeviceEntries().get(i),
-              measurementColumnNames,
-              measurementSchemas,
-              allSensors);
-      ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+      if (deviceEntry instanceof NonAlignedDeviceEntry) {
+        for (IMeasurementSchema schema : measurementSchemas) {
+          NonAlignedFullPath nonAlignedFullPath =
+              new NonAlignedFullPath(deviceEntry.getDeviceID(), schema);
+          ((DataDriverContext) context.getDriverContext()).addPath(nonAlignedFullPath);
+        }
+      } else {
+        AlignedFullPath alignedPath =
+            constructAlignedPath(
+                deviceEntry, measurementColumnNames, measurementSchemas, allSensors);
+        ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+      }
     }
 
     context.getDriverContext().setInputDriver(true);
@@ -451,85 +1133,29 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           DeviceTableScanNode node,
           LocalExecutionPlanContext context,
           String className,
-          Map<String, String> fieldColumnsRenameMap) {
+          Map<String, String> fieldColumnsRenameMap,
+          long viewTTL) {
 
-    List<Symbol> outputColumnNames = node.getOutputSymbols();
-    int outputColumnCount = outputColumnNames.size();
-    List<ColumnSchema> columnSchemas = new ArrayList<>(outputColumnCount);
-    int[] columnsIndexArray = new int[outputColumnCount];
-    Map<Symbol, ColumnSchema> columnSchemaMap = node.getAssignments();
-    Map<Symbol, Integer> idAndAttributeColumnsIndexMap = node.getIdAndAttributeIndexMap();
-    List<String> measurementColumnNames = new ArrayList<>();
-    Map<String, Integer> measurementColumnsIndexMap = new HashMap<>();
-    String timeColumnName = null;
-    List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    int measurementColumnCount = 0;
-    int idx = 0;
-    for (Symbol columnName : outputColumnNames) {
-      ColumnSchema schema =
-          requireNonNull(columnSchemaMap.get(columnName), columnName + " is null");
-
-      switch (schema.getColumnCategory()) {
-        case TAG:
-        case ATTRIBUTE:
-          columnsIndexArray[idx++] =
-              requireNonNull(
-                  idAndAttributeColumnsIndexMap.get(columnName), columnName + " is null");
-          columnSchemas.add(schema);
-          break;
-        case FIELD:
-          columnsIndexArray[idx++] = measurementColumnCount;
-          measurementColumnCount++;
-
-          String realMeasurementName =
-              fieldColumnsRenameMap.getOrDefault(schema.getName(), schema.getName());
-
-          measurementColumnNames.add(realMeasurementName);
-          measurementSchemas.add(
-              new MeasurementSchema(realMeasurementName, getTSDataType(schema.getType())));
-          columnSchemas.add(schema);
-          measurementColumnsIndexMap.put(columnName.getName(), measurementColumnCount - 1);
-          break;
-        case TIME:
-          columnsIndexArray[idx++] = -1;
-          columnSchemas.add(schema);
-          timeColumnName = columnName.getName();
-          break;
-        default:
-          throw new IllegalArgumentException(
-              "Unexpected column category: " + schema.getColumnCategory());
-      }
-    }
-
-    Set<Symbol> outputSet = new HashSet<>(outputColumnNames);
-    for (Map.Entry<Symbol, ColumnSchema> entry : node.getAssignments().entrySet()) {
-      if (!outputSet.contains(entry.getKey()) && entry.getValue().getColumnCategory() == FIELD) {
-        measurementColumnCount++;
-        String realMeasurementName =
-            fieldColumnsRenameMap.getOrDefault(
-                entry.getValue().getName(), entry.getValue().getName());
-
-        measurementColumnNames.add(realMeasurementName);
-        measurementSchemas.add(
-            new MeasurementSchema(realMeasurementName, getTSDataType(entry.getValue().getType())));
-        measurementColumnsIndexMap.put(entry.getKey().getName(), measurementColumnCount - 1);
-      } else if (entry.getValue().getColumnCategory() == TIME) {
-        timeColumnName = entry.getKey().getName();
-      }
-    }
-
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(node, fieldColumnsRenameMap, false);
+    List<IMeasurementSchema> measurementSchemas = commonParameter.measurementSchemas;
+    List<String> measurementColumnNames = commonParameter.measurementColumnNames;
+    List<ColumnSchema> columnSchemas = commonParameter.columnSchemas;
+    int[] columnsIndexArray = commonParameter.columnsIndexArray;
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(
             context,
-            columnSchemaMap,
+            commonParameter.columnSchemaMap,
             measurementColumnNames,
-            measurementColumnsIndexMap,
-            timeColumnName,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
             node.getTimePredicate(),
             node.getPushDownLimit(),
             node.getPushDownOffset(),
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
+    seriesScanOptions.setTTLForTableView(viewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof TreeDeviceViewScanNode);
 
     OperatorContext operatorContext =
         context
@@ -567,7 +1193,43 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       constructAbstractTableScanOperatorParameter(
           DeviceTableScanNode node, LocalExecutionPlanContext context) {
     return constructAbstractTableScanOperatorParameter(
-        node, context, TableScanOperator.class.getSimpleName(), Collections.emptyMap());
+        node,
+        context,
+        TableScanOperator.class.getSimpleName(),
+        Collections.emptyMap(),
+        Long.MAX_VALUE);
+  }
+
+  @Override
+  public Operator visitCteScan(CteScanNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                CteScanOperator.class.getSimpleName());
+    return new CteScanOperator(
+        operatorContext,
+        node.getPlanNodeId(),
+        node.getDataStore(),
+        context.getFragmentInstanceId().getQueryId());
+  }
+
+  @Override
+  public Operator visitTreeDeviceViewScan(
+      TreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    if (node.getDeviceEntries().isEmpty() || node.getTreeDBName() == null) {
+      OperatorContext operatorContext =
+          context
+              .getDriverContext()
+              .addOperatorContext(
+                  context.getNextOperatorId(),
+                  node.getPlanNodeId(),
+                  EmptyDataOperator.class.getSimpleName());
+      return new EmptyDataOperator(operatorContext);
+    }
+    throw new IllegalArgumentException("Valid TreeDeviceViewScanNode is not expected here.");
   }
 
   @Override
@@ -579,6 +1241,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     TableScanOperator tableScanOperator = new TableScanOperator(parameter);
 
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
     addSource(
         tableScanOperator,
         context,
@@ -624,7 +1287,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       LocalExecutionPlanContext context, @NotNull Expression timePredicate) {
     SeriesScanOptions.Builder scanOptionsBuilder = new SeriesScanOptions.Builder();
 
-    Filter timeFilter = timePredicate.accept(new ConvertPredicateToTimeFilterVisitor(), null);
+    Filter timeFilter =
+        timePredicate.accept(
+            new ConvertPredicateToTimeFilterVisitor(
+                context.getZoneId(), TimestampPrecisionUtils.currPrecision),
+            null);
     context.getDriverContext().getFragmentInstanceContext().setTimeFilterForTableModel(timeFilter);
     // time filter may be stateful, so we need to copy it
     scanOptionsBuilder.withGlobalTimeFilter(timeFilter.copy());
@@ -634,8 +1301,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitInformationSchemaTableScan(
-      InformationSchemaTableScanNode node, LocalExecutionPlanContext context) {
-    OperatorContext operatorContext =
+      final InformationSchemaTableScanNode node, final LocalExecutionPlanContext context) {
+    final OperatorContext operatorContext =
         context
             .getDriverContext()
             .addOperatorContext(
@@ -643,7 +1310,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getPlanNodeId(),
                 InformationSchemaTableScanOperator.class.getSimpleName());
 
-    List<TSDataType> dataTypes =
+    final List<TSDataType> dataTypes =
         node.getOutputSymbols().stream()
             .map(symbol -> getTSDataType(context.getTypeProvider().getTableModelType(symbol)))
             .collect(Collectors.toList());
@@ -651,7 +1318,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new InformationSchemaTableScanOperator(
         operatorContext,
         node.getPlanNodeId(),
-        getSupplier(node.getQualifiedObjectName().getObjectName(), dataTypes));
+        getSupplier(
+            node.getQualifiedObjectName().getObjectName(),
+            dataTypes,
+            node.getPushDownPredicate(),
+            context
+                .getDriverContext()
+                .getFragmentInstanceContext()
+                .getSessionInfo()
+                .getUserEntity()));
   }
 
   @Override
@@ -691,13 +1366,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder visitor = new ColumnTransformerBuilder();
 
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     ColumnTransformer filterOutputTransformer =
         predicate
             .map(
                 p -> {
                   ColumnTransformerBuilder.Context filterColumnTransformerContext =
                       new ColumnTransformerBuilder.Context(
-                          context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+                          fragmentInstanceContext.getSessionInfo(),
                           filterLeafColumnTransformerList,
                           inputLocations,
                           filterExpressionColumnTransformerMap,
@@ -706,7 +1383,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                           ImmutableList.of(),
                           0,
                           context.getTypeProvider(),
-                          metadata);
+                          metadata,
+                          fragmentInstanceContext);
 
                   return visitor.process(p, filterColumnTransformerContext);
                 })
@@ -724,7 +1402,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     ColumnTransformerBuilder.Context projectColumnTransformerContext =
         new ColumnTransformerBuilder.Context(
-            context.getDriverContext().getFragmentInstanceContext().getSessionInfo(),
+            fragmentInstanceContext.getSessionInfo(),
             projectLeafColumnTransformerList,
             inputLocations,
             projectExpressionColumnTransformerMap,
@@ -733,7 +1411,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             filterOutputDataTypes,
             inputLocations.size(),
             context.getTypeProvider(),
-            metadata);
+            metadata,
+            fragmentInstanceContext);
 
     for (Expression expression : projectExpressions) {
       projectOutputTransformerList.add(
@@ -1365,15 +2044,22 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
   @Override
   public Operator visitGroup(GroupNode node, LocalExecutionPlanContext context) {
-    StreamSortNode streamSortNode =
-        new StreamSortNode(
-            node.getPlanNodeId(),
-            node.getChild(),
-            node.getOrderingScheme(),
-            false,
-            false,
-            node.getPartitionKeyCount() - 1);
-    return visitStreamSort(streamSortNode, context);
+    if (node.getPartitionKeyCount() == 0) {
+      SortNode sortNode =
+          new SortNode(
+              node.getPlanNodeId(), node.getChild(), node.getOrderingScheme(), false, false);
+      return visitSort(sortNode, context);
+    } else {
+      StreamSortNode streamSortNode =
+          new StreamSortNode(
+              node.getPlanNodeId(),
+              node.getChild(),
+              node.getOrderingScheme(),
+              false,
+              false,
+              node.getPartitionKeyCount() - 1);
+      return visitStreamSort(streamSortNode, context);
+    }
   }
 
   @Override
@@ -1429,9 +2115,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     semanticCheckForJoin(node);
 
-    int size = node.getCriteria().size();
+    JoinNode.AsofJoinClause asofJoinClause = node.getAsofCriteria().orElse(null);
+    int equiSize = node.getCriteria().size();
+    int size = equiSize + (asofJoinClause == null ? 0 : 1);
     int[] leftJoinKeyPositions = new int[size];
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < equiSize; i++) {
       Integer leftJoinKeyPosition = leftColumnNamesMap.get(node.getCriteria().get(i).getLeft());
       if (leftJoinKeyPosition == null) {
         throw new IllegalStateException("Left child of JoinNode doesn't contain left join key.");
@@ -1441,7 +2129,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     List<Type> joinKeyTypes = new ArrayList<>(size);
     int[] rightJoinKeyPositions = new int[size];
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < equiSize; i++) {
       Integer rightJoinKeyPosition = rightColumnNamesMap.get(node.getCriteria().get(i).getRight());
       if (rightJoinKeyPosition == null) {
         throw new IllegalStateException("Right child of JoinNode doesn't contain right join key.");
@@ -1454,6 +2142,78 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           leftJoinKeyType,
           context.getTypeProvider().getTableModelType(node.getCriteria().get(i).getRight()));
       joinKeyTypes.add(leftJoinKeyType);
+    }
+
+    if (asofJoinClause != null) {
+      Integer leftAsofJoinKeyPosition = leftColumnNamesMap.get(asofJoinClause.getLeft());
+      if (leftAsofJoinKeyPosition == null) {
+        throw new IllegalStateException(
+            "Left child of JoinNode doesn't contain left ASOF main join key.");
+      }
+      leftJoinKeyPositions[equiSize] = leftAsofJoinKeyPosition;
+      Integer rightAsofJoinKeyPosition = rightColumnNamesMap.get(asofJoinClause.getRight());
+      if (rightAsofJoinKeyPosition == null) {
+        throw new IllegalStateException(
+            "Right child of JoinNode doesn't contain right ASOF main join key.");
+      }
+      rightJoinKeyPositions[equiSize] = rightAsofJoinKeyPosition;
+
+      if (context.getTypeProvider().getTableModelType(asofJoinClause.getLeft()) != TIMESTAMP) {
+        throw new IllegalStateException("Type of left ASOF Join key is not TIMESTAMP");
+      }
+      if (context.getTypeProvider().getTableModelType(asofJoinClause.getRight()) != TIMESTAMP) {
+        throw new IllegalStateException("Type of right ASOF Join key is not TIMESTAMP");
+      }
+
+      ComparisonExpression.Operator asofOperator = asofJoinClause.getOperator();
+
+      if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortInnerJoinOperator.class.getSimpleName());
+        return new AsofMergeSortInnerJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
+      } else if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.LEFT) {
+        OperatorContext operatorContext =
+            context
+                .getDriverContext()
+                .addOperatorContext(
+                    context.getNextOperatorId(),
+                    node.getPlanNodeId(),
+                    AsofMergeSortLeftJoinOperator.class.getSimpleName());
+        return new AsofMergeSortLeftJoinOperator(
+            operatorContext,
+            leftChild,
+            leftJoinKeyPositions,
+            leftOutputSymbolIdx,
+            rightChild,
+            rightJoinKeyPositions,
+            rightOutputSymbolIdx,
+            JoinKeyComparatorFactory.getAsofComparators(
+                joinKeyTypes,
+                asofOperator == ComparisonExpression.Operator.LESS_THAN_OR_EQUAL
+                    || asofOperator == ComparisonExpression.Operator.GREATER_THAN_OR_EQUAL,
+                !asofJoinClause.isOperatorContainsGreater()),
+            dataTypes);
+      } else {
+        throw new IllegalStateException("Unsupported ASOF join type: " + node.getJoinType());
+      }
     }
 
     if (requireNonNull(node.getJoinType()) == JoinNode.JoinType.INNER) {
@@ -1524,7 +2284,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               "Filter is not supported in %s. Filter is %s.",
               node.getJoinType(), node.getFilter().map(Expression::toString).orElse("null")));
       checkArgument(
-          !node.getCriteria().isEmpty(),
+          !node.getCriteria().isEmpty() || node.getAsofCriteria().isPresent(),
           String.format("%s must have join keys.", node.getJoinType()));
     } catch (IllegalArgumentException e) {
       throw new SemanticException(e.getMessage());
@@ -1534,9 +2294,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private BiFunction<Column, Integer, Column> buildUpdateLastRowFunction(Type joinKeyType) {
     switch (joinKeyType.getTypeEnum()) {
       case INT32:
+        return (inputColumn, rowIndex) ->
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.INT32);
       case DATE:
         return (inputColumn, rowIndex) ->
-            new IntColumn(1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)});
+            new IntColumn(
+                1, Optional.empty(), new int[] {inputColumn.getInt(rowIndex)}, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return (inputColumn, rowIndex) ->
@@ -1708,13 +2472,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                     SchemaQueryScanOperator.class.getSimpleName()),
             SchemaSourceFactory.getTableDeviceQuerySource(
                 node.getDatabase(),
-                node.getTableName(),
-                node.getIdDeterminedFilterList(),
+                table,
+                node.getTagDeterminedFilterList(),
                 node.getColumnHeaderList(),
                 node.getColumnHeaderList().stream()
                     .map(columnHeader -> table.getColumnSchema(columnHeader.getColumnName()))
                     .collect(Collectors.toList()),
-                null));
+                null,
+                node.isNeedAligned()));
     operator.setLimit(node.getLimit());
     return operator;
   }
@@ -1731,6 +2496,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
     // In "count" we have to reuse filter operator per "next"
     final List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+    FragmentInstanceContext fragmentInstanceContext =
+        context.getDriverContext().getFragmentInstanceContext();
     return new SchemaCountOperator<>(
         node.getPlanNodeId(),
         context
@@ -1741,21 +2508,18 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 SchemaCountOperator.class.getSimpleName()),
         SchemaSourceFactory.getTableDeviceQuerySource(
             database,
-            node.getTableName(),
-            node.getIdDeterminedFilterList(),
+            table,
+            node.getTagDeterminedFilterList(),
             node.getColumnHeaderList(),
             columnSchemaList,
-            Objects.nonNull(node.getIdFuzzyPredicate())
+            Objects.nonNull(node.getTagFuzzyPredicate())
                 ? new DevicePredicateFilter(
                     filterLeafColumnTransformerList,
                     new ColumnTransformerBuilder()
                         .process(
-                            node.getIdFuzzyPredicate(),
+                            node.getTagFuzzyPredicate(),
                             new ColumnTransformerBuilder.Context(
-                                context
-                                    .getDriverContext()
-                                    .getFragmentInstanceContext()
-                                    .getSessionInfo(),
+                                fragmentInstanceContext.getSessionInfo(),
                                 filterLeafColumnTransformerList,
                                 makeLayout(Collections.singletonList(node)),
                                 new HashMap<>(),
@@ -1764,9 +2528,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                                 ImmutableList.of(),
                                 0,
                                 context.getTypeProvider(),
-                                metadata)),
-                    columnSchemaList)
-                : null));
+                                metadata,
+                                fragmentInstanceContext)),
+                    columnSchemaList,
+                    database,
+                    table)
+                : null,
+            false));
   }
 
   @Override
@@ -1809,11 +2577,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                         node.getStep(),
                         typeProvider,
                         true,
-                        null)));
+                        false,
+                        null,
+                        Collections.emptySet())));
     return new AggregationOperator(operatorContext, child, aggregatorBuilder.build());
   }
 
-  // timeColumnName will only be set for AggTableScan.
+  // timeColumnName and measurementColumnNames will only be set for AggTableScan.
   private TableAggregator buildAggregator(
       Map<Symbol, Integer> childLayout,
       Symbol symbol,
@@ -1821,7 +2591,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       AggregationNode.Step step,
       TypeProvider typeProvider,
       boolean scanAscending,
-      String timeColumnName) {
+      boolean isAggTableScan,
+      String timeColumnName,
+      Set<String> measurementColumnNames) {
     List<Integer> argumentChannels = new ArrayList<>();
     for (Expression argument : aggregation.getArguments()) {
       Symbol argumentSymbol = Symbol.from(argument);
@@ -1841,7 +2613,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             aggregation.getArguments(),
             Collections.emptyMap(),
             scanAscending,
+            isAggTableScan,
             timeColumnName,
+            measurementColumnNames,
             aggregation.isDistinct());
 
     OptionalInt maskChannel = OptionalInt.empty();
@@ -1879,7 +2653,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 (k, v) ->
                     aggregatorBuilder.add(
                         buildAggregator(
-                            childLayout, k, v, node.getStep(), typeProvider, true, null)));
+                            childLayout,
+                            k,
+                            v,
+                            node.getStep(),
+                            typeProvider,
+                            true,
+                            false,
+                            null,
+                            Collections.emptySet())));
 
         OperatorContext operatorContext =
             context
@@ -2041,15 +2823,20 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitAggregationTreeDeviceViewScan(
       AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance()
+            .getTable(qualifiedObjectName.getDatabaseName(), qualifiedObjectName.getObjectName());
     IDeviceID.TreeDeviceIdColumnValueExtractor idColumnValueExtractor =
-        createTreeDeviceIdColumnValueExtractor(node.getTreeDBName());
+        createTreeDeviceIdColumnValueExtractor(DataNodeTreeViewSchemaUtils.getPrefixPath(tsTable));
 
     AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
         constructAbstractAggTableScanOperatorParameter(
             node,
             context,
             TreeAlignedDeviceViewAggregationScanOperator.class.getSimpleName(),
-            node.getMeasurementColumnNameMap());
+            node.getMeasurementColumnNameMap(),
+            tsTable.getCachedTableTTL());
 
     TreeAlignedDeviceViewAggregationScanOperator treeAlignedDeviceViewAggregationScanOperator =
         new TreeAlignedDeviceViewAggregationScanOperator(parameter, idColumnValueExtractor);
@@ -2070,7 +2857,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           AggregationTableScanNode node,
           LocalExecutionPlanContext context,
           String className,
-          Map<String, String> fieldColumnsRenameMap) {
+          Map<String, String> fieldColumnsRenameMap,
+          long tableViewTTL) {
 
     List<String> measurementColumnNames = new ArrayList<>();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -2107,7 +2895,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             case TAG:
             case ATTRIBUTE:
               aggColumnsIndexArray[channel] =
-                  requireNonNull(node.getIdAndAttributeIndexMap().get(symbol), symbol + " is null");
+                  requireNonNull(
+                      node.getTagAndAttributeIndexMap().get(symbol), symbol + " is null");
               break;
             case FIELD:
               aggColumnsIndexArray[channel] = measurementColumnCount;
@@ -2166,7 +2955,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
               node.getStep(),
               context.getTypeProvider(),
               scanAscending,
-              timeColumnName));
+              true,
+              timeColumnName,
+              measurementColumnsIndexMap.keySet()));
     }
 
     ITableTimeRangeIterator timeRangeIterator = null;
@@ -2178,9 +2969,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       for (int i = 0; i < node.getGroupingKeys().size(); i++) {
         Symbol groupingKey = node.getGroupingKeys().get(i);
 
-        if (node.getIdAndAttributeIndexMap().containsKey(groupingKey)) {
+        if (node.getTagAndAttributeIndexMap().containsKey(groupingKey)) {
           groupingKeySchemas.add(node.getAssignments().get(groupingKey));
-          groupingKeyIndex[i] = node.getIdAndAttributeIndexMap().get(groupingKey);
+          groupingKeyIndex[i] = node.getTagAndAttributeIndexMap().get(groupingKey);
         } else {
           if (node.getProjection() != null
               && !node.getProjection().getMap().isEmpty()
@@ -2230,6 +3021,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getPushDownOffset(),
             node.isPushLimitToEachDevice(),
             node.getPushDownPredicate());
+    seriesScanOptions.setTTLForTableView(tableViewTTL);
+    seriesScanOptions.setIsTableViewForTreeModel(node instanceof AggregationTreeDeviceViewScanNode);
 
     Set<String> allSensors = new HashSet<>(measurementColumnNames);
     allSensors.add(""); // for time column
@@ -2261,7 +3054,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       constructAbstractAggTableScanOperatorParameter(
           AggregationTableScanNode node, LocalExecutionPlanContext context) {
     return constructAbstractAggTableScanOperatorParameter(
-        node, context, AbstractAggTableScanOperator.class.getSimpleName(), Collections.emptyMap());
+        node,
+        context,
+        AbstractAggTableScanOperator.class.getSimpleName(),
+        Collections.emptyMap(),
+        Long.MAX_VALUE);
   }
 
   @Override
@@ -2271,12 +3068,16 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter =
         constructAbstractAggTableScanOperatorParameter(node, context);
 
-    if (canUseLastCacheOptimize(
-        parameter.getTableAggregators(), node, parameter.getTimeColumnName())) {
-      return constructLastQueryAggTableScanOperator(node, parameter, context);
+    OptimizeType optimizeType =
+        canUseLastCacheOptimize(
+            parameter.getTableAggregators(), node, parameter.getTimeColumnName());
+    if (optimizeType != OptimizeType.NOOP) {
+      return constructLastQueryAggTableScanOperator(
+          node, parameter, optimizeType == OptimizeType.LAST_ROW, context);
     } else {
       DefaultAggTableScanOperator aggTableScanOperator = new DefaultAggTableScanOperator(parameter);
 
+      context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
       addSource(
           aggTableScanOperator,
           context,
@@ -2292,9 +3093,11 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   private LastQueryAggTableScanOperator constructLastQueryAggTableScanOperator(
       AggregationTableScanNode node,
       AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter parameter,
+      boolean isLastRowOptimize,
       LocalExecutionPlanContext context) {
     List<Integer> hitCachesIndexes = new ArrayList<>();
-    List<Pair<OptionalLong, TsPrimitiveType[]>> hitCachedResults = new ArrayList<>();
+    List<Pair<OptionalLong, TsPrimitiveType[]>> lastRowCacheResults = null;
+    List<TimeValuePair[]> lastValuesCacheResults = null;
     List<DeviceEntry> cachedDeviceEntries = new ArrayList<>();
     List<DeviceEntry> unCachedDeviceEntries = new ArrayList<>();
     long tableTTL =
@@ -2304,49 +3107,157 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
                 node.getQualifiedObjectName().getObjectName());
     Filter updateTimeFilter =
         updateFilterUsingTTL(parameter.getSeriesScanOptions().getGlobalTimeFilter(), tableTTL);
-    for (int i = 0; i < node.getDeviceEntries().size(); i++) {
-      Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
-          TableDeviceSchemaCache.getInstance()
-              .getLastRow(
-                  node.getQualifiedObjectName().getDatabaseName(),
-                  node.getDeviceEntries().get(i).getDeviceID(),
-                  "",
-                  parameter.getMeasurementColumnNames());
-      boolean allHitCache = true;
-      if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
-        for (int j = 0; j < lastByResult.get().getRight().length; j++) {
-          TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
-          if (tsPrimitiveType == null
-              || (updateTimeFilter != null
-                  && !LastQueryUtil.satisfyFilter(
-                      updateTimeFilter,
-                      new TimeValuePair(
-                          lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
-            // the process logic is different from tree model which examine if
-            // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
-            // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
-            // but it should skip in table model
-            allHitCache = false;
-            break;
+    if (isLastRowOptimize) {
+      lastRowCacheResults = new ArrayList<>();
+      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+        Optional<Pair<OptionalLong, TsPrimitiveType[]>> lastByResult =
+            TableDeviceSchemaCache.getInstance()
+                .getLastRow(
+                    node.getQualifiedObjectName().getDatabaseName(),
+                    node.getDeviceEntries().get(i).getDeviceID(),
+                    "",
+                    parameter.getMeasurementColumnNames());
+        boolean allHitCache = true;
+        if (lastByResult.isPresent() && lastByResult.get().getLeft().isPresent()) {
+          for (int j = 0; j < lastByResult.get().getRight().length; j++) {
+            TsPrimitiveType tsPrimitiveType = lastByResult.get().getRight()[j];
+            if (tsPrimitiveType == null
+                || (updateTimeFilter != null
+                    && !LastQueryUtil.satisfyFilter(
+                        updateTimeFilter,
+                        new TimeValuePair(
+                            lastByResult.get().getLeft().getAsLong(), tsPrimitiveType)))) {
+              // the process logic is different from tree model which examine if
+              // `isFilterGtOrGe(seriesScanOptions.getGlobalTimeFilter())`, set
+              // `lastByResult.get().getRight()[j] = EMPTY_PRIMITIVE_TYPE`,
+              // but it should skip in table model
+              allHitCache = false;
+              break;
+            }
           }
+        } else {
+          allHitCache = false;
         }
+
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
+        if (!allHitCache) {
+          AlignedFullPath alignedPath =
+              constructAlignedPath(
+                  deviceEntry,
+                  parameter.getMeasurementColumnNames(),
+                  parameter.getMeasurementSchemas(),
+                  parameter.getAllSensors());
+          ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+          unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
+
+          // last cache updateColumns need to put "" as time column
+          String[] updateColumns = new String[parameter.getMeasurementColumnNames().size() + 1];
+          updateColumns[0] = "";
+          for (int j = 1; j < updateColumns.length; j++) {
+            updateColumns[j] = parameter.getMeasurementColumnNames().get(j - 1);
+          }
+          TableDeviceSchemaCache.getInstance()
+              .initOrInvalidateLastCache(
+                  node.getQualifiedObjectName().getDatabaseName(),
+                  deviceEntry.getDeviceID(),
+                  updateColumns,
+                  false);
+        } else {
+          hitCachesIndexes.add(i);
+          lastRowCacheResults.add(lastByResult.get());
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
+        }
+      }
+    } else {
+      // LAST_VALUES optimize
+      lastValuesCacheResults = new ArrayList<>();
+      int measurementSize = parameter.getMeasurementColumnNames().size();
+      // We don't init time if the last cache will not be updated in process of operator
+      boolean needInitTime =
+          parameter.getTableAggregators().stream()
+              .anyMatch(
+                  aggregator ->
+                      aggregator.getAccumulator() instanceof LastDescAccumulator
+                          && !((LastDescAccumulator) aggregator.getAccumulator())
+                              .isMeasurementColumn());
+      // When we need last cache of Time column if:
+      // 1. query is group by (we need last cache of Time to help judge if there is no data in
+      // device)
+      // 2. last(time), last(device) or last(attribute) occurs
+      boolean needTime = !node.getGroupingKeys().isEmpty() || needInitTime;
+      String[] targetColumns;
+
+      if (needTime) {
+        targetColumns = new String[measurementSize + 1];
+        // put time column in the last for convenience of later processing
+        targetColumns[targetColumns.length - 1] = "";
       } else {
-        allHitCache = false;
+        targetColumns = new String[measurementSize];
       }
 
-      if (!allHitCache) {
-        AlignedFullPath alignedPath =
-            constructAlignedPath(
-                node.getDeviceEntries().get(i),
-                parameter.getMeasurementColumnNames(),
-                parameter.getMeasurementSchemas(),
-                parameter.getAllSensors());
-        ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
-        unCachedDeviceEntries.add(node.getDeviceEntries().get(i));
-      } else {
-        hitCachesIndexes.add(i);
-        hitCachedResults.add(lastByResult.get());
-        cachedDeviceEntries.add(node.getDeviceEntries().get(i));
+      for (int j = 0; j < measurementSize; j++) {
+        targetColumns[j] = parameter.getMeasurementColumnNames().get(j);
+      }
+
+      for (int i = 0; i < node.getDeviceEntries().size(); i++) {
+        TimeValuePair[] lastResult =
+            TableDeviceSchemaCache.getInstance()
+                .getLastEntries(
+                    node.getQualifiedObjectName().getDatabaseName(),
+                    node.getDeviceEntries().get(i).getDeviceID(),
+                    targetColumns);
+        boolean allHitCache = true;
+        if (lastResult != null) {
+          for (TimeValuePair timeValuePair : lastResult) {
+            if (timeValuePair == null || timeValuePair.getValue() == null) {
+              allHitCache = false;
+              break;
+            }
+
+            if (updateTimeFilter != null
+                && !LastQueryUtil.satisfyFilter(
+                    parameter.getSeriesScanOptions().getGlobalTimeFilter(), timeValuePair)) {
+              if (isFilterGtOrGe(updateTimeFilter)) {
+                // it means there is no data meets Filter
+                timeValuePair.setValue(EMPTY_PRIMITIVE_TYPE);
+              } else {
+                allHitCache = false;
+                break;
+              }
+            }
+          }
+        } else {
+          allHitCache = false;
+        }
+
+        DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
+        if (!allHitCache) {
+          AlignedFullPath alignedPath =
+              constructAlignedPath(
+                  deviceEntry,
+                  parameter.getMeasurementColumnNames(),
+                  parameter.getMeasurementSchemas(),
+                  parameter.getAllSensors());
+          ((DataDriverContext) context.getDriverContext()).addPath(alignedPath);
+          unCachedDeviceEntries.add(deviceEntry);
+          addUncachedDeviceToContext(node, context, deviceEntry);
+
+          TableDeviceSchemaCache.getInstance()
+              .initOrInvalidateLastCache(
+                  node.getQualifiedObjectName().getDatabaseName(),
+                  deviceEntry.getDeviceID(),
+                  needInitTime || node.getGroupingKeys().isEmpty()
+                      ? targetColumns
+                      : Arrays.copyOfRange(targetColumns, 0, targetColumns.length - 1),
+                  false);
+        } else {
+          hitCachesIndexes.add(i);
+          lastValuesCacheResults.add(lastResult);
+          cachedDeviceEntries.add(deviceEntry);
+          decreaseDeviceCount(node, context, deviceEntry);
+        }
       }
     }
 
@@ -2359,10 +3270,54 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             cachedDeviceEntries,
             node.getQualifiedObjectName(),
             hitCachesIndexes,
-            hitCachedResults);
+            lastRowCacheResults,
+            lastValuesCacheResults,
+            node.getDeviceCountMap(),
+            context.getInstanceContext().getDataNodeQueryContext());
 
     ((DataDriverContext) context.getDriverContext()).addSourceOperator(lastQueryOperator);
+    parameter
+        .getOperatorContext()
+        .setOperatorType(LastQueryAggTableScanOperator.class.getSimpleName());
     return lastQueryOperator;
+  }
+
+  private void addUncachedDeviceToContext(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
+    try {
+      context.dataNodeQueryContext.addUnCachedDeviceIfAbsent(
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
+    } finally {
+      context.dataNodeQueryContext.unLock(true);
+    }
+  }
+
+  /**
+   * Decrease the device count when its last cache was hit. Notice that the count can also be zero
+   * after decrease, we need to update last cache if needed.
+   */
+  private void decreaseDeviceCount(
+      AggregationTableScanNode node, LocalExecutionPlanContext context, DeviceEntry deviceEntry) {
+    boolean deviceInMultiRegion =
+        node.getDeviceCountMap() != null && node.getDeviceCountMap().containsKey(deviceEntry);
+    if (!deviceInMultiRegion) {
+      return;
+    }
+
+    context.dataNodeQueryContext.lock(true);
+    try {
+      context.dataNodeQueryContext.decreaseDeviceAndMayUpdateLastCache(
+          node.getQualifiedObjectName(), deviceEntry, node.getDeviceCountMap().get(deviceEntry));
+    } finally {
+      context.dataNodeQueryContext.unLock(true);
+    }
   }
 
   private SeriesScanOptions buildSeriesScanOptions(
@@ -2387,7 +3342,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     if (pushDownPredicate != null) {
       scanOptionsBuilder.withPushDownFilter(
           convertPredicateToFilter(
-              pushDownPredicate, measurementColumnsIndexMap, columnSchemaMap, timeColumnName));
+              pushDownPredicate,
+              measurementColumnsIndexMap,
+              columnSchemaMap,
+              timeColumnName,
+              context.getZoneId(),
+              TimestampPrecisionUtils.currPrecision));
     }
     return scanOptionsBuilder.build();
   }
@@ -2411,7 +3371,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
       TableFunctionProcessorNode node, LocalExecutionPlanContext context) {
     TableFunction tableFunction = metadata.getTableFunction(node.getName());
     TableFunctionProcessorProvider processorProvider =
-        tableFunction.getProcessorProvider(node.getArguments());
+        tableFunction.getProcessorProvider(node.getTableFunctionHandle());
     if (node.getChildren().isEmpty()) {
       List<TSDataType> outputDataTypes =
           node.getOutputSymbols().stream()
@@ -2483,9 +3443,407 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           properChannelCount,
           requiredChannels,
           passThroughChannels,
+          passThroughSpecification
+              .map(TableFunctionNode.PassThroughSpecification::isDeclaredAsPassThrough)
+              .orElse(false),
           partitionChannels,
           node.isRequireRecordSnapshot());
     }
+  }
+
+  private PatternAggregator buildPatternAggregator(
+      ResolvedFunction resolvedFunction,
+      List<Map.Entry<Expression, Type>> arguments,
+      List<Integer> argumentChannels,
+      PatternAggregationTracker patternAggregationTracker) {
+    String functionName = resolvedFunction.getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        resolvedFunction.getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
+
+    TableAccumulator accumulator =
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+
+    BoundSignature signature = resolvedFunction.getSignature();
+
+    return new PatternAggregator(
+        signature, accumulator, argumentChannels, patternAggregationTracker);
+  }
+
+  @Override
+  public Operator visitPatternRecognition(
+      PatternRecognitionNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                PatternRecognitionOperator.class.getSimpleName());
+
+    Operator child = node.getChild().accept(this, context);
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    List<Integer> partitionChannels =
+        ImmutableList.copyOf(getChannelsForSymbols(partitionBySymbols, childLayout));
+
+    List<Integer> sortChannels = ImmutableList.of();
+    List<SortOrder> sortOrder = ImmutableList.of();
+
+    if (node.getOrderingScheme().isPresent()) {
+      OrderingScheme orderingScheme = node.getOrderingScheme().get();
+      sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
+      sortOrder = orderingScheme.getOrderingList();
+    }
+
+    // The output order for pattern recognition operation is defined as follows:
+    // - for ONE ROW PER MATCH: partition by symbols, then measures,
+    // - for ALL ROWS PER MATCH: partition by symbols, order by symbols, measures, remaining input
+    // symbols.
+
+    // all output column types of the input table
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    // input channels to be passed directly to output, excluding MEASURES columns
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    // output dataTypes, used to construct the output TsBlock, including MEASURES columns
+    ImmutableList.Builder<TSDataType> outputDataTypes = ImmutableList.builder();
+
+    if (node.getRowsPerMatch() == ONE) {
+      // ONE ROW PER MATCH: partition columns, MEASURES
+
+      // add all partition columns
+      outputChannels.addAll(partitionChannels);
+      for (int i = 0; i < partitionBySymbols.size(); i++) {
+        Symbol symbol = partitionBySymbols.get(i);
+        // obtain the absolute index of the symbol in the base table through `childLayout`
+        outputDataTypes.add(inputDataTypes.get(childLayout.get(symbol)));
+      }
+    } else {
+      // ALL ROWS PER MATCH: all input columns, MEASURES
+
+      outputChannels.addAll(
+          IntStream.range(0, inputDataTypes.size()).boxed().collect(toImmutableList()));
+      outputDataTypes.addAll(inputDataTypes);
+    }
+
+    // add MEASURES columns
+    for (Map.Entry<Symbol, Measure> measure : node.getMeasures().entrySet()) {
+      outputDataTypes.add(getTSDataType(measure.getValue().getType()));
+    }
+
+    // prepare structures specific to PatternRecognitionNode
+    // 1. establish a two-way mapping of IrLabels to `int`
+    List<IrLabel> primaryLabels = ImmutableList.copyOf(node.getVariableDefinitions().keySet());
+    ImmutableList.Builder<String> labelNamesBuilder = ImmutableList.builder();
+    ImmutableMap.Builder<IrLabel, Integer> mappingBuilder = ImmutableMap.builder();
+    for (int i = 0; i < primaryLabels.size(); i++) {
+      IrLabel label = primaryLabels.get(i);
+      labelNamesBuilder.add(label.getName());
+      mappingBuilder.put(label, i);
+    }
+    Map<IrLabel, Integer> mapping = mappingBuilder.buildOrThrow();
+    List<String> labelNames = labelNamesBuilder.build();
+
+    // 2. rewrite pattern to program
+    Program program = IrRowPatternToProgramRewriter.rewrite(node.getPattern(), mapping);
+
+    // 3. DEFINE: prepare patternVariableComputation (PatternVariableRecognizer is to be
+    // instantiated once per partition)
+
+    // during pattern matching, each thread will have a list of aggregations necessary for label
+    // evaluations.
+    // the list of aggregations for a thread will be produced at thread creation time from this
+    // supplier list, respecting the order.
+    // pointers in LabelEvaluator and ThreadEquivalence will access aggregations by position in
+    // list.
+    int matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> variableRecognizerAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> variableRecognizerAggregators = ImmutableList.of();
+
+    ImmutableList.Builder<PatternVariableRecognizer.PatternVariableComputation> evaluationsBuilder =
+        ImmutableList.builder();
+
+    for (Map.Entry<IrLabel, ExpressionAndValuePointers> entry :
+        node.getVariableDefinitions().entrySet()) {
+      String variableName = entry.getKey().getName();
+      ExpressionAndValuePointers expressionAndValuePointers = entry.getValue();
+
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
+      List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
+      for (ExpressionAndValuePointers.Assignment assignment :
+          expressionAndValuePointers.getAssignments()) {
+        ValuePointer pointer = assignment.getValuePointer();
+        if (pointer instanceof MatchNumberValuePointer) {
+          valueAccessors.add(
+              new PhysicalValuePointer(MATCH_NUMBER, INT64, LogicalIndexNavigation.NO_OP));
+        } else if (pointer instanceof ClassifierValuePointer) {
+          ClassifierValuePointer classifierPointer = (ClassifierValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  CLASSIFIER,
+                  STRING,
+                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof ScalarValuePointer) {
+          ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  getOnlyElement(
+                      getChannelsForSymbols(
+                          ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
+                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof AggregationValuePointer) {
+          AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
+
+          ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
+
+          ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
+          List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
+          for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
+            builder.add(
+                new AbstractMap.SimpleEntry<>(
+                    aggregationPointer.getArguments().get(i), signatureTypes.get(i)));
+          }
+          List<Map.Entry<Expression, Type>> arguments = builder.build();
+
+          List<Integer> valueChannels = new ArrayList<>();
+
+          for (Map.Entry<Expression, Type> argumentWithType : arguments) {
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
+          }
+
+          AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
+          Set<Integer> labels =
+              labelSet.getLabels().stream().map(mapping::get).collect(Collectors.toSet());
+          PatternAggregationTracker patternAggregationTracker =
+              new PatternAggregationTracker(
+                  labels, aggregationPointer.getSetDescriptor().isRunning());
+
+          PatternAggregator variableRecognizerAggregator =
+              buildPatternAggregator(
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+
+          variableRecognizerAggregatorBuilder.add(variableRecognizerAggregator);
+
+          valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
+          matchAggregationIndex++;
+        }
+      }
+
+      variableRecognizerAggregators = variableRecognizerAggregatorBuilder.build();
+
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
+      Computation computation = Computation.ComputationParser.parse(expressionAndValuePointers);
+
+      // construct a `PatternVariableComputation` object, where valueAccessors is a parameter list
+      // and computation is a parametric expression tree, encapsulating the computation logic
+      PatternVariableRecognizer.PatternVariableComputation patternVariableComputation =
+          new PatternVariableRecognizer.PatternVariableComputation(
+              valueAccessors, computation, ImmutableList.of(), labelNames);
+
+      evaluationsBuilder.add(patternVariableComputation);
+    }
+
+    // 4. MEASURES: prepare measures computations
+    ImmutableList.Builder<PatternExpressionComputation> measureComputationsBuilder =
+        ImmutableList.builder();
+
+    matchAggregationIndex = 0;
+    ImmutableList.Builder<PatternAggregator> measurePatternAggregatorBuilder =
+        ImmutableList.builder();
+    List<PatternAggregator> measurePatternAggregators = ImmutableList.of();
+
+    for (Measure measure : node.getMeasures().values()) {
+      ExpressionAndValuePointers expressionAndValuePointers =
+          measure.getExpressionAndValuePointers();
+
+      // convert the `ValuePointer` in the `Assignment` to `PhysicalValueAccessor`
+      List<PhysicalValueAccessor> valueAccessors = new ArrayList<>();
+      for (ExpressionAndValuePointers.Assignment assignment :
+          expressionAndValuePointers.getAssignments()) {
+        ValuePointer pointer = assignment.getValuePointer();
+        if (pointer instanceof MatchNumberValuePointer) {
+          valueAccessors.add(
+              new PhysicalValuePointer(MATCH_NUMBER, INT64, LogicalIndexNavigation.NO_OP));
+        } else if (pointer instanceof ClassifierValuePointer) {
+          ClassifierValuePointer classifierPointer = (ClassifierValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  CLASSIFIER,
+                  STRING,
+                  classifierPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof ScalarValuePointer) {
+          ScalarValuePointer scalarPointer = (ScalarValuePointer) pointer;
+          valueAccessors.add(
+              new PhysicalValuePointer(
+                  getOnlyElement(
+                      getChannelsForSymbols(
+                          ImmutableList.of(scalarPointer.getInputSymbol()), childLayout)),
+                  context.getTypeProvider().getTableModelType(scalarPointer.getInputSymbol()),
+                  scalarPointer.getLogicalIndexPointer().toLogicalIndexNavigation(mapping)));
+        } else if (pointer instanceof AggregationValuePointer) {
+          AggregationValuePointer aggregationPointer = (AggregationValuePointer) pointer;
+
+          ResolvedFunction resolvedFunction = aggregationPointer.getFunction();
+
+          ImmutableList.Builder<Map.Entry<Expression, Type>> builder = ImmutableList.builder();
+          List<Type> signatureTypes = resolvedFunction.getSignature().getArgumentTypes();
+          for (int i = 0; i < aggregationPointer.getArguments().size(); i++) {
+            builder.add(
+                new AbstractMap.SimpleEntry<>(
+                    aggregationPointer.getArguments().get(i), signatureTypes.get(i)));
+          }
+          List<Map.Entry<Expression, Type>> arguments = builder.build();
+
+          List<Integer> valueChannels = new ArrayList<>();
+
+          for (Map.Entry<Expression, Type> argumentWithType : arguments) {
+            Expression argument = argumentWithType.getKey();
+            valueChannels.add(childLayout.get(Symbol.from(argument)));
+          }
+
+          AggregationLabelSet labelSet = aggregationPointer.getSetDescriptor();
+          Set<Integer> labels =
+              labelSet.getLabels().stream().map(mapping::get).collect(Collectors.toSet());
+          PatternAggregationTracker patternAggregationTracker =
+              new PatternAggregationTracker(
+                  labels, aggregationPointer.getSetDescriptor().isRunning());
+
+          PatternAggregator measurePatternAggregator =
+              buildPatternAggregator(
+                  resolvedFunction, arguments, valueChannels, patternAggregationTracker);
+
+          measurePatternAggregatorBuilder.add(measurePatternAggregator);
+
+          valueAccessors.add(new PhysicalAggregationPointer(matchAggregationIndex));
+          matchAggregationIndex++;
+        }
+      }
+
+      measurePatternAggregators = measurePatternAggregatorBuilder.build();
+
+      // transform the symbolic expression tree in the logical planning stage into a parametric
+      // expression tree
+      Computation computation = Computation.ComputationParser.parse(expressionAndValuePointers);
+
+      // construct a `PatternExpressionComputation` object, where valueAccessors is a parameter
+      // list and computation is a parametric expression tree, encapsulating the computation logic.
+      PatternExpressionComputation measureComputation =
+          new PatternExpressionComputation(valueAccessors, computation, measurePatternAggregators);
+
+      measureComputationsBuilder.add(measureComputation);
+    }
+
+    // 5. prepare SKIP TO navigation
+    Optional<LogicalIndexNavigation> skipToNavigation = Optional.empty();
+    if (!node.getSkipToLabels().isEmpty()) {
+      boolean last = node.getSkipToPosition().equals(LAST);
+      skipToNavigation =
+          Optional.of(
+              new LogicalIndexPointer(node.getSkipToLabels(), last, false, 0, 0)
+                  .toLogicalIndexNavigation(mapping));
+    }
+
+    return new PatternRecognitionOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputDataTypes.build(),
+        outputChannels.build(),
+        partitionChannels,
+        sortChannels,
+        node.getRowsPerMatch(),
+        node.getSkipToPosition(),
+        skipToNavigation,
+        new Matcher(program, variableRecognizerAggregators),
+        evaluationsBuilder.build(),
+        measurePatternAggregators,
+        measureComputationsBuilder.build(),
+        labelNames);
+  }
+
+  @Override
+  public Operator visitInto(IntoNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableIntoOperator.class.getSimpleName());
+
+    PartialPath targetTable = new PartialPath(node.getTable(), false);
+
+    Map<String, TSDataType> tsDataTypeMap = new LinkedHashMap<>();
+    Map<String, InputLocation> inputLocationMap = new LinkedHashMap<>();
+    List<TSDataType> inputColumnTypes = new ArrayList<>();
+    List<TsTableColumnCategory> inputColumnCategories = new ArrayList<>();
+
+    List<ColumnSchema> originColumns = node.getColumns();
+    List<Symbol> originInputColumnNames = node.getNeededInputColumnNames();
+    int size = originColumns.size();
+    List<ColumnSchema> inputColumns = new ArrayList<>(size);
+
+    List<Symbol> childOutputName = node.getChild().getOutputSymbols();
+    Map<Symbol, Integer> map = new HashMap<>(childOutputName.size());
+    for (int i = 0; i < size; i++) {
+      map.put(childOutputName.get(i), i);
+      inputColumns.add(null);
+    }
+    for (int i = 0; i < size; i++) {
+      int index = map.get(originInputColumnNames.get(i));
+      inputColumns.set(index, originColumns.get(i));
+    }
+    ColumnSchema timeColumnOfTargetTable = null;
+    for (int i = 0; i < inputColumns.size(); i++) {
+      String columnName = inputColumns.get(i).getName();
+      inputLocationMap.put(columnName, new InputLocation(0, i));
+
+      TsTableColumnCategory columnCategory = inputColumns.get(i).getColumnCategory();
+      if (columnCategory == TIME) {
+        if (timeColumnOfTargetTable == null) {
+          timeColumnOfTargetTable = inputColumns.get(i);
+        } else {
+          throw new SemanticException("Multiple columns with TIME category found");
+        }
+        continue;
+      }
+
+      TSDataType columnType = InternalTypeManager.getTSDataType(inputColumns.get(i).getType());
+      tsDataTypeMap.put(columnName, columnType);
+      inputColumnTypes.add(columnType);
+      inputColumnCategories.add(columnCategory);
+    }
+    if (timeColumnOfTargetTable == null) {
+      throw new SemanticException("Missing TIME category column");
+    }
+
+    long statementSizePerLine =
+        OperatorGeneratorUtil.calculateStatementSizePerLine(inputColumnTypes);
+
+    return new TableIntoOperator(
+        operatorContext,
+        child,
+        node.getDatabase(),
+        targetTable,
+        inputColumnTypes,
+        inputColumnCategories,
+        inputLocationMap,
+        tsDataTypeMap,
+        true,
+        FragmentInstanceManager.getInstance().getIntoOperationExecutor(),
+        statementSizePerLine,
+        timeColumnOfTargetTable);
   }
 
   private boolean[] checkStatisticAndScanOrder(
@@ -2508,6 +3866,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         case MAX:
         case MIN:
           if (BlobType.BLOB.equals(argumentType)
+              || ObjectType.OBJECT.equals(argumentType)
               || BinaryType.TEXT.equals(argumentType)
               || BooleanType.BOOLEAN.equals(argumentType)) {
             canUseStatistic = false;
@@ -2523,10 +3882,26 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             descendingCount++;
           }
 
-          // first/last/first_by/last_by aggregation with BLOB type can not use statistics
-          if (BlobType.BLOB.equals(argumentType)) {
+          // first/last/first_by/last_by aggregation with BLOB or OBJECT type can not use statistics
+          if (BlobType.BLOB.equals(argumentType) || ObjectType.OBJECT.equals(argumentType)) {
             canUseStatistic = false;
             break;
+          }
+
+          // first and last, the second argument has to be the time column
+          if (FIRST_AGGREGATION.equals(funcName) || LAST_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(1), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
+          }
+
+          // first_by and last_by, the second argument has to be the time column
+          if (FIRST_BY_AGGREGATION.equals(funcName) || LAST_BY_AGGREGATION.equals(funcName)) {
+            if (!isTimeColumn(aggregation.getArguments().get(2), timeColumnName)) {
+              canUseStatistic = false;
+              break;
+            }
           }
 
           // only last_by(time, x) or last_by(x,time) can use statistic
@@ -2556,24 +3931,69 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     return new boolean[] {canUseStatistic, isAscending};
   }
 
-  private boolean canUseLastCacheOptimize(
+  private OptimizeType canUseLastCacheOptimize(
       List<TableAggregator> aggregators, AggregationTableScanNode node, String timeColumnName) {
     if (!CommonDescriptor.getInstance().getConfig().isLastCacheEnable() || aggregators.isEmpty()) {
-      return false;
+      return OptimizeType.NOOP;
     }
 
     // has value filter, can not optimize
     if (node.getPushDownPredicate() != null) {
-      return false;
+      return OptimizeType.NOOP;
     }
 
     // has date_bin, can not optimize
     if (!node.getGroupingKeys().isEmpty()
         && node.getProjection() != null
         && !node.getProjection().getMap().isEmpty()) {
-      return false;
+      return OptimizeType.NOOP;
     }
 
+    // if the timeColumnName is null, the param of function is just a timestamp column other than
+    // the time column
+    if (timeColumnName == null || !checkOrderColumnIsTime(node.getAggregations(), timeColumnName)) {
+      return OptimizeType.NOOP;
+    }
+
+    if (canUseLastRowOptimize(aggregators)) {
+      return OptimizeType.LAST_ROW;
+    }
+
+    if (canUseLastValuesOptimize(aggregators)) {
+      return OptimizeType.LAST_VALUES;
+    }
+
+    return OptimizeType.NOOP;
+  }
+
+  /**
+   * Checks if the ordering column in aggregations matches the time column. only check for
+   * FIRST/LAST/FIRST_BY/LAST_BY
+   */
+  private boolean checkOrderColumnIsTime(
+      Map<Symbol, AggregationNode.Aggregation> aggregations, String timeColumnName) {
+
+    for (Map.Entry<Symbol, AggregationNode.Aggregation> entry : aggregations.entrySet()) {
+      String functionName =
+          entry.getValue().getResolvedFunction().getSignature().getName().toLowerCase();
+      List<Expression> arguments = entry.getValue().getArguments();
+      Expression lastParam = entry.getValue().getArguments().get(arguments.size() - 1);
+
+      switch (functionName) {
+        case FIRST_AGGREGATION:
+        case LAST_AGGREGATION:
+        case FIRST_BY_AGGREGATION:
+        case LAST_BY_AGGREGATION:
+          if (!((SymbolReference) lastParam).getName().equalsIgnoreCase(timeColumnName)) {
+            return false;
+          }
+          break;
+      }
+    }
+    return true;
+  }
+
+  private boolean canUseLastRowOptimize(List<TableAggregator> aggregators) {
     for (TableAggregator aggregator : aggregators) {
       if (aggregator.getAccumulator() instanceof LastDescAccumulator) {
         if (!((LastDescAccumulator) aggregator.getAccumulator()).isTimeColumn()) {
@@ -2587,8 +4007,28 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         return false;
       }
     }
-
     return true;
+  }
+
+  private boolean canUseLastValuesOptimize(List<TableAggregator> aggregators) {
+    for (TableAggregator aggregator : aggregators) {
+      if (aggregator.getAccumulator() instanceof LastByDescAccumulator) {
+        // cannot optimize when x is Measurement or y is not Measurement
+        if (((LastByDescAccumulator) aggregator.getAccumulator()).xIsMeasurementColumn()
+            || !((LastByDescAccumulator) aggregator.getAccumulator()).yIsMeasurementColumn()) {
+          return false;
+        }
+      } else if (!(aggregator.getAccumulator() instanceof LastDescAccumulator)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private enum OptimizeType {
+    LAST_ROW,
+    LAST_VALUES,
+    NOOP
   }
 
   @Override
@@ -2613,6 +4053,323 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .map(typeProvider::getTableModelType)
             .collect(Collectors.toList()),
         node.getDistinctSymbols().stream().map(childLayout::get).collect(Collectors.toList()),
+        Optional.empty());
+  }
+
+  @Override
+  public Operator visitWindowFunction(WindowNode node, LocalExecutionPlanContext context) {
+    TypeProvider typeProvider = context.getTypeProvider();
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TableWindowOperator.class.getSimpleName());
+
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+
+    // Partition channel
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    List<Integer> partitionChannels =
+        ImmutableList.copyOf(getChannelsForSymbols(partitionBySymbols, childLayout));
+
+    // Sort channel
+    List<Integer> sortChannels = ImmutableList.of();
+    List<SortOrder> sortOrder = ImmutableList.of();
+    if (node.getSpecification().getOrderingScheme().isPresent()) {
+      OrderingScheme orderingScheme = node.getSpecification().getOrderingScheme().get();
+      sortChannels = getChannelsForSymbols(orderingScheme.getOrderBy(), childLayout);
+      sortOrder = orderingScheme.getOrderingList();
+    }
+
+    // Output channel
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    List<TSDataType> outputDataTypes = new ArrayList<>();
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+      outputDataTypes.add(inputDataTypes.get(i));
+    }
+
+    // Window functions
+    List<FrameInfo> frameInfoList = new ArrayList<>();
+    List<WindowFunction> windowFunctions = new ArrayList<>();
+    List<Symbol> windowFunctionOutputSymbols = new ArrayList<>();
+    List<TSDataType> windowFunctionOutputDataTypes = new ArrayList<>();
+    for (Map.Entry<Symbol, WindowNode.Function> entry : node.getWindowFunctions().entrySet()) {
+      // Create FrameInfo
+      WindowNode.Frame frame = entry.getValue().getFrame();
+
+      Optional<Integer> frameStartChannel = Optional.empty();
+      if (frame.getStartValue().isPresent()) {
+        frameStartChannel = Optional.ofNullable(childLayout.get(frame.getStartValue().get()));
+      }
+      Optional<Integer> frameEndChannel = Optional.empty();
+      if (frame.getEndValue().isPresent()) {
+        frameEndChannel = Optional.ofNullable(childLayout.get(frame.getEndValue().get()));
+      }
+
+      Optional<Integer> sortKeyChannel = Optional.empty();
+      Optional<SortOrder> ordering = Optional.empty();
+      if (node.getSpecification().getOrderingScheme().isPresent()) {
+        sortKeyChannel = Optional.of(sortChannels.get(0));
+        if (sortOrder.get(0).isNullsFirst()) {
+          if (sortOrder.get(0).isAscending()) {
+            ordering = Optional.of(ASC_NULLS_FIRST);
+          } else {
+            ordering = Optional.of(DESC_NULLS_FIRST);
+          }
+        } else {
+          if (sortOrder.get(0).isAscending()) {
+            ordering = Optional.of(ASC_NULLS_LAST);
+          } else {
+            ordering = Optional.of(DESC_NULLS_LAST);
+          }
+        }
+      }
+      FrameInfo frameInfo =
+          new FrameInfo(
+              frame.getType(),
+              frame.getStartType(),
+              frameStartChannel,
+              frame.getEndType(),
+              frameEndChannel,
+              sortKeyChannel,
+              ordering);
+      frameInfoList.add(frameInfo);
+
+      // Arguments
+      WindowNode.Function function = entry.getValue();
+      ResolvedFunction resolvedFunction = function.getResolvedFunction();
+      List<Integer> argumentChannels = new ArrayList<>();
+      for (Expression argument : function.getArguments()) {
+        Symbol argumentSymbol = Symbol.from(argument);
+        argumentChannels.add(childLayout.get(argumentSymbol));
+      }
+
+      // Return value
+      Type returnType = resolvedFunction.getSignature().getReturnType();
+      windowFunctionOutputDataTypes.add(getTSDataType(returnType));
+
+      // Window function
+      Symbol symbol = entry.getKey();
+      WindowFunction windowFunction;
+      FunctionKind functionKind = resolvedFunction.getFunctionKind();
+      if (functionKind == FunctionKind.AGGREGATE) {
+        WindowAggregator tableWindowAggregator =
+            buildWindowAggregator(symbol, function, typeProvider, argumentChannels);
+        windowFunction = new AggregationWindowFunction(tableWindowAggregator);
+      } else if (functionKind == FunctionKind.WINDOW) {
+        String functionName = function.getResolvedFunction().getSignature().getName();
+        windowFunction =
+            WindowFunctionFactory.createBuiltinWindowFunction(
+                functionName, argumentChannels, function.isIgnoreNulls());
+      } else {
+        throw new UnsupportedOperationException("Unsupported function kind: " + functionKind);
+      }
+
+      windowFunctions.add(windowFunction);
+      windowFunctionOutputSymbols.add(symbol);
+    }
+
+    // Compute layout
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    for (Symbol symbol : node.getChild().getOutputSymbols()) {
+      outputMappings.put(symbol, childLayout.get(symbol));
+    }
+    int channel = inputDataTypes.size();
+
+    for (Symbol symbol : windowFunctionOutputSymbols) {
+      outputMappings.put(symbol, channel);
+      channel++;
+    }
+
+    outputDataTypes.addAll(windowFunctionOutputDataTypes);
+    return new TableWindowOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputDataTypes,
+        outputChannels.build(),
+        windowFunctions,
+        frameInfoList,
+        partitionChannels,
+        sortChannels);
+  }
+
+  private WindowAggregator buildWindowAggregator(
+      Symbol symbol,
+      WindowNode.Function function,
+      TypeProvider typeProvider,
+      List<Integer> argumentChannels) {
+    // Create accumulator first
+    String functionName = function.getResolvedFunction().getSignature().getName();
+    List<TSDataType> originalArgumentTypes =
+        function.getResolvedFunction().getSignature().getArgumentTypes().stream()
+            .map(InternalTypeManager::getTSDataType)
+            .collect(Collectors.toList());
+    TableAccumulator accumulator =
+        createBuiltinAccumulator(getAggregationTypeByFuncName(functionName), originalArgumentTypes);
+
+    // Create aggregator by accumulator
+    return new WindowAggregator(
+        accumulator, getTSDataType(typeProvider.getTableModelType(symbol)), argumentChannels);
+  }
+
+  @Override
+  public Operator visitUnion(UnionNode node, LocalExecutionPlanContext context) {
+    List<Operator> children =
+        node.getChildren().stream()
+            .map(child -> child.accept(this, context))
+            .collect(Collectors.toList());
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    int size = children.size();
+    List<List<Integer>> mappings = new ArrayList<>(size);
+    List<Symbol> unionOutputs = node.getOutputSymbols();
+    ListMultimap<Symbol, Symbol> outputToInputs = node.getSymbolMapping();
+    for (int i = 0; i < size; i++) {
+      Map<Symbol, Integer> childOutputs =
+          makeLayoutFromOutputSymbols(node.getChildren().get(i).getOutputSymbols());
+      int finalI = i;
+      mappings.add(
+          unionOutputs.stream()
+              .map(symbol -> childOutputs.get(outputToInputs.get(symbol).get(finalI)))
+              .collect(Collectors.toList()));
+    }
+    return new MappingCollectOperator(operatorContext, children, mappings);
+  }
+
+  @Override
+  public Operator visitValuesNode(ValuesNode node, LocalExecutionPlanContext context) {
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    // Currently we only support empty values operator
+    assert node.getRowCount() == 0;
+    return new ValuesOperator(operatorContext, ImmutableList.of());
+  }
+
+  @Override
+  public Operator visitRowNumber(RowNumberNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    // row number function goes in the last channel
+    int channel = inputDataTypes.size();
+    outputMappings.put(node.getRowNumberSymbol(), channel);
+
+    return new RowNumberOperator(
+        operatorContext,
+        child,
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        node.getMaxRowCountPerPartition(),
+        10_000);
+  }
+
+  @Override
+  public Operator visitTopKRanking(TopKRankingNode node, LocalExecutionPlanContext context) {
+    Operator child = node.getChild().accept(this, context);
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                MappingCollectOperator.class.getSimpleName());
+
+    List<Symbol> partitionBySymbols = node.getSpecification().getPartitionBy();
+    Map<Symbol, Integer> childLayout =
+        makeLayoutFromOutputSymbols(node.getChild().getOutputSymbols());
+    List<Integer> partitionChannels = getChannelsForSymbols(partitionBySymbols, childLayout);
+    List<TSDataType> inputDataTypes =
+        getOutputColumnTypes(node.getChild(), context.getTypeProvider());
+    List<TSDataType> partitionTypes =
+        partitionChannels.stream().map(inputDataTypes::get).collect(toImmutableList());
+
+    List<Symbol> orderBySymbols = new ArrayList<>();
+    Optional<OrderingScheme> orderingScheme = node.getSpecification().getOrderingScheme();
+    if (orderingScheme.isPresent()) {
+      orderBySymbols = orderingScheme.get().getOrderBy();
+    }
+
+    List<SortOrder> sortOrder = new ArrayList<>();
+    List<Integer> sortChannels = getChannelsForSymbols(orderBySymbols, childLayout);
+    if (orderingScheme.isPresent()) {
+      sortOrder =
+          orderBySymbols.stream()
+              .map(symbol -> orderingScheme.get().getOrdering(symbol))
+              .collect(toImmutableList());
+    }
+
+    ImmutableList.Builder<Integer> outputChannels = ImmutableList.builder();
+    for (int i = 0; i < inputDataTypes.size(); i++) {
+      outputChannels.add(i);
+    }
+
+    // compute the layout of the output from the window operator
+    ImmutableMap.Builder<Symbol, Integer> outputMappings = ImmutableMap.builder();
+    outputMappings.putAll(childLayout);
+
+    if (!node.isPartial() || !partitionChannels.isEmpty()) {
+      // ranking function goes in the last channel
+      int channel = inputDataTypes.size();
+      outputMappings.put(node.getRankingSymbol(), channel);
+    }
+
+    return new TopKRankingOperator(
+        operatorContext,
+        child,
+        node.getRankingType(),
+        inputDataTypes,
+        outputChannels.build(),
+        partitionChannels,
+        partitionTypes,
+        sortChannels,
+        sortOrder,
+        node.getMaxRankingPerPartition(),
+        node.isPartial(),
+        Optional.empty(),
+        1000,
         Optional.empty());
   }
 }

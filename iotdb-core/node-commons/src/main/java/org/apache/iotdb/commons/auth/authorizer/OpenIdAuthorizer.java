@@ -194,11 +194,11 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   private Claims validateToken(String token) {
     return Jwts.parser()
         // Basically ignore the Expiration Date, if there is any???
-        .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000)
-        // .setSigningKey(DatatypeConverter.parseBase64Binary(secret))
-        .setSigningKey(providerKey)
-        .parseClaimsJws(token)
-        .getBody();
+        .clockSkewSeconds(Long.MAX_VALUE / 1000)
+        .verifyWith(providerKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
   }
 
   private String getUsername(Claims claims) {
@@ -226,7 +226,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
    * @param token Usually the JWT but could also be just the name of the user.
    * @return true if the user is an admin
    */
-  @Override
   public boolean isAdmin(String token) {
     Claims claims;
     if (this.loggedClaims.containsKey(token)) {
@@ -260,6 +259,11 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
   @Override
   public void updateUserPassword(String userName, String newPassword) {
+    throwUnsupportedOperationException();
+  }
+
+  @Override
+  public void renameUser(String username, String newUsername) {
     throwUnsupportedOperationException();
   }
 }

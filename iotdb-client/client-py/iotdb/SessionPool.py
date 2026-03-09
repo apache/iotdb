@@ -21,12 +21,14 @@ import time
 from queue import Queue
 from threading import Lock
 
+from tzlocal import get_localzone_name
+
 from iotdb.Session import Session
 
 DEFAULT_MULTIPIE = 5
 DEFAULT_FETCH_SIZE = 5000
 DEFAULT_MAX_RETRY = 3
-DEFAULT_TIME_ZONE = "UTC+8"
+DEFAULT_TIME_ZONE = get_localzone_name()
 SQL_DIALECT = "tree"
 logger = logging.getLogger("IoTDB")
 

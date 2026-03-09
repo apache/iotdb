@@ -23,10 +23,11 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.exception.NotCompatibleTsFileException;
+import org.apache.tsfile.external.commons.io.FileUtils;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
@@ -79,11 +80,15 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
       return;
     }
 
-    writer = new RestorableTsFileIOWriter(tsFile);
+    writer =
+        new RestorableTsFileIOWriter(
+            tsFile, EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
     if (writer.hasCrashed()) {
       byte versionNumber;
       try (TsFileSequenceReader sequenceReader =
-          new TsFileSequenceReader(tsFile.getAbsolutePath())) {
+          new TsFileSequenceReader(
+              tsFile.getAbsolutePath(),
+              EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()))) {
         versionNumber = sequenceReader.readVersionNumber();
       } catch (NotCompatibleTsFileException e) {
         versionNumber = -1;
@@ -93,7 +98,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
         // cannot rewrite a file with V3 header, delete it first
         writer.close();
         tsFile.delete();
-        writer = new RestorableTsFileIOWriter(tsFile);
+        writer =
+            new RestorableTsFileIOWriter(
+                tsFile,
+                EncryptDBUtils.getFirstEncryptParamFromTSFilePath(tsFile.getAbsolutePath()));
       }
     } else {
       reconstructResourceFile();
@@ -114,7 +122,10 @@ public abstract class AbstractTsFileRecoverPerformer implements Closeable {
 
   protected void reconstructResourceFile() throws IOException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
+        new TsFileSequenceReader(
+            tsFileResource.getTsFile().getAbsolutePath(),
+            EncryptDBUtils.getFirstEncryptParamFromTSFilePath(
+                tsFileResource.getTsFile().getAbsolutePath()))) {
       TsFileResourceUtils.updateTsFileResource(reader, tsFileResource);
     }
 

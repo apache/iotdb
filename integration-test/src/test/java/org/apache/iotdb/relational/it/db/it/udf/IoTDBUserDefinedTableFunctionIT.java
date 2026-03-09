@@ -93,9 +93,18 @@ public class IoTDBUserDefinedTableFunctionIT {
           "1,", "2,", "3,", "4,", "5,",
         };
     tableResultSetEqualTest(
+        "select * from split('1,2,3,4,5')", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(
         "select * from table(split('1,2,3,4,5'))", expectedHeader, retArray, DATABASE_NAME);
     tableResultSetEqualTest(
+        "select * from split('1+2+3+4+5','\\+')", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(
         "select * from table(split('1+2+3+4+5','\\+'))", expectedHeader, retArray, DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select * from split(INPUT=>'1-2-3-4-5',split=>'-')",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
     tableResultSetEqualTest(
         "select * from table(split(INPUT=>'1-2-3-4-5',split=>'-'))",
         expectedHeader,
@@ -109,6 +118,11 @@ public class IoTDBUserDefinedTableFunctionIT {
         };
     tableResultSetEqualTest(
         "select * from TABLE(SPLIT('1,2,4,5')) a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select * from SPLIT('1,2,4,5') a(o1) join TABLE(SPLIT('2、3、4', '、')) b(o2) on a.o1=b.o2",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -139,6 +153,11 @@ public class IoTDBUserDefinedTableFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select * from repeat1(vehicle, 2) order by time,repeat_index",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
     expectedHeader = new String[] {"time", "device_id", "s1"};
     retArray =
         new String[] {
@@ -153,6 +172,11 @@ public class IoTDBUserDefinedTableFunctionIT {
         };
     tableResultSetEqualTest(
         "select * from TABLE(repeat2(TABLE(select time, device_id, s1 from vehicle), 2)) order by time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select * from repeat2((select time, device_id, s1 from vehicle), 2) order by time",
         expectedHeader,
         retArray,
         DATABASE_NAME);
@@ -185,6 +209,16 @@ public class IoTDBUserDefinedTableFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select * from "
+            + "REPEAT((select * from EXCLUDE(vehicle, 's2')), 3) a "
+            + "JOIN "
+            + "SPLIT('1,4,6,8,10') b "
+            + "ON a.s1=CAST(b.output AS INT32)"
+            + "ORDER BY time",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
     expectedHeader = new String[] {"device_id", "sum"};
     retArray =
         new String[] {
@@ -198,6 +232,30 @@ public class IoTDBUserDefinedTableFunctionIT {
         expectedHeader,
         retArray,
         DATABASE_NAME);
+    tableResultSetEqualTest(
+        "select device_id, sum(s1) as sum from "
+            + "REPEAT((select * from vehicle where time>1), 3) "
+            + "GROUP BY device_id "
+            + "ORDER BY device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
+  }
+
+  @Test
+  public void testPassThroughPartitionColumn() {
+    SQLFunctionUtils.createUDF(
+        "MY_SELECT", "org.apache.iotdb.db.query.udf.example.relational.MySelectColumn");
+    String[] expectedHeader = new String[] {"s1", "device_id"};
+    String[] retArray =
+        new String[] {
+          "1,d0,", "null,d0,", "3,d0,", "4,d1,",
+        };
+    tableResultSetEqualTest(
+        "select * from MY_SELECT(vehicle PARTITION BY device_id, 's1') ORDER BY device_id",
+        expectedHeader,
+        retArray,
+        DATABASE_NAME);
   }
 
   @Test
@@ -207,66 +265,58 @@ public class IoTDBUserDefinedTableFunctionIT {
     SQLFunctionUtils.createUDF(
         "error", "org.apache.iotdb.db.query.udf.example.relational.MyErrorTableFunction");
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(N=>2))", "Missing required argument: DATA", DATABASE_NAME);
+        "SELECT * FROM repeat(N=>2)", "Missing required argument: DATA", DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(TABLE(vehicle), N=>2))",
+        "SELECT * FROM repeat(vehicle, N=>2)",
         "All arguments must be passed by name or all must be passed positionally",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(2, TABLE(vehicle)))",
+        "SELECT * FROM repeat(2, vehicle)",
         "Invalid argument DATA. Expected table argument, got expression",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(2, TABLE(vehicle)))",
-        "Invalid argument DATA. Expected table argument, got expression",
-        DATABASE_NAME);
-    tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle), N=>TABLE(vehicle)))",
+        "SELECT * FROM repeat(DATA=>vehicle, N=>vehicle)",
         "Invalid argument N. Expected scalar argument, got table",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle), N=>1, N=>2))",
+        "SELECT * FROM repeat(DATA=>vehicle, N=>1, N=>2)",
         "Too many arguments. Expected at most 2 arguments, got 3 arguments",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle), DATA=>TABLE(vehicle)))",
+        "SELECT * FROM repeat(DATA=>vehicle, DATA=>vehicle)",
         "Duplicate argument name: DATA",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle), NUM=>3))",
+        "SELECT * FROM repeat(DATA=>vehicle, NUM=>3)",
         "Unexpected argument name: NUM",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle) PARTITION BY device_id, NUM=>3))",
+        "SELECT * FROM repeat(DATA=>vehicle PARTITION BY device_id, NUM=>3)",
         "Partitioning can not be specified for table argument with row semantics",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(repeat(DATA=>TABLE(vehicle) ORDER BY time, NUM=>3))",
+        "SELECT * FROM repeat(DATA=>vehicle ORDER BY time, NUM=>3)",
         "Ordering can not be specified for table argument with row semantics",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(error(TABLE(vehicle), 0))",
+        "SELECT * FROM error(vehicle, 0)",
         "does not specify required input columns from table argument",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(error(TABLE(vehicle), 1))",
+        "SELECT * FROM error(vehicle, 1)",
         "specifies empty list of required columns from table argument DATA",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(error(TABLE(vehicle), 2))",
+        "SELECT * FROM error(vehicle, 2)",
         "specifies negative index of required column from table argument DATA",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(error(TABLE(vehicle), 3))",
-        "out of bounds for table with 4 columns",
-        DATABASE_NAME);
+        "SELECT * FROM error(vehicle, 3)", "out of bounds for table with 4 columns", DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(error(TABLE(vehicle), 4))",
+        "SELECT * FROM error(vehicle, 4)",
         "specifies required columns from table argument TIMECHO which cannot be found",
         DATABASE_NAME);
     tableAssertTestFail(
-        "SELECT * FROM TABLE(not_register(TABLE(vehicle), 4))",
-        "Unknown function: not_register",
-        DATABASE_NAME);
+        "SELECT * FROM not_register(vehicle, 4)", "Unknown function: not_register", DATABASE_NAME);
   }
 }

@@ -49,7 +49,7 @@ public class GroupNode extends SortNode {
    * orderingScheme may include two parts: PartitionKey and OrderKey. It marks the number of
    * PartitionKey.
    */
-  private int partitionKeyCount;
+  private final int partitionKeyCount;
 
   public GroupNode(PlanNodeId id, PlanNode child, OrderingScheme scheme, int partitionKeyCount) {
     super(id, child, scheme, false, false);

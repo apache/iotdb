@@ -21,7 +21,9 @@ package org.apache.iotdb.commons.udf.builtin.relational.tvf;
 
 import org.apache.iotdb.udf.api.relational.TableFunction;
 import org.apache.iotdb.udf.api.relational.access.Record;
+import org.apache.iotdb.udf.api.relational.table.MapTableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionAnalysis;
+import org.apache.iotdb.udf.api.relational.table.TableFunctionHandle;
 import org.apache.iotdb.udf.api.relational.table.TableFunctionProcessorProvider;
 import org.apache.iotdb.udf.api.relational.table.argument.Argument;
 import org.apache.iotdb.udf.api.relational.table.argument.DescribedSchema;
@@ -41,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.udf.api.relational.table.argument.ScalarArgumentChecker.POSITIVE_LONG_CHECKER;
 
 public class HOPTableFunction implements TableFunction {
 
@@ -63,8 +66,16 @@ public class HOPTableFunction implements TableFunction {
             .type(Type.STRING)
             .defaultValue("time")
             .build(),
-        ScalarParameterSpecification.builder().name(SIZE_PARAMETER_NAME).type(Type.INT64).build(),
-        ScalarParameterSpecification.builder().name(SLIDE_PARAMETER_NAME).type(Type.INT64).build(),
+        ScalarParameterSpecification.builder()
+            .name(SIZE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(SLIDE_PARAMETER_NAME)
+            .addChecker(POSITIVE_LONG_CHECKER)
+            .type(Type.INT64)
+            .build(),
         ScalarParameterSpecification.builder()
             .name(ORIGIN_PARAMETER_NAME)
             .type(Type.TIMESTAMP)
@@ -84,24 +95,43 @@ public class HOPTableFunction implements TableFunction {
             .addField("window_start", Type.TIMESTAMP)
             .addField("window_end", Type.TIMESTAMP)
             .build();
-
+    MapTableFunctionHandle handle =
+        new MapTableFunctionHandle.Builder()
+            .addProperty(
+                ORIGIN_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SLIDE_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue())
+            .addProperty(
+                SIZE_PARAMETER_NAME,
+                ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue())
+            .build();
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
         .properColumnSchema(properColumnSchema)
         .requireRecordSnapshot(false)
         .requiredColumns(DATA_PARAMETER_NAME, Collections.singletonList(requiredIndex))
+        .handle(handle)
         .build();
   }
 
   @Override
-  public TableFunctionProcessorProvider getProcessorProvider(Map<String, Argument> arguments) {
+  public TableFunctionHandle createTableFunctionHandle() {
+    return new MapTableFunctionHandle();
+  }
+
+  @Override
+  public TableFunctionProcessorProvider getProcessorProvider(
+      TableFunctionHandle tableFunctionHandle) {
+    MapTableFunctionHandle mapTableFunctionHandle = (MapTableFunctionHandle) tableFunctionHandle;
     return new TableFunctionProcessorProvider() {
       @Override
       public TableFunctionDataProcessor getDataProcessor() {
         return new HOPDataProcessor(
-            (Long) ((ScalarArgument) arguments.get(ORIGIN_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SLIDE_PARAMETER_NAME)).getValue(),
-            (Long) ((ScalarArgument) arguments.get(SIZE_PARAMETER_NAME)).getValue());
+            (Long) mapTableFunctionHandle.getProperty(ORIGIN_PARAMETER_NAME),
+            (Long) mapTableFunctionHandle.getProperty(SLIDE_PARAMETER_NAME),
+            (Long) mapTableFunctionHandle.getProperty(SIZE_PARAMETER_NAME));
       }
     };
   }
@@ -110,13 +140,13 @@ public class HOPTableFunction implements TableFunction {
 
     private final long slide;
     private final long size;
-    private final long start;
+    private final long origin;
     private long curIndex = 0;
 
     public HOPDataProcessor(long startTime, long slide, long size) {
       this.slide = slide;
       this.size = size;
-      this.start = startTime;
+      this.origin = startTime;
     }
 
     @Override
@@ -127,12 +157,14 @@ public class HOPTableFunction implements TableFunction {
       // find the first windows that satisfy the condition: start + n*slide <= time < start +
       // n*slide + size
       long timeValue = input.getLong(0);
-      long window_start = (timeValue - start - size + slide) / slide * slide;
-      while (window_start <= timeValue && window_start + size > timeValue) {
-        properColumnBuilders.get(0).writeLong(window_start);
-        properColumnBuilders.get(1).writeLong(window_start + size);
-        passThroughIndexBuilder.writeLong(curIndex);
-        window_start += slide;
+      if (timeValue >= origin) {
+        long window_start = origin + (timeValue - origin - size + slide) / slide * slide;
+        while (window_start <= timeValue && window_start + size > timeValue) {
+          properColumnBuilders.get(0).writeLong(window_start);
+          properColumnBuilders.get(1).writeLong(window_start + size);
+          passThroughIndexBuilder.writeLong(curIndex);
+          window_start += slide;
+        }
       }
       curIndex++;
     }

@@ -21,9 +21,11 @@ package org.apache.iotdb.db.storageengine.dataregion.memtable;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.IFullPath;
+import org.apache.iotdb.db.exception.DataTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -125,7 +127,8 @@ public interface IMemTable extends WALEntryValue {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException, MetadataException;
 
   void queryForDeviceRegionScan(
@@ -134,7 +137,8 @@ public interface IMemTable extends WALEntryValue {
       long ttlLowerBound,
       Map<String, List<IChunkMetadata>> chunkMetadataMap,
       Map<String, List<IChunkHandle>> memChunkHandleMap,
-      List<Pair<ModEntry, IMemTable>> modsToMemtabled)
+      List<Pair<ModEntry, IMemTable>> modsToMemtabled,
+      Filter globalTimeFilter)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */
@@ -199,7 +203,5 @@ public interface IMemTable extends WALEntryValue {
 
   void setDatabaseAndDataRegionId(String database, String dataRegionId);
 
-  void markAsNotGeneratedByPipe();
-
-  boolean isTotallyGeneratedByPipe();
+  void checkDataType(InsertNode node) throws DataTypeInconsistentException;
 }

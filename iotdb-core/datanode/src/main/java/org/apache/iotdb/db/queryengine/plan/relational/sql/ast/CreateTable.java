@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nullable;
 
@@ -31,6 +32,9 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class CreateTable extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(CreateTable.class);
+
   private final QualifiedName name;
   private final List<ColumnDefinition> elements;
 
@@ -41,14 +45,14 @@ public class CreateTable extends Statement {
   private final List<Property> properties;
 
   public CreateTable(
-      final NodeLocation location,
+      final @Nullable NodeLocation location,
       final QualifiedName name,
       final List<ColumnDefinition> elements,
       final boolean ifNotExists,
       final @Nullable String charsetName,
       final @Nullable String comment,
       final List<Property> properties) {
-    super(requireNonNull(location, "location is null"));
+    super(location);
     this.name = requireNonNull(name, "name is null");
     this.elements = ImmutableList.copyOf(requireNonNull(elements, "elements is null"));
     this.ifNotExists = ifNotExists;
@@ -122,5 +126,27 @@ public class CreateTable extends Statement {
         .add("charsetName", charsetName)
         .add("properties", properties)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(elements);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
+    return size;
+  }
+
+  protected long ramBytesUsedExcludingInstanceSize() {
+    long size = AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += name == null ? 0L : name.ramBytesUsed();
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(elements);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(properties);
+    size += RamUsageEstimator.sizeOf(charsetName);
+    size += RamUsageEstimator.sizeOf(comment);
+    return size;
   }
 }

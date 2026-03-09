@@ -103,6 +103,36 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opPassword);
 
+    Option opUseSSL =
+        Option.builder(USE_SSL_ARGS)
+            .longOpt(USE_SSL_NAME)
+            .optionalArg(true)
+            .argName(USE_SSL_NAME)
+            .hasArg()
+            .desc(USE_SSL_DESC)
+            .build();
+    options.addOption(opUseSSL);
+
+    Option opTrustStore =
+        Option.builder(TRUST_STORE_ARGS)
+            .longOpt(TRUST_STORE_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_DESC)
+            .build();
+    options.addOption(opTrustStore);
+
+    Option opTrustStorePwd =
+        Option.builder(TRUST_STORE_PWD_ARGS)
+            .longOpt(TRUST_STORE_PWD_NAME)
+            .optionalArg(true)
+            .argName(TRUST_STORE_PWD_NAME)
+            .hasArg()
+            .desc(TRUST_STORE_PWD_DESC)
+            .build();
+    options.addOption(opTrustStorePwd);
+
     return options;
   }
 
@@ -130,19 +160,13 @@ public class OptionsUtil extends Constants {
     Options options = createImportCommonOptions();
 
     Option opDatabase =
-        Option.builder(DB_ARGS)
-            .longOpt(DB_NAME)
-            .argName(DB_ARGS)
-            .hasArg()
-            .required()
-            .desc(DB_DESC)
-            .build();
+        Option.builder(DB_ARGS).longOpt(DB_NAME).argName(DB_ARGS).hasArg().desc(DB_DESC).build();
     options.addOption(opDatabase);
 
     return options;
   }
 
-  public static Options createTreeExportCommonOptions() {
+  public static Options createExportCommonOptions() {
     Options options = createImportCommonOptions();
 
     Option opFile =
@@ -181,48 +205,25 @@ public class OptionsUtil extends Constants {
             .desc(TIMEOUT_DESC)
             .build();
     options.addOption(opTimeOut);
+
+    Option opRpcMaxFrameSize =
+        Option.builder(RPC_MAX_FRAME_SIZE_ARGS)
+            .longOpt(RPC_MAX_FRAME_SIZE_NAME)
+            .argName(RPC_MAX_FRAME_SIZE_NAME)
+            .hasArg()
+            .desc(RPC_MAX_FRAME_SIZE_DESC)
+            .build();
+    options.addOption(opRpcMaxFrameSize);
+
     return options;
   }
 
+  public static Options createTreeExportCommonOptions() {
+    return createExportCommonOptions();
+  }
+
   public static Options createTableExportCommonOptions() {
-    final Options options = createImportCommonOptions();
-
-    Option opFile =
-        Option.builder(TARGET_DIR_ARGS)
-            .required()
-            .longOpt(TARGET_DIR_NAME)
-            .argName(TARGET_DIR_ARGS_NAME)
-            .hasArg()
-            .desc(TARGET_DIR_DESC)
-            .build();
-    options.addOption(opFile);
-
-    Option opOnSuccess =
-        Option.builder(TARGET_FILE_ARGS)
-            .longOpt(TARGET_FILE_NAME)
-            .argName(TARGET_FILE_NAME)
-            .hasArg()
-            .desc(TARGET_FILE_DESC)
-            .build();
-    options.addOption(opOnSuccess);
-
-    Option opQuery =
-        Option.builder(QUERY_COMMAND_ARGS)
-            .longOpt(QUERY_COMMAND_NAME)
-            .argName(QUERY_COMMAND_ARGS_NAME)
-            .hasArg()
-            .desc(QUERY_COMMAND_DESC)
-            .build();
-    options.addOption(opQuery);
-
-    Option opTimeOut =
-        Option.builder(TIMEOUT_ARGS)
-            .longOpt(TIMEOUT_NAME)
-            .argName(TIMEOUT_NAME)
-            .hasArg()
-            .desc(TIMEOUT_DESC)
-            .build();
-    options.addOption(opTimeOut);
+    Options options = createExportCommonOptions();
 
     Option opDatabase =
         Option.builder(DB_ARGS)
@@ -968,7 +969,6 @@ public class OptionsUtil extends Constants {
 
   public static Options createSubscriptionTsFileOptions() {
     Options options = new Options();
-
     Option opSqlDialect =
         Option.builder(SQL_DIALECT_ARGS)
             .longOpt(SQL_DIALECT_ARGS)
@@ -1036,7 +1036,6 @@ public class OptionsUtil extends Constants {
             .desc(TABLE_DESC)
             .build();
     options.addOption(opTable);
-
     Option opStartTime =
         Option.builder(START_TIME_ARGS)
             .longOpt(START_TIME_ARGS)
@@ -1073,7 +1072,8 @@ public class OptionsUtil extends Constants {
             .build();
     options.addOption(opThreadNum);
 
-    Option opHelp = Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg().desc(HELP_DESC).build();
+    Option opHelp =
+        Option.builder(HELP_ARGS).longOpt(HELP_ARGS).hasArg(false).desc(HELP_DESC).build();
     options.addOption(opHelp);
     return options;
   }

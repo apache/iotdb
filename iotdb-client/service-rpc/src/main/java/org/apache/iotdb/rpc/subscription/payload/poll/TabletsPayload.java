@@ -26,13 +26,17 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class TabletsPayload implements SubscriptionPollPayload {
 
   /** A batch of tablets. */
-  private transient List<Tablet> tablets = new ArrayList<>();
+  private transient Map<String, List<Tablet>> tablets;
 
   /**
    * The field to be filled in the next {@link PollTabletsPayload} request.
@@ -49,11 +53,24 @@ public class TabletsPayload implements SubscriptionPollPayload {
   public TabletsPayload() {}
 
   public TabletsPayload(final List<Tablet> tablets, final int nextOffset) {
+    if (tablets.isEmpty()) {
+      this.tablets = Collections.emptyMap();
+    } else {
+      this.tablets = Collections.singletonMap(null, tablets);
+    }
+    this.nextOffset = nextOffset;
+  }
+
+  public TabletsPayload(final Map<String, List<Tablet>> tablets, final int nextOffset) {
     this.tablets = tablets;
     this.nextOffset = nextOffset;
   }
 
   public List<Tablet> getTablets() {
+    return tablets.values().stream().flatMap(List::stream).collect(Collectors.toList());
+  }
+
+  public Map<String, List<Tablet>> getTabletsWithDBInfo() {
     return tablets;
   }
 
@@ -64,20 +81,32 @@ public class TabletsPayload implements SubscriptionPollPayload {
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(tablets.size(), stream);
-    for (final Tablet tablet : tablets) {
-      tablet.serialize(stream);
+    for (Map.Entry<String, List<Tablet>> entry : tablets.entrySet()) {
+      final String databaseName = entry.getKey();
+      final List<Tablet> tabletList = entry.getValue();
+      ReadWriteIOUtils.write(databaseName, stream);
+      ReadWriteIOUtils.write(tabletList.size(), stream);
+      for (final Tablet tablet : tabletList) {
+        tablet.serialize(stream);
+      }
     }
     ReadWriteIOUtils.write(nextOffset, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
-    final List<Tablet> tablets = new ArrayList<>();
+    final Map<String, List<Tablet>> tabletsWithDBInfo = new HashMap<>();
     final int size = ReadWriteIOUtils.readInt(buffer);
     for (int i = 0; i < size; ++i) {
-      tablets.add(Tablet.deserialize(buffer));
+      final String databaseName = ReadWriteIOUtils.readString(buffer);
+      final int tabletsSize = ReadWriteIOUtils.readInt(buffer);
+      final List<Tablet> tablets = new ArrayList<>();
+      for (int j = 0; j < tabletsSize; ++j) {
+        tablets.add(Tablet.deserialize(buffer));
+      }
+      tabletsWithDBInfo.put(databaseName, tablets);
     }
-    this.tablets = tablets;
+    this.tablets = tabletsWithDBInfo;
     this.nextOffset = ReadWriteIOUtils.readInt(buffer);
     return this;
   }

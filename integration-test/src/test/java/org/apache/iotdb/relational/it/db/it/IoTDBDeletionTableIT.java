@@ -23,6 +23,7 @@ import org.apache.iotdb.db.it.utils.TestUtils;
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ManualIT;
 import org.apache.iotdb.itbase.category.TableClusterIT;
@@ -32,8 +33,12 @@ import org.apache.iotdb.itbase.exception.ParallelRequestTimeoutException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.ColumnCategory;
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.write.record.Tablet;
+import org.awaitility.Awaitility;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -47,13 +52,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -63,9 +73,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import static org.apache.iotdb.relational.it.session.IoTDBSessionRelationalIT.genValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -87,6 +100,17 @@ public class IoTDBDeletionTableIT {
       "INSERT INTO test.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
           + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
 
+  private final String insertDeletionTemplate =
+      "INSERT INTO deletion.vehicle%d(time, deviceId, s0,s1,s2,s3,s4"
+          + ") VALUES(%d,'d%d',%d,%d,%f,%s,%b)";
+
+  private static String sequenceDataDir = "data" + File.separator + "sequence";
+  private static String unsequenceDataDir = "data" + File.separator + "unsequence";
+
+  private static final String RESOURCE = ".resource";
+  private static final String MODS = ".mods";
+  private static final String TSFILE = ".tsfile";
+
   @BeforeClass
   public static void setUpClass() {
     Locale.setDefault(Locale.ENGLISH);
@@ -98,6 +122,8 @@ public class IoTDBDeletionTableIT {
         .setMemtableSizeThreshold(10000);
     // Adjust MemTable threshold size to make it flush automatically
     EnvFactory.getEnv().getConfig().getDataNodeConfig().setCompactionScheduleInterval(5000);
+    // avoid inconsistency caused by leader migration
+    EnvFactory.getEnv().getConfig().getConfigNodeConfig().setLeaderDistributionPolicy("HASH");
     EnvFactory.getEnv().initClusterEnvironment();
   }
 
@@ -280,7 +306,7 @@ public class IoTDBDeletionTableIT {
         statement.execute("DELETE FROM vehicleNonExist");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals("701: Table vehiclenonexist not found", e.getMessage());
+        assertEquals("550: Table 'test.vehiclenonexist' does not exist.", e.getMessage());
       }
 
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle1")) {
@@ -456,6 +482,26 @@ public class IoTDBDeletionTableIT {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
       statement.execute("use test");
+      statement.execute("DELETE FROM vehicle5");
+      try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
+        int cnt = 0;
+        while (set.next()) {
+          cnt++;
+        }
+        assertEquals(0, cnt);
+      }
+      cleanData(5);
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testFullDeleteWithoutWhereClauseByDifferentTime() throws SQLException {
+    prepareMultiDeviceDifferentTimeData(5, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
       statement.execute("DELETE FROM vehicle5");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM vehicle5")) {
         int cnt = 0;
@@ -1610,6 +1656,27 @@ public class IoTDBDeletionTableIT {
           }
 
           // check the point count
+          int finalI = i;
+          Awaitility.await()
+              .atMost(5, TimeUnit.MINUTES)
+              .pollDelay(2, TimeUnit.SECONDS)
+              .pollInterval(2, TimeUnit.SECONDS)
+              .until(
+                  () -> {
+                    ResultSet set =
+                        statement.executeQuery(
+                            "select count(*) from table"
+                                + testNum
+                                + " where time <= "
+                                + currentWrittenTime
+                                + " AND deviceId = 'd"
+                                + finalI
+                                + "'");
+                    assertTrue(set.next());
+                    long expectedCnt =
+                        currentWrittenTime + 1 - deviceDeletedPointCounters.get(finalI).get();
+                    return expectedCnt == set.getLong(1);
+                  });
           try (ResultSet set =
               statement.executeQuery(
                   "select count(*) from table"
@@ -1625,8 +1692,8 @@ public class IoTDBDeletionTableIT {
               allDeviceUndeletedRanges.set(i, mergeRanges(deviceUndeletedRanges));
               List<TimeRange> remainingRanges =
                   collectDataRanges(statement, currentWrittenTime, testNum);
-              LOGGER.debug("Expected ranges: {}", deviceUndeletedRanges);
-              LOGGER.debug("Remaining ranges: {}", remainingRanges);
+              LOGGER.info("Expected ranges: {}", deviceUndeletedRanges);
+              LOGGER.info("Remaining ranges: {}", remainingRanges);
               fail(
                   String.format(
                       "Inconsistent number of points %d - %d", expectedCnt, set.getLong(1)));
@@ -1700,7 +1767,11 @@ public class IoTDBDeletionTableIT {
     List<TimeRange> ranges = new ArrayList<>();
     try (ResultSet set =
         statement.executeQuery(
-            "select time from table" + testNum + " where time <= " + timeUpperBound)) {
+            "select time from table"
+                + testNum
+                + " where time <= "
+                + timeUpperBound
+                + " order by time")) {
       while (set.next()) {
         long time = set.getLong(1);
         if (ranges.isEmpty()) {
@@ -2003,12 +2074,419 @@ public class IoTDBDeletionTableIT {
     }
   }
 
+  @Test
+  public void testCompletelyDeleteTable() throws SQLException {
+    int testNum = 1;
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 1);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 1);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(500, TimeUnit.MILLISECONDS)
+          .pollInterval(500, TimeUnit.MILLISECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted seq file : {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
+                }
+                return allPass;
+              });
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testMultiDeviceCompletelyDeleteTable() throws SQLException {
+    int testNum = 1;
+    cleanDeletionDatabase();
+    prepareDeletionDatabase();
+    prepareMultiDeviceDifferentTimeData(testNum, 2);
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+
+      statement.execute("DROP TABLE vehicle" + testNum);
+
+      statement.execute("flush");
+
+      statement.execute(
+          String.format(
+              "CREATE TABLE vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      try (ResultSet set = statement.executeQuery("SELECT * FROM vehicle" + testNum)) {
+        assertFalse(set.next());
+      }
+
+      prepareData(testNum, 2);
+
+      statement.execute("DELETE FROM vehicle" + testNum + " WHERE time <= 1000");
+
+      Awaitility.await()
+          .atMost(5, TimeUnit.MINUTES)
+          .pollDelay(2, TimeUnit.SECONDS)
+          .pollInterval(2, TimeUnit.SECONDS)
+          .until(
+              () -> {
+                AtomicBoolean completelyDeleteSuccess = new AtomicBoolean(true);
+                boolean allPass = true;
+                for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+                  String dataNodeDir = wrapper.getDataNodeDir();
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + sequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + sequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  if (Paths.get(
+                          dataNodeDir
+                              + File.separator
+                              + unsequenceDataDir
+                              + File.separator
+                              + "deletion")
+                      .toFile()
+                      .exists()) {
+                    try (Stream<Path> s =
+                        Files.walk(
+                            Paths.get(
+                                dataNodeDir
+                                    + File.separator
+                                    + unsequenceDataDir
+                                    + File.separator
+                                    + "deletion"))) {
+                      s.forEach(
+                          source -> {
+                            if (source.toString().endsWith(RESOURCE)
+                                || source.toString().endsWith(MODS)
+                                || source.toString().endsWith(TSFILE)) {
+                              if (source.toFile().length() > 0) {
+                                LOGGER.error(
+                                    "[testMultiDeviceCompletelyDeleteTable] undeleted unseq file: {}",
+                                    source.toFile().getAbsolutePath());
+                                completelyDeleteSuccess.set(false);
+                              }
+                            }
+                          });
+                    }
+                  }
+
+                  allPass = allPass && completelyDeleteSuccess.get();
+                }
+                return allPass;
+              });
+    }
+    cleanData(testNum);
+  }
+
+  @Test
+  public void testDeleteDataByTag() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement(
+          "CREATE TABLE IF NOT EXISTS delete_by_tag (deviceId STRING TAG, s1 INT32 FIELD)");
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (1, 'sensor', 1)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (2, 'sensor', 2)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (3, 'sensor', 3)");
+      session.executeNonQueryStatement(
+          "insert into delete_by_tag (time, deviceId, s1) values (4, 'sensor', 4)");
+      session.executeNonQueryStatement("FLUSH");
+
+      session.executeNonQueryStatement("DELETE FROM delete_by_tag WHERE deviceId = 'sensor'");
+
+      dataSet = session.executeQueryStatement("select * from delete_by_tag order by time");
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS delete_by_tag");
+      }
+    }
+  }
+
+  @Test
+  public void testDropAndAlter() throws IoTDBConnectionException, StatementExecutionException {
+    try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+      session.executeNonQueryStatement("CREATE TABLE IF NOT EXISTS drop_and_alter (s1 int32)");
+
+      // time=1 and time=2 are INT32 and deleted by drop column
+      Tablet tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 1);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 1));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.INT32),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 2);
+      tablet.addValue("s1", 0, genValue(TSDataType.INT32, 2));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+
+      // time=3 and time=4 are STRING
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 3);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 3));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.STRING),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 4);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 4));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter DROP COLUMN s1");
+      session.executeNonQueryStatement("ALTER TABLE drop_and_alter ADD COLUMN s1 TEXT");
+
+      // time=5 and time=6 are TEXT
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 5);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 5));
+      session.insert(tablet);
+      tablet.reset();
+
+      session.executeNonQueryStatement("FLUSH");
+
+      tablet =
+          new Tablet(
+              "drop_and_alter",
+              Collections.singletonList("s1"),
+              Collections.singletonList(TSDataType.TEXT),
+              Collections.singletonList(ColumnCategory.FIELD));
+      tablet.addTimestamp(0, 6);
+      tablet.addValue("s1", 0, genValue(TSDataType.STRING, 6));
+      session.insert(tablet);
+      tablet.reset();
+
+      SessionDataSet dataSet =
+          session.executeQueryStatement("select * from drop_and_alter order by time");
+      // s1 is dropped but the time should remain
+      RowRecord rec;
+      int cnt = 0;
+      for (int i = 1; i < 7; i++) {
+        rec = dataSet.next();
+        assertEquals(i, rec.getFields().get(0).getLongV());
+        LOGGER.error(
+            "time is {}, value is {}, value type is {}",
+            rec.getFields().get(0).getLongV(),
+            rec.getFields().get(1),
+            rec.getFields().get(1).getDataType());
+        //        assertNull(rec.getFields().get(1).getDataType());
+        //        Assert.assertEquals(TSDataType.TEXT, rec.getFields().get(1).getDataType());
+        cnt++;
+      }
+      Assert.assertEquals(6, cnt);
+      assertFalse(dataSet.hasNext());
+    } finally {
+      try (ITableSession session = EnvFactory.getEnv().getTableSessionConnectionWithDB("test")) {
+        session.executeNonQueryStatement("DROP TABLE IF EXISTS drop_and_alter");
+      }
+    }
+  }
+
   private static void prepareDatabase() {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
         statement.execute(sql);
+      }
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private static void prepareDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE IF NOT EXISTS deletion");
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private void cleanDeletionDatabase() {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("DROP DATABASE IF EXISTS deletion");
+      for (DataNodeWrapper wrapper : EnvFactory.getEnv().getDataNodeWrapperList()) {
+        String dataNodeDir = wrapper.getDataNodeDir();
+        File targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
+
+        targetFile =
+            Paths.get(dataNodeDir + File.separator + sequenceDataDir + File.separator + "deletion")
+                .toFile();
+        if (targetFile.exists()) {
+          targetFile.delete();
+        }
       }
     } catch (Exception e) {
       fail(e.getMessage());
@@ -2057,6 +2535,85 @@ public class IoTDBDeletionTableIT {
           statement.execute(
               String.format(
                   insertTemplate, testNum, i, d, i, i, (double) i, "'" + i + "'", i % 2 == 0));
+        }
+      }
+    }
+  }
+
+  private void prepareMultiDeviceDifferentTimeData(int testNum, int deviceNum) throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
+        Statement statement = connection.createStatement()) {
+      statement.execute("use deletion");
+      statement.execute(
+          String.format(
+              "CREATE TABLE IF NOT EXISTS vehicle%d(deviceId STRING TAG, s0 INT32 FIELD, s1 INT64 FIELD, s2 FLOAT FIELD, s3 TEXT FIELD, s4 BOOLEAN FIELD)",
+              testNum));
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare seq file
+        for (int i = 201 * (d + 1); i <= 300 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare unseq File
+        for (int i = 1 * (d + 1); i <= 100 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+      }
+      statement.execute("flush");
+
+      for (int d = 0; d < deviceNum; d++) {
+        // prepare BufferWrite cache
+        for (int i = 301 * (d + 1); i <= 400 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
+        }
+        // prepare Overflow cache
+        for (int i = 101 * (d + 1); i <= 200 * (d + 1); i++) {
+          statement.execute(
+              String.format(
+                  insertDeletionTemplate,
+                  testNum,
+                  i,
+                  d,
+                  i,
+                  i,
+                  (double) i,
+                  "'" + i + "'",
+                  i % 2 == 0));
         }
       }
     }

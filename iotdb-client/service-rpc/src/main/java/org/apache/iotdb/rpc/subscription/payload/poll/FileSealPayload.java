@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.rpc.subscription.payload.poll;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -34,6 +35,9 @@ public class FileSealPayload implements SubscriptionPollPayload {
   /** The length of the file. */
   private transient long fileLength;
 
+  /** The database name of the file (for table model only). */
+  @Nullable private transient String databaseName;
+
   public String getFileName() {
     return fileName;
   }
@@ -42,23 +46,31 @@ public class FileSealPayload implements SubscriptionPollPayload {
     return fileLength;
   }
 
+  public String getDatabaseName() {
+    return databaseName;
+  }
+
   public FileSealPayload() {}
 
-  public FileSealPayload(final String fileName, final long fileLength) {
+  public FileSealPayload(
+      final String fileName, final long fileLength, @Nullable final String databaseName) {
     this.fileName = fileName;
     this.fileLength = fileLength;
+    this.databaseName = databaseName;
   }
 
   @Override
   public void serialize(final DataOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(fileName, stream);
     ReadWriteIOUtils.write(fileLength, stream);
+    ReadWriteIOUtils.write(databaseName, stream);
   }
 
   @Override
   public SubscriptionPollPayload deserialize(final ByteBuffer buffer) {
     this.fileName = ReadWriteIOUtils.readString(buffer);
     this.fileLength = ReadWriteIOUtils.readLong(buffer);
+    this.databaseName = ReadWriteIOUtils.readString(buffer);
     return this;
   }
 
@@ -72,16 +84,23 @@ public class FileSealPayload implements SubscriptionPollPayload {
     }
     final FileSealPayload that = (FileSealPayload) obj;
     return Objects.equals(this.fileName, that.fileName)
-        && Objects.equals(this.fileLength, that.fileLength);
+        && Objects.equals(this.fileLength, that.fileLength)
+        && Objects.equals(this.databaseName, that.databaseName);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(fileName, fileLength);
+    return Objects.hash(fileName, fileLength, databaseName);
   }
 
   @Override
   public String toString() {
-    return "FileSealPayload{fileName=" + fileName + ", fileLength=" + fileLength + "}";
+    return "FileSealPayload{fileName="
+        + fileName
+        + ", fileLength="
+        + fileLength
+        + ", databaseName="
+        + databaseName
+        + "}";
   }
 }

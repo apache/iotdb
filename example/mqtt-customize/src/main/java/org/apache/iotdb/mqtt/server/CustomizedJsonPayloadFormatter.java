@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.mqtt.server;
 
-import org.apache.iotdb.db.protocol.mqtt.Message;
-import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
-import org.apache.iotdb.db.protocol.mqtt.TreeMessage;
+import org.apache.iotdb.mqtt.Message;
+import org.apache.iotdb.mqtt.PayloadFormatter;
+import org.apache.iotdb.mqtt.TreeMessage;
 
 import io.netty.buffer.ByteBuf;
+import org.apache.tsfile.external.commons.lang3.NotImplementedException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,7 +34,7 @@ import java.util.List;
 public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
   @Override
-  public List<Message> format(ByteBuf payload) {
+  public List<Message> format(String topic, ByteBuf payload) {
     // Suppose the payload is a json format
     if (payload == null) {
       return Collections.emptyList();
@@ -52,6 +53,12 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
       ret.add(message);
     }
     return ret;
+  }
+
+  @Override
+  @Deprecated
+  public List<Message> format(ByteBuf payload) {
+    throw new NotImplementedException();
   }
 
   @Override

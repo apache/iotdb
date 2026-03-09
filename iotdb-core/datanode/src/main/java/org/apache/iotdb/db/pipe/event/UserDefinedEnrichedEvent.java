@@ -48,7 +48,9 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         enrichedEvent.getPipeTaskMeta(),
         enrichedEvent.getTreePattern(),
         enrichedEvent.getTablePattern(),
+        enrichedEvent.getUserId(),
         enrichedEvent.getUserName(),
+        enrichedEvent.getCliHostname(),
         enrichedEvent.isSkipIfNoPrivileges(),
         enrichedEvent.getStartTime(),
         enrichedEvent.getEndTime());
@@ -82,7 +84,9 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -92,7 +96,9 @@ public class UserDefinedEnrichedEvent extends EnrichedEvent {
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);

@@ -37,8 +37,30 @@
             <outputDirectory>conf</outputDirectory>
         </fileSet>
         <fileSet>
-            <directory>src/assembly/resources/sbin</directory>
+            <directory>${project.basedir}/../../scripts/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+            <includes>
+                <include>confignode-env.*</include>
+                <include>**/confignode-env.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/sbin</directory>
             <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>*confignode.*</include>
+                <include>**/*confignode.*</include>
+            </includes>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/../../scripts/tools</directory>
+            <outputDirectory>tools</outputDirectory>
+            <includes>
+                <include>*confignode.*</include>
+                <include>**/*confignode.*</include>
+            </includes>
             <fileMode>0755</fileMode>
         </fileSet>
     </fileSets>
@@ -48,8 +70,8 @@
             <destName>conf/iotdb-system.properties</destName>
         </file>
         <file>
-            <source>${project.basedir}/../node-commons/src/assembly/resources/sbin/iotdb-common.sh</source>
-            <destName>sbin/iotdb-common.sh</destName>
+            <source>${project.basedir}/../../scripts/conf/iotdb-common.sh</source>
+            <destName>conf/iotdb-common.sh</destName>
         </file>
     </files>
 </assembly>

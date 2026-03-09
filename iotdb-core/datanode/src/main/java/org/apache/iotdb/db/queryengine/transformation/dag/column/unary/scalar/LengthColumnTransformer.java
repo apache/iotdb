@@ -20,40 +20,18 @@
 package org.apache.iotdb.db.queryengine.transformation.dag.column.unary.scalar;
 
 import org.apache.iotdb.db.queryengine.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.queryengine.transformation.dag.column.unary.UnaryColumnTransformer;
 
-import org.apache.tsfile.block.column.Column;
-import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.read.common.type.Type;
+import org.apache.tsfile.utils.Binary;
 
-public class LengthColumnTransformer extends UnaryColumnTransformer {
-
+public class LengthColumnTransformer extends AbstractLengthColumnTransformer {
   public LengthColumnTransformer(Type returnType, ColumnTransformer childColumnTransformer) {
     super(returnType, childColumnTransformer);
   }
 
   @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (!column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeInt(currentValue.length());
-      } else {
-        columnBuilder.appendNull();
-      }
-    }
-  }
-
-  @Override
-  protected void doTransform(Column column, ColumnBuilder columnBuilder, boolean[] selection) {
-    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      if (selection[i] && !column.isNull(i)) {
-        String currentValue = column.getBinary(i).getStringValue(TSFileConfig.STRING_CHARSET);
-        columnBuilder.writeInt(currentValue.length());
-      } else {
-        columnBuilder.appendNull();
-      }
-    }
+  protected long transformNonNullValue(Binary binary) {
+    return binary.getStringValue(TSFileConfig.STRING_CHARSET).length();
   }
 }

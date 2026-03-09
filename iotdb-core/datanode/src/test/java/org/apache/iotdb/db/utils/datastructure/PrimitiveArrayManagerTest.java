@@ -22,6 +22,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.rescon.memory.PrimitiveArrayManager;
+import org.apache.iotdb.db.utils.TSDataTypeTestUtils;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
@@ -58,20 +59,13 @@ public class PrimitiveArrayManagerTest {
             / AMPLIFICATION_FACTOR;
     // LIMITS should be updated if (TOTAL_ALLOCATION_REQUEST_COUNT.get() > limitUpdateThreshold)
     int totalDataTypeSize = 0;
-    for (TSDataType dataType : TSDataType.values()) {
-      // VECTOR and UNKNOWN are ignored
-      if (dataType.equals(TSDataType.VECTOR) || dataType.equals(TSDataType.UNKNOWN)) {
-        continue;
-      }
+    for (TSDataType dataType : TSDataTypeTestUtils.getSupportedTypes()) {
       totalDataTypeSize += dataType.getDataTypeSize();
     }
 
     double limit = POOLED_ARRAYS_MEMORY_THRESHOLD / ARRAY_SIZE / totalDataTypeSize;
     for (int i = 0; i < limit + 1; i++) {
-      for (TSDataType type : TSDataType.values()) {
-        if (type.equals(TSDataType.VECTOR) || type.equals(TSDataType.UNKNOWN)) {
-          continue;
-        }
+      for (TSDataType type : TSDataTypeTestUtils.getSupportedTypes()) {
         Object o = PrimitiveArrayManager.allocate(type);
         switch (type) {
           case BOOLEAN:
@@ -98,6 +92,7 @@ public class PrimitiveArrayManagerTest {
             break;
           case TEXT:
           case BLOB:
+          case OBJECT:
           case STRING:
             Assert.assertTrue(o instanceof Binary[]);
             Assert.assertEquals(ARRAY_SIZE, ((Binary[]) o).length);

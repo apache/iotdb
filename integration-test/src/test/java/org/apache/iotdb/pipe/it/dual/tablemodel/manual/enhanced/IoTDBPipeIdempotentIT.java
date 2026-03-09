@@ -59,9 +59,22 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testCreateTableViewIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.emptyList(), "create view test(s1 int32 field) restrict as root.a.**");
+  }
+
+  @Test
   public void testAlterTableAddColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table test()"), "alter table test add column a id");
+        Collections.singletonList("create table test()"), "alter table test add column a tag");
+  }
+
+  @Test
+  public void testAlterViewAddColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
+        "alter view test add column a tag");
   }
 
   @Test
@@ -72,10 +85,24 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testAlterViewSetPropertiesIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
+        "alter view test set properties ttl=100");
+  }
+
+  @Test
   public void testAlterTableDropColumnIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create table test(a id, b attribute, c int32)"),
+        Collections.singletonList("create table test(a tag, b attribute, c int32)"),
         "alter table test drop column b");
+  }
+
+  @Test
+  public void testAlterViewDropColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(a tag, s1 int32 field) restrict as root.a.**"),
+        "alter view test drop column s1");
   }
 
   @Test
@@ -84,14 +111,35 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   }
 
   @Test
+  public void testDropViewIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
+        "drop view test");
+  }
+
+  @Test
+  public void testRenameViewColumnIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(a tag, s1 int32 field) restrict as root.a.**"),
+        "alter view test rename column a to b");
+  }
+
+  @Test
+  public void testRenameViewIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList("create view test(s1 int32 field) restrict as root.a.**"),
+        "alter view test rename to test1");
+  }
+
+  @Test
   public void testTableCreateUserIdempotent() throws Exception {
-    testTableConfigIdempotent(Collections.emptyList(), "create user newUser 'password'");
+    testTableConfigIdempotent(Collections.emptyList(), "create user newUser 'password123456'");
   }
 
   @Test
   public void testTableDropUserIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"), "drop user newUser");
+        Collections.singletonList("create user newUser 'password123456'"), "drop user newUser");
   }
 
   @Test
@@ -108,14 +156,14 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testTableAlterUserIdempotent3() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"),
-        "alter user newUser set password 'passwd'");
+        Collections.singletonList("create user newUser 'password123456'"),
+        "alter user newUser set password 'passwd123456789'");
   }
 
   @Test
   public void testTableGrantRoleToUserIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Arrays.asList("create user newUser 'password'", "create role newRole"),
+        Arrays.asList("create user newUser 'password123456'", "create role newRole"),
         "grant role newRole to newUser");
   }
 
@@ -123,7 +171,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   public void testTableRevokeRoleFromUserIdempotent() throws Exception {
     testTableConfigIdempotent(
         Arrays.asList(
-            "create user newUser 'password'",
+            "create user newUser 'password123456'",
             "create role newRole",
             "grant role newRole to newUser"),
         "revoke role newRole from newUser");
@@ -132,7 +180,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   @Test
   public void testTableGrantIdempotent() throws Exception {
     testTableConfigIdempotent(
-        Collections.singletonList("create user newUser 'password'"),
+        Collections.singletonList("create user newUser 'password123456'"),
         "grant all to user newUser with grant option");
   }
 
@@ -140,7 +188,7 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
   public void testTableRevokeIdempotent() throws Exception {
     testTableConfigIdempotent(
         Arrays.asList(
-            "create user newUser 'password'", "grant all to user newUser with grant option"),
+            "create user newUser 'password123456'", "grant all to user newUser with grant option"),
         "revoke all from user newUser");
   }
 
@@ -156,6 +204,14 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
         Collections.singletonList("create table test(a tag)"), "COMMENT ON COLUMN test.a IS 'tag'");
   }
 
+  @Test
+  public void testAlterColumnDataTypeIdempotent() throws Exception {
+    testTableConfigIdempotent(
+        Collections.singletonList(
+            "CREATE TABLE t1 (time TIMESTAMP TIME,dId STRING TAG,s1 INT32 FIELD)"),
+        "ALTER TABLE t1 ALTER COLUMN s1 SET DATA TYPE INT64");
+  }
+
   private void testTableConfigIdempotent(final List<String> beforeSqlList, final String testSql)
       throws Exception {
     final String database = "test";
@@ -167,48 +223,40 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeTableModelDualManualIT {
 
     try (final SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
-      final Map<String, String> extractorAttributes = new HashMap<>();
+      final Map<String, String> sourceAttributes = new HashMap<>();
       final Map<String, String> processorAttributes = new HashMap<>();
-      final Map<String, String> connectorAttributes = new HashMap<>();
+      final Map<String, String> sinkAttributes = new HashMap<>();
 
-      extractorAttributes.put("extractor.inclusion", "all");
-      extractorAttributes.put("extractor.inclusion.exclusion", "");
-      extractorAttributes.put("extractor.forwarding-pipe-requests", "false");
-      extractorAttributes.put("extractor.capture.table", "true");
-      extractorAttributes.put("extractor.capture.tree", "false");
-      extractorAttributes.put("user", "root");
+      sourceAttributes.put("source.inclusion", "all");
+      sourceAttributes.put("source.inclusion.exclusion", "");
+      sourceAttributes.put("source.forwarding-pipe-requests", "false");
+      sourceAttributes.put("source.capture.table", "true");
+      sourceAttributes.put("source.capture.tree", "false");
+      sourceAttributes.put("user", "root");
 
-      connectorAttributes.put("connector", "iotdb-thrift-connector");
-      connectorAttributes.put("connector.ip", receiverIp);
-      connectorAttributes.put("connector.port", Integer.toString(receiverPort));
-      connectorAttributes.put("connector.batch.enable", "false");
-      connectorAttributes.put("connector.exception.conflict.resolve-strategy", "retry");
-      connectorAttributes.put("connector.exception.conflict.retry-max-time-seconds", "-1");
+      sinkAttributes.put("sink", "iotdb-thrift-sink");
+      sinkAttributes.put("sink.ip", receiverIp);
+      sinkAttributes.put("sink.port", Integer.toString(receiverPort));
+      sinkAttributes.put("sink.batch.enable", "false");
+      sinkAttributes.put("sink.exception.conflict.resolve-strategy", "retry");
+      sinkAttributes.put("sink.exception.conflict.retry-max-time-seconds", "-1");
 
       final TSStatus status =
           client.createPipe(
-              new TCreatePipeReq("testPipe", connectorAttributes)
-                  .setExtractorAttributes(extractorAttributes)
+              new TCreatePipeReq("testPipe", sinkAttributes)
+                  .setExtractorAttributes(sourceAttributes)
                   .setProcessorAttributes(processorAttributes));
 
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }
 
-    if (!TestUtils.tryExecuteNonQueriesWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList)) {
-      return;
-    }
+    TestUtils.executeNonQueries(
+        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, beforeSqlList, null);
 
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql)) {
-      return;
-    }
+    TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, receiverEnv, testSql, null);
 
     // Create an idempotent conflict
-    if (!TestUtils.tryExecuteNonQueryWithRetry(
-        database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql)) {
-      return;
-    }
+    TestUtils.executeNonQuery(database, BaseEnv.TABLE_SQL_DIALECT, senderEnv, testSql, null);
 
     TableModelUtils.createDatabase(senderEnv, "test2");
 

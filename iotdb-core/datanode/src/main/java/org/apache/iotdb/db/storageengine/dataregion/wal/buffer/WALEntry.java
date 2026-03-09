@@ -26,6 +26,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.ObjectNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.AbstractMemTable;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.IMemTable;
@@ -77,17 +78,19 @@ public abstract class WALEntry implements SerializedSize {
       this.type = WALEntryType.CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE;
     } else if (value instanceof RelationalDeleteDataNode) {
       this.type = WALEntryType.RELATIONAL_DELETE_DATA_NODE;
+    } else if (value instanceof ObjectNode) {
+      this.type = WALEntryType.OBJECT_FILE_NODE;
     } else {
       throw new RuntimeException("Unknown WALEntry type");
     }
-    walFlushListener = new WALFlushListener(wait, value);
+    walFlushListener = new WALFlushListener(wait);
   }
 
   protected WALEntry(WALEntryType type, long memTableId, WALEntryValue value, boolean wait) {
     this.type = type;
     this.memTableId = memTableId;
     this.value = value;
-    this.walFlushListener = new WALFlushListener(wait, value);
+    this.walFlushListener = new WALFlushListener(wait);
   }
 
   public abstract void serialize(IWALByteBufferView buffer);
@@ -133,6 +136,9 @@ public abstract class WALEntry implements SerializedSize {
         break;
       case CONTINUOUS_SAME_SEARCH_INDEX_SEPARATOR_NODE:
         value = (ContinuousSameSearchIndexSeparatorNode) PlanNodeType.deserializeFromWAL(stream);
+        break;
+      case OBJECT_FILE_NODE:
+        value = (ObjectNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       default:
         throw new RuntimeException("Unknown WALEntry type " + type);
@@ -198,4 +204,9 @@ public abstract class WALEntry implements SerializedSize {
   public abstract boolean isSignal();
 
   public abstract long getMemorySize();
+
+  @Override
+  public String toString() {
+    return "WALEntry{" + "type=" + type + ", memTableId=" + memTableId + ", value=" + value + '}';
+  }
 }

@@ -36,7 +36,7 @@ public class BooleanLeastColumnTransformer extends AbstractGreatestLeastColumnTr
         allNull = false;
         if (!column.getBoolean(index)) {
           returnType.writeBoolean(builder, false);
-          break;
+          return;
         }
       }
     }

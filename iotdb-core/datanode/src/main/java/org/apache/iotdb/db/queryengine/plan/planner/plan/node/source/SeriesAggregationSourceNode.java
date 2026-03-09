@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.AggregationNode.getDeduplicatedDescriptors;
+
 public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column in
@@ -103,7 +105,7 @@ public abstract class SeriesAggregationSourceNode extends SeriesSourceNode {
       outputColumnNames.add(ColumnHeaderConstant.ENDTIME);
     }
     outputColumnNames.addAll(
-        aggregationDescriptorList.stream()
+        getDeduplicatedDescriptors(aggregationDescriptorList).stream()
             .map(AggregationDescriptor::getOutputColumnNames)
             .flatMap(List::stream)
             .collect(Collectors.toList()));

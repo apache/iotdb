@@ -19,6 +19,172 @@
 
 -->
 
+# Apache IoTDB 2.0.4
+
+## Features & Improvements
+- Data Query: Added user-defined table functions (UDTF) and various built-in table functions to the table model.
+- Data Query: Added support for ASOF INNER JOIN on time columns in the table model.
+- Data Query: Added the approximate aggregation function approx_count_distinct to the table model.
+- Stream Processing: Added support for asynchronous loading of TsFile through SQL.
+- System Management: Added support for disaster recovery load balancing strategy in replica selection during scaling down.
+- System Management: Adapted to Windows Server 2025.
+- Scripts and Tools: Categorized and organized script tools, and separated Windows-specific scripts.
+- ...
+
+## Bugs
+- Fixed the memory leak issue in the WAL compression buffer.
+- Fixed the issue where the async connector gets stuck after running for a long time.
+- Fixed the issue where data subscription cannot be terminated after using data export scripts.
+- Fixed the issue where pipe restarts frequently due to insertnode and resource management memory problems under memory pressure.
+- Fixed the NPE issue triggered during memory statistics estimation on the data synchronization receiver end.
+- Fixed the error when configuring ConsumerConstant.NODE_URLS_KEY as a cluster address while using SubscriptionPullConsumer to consume data.
+- Fixed the deadlock issue on DN startup caused by concurrent agent pipe metadata fetching and CN metadata pushing.
+- ...
+
+# Apache IoTDB 2.0.3
+
+## Features & Improvements
+
+- Data Query: Added new aggregate function count_if and scalar functions greatest / least to the table model.
+- Data Query: Significantly improved the performance of full-table count(*) queries in the table model.
+- AI Management: Added timestamps to the results returned by AINode.
+- System Management: Optimized the performance of the table model's metadata module.
+- System Management: Enabled the table model to actively listens and loads TsFile.
+- System Management: Added support for TsBlock deserialization in the Python and Go client query interfaces.
+- Ecosystem Integration: Expanded the table model's ecosystem to integrate with Spark.
+- Scripts and Tools: The import-schema and export-schema scripts now support importing and exporting metadata for the table model.
+- ...
+
+## Bugs
+
+- Fixed the issue where a single write request exceeding the total size of the WAL queue caused write queries to hang.
+- Fixed the issue where the receiver experienced OOM (Out of Memory) after resuming synchronization following a long period of inactivity.
+- Fixed the issue where repeatedly setting TTL for DB and Table led to inserted data being unqueryable and returning an empty list.
+- Fixed the issue where a regular user with create+insert permissions on a table encountered exceptions when loading tsfile.
+- Fixed the issue where passwords were logged when SessionPool getSession timed out.
+- Fixed the issue in the Go client tree model query interface where the absence of a check for the Time column led to an "index out of range [-1]" error when retrieving Time column data.
+- Fixed the issue where distinct hits aggregate pushdown optimization and is used with group by date_bin, causing execution exceptions in aggregate queries.
+- Fixed the issue of whitespace characters at the beginning and end of port and directory address parameters in the configuration file.
+- Fixed the issue where setting the maximum number of concurrent RPC clients less than the number of CPU threads caused DN startup failure.
+- Fixed the issue where using a template, after activation, writing to extended columns, and then creating a pipe, caused the series under the device to double.
+- Fixed the issue where metadata synchronization, creating a pipe after a template, caused the series to double when using show timeseries.
+- Fixed the issue where a regular user with INSERT permissions encountered exceptions when exporting metadata using export-schema.sh.
+- ...
+
+# Apache IoTDB 2.0.2-1
+
+This is a bug-fix version of 2.0.2
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+
+# Apache IoTDB 2.0.2
+
+## Features & Improvements
+
+- Data Query: Added management of table model UDFs, including user-defined scalar functions (UDSF) and user-defined aggregate functions (UDAF).
+- Data Query: Table model now supports permission management, user management, and authorization for related operations.
+- Data Query: Introduced new system tables and various O&M statements to optimize system management.
+- System Management: The tree model and table model are now fully isolated at the database level.
+- System Management: The built-in MQTT Service is now compatible with the table model.
+- System Management: The CSharp client now supports the table model.
+- System Management: The Go client now supports the table model.
+- System Management: Added a C++ Session write interface for the table model.
+- Data Synchronization: The table model now supports metadata synchronization and synchronization delete operations.
+- Scripts and Tools: The import-data/export-data scripts now support the table model and local TsFile Load.
+- ...
+
+## Bugs
+
+- Fixed the memory leak issue when writing data using SQL.
+- Fixed the issue of duplicate timestamps appearing in table model queries.
+- Fixed the issue of duplicate removal anomaly in table model aggregate queries with GROUP BY.
+- Fixed the handling of Long.MIN_VALUE or Long.MAX_VALUE during write and merge processes.
+- Fixed the issue of Long.MIN_VALUE timestamp causing time partition overflow and subsequent load failure.
+- Fixed the issue of out-of-order data within a single TSFile on the destination data node during region migration in load operations.
+- Fixed the issue where Explain Analyze caused the execution plan to fail to properly perform column pruning.
+- Fixed the issue where the C# Session could not correctly fetch result sets when querying large amounts of data (exceeding fetch_size) on a cluster with more than one node.
+- Fixed the inconsistency in reading JDK environment variables by ConfigNode and DataNode on Windows.
+- Fixed the issue where the query distribution time statistics in Explain Analyze were larger than actual values, and changed the query distribution time monitoring from FI level to Query level.
+  ...
+
+# Apache IoTDB 2.0.1-beta
+
+## Features & Improvements
+
+- Table Model: IoTDB has introduced a new model named table model, and supports standard SQL query syntax, including SELECT, WHERE, JOIN, GROUP BY, ORDER BY, LIMIT clause and subQuery.
+- Data Query: The table model supports a variety of functions and operators, including logical operators, mathematical functions, and the time-series specific function DIFF, etc.
+- Data Query: The databases of the table model and tree model are invisible to each other, and users can choose the appropriate model based on their needs.
+- Data Query: Users can control the loading of UDF, PipePlugin, Trigger, and AINode via URI with configuration items to load JAR packages.
+- Storage Engine: The table model supports data ingestion through the Session interface, and the Session interface supports automatic metadata creation.
+- Storage Engine: The Python client now supports four new data types: String, Blob, Date, and Timestamp.
+- Storage Engine: The comparison rules for the priority of same-type merge tasks have been optimized.
+- Data Synchronization: Support for specifying authentication information of the receiving end at the sending end.
+- Stream Processing Module: TsFile Load now supports the table model.
+- Stream Processing Module: Pipe now supports the table model.
+- System Management: The Benchmark tool has been adapted to support the table model.
+- System Management: The Benchmark tool now supports four new data types: String, Blob, Date, and Timestamp.
+- System Management: The stability of DataNode scaling down has been enhanced.
+- System Management: Users are now allowed to perform drop database operations in readonly mode.
+- Scripts and Tools: The import-data/export-data scripts have been extended to support new data types (string, binary large objects, date, timestamp).
+- Scripts and Tools: The import-data/export-data scripts have been iterated to support the import and export of three types of data: TsFile, CSV, and SQL.
+- Ecosystem Integration: Support for Kubernetes Operator.
+  ...
+
+## Bugs
+
+- Fixed the issue where the query result set contained duplicate timestamps.
+- Fixed the issue where deleted data could be queried again when triggered to merge after deletion.
+- Fixed the issue where the target sequence in  SELECT INTO containing backticks would result in writing the wrong sequence.
+- Fixed the issue where an array out-of-bounds exception was thrown in the HAVING clause of the tree model due to a non-existent column name.
+- Fixed the issue where MergeReader needed to consider memory allocation to avoid negative available memory during out-of-order and reverse queries.
+- Fixed the issue where the CN in the cluster could not register large pipe plugins (greater than 100MB) and the parameters were not configurable.
+- Fixed the issue of controlling the memory size of TimeIndex referenced by Pipe for TsFileResource.
+- Fixed the issue where the Storage Engine - File Count - mods displayed negative values on the monitoring dashboard.
+- Fixed the issue where the query result order was incorrect in the C# client.
+
+...
+
+# Apache IoTDB 1.3.4-1
+
+This is a bug-fix version of 1.3.4
+
+- Fix the bug that will remove the data partition table by mistake in case of us/ns time precision and using ttl
+
+
+# Apache IoTDB 1.3.4
+
+## Features & Improvements
+
+- Data Query: Users can now control the loading of JAR packages via URI for UDF, PipePlugin, Trigger, and AINode through configuration items.
+- Data Query:  Added monitoring for TimeIndex cached during the merge process.
+- System Management: Expanded UDF functions with the addition of the pattern_match function for pattern matching.
+- System Management:The Python session SDK now includes a parameter for connection timeout.
+- System Management:Introduced authorization for cluster management-related operations.
+- System Management:ConfigNode/DataNode now supports scaling down using SQL.
+- System Management:ConfigNode automatically cleans up partition information exceeding the TTL (cleans up every 2 hours).
+- Data Synchronization: Supports specifying authorization information for the receiver on the sender's end.
+- Ecosystem Integration: Supports Kubernetes Operator.
+- Scripts and Tools: The import-data/export-data scripts have been expanded to support new data types (strings, large binary objects, dates, timestamps).
+- Scripts and Tools:The import-data/export-data scripts have been iterated to support importing and exporting data in three formats: TsFile, CSV, and SQL.
+  ...
+
+## Bugs
+
+- Fixed the issue where an ArrayIndexOutOfBoundsException occurred when a column name did not exist in the HAVING clause of the tree model.
+- Fixed the issue where the target sequence in SELECT INTO contained backticks, resulting in incorrect sequences being written.
+- Fixed the issue where an empty iot-consensus file was generated after an abnormal power outage, causing the DataNode (dn) to fail to start.
+- Fixed the issue where the storage engine reported an error during asynchronous recovery after manually deleting the resource file, leading to Pipe startup failure.
+- Fixed the issue where data forwarded by external Pipe could not be synchronized between dual-lives.
+- Fixed the issue where the C# Session could not correctly fetch result sets when querying large amounts of data (exceeding fetch_size) on a cluster with more than one node.
+- Fixed the issue where the order of query results was incorrect in the C# client.
+- Fixed the issue where duplicate timestamps were included in query result sets.
+- Fixed the issue where query results were incorrect for single-device queries with sort+offset+limit+align by device.
+- Fixed the issue where data synchronization failed when a sequence S1 of data type A was deleted and then a sequence S1 of data type B was written, and a TTL existed.
+- Fixed the issue where MergeReader needed to consider memory allocation to avoid negative available memory during out-of-order and reverse queries.
+- Fixed the inconsistency in how ConfigNode and DataNode read the JDK environment variables on Windows.
+- ...
+
 # Apache IoTDB 1.3.3
 
 ## Features & Improvements

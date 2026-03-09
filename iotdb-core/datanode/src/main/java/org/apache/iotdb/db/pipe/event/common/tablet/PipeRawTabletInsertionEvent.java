@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.db.pipe.event.common.tablet;
 
+import org.apache.iotdb.commons.audit.UserEntity;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeTaskMeta;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
@@ -33,12 +35,13 @@ import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventP
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTablePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tablet.parser.TabletInsertionEventTreePatternParser;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
-import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeRemainingEventAndTimeMetrics;
+import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTabletMemoryBlock;
 import org.apache.iotdb.pipe.api.access.Row;
 import org.apache.iotdb.pipe.api.collector.RowCollector;
+import org.apache.iotdb.pipe.api.collector.TabletCollector;
 import org.apache.iotdb.pipe.api.event.dml.insertion.TabletInsertionEvent;
 
 import org.apache.tsfile.utils.RamUsageEstimator;
@@ -82,7 +85,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -92,7 +97,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime,
@@ -108,6 +115,13 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Allocate empty memory block, will be resized later.
     this.allocatedMemoryBlock =
         PipeDataNodeResourceManager.memory().forceAllocateForTabletWithRetry(0);
+
+    addOnCommittedHook(
+        () -> {
+          if (shouldReportOnCommit) {
+            eliminateProgressIndex();
+          }
+        });
   }
 
   public PipeRawTabletInsertionEvent(
@@ -137,6 +151,45 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         null,
         null,
         null,
+        null,
+        null,
+        true,
+        Long.MIN_VALUE,
+        Long.MAX_VALUE);
+  }
+
+  public PipeRawTabletInsertionEvent(
+      final Boolean isTableModelEvent,
+      final String databaseName,
+      final String tableModelDataBaseName,
+      final String treeModelDataBaseName,
+      final Tablet tablet,
+      final boolean isAligned,
+      final String pipeName,
+      final long creationTime,
+      final PipeTaskMeta pipeTaskMeta,
+      final EnrichedEvent sourceEvent,
+      final boolean needToReport,
+      final String userId,
+      final String userName,
+      final String cliHostname) {
+    this(
+        isTableModelEvent,
+        databaseName,
+        tableModelDataBaseName,
+        treeModelDataBaseName,
+        tablet,
+        isAligned,
+        sourceEvent,
+        needToReport,
+        pipeName,
+        creationTime,
+        pipeTaskMeta,
+        null,
+        null,
+        userId,
+        userName,
+        cliHostname,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -155,6 +208,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         false,
         null,
         0,
+        null,
+        null,
         null,
         null,
         null,
@@ -182,6 +237,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         treePattern,
         null,
         null,
+        null,
+        null,
         true,
         Long.MIN_VALUE,
         Long.MAX_VALUE);
@@ -191,8 +248,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   public PipeRawTabletInsertionEvent(
       final Tablet tablet, final long startTime, final long endTime) {
     this(
-        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, true,
-        startTime, endTime);
+        null, null, null, null, tablet, false, null, false, null, 0, null, null, null, null, null,
+        null, true, startTime, endTime);
   }
 
   @Override
@@ -202,8 +259,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
             allocatedMemoryBlock,
             PipeMemoryWeightUtil.calculateTabletSizeInBytes(tablet) + INSTANCE_SIZE);
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .increaseTabletEventCount(pipeName, creationTime);
+      PipeDataNodeSinglePipeMetrics.getInstance()
+          .increaseRawTabletEventCount(pipeName, creationTime);
     }
     return true;
   }
@@ -211,8 +268,8 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public boolean internallyDecreaseResourceReferenceCount(final String holderMessage) {
     if (Objects.nonNull(pipeName)) {
-      PipeDataNodeRemainingEventAndTimeMetrics.getInstance()
-          .decreaseTabletEventCount(pipeName, creationTime);
+      PipeDataNodeSinglePipeMetrics.getInstance()
+          .decreaseRawTabletEventCount(pipeName, creationTime);
     }
     allocatedMemoryBlock.close();
 
@@ -223,13 +280,30 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     // Actually release the occupied memory.
     tablet = null;
     eventParser = null;
+
+    // Update metrics of the source event
+    if (needToReport && shouldReportOnCommit && Objects.nonNull(pipeName)) {
+      if (sourceEvent instanceof PipeInsertNodeTabletInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateInsertNodeTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime()
+                    - ((PipeInsertNodeTabletInsertionEvent) sourceEvent).getExtractTime());
+      } else if (sourceEvent instanceof PipeTsFileInsertionEvent) {
+        PipeDataNodeSinglePipeMetrics.getInstance()
+            .updateTsFileTransferTimer(
+                pipeName,
+                creationTime,
+                System.nanoTime() - ((PipeTsFileInsertionEvent) sourceEvent).getExtractTime());
+      }
+    }
+
     return true;
   }
 
-  @Override
-  protected void reportProgress() {
+  protected void eliminateProgressIndex() {
     if (needToReport) {
-      super.reportProgress();
       if (sourceEvent instanceof PipeTsFileInsertionEvent) {
         ((PipeTsFileInsertionEvent) sourceEvent).eliminateProgressIndex();
       }
@@ -264,7 +338,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       final PipeTaskMeta pipeTaskMeta,
       final TreePattern treePattern,
       final TablePattern tablePattern,
+      final String userId,
       final String userName,
+      final String cliHostname,
       final boolean skipIfNoPrivileges,
       final long startTime,
       final long endTime) {
@@ -282,7 +358,9 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
         pipeTaskMeta,
         treePattern,
         tablePattern,
+        userId,
         userName,
+        cliHostname,
         skipIfNoPrivileges,
         startTime,
         endTime);
@@ -312,6 +390,11 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
     this.needToReport = true;
   }
 
+  // This getter is reserved for user-defined plugins
+  public boolean isNeedToReport() {
+    return needToReport;
+  }
+
   public String getDeviceId() {
     // NonNull indicates that the internallyDecreaseResourceReferenceCount has not been called.
     return Objects.nonNull(tablet) ? tablet.getDeviceId() : deviceId;
@@ -326,13 +409,27 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
   @Override
   public Iterable<TabletInsertionEvent> processRowByRow(
       final BiConsumer<Row, RowCollector> consumer) {
-    return initEventParser().processRowByRow(consumer);
+    try {
+      return initEventParser().processRowByRow(consumer);
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
   public Iterable<TabletInsertionEvent> processTablet(
       final BiConsumer<Tablet, RowCollector> consumer) {
-    return initEventParser().processTablet(consumer);
+    try {
+      return initEventParser().processTablet(consumer);
+    } catch (final Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public Iterable<TabletInsertionEvent> processTabletWithCollect(
+      BiConsumer<Tablet, TabletCollector> consumer) {
+    return initEventParser().processTabletWithCollect(consumer);
   }
 
   /////////////////////////// convertToTablet ///////////////////////////
@@ -355,21 +452,28 @@ public class PipeRawTabletInsertionEvent extends PipeInsertionEvent
       eventParser =
           tablet.getDeviceId().startsWith("root.")
               ? new TabletInsertionEventTreePatternParser(
-                  pipeTaskMeta, this, tablet, isAligned, treePattern)
+                  pipeTaskMeta,
+                  this,
+                  tablet,
+                  isAligned,
+                  treePattern,
+                  shouldParse4Privilege
+                      ? new UserEntity(Long.parseLong(userId), userName, cliHostname)
+                      : null)
               : new TabletInsertionEventTablePatternParser(
                   pipeTaskMeta, this, tablet, isAligned, tablePattern);
     }
     return eventParser;
   }
 
-  public long count() {
+  public long count() throws IllegalPathException {
     final Tablet convertedTablet = shouldParseTimeOrPattern() ? convertToTablet() : tablet;
     return (long) convertedTablet.getRowSize() * convertedTablet.getSchemas().size();
   }
 
   /////////////////////////// parsePatternOrTime ///////////////////////////
 
-  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() {
+  public PipeRawTabletInsertionEvent parseEventWithPatternOrTime() throws IllegalPathException {
     return new PipeRawTabletInsertionEvent(
         getRawIsTableModelEvent(),
         getSourceDatabaseNameFromDataRegion(),

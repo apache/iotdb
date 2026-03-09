@@ -132,7 +132,8 @@ public class TimeSeriesMetadataCache {
 
         // bloom filter part
         TsFileSequenceReader reader =
-            FileReaderManager.getInstance().get(filePath, true, bloomFilterIoSizeRecorder);
+            FileReaderManager.getInstance()
+                .get(filePath, key.tsFileID, true, bloomFilterIoSizeRecorder);
         BloomFilter bloomFilter = reader.readBloomFilter(bloomFilterIoSizeRecorder);
         queryContext.getQueryStatistics().getLoadBloomFilterFromDiskCount().incrementAndGet();
         if (bloomFilter != null
@@ -193,7 +194,7 @@ public class TimeSeriesMetadataCache {
             loadBloomFilterTime = System.nanoTime() - loadBloomFilterStartTime;
             TsFileSequenceReader reader =
                 FileReaderManager.getInstance()
-                    .get(filePath, true, timeSeriesMetadataIoSizeRecorder);
+                    .get(filePath, key.tsFileID, true, timeSeriesMetadataIoSizeRecorder);
             List<TimeseriesMetadata> timeSeriesMetadataList =
                 reader.readTimeseriesMetadata(
                     key.device,

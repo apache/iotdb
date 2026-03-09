@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.tableResultSetEqualTest;
 @Category({TableLocalStandaloneIT.class, TableClusterIT.class})
 public class IoTDBGapFillTableIT {
   private static final String DATABASE_NAME = "test";
-  private static final String[] createSqls =
+  protected static final String[] createSqls =
       new String[] {
         "CREATE DATABASE " + DATABASE_NAME,
         "USE " + DATABASE_NAME,
@@ -61,7 +61,7 @@ public class IoTDBGapFillTableIT {
           + ": could not infer startTime or endTime from WHERE clause";
 
   @BeforeClass
-  public static void setUp() throws Exception {
+  public static void setUp() {
     EnvFactory.getEnv().getConfig().getCommonConfig().setSortBufferSize(128 * 1024);
     EnvFactory.getEnv().getConfig().getCommonConfig().setEnableCrossSpaceCompaction(false);
     EnvFactory.getEnv().initClusterEnvironment();
@@ -69,7 +69,7 @@ public class IoTDBGapFillTableIT {
   }
 
   @AfterClass
-  public static void tearDown() throws Exception {
+  public static void tearDown() {
     EnvFactory.getEnv().cleanClusterEnvironment();
   }
 

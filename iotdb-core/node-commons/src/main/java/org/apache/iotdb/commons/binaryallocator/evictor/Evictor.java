@@ -35,13 +35,16 @@ public abstract class Evictor implements Runnable {
 
   private ScheduledFuture<?> scheduledFuture;
   private final String name;
-  private final Duration evictorShutdownTimeoutDuration;
+  private final Duration shutdownTimeoutDuration;
+  private final Duration durationBetweenEvictorRuns;
 
   private ScheduledExecutorService executor;
 
-  public Evictor(String name, Duration evictorShutdownTimeoutDuration) {
+  public Evictor(
+      String name, Duration shutdownTimeoutDuration, Duration durationBetweenEvictorRuns) {
     this.name = name;
-    this.evictorShutdownTimeoutDuration = evictorShutdownTimeoutDuration;
+    this.shutdownTimeoutDuration = shutdownTimeoutDuration;
+    this.durationBetweenEvictorRuns = durationBetweenEvictorRuns;
   }
 
   /** Cancels the scheduled future. */
@@ -61,17 +64,21 @@ public abstract class Evictor implements Runnable {
     return getClass().getName() + " [scheduledFuture=" + scheduledFuture + "]";
   }
 
-  public void startEvictor(final Duration delay) {
+  public void start() {
     if (null == executor) {
       executor = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name);
     }
     final ScheduledFuture<?> scheduledFuture =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-            executor, this, delay.toMillis(), delay.toMillis(), TimeUnit.MILLISECONDS);
+            executor,
+            this,
+            durationBetweenEvictorRuns.toMillis(),
+            durationBetweenEvictorRuns.toMillis(),
+            TimeUnit.MILLISECONDS);
     this.setScheduledFuture(scheduledFuture);
   }
 
-  public void stopEvictor() {
+  public void stop() {
     if (executor == null) {
       return;
     }
@@ -82,11 +89,9 @@ public abstract class Evictor implements Runnable {
     executor.shutdown();
     try {
       boolean result =
-          executor.awaitTermination(
-              evictorShutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
+          executor.awaitTermination(shutdownTimeoutDuration.toMillis(), TimeUnit.MILLISECONDS);
       if (!result) {
-        LOGGER.info(
-            "unable to stop evictor after {} ms", evictorShutdownTimeoutDuration.toMillis());
+        LOGGER.info("unable to stop evictor after {} ms", shutdownTimeoutDuration.toMillis());
       }
     } catch (final InterruptedException ignored) {
       Thread.currentThread().interrupt();

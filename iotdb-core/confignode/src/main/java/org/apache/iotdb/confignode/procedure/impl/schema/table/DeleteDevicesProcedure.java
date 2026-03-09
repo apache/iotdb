@@ -33,9 +33,7 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnri
 import org.apache.iotdb.confignode.manager.ClusterManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeRegionTaskExecutor;
+import org.apache.iotdb.confignode.procedure.impl.schema.DataNodeTSStatusTaskExecutor;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteDevicesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.consensus.exception.ConsensusException;
@@ -97,7 +95,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   @Override
   protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DeleteDevicesState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -164,64 +162,52 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
       deletedDevicesNum = 0;
       return;
     }
-    final List<TSStatus> successResult = new ArrayList<>();
-    new DataNodeRegionTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq, TSStatus>(
-        env,
-        relatedSchemaRegionGroup,
-        false,
-        CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
-        ((dataNodeLocation, consensusGroupIdList) ->
-            new TTableDeviceDeletionWithPatternAndFilterReq(
-                new ArrayList<>(consensusGroupIdList),
-                tableName,
-                ByteBuffer.wrap(patternBytes),
-                ByteBuffer.wrap(filterBytes)))) {
-      @Override
-      protected List<TConsensusGroupId> processResponseOfOneDataNode(
-          final TDataNodeLocation dataNodeLocation,
-          final List<TConsensusGroupId> consensusGroupIdList,
-          final TSStatus response) {
-        final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-        if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          successResult.add(response);
-        } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-          final List<TSStatus> subStatusList = response.getSubStatus();
-          for (int i = 0; i < subStatusList.size(); i++) {
-            if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              successResult.add(subStatusList.get(i));
-            } else {
-              failedRegionList.add(consensusGroupIdList.get(i));
-            }
-          }
-        } else {
-          failedRegionList.addAll(consensusGroupIdList);
-        }
-        return failedRegionList;
-      }
-
-      @Override
-      protected void onAllReplicasetFailure(
-          final TConsensusGroupId consensusGroupId,
-          final Set<TDataNodeLocation> dataNodeLocationSet) {
-        setFailure(
-            new ProcedureException(
-                new MetadataException(
-                    String.format(
-                        "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failure nodes: %s",
-                        this.getClass().getSimpleName(),
-                        database,
+    final DataNodeTSStatusTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq>
+        deleteDevicesExecutor =
+            new DataNodeTSStatusTaskExecutor<TTableDeviceDeletionWithPatternAndFilterReq>(
+                env,
+                relatedSchemaRegionGroup,
+                false,
+                CnToDnAsyncRequestType.CONSTRUCT_TABLE_DEVICE_BLACK_LIST,
+                ((dataNodeLocation, consensusGroupIdList) ->
+                    new TTableDeviceDeletionWithPatternAndFilterReq(
+                        new ArrayList<>(consensusGroupIdList),
                         tableName,
-                        consensusGroupId.type,
-                        consensusGroupId.id,
-                        dataNodeLocationSet))));
-        interruptTask();
-      }
-    }.execute();
+                        ByteBuffer.wrap(patternBytes),
+                        ByteBuffer.wrap(filterBytes)))) {
+              @Override
+              protected List<TConsensusGroupId> processResponseOfOneDataNode(
+                  final TDataNodeLocation dataNodeLocation,
+                  final List<TConsensusGroupId> consensusGroupIdList,
+                  final TSStatus response) {
+                return processResponseOfOneDataNodeWithSuccessResult(
+                    dataNodeLocation, consensusGroupIdList, response);
+              }
+
+              @Override
+              protected void onAllReplicasetFailure(
+                  final TConsensusGroupId consensusGroupId,
+                  final Set<TDataNodeLocation> dataNodeLocationSet) {
+                setFailure(
+                    new ProcedureException(
+                        new MetadataException(
+                            String.format(
+                                "[%s] for %s.%s failed when construct black list for table because failed to execute in all replicaset of %s %s. Failures: %s",
+                                this.getClass().getSimpleName(),
+                                database,
+                                tableName,
+                                consensusGroupId.type,
+                                consensusGroupId.id,
+                                printFailureMap()))));
+                interruptTask();
+              }
+            };
+    deleteDevicesExecutor.execute();
 
     setNextState(CONSTRUCT_BLACK_LIST);
     deletedDevicesNum =
         !isFailed()
-            ? successResult.stream()
+            ? deleteDevicesExecutor.getSuccessResult().stream()
                 .mapToLong(resp -> Long.parseLong(resp.getMessage()))
                 .reduce(Long::sum)
                 .orElse(0L)
@@ -269,7 +255,7 @@ public class DeleteDevicesProcedure extends AbstractAlterOrDropTableProcedure<De
 
   private void deleteDeviceSchema(final ConfigNodeProcedureEnv env) {
     new TableRegionTaskExecutor<>(
-            "roll back table device black list",
+            "delete table device in black list",
             env,
             env.getConfigManager().getRelatedSchemaRegionGroup4TableModel(database),
             CnToDnAsyncRequestType.DELETE_TABLE_DEVICE_IN_BLACK_LIST,

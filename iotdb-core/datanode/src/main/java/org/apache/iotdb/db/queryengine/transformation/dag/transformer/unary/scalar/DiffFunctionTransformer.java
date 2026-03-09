@@ -62,6 +62,7 @@ public class DiffFunctionTransformer extends UnaryTransformer {
         transformDouble(columns, builder);
         return;
       case BLOB:
+      case OBJECT:
       case TEXT:
       case DATE:
       case STRING:

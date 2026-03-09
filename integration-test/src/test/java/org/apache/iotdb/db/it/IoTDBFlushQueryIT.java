@@ -19,14 +19,22 @@
 
 package org.apache.iotdb.db.it;
 
+import org.apache.iotdb.isession.ISession;
+import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
 
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.record.Tablet;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -35,6 +43,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
@@ -91,7 +101,7 @@ public class IoTDBFlushQueryIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**"); ) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.vehicle.**"); ) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
@@ -166,7 +176,6 @@ public class IoTDBFlushQueryIT {
   }
 
   @Test
-  @Ignore
   public void testFlushNotExistGroupNoData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -175,13 +184,83 @@ public class IoTDBFlushQueryIT {
         statement.execute(
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
-        String expectedMsg =
-            "322: 322: storageGroup root.notExistGroup1,root.notExistGroup2 does not exist";
+        String expectedMsg = "500: Database root.notExistGroup1,root.notExistGroup2 does not exist";
         sqe.printStackTrace();
         assertTrue(sqe.getMessage().contains(expectedMsg));
       }
     } catch (Exception e) {
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testStreamingQueryMemTableWithOverlappedData()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String device = "root.stream1.d1";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.open();
+      generateTimeRangeWithTimestamp(session, device, 1, 10);
+
+      generateTimeRangeWithTimestamp(session, device, 500000, 510000);
+      session.executeNonQueryStatement("flush");
+      generateTimeRangeWithTimestamp(session, device, 100000, 350000);
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select count(*) from root.stream1.d1");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      long count = 0;
+      while (iterator.next()) {
+        count = iterator.getLong(1);
+      }
+      Assert.assertEquals(10 + 10001 + 250001, count);
+    }
+  }
+
+  @Test
+  public void testStreamingQueryMemTableWithOverlappedData2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    String device = "root.stream2.d1";
+    try (ISession session = EnvFactory.getEnv().getSessionConnection()) {
+      session.open();
+      generateTimeRangeWithTimestamp(session, device, 1, 10);
+
+      generateTimeRangeWithTimestamp(session, device, 500000, 510000);
+      session.executeNonQueryStatement("flush");
+      generateTimeRangeWithTimestamp(session, device, 1, 20);
+      generateTimeRangeWithTimestamp(session, device, 100000, 210000);
+      session.executeNonQueryStatement("flush");
+
+      generateTimeRangeWithTimestamp(session, device, 150000, 450000);
+
+      SessionDataSet sessionDataSet =
+          session.executeQueryStatement("select count(*) from root.stream2.d1");
+      SessionDataSet.DataIterator iterator = sessionDataSet.iterator();
+      long count = 0;
+      while (iterator.next()) {
+        count = iterator.getLong(1);
+      }
+      Assert.assertEquals(20 + 10001 + 350001, count);
+    }
+  }
+
+  private static void generateTimeRangeWithTimestamp(
+      ISession session, String device, long start, long end)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<IMeasurementSchema> measurementSchemas =
+        Collections.singletonList(new MeasurementSchema("s1", TSDataType.INT64));
+    Tablet tablet = new Tablet(device, measurementSchemas);
+    for (long currentTime = start; currentTime <= end; currentTime++) {
+      int rowIndex = tablet.getRowSize();
+      if (rowIndex == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
+        rowIndex = 0;
+      }
+      tablet.addTimestamp(rowIndex, currentTime);
+      tablet.addValue(rowIndex, 0, currentTime);
+    }
+    if (tablet.getRowSize() > 0) {
+      session.insertTablet(tablet);
     }
   }
 }

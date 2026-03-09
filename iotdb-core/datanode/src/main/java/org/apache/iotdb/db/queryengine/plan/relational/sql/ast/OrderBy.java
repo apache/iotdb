@@ -20,7 +20,13 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
+import org.apache.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,6 +35,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
 public class OrderBy extends Node {
+
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(OrderBy.class);
 
   private final List<SortItem> sortItems;
 
@@ -85,5 +93,37 @@ public class OrderBy extends Node {
   @Override
   public boolean shallowEquals(Node other) {
     return sameClass(this, other);
+  }
+
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(sortItems.size(), buffer);
+    for (SortItem sortItem : sortItems) {
+      sortItem.serialize(buffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(sortItems.size(), stream);
+    for (SortItem sortItem : sortItems) {
+      sortItem.serialize(stream);
+    }
+  }
+
+  public OrderBy(ByteBuffer byteBuffer) {
+    super(null);
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
+    sortItems = new ArrayList<>(size);
+
+    for (int i = 0; i < size; i++) {
+      sortItems.add(new SortItem(byteBuffer));
+    }
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeList(sortItems);
+    return size;
   }
 }

@@ -43,7 +43,7 @@ public class DeleteTimeSeriesProcedureTest {
     patternTree.appendPathPattern(new PartialPath("root.sg2.*.s1"));
     patternTree.constructTree();
     DeleteTimeSeriesProcedure deleteTimeSeriesProcedure =
-        new DeleteTimeSeriesProcedure(queryId, patternTree, false);
+        new DeleteTimeSeriesProcedure(queryId, patternTree, false, false);
 
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

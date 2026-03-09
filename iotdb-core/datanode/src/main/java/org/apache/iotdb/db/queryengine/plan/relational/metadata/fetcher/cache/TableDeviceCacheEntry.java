@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache;
 
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 
+import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
@@ -143,6 +144,9 @@ public class TableDeviceCacheEntry {
       final boolean isAligned,
       final String[] measurements,
       final IMeasurementSchema[] schemas) {
+    if (schemas == null) {
+      return 0;
+    }
     // Safe here because tree schema is invalidated by the whole entry
     final int result =
         (deviceSchema.compareAndSet(null, new TreeDeviceNormalSchema(database, isAligned))
@@ -180,32 +184,50 @@ public class TableDeviceCacheEntry {
       final boolean isInvalidate,
       final boolean isTableModel) {
     int result =
-        lastCache.compareAndSet(null, new TableDeviceLastCache())
+        lastCache.compareAndSet(null, new TableDeviceLastCache(isTableModel))
             ? TableDeviceLastCache.INSTANCE_SIZE
             : 0;
     final TableDeviceLastCache cache = lastCache.get();
     result +=
         Objects.nonNull(cache)
-            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate, isTableModel)
+            ? cache.initOrInvalidate(database, tableName, measurements, isInvalidate)
             : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
+  int tryUpdateLastCache(
+      final String[] measurements, final TimeValuePair[] timeValuePairs, boolean invalidateNull) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs) : 0;
+    final int result =
+        Objects.nonNull(cache) ? cache.tryUpdate(measurements, timeValuePairs, invalidateNull) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
-  int invalidateLastCache(final String measurement, final boolean isTableModel) {
+  int tryUpdateLastCache(final String[] measurements, final TimeValuePair[] timeValuePairs) {
+    return tryUpdateLastCache(measurements, timeValuePairs, false);
+  }
+
+  int invalidateLastCache(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
-    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement, isTableModel) : 0;
+    final int result = Objects.nonNull(cache) ? cache.invalidate(measurement) : 0;
     return Objects.nonNull(lastCache.get()) ? result : 0;
   }
 
   TimeValuePair getTimeValuePair(final String measurement) {
     final TableDeviceLastCache cache = lastCache.get();
     return Objects.nonNull(cache) ? cache.getTimeValuePair(measurement) : null;
+  }
+
+  boolean updateInputMap(final @Nonnull Map<String, Pair<TSDataType, TimeValuePair>> updateMap) {
+    // Shall only call this for original table device
+    for (final String measurement : updateMap.keySet()) {
+      final TimeValuePair result = getTimeValuePair(measurement);
+      if (result == null) {
+        return false;
+      }
+      updateMap.get(measurement).setRight(result);
+    }
+    return true;
   }
 
   // Shall pass in "" if last by time

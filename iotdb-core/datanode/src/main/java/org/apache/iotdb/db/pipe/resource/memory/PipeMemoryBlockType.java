@@ -23,4 +23,6 @@ public enum PipeMemoryBlockType {
   NORMAL,
   TABLET,
   TS_FILE,
+  BATCH,
+  WAL
 }

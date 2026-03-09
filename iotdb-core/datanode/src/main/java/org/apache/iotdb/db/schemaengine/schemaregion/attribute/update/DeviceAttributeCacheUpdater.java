@@ -256,7 +256,7 @@ public class DeviceAttributeCacheUpdater {
   public void afterUpdate() {
     version.incrementAndGet();
     degrade();
-    GeneralRegionAttributeSecurityService.getInstance().notifyBroadCast();
+    GeneralRegionAttributeSecurityService.getInstance().advanceExecution();
   }
 
   private void degrade() {
@@ -440,17 +440,23 @@ public class DeviceAttributeCacheUpdater {
     if (size > 0) {
       requestMemory(size);
     } else {
-      releaseMemory(size);
+      releaseMemory(-size);
     }
   }
 
   private void requestMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException("requestMemory size must not be negative");
+    }
     if (regionStatistics != null) {
       regionStatistics.requestMemory(size);
     }
   }
 
   private void releaseMemory(final long size) {
+    if (size < 0) {
+      throw new UnsupportedOperationException("releaseMemory size must not be negative");
+    }
     if (regionStatistics != null) {
       regionStatistics.releaseMemory(size);
     }

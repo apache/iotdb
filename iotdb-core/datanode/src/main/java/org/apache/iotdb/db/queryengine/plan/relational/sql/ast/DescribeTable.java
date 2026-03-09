@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.tsfile.utils.RamUsageEstimator;
 
 import javax.annotation.Nonnull;
 
@@ -30,14 +31,25 @@ import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class DescribeTable extends Statement {
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(DescribeTable.class);
   private final QualifiedName table;
   private final boolean isDetails;
 
+  // true: showCreateView
+  // false: showCreateTable
+  // null: Desc
+  private final Boolean isShowCreateView;
+
   public DescribeTable(
-      final @Nonnull NodeLocation location, final QualifiedName table, final boolean isDetails) {
+      final @Nonnull NodeLocation location,
+      final QualifiedName table,
+      final boolean isDetails,
+      final Boolean isShowCreateView) {
     super(requireNonNull(location, "location is null"));
     this.table = requireNonNull(table, "table is null");
     this.isDetails = isDetails;
+    this.isShowCreateView = isShowCreateView;
   }
 
   public QualifiedName getTable() {
@@ -46,6 +58,10 @@ public class DescribeTable extends Statement {
 
   public boolean isDetails() {
     return isDetails;
+  }
+
+  public Boolean getShowCreateView() {
+    return isShowCreateView;
   }
 
   @Override
@@ -67,16 +83,30 @@ public class DescribeTable extends Statement {
       return false;
     }
     final DescribeTable that = (DescribeTable) o;
-    return Objects.equals(table, that.table);
+    return Objects.equals(table, that.table)
+        && isDetails == that.isDetails
+        && Objects.equals(isShowCreateView, that.isShowCreateView);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(table);
+    return Objects.hash(table, isDetails, isShowCreateView);
   }
 
   @Override
   public String toString() {
-    return toStringHelper(this).add("table", table).toString();
+    return toStringHelper(this)
+        .add("table", table)
+        .add("isDetails", isDetails)
+        .add("isShowCreateView", isShowCreateView)
+        .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    long size = INSTANCE_SIZE;
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
+    size += table == null ? 0L : table.ramBytesUsed();
+    return size;
   }
 }

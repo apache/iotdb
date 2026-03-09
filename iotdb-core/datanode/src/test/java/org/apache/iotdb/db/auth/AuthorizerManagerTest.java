@@ -70,7 +70,7 @@ public class AuthorizerManagerTest {
     roleSet.add("role2");
 
     user.setName("user");
-    user.setPassword("password");
+    user.setPassword("password123456");
     user.setPrivilegeList(privilegeList);
     user.setSysPrivilegeSet(sysPriIds);
     user.setRoleSet(roleSet);

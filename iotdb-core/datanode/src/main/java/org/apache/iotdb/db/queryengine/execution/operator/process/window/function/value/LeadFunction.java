@@ -22,24 +22,34 @@ package org.apache.iotdb.db.queryengine.execution.operator.process.window.functi
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.partition.Partition;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
+import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+
+import java.util.List;
 
 public class LeadFunction extends ValueWindowFunction {
   private final int channel;
-  private final Integer offset;
-  private final Integer defaultVal;
+  private final int offsetChannel;
+  private final int defaultValChannel;
   private final boolean ignoreNull;
 
-  public LeadFunction(int channel, Integer offset, Integer defaultVal, boolean ignoreNull) {
-    this.channel = channel;
-    this.offset = offset == null ? 1 : offset;
-    this.defaultVal = defaultVal;
+  public LeadFunction(List<Integer> argumentChannels, boolean ignoreNull) {
+    this.channel = argumentChannels.get(0);
+    this.offsetChannel = argumentChannels.size() > 1 ? argumentChannels.get(1) : -1;
+    this.defaultValChannel = argumentChannels.size() > 2 ? argumentChannels.get(2) : -1;
     this.ignoreNull = ignoreNull;
   }
 
   @Override
   public void transform(
       Partition partition, ColumnBuilder builder, int index, int frameStart, int frameEnd) {
+    if (offsetChannel >= 0 && partition.isNull(offsetChannel, index)) {
+      builder.appendNull();
+      return;
+    }
+
     int length = partition.getPositionCount();
+    int offset = offsetChannel >= 0 ? partition.getInt(offsetChannel, index) : 1;
 
     int pos;
     if (ignoreNull) {
@@ -65,10 +75,43 @@ public class LeadFunction extends ValueWindowFunction {
       } else {
         builder.appendNull();
       }
-    } else if (defaultVal != null) {
-      builder.writeObject(defaultVal);
+    } else if (defaultValChannel >= 0) {
+      writeDefaultValue(partition, defaultValChannel, index, builder);
     } else {
       builder.appendNull();
+    }
+  }
+
+  private void writeDefaultValue(
+      Partition partition, int defaultValChannel, int index, ColumnBuilder builder) {
+    TSDataType dataType = builder.getDataType();
+    switch (dataType) {
+      case INT32:
+      case DATE:
+        builder.writeInt(partition.getInt(defaultValChannel, index));
+        return;
+      case INT64:
+      case TIMESTAMP:
+        builder.writeLong(partition.getLong(defaultValChannel, index));
+        return;
+      case FLOAT:
+        builder.writeFloat(partition.getFloat(defaultValChannel, index));
+        return;
+      case DOUBLE:
+        builder.writeDouble(partition.getDouble(defaultValChannel, index));
+        return;
+      case BOOLEAN:
+        builder.writeBoolean(partition.getBoolean(defaultValChannel, index));
+        return;
+      case TEXT:
+      case STRING:
+      case BLOB:
+      case OBJECT:
+        builder.writeBinary(partition.getBinary(defaultValChannel, index));
+        return;
+      default:
+        throw new UnSupportedDataTypeException(
+            "Unsupported default value's data type in Lag: " + dataType);
     }
   }
 

@@ -35,7 +35,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
+import org.apache.thrift.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,13 +61,17 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       SubscriptionConfig.getInstance().getSubscriptionReadFileBufferSize();
 
   private final File tsFile;
+  @Nullable private final String databaseName;
   private final SubscriptionCommitContext commitContext;
 
   public SubscriptionEventTsFileResponse(
-      final File tsFile, final SubscriptionCommitContext commitContext) {
+      final File tsFile,
+      @Nullable final String databaseName,
+      final SubscriptionCommitContext commitContext) {
     super();
 
     this.tsFile = tsFile;
+    this.databaseName = databaseName;
     this.commitContext = commitContext;
 
     init();
@@ -159,7 +163,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
     return Optional.empty();
   }
 
-  private @NonNull CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
+  private CachedSubscriptionPollResponse generateResponseWithPieceOrSealPayload(
       final long writingOffset)
       throws IOException, InterruptedException, PipeRuntimeOutOfMemoryCriticalException {
     final long tsFileLength = tsFile.length();
@@ -168,7 +172,7 @@ public class SubscriptionEventTsFileResponse extends SubscriptionEventExtendable
       hasNoMore = true;
       return new CachedSubscriptionPollResponse(
           SubscriptionPollResponseType.FILE_SEAL.getType(),
-          new FileSealPayload(tsFile.getName(), tsFile.length()),
+          new FileSealPayload(tsFile.getName(), tsFile.length(), databaseName),
           commitContext);
     }
 

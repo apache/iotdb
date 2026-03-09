@@ -22,7 +22,9 @@ package org.apache.iotdb.db.queryengine.plan;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.queryengine.plan.planner.exceptions.ReplicaSetUnreachableException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -71,12 +72,18 @@ public class ClusterTopology {
     }
     final List<TRegionReplicaSet> allSets =
         input.stream().map(Map.Entry::getKey).collect(Collectors.toList());
-    final List<TRegionReplicaSet> candidates = getReachableCandidates(allSets);
+    final List<TRegionReplicaSet> candidates =
+        getReachableCandidates(
+            allSets.stream().filter(TRegionReplicaSet::isSetRegionId).collect(Collectors.toList()));
     final Map<TConsensusGroupId, TRegionReplicaSet> newMap = new HashMap<>();
     candidates.forEach(set -> newMap.put(set.getRegionId(), set));
     final Map<TRegionReplicaSet, T> candidateMap = new HashMap<>();
     for (final Map.Entry<TRegionReplicaSet, T> entry : input) {
       final TConsensusGroupId gid = entry.getKey().getRegionId();
+      if (gid == null) {
+        candidateMap.put(DataPartition.NOT_ASSIGNED, entry.getValue());
+        continue;
+      }
       final TRegionReplicaSet replicaSet = newMap.get(gid);
       if (replicaSet != null) {
         candidateMap.put(replicaSet, entry.getValue());
@@ -88,6 +95,12 @@ public class ClusterTopology {
   private List<TRegionReplicaSet> getReachableCandidates(List<TRegionReplicaSet> all) {
     if (!isPartitioned.get() || all == null || all.isEmpty()) {
       return all;
+    }
+    for (TRegionReplicaSet replicaSet : all) {
+      // some TRegionReplicaSet is unreachable since all DataNodes are down
+      if (replicaSet.getDataNodeLocationsSize() == 0) {
+        throw new ReplicaSetUnreachableException(replicaSet);
+      }
     }
     final Map<Integer, Set<Integer>> topologyMapCurrent =
         Collections.unmodifiableMap(this.topologyMap.get());
@@ -136,25 +149,30 @@ public class ClusterTopology {
       final Map<Integer, TDataNodeLocation> dataNodes, Map<Integer, Set<Integer>> latestTopology) {
     if (!latestTopology.equals(topologyMap.get())) {
       LOGGER.info("[Topology] latest view from config-node: {}", latestTopology);
+      for (int fromId : dataNodes.keySet()) {
+        for (int toId : dataNodes.keySet()) {
+          boolean originReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          boolean newReachable =
+              latestTopology.getOrDefault(fromId, Collections.emptySet()).contains(toId);
+          if (originReachable != newReachable) {
+            LOGGER.info(
+                "[Topology] Topology of DataNode {} is now {} to DataNode {}",
+                fromId,
+                newReachable ? "reachable" : "unreachable",
+                toId);
+          }
+        }
+      }
+      this.topologyMap.set(latestTopology);
     }
     this.dataNodes.set(dataNodes);
-    this.topologyMap.set(latestTopology);
     if (latestTopology.get(myself) == null || latestTopology.get(myself).isEmpty()) {
       // latest topology doesn't include this node information.
       // This mostly happens when this node just starts and haven't report connection details.
       this.isPartitioned.set(false);
     } else {
-      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.keySet().size());
-    }
-    if (isPartitioned.get() && LOGGER.isDebugEnabled()) {
-      final Set<Integer> allDataLocations = new HashSet<>(latestTopology.keySet());
-      allDataLocations.removeAll(latestTopology.get(myself));
-      final String partitioned =
-          allDataLocations.stream()
-              .collect(
-                  StringBuilder::new, (sb, id) -> sb.append(",").append(id), StringBuilder::append)
-              .toString();
-      LOGGER.debug("This DataNode {} is partitioned with [{}]", myself, partitioned);
+      this.isPartitioned.set(latestTopology.get(myself).size() != latestTopology.size());
     }
   }
 

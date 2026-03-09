@@ -21,6 +21,8 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performe
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.utils.MetadataUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.ISeqCompactionPerformer;
@@ -31,9 +33,14 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.AbstractInnerSpaceEstimator;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator.ReadChunkInnerCompactionEstimator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
+import org.apache.iotdb.db.utils.EncryptDBUtils;
 
+import org.apache.tsfile.common.conf.TSFileDescriptor;
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
@@ -47,6 +54,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   private List<TsFileResource> seqFiles;
@@ -63,21 +71,60 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
               * IoTDBDescriptor.getInstance().getConfig().getChunkMetadataSizeProportion());
   private Schema schema = null;
 
+  private EncryptParameter firstEncryptParameter;
+
+  @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this(sourceFiles, Collections.singletonList(targetFile));
   }
 
   public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles,
+      TsFileResource targetFile,
+      EncryptParameter encryptParameter) {
+    this(sourceFiles, Collections.singletonList(targetFile), encryptParameter);
+  }
+
+  @TestOnly
+  public ReadChunkCompactionPerformer(
       List<TsFileResource> sourceFiles, List<TsFileResource> targetFiles) {
     setSourceFiles(sourceFiles);
     setTargetFiles(targetFiles);
+    this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
+  public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles,
+      List<TsFileResource> targetFiles,
+      EncryptParameter encryptParameter) {
+    setSourceFiles(sourceFiles);
+    setTargetFiles(targetFiles);
+    this.firstEncryptParameter = encryptParameter;
+  }
+
+  @TestOnly
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles) {
     setSourceFiles(sourceFiles);
+    this.firstEncryptParameter = EncryptDBUtils.getDefaultFirstEncryptParam();
   }
 
-  public ReadChunkCompactionPerformer() {}
+  public ReadChunkCompactionPerformer(
+      List<TsFileResource> sourceFiles, EncryptParameter encryptParameter) {
+    setSourceFiles(sourceFiles);
+    this.firstEncryptParameter = encryptParameter;
+  }
+
+  @TestOnly
+  public ReadChunkCompactionPerformer() {
+    this.firstEncryptParameter =
+        new EncryptParameter(
+            TSFileDescriptor.getInstance().getConfig().getEncryptType(),
+            TSFileDescriptor.getInstance().getConfig().getEncryptKey());
+  }
+
+  public ReadChunkCompactionPerformer(EncryptParameter encryptParameter) {
+    this.firstEncryptParameter = encryptParameter;
+  }
 
   @Override
   public void perform()
@@ -88,7 +135,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           PageException {
     try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(seqFiles)) {
       schema =
-          CompactionTableSchemaCollector.collectSchema(seqFiles, deviceIterator.getReaderMap());
+          CompactionTableSchemaCollector.collectSchema(
+              seqFiles,
+              deviceIterator.getReaderMap(),
+              deviceIterator.getDeprecatedTableSchemaMap());
       while (deviceIterator.hasNextDevice()) {
         currentWriter = getAvailableCompactionWriter();
         Pair<IDeviceID, Boolean> deviceInfo = deviceIterator.nextDevice();
@@ -158,7 +208,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         new CompactionTsFileWriter(
             targetResources.get(currentTargetFileIndex).getTsFile(),
             memoryBudgetForFileWriter,
-            CompactionType.INNER_SEQ_COMPACTION);
+            CompactionType.INNER_SEQ_COMPACTION,
+            firstEncryptParameter);
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 
@@ -281,9 +332,13 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
         readerAndChunkMetadataList) {
       boolean dataTypeConsistent = true;
       for (ChunkMetadata chunkMetadata : tsFileSequenceReaderListPair.getRight()) {
-        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
+        if (chunkMetadata != null
+            && !MetadataUtils.canAlter(chunkMetadata.getDataType(), correctDataType)) {
           dataTypeConsistent = false;
           break;
+        }
+        if (chunkMetadata != null && chunkMetadata.getDataType() != correctDataType) {
+          chunkMetadata.setNewType(correctDataType);
         }
       }
       if (!dataTypeConsistent) {
@@ -297,5 +352,10 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   @Override
   public void setSourceFiles(List<TsFileResource> seqFiles) {
     this.seqFiles = seqFiles;
+  }
+
+  @Override
+  public Optional<AbstractInnerSpaceEstimator> getInnerSpaceEstimator() {
+    return Optional.of(new ReadChunkInnerCompactionEstimator());
   }
 }

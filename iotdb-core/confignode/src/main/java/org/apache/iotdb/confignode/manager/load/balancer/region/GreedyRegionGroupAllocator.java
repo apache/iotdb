@@ -24,17 +24,17 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 /** Allocate Region Greedily */
 public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
 
-  public static final Random RANDOM = new Random();
+  public static final SecureRandom RANDOM = new SecureRandom();
 
   public GreedyRegionGroupAllocator() {
     // Empty constructor
@@ -80,6 +80,19 @@ public class GreedyRegionGroupAllocator implements IRegionGroupAllocator {
     return new TRegionReplicaSet(
         consensusGroupId,
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
+  }
+
+  @Override
+  public Map<TConsensusGroupId, TDataNodeConfiguration> removeNodeReplicaSelect(
+      Map<Integer, TDataNodeConfiguration> availableDataNodeMap,
+      Map<Integer, Double> freeDiskSpaceMap,
+      List<TRegionReplicaSet> allocatedRegionGroups,
+      Map<TConsensusGroupId, String> regionDatabaseMap,
+      Map<String, List<TRegionReplicaSet>> databaseAllocatedRegionGroupMap,
+      Map<TConsensusGroupId, TRegionReplicaSet> remainReplicasMap) {
+    // TODO: Implement this method
+    throw new UnsupportedOperationException(
+        "The removeNodeReplicaSelect method of GreedyRegionGroupAllocator is yet to be implemented.");
   }
 
   private List<TDataNodeLocation> buildWeightList(

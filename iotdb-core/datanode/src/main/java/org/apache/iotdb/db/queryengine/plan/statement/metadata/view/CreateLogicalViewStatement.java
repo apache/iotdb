@@ -19,11 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.statement.metadata.view;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.view.viewExpression.ViewExpression;
-import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.exception.metadata.view.UnsupportedViewException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.queryengine.plan.analyze.SelectIntoUtils;
@@ -37,7 +34,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.component.IntoItem;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPathType;
 import org.apache.iotdb.db.schemaengine.schemaregion.view.ViewPaths;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -58,6 +54,7 @@ public class CreateLogicalViewStatement extends Statement {
 
   // if not null, all related check and generation will be skipped
   private List<ViewExpression> viewExpressions;
+  private boolean canSeeAuditDB;
 
   public CreateLogicalViewStatement() {
     super();
@@ -72,41 +69,6 @@ public class CreateLogicalViewStatement extends Statement {
   @Override
   public List<PartialPath> getPaths() {
     return this.getTargetPathList();
-  }
-
-  @Override
-  public TSStatus checkPermissionBeforeProcess(String userName) {
-    if (AuthorityChecker.SUPER_USER.equals(userName)) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    }
-    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    List<PartialPath> sourcePathList = sourcePaths.fullPathList;
-    if (sourcePathList != null) {
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkFullPathListPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-    if (queryStatement != null && status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      sourcePathList = queryStatement.getPaths();
-      status =
-          AuthorityChecker.getTSStatus(
-              AuthorityChecker.checkPatternPermission(
-                  userName, sourcePathList, PrivilegeType.READ_SCHEMA),
-              sourcePathList,
-              PrivilegeType.READ_SCHEMA);
-    }
-
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return AuthorityChecker.getTSStatus(
-          AuthorityChecker.checkFullPathListPermission(
-              userName, getTargetPathList(), PrivilegeType.WRITE_SCHEMA),
-          getTargetPathList(),
-          PrivilegeType.WRITE_SCHEMA);
-    }
-    return status;
   }
 
   public ViewPaths getTargetPaths() {
@@ -230,6 +192,10 @@ public class CreateLogicalViewStatement extends Statement {
     }
   }
 
+  public IntoItem getBatchGenerationItem() {
+    return batchGenerationItem;
+  }
+
   // endregion
 
   // region Interfaces for checking
@@ -288,5 +254,13 @@ public class CreateLogicalViewStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateLogicalView(this, context);
+  }
+
+  public boolean isCanSeeAuditDB() {
+    return canSeeAuditDB;
+  }
+
+  public void setCanSeeAuditDB(boolean canSeeAuditDB) {
+    this.canSeeAuditDB = canSeeAuditDB;
   }
 }

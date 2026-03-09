@@ -26,7 +26,9 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.exe
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.fast.element.ChunkMetadataElement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.writer.flushcontroller.AbstractCompactionFlushController;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.header.PageHeader;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -99,9 +101,21 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String[] measurementId = new String[subTaskNum];
 
+  protected ModEntry ttlDeletionForCurrentDevice;
+
+  private EncryptParameter encryptParameter;
+
   public abstract void startChunkGroup(IDeviceID deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
+
+  public void setTTLDeletion(ModEntry ttlDeletion) {
+    this.ttlDeletionForCurrentDevice = ttlDeletion;
+  }
+
+  public ModEntry getTTLLowerBoundForCurrentDevice() {
+    return ttlDeletionForCurrentDevice;
+  }
 
   public void startMeasurement(String measurement, IChunkWriter chunkWriter, int subTaskId) {
     lastCheckIndex = 0;
@@ -135,6 +149,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
         case TEXT:
         case STRING:
         case BLOB:
+        case OBJECT:
           chunkWriterImpl.write(timestamp, value.getBinary());
           break;
         case DOUBLE:
@@ -173,6 +188,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
     chunkPointNumArray[subTaskId] = 0;
   }
+
+  public abstract EncryptParameter getEncryptParameter();
 
   public abstract boolean flushNonAlignedChunk(
       Chunk chunk, ChunkMetadata chunkMetadata, int subTaskId) throws IOException;

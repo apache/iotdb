@@ -36,8 +36,9 @@ public class TypeUtils {
   public static ColumnBuilder initColumnBuilder(TSDataType type, int count) {
     switch (type) {
       case INT32:
+        return new IntColumnBuilder(null, count, TSDataType.INT32);
       case DATE:
-        return new IntColumnBuilder(null, count);
+        return new IntColumnBuilder(null, count, TSDataType.DATE);
       case INT64:
       case TIMESTAMP:
         return new LongColumnBuilder(null, count);
@@ -50,6 +51,7 @@ public class TypeUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return new BinaryColumnBuilder(null, count);
       default:
         throw new UnSupportedDataTypeException(

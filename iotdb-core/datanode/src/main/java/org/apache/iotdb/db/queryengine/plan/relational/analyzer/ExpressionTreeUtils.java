@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.queryengine.plan.relational.analyzer;
 
 import org.apache.iotdb.commons.udf.builtin.relational.TableBuiltinAggregationFunction;
-import org.apache.iotdb.commons.udf.utils.TableUDFUtils;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DefaultExpressionTraversalVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
@@ -28,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.QualifiedName;
+import org.apache.iotdb.db.queryengine.plan.udf.TableUDFUtils;
 
 import com.google.common.collect.ImmutableList;
 
@@ -65,8 +65,21 @@ public final class ExpressionTreeUtils {
         .collect(toImmutableList());
   }
 
+  public static List<FunctionCall> extractWindowFunctions(Iterable<? extends Node> nodes) {
+    return extractExpressions(nodes, FunctionCall.class, ExpressionTreeUtils::isWindowFunction);
+  }
+
+  static List<Expression> extractWindowExpressions(Iterable<? extends Node> nodes) {
+    return ImmutableList.<Expression>builder().addAll(extractWindowFunctions(nodes)).build();
+  }
+
+  private static boolean isWindowFunction(FunctionCall functionCall) {
+    return functionCall.getWindow().isPresent();
+  }
+
   private static boolean isAggregation(FunctionCall functionCall) {
-    return isAggregationFunction(functionCall.getName().toString());
+    return isAggregationFunction(functionCall.getName().toString())
+        && !functionCall.getWindow().isPresent();
   }
 
   private static List<Node> linearizeNodes(Node node) {

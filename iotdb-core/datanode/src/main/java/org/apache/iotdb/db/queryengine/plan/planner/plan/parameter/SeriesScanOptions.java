@@ -37,8 +37,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SeriesScanOptions {
 
   private Filter globalTimeFilter;
+  private final Filter originalTimeFilter;
 
-  private final AtomicBoolean timeFilterUpdatedByTll = new AtomicBoolean(false);
+  private final AtomicBoolean timeFilterUpdatedByTtl = new AtomicBoolean(false);
 
   private final Filter pushDownFilter;
 
@@ -49,6 +50,8 @@ public class SeriesScanOptions {
 
   private final boolean pushLimitToEachDevice;
   private PaginationController paginationController;
+  private boolean isTableViewForTreeModel;
+  private long ttlForTableView = Long.MAX_VALUE;
 
   public SeriesScanOptions(
       Filter globalTimeFilter,
@@ -56,13 +59,16 @@ public class SeriesScanOptions {
       long pushDownLimit,
       long pushDownOffset,
       Set<String> allSensors,
-      boolean pushLimitToEachDevice) {
+      boolean pushLimitToEachDevice,
+      boolean isTableViewForTreeModel) {
     this.globalTimeFilter = globalTimeFilter;
+    this.originalTimeFilter = globalTimeFilter;
     this.pushDownFilter = pushDownFilter;
     this.pushDownLimit = pushDownLimit;
     this.pushDownOffset = pushDownOffset;
     this.allSensors = allSensors;
     this.pushLimitToEachDevice = pushLimitToEachDevice;
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
   }
 
   public static SeriesScanOptions getDefaultSeriesScanOptions(IFullPath seriesPath) {
@@ -112,14 +118,26 @@ public class SeriesScanOptions {
     }
   }
 
-  public boolean timeFilterNeedUpdatedByTll() {
-    return !timeFilterUpdatedByTll.get();
+  public boolean timeFilterNeedUpdatedByTtl() {
+    return !timeFilterUpdatedByTtl.get();
   }
 
-  public void setTTL(long dataTTL) {
-    if (timeFilterUpdatedByTll.compareAndSet(false, true)) {
+  public void setTTLForTableDevice(long dataTTL) {
+    // Devices in the table model share a same table ttl, so it only needs to be set once
+    if (timeFilterUpdatedByTtl.compareAndSet(false, true)) {
       this.globalTimeFilter = updateFilterUsingTTL(globalTimeFilter, dataTTL);
     }
+  }
+
+  public void setTTLForTreeDevice(long dataTTL) {
+    // ttlForTableView should be set before calling setTTL.
+    // Different devices have different ttl, so we regenerate the globalTimeFilter each time
+    this.globalTimeFilter =
+        updateFilterUsingTTL(originalTimeFilter, Math.min(ttlForTableView, dataTTL));
+  }
+
+  public void setTTLForTableView(long ttlForTableView) {
+    this.ttlForTableView = ttlForTableView;
   }
 
   /**
@@ -136,6 +154,14 @@ public class SeriesScanOptions {
       }
     }
     return filter;
+  }
+
+  public boolean isTableViewForTreeModel() {
+    return isTableViewForTreeModel;
+  }
+
+  public void setIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+    this.isTableViewForTreeModel = isTableViewForTreeModel;
   }
 
   /**
@@ -159,6 +185,7 @@ public class SeriesScanOptions {
     private Set<String> allSensors;
 
     private boolean pushLimitToEachDevice = true;
+    private boolean isTableViewForTreeModel = false;
 
     public Builder withGlobalTimeFilter(Filter globalTimeFilter) {
       this.globalTimeFilter = globalTimeFilter;
@@ -185,6 +212,11 @@ public class SeriesScanOptions {
       return this;
     }
 
+    public Builder withIsTableViewForTreeModel(boolean isTableViewForTreeModel) {
+      this.isTableViewForTreeModel = isTableViewForTreeModel;
+      return this;
+    }
+
     public void withAllSensors(Set<String> allSensors) {
       this.allSensors = allSensors;
     }
@@ -196,7 +228,8 @@ public class SeriesScanOptions {
           pushDownLimit,
           pushDownOffset,
           allSensors,
-          pushLimitToEachDevice);
+          pushLimitToEachDevice,
+          isTableViewForTreeModel);
     }
   }
 }

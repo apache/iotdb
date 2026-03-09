@@ -59,7 +59,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
 
-    // TODO: delete ratis configurations
     senderEnv
         .getConfig()
         .getCommonConfig()
@@ -69,17 +68,21 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         // Disable sender compaction to test mods
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setEnforceStrongPassword(false);
     receiverEnv
         .getConfig()
         .getCommonConfig()
         .setAutoCreateSchemaEnabled(true)
         .setConfigNodeConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
-        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS);
-
-    // 10 min, assert that the operations will not time out
-    senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
-    receiverEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);
+        .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
+        .setDnConnectionTimeoutMs(600000)
+        .setPipeMemoryManagementEnabled(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setEnforceStrongPassword(false);
 
     senderEnv.initClusterEnvironment();
     receiverEnv.initClusterEnvironment();
@@ -96,7 +99,6 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           TestUtils.executeNonQueryWithRetry(senderEnv, "flush");
           TestUtils.executeNonQueryWithRetry(receiverEnv, "flush");
         };
-    boolean insertResult = true;
 
     final Map<String, String> extractorAttributes = new HashMap<>();
     final Map<String, String> processorAttributes = new HashMap<>();
@@ -115,10 +117,8 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
         (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
       // Generate TsFile
       TableModelUtils.createDataBaseAndTable(senderEnv, "test", "test");
-      insertResult = TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
-      if (!insertResult) {
-        return;
-      }
+      TableModelUtils.insertData("test", "test", 0, 100, senderEnv);
+
       TableModelUtils.deleteData("test", "test", 50, 100, senderEnv);
 
       TSStatus status =
@@ -204,15 +204,13 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
       }
 
       Set<String> expectedResSet = new java.util.HashSet<>();
-      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,null,null,null,null,");
-      expectedResSet.add("1970-01-01T00:00:00.002Z,null,null,null,null,d1,d2,blue,2,");
-      expectedResSet.add("1970-01-01T00:00:00.001Z,null,null,null,null,d1,d2,red,1,");
+      expectedResSet.add("1970-01-01T00:00:00.002Z,d3,d4,blue2,20,");
+      expectedResSet.add("1970-01-01T00:00:00.001Z,d3,d4,red2,10,");
       // make sure data are not transferred
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv,
           "select * from t1",
-          "time,tag3,tag4,s3,s4,tag1,tag2,s1,s2,",
+          "time,tag3,tag4,s3,s4,",
           expectedResSet,
           "db",
           handleFailure);
@@ -375,9 +373,115 @@ public class IoTDBPipeWithLoadIT extends AbstractPipeTableModelDualManualIT {
           "select * from t1",
           "time,tag1,tag2,tag3,s3,s4,s1,s2,",
           expectedResSet,
-          10,
           "db",
           handleFailure);
+    }
+  }
+
+  @Test
+  public void testLoadAutoCreateWithTableDeletion() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database if not exists db");
+        statement.execute("use db");
+        statement.execute(
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+        statement.execute("flush");
+        statement.execute("drop table t1");
+      } catch (Exception e) {
+        fail(e.getMessage());
+      }
+
+      TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Ensure the deleted table won't be created
+      // Now the database will also be created at receiver
+      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
+    }
+  }
+
+  @Test
+  public void testLoadAutoCreateWithoutInsertPermission() throws Exception {
+    final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
+    final String receiverIp = receiverDataNode.getIp();
+    final int receiverPort = receiverDataNode.getPort();
+
+    final Map<String, String> extractorAttributes = new HashMap<>();
+    final Map<String, String> processorAttributes = new HashMap<>();
+    final Map<String, String> connectorAttributes = new HashMap<>();
+
+    extractorAttributes.put("capture.table", "true");
+    extractorAttributes.put("extractor.realtime.mode", "file");
+    extractorAttributes.put("user", "root");
+
+    connectorAttributes.put("connector.batch.enable", "false");
+    connectorAttributes.put("connector.ip", receiverIp);
+    connectorAttributes.put("connector.port", Integer.toString(receiverPort));
+    connectorAttributes.put("connector.user", "user01");
+    connectorAttributes.put("connector.password", "1234123456789");
+
+    try (final SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) senderEnv.getLeaderConfigNodeConnection()) {
+      try (final Connection connection = receiverEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create user user01 '1234123456789'");
+        statement.execute("grant create on any to user user01");
+      } catch (final Exception e) {
+        fail(e.getMessage());
+      }
+
+      try (final Connection connection = senderEnv.getConnection(BaseEnv.TABLE_SQL_DIALECT);
+          final Statement statement = connection.createStatement()) {
+        statement.execute("create database if not exists db");
+        statement.execute("use db");
+        statement.execute(
+            "create table if not exists t1(tag1 STRING TAG, tag2 STRING TAG, s1 TEXT FIELD, s2 INT32 FIELD)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(1, 'd1', 'd2', 'red', 1)");
+        statement.execute("INSERT INTO t1(time,tag1,tag2,s1,s2) values(2, 'd1', 'd2', 'blue', 2)");
+        statement.execute("flush");
+      } catch (final Exception e) {
+        fail(e.getMessage());
+      }
+
+      final TSStatus status =
+          client.createPipe(
+              new TCreatePipeReq("p1", connectorAttributes)
+                  .setExtractorAttributes(extractorAttributes)
+                  .setProcessorAttributes(processorAttributes));
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
+
+      // Ensure the table without insert privilege won't be created
+      // Now the database will also be created at receiver
+      TestUtils.assertAlwaysFail(receiverEnv, "describe db.t1");
     }
   }
 }

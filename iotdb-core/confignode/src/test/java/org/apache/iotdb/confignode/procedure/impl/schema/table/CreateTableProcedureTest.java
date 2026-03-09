@@ -68,6 +68,6 @@ public class CreateTableProcedureTest {
         createTableProcedure.getTable().getColumnNum(),
         deserializedProcedure.getTable().getColumnNum());
     Assert.assertEquals(
-        createTableProcedure.getTable().getIdNums(), deserializedProcedure.getTable().getIdNums());
+        createTableProcedure.getTable().getTagNum(), deserializedProcedure.getTable().getTagNum());
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.auth;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeModelType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
@@ -36,6 +35,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
+import org.apache.iotdb.commons.security.encrypt.AsymmetricEncrypt;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthizedPatternTreeResp;
@@ -52,6 +52,8 @@ import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
 import org.apache.iotdb.db.queryengine.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
+import org.apache.iotdb.db.queryengine.plan.relational.type.AuthorRType;
+import org.apache.iotdb.db.queryengine.plan.statement.StatementType;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -63,9 +65,14 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
+
+import static org.apache.iotdb.commons.auth.utils.AuthUtils.constructAuthorityScope;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -74,7 +81,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private boolean cacheOutDate = false;
   private long heartBeatTimeStamp = 0;
 
-  private boolean acceptCache = false;
+  private boolean acceptCache = true;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -116,7 +123,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
-  public TSStatus checkUserSysPrivileges(String username, PrivilegeType permission) {
+  public TSStatus checkUserSysPrivilege(String username, PrivilegeType permission) {
     checkCacheAvailable();
     return checkPrivilege(
         username,
@@ -124,6 +131,26 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
         new TCheckUserPrivilegesReq(
             username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+  }
+
+  @Override
+  public Collection<PrivilegeType> checkUserSysPrivileges(
+      String username, Collection<PrivilegeType> permissions) {
+    checkCacheAvailable();
+    Set<PrivilegeType> missingPrivileges = new HashSet<>();
+    for (PrivilegeType permission : permissions) {
+      TSStatus status =
+          checkPrivilege(
+              username,
+              new PrivilegeUnion(permission, false),
+              (role, union) -> role.checkSysPrivilege(union.getPrivilegeType()),
+              new TCheckUserPrivilegesReq(
+                  username, PrivilegeModelType.SYSTEM.ordinal(), permission.ordinal(), false));
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        missingPrivileges.add(permission);
+      }
+    }
+    return missingPrivileges;
   }
 
   @Override
@@ -140,37 +167,37 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   @Override
   public List<Integer> checkUserPathPrivileges(
       String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
-    checkCacheAvailable();
     List<Integer> posList = new ArrayList<>();
-    User user = iAuthorCache.getUserCache(username);
-    if (user != null) {
-      if (user.isOpenIdUser()) {
-        return posList;
-      }
-      int pos = 0;
-      for (PartialPath path : allPath) {
-        if (!user.checkPathPrivilege(path, permission)) {
-          boolean checkFromRole = false;
-          for (String rolename : user.getRoleSet()) {
-            Role cachedRole = iAuthorCache.getRoleCache(rolename);
-            if (cachedRole == null) {
-              return checkPathFromConfigNode(username, allPath, permission);
-            }
-            if (cachedRole.checkPathPrivilege(path, permission)) {
-              checkFromRole = true;
-              break;
-            }
+    if (username.equals(AuthorityChecker.INTERNAL_AUDIT_USER)) {
+      return posList;
+    }
+    checkCacheAvailable();
+    User user = getUser(username);
+    if (user.isOpenIdUser()) {
+      return posList;
+    }
+    int pos = 0;
+    for (PartialPath path : allPath) {
+      if (!user.checkPathPrivilege(path, permission)) {
+        boolean checkFromRole = false;
+        for (String rolename : user.getRoleSet()) {
+          Role cachedRole = iAuthorCache.getRoleCache(rolename);
+          if (cachedRole == null) {
+            checkRoleFromConfigNode(username, rolename);
+            cachedRole = iAuthorCache.getRoleCache(rolename);
           }
-          if (!checkFromRole) {
-            posList.add(pos);
+          if (cachedRole != null && cachedRole.checkPathPrivilege(path, permission)) {
+            checkFromRole = true;
+            break;
           }
         }
-        pos++;
+        if (!checkFromRole) {
+          posList.add(pos);
+        }
       }
-      return posList;
-    } else {
-      return checkPathFromConfigNode(username, allPath, permission);
+      pos++;
     }
+    return posList;
   }
 
   @Override
@@ -316,19 +343,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     PathPatternTree patternTree = new PathPatternTree();
     User user = iAuthorCache.getUserCache(username);
     if (user != null) {
-      for (PathPrivilege path : user.getPathPrivilegeList()) {
-        if (path.checkPrivilege(permission)) {
-          patternTree.appendPathPattern(path.getPath());
-        }
-      }
+      constructAuthorityScope(patternTree, user, permission);
       for (String roleName : user.getRoleSet()) {
         Role role = iAuthorCache.getRoleCache(roleName);
         if (role != null) {
-          for (PathPrivilege path : role.getPathPrivilegeList()) {
-            if (path.checkPrivilege(permission)) {
-              patternTree.appendPathPattern(path.getPath());
-            }
-          }
+          constructAuthorityScope(patternTree, role, permission);
         } else {
           return fetchAuthizedPatternTree(username, permission);
         }
@@ -377,8 +396,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               : configNodeClient.operatePermission(
                   statementToAuthorizerReq((AuthorStatement) plan));
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
+        future.setException(new IoTDBException(tsStatus));
       } else {
+        onOperatePermissionSuccess(plan);
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (AuthException e) {
@@ -390,15 +410,66 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return future;
   }
 
+  private void onOperatePermissionSuccess(Object plan) {
+    if (plan instanceof RelationalAuthorStatement) {
+      RelationalAuthorStatement stmt = (RelationalAuthorStatement) plan;
+      stmt.onSuccess();
+    } else if (plan instanceof AuthorStatement) {
+      AuthorStatement stmt = (AuthorStatement) plan;
+      stmt.onSuccess();
+    }
+  }
+
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
-    return operatePermissionInternal(authorStatement, false);
+    return handleAccountUnlock(
+        authorStatement,
+        authorStatement.getUserName(),
+        false,
+        () -> onOperatePermissionSuccess(authorStatement));
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> operatePermission(
       RelationalAuthorStatement authorStatement) {
-    return operatePermissionInternal(authorStatement, true);
+    return handleAccountUnlock(
+        authorStatement,
+        authorStatement.getUserName(),
+        true,
+        () -> onOperatePermissionSuccess(authorStatement));
+  }
+
+  private SettableFuture<ConfigTaskResult> handleAccountUnlock(
+      Object authorStatement, String username, boolean isRelational, Runnable successCallback) {
+
+    if (isUnlockStatement(authorStatement, isRelational)) {
+      SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+      User user = getUser(username);
+      if (user == null) {
+        future.setException(
+            new IoTDBException(
+                String.format("User %s does not exist", username),
+                TSStatusCode.USER_NOT_EXIST.getStatusCode()));
+        return future;
+      }
+      String loginAddr =
+          isRelational
+              ? ((RelationalAuthorStatement) authorStatement).getLoginAddr()
+              : ((AuthorStatement) authorStatement).getLoginAddr();
+
+      LoginLockManager.getInstance().unlock(user.getUserId(), loginAddr);
+      successCallback.run();
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      return future;
+    }
+    return operatePermissionInternal(authorStatement, isRelational);
+  }
+
+  private boolean isUnlockStatement(Object statement, boolean isRelational) {
+    if (isRelational) {
+      return ((RelationalAuthorStatement) statement).getAuthorType() == AuthorRType.ACCOUNT_UNLOCK;
+    }
+    return ((AuthorStatement) statement).getType() == StatementType.ACCOUNT_UNLOCK;
   }
 
   private SettableFuture<ConfigTaskResult> queryPermissionInternal(
@@ -425,8 +496,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       LOGGER.error(CONNECTERROR);
       authorizerResp.setStatus(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, CONNECTERROR));
-      future.setException(
-          new IoTDBException(authorizerResp.getStatus().message, authorizerResp.getStatus().code));
+      future.setException(new IoTDBException(authorizerResp.getStatus()));
     }
     return future;
   }
@@ -481,6 +551,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+      } else if (password != null
+          && AuthUtils.validatePassword(
+              password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
         return RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD, "Authentication failed.");
       }
@@ -509,6 +583,32 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         return status.getStatus();
       }
     }
+  }
+
+  public User getUser(String userName) {
+    checkCacheAvailable();
+    User user = iAuthorCache.getUserCache(userName);
+    if (user != null) {
+      return user;
+    } else {
+      TPermissionInfoResp permissionInfoResp = null;
+      try (ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        permissionInfoResp = configNodeClient.getUser(userName);
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(CONNECTERROR);
+      }
+      if (permissionInfoResp != null
+          && permissionInfoResp.getStatus().getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        user = cacheUser(permissionInfoResp);
+        if (acceptCache) {
+          iAuthorCache.putUserCache(userName, user);
+        }
+      }
+    }
+    return user;
   }
 
   @Override
@@ -542,15 +642,6 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     return permissionInfoResp;
   }
 
-  private List<Integer> checkPathFromConfigNode(
-      String username, List<? extends PartialPath> allPath, PrivilegeType permission) {
-    TCheckUserPrivilegesReq req =
-        new TCheckUserPrivilegesReq(
-            username, PrivilegeModelType.TREE.ordinal(), permission.ordinal(), false);
-    req.setPaths(AuthUtils.serializePartialPathList(allPath));
-    return checkPrivilegeFromConfigNode(req).getFailPos();
-  }
-
   private boolean checkRoleFromConfigNode(String username, String rolename) {
     TAuthorizerReq req = new TAuthorizerReq();
     // just reuse authorizer request. only need username and rolename field.
@@ -562,6 +653,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     req.setGrantOpt(false);
     req.setUserName(username);
     req.setRoleName(rolename);
+    req.setNewUsername("");
     TPermissionInfoResp permissionInfoResp;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
@@ -592,6 +684,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   /** Cache user. */
   public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
     User user = new User();
+    user.setUserId(tPermissionInfoResp.getUserInfo().getUserId());
     List<TPathPrivilege> privilegeList =
         tPermissionInfoResp.getUserInfo().getPermissionInfo().getPrivilegeList();
     user.setName(tPermissionInfoResp.getUserInfo().getPermissionInfo().getName());
@@ -652,7 +745,9 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getGrantOpt(),
-        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()));
+        AuthUtils.serializePartialPathList(authorStatement.getNodeNameList()),
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 
   private TAuthorizerRelationalReq statementToAuthorizerReq(
@@ -667,6 +762,8 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPrivilegeTypes() == null
             ? Collections.emptySet()
             : authorStatement.getPrivilegeIds(),
-        authorStatement.isGrantOption());
+        authorStatement.isGrantOption(),
+        authorStatement.getExecutedByUserId(),
+        authorStatement.getNewUsername());
   }
 }

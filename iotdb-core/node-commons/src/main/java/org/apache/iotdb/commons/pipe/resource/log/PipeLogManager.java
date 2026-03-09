@@ -29,15 +29,29 @@ public class PipeLogManager {
 
   private final ConcurrentMap<Class<?>, PipeLogStatus> logClass2LogStatusMap =
       new ConcurrentHashMap<>();
+  private final ConcurrentMap<Class<?>, ConcurrentMap<Object, PipeLogStatus>>
+      logClass2Key2StatusMap = new ConcurrentHashMap<>();
 
   public Optional<Logger> schedule(
       final Class<?> logClass,
-      final int maxAverageScale,
+      final double maxAverageScale,
       final int maxLogInterval,
       final int scale) {
     return logClass2LogStatusMap
         .computeIfAbsent(
             logClass, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
+        .schedule(scale);
+  }
+
+  public Optional<Logger> schedule(
+      final Class<?> logClass,
+      final Object key,
+      final int maxAverageScale,
+      final int maxLogInterval,
+      final int scale) {
+    return logClass2Key2StatusMap
+        .computeIfAbsent(logClass, k -> new ConcurrentHashMap<>())
+        .computeIfAbsent(key, k -> new PipeLogStatus(logClass, maxAverageScale, maxLogInterval))
         .schedule(scale);
   }
 }

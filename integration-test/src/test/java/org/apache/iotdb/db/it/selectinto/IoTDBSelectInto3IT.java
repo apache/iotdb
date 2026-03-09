@@ -37,6 +37,7 @@ public class IoTDBSelectInto3IT extends IoTDBSelectIntoIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
+    EnvFactory.getEnv().getConfig().getCommonConfig().setEnforceStrongPassword(false);
     EnvFactory.getEnv()
         .getConfig()
         .getCommonConfig()

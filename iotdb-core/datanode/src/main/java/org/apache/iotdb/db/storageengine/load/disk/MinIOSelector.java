@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.load.disk;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.metrics.utils.FileStoreUtils;
 
 import org.slf4j.Logger;
@@ -31,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.FileStore;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -39,15 +38,20 @@ import java.util.Optional;
 public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
 
   private static final Logger logger = LoggerFactory.getLogger(MinIOSelector.class);
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final Map<String, String> rootDisks2DataDirsMapForLoad;
 
-  public MinIOSelector() {
+  public MinIOSelector(final String[] dirs, final DiskDirectorySelector selector) {
+    super(selector);
+    if (dirs == null || dirs.length == 0) {
+      rootDisks2DataDirsMapForLoad = Collections.emptyMap();
+      logger.warn("MinIO selector requires at least one directory");
+      return;
+    }
     // init data dirs' root disks
-    this.rootDisks2DataDirsMapForLoad = new HashMap<>(config.getTierDataDirs()[0].length);
-    Arrays.stream(config.getTierDataDirs()[0])
+    this.rootDisks2DataDirsMapForLoad = new HashMap<>(dirs.length);
+    Arrays.stream(dirs)
         .filter(Objects::nonNull)
-        .map(v -> fsFactory.getFile(v, IoTDBConstant.UNSEQUENCE_FOLDER_NAME).getPath())
         .forEach(
             dataDirPath -> {
               File dataDirFile = new File(dataDirPath);
@@ -69,44 +73,41 @@ public class MinIOSelector extends InheritSystemMultiDisksStrategySelector {
   }
 
   @Override
-  public File getTargetFile(
-      File fileToLoad,
-      String databaseName,
-      String dataRegionId,
-      long filePartitionId,
-      String tsfileName,
-      int tierLevel)
-      throws DiskSpaceInsufficientException {
-    File targetFile;
+  public File selectTargetDirectory(
+      final File sourceDirectory,
+      final String fileName,
+      final boolean appendFileName,
+      final int tierLevel)
+      throws DiskSpaceInsufficientException, LoadFileException {
     String fileDirRoot = null;
     try {
-      fileDirRoot =
-          Optional.ofNullable(FileStoreUtils.getFileStore(fileToLoad.getCanonicalPath()))
-              .map(Object::toString)
-              .orElse(null);
+      if (sourceDirectory != null) {
+        fileDirRoot =
+            Optional.ofNullable(FileStoreUtils.getFileStore(sourceDirectory.getCanonicalPath()))
+                .map(Object::toString)
+                .orElse(null);
+      }
     } catch (Exception e) {
-      logger.warn("Exception occurs when reading target file's mount point {}", filePartitionId, e);
+      logger.warn(
+          "Exception occurs when reading target file's mount point {}",
+          sourceDirectory.getAbsoluteFile(),
+          e);
     }
 
+    File targetFile = null;
     if (rootDisks2DataDirsMapForLoad.containsKey(fileDirRoot)) {
-      // if there is an overlap between firDirRoot and data directories' disk roots, try to get
-      // targetFile in the same disk
-      targetFile =
-          fsFactory.getFile(
-              rootDisks2DataDirsMapForLoad.get(fileDirRoot),
-              databaseName
-                  + File.separatorChar
-                  + dataRegionId
-                  + File.separatorChar
-                  + filePartitionId
-                  + File.separator
-                  + tsfileName);
+      if (appendFileName) {
+        // if there is an overlap between firDirRoot and data directories' disk roots, try to get
+        // targetFile in the same disk
+        targetFile = fsFactory.getFile(rootDisks2DataDirsMapForLoad.get(fileDirRoot), fileName);
+      } else {
+        targetFile = new File(rootDisks2DataDirsMapForLoad.get(fileDirRoot));
+      }
 
       return targetFile;
     }
 
     // if there isn't an overlap, downgrade to storage balance(sequence) strategy.
-    return super.getTargetFile(
-        fileToLoad, databaseName, dataRegionId, filePartitionId, tsfileName, tierLevel);
+    return super.selectTargetDirectory(sourceDirectory, fileName, appendFileName, tierLevel);
   }
 }

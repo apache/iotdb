@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.execution;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.queryengine.common.header.DatasetHeader;
+import org.apache.iotdb.db.queryengine.plan.analyze.QueryType;
 
 import org.apache.tsfile.read.common.block.TsBlock;
 
@@ -52,6 +53,8 @@ public interface IQueryExecution {
 
   DatasetHeader getDatasetHeader();
 
+  QueryType getQueryType();
+
   boolean isQuery();
 
   boolean isUserQuery();
@@ -74,4 +77,6 @@ public interface IQueryExecution {
   IClientSession.SqlDialect getSQLDialect();
 
   String getUser();
+
+  String getClientHostname();
 }

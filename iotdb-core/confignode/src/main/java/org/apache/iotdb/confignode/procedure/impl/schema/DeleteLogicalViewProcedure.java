@@ -33,8 +33,6 @@ import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeDele
 import org.apache.iotdb.confignode.consensus.request.write.pipe.payload.PipeEnrichedPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.DeleteLogicalViewState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
@@ -55,7 +53,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -92,7 +89,7 @@ public class DeleteLogicalViewProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final DeleteLogicalViewState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -137,7 +134,6 @@ public class DeleteLogicalViewProcedure
     if (targetSchemaRegionGroup.isEmpty()) {
       return 0;
     }
-    List<TSStatus> successResult = new ArrayList<>();
     DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq> constructBlackListTask =
         new DeleteLogicalViewRegionTaskExecutor<TConstructViewSchemaBlackListReq>(
             "construct view schema engine black list",
@@ -148,25 +144,11 @@ public class DeleteLogicalViewProcedure
                 new TConstructViewSchemaBlackListReq(consensusGroupIdList, patternTreeBytes))) {
           @Override
           protected List<TConsensusGroupId> processResponseOfOneDataNode(
-              TDataNodeLocation dataNodeLocation,
-              List<TConsensusGroupId> consensusGroupIdList,
-              TSStatus response) {
-            List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-            if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              successResult.add(response);
-            } else if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              List<TSStatus> subStatusList = response.getSubStatus();
-              for (int i = 0; i < subStatusList.size(); i++) {
-                if (subStatusList.get(i).getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                  successResult.add(subStatusList.get(i));
-                } else {
-                  failedRegionList.add(consensusGroupIdList.get(i));
-                }
-              }
-            } else {
-              failedRegionList.addAll(consensusGroupIdList);
-            }
-            return failedRegionList;
+              final TDataNodeLocation dataNodeLocation,
+              final List<TConsensusGroupId> consensusGroupIdList,
+              final TSStatus response) {
+            return processResponseOfOneDataNodeWithSuccessResult(
+                dataNodeLocation, consensusGroupIdList, response);
           }
         };
     constructBlackListTask.execute();
@@ -175,7 +157,7 @@ public class DeleteLogicalViewProcedure
       return 0;
     }
 
-    return successResult.stream()
+    return constructBlackListTask.getSuccessResult().stream()
         .mapToLong(resp -> Long.parseLong(resp.getMessage()))
         .reduce(0L, Long::sum);
   }
@@ -337,8 +319,7 @@ public class DeleteLogicalViewProcedure
         getProcId(), getCurrentState(), getCycles(), isGeneratedByPipe, patternTree);
   }
 
-  private class DeleteLogicalViewRegionTaskExecutor<Q>
-      extends DataNodeRegionTaskExecutor<Q, TSStatus> {
+  private class DeleteLogicalViewRegionTaskExecutor<Q> extends DataNodeTSStatusTaskExecutor<Q> {
 
     private final String taskName;
 
@@ -353,29 +334,6 @@ public class DeleteLogicalViewProcedure
     }
 
     @Override
-    protected List<TConsensusGroupId> processResponseOfOneDataNode(
-        final TDataNodeLocation dataNodeLocation,
-        final List<TConsensusGroupId> consensusGroupIdList,
-        final TSStatus response) {
-      final List<TConsensusGroupId> failedRegionList = new ArrayList<>();
-      if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return failedRegionList;
-      }
-
-      if (response.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-        final List<TSStatus> subStatus = response.getSubStatus();
-        for (int i = 0; i < subStatus.size(); i++) {
-          if (subStatus.get(i).getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            failedRegionList.add(consensusGroupIdList.get(i));
-          }
-        }
-      } else {
-        failedRegionList.addAll(consensusGroupIdList);
-      }
-      return failedRegionList;
-    }
-
-    @Override
     protected void onAllReplicasetFailure(
         final TConsensusGroupId consensusGroupId,
         final Set<TDataNodeLocation> dataNodeLocationSet) {
@@ -383,8 +341,8 @@ public class DeleteLogicalViewProcedure
           new ProcedureException(
               new MetadataException(
                   String.format(
-                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failure nodes: %s",
-                      requestMessage, taskName, consensusGroupId.id, dataNodeLocationSet))));
+                      "Delete view %s failed when [%s] because failed to execute in all replicaset of schemaRegion %s. Failures: %s",
+                      requestMessage, taskName, consensusGroupId.id, printFailureMap()))));
       interruptTask();
     }
   }

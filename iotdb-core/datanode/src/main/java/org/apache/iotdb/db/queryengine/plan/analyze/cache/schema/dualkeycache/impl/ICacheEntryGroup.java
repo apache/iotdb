@@ -21,6 +21,7 @@ package org.apache.iotdb.db.queryengine.plan.analyze.cache.schema.dualkeycache.i
 
 import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -41,11 +42,18 @@ interface ICacheEntryGroup<FK, SK, V, T extends ICacheEntry<SK, V>> {
 
   Iterator<Map.Entry<SK, T>> getAllCacheEntries();
 
-  T computeCacheEntry(final SK secondKey, final BiFunction<SK, T, T> computation);
+  T computeCacheEntry(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation);
 
-  T computeCacheEntryIfAbsent(final SK secondKey, final Function<SK, T> computation);
+  T computeCacheEntryIfPresent(
+      final SK secondKey, final Function<AtomicLong, BiFunction<SK, T, T>> computation);
 
-  T removeCacheEntry(final SK secondKey);
+  long removeCacheEntry(final SK secondKey);
 
   boolean isEmpty();
+
+  // Metric
+  long getMemory();
+
+  int getEntriesCount();
 }

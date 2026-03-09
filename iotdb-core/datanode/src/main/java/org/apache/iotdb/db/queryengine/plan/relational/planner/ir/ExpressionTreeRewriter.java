@@ -33,6 +33,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DataTypeParameter
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExistsPredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -447,7 +448,8 @@ public final class ExpressionTreeRewriter<C> {
       List<Expression> arguments = rewrite(node.getArguments(), context);
 
       if (!sameElements(node.getArguments(), arguments)) {
-        return new FunctionCall(node.getName(), arguments);
+        return new FunctionCall(
+            node.getName(), node.isDistinct(), node.getProcessingMode(), arguments);
       }
       return node;
     }
@@ -619,6 +621,25 @@ public final class ExpressionTreeRewriter<C> {
           return new DereferenceExpression(base, node.getField().get());
         }
         return new DereferenceExpression((Identifier) base);
+      }
+
+      return node;
+    }
+
+    @Override
+    protected Expression visitExtract(Extract node, Context<C> context) {
+      if (!context.isDefaultRewrite()) {
+        Expression result =
+            rewriter.rewriteExtract(node, context.get(), ExpressionTreeRewriter.this);
+        if (result != null) {
+          return result;
+        }
+      }
+
+      Expression expression = rewrite(node.getExpression(), context.get());
+
+      if (node.getExpression() != expression) {
+        return new Extract(expression, node.getField());
       }
 
       return node;

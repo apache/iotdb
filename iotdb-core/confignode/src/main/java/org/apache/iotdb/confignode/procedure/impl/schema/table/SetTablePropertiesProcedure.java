@@ -23,10 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.confignode.consensus.request.write.table.SetTablePropertiesPlan;
+import org.apache.iotdb.confignode.consensus.request.write.table.view.SetViewPropertiesPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
+import org.apache.iotdb.confignode.procedure.impl.schema.table.view.SetViewPropertiesProcedure;
 import org.apache.iotdb.confignode.procedure.state.schema.SetTablePropertiesState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -73,7 +74,7 @@ public class SetTablePropertiesProcedure
   @Override
   protected Flow executeFromState(
       final ConfigNodeProcedureEnv env, final SetTablePropertiesState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+      throws InterruptedException {
     final long startTime = System.currentTimeMillis();
     try {
       switch (state) {
@@ -121,11 +122,15 @@ public class SetTablePropertiesProcedure
       final Pair<TSStatus, TsTable> result =
           env.getConfigManager()
               .getClusterSchemaManager()
-              .updateTableProperties(database, tableName, originalProperties, updatedProperties);
+              .updateTableProperties(
+                  database,
+                  tableName,
+                  originalProperties,
+                  updatedProperties,
+                  this instanceof SetViewPropertiesProcedure);
       final TSStatus status = result.getLeft();
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        setFailure(
-            new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+        setFailure(new ProcedureException(new IoTDBException(status)));
         return;
       }
       table = result.getRight();
@@ -145,9 +150,13 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, updatedProperties, isGeneratedByPipe);
+            .executePlan(
+                this instanceof SetViewPropertiesProcedure
+                    ? new SetViewPropertiesPlan(database, tableName, updatedProperties)
+                    : new SetTablePropertiesPlan(database, tableName, updatedProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
       setNextState(COMMIT_RELEASE);
     }
@@ -193,9 +202,11 @@ public class SetTablePropertiesProcedure
     final TSStatus status =
         env.getConfigManager()
             .getClusterSchemaManager()
-            .setTableProperties(database, tableName, originalProperties, isGeneratedByPipe);
+            .executePlan(
+                new SetTablePropertiesPlan(database, tableName, originalProperties),
+                isGeneratedByPipe);
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      setFailure(new ProcedureException(new IoTDBException(status.getMessage(), status.getCode())));
+      setFailure(new ProcedureException(new IoTDBException(status)));
     }
   }
 
@@ -220,6 +231,10 @@ public class SetTablePropertiesProcedure
         isGeneratedByPipe
             ? ProcedureType.PIPE_ENRICHED_SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode()
             : ProcedureType.SET_TABLE_PROPERTIES_PROCEDURE.getTypeCode());
+    innerSerialize(stream);
+  }
+
+  protected void innerSerialize(final DataOutputStream stream) throws IOException {
     super.serialize(stream);
 
     ReadWriteIOUtils.write(originalProperties, stream);

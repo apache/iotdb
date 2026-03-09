@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.schema.filter.SchemaFilter;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterType;
 import org.apache.iotdb.commons.schema.filter.SchemaFilterVisitor;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,11 +32,15 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * {@link IdFilter} and {@link AttributeFilter} share the same values filter for query logic on
- * their values. {@link IdFilter} and {@link AttributeFilter} just indicates that how to get the
+ * {@link TagFilter} and {@link AttributeFilter} share the same values filter for query logic on
+ * their values. {@link TagFilter} and {@link AttributeFilter} just indicates that how to get the
  * id/attribute value from the device entry.
  */
 public class AttributeFilter extends AbstractSingleChildFilter {
+
+  private static final long INSTANCE_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AttributeFilter.class);
+
   private final String key;
 
   public AttributeFilter(final SchemaFilter child, final String key) {
@@ -89,5 +94,10 @@ public class AttributeFilter extends AbstractSingleChildFilter {
   @Override
   public int hashCode() {
     return Objects.hash(key, super.hashCode());
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + RamUsageEstimator.sizeOf(key) + ramBytesUsedForFields();
   }
 }

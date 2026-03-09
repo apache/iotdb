@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.db.pipe.event.common.row.PipeRow;
 import org.apache.iotdb.db.utils.MemUtils;
 
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
@@ -34,7 +35,6 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
 import org.apache.tsfile.utils.Binary;
-import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.record.Tablet;
@@ -43,6 +43,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
 import static org.apache.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
@@ -109,9 +110,10 @@ public class PipeMemoryWeightUtil {
 
         if (tsDataType.isBinary()) {
           final Binary binary = field.getBinaryV();
-          totalSizeInBytes += binary == null ? 0 : binary.getLength();
+          totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += tsDataType.getDataTypeSize();
+          totalSizeInBytes +=
+              roundUpToMultiple(TsPrimitiveType.getByType(tsDataType).getSize() + 8, 8);
         }
       }
     }
@@ -145,18 +147,18 @@ public class PipeMemoryWeightUtil {
 
           if (primitiveType.getDataType().isBinary()) {
             final Binary binary = primitiveType.getBinary();
-            totalSizeInBytes += binary == null ? 0 : binary.getLength();
+            totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
           } else {
-            totalSizeInBytes += primitiveType.getDataType().getDataTypeSize();
+            totalSizeInBytes += roundUpToMultiple(primitiveType.getSize() + 8, 8);
           }
         }
       } else {
         schemaCount = 1;
         if (type.isBinary()) {
           final Binary binary = batchData.getBinary();
-          totalSizeInBytes += binary == null ? 0 : binary.getLength();
+          totalSizeInBytes += binary == null ? 8 : binary.ramBytesUsed();
         } else {
-          totalSizeInBytes += type.getDataTypeSize();
+          totalSizeInBytes += roundUpToMultiple(TsPrimitiveType.getByType(type).getSize() + 8, 8);
         }
       }
     }
@@ -201,65 +203,8 @@ public class PipeMemoryWeightUtil {
     }
   }
 
-  public static long calculateTabletSizeInBytes(Tablet tablet) {
-    long totalSizeInBytes = 0;
-
-    if (tablet == null) {
-      return totalSizeInBytes;
-    }
-
-    long[] timestamps = tablet.getTimestamps();
-    Object[] tabletValues = tablet.getValues();
-
-    // timestamps
-    if (timestamps != null) {
-      totalSizeInBytes += timestamps.length * 8L;
-    }
-
-    // values
-    final List<IMeasurementSchema> timeseries = tablet.getSchemas();
-    if (timeseries != null) {
-      for (int column = 0; column < timeseries.size(); column++) {
-        final IMeasurementSchema measurementSchema = timeseries.get(column);
-        if (measurementSchema == null) {
-          continue;
-        }
-
-        final TSDataType tsDataType = measurementSchema.getType();
-        if (tsDataType == null) {
-          continue;
-        }
-
-        if (tsDataType.isBinary()) {
-          if (tabletValues == null || tabletValues.length <= column) {
-            continue;
-          }
-          final Binary[] values = ((Binary[]) tabletValues[column]);
-          if (values == null) {
-            continue;
-          }
-          for (Binary value : values) {
-            totalSizeInBytes +=
-                value == null ? 0 : (value.getLength() == -1 ? 0 : value.getLength());
-          }
-        } else {
-          totalSizeInBytes += (long) timestamps.length * tsDataType.getDataTypeSize();
-        }
-      }
-    }
-
-    // bitMaps
-    BitMap[] bitMaps = tablet.getBitMaps();
-    if (bitMaps != null) {
-      for (int i = 0; i < bitMaps.length; i++) {
-        totalSizeInBytes += bitMaps[i] == null ? 0 : bitMaps[i].getSize();
-      }
-    }
-
-    // estimate other dataStructures size
-    totalSizeInBytes += 100;
-
-    return totalSizeInBytes;
+  public static long calculateTabletSizeInBytes(final Tablet tablet) {
+    return Objects.nonNull(tablet) ? tablet.ramBytesUsed() : 0L;
   }
 
   public static long calculateTableSchemaBytesUsed(TableSchema tableSchema) {
@@ -279,7 +224,7 @@ public class PipeMemoryWeightUtil {
       }
     }
 
-    final List<Tablet.ColumnCategory> categories = tableSchema.getColumnTypes();
+    final List<ColumnCategory> categories = tableSchema.getColumnTypes();
     if (categories != null) {
       totalSizeInBytes +=
           alignObjectSize(
@@ -290,8 +235,8 @@ public class PipeMemoryWeightUtil {
     return totalSizeInBytes;
   }
 
-  public static int calculateBatchDataRamBytesUsed(BatchData batchData) {
-    int totalSizeInBytes = 0;
+  public static long calculateBatchDataRamBytesUsed(BatchData batchData) {
+    long totalSizeInBytes = 0;
 
     // timestamp
     totalSizeInBytes += 8;

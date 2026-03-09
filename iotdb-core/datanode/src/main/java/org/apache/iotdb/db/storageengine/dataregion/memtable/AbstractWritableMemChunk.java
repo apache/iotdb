@@ -25,19 +25,25 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.utils.datastructure.BatchEncodeInfo;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 
+import org.apache.tsfile.encrypt.EncryptParameter;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
+  private static final Logger LOGGER = LoggerFactory.getLogger(AbstractWritableMemChunk.class);
+
   protected static long RETRY_INTERVAL_MS = 100L;
   protected static long MAX_WAIT_QUERY_MS = 60 * 1000L;
 
@@ -53,11 +59,18 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   protected void maybeReleaseTvList(TVList tvList) {
     long startTimeInMs = System.currentTimeMillis();
     boolean succeed = false;
+    int retryCount = 0;
     while (!succeed) {
       try {
         tryReleaseTvList(tvList);
         succeed = true;
       } catch (MemoryNotEnoughException ex) {
+        // print log every 5 seconds
+        if (retryCount % 50 == 0) {
+          LOGGER.warn(
+              "Failed to transfer tvlist memory owner to query engine, {}", ex.getMessage());
+        }
+        retryCount++;
         long waitQueryInMs = System.currentTimeMillis() - startTimeInMs;
         if (waitQueryInMs > MAX_WAIT_QUERY_MS) {
           // Abort first query in the list. When all queries in the list have been aborted,
@@ -88,6 +101,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   }
 
   private void tryReleaseTvList(TVList tvList) {
+    long tvListRamSize = tvList.calculateRamSize();
     tvList.lockQueryList();
     try {
       if (tvList.getQueryContextSet().isEmpty()) {
@@ -99,7 +113,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
         if (firstQuery instanceof FragmentInstanceContext) {
           MemoryReservationManager memoryReservationManager =
               ((FragmentInstanceContext) firstQuery).getMemoryReservationContext();
-          memoryReservationManager.reserveMemoryCumulatively(tvList.calculateRamSize());
+          memoryReservationManager.reserveMemoryCumulatively(tvListRamSize);
+          tvList.setReservedMemoryBytes(tvListRamSize);
         }
         // update current TVList owner to first query in the list
         tvList.setOwnerQuery(firstQuery);
@@ -192,7 +207,8 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
   public abstract IChunkWriter createIChunkWriter();
 
   @Override
-  public abstract void encode(BlockingQueue<Object> ioTaskQueue);
+  public abstract void encode(
+      BlockingQueue<Object> ioTaskQueue, BatchEncodeInfo encodeInfo, long[] times);
 
   @Override
   public abstract void release();
@@ -214,4 +230,7 @@ public abstract class AbstractWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public abstract int serializedSize();
+
+  @Override
+  public abstract void setEncryptParameter(EncryptParameter encryptParameter);
 }

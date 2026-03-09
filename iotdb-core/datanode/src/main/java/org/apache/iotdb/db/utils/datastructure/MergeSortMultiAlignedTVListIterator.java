@@ -19,13 +19,19 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
+
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.write.UnSupportedDataTypeException;
+import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.tsfile.write.chunk.IChunkWriter;
+import org.apache.tsfile.write.chunk.ValueChunkWriter;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -41,40 +47,62 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   private final int[] rowIndices;
 
   private final BitMap bitMap;
-  private final List<int[]> valueColumnDeleteCursor;
   // Min-Heap: minimal timestamp; if same timestamp, maximum TVList index
-  private final PriorityQueue<Pair<Long, Integer>> minHeap =
-      new PriorityQueue<>(
-          (a, b) -> a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left));
+  private final PriorityQueue<Pair<Long, Integer>> heap;
 
   public MergeSortMultiAlignedTVListIterator(
       List<TSDataType> tsDataTypes,
       List<Integer> columnIndexList,
       List<AlignedTVList> alignedTvLists,
+      List<Integer> tvListRowCounts,
+      Ordering scanOrder,
+      Filter globalTimeFilter,
       List<TimeRange> timeColumnDeletion,
       List<List<TimeRange>> valueColumnsDeletionList,
       Integer floatPrecision,
       List<TSEncoding> encodingList,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      int maxNumberOfPointsInPage) {
     super(
         tsDataTypes,
         columnIndexList,
         alignedTvLists,
+        tvListRowCounts,
+        scanOrder,
+        globalTimeFilter,
         timeColumnDeletion,
         valueColumnsDeletionList,
         floatPrecision,
         encodingList,
-        ignoreAllNullRows);
+        ignoreAllNullRows,
+        maxNumberOfPointsInPage);
     this.probeIterators =
         IntStream.range(0, alignedTvListIterators.size()).boxed().collect(Collectors.toSet());
     this.bitMap = new BitMap(tsDataTypeList.size());
     this.iteratorIndices = new int[tsDataTypeList.size()];
     this.rowIndices = new int[tsDataTypeList.size()];
-    this.valueColumnDeleteCursor = new ArrayList<>();
-    for (int i = 0; i < tsDataTypeList.size(); i++) {
-      valueColumnDeleteCursor.add(new int[] {0});
-    }
     this.ignoreAllNullRows = ignoreAllNullRows;
+    this.heap =
+        new PriorityQueue<>(
+            scanOrder.isAscending()
+                ? (a, b) ->
+                    a.left.equals(b.left) ? b.right.compareTo(a.right) : a.left.compareTo(b.left)
+                : (a, b) ->
+                    a.left.equals(b.left) ? a.right.compareTo(b.right) : b.left.compareTo(a.left));
+  }
+
+  @Override
+  protected void skipToCurrentTimeRangeStartPosition() {
+    hasNext = false;
+    probeIterators.clear();
+    for (int i = 0; i < alignedTvListIterators.size(); i++) {
+      AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
+      iterator.skipToCurrentTimeRangeStartPosition();
+      if (iterator.hasNextTimeValuePair()) {
+        probeIterators.add(i);
+      }
+    }
+    probeNext = false;
   }
 
   @Override
@@ -83,14 +111,14 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
     for (int i : probeIterators) {
       AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(i);
       if (iterator.hasNextTimeValuePair()) {
-        minHeap.add(new Pair<>(iterator.currentTime(), i));
+        heap.add(new Pair<>(iterator.currentTime(), i));
       }
     }
     probeIterators.clear();
 
-    while (!minHeap.isEmpty() && !hasNext) {
+    while (!heap.isEmpty() && !hasNext) {
       bitMap.reset();
-      Pair<Long, Integer> top = minHeap.poll();
+      Pair<Long, Integer> top = heap.poll();
       currentTime = top.left;
       probeIterators.add(top.right);
 
@@ -103,18 +131,34 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
             .isNullValue(rowIndices[columnIndex], columnIndex)) {
           bitMap.mark(columnIndex);
         }
+        // check valueColumnsDeletionList
+        if (valueColumnsDeletionList != null
+            && isPointDeleted(
+                currentTime,
+                valueColumnsDeletionList.get(columnIndex),
+                valueColumnDeleteCursor.get(columnIndex),
+                scanOrder)) {
+          iteratorIndices[columnIndex] = -1;
+          bitMap.mark(columnIndex);
+        }
       }
       hasNext = true;
 
       // duplicated timestamps
-      while (!minHeap.isEmpty() && minHeap.peek().left == currentTime) {
-        Pair<Long, Integer> element = minHeap.poll();
+      while (!heap.isEmpty() && heap.peek().left == currentTime) {
+        Pair<Long, Integer> element = heap.poll();
         probeIterators.add(element.right);
 
         for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
           // if current column null, it needs update
+          int iteratorIndex = currentIteratorIndex(columnIndex);
+          if (iteratorIndex == -1) {
+            // -1 means all point of this timestamp was deleted by Deletion and no further
+            // processing is required.
+            continue;
+          }
           if (alignedTvListIterators
-              .get(iteratorIndices[columnIndex])
+              .get(iteratorIndex)
               .isNullValue(rowIndices[columnIndex], columnIndex)) {
             iteratorIndices[columnIndex] = element.right;
             rowIndices[columnIndex] =
@@ -131,7 +175,8 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
               && isPointDeleted(
                   currentTime,
                   valueColumnsDeletionList.get(columnIndex),
-                  valueColumnDeleteCursor.get(columnIndex))) {
+                  valueColumnDeleteCursor.get(columnIndex),
+                  scanOrder)) {
             iteratorIndices[columnIndex] = -1;
             bitMap.mark(columnIndex);
           }
@@ -145,7 +190,7 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
           AlignedTVList.AlignedTVListIterator iterator = alignedTvListIterators.get(idx);
           iterator.next();
           if (iterator.hasNextTimeValuePair()) {
-            minHeap.add(new Pair<>(iterator.currentTime(), idx));
+            heap.add(new Pair<>(iterator.currentTime(), idx));
           } else {
             it.remove();
           }
@@ -165,6 +210,95 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   }
 
   @Override
+  public void encodeBatch(IChunkWriter chunkWriter, BatchEncodeInfo encodeInfo, long[] times) {
+    AlignedChunkWriterImpl alignedChunkWriterImpl = (AlignedChunkWriterImpl) chunkWriter;
+    while (hasNextTimeValuePair()) {
+      times[encodeInfo.pointNumInPage] = currentTime;
+      for (int columnIndex = 0; columnIndex < tsDataTypeList.size(); columnIndex++) {
+        ValueChunkWriter valueChunkWriter =
+            alignedChunkWriterImpl.getValueChunkWriterByIndex(columnIndex);
+        int iteratorIndex = currentIteratorIndex(columnIndex);
+        if (iteratorIndex == -1) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+        AlignedTVList alignedTVList = alignedTvListIterators.get(iteratorIndex).getAlignedTVList();
+
+        // sanity check
+        int validColumnIndex =
+            columnIndexList != null ? columnIndexList.get(columnIndex) : columnIndex;
+        if (validColumnIndex < 0 || validColumnIndex >= alignedTVList.dataTypes.size()) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+        int valueIndex = alignedTVList.getValueIndex(currentRowIndex(columnIndex));
+
+        // null value
+        if (alignedTVList.isNullValue(valueIndex, validColumnIndex)) {
+          valueChunkWriter.write(currentTime, null, true);
+          continue;
+        }
+
+        switch (tsDataTypeList.get(columnIndex)) {
+          case BOOLEAN:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getBooleanByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case INT32:
+          case DATE:
+            valueChunkWriter.write(
+                currentTime, alignedTVList.getIntByValueIndex(valueIndex, validColumnIndex), false);
+            break;
+          case INT64:
+          case TIMESTAMP:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getLongByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case FLOAT:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getFloatByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case DOUBLE:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getDoubleByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          case TEXT:
+          case BLOB:
+          case OBJECT:
+          case STRING:
+            valueChunkWriter.write(
+                currentTime,
+                alignedTVList.getBinaryByValueIndex(valueIndex, validColumnIndex),
+                false);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", tsDataTypeList.get(columnIndex)));
+        }
+      }
+      next();
+      encodeInfo.pointNumInPage++;
+      encodeInfo.pointNumInChunk++;
+
+      // new page
+      if (encodeInfo.pointNumInPage >= encodeInfo.maxNumberOfPointsInPage
+          || encodeInfo.pointNumInChunk >= encodeInfo.maxNumberOfPointsInChunk) {
+        alignedChunkWriterImpl.write(times, encodeInfo.pointNumInPage, 0);
+        encodeInfo.pointNumInPage = 0;
+        break;
+      }
+    }
+  }
+
+  @Override
   protected int currentIteratorIndex(int columnIndex) {
     return iteratorIndices[columnIndex];
   }
@@ -172,5 +306,13 @@ public class MergeSortMultiAlignedTVListIterator extends MultiAlignedTVListItera
   @Override
   protected int currentRowIndex(int columnIndex) {
     return rowIndices[columnIndex];
+  }
+
+  @Override
+  public void setCurrentPageTimeRange(TimeRange timeRange) {
+    for (TVList.TVListIterator tvListIterator : this.alignedTvListIterators) {
+      tvListIterator.timeRange = timeRange;
+    }
+    super.setCurrentPageTimeRange(timeRange);
   }
 }

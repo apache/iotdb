@@ -23,6 +23,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.reader.common.MergeRead
 
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.read.common.Chunk;
+import org.apache.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.List;
 
@@ -42,12 +43,19 @@ public class ChunkMetadataElement {
 
   public boolean needForceDecodingPage;
 
+  // for aligned series
+  public List<IMeasurementSchema> measurementSchemasOfValueChunks;
+
   public ChunkMetadataElement(
-      IChunkMetadata chunkMetadata, boolean isLastChunk, FileElement fileElement) {
+      IChunkMetadata chunkMetadata,
+      boolean isLastChunk,
+      FileElement fileElement,
+      List<IMeasurementSchema> measurementSchemasOfValueChunks) {
     this.chunkMetadata = chunkMetadata;
     this.startTime = chunkMetadata.getStartTime();
     this.isLastChunk = isLastChunk;
     this.fileElement = fileElement;
+    this.measurementSchemasOfValueChunks = measurementSchemasOfValueChunks;
   }
 
   public void clearChunks() {

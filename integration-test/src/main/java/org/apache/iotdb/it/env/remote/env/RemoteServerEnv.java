@@ -112,14 +112,16 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
-  public List<String> getMetricPrometheusReporterContents() {
+  public List<String> getMetricPrometheusReporterContents(String authHeader) {
     List<String> result = new ArrayList<>();
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + configNodeMetricPort + "/metrics",
+            authHeader));
     result.add(
         getUrlContent(
-            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics"));
+            Config.IOTDB_HTTP_URL_PREFIX + ip_addr + ":" + dataNodeMetricPort + "/metrics",
+            authHeader));
     return result;
   }
 
@@ -132,12 +134,18 @@ public class RemoteServerEnv implements BaseEnv {
       connection =
           DriverManager.getConnection(
               Config.IOTDB_URL_PREFIX + ip_addr + ":" + port,
-              BaseEnv.constructProperties(this.user, this.password, sqlDialect));
+              BaseEnv.constructProperties(username, password, sqlDialect));
     } catch (ClassNotFoundException e) {
       e.printStackTrace();
       throw new AssertionError();
     }
     return connection;
+  }
+
+  @Override
+  public Connection getAvailableConnection(String username, String password, String sqlDialect)
+      throws SQLException {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -223,7 +231,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableIoTDBRpcCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
@@ -244,7 +252,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableThriftCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
@@ -265,7 +273,7 @@ public class RemoteServerEnv implements BaseEnv {
         .maxSize(maxSize)
         .fetchSize(SessionConfig.DEFAULT_FETCH_SIZE)
         .waitToGetSessionTimeoutInMs(60_000)
-        .enableCompression(false)
+        .enableThriftCompression(false)
         .zoneId(null)
         .enableRedirection(SessionConfig.DEFAULT_REDIRECTION_MODE)
         .connectionTimeoutInMs(SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS)
@@ -389,6 +397,11 @@ public class RemoteServerEnv implements BaseEnv {
 
   @Override
   public void shutdownAllConfigNodes() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void shutdownForciblyAllConfigNodes() {
     throw new UnsupportedOperationException();
   }
 

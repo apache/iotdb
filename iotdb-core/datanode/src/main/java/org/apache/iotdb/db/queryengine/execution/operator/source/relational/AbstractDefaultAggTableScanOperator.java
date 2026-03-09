@@ -27,6 +27,7 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
@@ -36,7 +37,7 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(AbstractDefaultAggTableScanOperator.class);
 
-  public AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
+  protected AbstractDefaultAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
     super(parameter);
   }
 
@@ -77,7 +78,8 @@ public abstract class AbstractDefaultAggTableScanOperator extends AbstractAggTab
 
       // calculate aggregation result on current time window
       // return true if current time window is calc finished
-      if (calculateAggregationResultForCurrentTimeRange()) {
+      Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
+      if (b.isPresent() && b.get()) {
         timeIterator.resetCurTimeRange();
       }
     }

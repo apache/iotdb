@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -50,6 +51,7 @@ public class EncodingInferenceUtils {
       case TEXT:
       case BLOB:
       case STRING:
+      case OBJECT:
         return conf.getDefaultTextEncoding();
       default:
         throw new UnSupportedDataTypeException(

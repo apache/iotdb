@@ -21,12 +21,16 @@ package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.DatabaseSchemaStatement;
 
+import org.apache.tsfile.utils.RamUsageEstimator;
+
 import java.util.List;
 
 import static com.google.common.base.MoreObjects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
 public class AlterDB extends DatabaseStatement {
+  private static final long INSTANCE_SIZE = RamUsageEstimator.shallowSizeOfInstance(AlterDB.class);
+
   public AlterDB(
       final NodeLocation location,
       final boolean exists,
@@ -52,5 +56,10 @@ public class AlterDB extends DatabaseStatement {
         .add("ifExists", exists)
         .add("properties", properties)
         .toString();
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return INSTANCE_SIZE + ramBytesUsedForCommonFields();
   }
 }

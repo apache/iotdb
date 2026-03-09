@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.estimator;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 
@@ -31,10 +32,22 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
   protected long calculatingMetadataMemoryCost(CompactionTaskInfo taskInfo) {
     long cost = 0;
     // add ChunkMetadata size of MultiTsFileDeviceIterator
+    long maxAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(fileInfo -> fileInfo.maxMemToReadAlignedSeries)
+            .sum();
+    long maxNonAlignedSeriesMemCost =
+        taskInfo.getFileInfoList().stream()
+            .mapToLong(
+                fileInfo ->
+                    fileInfo.maxMemToReadNonAlignedSeries * config.getSubCompactionTaskNum())
+            .sum();
     cost +=
         Math.min(
-            taskInfo.getTotalChunkMetadataSize(),
-            taskInfo.getMaxChunkMetadataNumInDevice() * taskInfo.getMaxChunkMetadataSize());
+            Math.max(maxAlignedSeriesMemCost, maxNonAlignedSeriesMemCost),
+            taskInfo.getFileInfoList().size()
+                * taskInfo.getMaxChunkMetadataNumInDevice()
+                * taskInfo.getMaxChunkMetadataSize());
 
     // add ChunkMetadata size of targetFileWriter
     long sizeForFileWriter =
@@ -72,8 +85,13 @@ public class RepairUnsortedFileCompactionEstimator extends AbstractInnerSpaceEst
   }
 
   @Override
-  public long roughEstimateInnerCompactionMemory(List<TsFileResource> resources)
-      throws IOException {
+  public long roughEstimateInnerCompactionMemory(
+      CompactionScheduleContext context, List<TsFileResource> resources) throws IOException {
     throw new RuntimeException("unimplemented");
+  }
+
+  @Override
+  public boolean supportsRoughEstimation() {
+    return false;
   }
 }

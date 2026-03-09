@@ -74,14 +74,14 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void getEndOffset() throws IOException {
-    if (channel.size() < WALFileVersion.V2.getVersionBytes().length + Integer.BYTES) {
-      // An broken file
-      endOffset = channel.size();
-      return;
-    }
-    ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
-    long position;
     try {
+      if (channel.size() < WALFileVersion.V2.getVersionBytes().length + Integer.BYTES) {
+        // An broken file
+        endOffset = channel.size();
+        return;
+      }
+      ByteBuffer metadataSizeBuf = ByteBuffer.allocate(Integer.BYTES);
+      long position;
       if (version == WALFileVersion.V2) {
         // New Version
         ByteBuffer magicStringBuffer = ByteBuffer.allocate(version.getVersionBytes().length);
@@ -173,6 +173,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
     MmapUtil.clean(dataBuffer);
     MmapUtil.clean(compressedBuffer);
     dataBuffer = null;
+    compressedBuffer = null;
   }
 
   @Override
@@ -216,47 +217,58 @@ public class WALInputStream extends InputStream implements AutoCloseable {
   }
 
   private void loadNextSegmentV2() throws IOException {
+    long position = channel.position();
     SegmentInfo segmentInfo = getNextSegmentInfo();
-    if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
-      // A compressed segment
-      if (Objects.isNull(dataBuffer)
-          || dataBuffer.capacity() < segmentInfo.uncompressedSize
-          || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
-        MmapUtil.clean(dataBuffer);
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
-      }
-      dataBuffer.clear();
+    try {
+      if (segmentInfo.compressionType != CompressionType.UNCOMPRESSED) {
+        // A compressed segment
+        if (Objects.isNull(dataBuffer)
+            || dataBuffer.capacity() < segmentInfo.uncompressedSize
+            || dataBuffer.capacity() > segmentInfo.uncompressedSize * 2) {
+          MmapUtil.clean(dataBuffer);
+          dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
+        }
+        dataBuffer.clear();
 
-      if (Objects.isNull(compressedBuffer)
-          || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
-          || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        MmapUtil.clean(compressedBuffer);
-        compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-      }
-      compressedBuffer.clear();
-      // limit the buffer to prevent it from reading too much byte than expected
-      compressedBuffer.limit(segmentInfo.dataInDiskSize);
-      if (readWALBufferFromChannel(compressedBuffer) != segmentInfo.dataInDiskSize) {
-        throw new IOException("Unexpected end of file");
-      }
-      compressedBuffer.flip();
-      IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
-      uncompressWALBuffer(compressedBuffer, dataBuffer, unCompressor);
-    } else {
-      // An uncompressed segment
-      if (Objects.isNull(dataBuffer)
-          || dataBuffer.capacity() < segmentInfo.dataInDiskSize
-          || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
-        MmapUtil.clean(dataBuffer);
-        dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
-      }
-      dataBuffer.clear();
-      // limit the buffer to prevent it from reading too much byte than expected
-      dataBuffer.limit(segmentInfo.dataInDiskSize);
+        if (Objects.isNull(compressedBuffer)
+            || compressedBuffer.capacity() < segmentInfo.dataInDiskSize
+            || compressedBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+          MmapUtil.clean(compressedBuffer);
+          compressedBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        }
+        compressedBuffer.clear();
+        // limit the buffer to prevent it from reading too much byte than expected
+        compressedBuffer.limit(segmentInfo.dataInDiskSize);
+        if (readWALBufferFromChannel(compressedBuffer) != segmentInfo.dataInDiskSize) {
+          throw new IOException("Unexpected end of file");
+        }
+        compressedBuffer.flip();
+        IUnCompressor unCompressor = IUnCompressor.getUnCompressor(segmentInfo.compressionType);
+        uncompressWALBuffer(compressedBuffer, dataBuffer, unCompressor);
+      } else {
+        // An uncompressed segment
+        if (Objects.isNull(dataBuffer)
+            || dataBuffer.capacity() < segmentInfo.dataInDiskSize
+            || dataBuffer.capacity() > segmentInfo.dataInDiskSize * 2) {
+          MmapUtil.clean(dataBuffer);
+          dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
+        }
+        dataBuffer.clear();
+        // limit the buffer to prevent it from reading too much byte than expected
+        dataBuffer.limit(segmentInfo.dataInDiskSize);
 
-      if (readWALBufferFromChannel(dataBuffer) != segmentInfo.dataInDiskSize) {
-        throw new IOException("Unexpected end of file");
+        if (readWALBufferFromChannel(dataBuffer) != segmentInfo.dataInDiskSize) {
+          throw new IOException("Unexpected end of file");
+        }
       }
+    } catch (Exception e) {
+      logger.error(
+          "Unexpected error when loading a wal segment {} in {}@{}",
+          segmentInfo,
+          logFile,
+          position,
+          e);
+      throw new IOException(e);
     }
     dataBuffer.flip();
   }
@@ -306,6 +318,7 @@ public class WALInputStream extends InputStream implements AutoCloseable {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.uncompressedSize);
         uncompressWALBuffer(compressedBuffer, dataBuffer, unCompressor);
         MmapUtil.clean(compressedBuffer);
+        compressedBuffer = null;
       } else {
         dataBuffer = ByteBuffer.allocateDirect(segmentInfo.dataInDiskSize);
         readWALBufferFromChannel(dataBuffer);
@@ -388,6 +401,18 @@ public class WALInputStream extends InputStream implements AutoCloseable {
       return compressionType == CompressionType.UNCOMPRESSED
           ? Byte.BYTES + Integer.BYTES
           : Byte.BYTES + Integer.BYTES * 2;
+    }
+
+    @Override
+    public String toString() {
+      return "SegmentInfo{"
+          + "compressionType="
+          + compressionType
+          + ", dataInDiskSize="
+          + dataInDiskSize
+          + ", uncompressedSize="
+          + uncompressedSize
+          + '}';
     }
   }
 }

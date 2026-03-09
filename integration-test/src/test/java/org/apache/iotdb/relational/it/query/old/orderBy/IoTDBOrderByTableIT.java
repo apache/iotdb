@@ -25,8 +25,9 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 
-import org.apache.commons.lang3.ArrayUtils;
+import org.apache.tsfile.enums.ColumnCategory;
 import org.apache.tsfile.enums.TSDataType;
+import org.apache.tsfile.external.commons.lang3.ArrayUtils;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -1475,15 +1476,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnCategory> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.TAG,
-              Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD);
+              ColumnCategory.TAG,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
 
@@ -1530,15 +1531,15 @@ public class IoTDBOrderByTableIT {
       schemaList.add(new MeasurementSchema("floatNum", TSDataType.DOUBLE));
       schemaList.add(new MeasurementSchema("str", TSDataType.TEXT));
       schemaList.add(new MeasurementSchema("bool", TSDataType.BOOLEAN));
-      final List<Tablet.ColumnCategory> columnTypes =
+      final List<ColumnCategory> columnTypes =
           Arrays.asList(
-              Tablet.ColumnCategory.TAG,
-              Tablet.ColumnCategory.ATTRIBUTE,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD,
-              Tablet.ColumnCategory.FIELD);
+              ColumnCategory.TAG,
+              ColumnCategory.ATTRIBUTE,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD,
+              ColumnCategory.FIELD);
       List<String> fieldIds = IMeasurementSchema.getMeasurementNameList(schemaList);
       List<TSDataType> dataTypes = IMeasurementSchema.getDataTypeList(schemaList);
       List<Object[]> values =

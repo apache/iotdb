@@ -54,7 +54,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private final TsBlockBuilder resultBuilder;
 
   private final Operator left;
-  private final int leftColumnCount;
+  protected final int leftColumnCount;
 
   private TsBlock leftTsBlock;
 
@@ -194,7 +194,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private void appendLeftTableRow() {
     for (int i = 0; i < leftColumnCount; i++) {
       Column leftColumn = leftTsBlock.getColumn(i);
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, true));
       if (leftColumn.isNull(leftIndex)) {
         columnBuilder.appendNull();
       } else {
@@ -231,7 +231,8 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
       // right table has this time, append right table's corresponding row
       for (int i = leftColumnCount; i < outputColumnCount; i++) {
         Column rightColumn = rightTsBlock.getColumn(i - leftColumnCount);
-        ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+        ColumnBuilder columnBuilder =
+            resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false));
         if (rightColumn.isNull(rightIndex)) {
           columnBuilder.appendNull();
         } else {
@@ -243,7 +244,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
     } else {
       // right table doesn't have this time, just append null for right table
       for (int i = leftColumnCount; i < outputColumnCount; i++) {
-        resultBuilder.getColumnBuilder(i).appendNull();
+        resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false)).appendNull();
       }
     }
     return true;
@@ -273,7 +274,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
 
   private void appendValueColumnForLeftTable(int rowSize) {
     for (int i = 0; i < leftColumnCount; i++) {
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, true));
       Column valueColumn = leftTsBlock.getColumn(i);
 
       if (valueColumn.mayHaveNull()) {
@@ -296,7 +297,7 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   private void appendNullForRightTable(int rowSize) {
     int nullCount = rowSize - leftIndex;
     for (int i = leftColumnCount; i < outputColumnCount; i++) {
-      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(i);
+      ColumnBuilder columnBuilder = resultBuilder.getColumnBuilder(getOutputColumnIndex(i, false));
       columnBuilder.appendNull(nullCount);
     }
   }
@@ -319,6 +320,10 @@ public class LeftOuterTimeJoinOperator implements ProcessOperator {
   @Override
   public boolean isFinished() throws Exception {
     return !tsBlockIsNotEmpty(leftTsBlock, leftIndex) && left.isFinished();
+  }
+
+  protected int getOutputColumnIndex(int inputColumnIndex, boolean isLeftTable) {
+    return inputColumnIndex;
   }
 
   @Override

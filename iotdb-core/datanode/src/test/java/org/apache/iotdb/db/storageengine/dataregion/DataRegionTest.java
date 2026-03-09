@@ -134,9 +134,9 @@ public class DataRegionTest {
     config.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable());
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName());
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
   }
 
   @After
@@ -1212,7 +1212,7 @@ public class DataRegionTest {
       }
       for (DataRegion region : regionsToBeDeleted) {
         StorageEngine.getInstance()
-            .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+            .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionIdString())));
       }
       Thread.sleep(500);
 
@@ -1411,7 +1411,7 @@ public class DataRegionTest {
     }
     for (DataRegion region : regionsToBeDeleted) {
       StorageEngine.getInstance()
-          .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionId())));
+          .deleteDataRegion(new DataRegionId(Integer.parseInt(region.getDataRegionIdString())));
     }
     Thread.sleep(500);
 
