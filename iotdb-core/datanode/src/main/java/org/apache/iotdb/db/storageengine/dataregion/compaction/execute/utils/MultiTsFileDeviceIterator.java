@@ -512,7 +512,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         LOGGER.warn(
             "Read a chunk metadata {}, {}",
             abstractAlignedChunkMetadata.getValueChunkMetadataList().stream()
-                .map(iChunkMetadata -> iChunkMetadata != null ? iChunkMetadata.getMeasurementUid() : null)
+                .map(
+                    iChunkMetadata ->
+                        iChunkMetadata != null ? iChunkMetadata.getMeasurementUid() : null)
                 .collect(Collectors.toList()),
             abstractAlignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       }
