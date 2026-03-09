@@ -538,40 +538,38 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
         // 2. Transfer schema evolution file if exists
         if (resource != null) {
           EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
-          if (evolvedSchema == null) {
-            return;
+          if (evolvedSchema != null) {
+            ByteBuffer fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
+            final byte[] payload = fileBuffer.array();
+            final TPipeTransferReq uncompressedReq =
+                PipeTransferTsFilePieceReq.toTPipeTransferReq(
+                    SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile),
+                    0,
+                    payload);
+            final TPipeTransferReq sevoReq = compressIfNeeded(uncompressedReq);
+
+            pipeName2WeightMap.forEach(
+                (pipePair, weight) ->
+                    rateLimitIfNeeded(
+                        pipePair.getLeft(),
+                        pipePair.getRight(),
+                        clientAndStatus.getLeft().getEndPoint(),
+                        (long) (sevoReq.getBody().length * weight)));
+
+            resp = clientAndStatus.left.pipeTransfer(sevoReq);
+
+            final TSStatus status = resp.getStatus();
+            // Only handle the failed statuses to avoid string format performance overhead
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+                && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
+              receiverStatusHandler.handle(
+                  resp.getStatus(),
+                  String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+                  tsFile.getName());
+              return;
+            }
+            LOGGER.info("Transferred schema evolution file for tsfile {}.", tsFile);
           }
-
-          ByteBuffer fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
-          final byte[] payload = fileBuffer.array();
-          final TPipeTransferReq uncompressedReq =
-              PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                  SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile),
-                  0,
-                  payload);
-          final TPipeTransferReq sevoReq = compressIfNeeded(uncompressedReq);
-
-          pipeName2WeightMap.forEach(
-              (pipePair, weight) ->
-                  rateLimitIfNeeded(
-                      pipePair.getLeft(),
-                      pipePair.getRight(),
-                      clientAndStatus.getLeft().getEndPoint(),
-                      (long) (sevoReq.getBody().length * weight)));
-
-          resp = clientAndStatus.left.pipeTransfer(sevoReq);
-
-          final TSStatus status = resp.getStatus();
-          // Only handle the failed statuses to avoid string format performance overhead
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-            receiverStatusHandler.handle(
-                resp.getStatus(),
-                String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
-                tsFile.getName());
-            return;
-          }
-          LOGGER.info("Transferred schema evolution file for tsfile {}.", tsFile);
         }
 
         // 3. Transfer file seal signal with mod, which means the file is transferred completely
