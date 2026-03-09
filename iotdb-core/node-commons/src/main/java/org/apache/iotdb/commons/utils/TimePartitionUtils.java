@@ -77,12 +77,6 @@ public class TimePartitionUtils {
     return timePartitionSlot;
   }
 
-  public static TTimePartitionSlot getTimePartitionSlot(long partitionId) {
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
-    timePartitionSlot.setStartTime(getTimePartitionLowerBound(time));
-    return timePartitionSlot;
-  }
-
   public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }

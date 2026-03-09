@@ -324,13 +324,14 @@ import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.apache.tsfile.write.record.Tablet;
@@ -345,6 +346,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3197,6 +3199,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    return generateDataPartitionTable(req, dataDirs);
+  }
+
+  public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req, String[] dataDirs) {
     TGenerateDataPartitionTableResp resp = new TGenerateDataPartitionTableResp();
     byte[] empty = new byte[0];
 
@@ -3212,7 +3219,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
 
       // Get data directories and configuration
-      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
       if (dataDirs.length == 0) {
         resp.setDataPartitionTable(empty);
         resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
@@ -3228,7 +3234,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       currentGenerator =
           new DataPartitionTableGenerator(
-              dataDirs, partitionTableRecoverExecutor, seriesSlotNum, seriesPartitionExecutorClass);
+              dataDirs, partitionTableRecoverExecutor, req.getDatabases(), seriesSlotNum, seriesPartitionExecutorClass);
       currentTaskId = System.currentTimeMillis();
 
       // Start generation synchronously for now to return the data partition table immediately
@@ -3237,7 +3243,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       // Wait for completion (with timeout)
       long startTime = System.currentTimeMillis();
       
-      while (currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
+      while (currentGenerator != null && currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
         if (System.currentTimeMillis() - startTime > timeoutMs) {
           resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
           resp.setMessage("DataPartitionTable generation timed out");
@@ -3261,8 +3267,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.COMPLETED) {
         DataPartitionTable dataPartitionTable = currentGenerator.getDataPartitionTable();
         if (dataPartitionTable != null) {
-          ByteBuffer result = serializeDataPartitionTable(dataPartitionTable);
-          resp.setDataPartitionTable(result.array());
+          byte[] result = serializeDataPartitionTable(dataPartitionTable);
+          resp.setDataPartitionTable(result);
         }
         
         resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
@@ -3350,12 +3356,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       Files.list(dataDir.toPath())
           .filter(Files::isDirectory)
           .forEach(
-              dbPath -> {
-                String databaseName = dbPath.getFileName().toString();
-                long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
+              sequenceTypePath -> {
+                try {
+                  Files.list(sequenceTypePath)
+                      .filter(Files::isDirectory)
+                      .forEach(dbPath -> {
+                      String databaseName = dbPath.getFileName().toString();
+                      if (DataPartitionTableGenerator.IGNORE_DATABASE.contains(databaseName)) {
+                        return;
+                      }
+                      long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
 
-                if (earliestTimeslot != Long.MAX_VALUE) {
-                  earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
+                      if (earliestTimeslot != Long.MAX_VALUE) {
+                        earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
+                      }
+                  });
+                } catch (IOException e) {
+                  LOGGER.error("Failed to process data directory: {}", sequenceTypePath.toFile(), e);
                 }
               });
     } catch (IOException e) {
@@ -3368,7 +3385,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     final AtomicLong earliest = new AtomicLong(Long.MAX_VALUE);
 
     try {
-      Files.walk(databaseDir.toPath())
+      Files.list(databaseDir.toPath())
           .filter(Files::isDirectory)
           .forEach(
         regionPath -> {
@@ -3377,10 +3394,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       Files.list(regionPath)
                           .filter(Files::isDirectory)
                           .forEach(timeSlotPath -> {
-                            String timeSlotName = timeSlotPath.getFileName().toString();
-                            long timeslot = Long.parseLong(timeSlotName);
-                            if (timeslot < earliest.get()) {
-                              earliest.set(timeslot);
+                            try {
+                              Optional<Path> matchedFile = Files.find(timeSlotPath, 1, (path, attrs) -> attrs.isRegularFile() && path.toString().endsWith(DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME)).findFirst();
+                              if (!matchedFile.isPresent()) {
+                                return;
+                              }
+                              String timeSlotName = timeSlotPath.getFileName().toString();
+                              long timeslot = Long.parseLong(timeSlotName);
+                              if (timeslot < earliest.get()) {
+                                earliest.set(timeslot);
+                              }
+                            } catch (IOException e) {
+                              LOGGER.error("Failed to find any {} files in the {} directory", DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME, timeSlotPath, e);
                             }
                           });
                     } catch (IOException e) {
@@ -3396,15 +3421,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   /** Serialize DataPartitionTable to ByteBuffer for RPC transmission. */
-  private ByteBuffer serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         TIOStreamTransport tioStreamTransport = new TIOStreamTransport(baos)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-      dataPartitionTable.serialize(baos, protocol);
-      return ByteBuffer.wrap(baos.toByteArray());
-    } catch (Exception e) {
+  private byte[] serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
+//    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//         ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+
+    try (PublicBAOS baos = new PublicBAOS();
+         DataOutputStream oos = new DataOutputStream(baos)) {
+      TTransport transport = new TIOStreamTransport(oos);
+      TBinaryProtocol protocol = new TBinaryProtocol(transport);
+      dataPartitionTable.serialize(oos, protocol);
+      return baos.getBuf();
+    } catch (IOException | TException e) {
       LOGGER.error("Failed to serialize DataPartitionTable", e);
-      return ByteBuffer.allocate(0);
+      return ByteBuffer.allocate(0).array();
     }
   }
 }

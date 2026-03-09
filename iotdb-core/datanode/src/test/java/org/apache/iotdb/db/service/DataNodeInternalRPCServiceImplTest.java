@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -53,6 +54,9 @@ import org.apache.iotdb.db.schemaengine.SchemaEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
@@ -68,6 +72,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,12 +81,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class DataNodeInternalRPCServiceImplTest {
 
+  private static final Logger LOG =
+          LoggerFactory.getLogger(DataNodeInternalRPCServiceImplTest.class);
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static IConsensus instance;
@@ -411,5 +421,45 @@ public class DataNodeInternalRPCServiceImplTest {
               node.getSchemaRegionConsensusEndPoint()));
     }
     return peerList;
+  }
+
+  @Test
+  public void testGetEarliestTimeslots() {
+    Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
+    lostDataPartitionsOfDatabases.add("root.demo");
+
+    TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
+    req.setDatabases(lostDataPartitionsOfDatabases);
+
+    // Use consensus layer to execute request
+    TGetEarliestTimeslotsResp response =
+            dataNodeInternalRPCServiceImpl.getEarliestTimeslots();
+
+    Map<String, Long> result = new HashMap<String, Long>(){{
+      put("test", 2927L);
+      put("root.test", 0L);
+      put("root.demo", 0L);
+    }};
+    Assert.assertNotSame(response.getDatabaseToEarliestTimeslot(), result);
+  }
+
+  @Test
+  public void testGenerateDataPartitionTable() {
+    Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
+    lostDataPartitionsOfDatabases.add("root.demo");
+
+    TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
+    req.setDatabases(lostDataPartitionsOfDatabases);
+
+    // Use consensus layer to execute request
+    String[] dataDirs = new String[]{"D:\\Users\\libo\\Downloads\\muliti-iotdb\\master-iotdb-source-conf\\data\\datanode\\data"};
+    TGenerateDataPartitionTableResp response =
+            dataNodeInternalRPCServiceImpl.generateDataPartitionTable(req, dataDirs);
+
+    Assert.assertNotSame(response.getDataPartitionTable(), ByteBuffer.allocate(0).array());
+
+    DataPartitionTable dataPartitionTable = new DataPartitionTable();
+    dataPartitionTable.deserialize(ByteBuffer.wrap(response.getDataPartitionTable()));
+    Assert.assertEquals(1, dataPartitionTable.getTimeSlotCount());
   }
 }

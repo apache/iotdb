@@ -279,9 +279,6 @@ public class HeartbeatService {
       AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
-      AsyncDataNodeHeartbeatClientPool.getInstance()
-              .generateDataPartitionTableHeartbeat(
-                      dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 

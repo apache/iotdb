@@ -679,7 +679,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public Set<IDeviceID> getDevices(LeakyBucketRateLimiter limiter) {
-    return timeIndex.getDevicesByRateLimiter(file.getPath(), this, limiter);
+    return timeIndex.getDevices(file.getPath(), this, limiter);
   }
 
   public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)

@@ -75,11 +75,11 @@ public interface ITimeIndex {
   Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource);
 
   /**
-   * get devices in TimeIndex that use inputStream
+   * get devices in TimeIndex and limit files reading rate
    *
    * @return device names
    */
-  Set<IDeviceID> getDevicesByRateLimiter(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter);
+  Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter);
 
   /**
    * @return whether end time is empty (Long.MIN_VALUE)

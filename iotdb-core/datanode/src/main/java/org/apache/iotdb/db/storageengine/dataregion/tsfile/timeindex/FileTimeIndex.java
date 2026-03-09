@@ -123,7 +123,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
-    byte[] buffer = new byte[64 * 1024];
     tsFileResource.readLock();
     try (InputStream inputStream =
                  FSFactoryProducer.getFSFactory()

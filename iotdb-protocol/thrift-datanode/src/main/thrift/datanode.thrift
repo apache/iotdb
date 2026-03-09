@@ -688,7 +688,7 @@ struct TGetEarliestTimeslotsResp {
 }
 
 struct TGenerateDataPartitionTableReq {
-  1: required string database
+  1: required set<string> databases
 }
 
 struct TGenerateDataPartitionTableResp {

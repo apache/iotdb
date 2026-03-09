@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.commons;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -28,6 +26,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 
 import java.io.PrintWriter;
 import java.util.HashSet;
