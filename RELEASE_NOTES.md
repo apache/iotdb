@@ -19,6 +19,53 @@
 
 -->
 
+# Apache IoTDB 2.0.7
+
+## Features & Improvements
+
+- Others: Remove risky RPC interfaces.
+- Others: Remove JEXL functions.
+- Others: Check naming when creating a Pipe.
+- Others: Change the default client RPC service address to 127.0.0.1.
+- Others: Modify code to make internal services bind to the value specified by `dn_internal_address`instead of the default address.
+
+## Bugs
+- Fixed an issue in the partition table automatic deletion logic: Only TTL configured at the DB level takes effect, using the maximum TTL value within the DB.
+- ...
+
+# Apache IoTDB 2.0.6
+
+## Features & Improvements
+- Data Query: Supports table model query and write-back functions.
+- Data Query: The MATCH RECOGNIZE feature for table models supports aggregate functions to capture continuous data for analysis and calculation.
+- Data Query: Added built-in scalar functions - bit manipulation functions for table models.
+- Data Query: Added pushdown-enabled EXTRACT time function for table models.
+- Others: Fixed security vulnerabilities CVE-2025-12183, CVE-2025-66566 and CVE-2025-11226.
+- ...
+## Bugs
+- Fixed the issue where executing queries with CASE WHEN throws an internal server error.
+- Fixed the issue where creating a view succeeds but querying the view fails when the tree model database name is the same as the device name in tree-to-table scenarios.
+- Fixed the issue where the automatic database creation function fails subsequently if a database is deleted after successful table model data synchronization, and the database is not restarted.
+- Fixed the issue where modifying the password of a user that failed to be created throws an internal server error.
+- Fixed the issue where an error is thrown when using the IF PERMITTED clause to modify sequence encoding and compression settings.
+- Fixed the issue where querying BLOB data types via the tree model RESTAPI interface /rest/v2/query returns garbled results.
+- Fixed the issue where incorrect exception information is displayed when checking pipe status after creating a pipe in a table model that only contains tree-to-table views.
+- Fixed the issue where the number of server connections keeps increasing when using a user without MAINTAIN permission (non-root user in table models) in a Session.
+- ...
+
+# Apache IoTDB 2.0.5
+
+## Features & Improvements
+- Data Query: Support manual creation of tree-to-table views
+- Data Query: Table model adds window functions
+- Data Query: Table model adds the aggregate function approx_most_frequent
+- Data Query: Table model JOIN function expansion, supporting LEFT & RIGHT JOIN, ASOF LEFT JOIN
+- Data Query: Table model supports row pattern recognition, enabling capture of continuous data for analysis and calculation
+- Storage Management: Table model adds multiple system tables, such as: VIEWS (table view information), MODELS (model information), etc.
+- AI Management: AINode adds two built-in models: Timer-XL and Timer-Sundial
+- AI Management: AINode supports inference functions for tree models and table models
+- ...
+
 # Apache IoTDB 2.0.4
 
 ## Features & Improvements
