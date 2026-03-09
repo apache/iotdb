@@ -860,7 +860,6 @@ public class StatementAnalyzer {
       for (Field field : outputDescriptor.getVisibleFields()) {
         String name = field.getName().orElse("unknown");
         String type = field.getType().toString();
-        System.out.println("DESCRIBE_DEBUG: Column=" + name + ", Type=" + type);
       }
 
       analysis.setDescribe(true);

@@ -90,6 +90,7 @@ dclStatement
 
 utilityStatement
     : flush | clearCache | setConfiguration | settle | startRepairData | stopRepairData | explain
+    | describe  // <--- Ye line add karo
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueries | showCurrentTimestamp | killQuery | grantWatermarkEmbedding
     | revokeWatermarkEmbedding | loadConfiguration | loadTimeseries | loadFile
@@ -1237,6 +1238,11 @@ stopRepairData
 // Explain
 explain
     : EXPLAIN (ANALYZE VERBOSE?)? selectStatement?
+    ;
+
+// ---- Describe
+describe
+    : DESCRIBE selectStatement
     ;
 
 // Set System To readonly/running/error
