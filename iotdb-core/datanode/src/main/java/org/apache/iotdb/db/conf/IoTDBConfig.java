@@ -396,7 +396,7 @@ public class IoTDBConfig {
 
   /**
    * Whether to enable delay analyzer for tracking data arrival delays and calculating safe
-   * watermarks
+   * watermark
    */
   private boolean enableDelayAnalyzer = false;
 
