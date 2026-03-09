@@ -49,6 +49,8 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
   private final GroupedTopNRowNumberAccumulator groupedTopNRowNumberAccumulator;
   private final TsBlockWithPositionComparator comparator;
 
+  private int effectiveGroupCount = 0;
+
   public GroupedTopNRowNumberBuilder(
       List<TSDataType> sourceTypes,
       TsBlockWithPositionComparator comparator,
@@ -77,10 +79,18 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
 
   @Override
   public void addTsBlock(TsBlock tsBlock) {
-    int[] groupIds = groupByHash.getGroupIds(tsBlock.getColumns(groupByChannels));
-    int groupCount = groupByHash.getGroupCount();
+    int[] groupIds;
+    if (groupByChannels.length == 0) {
+      groupIds = new int[tsBlock.getPositionCount()];
+      if (tsBlock.getPositionCount() > 0) {
+        effectiveGroupCount = 1;
+      }
+    } else {
+      groupIds = groupByHash.getGroupIds(tsBlock.getColumns(groupByChannels));
+      effectiveGroupCount = groupByHash.getGroupCount();
+    }
 
-    processTsBlock(tsBlock, groupCount, groupIds);
+    processTsBlock(tsBlock, effectiveGroupCount, groupIds);
   }
 
   @Override
@@ -120,7 +130,7 @@ public class GroupedTopNRowNumberBuilder implements GroupedTopNBuilder {
 
   private class ResultIterator extends AbstractIterator<TsBlock> {
     private final TsBlockBuilder tsBlockBuilder;
-    private final int groupIdCount = groupByHash.getGroupCount();
+    private final int groupIdCount = effectiveGroupCount;
     private int currentGroupId = -1;
     private final LongBigArray rowIdOutput = new LongBigArray();
     private long currentGroupSize;

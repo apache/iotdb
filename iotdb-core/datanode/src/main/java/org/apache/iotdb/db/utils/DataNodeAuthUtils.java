@@ -275,7 +275,8 @@ public class DataNodeAuthUtils {
    * @return the timestamp when the password will expire. Long.MAX if the password never expires.
    *     Null if the password history cannot be found.
    */
-  public static Long checkPasswordExpiration(long userId, String password) {
+  public static Long checkPasswordExpiration(
+      final long userId, final String password, final boolean useEncryptedPassword) {
     if (userId == -1) {
       return null;
     }
@@ -335,7 +336,8 @@ public class DataNodeAuthUtils {
             CommonDateTimeUtils.convertIoTDBTimeToMillis(tsBlock.getTimeByIndex(0));
         // columns of last query: [timeseriesName, value, dataType]
         String oldPassword = tsBlock.getColumn(1).getBinary(0).toString();
-        if (oldPassword.equals(AuthUtils.encryptPassword(password))) {
+        if (oldPassword.equals(
+            useEncryptedPassword ? password : AuthUtils.encryptPassword(password))) {
           if (lastPasswordTime + passwordExpirationDays * 1000 * 86400 <= lastPasswordTime) {
             // overflow or passwordExpirationDays <= 0
             return Long.MAX_VALUE;

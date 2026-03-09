@@ -58,15 +58,12 @@ public class DeletionResource implements PersistentResource {
   private volatile Exception cause;
 
   public DeletionResource(
-      AbstractDeleteDataNode deleteDataNode,
-      Consumer<DeletionResource> removeHook,
-      String regionId) {
+      AbstractDeleteDataNode deleteDataNode, Consumer<DeletionResource> removeHook, int regionId) {
     this.deleteDataNode = deleteDataNode;
     this.removeHook = removeHook;
     this.currentStatus = Status.RUNNING;
     this.consensusGroupId =
-        ConsensusGroupId.Factory.create(
-            TConsensusGroupType.DataRegion.getValue(), Integer.parseInt(regionId));
+        ConsensusGroupId.Factory.create(TConsensusGroupType.DataRegion.getValue(), regionId);
     this.pipeTaskReferenceCount =
         new AtomicInteger(
             DataRegionConsensusImpl.getInstance().getReplicationNum(consensusGroupId) - 1);
@@ -151,7 +148,7 @@ public class DeletionResource implements PersistentResource {
   }
 
   public static DeletionResource deserialize(
-      final ByteBuffer buffer, final String regionId, final Consumer<DeletionResource> removeHook)
+      final ByteBuffer buffer, final int regionId, final Consumer<DeletionResource> removeHook)
       throws IOException {
     AbstractDeleteDataNode node = DeleteNodeType.deserializeFromDAL(buffer);
     return new DeletionResource(node, removeHook, regionId);

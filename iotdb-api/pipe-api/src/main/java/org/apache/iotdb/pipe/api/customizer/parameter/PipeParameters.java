@@ -371,7 +371,7 @@ public class PipeParameters {
     return new PipeParameters(thisMap);
   }
 
-  private static class KeyReducer {
+  public static class KeyReducer {
 
     private static final Set<String> FIRST_PREFIXES = new HashSet<>();
     private static final Set<String> SECOND_PREFIXES = new HashSet<>();
@@ -399,7 +399,7 @@ public class PipeParameters {
       return key;
     }
 
-    static String reduce(String key) {
+    public static String reduce(String key) {
       if (key == null) {
         return null;
       }

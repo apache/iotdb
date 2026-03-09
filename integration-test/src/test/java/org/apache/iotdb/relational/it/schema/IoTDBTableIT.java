@@ -761,10 +761,10 @@ public class IoTDBTableIT {
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
       statement.execute("create database root.another");
-      statement.execute("create database root.`重庆`.b");
-      statement.execute("create timeSeries root.`重庆`.b.c.S1 int32");
-      statement.execute("create timeSeries root.`重庆`.b.c.s2 string");
-      statement.execute("create timeSeries root.`重庆`.b.S1 int32");
+      statement.execute("create database root.`重庆`.`1`.b");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.S1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.s2 string");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.S1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -783,13 +783,13 @@ public class IoTDBTableIT {
             "701: Cannot specify view pattern to match more than one tree database.",
             e.getMessage());
       }
-      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+      statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
       statement.execute("drop view tree_table");
     }
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.d.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`1`.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -800,7 +800,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         final Set<String> result =
@@ -814,13 +814,13 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("drop timeSeries root.`重庆`.b.d.s1");
+      statement.execute("drop timeSeries root.`重庆`.`1`.b.`1`.s1");
       statement.execute("create device template t1 (S1 boolean, s9 int32)");
-      statement.execute("set schema template t1 to root.`重庆`.b.d");
-      statement.execute("create timeSeries root.`重庆`.b.c.f.g.h.S1 int32");
+      statement.execute("set schema template t1 to root.`重庆`.`1`.b.`1`");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.`2`.f.g.h.S1 int32");
 
       // Put schema cache
-      statement.execute("select S1, s2 from root.`重庆`.b.c");
+      statement.execute("select S1, s2 from root.`重庆`.`1`.b.`2`");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -831,7 +831,7 @@ public class IoTDBTableIT {
       statement.execute("use tree_view_db");
 
       try {
-        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".**");
+        statement.execute("create view tree_table (tag1 tag, tag2 tag) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -841,7 +841,7 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".**");
+            "create view tree_table (tag1 tag, tag2 tag, S1 field) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -852,7 +852,7 @@ public class IoTDBTableIT {
 
     try (final Connection connection = EnvFactory.getEnv().getConnection();
         final Statement statement = connection.createStatement()) {
-      statement.execute("create timeSeries root.`重庆`.b.e.s1 int32");
+      statement.execute("create timeSeries root.`重庆`.`1`.b.e.s1 int32");
     } catch (SQLException e) {
       fail(e.getMessage());
     }
@@ -873,7 +873,7 @@ public class IoTDBTableIT {
       // Temporary
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 boolean from S1) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals(
@@ -882,14 +882,14 @@ public class IoTDBTableIT {
 
       try {
         statement.execute(
-            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"重庆\".**");
+            "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2, s8 field) as root.\"重庆\".\"1\".**");
         fail();
       } catch (final SQLException e) {
         assertEquals("528: Measurements not found for s8, cannot auto detect", e.getMessage());
       }
 
       statement.execute(
-          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"重庆\".**");
+          "create or replace view tree_table (tag1 tag, tag2 tag, S1 int32 field, s3 from s2) as root.\"重庆\".\"1\".**");
 
       // Cannot be written
       try {
@@ -937,11 +937,15 @@ public class IoTDBTableIT {
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b'"),
           "tag1,tag2,",
-          new HashSet<>(Arrays.asList("b,c,", "b,null,", "b,e,")));
+          new HashSet<>(Arrays.asList("b,`2`,", "b,null,", "b,e,")));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 is null"),
           "tag1,tag2,",
           Collections.singleton("b,null,"));
+      TestUtils.assertResultSetEqual(
+          statement.executeQuery("show devices from view_table where tag1 = 'b' and tag2 = '`2`'"),
+          "tag1,tag2,",
+          Collections.singleton("b,`2`,"));
       TestUtils.assertResultSetEqual(
           statement.executeQuery("count devices from view_table"),
           "count(devices),",
@@ -953,7 +957,7 @@ public class IoTDBTableIT {
         final Statement statement = connection.createStatement()) {
       // Test create & replace + restrict
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.`重庆`.`1`.**");
       fail();
     } catch (final SQLException e) {
       assertTrue(
@@ -974,7 +978,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -995,7 +999,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1015,7 +1019,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
       fail();
     } catch (final SQLException e) {
       assertEquals(
@@ -1035,7 +1039,7 @@ public class IoTDBTableIT {
                 .getConnection("testUser", "testUser123456", BaseEnv.TABLE_SQL_DIALECT);
         final Statement statement = connection.createStatement()) {
       statement.execute(
-          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".**");
+          "create or replace view tree_view_db.view_table (tag1 tag, tag2 tag, s11 int32 field, s3 from s2) restrict with (ttl=100) as root.\"重庆\".\"1\".**");
     } catch (final SQLException e) {
       fail();
     }
@@ -1054,14 +1058,14 @@ public class IoTDBTableIT {
           statement.executeQuery("show create view view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       // Can also use "show create table"
       TestUtils.assertResultSetEqual(
           statement.executeQuery("show create table view_table"),
           "View,Create View,",
           Collections.singleton(
-              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".**,"));
+              "view_table,CREATE VIEW \"view_table\" (\"tag1\" STRING TAG,\"tag2\" STRING TAG,\"s11\" INT32 FIELD,\"s3\" STRING FIELD FROM \"s2\") RESTRICT WITH (ttl=100) AS root.\"重庆\".\"1\".**,"));
 
       statement.execute("create table a ()");
       try {
