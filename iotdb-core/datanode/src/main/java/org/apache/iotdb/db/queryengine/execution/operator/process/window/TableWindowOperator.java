@@ -205,7 +205,11 @@ public class TableWindowOperator implements ProcessOperator {
       Partition partition = new Partition(partitionCache.getSlices());
       PartitionExecutor partitionExecutor =
           new PartitionExecutor(
-              partition, inputDataTypes, outputChannels, windowFunctions, frameInfoList,
+              partition,
+              inputDataTypes,
+              outputChannels,
+              windowFunctions,
+              frameInfoList,
               sortChannels);
       cachedPartitionExecutors.addLast(partitionExecutor);
       releasePartitionCacheMemory();
