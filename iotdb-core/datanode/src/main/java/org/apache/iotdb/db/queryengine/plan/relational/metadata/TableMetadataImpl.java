@@ -1206,7 +1206,21 @@ public class TableMetadataImpl implements Metadata {
                   "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
                   functionName.toUpperCase()));
         }
-
+        break;
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        // Argument count is already checked in ExpressionAnalyzer
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        } else if (!isSupportedMathNumericType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
         break;
       case SqlConstant.APPROX_COUNT_DISTINCT:
         if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
@@ -1301,6 +1315,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.CORR:
       case SqlConstant.COVAR_POP:
       case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;

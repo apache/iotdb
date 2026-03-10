@@ -157,6 +157,8 @@ public class TypeInferenceUtils {
       case SqlConstant.CORR:
       case SqlConstant.COVAR_POP:
       case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
         return TSDataType.DOUBLE;
       default:
         throw new IllegalArgumentException(
@@ -204,6 +206,14 @@ public class TypeInferenceUtils {
         }
         throw new SemanticException(
             "Aggregate functions [CORR, COVAR_POP, COVAR_SAMP] only support "
+                + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if (dataType.isNumeric() || TSDataType.TIMESTAMP.equals(dataType)) {
+          return;
+        }
+        throw new SemanticException(
+            "Aggregate functions [REGR_SLOPE, REGR_INTERCEPT] only support "
                 + "numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]");
       case SqlConstant.COUNT:
       case SqlConstant.COUNT_TIME:
@@ -262,6 +272,8 @@ public class TypeInferenceUtils {
       case SqlConstant.CORR:
       case SqlConstant.COVAR_POP:
       case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return;

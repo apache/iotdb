@@ -77,6 +77,8 @@ public class SqlConstant {
   public static final String CORR = "corr";
   public static final String COVAR_POP = "covar_pop";
   public static final String COVAR_SAMP = "covar_samp";
+  public static final String REGR_SLOPE = "regr_slope";
+  public static final String REGR_INTERCEPT = "regr_intercept";
 
   public static final String COUNT_TIME = "count_time";
   public static final String COUNT_TIME_HEADER = "count_time(*)";
