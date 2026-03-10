@@ -296,7 +296,9 @@ enum TAggregationType {
   APPROX_MOST_FREQUENT,
   CORR,
   COVAR_POP,
-  COVAR_SAMP
+  COVAR_SAMP,
+  REGR_SLOPE,
+  REGR_INTERCEPT
 }
 
 struct TShowConfigurationTemplateResp {

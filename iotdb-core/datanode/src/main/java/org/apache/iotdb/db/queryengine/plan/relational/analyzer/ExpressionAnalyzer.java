@@ -1072,7 +1072,9 @@ public class ExpressionAnalyzer {
         String lowerFuncName = functionName.toLowerCase();
         if (lowerFuncName.equals("corr")
             || lowerFuncName.equals("covar_pop")
-            || lowerFuncName.equals("covar_samp")) {
+            || lowerFuncName.equals("covar_samp")
+            || lowerFuncName.equals("regr_slope")
+            || lowerFuncName.equals("regr_intercept")) {
           if (argumentTypes.size() != 2) {
             throw new SemanticException(
                 String.format(

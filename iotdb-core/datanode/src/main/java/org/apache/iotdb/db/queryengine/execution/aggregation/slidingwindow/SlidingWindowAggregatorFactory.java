@@ -203,6 +203,8 @@ public class SlidingWindowAggregatorFactory {
       case CORR:
       case COVAR_POP:
       case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
       case UDAF: // Currently UDAF belongs to SmoothQueueSlidingWindowAggregator
         return new SmoothQueueSlidingWindowAggregator(accumulator, inputLocationList, step);
       case MAX_VALUE:

@@ -91,6 +91,8 @@ public class SchemaUtils {
       case SqlConstant.CORR:
       case SqlConstant.COVAR_POP:
       case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
         return TSDataType.DOUBLE;
         // Partial aggregation names
       case SqlConstant.STDDEV + "_partial":
@@ -102,6 +104,8 @@ public class SchemaUtils {
       case SqlConstant.CORR + "_partial":
       case SqlConstant.COVAR_POP + "_partial":
       case SqlConstant.COVAR_SAMP + "_partial":
+      case SqlConstant.REGR_SLOPE + "_partial":
+      case SqlConstant.REGR_INTERCEPT + "_partial":
       case SqlConstant.MAX_BY + "_partial":
       case SqlConstant.MIN_BY + "_partial":
         return TSDataType.TEXT;
@@ -175,6 +179,10 @@ public class SchemaUtils {
         return SqlConstant.COVAR_POP;
       case COVAR_SAMP:
         return SqlConstant.COVAR_SAMP;
+      case REGR_SLOPE:
+        return SqlConstant.REGR_SLOPE;
+      case REGR_INTERCEPT:
+        return SqlConstant.REGR_INTERCEPT;
       default:
         return null;
     }
@@ -213,6 +221,8 @@ public class SchemaUtils {
       case CORR:
       case COVAR_POP:
       case COVAR_SAMP:
+      case REGR_SLOPE:
+      case REGR_INTERCEPT:
       case UDAF:
         return true;
       default:
@@ -253,6 +263,10 @@ public class SchemaUtils {
         return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_POP));
       case COVAR_SAMP:
         return Collections.singletonList(addPartialSuffix(SqlConstant.COVAR_SAMP));
+      case REGR_SLOPE:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_SLOPE));
+      case REGR_INTERCEPT:
+        return Collections.singletonList(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
       case MAX_BY:
         return Collections.singletonList(addPartialSuffix(SqlConstant.MAX_BY));
       case MIN_BY:

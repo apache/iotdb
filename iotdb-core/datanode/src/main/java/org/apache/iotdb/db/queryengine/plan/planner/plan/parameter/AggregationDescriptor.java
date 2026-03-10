@@ -196,6 +196,12 @@ public class AggregationDescriptor {
         case COVAR_SAMP:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.COVAR_SAMP));
           break;
+        case REGR_SLOPE:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.REGR_SLOPE));
+          break;
+        case REGR_INTERCEPT:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
+          break;
         case MAX_BY:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
           break;
