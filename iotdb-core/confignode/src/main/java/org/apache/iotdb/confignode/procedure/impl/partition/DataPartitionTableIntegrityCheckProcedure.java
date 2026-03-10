@@ -288,8 +288,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     //@TODO simulate case that lost data partition
-//    if (lostDataPartitionsOfDatabases.isEmpty()) {
-    if (!lostDataPartitionsOfDatabases.isEmpty()) {
+    lostDataPartitionsOfDatabases.add("root.demo");
+    if (lostDataPartitionsOfDatabases.isEmpty()) {
       LOG.info("No databases have lost data partitions, terminating procedure");
       return Flow.NO_MORE_STATE;
     }
@@ -345,7 +345,6 @@ public class DataPartitionTableIntegrityCheckProcedure
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
           TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
-          lostDataPartitionsOfDatabases.add("root.demo");
           req.setDatabases(lostDataPartitionsOfDatabases);
           TGenerateDataPartitionTableResp resp = (TGenerateDataPartitionTableResp) SyncDataNodeClientPool.getInstance()
                   .sendSyncRequestToDataNodeWithGivenRetry(dataNode.getLocation().getInternalEndPoint(), req, CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE, MAX_RETRY_COUNT);
@@ -396,8 +395,12 @@ public class DataPartitionTableIntegrityCheckProcedure
         try {
           TGenerateDataPartitionTableHeartbeatResp resp = (TGenerateDataPartitionTableHeartbeatResp) SyncDataNodeClientPool.getInstance()
                   .sendSyncRequestToDataNodeWithGivenRetry(dataNode.getLocation().getInternalEndPoint(), null, CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT, MAX_RETRY_COUNT);
-          DataPartitionTableGeneratorState state = DataPartitionTableGeneratorState.getStateByCode(resp.getStatus().getCode());
+          DataPartitionTableGeneratorState state = DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
 
+          if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            LOG.error("Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], response status is {}", dataNode.getLocation().getDataNodeId(), resp.getStatus());
+            continue;
+          }
           switch (state) {
             case SUCCESS:
               LOG.info("DataNode {} completed DataPartitionTable generation, terminating heart beat", dataNodeId);
@@ -411,7 +414,7 @@ public class DataPartitionTableIntegrityCheckProcedure
               completeCount++;
               break;
             default:
-              LOG.error("DataNode {} returned unknown error code: {}", dataNodeId, resp.getStatus().getCode());
+              LOG.error("DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
               break;
           }
         } catch (Exception e) {
@@ -422,6 +425,8 @@ public class DataPartitionTableIntegrityCheckProcedure
                   e);
           completeCount++;
         }
+      } else {
+        completeCount++;
       }
     }
 

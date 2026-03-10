@@ -3285,9 +3285,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
       }
-
-      // Clear current generator
-      currentGenerator = null;
     } catch (Exception e) {
       LOGGER.error("Failed to generate DataPartitionTable", e);
       resp.setStatus(

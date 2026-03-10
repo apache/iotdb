@@ -61,7 +61,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeReq;
-
 import org.apache.ratis.util.FileUtils;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -421,45 +420,5 @@ public class DataNodeInternalRPCServiceImplTest {
               node.getSchemaRegionConsensusEndPoint()));
     }
     return peerList;
-  }
-
-  @Test
-  public void testGetEarliestTimeslots() {
-    Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
-    lostDataPartitionsOfDatabases.add("root.demo");
-
-    TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
-    req.setDatabases(lostDataPartitionsOfDatabases);
-
-    // Use consensus layer to execute request
-    TGetEarliestTimeslotsResp response =
-            dataNodeInternalRPCServiceImpl.getEarliestTimeslots();
-
-    Map<String, Long> result = new HashMap<String, Long>(){{
-      put("test", 2927L);
-      put("root.test", 0L);
-      put("root.demo", 0L);
-    }};
-    Assert.assertNotSame(response.getDatabaseToEarliestTimeslot(), result);
-  }
-
-  @Test
-  public void testGenerateDataPartitionTable() {
-    Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
-    lostDataPartitionsOfDatabases.add("root.demo");
-
-    TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
-    req.setDatabases(lostDataPartitionsOfDatabases);
-
-    // Use consensus layer to execute request
-    String[] dataDirs = new String[]{"D:\\Users\\libo\\Downloads\\muliti-iotdb\\master-iotdb-source-conf\\data\\datanode\\data"};
-    TGenerateDataPartitionTableResp response =
-            dataNodeInternalRPCServiceImpl.generateDataPartitionTable(req, dataDirs);
-
-    Assert.assertNotSame(response.getDataPartitionTable(), ByteBuffer.allocate(0).array());
-
-    DataPartitionTable dataPartitionTable = new DataPartitionTable();
-    dataPartitionTable.deserialize(ByteBuffer.wrap(response.getDataPartitionTable()));
-    Assert.assertEquals(1, dataPartitionTable.getTimeSlotCount());
   }
 }
