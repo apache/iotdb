@@ -450,6 +450,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
                   new ThreadPoolExecutor.CallerRunsPolicy());
 
+  private Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
+
   private static final long timeoutMs = 600000; // 600 seconds timeout
 
   public DataNodeInternalRPCServiceImpl() {
@@ -3365,6 +3367,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       if (DataPartitionTableGenerator.IGNORE_DATABASE.contains(databaseName)) {
                         return;
                       }
+                      databaseEarliestRegionMap.computeIfAbsent(databaseName, key -> Long.MAX_VALUE);
                       long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
 
                       if (earliestTimeslot != Long.MAX_VALUE) {
@@ -3382,7 +3385,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   /** Find the earliest timeslot in a database directory. */
   private long findEarliestTimeslotInDatabase(File databaseDir) {
-    final AtomicLong earliest = new AtomicLong(Long.MAX_VALUE);
+    String databaseName = databaseDir.getName();
 
     try {
       Files.list(databaseDir.toPath())
@@ -3401,8 +3404,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                               }
                               String timeSlotName = timeSlotPath.getFileName().toString();
                               long timeslot = Long.parseLong(timeSlotName);
-                              if (timeslot < earliest.get()) {
-                                earliest.set(timeslot);
+                              if (timeslot < databaseEarliestRegionMap.get(databaseName)) {
+                                databaseEarliestRegionMap.put(databaseName, timeslot);
                               }
                             } catch (IOException e) {
                               LOGGER.error("Failed to find any {} files in the {} directory", DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME, timeSlotPath, e);
@@ -3417,14 +3420,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.error("Failed to walk database directory: {}", databaseDir, e);
     }
 
-    return earliest.get();
+    return databaseEarliestRegionMap.get(databaseName);
   }
 
   /** Serialize DataPartitionTable to ByteBuffer for RPC transmission. */
   private byte[] serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
-//    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-//         ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-
     try (PublicBAOS baos = new PublicBAOS();
          DataOutputStream oos = new DataOutputStream(baos)) {
       TTransport transport = new TIOStreamTransport(oos);

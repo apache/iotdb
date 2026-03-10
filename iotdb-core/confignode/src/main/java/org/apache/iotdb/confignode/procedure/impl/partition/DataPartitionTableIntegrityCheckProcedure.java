@@ -206,10 +206,6 @@ public class DataPartitionTableIntegrityCheckProcedure
         }
 
         Map<String, Long> nodeTimeslots = resp.getDatabaseToEarliestTimeslot();
-//        Map<String, Long> nodeTimeslots = new HashMap<>();
-//        nodeTimeslots.put("test", 2927L);
-//        nodeTimeslots.put("root.test", 0L);
-//        nodeTimeslots.put("root.demo", 0L);
 
         // Merge with existing timeslots (take minimum)
         for (Map.Entry<String, Long> entry : nodeTimeslots.entrySet()) {
@@ -388,7 +384,9 @@ public class DataPartitionTableIntegrityCheckProcedure
    * Check completion status of DataPartitionTable generation tasks.
    */
   private void checkPartitionTableGenerationStatus() {
-    LOG.info("Checking DataPartitionTable generation completion status...");
+    if (LOG.isDebugEnabled()) {
+      LOG.info("Checking DataPartitionTable generation completion status...");
+    }
 
     int completeCount = 0;
     for (TDataNodeConfiguration dataNode : allDataNodes) {
@@ -508,7 +506,9 @@ public class DataPartitionTableIntegrityCheckProcedure
 
   /** Write the final DataPartitionTable to raft log. */
   private Flow writePartitionTableToRaft(final ConfigNodeProcedureEnv env) {
-    LOG.info("Writing DataPartitionTable to raft log...");
+    if (LOG.isDebugEnabled()) {
+      LOG.info("Writing DataPartitionTable to raft log...");
+    }
 
     if (lostDataPartitionsOfDatabases.isEmpty()) {
       LOG.error("No database lost data partition table");
@@ -573,8 +573,14 @@ public class DataPartitionTableIntegrityCheckProcedure
         TTransport transport = new TIOStreamTransport(oos);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         entry.getValue().serialize(oos, protocol);
+
+        // Write the size and data for byte array after serialize
+        byte[] data = baos.toByteArray();
+        stream.writeInt(data.length);
+        stream.write(data);
       } catch (IOException | TException e) {
         LOG.error("{} serialize failed", this.getClass().getSimpleName(), e);
+        throw new IOException("Failed to serialize dataPartitionTables", e);
       }
     }
 
@@ -583,13 +589,23 @@ public class DataPartitionTableIntegrityCheckProcedure
       stream.writeUTF(database);
     }
 
-    try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-         ObjectOutputStream oos = new ObjectOutputStream(baos)) {
-      TTransport transport = new TIOStreamTransport(oos);
-      TBinaryProtocol protocol = new TBinaryProtocol(transport);
-      finalDataPartitionTable.serialize(oos, protocol);
-    } catch (IOException | TException e) {
-      LOG.error("{} serialize failed", this.getClass().getSimpleName(), e);
+    if (finalDataPartitionTable != null) {
+      try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+           ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+        TTransport transport = new TIOStreamTransport(oos);
+        TBinaryProtocol protocol = new TBinaryProtocol(transport);
+        finalDataPartitionTable.serialize(oos, protocol);
+
+        // Write the size and data for byte array after serialize
+        byte[] data = baos.toByteArray();
+        stream.writeInt(data.length);
+        stream.write(data);
+      } catch (IOException | TException e) {
+        LOG.error("{} serialize failed", this.getClass().getSimpleName(), e);
+        throw new IOException("Failed to serialize finalDataPartitionTable", e);
+      }
+    } else {
+      stream.writeInt(0);
     }
 
     stream.writeInt(skipDnIds.size());
@@ -618,6 +634,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     // Deserialize dataPartitionTables count
     int dataPartitionTablesSize = byteBuffer.getInt();
+    dataPartitionTables = new HashMap<>();
     for (int i = 0; i < dataPartitionTablesSize; i++) {
       int key = byteBuffer.getInt();
       int size = byteBuffer.getInt();
@@ -646,19 +663,23 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     // Deserialize finalDataPartitionTable size
     int finalDataPartitionTableSize = byteBuffer.getInt();
-    byte[] finalDataPartitionTableBytes = new byte[finalDataPartitionTableSize];
-    byteBuffer.get(finalDataPartitionTableBytes);
-    try (ByteArrayInputStream bais = new ByteArrayInputStream(finalDataPartitionTableBytes);
-         ObjectInputStream ois = new ObjectInputStream(bais)) {
-      TTransport transport = new TIOStreamTransport(ois);
-      TBinaryProtocol protocol = new TBinaryProtocol(transport);
+    if (finalDataPartitionTableSize > 0) {
+      byte[] finalDataPartitionTableBytes = new byte[finalDataPartitionTableSize];
+      byteBuffer.get(finalDataPartitionTableBytes);
+      try (ByteArrayInputStream bais = new ByteArrayInputStream(finalDataPartitionTableBytes);
+           ObjectInputStream ois = new ObjectInputStream(bais)) {
+        TTransport transport = new TIOStreamTransport(ois);
+        TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-      // Deserialize by input stream and protocol
-      finalDataPartitionTable = new DataPartitionTable();
-      finalDataPartitionTable.deserialize(ois, protocol);
-    } catch (IOException | TException e) {
-      LOG.error("{} deserialize failed", this.getClass().getSimpleName(), e);
-      throw new RuntimeException(e);
+        // Deserialize by input stream and protocol
+        finalDataPartitionTable = new DataPartitionTable();
+        finalDataPartitionTable.deserialize(ois, protocol);
+      } catch (IOException | TException e) {
+        LOG.error("{} deserialize failed", this.getClass().getSimpleName(), e);
+        throw new RuntimeException(e);
+      }
+    } else {
+      finalDataPartitionTable = null;
     }
 
     int skipDnIdsSize = byteBuffer.getInt();
