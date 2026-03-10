@@ -34,8 +34,8 @@ import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Cap
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Pattern.typeOf;
 
 /**
- * Pushes a ChangePointNode into a DeviceTableScanNode, creating a ChangePointTableScanNode that
- * can leverage TsFile statistics for optimization.
+ * Pushes a ChangePointNode into a DeviceTableScanNode, creating a ChangePointTableScanNode that can
+ * leverage TsFile statistics for optimization.
  */
 public class PushChangePointIntoTableScan implements Rule<ChangePointNode> {
 
@@ -50,8 +50,7 @@ public class PushChangePointIntoTableScan implements Rule<ChangePointNode> {
                 source()
                     .matching(
                         typeOf(DeviceTableScanNode.class)
-                            .matching(
-                                scan -> !(scan instanceof ChangePointTableScanNode))
+                            .matching(scan -> !(scan instanceof ChangePointTableScanNode))
                             .capturedAs(TABLE_SCAN_CAPTURE)));
   }
 

@@ -733,8 +733,8 @@ public enum PlanNodeType {
       case 1040:
         return ChangePointNode.deserialize(buffer);
       case 1041:
-        return org.apache.iotdb.db.queryengine.plan.relational.planner.node
-            .ChangePointTableScanNode.deserialize(buffer);
+        return org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode
+            .deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:

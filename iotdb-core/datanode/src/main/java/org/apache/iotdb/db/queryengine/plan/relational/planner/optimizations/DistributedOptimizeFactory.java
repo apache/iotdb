@@ -50,9 +50,7 @@ public class DistributedOptimizeFactory {
                 ImmutableSet.of(new ReplaceFilterWindowLeadWithChangePoint())),
             // push ChangePointNode into DeviceTableScanNode for TsFile statistics optimization
             new IterativeOptimizer(
-                plannerContext,
-                ruleStats,
-                ImmutableSet.of(new PushChangePointIntoTableScan())),
+                plannerContext, ruleStats, ImmutableSet.of(new PushChangePointIntoTableScan())),
             // transfer Limit+Sort to TopK
             new IterativeOptimizer(
                 plannerContext,

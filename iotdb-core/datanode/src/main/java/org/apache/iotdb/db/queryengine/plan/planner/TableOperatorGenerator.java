@@ -56,7 +56,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.MappingCollect
 import org.apache.iotdb.db.queryengine.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PatternRecognitionOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.PreviousFillWithGroupOperator;
-import org.apache.iotdb.db.queryengine.execution.operator.source.ChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableFillOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableIntoOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.process.TableLinearFillOperator;
@@ -117,6 +116,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
@@ -4346,9 +4346,9 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Set<String> allSensors = new HashSet<>(commonParameter.measurementColumnNames);
     allSensors.add("");
 
-    String monitoredColumnName =
-        node.getAssignments().get(node.getMeasurementSymbol()).getName();
-    int monitoredMeasurementIndex = commonParameter.measurementColumnNames.indexOf(monitoredColumnName);
+    String monitoredColumnName = node.getAssignments().get(node.getMeasurementSymbol()).getName();
+    int monitoredMeasurementIndex =
+        commonParameter.measurementColumnNames.indexOf(monitoredColumnName);
     if (monitoredMeasurementIndex < 0) {
       throw new IllegalStateException(
           "Monitored column not found in measurement columns: " + monitoredColumnName);
@@ -4367,7 +4367,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             allSensors,
             commonParameter.measurementSchemas,
             monitoredMeasurementIndex,
-            idColumnIndex -> ((String) node.getDeviceEntries().get(0).getNthSegment(idColumnIndex + 1)));
+            idColumnIndex ->
+                ((String) node.getDeviceEntries().get(0).getNthSegment(idColumnIndex + 1)));
 
     ChangePointOperator changePointOperator = new ChangePointOperator(parameter);
 

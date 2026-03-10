@@ -217,9 +217,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
 
     resultTsBlock =
         new TsBlock(
-            rowCount,
-            new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, rowCount),
-            finalColumns);
+            rowCount, new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, rowCount), finalColumns);
     nextValues.clear();
     return checkTsBlockSizeAndGetResult();
   }

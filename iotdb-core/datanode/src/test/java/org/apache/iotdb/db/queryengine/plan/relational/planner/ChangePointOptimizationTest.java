@@ -25,7 +25,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMa
 import org.junit.Test;
 
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanAssert.assertPlan;
-import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.changePoint;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.changePointTableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.collect;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.exchange;
