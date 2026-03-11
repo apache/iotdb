@@ -315,7 +315,9 @@ enum TAggregationType {
   COVAR_POP,
   COVAR_SAMP,
   REGR_SLOPE,
-  REGR_INTERCEPT
+  REGR_INTERCEPT,
+  SKEWNESS,
+  KURTOSIS
 }
 
 struct TShowConfigurationTemplateResp {

@@ -65,7 +65,9 @@ public enum TableBuiltinAggregationFunction {
   COVAR_POP("covar_pop"),
   COVAR_SAMP("covar_samp"),
   REGR_SLOPE("regr_slope"),
-  REGR_INTERCEPT("regr_intercept");
+  REGR_INTERCEPT("regr_intercept"),
+  SKEWNESS("skewness"),
+  KURTOSIS("kurtosis");
 
   private final String functionName;
 
@@ -115,6 +117,8 @@ public enum TableBuiltinAggregationFunction {
       case "covar_samp":
       case "regr_slope":
       case "regr_intercept":
+      case "skewness":
+      case "kurtosis":
       case "approx_count_distinct":
       case "approx_percentile":
         return RowType.anonymous(Collections.emptyList());

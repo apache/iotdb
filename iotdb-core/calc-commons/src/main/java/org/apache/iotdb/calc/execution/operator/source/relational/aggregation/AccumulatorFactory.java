@@ -55,6 +55,7 @@ import org.apache.iotdb.commons.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.commons.queryengine.plan.relational.type.InternalTypeManager;
 import org.apache.iotdb.commons.queryengine.plan.udf.TableUDFUtils;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.db.queryengine.execution.aggregation.CentralMomentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.CorrelationAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.RegressionAccumulator;
 import org.apache.iotdb.db.queryengine.execution.aggregation.VarianceAccumulator;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggr
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedApproxCountDistinctAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedAvgAccumulator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCentralMomentAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCorrelationAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAccumulator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.grouped.GroupedCountAllAccumulator;
@@ -351,6 +353,12 @@ public class AccumulatorFactory {
             inputDataTypes.get(0),
             inputDataTypes.get(1),
             RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new GroupedCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
@@ -439,6 +447,12 @@ public class AccumulatorFactory {
             inputDataTypes.get(0),
             inputDataTypes.get(1),
             RegressionAccumulator.RegressionType.REGR_INTERCEPT);
+      case SKEWNESS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new TableCentralMomentAccumulator(
+            inputDataTypes.get(0), CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
