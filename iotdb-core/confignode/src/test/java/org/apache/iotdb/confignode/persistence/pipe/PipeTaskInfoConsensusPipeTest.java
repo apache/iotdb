@@ -51,9 +51,9 @@ public class PipeTaskInfoConsensusPipeTest {
     Map<String, String> extractorAttributes = new HashMap<>();
     Map<String, String> processorAttributes = new HashMap<>();
     Map<String, String> connectorAttributes = new HashMap<>();
-    extractorAttributes.put("extractor", "iotdb-extractor");
+    extractorAttributes.put("extractor", "iotdb-source");
     processorAttributes.put("processor", "do-nothing-processor");
-    connectorAttributes.put("connector", "iotdb-thrift-connector");
+    connectorAttributes.put("connector", "iotdb-thrift-sink");
 
     PipeTaskMeta pipeTaskMeta = new PipeTaskMeta(MinimumProgressIndex.INSTANCE, 1);
     ConcurrentMap<Integer, PipeTaskMeta> pipeTasks = new ConcurrentHashMap<>();
