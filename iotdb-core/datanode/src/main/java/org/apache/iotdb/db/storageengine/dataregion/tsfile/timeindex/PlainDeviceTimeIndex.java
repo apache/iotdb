@@ -28,17 +28,11 @@ import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Set;
 
 public class PlainDeviceTimeIndex extends ArrayDeviceTimeIndex implements ITimeIndex {
-
-  @Override
-  public void serialize(OutputStream outputStream) throws IOException {
-    throw new UnsupportedOperationException();
-  }
 
   @Override
   public PlainDeviceTimeIndex deserialize(
