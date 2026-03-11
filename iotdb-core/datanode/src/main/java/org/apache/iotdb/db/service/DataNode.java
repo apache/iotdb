@@ -226,7 +226,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
                 }
               }
             },
-            "ShutdownHookWatcher");
+            "DataNodeStartWatcher");
     watcherThread.setDaemon(true);
     watcherThread.start();
 
