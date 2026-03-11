@@ -29,7 +29,11 @@ import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +72,7 @@ public class DataPartitionTableGenerator {
   private final AtomicLong totalFiles = new AtomicLong(0);
 
   // Configuration
-  private final String[] dataDirectories;
+  private String[] dataDirectories;
   private final ExecutorService executor;
   private final Set<String> databases;
   private final int seriesSlotNum;
@@ -83,6 +87,17 @@ public class DataPartitionTableGenerator {
   public static final Set<String> IGNORE_DATABASE = new HashSet<String>() {{
     add("root.__audit");
   }};
+
+  public DataPartitionTableGenerator(
+          ExecutorService executor,
+          Set<String> databases,
+          int seriesSlotNum,
+          String seriesPartitionExecutorClass) {
+    this.executor = executor;
+    this.databases = databases;
+    this.seriesSlotNum = seriesSlotNum;
+    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
 
   public DataPartitionTableGenerator(
       String dataDirectory,
@@ -117,25 +132,78 @@ public class DataPartitionTableGenerator {
     FAILED
   }
 
-  /** Start generating DataPartitionTable asynchronously. */
-  public void startGeneration() {
+  /**
+   * Start generating DataPartitionTable asynchronously.
+   *
+   */
+  public CompletableFuture<Void> startGeneration() {
     if (status != TaskStatus.NOT_STARTED) {
       throw new IllegalStateException("Task is already started or completed");
     }
 
     status = TaskStatus.IN_PROGRESS;
+    return CompletableFuture.runAsync(this::generateDataPartitionTableByMemory);
+  }
 
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            generateDataPartitionTable();
-            status = TaskStatus.COMPLETED;
-          } catch (Exception e) {
-            LOG.error("Failed to generate DataPartitionTable", e);
-            errorMessage = e.getMessage();
-            status = TaskStatus.FAILED;
-          }
-        });
+  private void generateDataPartitionTableByMemory() {
+    Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap = new ConcurrentHashMap<>();
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+    SeriesPartitionExecutor seriesPartitionExecutor =
+            SeriesPartitionExecutor.getSeriesPartitionExecutor(
+                    seriesPartitionExecutorClass, seriesSlotNum);
+
+    for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+      CompletableFuture<Void> regionFuture =
+              CompletableFuture.runAsync(
+                      () -> {
+                        TsFileManager tsFileManager = dataRegion.getTsFileManager();
+                        String databaseName = dataRegion.getDatabaseName();
+                        if (!databases.contains(databaseName) || IGNORE_DATABASE.contains(databaseName)) {
+                          return;
+                        }
+
+                        tsFileManager.readLock();
+                        List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
+                        List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
+                        tsFileManager.readUnlock();
+
+                        constructDataPartitionMap(seqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+                        constructDataPartitionMap(unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+                      },
+                      executor);
+      futures.add(regionFuture);
+    }
+
+    // Wait for all tasks to complete
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+    if (dataPartitionMap.isEmpty()) {
+      LOG.error("Failed to generate DataPartitionTable, dataPartitionMap is empty");
+      status = TaskStatus.FAILED;
+      return;
+    }
+
+    dataPartitionTable = new DataPartitionTable(dataPartitionMap);
+    status = TaskStatus.COMPLETED;
+  }
+
+  private static void constructDataPartitionMap(List<TsFileResource> seqTsFileList, SeriesPartitionExecutor seriesPartitionExecutor, Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
+    for (TsFileResource tsFileResource : seqTsFileList) {
+      Set<IDeviceID> devices = tsFileResource.getDevices(limiter);
+      long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
+      int regionId = tsFileResource.getTsFileID().regionId;
+
+      TConsensusGroupId consensusGroupId = new TConsensusGroupId();
+      consensusGroupId.setId(regionId);
+      consensusGroupId.setType(TConsensusGroupType.DataRegion);
+
+      for (IDeviceID deviceId : devices) {
+        TSeriesPartitionSlot seriesSlotId = seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
+        TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+        dataPartitionMap.computeIfAbsent(seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId)).putDataPartition(timePartitionSlot, consensusGroupId);
+      }
+    }
   }
 
   /** Generate DataPartitionTable by scanning all resource files. */

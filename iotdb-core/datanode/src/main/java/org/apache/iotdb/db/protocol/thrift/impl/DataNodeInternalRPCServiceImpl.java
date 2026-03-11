@@ -3201,11 +3201,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req) {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    return generateDataPartitionTable(req, dataDirs);
-  }
-
-  public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req, String[] dataDirs) {
     TGenerateDataPartitionTableResp resp = new TGenerateDataPartitionTableResp();
     byte[] empty = new byte[0];
 
@@ -3220,71 +3215,50 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         return resp;
       }
 
-      // Get data directories and configuration
-      if (dataDirs.length == 0) {
-        resp.setDataPartitionTable(empty);
-        resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
-        resp.setMessage("dataDirs parameter are not configured in the iotdb-system.properties");
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-        return resp;
-      }
-
       // Create generator for all data directories
       int seriesSlotNum = IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum();
       String seriesPartitionExecutorClass =
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
 
       currentGenerator =
-          new DataPartitionTableGenerator(
-              dataDirs, partitionTableRecoverExecutor, req.getDatabases(), seriesSlotNum, seriesPartitionExecutorClass);
+          new DataPartitionTableGenerator(partitionTableRecoverExecutor, req.getDatabases(), seriesSlotNum, seriesPartitionExecutorClass);
       currentTaskId = System.currentTimeMillis();
 
       // Start generation synchronously for now to return the data partition table immediately
-      currentGenerator.startGeneration();
+      currentGenerator.startGeneration().get(timeoutMs, TimeUnit.MILLISECONDS);
 
-      // Wait for completion (with timeout)
-      long startTime = System.currentTimeMillis();
-      
-      while (currentGenerator != null && currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
-        if (System.currentTimeMillis() - startTime > timeoutMs) {
-          resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
-          resp.setMessage("DataPartitionTable generation timed out");
-          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-          return resp;
-        }
-        
-        try {
-          Thread.sleep(100); // Sleep for 100ms
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          resp.setDataPartitionTable(empty);
-          resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
-          resp.setMessage("DataPartitionTable generation interrupted");
-          resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-          return resp;
+      if (currentGenerator != null) {
+        switch (currentGenerator.getStatus()) {
+          case IN_PROGRESS:
+            resp.setDataPartitionTable(empty);
+            resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+            resp.setMessage("DataPartitionTable generation interrupted");
+            resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+            break;
+          case COMPLETED:
+            DataPartitionTable dataPartitionTable = currentGenerator.getDataPartitionTable();
+            if (dataPartitionTable != null) {
+              byte[] result = serializeDataPartitionTable(dataPartitionTable);
+              resp.setDataPartitionTable(result);
+            }
+
+            resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
+            resp.setMessage("DataPartitionTable generation completed successfully");
+            resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+            LOGGER.info("DataPartitionTable generation completed with task ID: {}", currentTaskId);
+            break;
+          default:
+            resp.setDataPartitionTable(empty);
+            resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
+            resp.setMessage(
+                    "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+            resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+            break;
         }
       }
 
-      // Check final status
-      if (currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.COMPLETED) {
-        DataPartitionTable dataPartitionTable = currentGenerator.getDataPartitionTable();
-        if (dataPartitionTable != null) {
-          byte[] result = serializeDataPartitionTable(dataPartitionTable);
-          resp.setDataPartitionTable(result);
-        }
-        
-        resp.setErrorCode(DataPartitionTableGeneratorState.SUCCESS.getCode());
-        resp.setMessage("DataPartitionTable generation completed successfully");
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-
-        LOGGER.info("DataPartitionTable generation completed with task ID: {}", currentTaskId);
-      } else {
-        resp.setDataPartitionTable(empty);
-        resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
-        resp.setMessage(
-            "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
-        resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
-      }
+      // Clear current generator
+      currentGenerator = null;
     } catch (Exception e) {
       LOGGER.error("Failed to generate DataPartitionTable", e);
       resp.setStatus(
@@ -3383,13 +3357,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   /** Find the earliest timeslot in a database directory. */
   private long findEarliestTimeslotInDatabase(File databaseDir) {
     String databaseName = databaseDir.getName();
+    List<Future<?>> futureList = new ArrayList<>();
 
     try {
       Files.list(databaseDir.toPath())
           .filter(Files::isDirectory)
           .forEach(
         regionPath -> {
-            findEarliestTimeSlotExecutor.submit(() -> {
+            Future<?> future = findEarliestTimeSlotExecutor.submit(() -> {
                     try {
                       Files.list(regionPath)
                           .filter(Files::isDirectory)
@@ -3412,11 +3387,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       LOGGER.error("Failed to scan {}", regionPath, e);
                     }
                   });
+          futureList.add(future);
               });
     } catch (IOException e) {
       LOGGER.error("Failed to walk database directory: {}", databaseDir, e);
     }
 
+    for (Future<?> future : futureList) {
+      try {
+        future.get();
+      } catch (InterruptedException | ExecutionException e) {
+        LOGGER.error("Failed to wait for task completion", e);
+        Thread.currentThread().interrupt();
+      }
+    }
     return databaseEarliestRegionMap.get(databaseName);
   }
 
