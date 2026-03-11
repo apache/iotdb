@@ -747,12 +747,7 @@ disk_space_warning_threshold=0.05
 # Datatype: Integer
 partition_table_recover_worker_num=10
 
-# Limit the number of files used for parallel processing
-# effectiveMode: restart
-# Datatype: Integer
-#partition_table_recover_process_file_num=1000
-
-# Limit the number of bytes read per second from a file
+# Limit the number of bytes read per second from a file, the unit is MB
 # effectiveMode: restart
 # Datatype: Integer
 partition_table_recover_max_read_bytes_per_second=10
