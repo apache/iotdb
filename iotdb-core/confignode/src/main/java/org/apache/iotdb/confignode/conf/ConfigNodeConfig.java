@@ -319,7 +319,7 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
-  private long partitionTableRecoverWaitAllDnUpTimeout=2000;
+  private long partitionTableRecoverWaitAllDnUpTimeout=60000;
 
   public ConfigNodeConfig() {
     // empty constructor
