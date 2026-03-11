@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.it.env.cluster.env.AbstractEnv;
 import org.apache.iotdb.jdbc.Config;
 
 import org.slf4j.Logger;
@@ -47,9 +48,12 @@ public class ClusterTestStatement implements Statement {
   private int maxRows = Integer.MAX_VALUE;
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
   private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+  private final AbstractEnv env;
 
   public ClusterTestStatement(
-      NodeConnection writeConnection, List<NodeConnection> readConnections) {
+      final NodeConnection writeConnection,
+      final List<NodeConnection> readConnections,
+      final AbstractEnv env) {
     try {
       this.writeStatement = writeConnection.getUnderlyingConnection().createStatement();
       updateConfig(writeStatement, 0);
@@ -71,6 +75,7 @@ public class ClusterTestStatement implements Statement {
     if (readStatements.isEmpty()) {
       LOGGER.warn("Failed to create any read statement.");
     }
+    this.env = env;
   }
 
   private void updateConfig(Statement statement, int timeout) throws SQLException {
@@ -87,7 +92,7 @@ public class ClusterTestStatement implements Statement {
    */
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+    return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout, env);
   }
 
   @Override
@@ -100,7 +105,7 @@ public class ClusterTestStatement implements Statement {
     List<String> endpoints = new ArrayList<>();
     endpoints.add(writEndpoint);
     endpoints.addAll(readEndpoints);
-    RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout);
+    RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout, env);
     delegate.addRequest(
         () -> {
           if (writeStatement != null) {
