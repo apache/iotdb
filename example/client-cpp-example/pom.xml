@@ -128,7 +128,7 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
+                <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
                     <execution>
@@ -140,7 +140,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}</sourcePath>
-                            <targetPath>${project.build.directory}</targetPath>
+                            <projectDirectory>${project.build.directory}</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                             </options>
