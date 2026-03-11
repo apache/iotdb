@@ -202,6 +202,12 @@ public class AggregationDescriptor {
         case REGR_INTERCEPT:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.REGR_INTERCEPT));
           break;
+        case SKEWNESS:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.SKEWNESS));
+          break;
+        case KURTOSIS:
+          outputAggregationNames.add(addPartialSuffix(SqlConstant.KURTOSIS));
+          break;
         case MAX_BY:
           outputAggregationNames.add(addPartialSuffix(SqlConstant.MAX_BY));
           break;

@@ -1082,6 +1082,14 @@ public class ExpressionAnalyzer {
                     node, argumentTypes.size()));
           }
         }
+        if (lowerFuncName.equals("skewness") || lowerFuncName.equals("kurtosis")) {
+          if (argumentTypes.size() != 1) {
+            throw new SemanticException(
+                String.format(
+                    "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
+                    node, argumentTypes.size()));
+          }
+        }
       }
 
       Type type = metadata.getFunctionReturnType(functionName, argumentTypes);

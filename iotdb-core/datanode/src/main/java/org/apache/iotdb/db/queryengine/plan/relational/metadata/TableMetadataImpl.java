@@ -679,6 +679,16 @@ public class TableMetadataImpl implements Metadata {
                   functionName.toUpperCase()));
         }
         break;
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        // Argument count is already checked in ExpressionAnalyzer
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        break;
       case SqlConstant.APPROX_COUNT_DISTINCT:
         if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
           throw new SemanticException(
@@ -737,6 +747,8 @@ public class TableMetadataImpl implements Metadata {
       case SqlConstant.COVAR_SAMP:
       case SqlConstant.REGR_SLOPE:
       case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
         return DOUBLE;
       case SqlConstant.APPROX_MOST_FREQUENT:
         return STRING;

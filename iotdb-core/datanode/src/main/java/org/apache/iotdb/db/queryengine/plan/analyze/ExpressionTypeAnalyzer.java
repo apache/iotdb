@@ -392,6 +392,19 @@ public class ExpressionTypeAnalyzer {
             }
           }
         }
+        if (funcName.equals(SqlConstant.SKEWNESS) || funcName.equals(SqlConstant.KURTOSIS)) {
+          if (!inputExpressions.isEmpty()) {
+            TSDataType firstInputType = expressionTypes.get(NodeRef.of(inputExpressions.get(0)));
+            if (firstInputType != null
+                && !firstInputType.isNumeric()
+                && firstInputType != TSDataType.TIMESTAMP) {
+              throw new SemanticException(
+                  String.format(
+                      "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                      functionExpression.getFunctionName().toUpperCase()));
+            }
+          }
+        }
 
         return setExpressionType(
             functionExpression,
@@ -579,6 +592,8 @@ public class ExpressionTypeAnalyzer {
       case SqlConstant.COVAR_SAMP:
       case SqlConstant.REGR_SLOPE:
       case SqlConstant.REGR_INTERCEPT:
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
       case SqlConstant.MAX_BY:
       case SqlConstant.MIN_BY:
         return expressionTypes.get(NodeRef.of(inputExpressions.get(0)));

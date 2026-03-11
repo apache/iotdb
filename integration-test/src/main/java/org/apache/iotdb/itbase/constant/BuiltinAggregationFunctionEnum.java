@@ -47,7 +47,9 @@ public enum BuiltinAggregationFunctionEnum {
   COVAR_POP("covar_pop"),
   COVAR_SAMP("covar_samp"),
   REGR_SLOPE("regr_slope"),
-  REGR_INTERCEPT("regr_intercept");
+  REGR_INTERCEPT("regr_intercept"),
+  SKEWNESS("skewness"),
+  KURTOSIS("kurtosis");
 
   private final String functionName;
 

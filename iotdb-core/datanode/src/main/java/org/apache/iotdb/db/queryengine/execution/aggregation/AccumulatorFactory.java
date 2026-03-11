@@ -170,6 +170,12 @@ public class AccumulatorFactory {
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_SAMP);
       case VAR_POP:
         return new VarianceAccumulator(tsDataType, VarianceAccumulator.VarianceType.VAR_POP);
+      case SKEWNESS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.SKEWNESS);
+      case KURTOSIS:
+        return new CentralMomentAccumulator(
+            tsDataType, CentralMomentAccumulator.MomentType.KURTOSIS);
       default:
         throw new IllegalArgumentException("Invalid Aggregation function: " + aggregationType);
     }
