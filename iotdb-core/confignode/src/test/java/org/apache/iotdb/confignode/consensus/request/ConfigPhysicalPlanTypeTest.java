@@ -17,26 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe.consensuspipe;
+package org.apache.iotdb.confignode.consensus.request;
 
+import org.junit.Test;
+
+import java.util.HashMap;
 import java.util.Map;
 
-public interface ConsensusPipeDispatcher {
-  void createPipe(
-      String pipeName,
-      Map<String, String> extractorAttributes,
-      Map<String, String> processorAttributes,
-      Map<String, String> connectorAttributes,
-      boolean needManuallyStart)
-      throws Exception;
+import static org.junit.Assert.fail;
 
-  void startPipe(String pipeName) throws Exception;
+public class ConfigPhysicalPlanTypeTest {
 
-  void stopPipe(String pipeName) throws Exception;
-
-  /**
-   * Use ConsensusPipeName instead of String to provide information for receiverAgent to release
-   * corresponding resource
-   */
-  void dropPipe(ConsensusPipeName pipeName) throws Exception;
+  @Test
+  public void checkUniqueness() {
+    Map<Short, ConfigPhysicalPlanType> map = new HashMap<>();
+    for (ConfigPhysicalPlanType value : ConfigPhysicalPlanType.values()) {
+      if (map.containsKey(value.getPlanType())) {
+        fail(
+            String.format(
+                "%s and %s have the same type number %s",
+                map.get(value.getPlanType()), value, value.getPlanType()));
+      } else {
+        map.put(value.getPlanType(), value);
+      }
+    }
+  }
 }

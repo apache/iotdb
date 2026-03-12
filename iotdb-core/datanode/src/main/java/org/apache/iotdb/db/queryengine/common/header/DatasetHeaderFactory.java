@@ -56,7 +56,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowDevicesWithSgHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithDbColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {

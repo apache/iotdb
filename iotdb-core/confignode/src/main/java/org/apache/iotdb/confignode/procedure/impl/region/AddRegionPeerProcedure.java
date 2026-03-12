@@ -94,6 +94,11 @@ public class AddRegionPeerProcedure extends RegionOperationProcedure<AddRegionPe
           if (status.getCode() != SUCCESS_STATUS.getStatusCode()) {
             return warnAndRollBackAndNoMoreState(env, handler, "CREATE_NEW_REGION_PEER fail");
           }
+          setNextState(AddRegionPeerState.CREATE_CONSENSUS_PIPES);
+          break;
+        case CREATE_CONSENSUS_PIPES:
+          handler.createConsensusPipesForAddPeer(regionId, targetDataNode);
+          setKillPoint(state);
           setNextState(AddRegionPeerState.DO_ADD_REGION_PEER);
           break;
         case DO_ADD_REGION_PEER:
