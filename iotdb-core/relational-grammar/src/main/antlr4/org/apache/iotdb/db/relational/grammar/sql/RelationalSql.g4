@@ -45,6 +45,7 @@ standaloneRowPattern
 statement
     // Query Statement
     : queryStatement
+    | copyStatement
 
     // Database Statement
     | useDatabaseStatement

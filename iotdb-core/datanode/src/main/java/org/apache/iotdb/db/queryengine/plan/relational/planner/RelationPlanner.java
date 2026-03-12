@@ -88,6 +88,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AsofJoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CoalesceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Copy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DereferenceExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Except;
@@ -243,6 +244,11 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
             recursiveSubqueries,
             predicateWithUncorrelatedScalarSubqueryReconstructor)
         .plan(node);
+  }
+
+  @Override
+  protected RelationPlan visitCopyStatement(Copy node, Void context) {
+
   }
 
   @Override

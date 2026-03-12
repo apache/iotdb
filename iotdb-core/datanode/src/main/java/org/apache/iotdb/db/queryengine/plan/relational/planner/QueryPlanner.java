@@ -46,6 +46,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ValueFillNod
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.WindowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Copy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
@@ -200,6 +201,10 @@ public class QueryPlanner {
         analysis.getScope(query),
         computeOutputs(builder, outputs),
         outerContext);
+  }
+
+  public RelationPlan plan(Copy copy) {
+
   }
 
   public RelationPlan plan(QuerySpecification node) {

@@ -50,6 +50,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableMetadataImpl;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.TableSchema;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Assignments.Builder;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.ir.PredicateWithUncorrelatedScalarSubqueryReconstructor;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExplainAnalyzeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FilterNode;
@@ -65,8 +66,10 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.Table
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.schema.TableDeviceQueryScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.LogicalOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer.Context;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractQueryDeviceWithCache;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AbstractTraverseDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Copy;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateOrUpdateDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;
@@ -177,7 +180,7 @@ public class TableLogicalPlanner {
         planNode =
             optimizer.optimize(
                 planNode,
-                new PlanOptimizer.Context(
+                new Context(
                     sessionInfo,
                     analysis,
                     metadata,
@@ -257,8 +260,15 @@ public class TableLogicalPlanner {
     if (statement instanceof Insert) {
       return genInsertPlan(analysis, (Insert) statement);
     }
+    if (statement instanceof Copy) {
+      return createRelationPlan(analysis, ((Copy) statement));
+    }
     throw new IllegalStateException(
         "Unsupported statement type: " + statement.getClass().getSimpleName());
+  }
+
+  private RelationPlan createRelationPlan(Analysis analysis, Copy statement) {
+    return getRelationPlanner(analysis).process(statement, null);
   }
 
   private RelationPlan genInsertPlan(final Analysis analysis, final Insert node) {
@@ -280,7 +290,7 @@ public class TableLogicalPlanner {
     Analysis.Insert insert = analysis.getInsert();
     List<ColumnSchema> insertColumns = insert.getColumns();
 
-    Assignments.Builder assignments = Assignments.builder();
+    Builder assignments = Assignments.builder();
     List<Symbol> neededInputColumnNames = new ArrayList<>(insertColumns.size());
 
     for (int i = 0, size = insertColumns.size(); i < size; i++) {

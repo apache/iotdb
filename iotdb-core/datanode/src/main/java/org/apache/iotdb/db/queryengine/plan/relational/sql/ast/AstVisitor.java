@@ -901,4 +901,8 @@ public abstract class AstVisitor<R, C> {
   protected R visitRangeQuantifier(RangeQuantifier node, C context) {
     return visitPatternQuantifier(node, context);
   }
+
+  protected R visitCopyStatement(Copy node, C context) {
+    return visitNode(node, context);
+  }
 }

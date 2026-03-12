@@ -2171,6 +2171,11 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
+  public Node visitCopy(RelationalSqlParser.CopyStatementContext ctx) {
+
+  }
+
+  @Override
   public Node visitWith(RelationalSqlParser.WithContext ctx) {
     return new With(
         getLocation(ctx), ctx.RECURSIVE() != null, visit(ctx.namedQuery(), WithQuery.class));
