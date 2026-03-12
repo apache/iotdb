@@ -644,6 +644,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     }
   }
 
+  @Override
   public User getUser(String userName) {
     checkCacheAvailable();
     User user = iAuthorCache.getUserCache(userName);
@@ -668,6 +669,33 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       }
     }
     return user;
+  }
+
+  @Override
+  public Role getRole(String roleName) {
+    checkCacheAvailable();
+    Role role = iAuthorCache.getRoleCache(roleName);
+    if (role != null) {
+      return role;
+    } else {
+      TPermissionInfoResp permissionInfoResp = null;
+      try (ConfigNodeClient configNodeClient =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        // Send request to some API server
+        permissionInfoResp = configNodeClient.getRole(roleName);
+      } catch (ClientManagerException | TException e) {
+        LOGGER.error(CONNECTERROR);
+      }
+      if (permissionInfoResp != null
+          && permissionInfoResp.getStatus().getCode()
+              == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        role = cacheRole(roleName, permissionInfoResp);
+        if (acceptCache) {
+          iAuthorCache.putRoleCache(roleName, role);
+        }
+      }
+    }
+    return role;
   }
 
   @Override
@@ -834,5 +862,42 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     req.setMaxSessionPerUser(authorStatement.getMaxSessionPerUser());
     req.setMinSessionPerUser(authorStatement.getMinSessionPerUser());
     return req;
+  }
+
+  @Override
+  public PrivilegeType fetchAnyPrivilegeForSpecifiedDB(String username, String database) {
+    User user = getUser(username);
+    if (user == null) {
+      return null;
+    }
+    if (user.fetchAnyPrivilegeForSpecifiedDB(database) != null) {
+      return user.fetchAnyPrivilegeForSpecifiedDB(database);
+    }
+    for (String roleName : user.getRoleSet()) {
+      Role role = getRole(roleName);
+      if (role.fetchAnyPrivilegeForSpecifiedDB(database) != null) {
+        return role.fetchAnyPrivilegeForSpecifiedDB(database);
+      }
+    }
+    return null;
+  }
+
+  @Override
+  public PrivilegeType fetchAnyPrivilegeForSpecifiedTable(
+      String username, String database, String tbName) {
+    User user = getUser(username);
+    if (user == null) {
+      return null;
+    }
+    if (user.fetchAnyPrivilegeForSpecifiedTable(database, tbName) != null) {
+      return user.fetchAnyPrivilegeForSpecifiedTable(database, tbName);
+    }
+    for (String roleName : user.getRoleSet()) {
+      Role role = getRole(roleName);
+      if (role.fetchAnyPrivilegeForSpecifiedTable(database, tbName) != null) {
+        return role.fetchAnyPrivilegeForSpecifiedTable(database, tbName);
+      }
+    }
+    return null;
   }
 }

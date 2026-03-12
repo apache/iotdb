@@ -69,12 +69,14 @@ public interface IAuthorPlanExecutor {
   TAuthizedPatternTreeResp generateAuthorizedPTree(String username, int permission)
       throws AuthException;
 
-  public PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
+  PathPatternTree generateRawAuthorizedPTree(final String username, final PrivilegeType type)
       throws AuthException;
 
   TPermissionInfoResp checkRoleOfUser(String username, String roleName) throws AuthException;
 
   TPermissionInfoResp getUser(String username) throws AuthException;
+
+  TPermissionInfoResp getRole(String roleName) throws AuthException;
 
   String getUserName(long userId) throws AuthException;
 }

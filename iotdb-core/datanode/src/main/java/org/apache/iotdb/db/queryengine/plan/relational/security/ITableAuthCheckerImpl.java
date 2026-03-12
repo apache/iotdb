@@ -27,8 +27,13 @@ import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
 import org.apache.iotdb.commons.schema.table.InformationSchema;
 import org.apache.iotdb.db.audit.DNAuditLogger;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.BasicAuthorityCache;
+import org.apache.iotdb.db.auth.ClusterAuthorityFetcher;
+import org.apache.iotdb.db.auth.IAuthorityFetcher;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.rpc.TSStatusCode;
+
+import org.apache.ratis.util.MemoizedSupplier;
 
 import java.util.Collection;
 import java.util.function.Supplier;
@@ -39,32 +44,23 @@ import static org.apache.iotdb.commons.schema.table.Audit.TABLE_MODEL_AUDIT_DATA
 public class ITableAuthCheckerImpl implements ITableAuthChecker {
 
   private static final DNAuditLogger AUDIT_LOGGER = DNAuditLogger.getInstance();
+  private static final MemoizedSupplier<IAuthorityFetcher> authorityFetcher =
+      MemoizedSupplier.valueOf(() -> new ClusterAuthorityFetcher(new BasicAuthorityCache()));
 
   @Override
   public void checkDatabaseVisibility(
       String userName, String databaseName, IAuditEntity auditEntity) {
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          auditEntity
-              .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-              .setResult(true),
-          () -> databaseName);
+      // The superuser requires no privileges to visit any database
       return;
     }
     // Information_schema is visible to any user
     if (databaseName.equals(InformationSchema.INFORMATION_DATABASE)) {
-      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          auditEntity
-              .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-              .setResult(true),
-          () -> databaseName);
       return;
     }
 
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
-      // The audit database only requires audit privilege
+      // The audit database requires only audit privilege
       boolean hasAuditPrivilege =
           AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
@@ -83,16 +79,17 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+              .setPrivilegeType(PrivilegeType.SYSTEM)
               .setResult(true),
           () -> databaseName);
       return;
     }
     if (!AuthorityChecker.checkDBVisible(userName, databaseName)) {
+      // When failed, it is ok we claim the user does not have SELECT privilege
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+              .setPrivilegeType(PrivilegeType.SELECT)
               .setResult(false),
           () -> databaseName);
       throw new AccessDeniedException("DATABASE " + databaseName);
@@ -100,7 +97,10 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
     AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
         auditEntity
             .setAuditLogOperation(AuditLogOperation.QUERY)
-            .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+            .setPrivilegeType(
+                authorityFetcher
+                    .get()
+                    .fetchAnyPrivilegeForSpecifiedDB(auditEntity.getUsername(), databaseName))
             .setResult(true),
         () -> databaseName);
   }
@@ -325,18 +325,13 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       String userName, QualifiedObjectName tableName, IAuditEntity auditEntity) {
     auditEntity.setDatabase(tableName.getDatabaseName());
     if (AuthorityChecker.SUPER_USER_ID == auditEntity.getUserId()) {
-      AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
-          auditEntity
-              .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
-              .setResult(true),
-          tableName::getObjectName);
+      // The superuser requires no privileges to visit any table
       return;
     }
 
     String databaseName = tableName.getDatabaseName();
     if (TABLE_MODEL_AUDIT_DATABASE.equalsIgnoreCase(databaseName)) {
-      // The audit table only requires audit privilege
+      // The audit table requires only audit privilege
       boolean hasAuditPrivilege =
           AuthorityChecker.checkSystemPermission(userName, PrivilegeType.AUDIT);
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
@@ -355,21 +350,35 @@ public class ITableAuthCheckerImpl implements ITableAuthChecker {
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+              .setPrivilegeType(PrivilegeType.SYSTEM)
               .setResult(true),
           tableName::getObjectName);
       return;
     }
     if (!AuthorityChecker.checkTableVisible(
         userName, tableName.getDatabaseName(), tableName.getObjectName())) {
+      // When failed, it is ok we claim the specified user does not have SELECT privilege
       AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
           auditEntity
               .setAuditLogOperation(AuditLogOperation.QUERY)
-              .setPrivilegeType(PrivilegeType.READ_SCHEMA)
+              .setPrivilegeType(PrivilegeType.SELECT)
               .setResult(false),
           tableName::getObjectName);
       throw new AccessDeniedException("TABLE " + tableName);
     }
+    // Record any privilege for specified table, same as the authentication process
+    AUDIT_LOGGER.recordObjectAuthenticationAuditLog(
+        auditEntity
+            .setAuditLogOperation(AuditLogOperation.QUERY)
+            .setPrivilegeType(
+                authorityFetcher
+                    .get()
+                    .fetchAnyPrivilegeForSpecifiedTable(
+                        auditEntity.getUsername(),
+                        tableName.getDatabaseName(),
+                        tableName.getObjectName()))
+            .setResult(true),
+        tableName::getObjectName);
   }
 
   @Override

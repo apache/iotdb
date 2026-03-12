@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class Role {
 
@@ -63,9 +65,9 @@ public class Role {
     this.pathPrivilegeList = new ArrayList<>();
     this.sysPrivilegeSet = new HashSet<>();
     this.sysPriGrantOpt = new HashSet<>();
-    this.objectPrivilegeMap = new HashMap<>();
+    this.objectPrivilegeMap = new TreeMap<>();
     this.anyScopePrivilegeGrantOptSet = new HashSet<>();
-    this.anyScopePrivilegeSet = new HashSet<>();
+    this.anyScopePrivilegeSet = new TreeSet<>();
   }
 
   public Role(String name) {
@@ -73,9 +75,9 @@ public class Role {
     this.pathPrivilegeList = new ArrayList<>();
     this.sysPrivilegeSet = new HashSet<>();
     this.sysPriGrantOpt = new HashSet<>();
-    this.objectPrivilegeMap = new HashMap<>();
+    this.objectPrivilegeMap = new TreeMap<>();
     this.anyScopePrivilegeGrantOptSet = new HashSet<>();
-    this.anyScopePrivilegeSet = new HashSet<>();
+    this.anyScopePrivilegeSet = new TreeSet<>();
   }
 
   /** ------------- get func -----------------* */
@@ -546,26 +548,51 @@ public class Role {
   }
 
   public boolean checkDBVisible(String database) {
-    return !anyScopePrivilegeSet.isEmpty() || objectPrivilegeMap.containsKey(database);
+    return fetchAnyPrivilegeForSpecifiedDB(database) != null;
+  }
+
+  public PrivilegeType fetchAnyPrivilegeForSpecifiedDB(String database) {
+    if (!anyScopePrivilegeSet.isEmpty()) {
+      return anyScopePrivilegeSet.iterator().next();
+    }
+    if (objectPrivilegeMap.containsKey(database)) {
+      if (!objectPrivilegeMap.get(database).getOriginalPrivilegeSet().isEmpty()) {
+        return objectPrivilegeMap.get(database).getOriginalPrivilegeSet().iterator().next();
+      }
+      return objectPrivilegeMap.get(database).getTablePrivilegeMap().values().stream()
+          .filter(tablePrivilege -> !tablePrivilege.getPrivileges().isEmpty())
+          .findFirst()
+          .map(tablePrivilege -> tablePrivilege.getPrivileges().iterator().next())
+          .orElse(null);
+    }
+    return null;
   }
 
   public boolean checkTBVisible(String database, String tbName) {
+    return fetchAnyPrivilegeForSpecifiedTable(database, tbName) != null;
+  }
+
+  public PrivilegeType fetchAnyPrivilegeForSpecifiedTable(String database, String tbName) {
     // Has any scope privileges
     if (!anyScopePrivilegeSet.isEmpty()) {
-      return true;
+      return anyScopePrivilegeSet.iterator().next();
     }
-
     // Fail back early
     if (!objectPrivilegeMap.containsKey(database)) {
-      return false;
+      return null;
     }
-
     // Has db scope privileges
     if (!objectPrivilegeMap.get(database).getPrivilegeSet().isEmpty()) {
-      return true;
+      return objectPrivilegeMap.get(database).getOriginalPrivilegeSet().iterator().next();
     }
-
-    return objectPrivilegeMap.get(database).getTablePrivilegeMap().containsKey(tbName);
+    if (objectPrivilegeMap.get(database).getTablePrivilegeMap().containsKey(tbName)) {
+      return objectPrivilegeMap.get(database).getTablePrivilegeMap().values().stream()
+          .filter(tablePrivilege -> !tablePrivilege.getPrivileges().isEmpty())
+          .findFirst()
+          .map(tablePrivilege -> tablePrivilege.getPrivileges().iterator().next())
+          .orElse(null);
+    }
+    return null;
   }
 
   public int getAllSysPrivileges() {

@@ -33,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 
 // This class contain table's privileges.
 public class TablePrivilege {
@@ -42,7 +43,7 @@ public class TablePrivilege {
 
   public TablePrivilege(String tableName) {
     this.tableName = tableName;
-    this.privileges = new HashSet<>();
+    this.privileges = new TreeSet<>();
     this.grantOption = new HashSet<>();
   }
 

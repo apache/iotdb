@@ -36,6 +36,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 public class DatabasePrivilege {
   private String databaseName;
@@ -46,8 +48,8 @@ public class DatabasePrivilege {
 
   public DatabasePrivilege(String databaseName) {
     this.databaseName = databaseName;
-    this.tablePrivilegeMap = new HashMap<>();
-    this.privilegeSet = new HashSet<>();
+    this.tablePrivilegeMap = new TreeMap<>();
+    this.privilegeSet = new TreeSet<>();
     this.grantOptionSet = new HashSet<>();
   }
 
@@ -92,6 +94,10 @@ public class DatabasePrivilege {
       res.add(priv.ordinal());
     }
     return res;
+  }
+
+  public Set<PrivilegeType> getOriginalPrivilegeSet() {
+    return this.privilegeSet;
   }
 
   public Set<Integer> getPrivilegeGrantOptSet() {

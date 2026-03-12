@@ -877,6 +877,19 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
+  public TPermissionInfoResp getRole(String roleName) throws AuthException {
+    TPermissionInfoResp result;
+    Role role = authorizer.getRole(roleName);
+    if (role == null) {
+      throw new AuthException(
+          TSStatusCode.ROLE_NOT_EXIST, String.format("No such role : %s", roleName));
+    }
+    result = getUserPermissionInfo(roleName, ModelType.ALL);
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    return result;
+  }
+
+  @Override
   public String getUserName(long userId) throws AuthException {
     User user = authorizer.getUser(userId);
     if (user == null) {

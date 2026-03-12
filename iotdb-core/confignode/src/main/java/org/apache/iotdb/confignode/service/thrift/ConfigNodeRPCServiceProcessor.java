@@ -823,6 +823,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TPermissionInfoResp getRole(String roleName) {
+    return configManager.getRole(roleName);
+  }
+
+  @Override
   public TCheckMaxClientNumResp checkMaxClientNumValid(int maxConcurrentClientNum) {
     throw new UnsupportedOperationException();
   }

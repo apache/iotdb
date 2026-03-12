@@ -1638,7 +1638,7 @@ service IConfigNodeRPCService {
 
   TPermissionInfoResp getUser(string userName);
 
-
+  TPermissionInfoResp getRole(string roleName);
 
   // ======================================================
   // ConfigNode

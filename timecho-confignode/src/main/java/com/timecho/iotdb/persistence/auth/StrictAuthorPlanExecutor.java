@@ -522,6 +522,11 @@ public class StrictAuthorPlanExecutor implements IAuthorPlanExecutor {
   }
 
   @Override
+  public TPermissionInfoResp getRole(String roleName) throws AuthException {
+    return commonAuthorPlanExecutor.getRole(roleName);
+  }
+
+  @Override
   public String getUserName(long userId) throws AuthException {
     return commonAuthorPlanExecutor.getUserName(userId);
   }

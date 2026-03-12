@@ -231,6 +231,16 @@ public class AuthorInfo implements SnapshotProcessor {
     }
   }
 
+  public TPermissionInfoResp getRole(String roleName) {
+    try {
+      return authorPlanExecutor.getRole(roleName);
+    } catch (AuthException e) {
+      TPermissionInfoResp resp = new TPermissionInfoResp();
+      resp.setStatus(new TSStatus(e.getCode().getStatusCode()).setMessage(e.getMessage()));
+      return resp;
+    }
+  }
+
   public String getUserName(long userId) throws AuthException {
     return authorPlanExecutor.getUserName(userId);
   }

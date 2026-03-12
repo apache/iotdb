@@ -144,6 +144,10 @@ public class PermissionManager {
     return authorInfo.getUser(username);
   }
 
+  public TPermissionInfoResp getRole(String roleName) throws AuthException {
+    return authorInfo.getRole(roleName);
+  }
+
   public String getUserName(long userId) throws AuthException {
     return authorInfo.getUserName(userId);
   }

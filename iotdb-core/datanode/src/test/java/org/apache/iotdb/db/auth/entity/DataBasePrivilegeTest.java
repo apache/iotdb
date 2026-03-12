@@ -56,7 +56,7 @@ public class DataBasePrivilegeTest {
     Assert.assertEquals(
         toString,
         "Database(database):{ALTER_with_grant_option,INSERT,;"
-            + " Tables: [ test2(SELECT,) test(SELECT_with_grant_option,DELETE,)]}");
+            + " Tables: [ test(SELECT_with_grant_option,DELETE,) test2(SELECT,)]}");
     int mask = dbPrivilege.getAllPrivileges();
     dbPrivilege2.revokeTablePrivilege("test", PrivilegeType.SELECT);
     dbPrivilege2.revokeTableGrantOption("test", PrivilegeType.SELECT);

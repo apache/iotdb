@@ -22,6 +22,7 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
@@ -95,4 +96,10 @@ public interface IAuthorityFetcher {
   void refreshToken();
 
   User getUser(String username);
+
+  Role getRole(String roleName);
+
+  PrivilegeType fetchAnyPrivilegeForSpecifiedDB(String username, String database);
+
+  PrivilegeType fetchAnyPrivilegeForSpecifiedTable(String username, String database, String tbName);
 }
