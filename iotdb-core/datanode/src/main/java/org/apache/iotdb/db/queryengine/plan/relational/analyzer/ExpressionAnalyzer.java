@@ -1066,32 +1066,6 @@ public class ExpressionAnalyzer {
         }
       }
 
-      // Check argument count for specific aggregation functions before calling
-      // getFunctionReturnType
-      if (isAggregation) {
-        String lowerFuncName = functionName.toLowerCase();
-        if (lowerFuncName.equals("corr")
-            || lowerFuncName.equals("covar_pop")
-            || lowerFuncName.equals("covar_samp")
-            || lowerFuncName.equals("regr_slope")
-            || lowerFuncName.equals("regr_intercept")) {
-          if (argumentTypes.size() != 2) {
-            throw new SemanticException(
-                String.format(
-                    "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
-                    node, argumentTypes.size()));
-          }
-        }
-        if (lowerFuncName.equals("skewness") || lowerFuncName.equals("kurtosis")) {
-          if (argumentTypes.size() != 1) {
-            throw new SemanticException(
-                String.format(
-                    "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
-                    node, argumentTypes.size()));
-          }
-        }
-      }
-
       Type type = metadata.getFunctionReturnType(functionName, argumentTypes);
       FunctionKind functionKind = FunctionKind.SCALAR;
       if (isAggregation) {

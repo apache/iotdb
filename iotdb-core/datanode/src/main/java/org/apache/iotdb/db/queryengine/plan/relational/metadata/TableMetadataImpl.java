@@ -597,6 +597,45 @@ public class TableMetadataImpl implements Metadata {
                   functionName));
         }
         break;
+      case SqlConstant.CORR:
+      case SqlConstant.COVAR_POP:
+      case SqlConstant.COVAR_SAMP:
+      case SqlConstant.REGR_SLOPE:
+      case SqlConstant.REGR_INTERCEPT:
+        if (argumentTypes.size() != 2) {
+          throw new SemanticException(
+              String.format(
+                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [2].",
+                  functionName.toUpperCase(), argumentTypes.size()));
+        }
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        if (!isSupportedMathNumericType(argumentTypes.get(1))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        break;
+      case SqlConstant.SKEWNESS:
+      case SqlConstant.KURTOSIS:
+        if (argumentTypes.size() != 1) {
+          throw new SemanticException(
+              String.format(
+                  "Error size of input expressions. expression: %s, actual size: %s, expected size: [1].",
+                  functionName.toUpperCase(), argumentTypes.size()));
+        }
+        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
+          throw new SemanticException(
+              String.format(
+                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
+                  functionName.toUpperCase()));
+        }
+        break;
       case SqlConstant.MIN:
       case SqlConstant.MAX:
       case SqlConstant.MODE:
@@ -647,47 +686,6 @@ public class TableMetadataImpl implements Metadata {
                   "Second argument of Aggregate functions [%s] should be orderable", functionName));
         }
 
-        break;
-      case SqlConstant.CORR:
-      case SqlConstant.COVAR_POP:
-      case SqlConstant.COVAR_SAMP:
-        // Argument count is already checked in ExpressionAnalyzer
-        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
-                  functionName.toUpperCase()));
-        } else if (!isSupportedMathNumericType(argumentTypes.get(1))) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
-                  functionName.toUpperCase()));
-        }
-        break;
-      case SqlConstant.REGR_SLOPE:
-      case SqlConstant.REGR_INTERCEPT:
-        // Argument count is already checked in ExpressionAnalyzer
-        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
-                  functionName.toUpperCase()));
-        } else if (!isSupportedMathNumericType(argumentTypes.get(1))) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
-                  functionName.toUpperCase()));
-        }
-        break;
-      case SqlConstant.SKEWNESS:
-      case SqlConstant.KURTOSIS:
-        // Argument count is already checked in ExpressionAnalyzer
-        if (!isSupportedMathNumericType(argumentTypes.get(0))) {
-          throw new SemanticException(
-              String.format(
-                  "Aggregate functions [%s] only support numeric data types [INT32, INT64, FLOAT, DOUBLE, TIMESTAMP]",
-                  functionName.toUpperCase()));
-        }
         break;
       case SqlConstant.APPROX_COUNT_DISTINCT:
         if (argumentTypes.size() != 1 && argumentTypes.size() != 2) {
