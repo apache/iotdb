@@ -109,7 +109,9 @@ public class SystemRelatedFileMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    if ((CONFIG.getSystemType() == SystemType.LINUX || CONFIG.getSystemType() == SystemType.MAC)
+    if ((CONFIG.getSystemType() == SystemType.LINUX
+            || CONFIG.getSystemType() == SystemType.MAC
+            || CONFIG.getSystemType() == SystemType.WINDOWS)
         && !CONFIG.getPid().isEmpty()) {
       metricService.remove(
           MetricType.AUTO_GAUGE,
