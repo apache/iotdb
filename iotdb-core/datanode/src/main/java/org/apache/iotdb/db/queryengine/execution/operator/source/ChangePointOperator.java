@@ -22,7 +22,6 @@ package org.apache.iotdb.db.queryengine.execution.operator.source;
 import org.apache.iotdb.commons.path.AlignedFullPath;
 import org.apache.iotdb.db.queryengine.execution.MemoryEstimationHelper;
 import org.apache.iotdb.db.queryengine.execution.operator.OperatorContext;
-import org.apache.iotdb.db.queryengine.execution.operator.source.relational.MeasurementToTableViewAdaptorUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOptions;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
@@ -326,9 +325,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     if (canUseStatistics && seriesScanUtil.canUseCurrentFileStatistics()) {
       Statistics fileStats = seriesScanUtil.currentFileStatistics(monitoredMeasurementIndex);
       if (fileStats != null && isUniformSegment(fileStats)) {
-        handleUniformSegment(
-            seriesScanUtil.currentFileTimeStatistics().getStartTime(),
-            fileStats);
+        handleUniformSegment(seriesScanUtil.currentFileTimeStatistics().getStartTime(), fileStats);
         seriesScanUtil.skipCurrentFile();
         return Optional.of(true);
       }
@@ -351,8 +348,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       Statistics chunkStats = seriesScanUtil.currentChunkStatistics(monitoredMeasurementIndex);
       if (chunkStats != null && isUniformSegment(chunkStats)) {
         handleUniformSegment(
-            seriesScanUtil.currentChunkTimeStatistics().getStartTime(),
-            chunkStats);
+            seriesScanUtil.currentChunkTimeStatistics().getStartTime(), chunkStats);
         seriesScanUtil.skipCurrentChunk();
         return Optional.of(true);
       }
@@ -372,9 +368,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     if (canUseStatistics && seriesScanUtil.canUseCurrentPageStatistics()) {
       Statistics pageStats = seriesScanUtil.currentPageStatistics(monitoredMeasurementIndex);
       if (pageStats != null && isUniformSegment(pageStats)) {
-        handleUniformSegment(
-            seriesScanUtil.currentPageTimeStatistics().getStartTime(),
-            pageStats);
+        handleUniformSegment(seriesScanUtil.currentPageTimeStatistics().getStartTime(), pageStats);
         seriesScanUtil.skipCurrentPage();
         return true;
       }
