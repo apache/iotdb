@@ -31,7 +31,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -105,7 +104,9 @@ public class WindowsNetMetricManager implements INetMetricManager {
 
   private void updateNetStatus() {
     lastUpdateTime = System.currentTimeMillis();
-    updateInterfaces();
+    if (ifaceSet.isEmpty()) {
+      updateInterfaces();
+    }
     updateStatistics();
     if (MetricLevel.higherOrEqual(MetricLevel.NORMAL, METRIC_CONFIG.getMetricLevel())) {
       updateConnectionNum();
@@ -134,8 +135,11 @@ public class WindowsNetMetricManager implements INetMetricManager {
         LOGGER.error("Failed to get interfaces, exit code: {}", exitCode);
       }
     } catch (IOException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.error("Error updating interfaces", e);
-      ifaceSet = Collections.emptySet();
+      ifaceSet.clear();
     }
   }
 
@@ -178,6 +182,9 @@ public class WindowsNetMetricManager implements INetMetricManager {
         LOGGER.error("Failed to get statistics, exit code: {}", exitCode);
       }
     } catch (IOException | InterruptedException | NumberFormatException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.error("Error updating statistics", e);
     }
   }
@@ -203,6 +210,9 @@ public class WindowsNetMetricManager implements INetMetricManager {
         LOGGER.error("Failed to get connection num, exit code: {}", exitCode);
       }
     } catch (IOException | InterruptedException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
       LOGGER.error("Error updating connection num", e);
     }
   }

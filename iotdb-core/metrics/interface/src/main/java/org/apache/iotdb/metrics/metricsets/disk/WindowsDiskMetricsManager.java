@@ -268,6 +268,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
 
     diskIdSet.clear();
     diskIdSet.addAll(diskInfoMap.keySet());
+    pruneDiskMetricMaps();
 
     for (Map.Entry<String, String[]> entry : diskInfoMap.entrySet()) {
       String diskId = entry.getKey();
@@ -317,6 +318,27 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       lastAvgSizeOfEachWriteForDisk.put(
           diskId, writeOpsPerSec == 0 ? 0.0 : ((double) writeBytesPerSec) / writeOpsPerSec);
     }
+  }
+
+  private void pruneDiskMetricMaps() {
+    pruneDiskMetricMap(lastReadOperationCountForDisk);
+    pruneDiskMetricMap(lastWriteOperationCountForDisk);
+    pruneDiskMetricMap(lastReadTimeCostForDisk);
+    pruneDiskMetricMap(lastWriteTimeCostForDisk);
+    pruneDiskMetricMap(lastMergedReadCountForDisk);
+    pruneDiskMetricMap(lastMergedWriteCountForDisk);
+    pruneDiskMetricMap(lastReadSizeForDisk);
+    pruneDiskMetricMap(lastWriteSizeForDisk);
+    pruneDiskMetricMap(lastIoUtilsPercentageForDisk);
+    pruneDiskMetricMap(lastQueueSizeForDisk);
+    pruneDiskMetricMap(lastAvgReadCostTimeOfEachOpsForDisk);
+    pruneDiskMetricMap(lastAvgWriteCostTimeOfEachOpsForDisk);
+    pruneDiskMetricMap(lastAvgSizeOfEachReadForDisk);
+    pruneDiskMetricMap(lastAvgSizeOfEachWriteForDisk);
+  }
+
+  private <T> void pruneDiskMetricMap(Map<String, T> metricMap) {
+    metricMap.keySet().retainAll(diskIdSet);
   }
 
   private void updateProcessInfo() {
