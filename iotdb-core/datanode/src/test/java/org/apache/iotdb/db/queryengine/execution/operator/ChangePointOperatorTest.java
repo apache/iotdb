@@ -510,8 +510,7 @@ public class ChangePointOperatorTest {
             measurementColumnNames,
             allSensors,
             measurementSchemas,
-            0,
-            idColumnIndex -> null);
+            0);
 
     ChangePointOperator operator = new ChangePointOperator(parameter);
 

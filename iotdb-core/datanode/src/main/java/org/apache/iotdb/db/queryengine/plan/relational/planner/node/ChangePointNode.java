@@ -119,9 +119,15 @@ public class ChangePointNode extends SingleChildProcessNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     ChangePointNode that = (ChangePointNode) o;
     return Objects.equals(measurementSymbol, that.measurementSymbol)
         && Objects.equals(nextSymbol, that.nextSymbol);

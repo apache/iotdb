@@ -4320,7 +4320,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   @Override
   public Operator visitChangePoint(ChangePointNode node, LocalExecutionPlanContext context) {
     throw new UnsupportedOperationException(
-        "ChangePointNode should have been pushed into TableScan by PushChangePointIntoTableScan rule");
+        "ChangePointNode should have been pushed into TableScan");
   }
 
   @Override
@@ -4380,9 +4380,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             commonParameter.measurementColumnNames,
             allSensors,
             commonParameter.measurementSchemas,
-            monitoredMeasurementIndex,
-            idColumnIndex ->
-                ((String) node.getDeviceEntries().get(0).getNthSegment(idColumnIndex + 1)));
+            monitoredMeasurementIndex);
 
     ChangePointOperator changePointOperator = new ChangePointOperator(parameter);
 

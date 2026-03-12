@@ -176,9 +176,15 @@ public class ChangePointTableScanNode extends DeviceTableScanNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     ChangePointTableScanNode that = (ChangePointTableScanNode) o;
     return Objects.equals(measurementSymbol, that.measurementSymbol)
         && Objects.equals(nextSymbol, that.nextSymbol);

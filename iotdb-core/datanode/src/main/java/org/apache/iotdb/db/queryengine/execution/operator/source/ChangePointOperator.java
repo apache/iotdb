@@ -83,12 +83,11 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
   private final List<String> measurementColumnNames;
   private final Set<String> allSensors;
   private final List<IMeasurementSchema> measurementSchemas;
-  private final List<TSDataType> measurementColumnTSDataTypes;
+  private final List<TSDataType> measurementColumnTsDataTypes;
 
   private final int monitoredMeasurementIndex;
   private final TSDataType monitoredDataType;
   private final boolean canUseStatistics;
-  private final MeasurementToTableViewAdaptorUtils.GetNthIdColumnValueFunc idColumnValueFunc;
 
   private int currentDeviceIndex;
   private boolean finished = false;
@@ -115,14 +114,13 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     this.measurementColumnNames = parameter.measurementColumnNames;
     this.allSensors = parameter.allSensors;
     this.measurementSchemas = parameter.measurementSchemas;
-    this.measurementColumnTSDataTypes =
+    this.measurementColumnTsDataTypes =
         parameter.measurementSchemas.stream()
             .map(IMeasurementSchema::getType)
             .collect(Collectors.toList());
     this.monitoredMeasurementIndex = parameter.monitoredMeasurementIndex;
-    this.monitoredDataType = measurementColumnTSDataTypes.get(monitoredMeasurementIndex);
+    this.monitoredDataType = measurementColumnTsDataTypes.get(monitoredMeasurementIndex);
     this.canUseStatistics = measurementColumnNames.size() == 1;
-    this.idColumnValueFunc = parameter.idColumnValueFunc;
     this.currentDeviceIndex = 0;
     this.operatorContext.recordSpecifiedInfo(DEVICE_NUMBER, Integer.toString(deviceCount));
     this.maxReturnSize =
@@ -140,7 +138,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     if (this.seriesScanUtil != null) {
       this.seriesScanUtil.initQueryDataSource(queryDataSource);
     }
-    List<TSDataType> changePointOutputTypes = new ArrayList<>(measurementColumnTSDataTypes);
+    List<TSDataType> changePointOutputTypes = new ArrayList<>(measurementColumnTsDataTypes);
     changePointOutputTypes.add(monitoredDataType);
     this.changePointBuilder = new TsBlockBuilder(changePointOutputTypes);
     this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
@@ -190,7 +188,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     changePointBuilder.reset();
 
     int rowCount = measurementBlock.getPositionCount();
-    int measurementCount = measurementColumnTSDataTypes.size();
+    int measurementCount = measurementColumnTsDataTypes.size();
     Column nextColumn = measurementBlock.getColumn(measurementCount);
 
     Column[] measurementCols = new Column[measurementCount];
@@ -303,7 +301,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
             seriesScanOptions,
             operatorContext.getInstanceContext(),
             true,
-            measurementColumnTSDataTypes);
+            measurementColumnTsDataTypes);
   }
 
   private void prepareForNextDevice() {
@@ -330,7 +328,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       if (fileStats != null && isUniformSegment(fileStats)) {
         handleUniformSegment(
             seriesScanUtil.currentFileTimeStatistics().getStartTime(),
-            seriesScanUtil.currentFileTimeStatistics().getEndTime(),
             fileStats);
         seriesScanUtil.skipCurrentFile();
         return Optional.of(true);
@@ -355,7 +352,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       if (chunkStats != null && isUniformSegment(chunkStats)) {
         handleUniformSegment(
             seriesScanUtil.currentChunkTimeStatistics().getStartTime(),
-            seriesScanUtil.currentChunkTimeStatistics().getEndTime(),
             chunkStats);
         seriesScanUtil.skipCurrentChunk();
         return Optional.of(true);
@@ -378,7 +374,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       if (pageStats != null && isUniformSegment(pageStats)) {
         handleUniformSegment(
             seriesScanUtil.currentPageTimeStatistics().getStartTime(),
-            seriesScanUtil.currentPageTimeStatistics().getEndTime(),
             pageStats);
         seriesScanUtil.skipCurrentPage();
         return true;
@@ -404,7 +399,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
    * the buffered row, then buffer the first row from this segment (reconstructed from statistics).
    * If same as cached, do nothing — the first row of the run is already buffered.
    */
-  private void handleUniformSegment(long startTime, long endTime, Statistics statistics) {
+  private void handleUniformSegment(long startTime, Statistics statistics) {
     Object uniformValue = statistics.getMinValue();
 
     if (!hasBufferedRow) {
@@ -421,7 +416,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
   }
 
   private void emitChangePointFromStatistics(Object nextValue) {
-    int measurementCount = measurementColumnTSDataTypes.size();
+    int measurementCount = measurementColumnTsDataTypes.size();
     changePointBuilder.getTimeColumnBuilder().writeLong(bufferedTime);
     writeValueToBuilder(
         changePointBuilder.getColumnBuilder(monitoredMeasurementIndex),
@@ -436,9 +431,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
 
   private void processRawData(TsBlock tsBlock) {
     int size = tsBlock.getPositionCount();
-    Column timeColumn = tsBlock.getTimeColumn();
     Column monitoredColumn = tsBlock.getColumn(monitoredMeasurementIndex);
-    int measurementCount = measurementColumnTSDataTypes.size();
 
     for (int i = 0; i < size; i++) {
       if (monitoredColumn.isNull(i)) {
@@ -453,7 +446,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       }
 
       if (!valuesEqual(cachedMonitoredValue, currentValue)) {
-        emitChangePointRow(tsBlock, i, currentValue);
+        emitChangePointRow(currentValue);
         bufferRow(tsBlock, i, currentValue);
       }
     }
@@ -462,21 +455,21 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
   private void bufferRow(TsBlock tsBlock, int position, Object monitoredValue) {
     hasBufferedRow = true;
     bufferedTime = tsBlock.getTimeColumn().getLong(position);
-    bufferedMeasurementValues = new Object[measurementColumnTSDataTypes.size()];
-    for (int col = 0; col < measurementColumnTSDataTypes.size(); col++) {
+    bufferedMeasurementValues = new Object[measurementColumnTsDataTypes.size()];
+    for (int col = 0; col < measurementColumnTsDataTypes.size(); col++) {
       Column c = tsBlock.getColumn(col);
       if (c.isNull(position)) {
         bufferedMeasurementValues[col] = null;
       } else {
         bufferedMeasurementValues[col] =
-            getColumnValue(c, measurementColumnTSDataTypes.get(col), position);
+            getColumnValue(c, measurementColumnTsDataTypes.get(col), position);
       }
     }
     cachedMonitoredValue = monitoredValue;
   }
 
-  private void emitChangePointRow(TsBlock tsBlock, int nextPosition, Object nextValue) {
-    int measurementCount = measurementColumnTSDataTypes.size();
+  private void emitChangePointRow(Object nextValue) {
+    int measurementCount = measurementColumnTsDataTypes.size();
     changePointBuilder.getTimeColumnBuilder().writeLong(bufferedTime);
 
     for (int col = 0; col < measurementCount; col++) {
@@ -485,7 +478,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       if (val == null) {
         builder.appendNull();
       } else {
-        writeValueToBuilder(builder, measurementColumnTSDataTypes.get(col), val);
+        writeValueToBuilder(builder, measurementColumnTsDataTypes.get(col), val);
       }
     }
 
@@ -498,7 +491,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     if (!hasBufferedRow) {
       return;
     }
-    int measurementCount = measurementColumnTSDataTypes.size();
+    int measurementCount = measurementColumnTsDataTypes.size();
     changePointBuilder.getTimeColumnBuilder().writeLong(bufferedTime);
 
     for (int col = 0; col < measurementCount; col++) {
@@ -507,7 +500,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       if (val == null) {
         builder.appendNull();
       } else {
-        writeValueToBuilder(builder, measurementColumnTSDataTypes.get(col), val);
+        writeValueToBuilder(builder, measurementColumnTsDataTypes.get(col), val);
       }
     }
 
@@ -600,7 +593,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
     public final Set<String> allSensors;
     public final List<IMeasurementSchema> measurementSchemas;
     public final int monitoredMeasurementIndex;
-    public final MeasurementToTableViewAdaptorUtils.GetNthIdColumnValueFunc idColumnValueFunc;
 
     public ChangePointOperatorParameter(
         OperatorContext context,
@@ -613,8 +605,7 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
         List<String> measurementColumnNames,
         Set<String> allSensors,
         List<IMeasurementSchema> measurementSchemas,
-        int monitoredMeasurementIndex,
-        MeasurementToTableViewAdaptorUtils.GetNthIdColumnValueFunc idColumnValueFunc) {
+        int monitoredMeasurementIndex) {
       this.context = context;
       this.sourceId = sourceId;
       this.columnSchemas = columnSchemas;
@@ -626,7 +617,6 @@ public class ChangePointOperator extends AbstractDataSourceOperator {
       this.allSensors = allSensors;
       this.measurementSchemas = measurementSchemas;
       this.monitoredMeasurementIndex = monitoredMeasurementIndex;
-      this.idColumnValueFunc = idColumnValueFunc;
     }
   }
 }
