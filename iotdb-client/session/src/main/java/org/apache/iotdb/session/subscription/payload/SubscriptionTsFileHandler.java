@@ -22,8 +22,8 @@ package org.apache.iotdb.session.subscription.payload;
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
 
 import org.apache.thrift.annotation.Nullable;
-import org.apache.tsfile.read.v4.DeviceTableModelReader;
-import org.apache.tsfile.read.v4.TsFileTreeReader;
+import org.apache.tsfile.read.v4.TsFileReaderBuilder;
+import org.apache.tsfile.read.v4.TsFileTreeReaderBuilder;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,8 +42,8 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
   public <T extends AutoCloseable> T openReader() throws IOException {
     return (T)
         (Objects.isNull(databaseName)
-            ? new TsFileTreeReader(new File(absolutePath))
-            : new DeviceTableModelReader(new File(absolutePath)));
+            ? new TsFileTreeReaderBuilder().file(new File(absolutePath)).build()
+            : new TsFileReaderBuilder().file(new File(absolutePath)).build());
   }
 
   @TableModel
