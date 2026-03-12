@@ -196,6 +196,8 @@ public class TableWindowOperator implements ProcessOperator {
         case ITERATING:
           addSliceToCache(state.getSlice());
           break;
+        default:
+          break;
       }
     }
   }
