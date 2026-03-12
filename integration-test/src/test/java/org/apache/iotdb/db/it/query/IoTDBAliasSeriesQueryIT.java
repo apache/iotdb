@@ -1184,6 +1184,123 @@ public class IoTDBAliasSeriesQueryIT {
   }
 
   // ============================================================================
+  // Test: Create view on renamed series (alias), then query the view
+  // ============================================================================
+
+  @Test
+  public void testQueryViewOnRenamedSeries() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.rename_complex");
+      statement.execute(
+          "CREATE TIMESERIES root.rename_complex.phys.no_data.s1 WITH DATATYPE=INT32, ENCODING=RLE");
+      // Insert data before rename
+      statement.execute(
+          "INSERT INTO root.rename_complex.phys.no_data(timestamp, s1) VALUES (1, 10)");
+      statement.execute(
+          "INSERT INTO root.rename_complex.phys.no_data(timestamp, s1) VALUES (2, 20)");
+      statement.execute(
+          "INSERT INTO root.rename_complex.phys.no_data(timestamp, s1) VALUES (3, 30)");
+
+      statement.execute(
+          "ALTER TIMESERIES root.rename_complex.phys.no_data.s1 RENAME TO root.rename_complex.phys.no_data.s1_r1");
+      statement.execute(
+          "CREATE VIEW root.rename_complex.view_test.view_1.s1_r1_view AS SELECT s1_r1 FROM root.rename_complex.phys.no_data");
+      String expectedHeader = "Time,root.rename_complex.view_test.view_1.s1_r1_view,";
+      String[] retArray = new String[] {"1,10,", "2,20,", "3,30,"};
+      resultSetEqualTest(
+          "SELECT * FROM root.rename_complex.view_test.view_1", expectedHeader, retArray);
+    }
+  }
+
+  // ============================================================================
+  // Test: Create view first, then rename the source series (view binds to source)
+  // ============================================================================
+
+  @Test
+  public void testViewFirstThenRenameSource() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.rename_view_first");
+      statement.execute(
+          "CREATE TIMESERIES root.rename_view_first.dev.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+      // Insert data before view and rename
+      statement.execute(
+          "INSERT INTO root.rename_view_first.dev.d1(timestamp, s1) VALUES (100, 100)");
+      statement.execute(
+          "INSERT INTO root.rename_view_first.dev.d1(timestamp, s1) VALUES (200, 200)");
+
+      statement.execute(
+          "CREATE VIEW root.rename_view_first.view_layer.v1.s1_view AS SELECT s1 FROM root.rename_view_first.dev.d1");
+      // Rename source series after view is created
+      statement.execute(
+          "ALTER TIMESERIES root.rename_view_first.dev.d1.s1 RENAME TO root.rename_view_first.dev.d1.s1_renamed");
+
+      // Query view: view resolves to the same data via alias after source renamed
+      String expectedHeader = "Time,root.rename_view_first.view_layer.v1.s1_view,";
+      String[] retArray = new String[] {"100,100,", "200,200,"};
+      resultSetEqualTest(
+          "SELECT * FROM root.rename_view_first.view_layer.v1", expectedHeader, retArray);
+    }
+  }
+
+  @Test
+  public void testViewFirstThenRenameWithMoreData() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.rename_view_more");
+      statement.execute(
+          "CREATE TIMESERIES root.rename_view_more.dev.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=GORILLA");
+      // Insert part of data before view
+      statement.execute("INSERT INTO root.rename_view_more.dev.d1(timestamp, s1) VALUES (1, 1.1)");
+      statement.execute("INSERT INTO root.rename_view_more.dev.d1(timestamp, s1) VALUES (2, 2.2)");
+
+      statement.execute(
+          "CREATE VIEW root.rename_view_more.views.v.s1_ref AS SELECT s1 FROM root.rename_view_more.dev.d1");
+      // Insert more data after view creation, before rename
+      statement.execute("INSERT INTO root.rename_view_more.dev.d1(timestamp, s1) VALUES (3, 3.3)");
+      statement.execute("INSERT INTO root.rename_view_more.dev.d1(timestamp, s1) VALUES (4, 4.4)");
+
+      statement.execute(
+          "ALTER TIMESERIES root.rename_view_more.dev.d1.s1 RENAME TO root.rename_view_more.dev.d1.s1_alias");
+
+      // All 4 rows should be visible via the view (view resolves via alias)
+      String expectedHeader = "Time,root.rename_view_more.views.v.s1_ref,";
+      String[] retArray = new String[] {"1,1.1,", "2,2.2,", "3,3.3,", "4,4.4,"};
+      resultSetEqualTest("SELECT * FROM root.rename_view_more.views.v", expectedHeader, retArray);
+    }
+  }
+
+  @Test
+  public void testViewFirstThenRenameMultiSeries() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE DATABASE root.rename_view_multi");
+      statement.execute(
+          "CREATE TIMESERIES root.rename_view_multi.dev.d1.s1 WITH DATATYPE=INT32, ENCODING=RLE");
+      statement.execute(
+          "CREATE TIMESERIES root.rename_view_multi.dev.d1.s2 WITH DATATYPE=INT32, ENCODING=RLE");
+      // Insert data before view and rename
+      statement.execute(
+          "INSERT INTO root.rename_view_multi.dev.d1(timestamp, s1, s2) VALUES (10, 1, 10)");
+      statement.execute(
+          "INSERT INTO root.rename_view_multi.dev.d1(timestamp, s1, s2) VALUES (20, 2, 20)");
+
+      statement.execute(
+          "CREATE VIEW root.rename_view_multi.views.v1(s1_v, s2_v) AS SELECT s1, s2 FROM root.rename_view_multi.dev.d1");
+      // Rename only s1; s2 stays
+      statement.execute(
+          "ALTER TIMESERIES root.rename_view_multi.dev.d1.s1 RENAME TO root.rename_view_multi.dev.d1.s1_renamed");
+
+      // Query view: both columns work (s1_renamed as alias, s2 unchanged)
+      String expectedHeader =
+          "Time,root.rename_view_multi.views.v1.s1_v,root.rename_view_multi.views.v1.s2_v,";
+      String[] retArray = new String[] {"10,1,10,", "20,2,20,"};
+      resultSetEqualTest("SELECT * FROM root.rename_view_multi.views.v1", expectedHeader, retArray);
+    }
+  }
+
+  // ============================================================================
   // Helper methods
   // ============================================================================
 

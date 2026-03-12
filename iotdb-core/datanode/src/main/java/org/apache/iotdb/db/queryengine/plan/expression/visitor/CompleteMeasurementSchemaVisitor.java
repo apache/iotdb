@@ -133,11 +133,7 @@ public class CompleteMeasurementSchemaVisitor extends ExpressionVisitor<Expressi
     if (schema == null) {
       return null;
     }
-    if (MeasurementPropsUtils.isInvalid(schema.getProps())) {
-      throw new SemanticException(
-          new BrokenViewException(
-              path.getFullPath(), MeasurementPropsUtils.getAliasPathString(schema.getProps())));
-    }
+
     if (MeasurementPropsUtils.isRenamed(schema.getProps())) {
       List<MeasurementPath> actualPaths =
           schemaTree.searchMeasurementPaths(
