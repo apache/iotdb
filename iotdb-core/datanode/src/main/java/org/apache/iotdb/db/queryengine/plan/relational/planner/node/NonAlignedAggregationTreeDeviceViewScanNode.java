@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
@@ -78,6 +79,11 @@ public class NonAlignedAggregationTreeDeviceViewScanNode extends AggregationTree
         groupIdSymbol,
         treeDBName,
         measurementColumnNameMap);
+  }
+
+  @Override
+  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
+    return visitor.visitNonAlignedAggregationTreeDeviceViewScan(this, context);
   }
 
   @Override

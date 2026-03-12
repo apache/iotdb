@@ -113,7 +113,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
     DeviceEntry deviceEntry = this.deviceEntries.get(this.currentDeviceIndex);
 
-    deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry);
+    deviceChildOperatorTreeGenerator.generateCurrentDeviceOperatorTree(deviceEntry, true);
     currentDeviceRootOperator = deviceChildOperatorTreeGenerator.getCurrentDeviceRootOperator();
     dataSourceOperators = deviceChildOperatorTreeGenerator.getCurrentDeviceDataSourceOperators();
     currentDeviceInit = false;
@@ -217,7 +217,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     boolean keepOffsetAndLimitOperatorAfterDeviceIterator();
 
     // Generate the following operator subtree based on the current deviceEntry
-    void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry);
+    void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry, boolean needAdaptor);
 
     // Returns the root operator of the subtree
     Operator getCurrentDeviceRootOperator();
