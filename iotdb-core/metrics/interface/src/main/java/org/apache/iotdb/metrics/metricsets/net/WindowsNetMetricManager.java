@@ -114,10 +114,11 @@ public class WindowsNetMetricManager implements INetMetricManager {
 
   private void updateInterfaces() {
     try {
+      ifaceSet.clear();
       Process process =
           Runtime.getRuntime()
               .exec(
-                  "cmd.exe /c chcp 65001 > nul & powershell.exe -Command \"Get-NetAdapter | Select Name | Format-List \"");
+                  "cmd.exe /c chcp 65001 > nul & powershell.exe -Command \"Get-NetAdapter -IncludeHidden | Select Name | Format-List \"");
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
@@ -140,10 +141,14 @@ public class WindowsNetMetricManager implements INetMetricManager {
 
   private void updateStatistics() {
     try {
+      receivedBytesMapForIface.clear();
+      transmittedBytesMapForIface.clear();
+      receivedPacketsMapForIface.clear();
+      transmittedPacketsMapForIface.clear();
       Process process =
           Runtime.getRuntime()
               .exec(
-                  "cmd.exe /c chcp 65001 > nul & powershell.exe -Command \"Get-NetAdapterStatistics | Format-List Name,ReceivedBytes,SentBytes,ReceivedUnicastPackets,SentUnicastPackets \"");
+                  "cmd.exe /c chcp 65001 > nul & powershell.exe -Command \"Get-NetAdapterStatistics -IncludeHidden | Format-List Name,ReceivedBytes,SentBytes,ReceivedUnicastPackets,SentUnicastPackets \"");
       BufferedReader reader =
           new BufferedReader(
               new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
