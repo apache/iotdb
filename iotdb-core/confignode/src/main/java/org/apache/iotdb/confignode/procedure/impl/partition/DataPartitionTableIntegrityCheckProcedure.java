@@ -291,7 +291,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           || localDataPartitionTable.get(database) == null
           || localDataPartitionTable.get(database).isEmpty()) {
         lostDataPartitionsOfDatabases.add(database);
-        LOG.error(
+        LOG.warn(
             "No data partition table related to database {} was found from the ConfigNode, and this issue needs to be repaired",
             database);
         continue;
@@ -510,10 +510,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    int failedCnt = 0;
-    while (failedCnt < MAX_RETRY_COUNT) {
-      try {
-        Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
+     Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
 
         for (String database : lostDataPartitionsOfDatabases) {
           // Get current DataPartitionTable from ConfigManager
@@ -525,8 +522,8 @@ public class DataPartitionTableIntegrityCheckProcedure
               || localDataPartitionTableMap.isEmpty()
               || localDataPartitionTableMap.get(database) == null
               || localDataPartitionTableMap.get(database).isEmpty()) {
-            LOG.error(
-                "No data partition table related to database {} was found from the ConfigNode",
+            LOG.warn(
+                "No data partition table related to database {} was found from the ConfigNode, use data partition table of DataNode directly",
                 database);
             continue;
           }
@@ -548,60 +545,74 @@ public class DataPartitionTableIntegrityCheckProcedure
                           }));
         }
 
-        finalDataPartitionMap.forEach(
-            (tSeriesPartitionSlot, seriesPartitionTable) -> {
-              dataPartitionTables
+        if (finalDataPartitionMap.isEmpty()) {
+          dataPartitionTables
                   .values()
                   .forEach(
-                      dataPartitionTable -> {
-                        if (dataPartitionTable == null
-                            || dataPartitionTable.getDataPartitionMap() == null
-                            || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-                          return;
-                        }
-                        dataPartitionTable
-                            .getDataPartitionMap()
+                          dataPartitionTable -> {
+                            if (dataPartitionTable == null
+                                    || dataPartitionTable.getDataPartitionMap() == null
+                                    || dataPartitionTable.getDataPartitionMap().isEmpty()) {
+                              return;
+                            }
+                            dataPartitionTable
+                                    .getDataPartitionMap().forEach(
+                                            (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
+                                              if (dnSeriesPartitionSlot == null
+                                                      || dnSeriesPartitionTable == null) {
+                                                return;
+                                              }
+                                              finalDataPartitionMap.computeIfAbsent(
+                                                      dnSeriesPartitionSlot,
+                                                      k -> dnSeriesPartitionTable);
+                                            });
+                          });
+        } else {
+          finalDataPartitionMap.forEach(
+                  (tSeriesPartitionSlot, seriesPartitionTable) -> {
+                    dataPartitionTables
+                            .values()
                             .forEach(
-                                (dnSeriesPartitionSlot, dnDataPartitionTable) -> {
-                                  if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
-                                    return;
-                                  }
+                                    dataPartitionTable -> {
+                                      if (dataPartitionTable == null
+                                              || dataPartitionTable.getDataPartitionMap() == null
+                                              || dataPartitionTable.getDataPartitionMap().isEmpty()) {
+                                        return;
+                                      }
+                                      dataPartitionTable
+                                              .getDataPartitionMap()
+                                              .forEach(
+                                                      (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
+                                                        if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
+                                                          return;
+                                                        }
 
-                                  if (seriesPartitionTable == null
-                                      || seriesPartitionTable.getSeriesPartitionMap() == null
-                                      || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
-                                    finalDataPartitionMap.put(
-                                        tSeriesPartitionSlot, dnDataPartitionTable);
-                                  }
+                                                        if (seriesPartitionTable == null
+                                                                || seriesPartitionTable.getSeriesPartitionMap() == null
+                                                                || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
+                                                          finalDataPartitionMap.put(
+                                                                  tSeriesPartitionSlot, dnSeriesPartitionTable);
+                                                        }
 
-                                  // dnDataPartitionTable merged to seriesPartitionTable
-                                  dnDataPartitionTable
-                                      .getSeriesPartitionMap()
-                                      .forEach(
-                                          (k, v) ->
-                                              v.forEach(
-                                                  tConsensusGroupId -> {
-                                                    if (seriesPartitionTable == null) {
-                                                      return;
-                                                    }
-                                                    seriesPartitionTable.putDataPartition(
-                                                        k, tConsensusGroupId);
-                                                  }));
-                                });
-                      });
-            });
+                                                        // dnDataPartitionTable merged to seriesPartitionTable
+                                                        dnSeriesPartitionTable
+                                                                .getSeriesPartitionMap()
+                                                                .forEach(
+                                                                        (k, v) ->
+                                                                                v.forEach(
+                                                                                        tConsensusGroupId -> {
+                                                                                          if (seriesPartitionTable == null) {
+                                                                                            return;
+                                                                                          }
+                                                                                          seriesPartitionTable.putDataPartition(
+                                                                                                  k, tConsensusGroupId);
+                                                                                        }));
+                                                      });
+                                    });
+                  });
+        }
 
         finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap);
-        break;
-      } catch (Exception e) {
-        LOG.error("Failed to merge DataPartitionTables", e);
-        setFailure("DataPartitionTableIntegrityCheckProcedure", e);
-        failedCnt++;
-        if (failedCnt >= MAX_RETRY_COUNT) {
-          return Flow.NO_MORE_STATE;
-        }
-      }
-    }
 
     LOG.info("DataPartitionTable merge completed successfully");
     setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_RAFT);
