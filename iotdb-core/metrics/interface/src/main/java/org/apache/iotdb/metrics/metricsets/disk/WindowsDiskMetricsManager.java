@@ -56,23 +56,25 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       "Get-CimInstance Win32_PerfFormattedData_PerfDisk_PhysicalDisk | "
           + "Where-Object { $_.Name -ne '_Total' } | "
           + "ForEach-Object { "
-          + "\"$($_.Name)$([char]9)"
-          + "$($_.DiskReadsPerSec)$([char]9)"
-          + "$($_.DiskWritesPerSec)$([char]9)"
-          + "$($_.DiskReadBytesPerSec)$([char]9)"
-          + "$($_.DiskWriteBytesPerSec)$([char]9)"
-          + "$($_.AvgDisksecPerRead)$([char]9)"
-          + "$($_.AvgDisksecPerWrite)$([char]9)"
-          + "$($_.PercentDiskTime)$([char]9)"
-          + "$($_.AvgDiskQueueLength)\" }";
+          + "[string]::Concat("
+          + "$_.Name, [char]9, "
+          + "$_.DiskReadsPerSec, [char]9, "
+          + "$_.DiskWritesPerSec, [char]9, "
+          + "$_.DiskReadBytesPerSec, [char]9, "
+          + "$_.DiskWriteBytesPerSec, [char]9, "
+          + "$_.AvgDisksecPerRead, [char]9, "
+          + "$_.AvgDisksecPerWrite, [char]9, "
+          + "$_.PercentIdleTime, [char]9, "
+          + "$_.AvgDiskQueueLength) }";
   private static final String PROCESS_QUERY_TEMPLATE =
       "Get-CimInstance Win32_PerfFormattedData_PerfProc_Process | "
           + "Where-Object { $_.IDProcess -eq %s } | "
           + "ForEach-Object { "
-          + "\"$($_.IOReadOperationsPerSec)$([char]9)"
-          + "$($_.IOWriteOperationsPerSec)$([char]9)"
-          + "$($_.IOReadBytesPerSec)$([char]9)"
-          + "$($_.IOWriteBytesPerSec)\" }";
+          + "[string]::Concat("
+          + "$_.IOReadOperationsPerSec, [char]9, "
+          + "$_.IOWriteOperationsPerSec, [char]9, "
+          + "$_.IOReadBytesPerSec, [char]9, "
+          + "$_.IOWriteBytesPerSec) }";
 
   private final String processId;
   private final Set<String> diskIdSet = new HashSet<>();
@@ -276,7 +278,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       long writeBytesPerSec = parseLong(diskInfo[3]);
       double avgDiskSecPerRead = parseDouble(diskInfo[4]);
       double avgDiskSecPerWrite = parseDouble(diskInfo[5]);
-      double percentDiskTime = parseDouble(diskInfo[6]);
+      double percentIdleTime = parseDouble(diskInfo[6]);
       double avgDiskQueueLength = parseDouble(diskInfo[7]);
 
       long intervalMillis = updateInterval;
@@ -306,7 +308,7 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
               avgDiskSecPerWrite,
               writeOpsPerSec,
               intervalMillis));
-      lastIoUtilsPercentageForDisk.put(diskId, percentDiskTime / 100.0);
+      lastIoUtilsPercentageForDisk.put(diskId, clampPercentage(1.0 - percentIdleTime / 100.0));
       lastQueueSizeForDisk.put(diskId, avgDiskQueueLength);
       lastAvgReadCostTimeOfEachOpsForDisk.put(diskId, avgDiskSecPerRead * 1000.0);
       lastAvgWriteCostTimeOfEachOpsForDisk.put(diskId, avgDiskSecPerWrite * 1000.0);
@@ -425,6 +427,10 @@ public class WindowsDiskMetricsManager implements IDiskMetricsManager {
       LOGGER.warn("Failed to parse double value from windows disk metrics: {}", value, e);
       return 0.0;
     }
+  }
+
+  private double clampPercentage(double value) {
+    return Math.max(0.0, Math.min(1.0, value));
   }
 
   private List<String> executePowerShell(String command) {
