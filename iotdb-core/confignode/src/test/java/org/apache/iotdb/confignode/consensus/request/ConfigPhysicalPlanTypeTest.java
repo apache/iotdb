@@ -17,12 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.consensus.pipe.consensuspipe;
+package org.apache.iotdb.confignode.consensus.request;
 
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
+import org.junit.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 
-public interface ConsensusPipeSelector {
-  Map<ConsensusPipeName, PipeStatus> getAllConsensusPipe();
+import static org.junit.Assert.fail;
+
+public class ConfigPhysicalPlanTypeTest {
+
+  @Test
+  public void checkUniqueness() {
+    Map<Short, ConfigPhysicalPlanType> map = new HashMap<>();
+    for (ConfigPhysicalPlanType value : ConfigPhysicalPlanType.values()) {
+      if (map.containsKey(value.getPlanType())) {
+        fail(
+            String.format(
+                "%s and %s have the same type number %s",
+                map.get(value.getPlanType()), value, value.getPlanType()));
+      } else {
+        map.put(value.getPlanType(), value);
+      }
+    }
+  }
 }

@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.iotv2.container.IoTV2GlobalComponentContainer;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
@@ -50,16 +49,12 @@ import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
 import org.apache.iotdb.consensus.exception.PeerAlreadyInConsensusGroupException;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeGuardian;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeName;
-import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSelector;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCService;
 import org.apache.iotdb.consensus.pipe.service.PipeConsensusRPCServiceProcessor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,10 +77,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
-import java.util.stream.Collectors;
 
 public class PipeConsensus implements IConsensus {
-  private static final String CONSENSUS_PIPE_GUARDIAN_TASK_ID = "consensus_pipe_guardian";
   private static final String CLASS_NAME = PipeConsensus.class.getSimpleName();
   private static final Logger LOGGER = LoggerFactory.getLogger(PipeConsensus.class);
 
@@ -101,8 +94,6 @@ public class PipeConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final ReentrantReadWriteLock stateMachineMapLock = new ReentrantReadWriteLock();
   private final PipeConsensusConfig config;
-  private final ConsensusPipeSelector consensusPipeSelector;
-  private final ConsensusPipeGuardian consensusPipeGuardian;
   private final IClientManager<TEndPoint, AsyncPipeConsensusServiceClient> asyncClientManager;
   private final IClientManager<TEndPoint, SyncPipeConsensusServiceClient> syncClientManager;
   private Map<ConsensusGroupId, List<Peer>> correctPeerListBeforeStart = null;
@@ -114,10 +105,6 @@ public class PipeConsensus implements IConsensus {
     this.config = config.getPipeConsensusConfig();
     this.registry = registry;
     this.rpcService = new PipeConsensusRPCService(thisNode, config.getPipeConsensusConfig());
-    this.consensusPipeSelector =
-        config.getPipeConsensusConfig().getPipe().getConsensusPipeSelector();
-    this.consensusPipeGuardian =
-        config.getPipeConsensusConfig().getPipe().getConsensusPipeGuardian();
     this.asyncClientManager =
         IoTV2GlobalComponentContainer.getInstance().getGlobalAsyncClientManager();
     this.syncClientManager =
@@ -145,11 +132,6 @@ public class PipeConsensus implements IConsensus {
       Thread.currentThread().interrupt();
       LOGGER.warn("IoTV2 Recover Task is interrupted", ie);
     }
-    // only when we recover all consensus group can we launch async backend checker thread
-    consensusPipeGuardian.start(
-        CONSENSUS_PIPE_GUARDIAN_TASK_ID,
-        this::checkAllConsensusPipe,
-        config.getPipe().getConsensusPipeGuardJobIntervalInSeconds());
   }
 
   private Future<Void> initAndRecover() throws IOException {
@@ -233,37 +215,8 @@ public class PipeConsensus implements IConsensus {
     asyncClientManager.close();
     syncClientManager.close();
     registerManager.deregisterAll();
-    consensusPipeGuardian.stop();
     stateMachineMap.values().parallelStream().forEach(PipeConsensusServerImpl::stop);
     IoTV2GlobalComponentContainer.getInstance().stopBackgroundTaskService();
-  }
-
-  private void checkAllConsensusPipe() {
-    final Map<ConsensusGroupId, Map<ConsensusPipeName, PipeStatus>> existedPipes =
-        consensusPipeSelector.getAllConsensusPipe().entrySet().stream()
-            .filter(entry -> entry.getKey().getSenderDataNodeId() == thisNodeId)
-            .collect(
-                Collectors.groupingBy(
-                    entry -> entry.getKey().getConsensusGroupId(),
-                    Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
-    stateMachineMapLock.writeLock().lock();
-    try {
-      stateMachineMap.forEach(
-          (key, value) ->
-              value.checkConsensusPipe(existedPipes.getOrDefault(key, ImmutableMap.of())));
-      // Log orphaned pipes (region no longer exists locally); ConfigNode handles actual cleanup.
-      existedPipes.entrySet().stream()
-          .filter(entry -> !stateMachineMap.containsKey(entry.getKey()))
-          .flatMap(entry -> entry.getValue().keySet().stream())
-          .forEach(
-              consensusPipeName ->
-                  LOGGER.warn(
-                      "{} orphaned consensus pipe [{}] found, should be dropped by ConfigNode",
-                      consensusPipeName.getConsensusGroupId(),
-                      consensusPipeName));
-    } finally {
-      stateMachineMapLock.writeLock().unlock();
-    }
   }
 
   @Override

@@ -230,7 +230,7 @@ public class ClusterConstant {
           + "*";
 
   // Env Constant
-  public static final int NODE_START_TIMEOUT = 100;
+  public static final int NODE_START_TIMEOUT = 200;
   public static final int NODE_NETWORK_TIMEOUT_MS = 0;
   public static final String ZERO_TIME_ZONE = "GMT+0";
 
