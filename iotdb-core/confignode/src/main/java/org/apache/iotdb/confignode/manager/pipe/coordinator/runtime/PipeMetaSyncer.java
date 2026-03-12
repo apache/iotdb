@@ -55,6 +55,9 @@ public class PipeMetaSyncer {
   private Future<?> metaSyncFuture;
 
   private final AtomicInteger pipeAutoRestartRoundCounter = new AtomicInteger(0);
+  private final AtomicInteger consensusPipeCheckRoundCounter = new AtomicInteger(0);
+
+  private static final int CONSENSUS_PIPE_CHECK_INTERVAL_ROUND = 5;
 
   private final boolean pipeAutoRestartEnabled =
       PipeConfig.getInstance().getPipeAutoRestartEnabled();
@@ -110,6 +113,11 @@ public class PipeMetaSyncer {
       pipeAutoRestartRoundCounter.set(0);
     }
 
+    if (consensusPipeCheckRoundCounter.incrementAndGet() >= CONSENSUS_PIPE_CHECK_INTERVAL_ROUND) {
+      consensusPipeCheckRoundCounter.set(0);
+      checkAndRepairConsensusPipes();
+    }
+
     final TSStatus metaSyncStatus = procedureManager.pipeMetaSync();
 
     if (metaSyncStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -155,6 +163,18 @@ public class PipeMetaSyncer {
       return pipeTaskInfo.get().autoRestart();
     } finally {
       configManager.getPipeManager().getPipeTaskCoordinator().unlock();
+    }
+  }
+
+  private void checkAndRepairConsensusPipes() {
+    try {
+      configManager
+          .getProcedureManager()
+          .getEnv()
+          .getRegionMaintainHandler()
+          .checkAndRepairConsensusPipes();
+    } catch (Exception e) {
+      LOGGER.warn("Failed to check and repair consensus pipes", e);
     }
   }
 

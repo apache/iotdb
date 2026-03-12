@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager.pipe.coordinator.task;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.confignode.consensus.request.read.pipe.task.ShowPipePlanV2;
 import org.apache.iotdb.confignode.consensus.response.pipe.task.PipeTableResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PipeTaskCoordinator {
@@ -243,6 +245,10 @@ public class PipeTaskCoordinator {
 
   public boolean hasAnyPipe() {
     return !pipeTaskInfo.isEmpty();
+  }
+
+  public Map<String, PipeStatus> getConsensusPipeStatusMap() {
+    return pipeTaskInfo.getConsensusPipeStatusMap();
   }
 
   /** Caller should ensure that the method is called in the write lock of {@link #pipeTaskInfo}. */

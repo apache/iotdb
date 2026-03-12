@@ -44,7 +44,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.DataRegionStateMachine;
 import org.apache.iotdb.db.consensus.statemachine.dataregion.IoTConsensusDataRegionStateMachine;
 import org.apache.iotdb.db.pipe.agent.PipeDataNodeAgent;
-import org.apache.iotdb.db.pipe.consensus.ConsensusPipeDataNodeRuntimeAgentGuardian;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
 import org.apache.iotdb.db.storageengine.StorageEngine;
@@ -186,13 +185,8 @@ public class DataRegionConsensusImpl {
                               BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
                           .setConnectorPluginName(
                               BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
-                          // name
-                          .setConsensusPipeGuardian(new ConsensusPipeDataNodeRuntimeAgentGuardian())
-                          .setConsensusPipeSelector(
-                              () -> PipeDataNodeAgent.task().getAllConsensusPipe())
                           .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
                           .setProgressIndexManager(new ReplicateProgressDataNodeManager())
-                          .setConsensusPipeGuardJobIntervalInSeconds(300)
                           .build())
                   .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))
                   .build())

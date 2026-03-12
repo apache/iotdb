@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.agent.plugin.builtin.BuiltinPipePlugin;
+import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.confignode.client.async.CnToDnAsyncRequestType;
 import org.apache.iotdb.confignode.client.async.CnToDnInternalServiceAsyncRequestManager;
@@ -507,6 +508,94 @@ public class RegionMaintainHandler {
               .toString();
       configManager.getProcedureManager().dropConsensusPipeAsync(pipeName2);
     }
+  }
+
+  /**
+   * Periodically called by PipeMetaSyncer to reconcile expected consensus pipes (derived from
+   * PartitionManager replica sets) with actually existing consensus pipes (from PipeTaskInfo).
+   * Creates missing pipes, drops unexpected pipes, and restarts stopped pipes.
+   */
+  public void checkAndRepairConsensusPipes() {
+    if (!IOT_CONSENSUS_V2.equals(CONF.getDataRegionConsensusProtocolClass())) {
+      return;
+    }
+
+    Map<TConsensusGroupId, TRegionReplicaSet> allDataRegionReplicaSets =
+        configManager.getPartitionManager().getAllReplicaSetsMap(TConsensusGroupType.DataRegion);
+
+    // Build expected pipe name -> TRegionReplicaSet for creation purposes
+    Map<String, TRegionReplicaSet> expectedPipeToReplicaSet = new HashMap<>();
+    for (TRegionReplicaSet replicaSet : allDataRegionReplicaSets.values()) {
+      List<TDataNodeLocation> locations = replicaSet.getDataNodeLocations();
+      DataRegionId regionId = new DataRegionId(replicaSet.getRegionId().getId());
+      for (int i = 0; i < locations.size(); i++) {
+        for (int j = 0; j < locations.size(); j++) {
+          if (i != j) {
+            String pipeName =
+                new ConsensusPipeName(
+                        regionId,
+                        locations.get(i).getDataNodeId(),
+                        locations.get(j).getDataNodeId())
+                    .toString();
+            expectedPipeToReplicaSet.put(pipeName, replicaSet);
+          }
+        }
+      }
+    }
+
+    Map<String, PipeStatus> actualPipes =
+        configManager.getPipeManager().getPipeTaskCoordinator().getConsensusPipeStatusMap();
+
+    // Create missing pipes
+    for (Map.Entry<String, TRegionReplicaSet> entry : expectedPipeToReplicaSet.entrySet()) {
+      String pipeName = entry.getKey();
+      if (!actualPipes.containsKey(pipeName)) {
+        LOGGER.warn(
+            "[ConsensusPipeGuardian] consensus pipe [{}] missing, creating asynchronously",
+            pipeName);
+        TRegionReplicaSet replicaSet = entry.getValue();
+        ConsensusPipeName parsed = new ConsensusPipeName(pipeName);
+        TDataNodeLocation senderLocation =
+            findLocationByNodeId(replicaSet.getDataNodeLocations(), parsed.getSenderDataNodeId());
+        TDataNodeLocation receiverLocation =
+            findLocationByNodeId(replicaSet.getDataNodeLocations(), parsed.getReceiverDataNodeId());
+        if (senderLocation != null && receiverLocation != null) {
+          createSingleConsensusPipeAsync(
+              replicaSet.getRegionId(),
+              senderLocation.getDataNodeId(),
+              senderLocation.getDataRegionConsensusEndPoint(),
+              receiverLocation.getDataNodeId(),
+              receiverLocation.getDataRegionConsensusEndPoint());
+        }
+      }
+    }
+
+    // Drop unexpected pipes and restart stopped pipes
+    for (Map.Entry<String, PipeStatus> entry : actualPipes.entrySet()) {
+      String pipeName = entry.getKey();
+      PipeStatus status = entry.getValue();
+      if (!expectedPipeToReplicaSet.containsKey(pipeName)) {
+        LOGGER.warn(
+            "[ConsensusPipeGuardian] unexpected consensus pipe [{}] exists, dropping asynchronously",
+            pipeName);
+        configManager.getProcedureManager().dropConsensusPipeAsync(pipeName);
+      } else if (PipeStatus.STOPPED.equals(status)) {
+        LOGGER.warn(
+            "[ConsensusPipeGuardian] consensus pipe [{}] is stopped, restarting asynchronously",
+            pipeName);
+        configManager.getProcedureManager().startConsensusPipe(pipeName);
+      }
+    }
+  }
+
+  private static TDataNodeLocation findLocationByNodeId(
+      List<TDataNodeLocation> locations, int nodeId) {
+    for (TDataNodeLocation location : locations) {
+      if (location.getDataNodeId() == nodeId) {
+        return location;
+      }
+    }
+    return null;
   }
 
   private boolean isIoTConsensusV2DataRegion(TConsensusGroupId regionId) {

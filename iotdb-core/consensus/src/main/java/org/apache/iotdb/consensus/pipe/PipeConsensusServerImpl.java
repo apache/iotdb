@@ -28,7 +28,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.index.ComparableConsensusRequest;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.MinimumProgressIndex;
-import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStatus;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.PerformanceOverviewMetrics;
 import org.apache.iotdb.commons.utils.KillPoint.DataNodeKillPoints;
@@ -56,7 +55,6 @@ import org.apache.iotdb.consensus.pipe.thrift.TWaitReleaseAllRegionRelatedResour
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.RpcUtils;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +62,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -133,46 +130,6 @@ public class PipeConsensusServerImpl {
     stateMachine.stop();
     isStarted.set(false);
     active.set(false);
-  }
-
-  /**
-   * Detect inconsistencies between expected and existed consensus pipes. Actual remediation
-   * (create/drop/update) is handled by ConfigNode; this method only logs warnings.
-   */
-  public synchronized void checkConsensusPipe(Map<ConsensusPipeName, PipeStatus> existedPipes) {
-    final PipeStatus expectedStatus = isStarted.get() ? PipeStatus.RUNNING : PipeStatus.STOPPED;
-    final Map<ConsensusPipeName, Peer> expectedPipes =
-        peerManager.getOtherPeers(thisNode).stream()
-            .collect(
-                ImmutableMap.toImmutableMap(
-                    peer -> new ConsensusPipeName(thisNode, peer), peer -> peer));
-
-    existedPipes.forEach(
-        (existedName, existedStatus) -> {
-          if (!expectedPipes.containsKey(existedName)) {
-            LOGGER.warn(
-                "{} unexpected consensus pipe [{}] exists, should be dropped by ConfigNode",
-                consensusGroupId,
-                existedName);
-          } else if (!expectedStatus.equals(existedStatus)) {
-            LOGGER.warn(
-                "{} consensus pipe [{}] status mismatch: expected={}, actual={}",
-                consensusGroupId,
-                existedName,
-                expectedStatus,
-                existedStatus);
-          }
-        });
-
-    expectedPipes.forEach(
-        (expectedName, expectedPeer) -> {
-          if (!existedPipes.containsKey(expectedName)) {
-            LOGGER.warn(
-                "{} consensus pipe [{}] missing, should be created by ConfigNode",
-                consensusGroupId,
-                expectedName);
-          }
-        });
   }
 
   public TSStatus write(IConsensusRequest request) {
