@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.selector.utils;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleContext;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -27,8 +26,6 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -41,9 +38,6 @@ import java.util.stream.Collectors;
  * creations and file openings.
  */
 public class CrossSpaceCompactionCandidate {
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-
   private List<TsFileResourceCandidate> seqFiles;
   private List<TsFileResourceCandidate> unseqFiles;
 
@@ -106,11 +100,8 @@ public class CrossSpaceCompactionCandidate {
       // unseq file resource has been deleted due to TTL and cannot upgrade to DEVICE_TIME_INDEX
       return false;
     }
-    LOGGER.warn("Testing unseq file {}", unseqFile.resource.getTsFile());
-
     for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
       DeviceInfo unseqDeviceInfo = it.next();
-      LOGGER.warn("Testing device {}", unseqDeviceInfo.deviceId);
 
       boolean atLeastOneSeqFileSelected = false;
       // The `previousSeqFile` means the seqFile which contains the device and its endTime is just
@@ -134,11 +125,6 @@ public class CrossSpaceCompactionCandidate {
         if (seqEvolvedSchema != null) {
           deviceIdInSeq = seqEvolvedSchema.rewriteToOriginal(finalDeviceId);
         }
-        LOGGER.warn(
-            "Device in unseq {}, final device {}, device in seq {}",
-            deviceIdInUnseq,
-            finalDeviceId,
-            deviceIdInSeq);
 
         if ((!seqFile.isValidCandidate || !seqFile.hasDetailedDeviceInfo())
             && seqFile.mayHasOverlapWithUnseqFile(
@@ -148,21 +134,9 @@ public class CrossSpaceCompactionCandidate {
         }
 
         if (!seqFile.containsDevice(deviceIdInSeq)) {
-          LOGGER.warn(
-              "seqFile {} does not contain device {}, it has {}",
-              seqFile.resource.getTsFile(),
-              deviceIdInSeq,
-              seqFile.getDevices());
-          LOGGER.warn("seq schema evolution {}", seqEvolvedSchema);
-          LOGGER.warn(
-              "unseqFile {} has {}", unseqFile.resource.getTsFile(), unseqFile.getDevices());
-          LOGGER.warn("unseq schema evolution {}", unseqEvolvedSchema);
           continue;
         }
         DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceIdInSeq);
-        LOGGER.warn("Device in unseq {}, device in seq {}", unseqDeviceInfo, seqDeviceInfo);
-        LOGGER.warn("seq schema evolution {}", seqEvolvedSchema);
-        LOGGER.warn("unseq schema evolution {}", unseqEvolvedSchema);
 
         // If the unsealed file is unclosed, the file should not be selected only when its startTime
         // is larger than the endTime of unseqFile. Or, the selection should be terminated.

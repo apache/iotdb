@@ -1771,7 +1771,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   private void registerToTsFile(InsertNode node, TsFileProcessor tsFileProcessor) {
-    logger.warn("{} is written into {}", node, tsFileProcessor.getTsFileResource().getTsFile());
     final String tableName = node.getTableName();
     if (tableName != null) {
       tsFileProcessor.registerToTsFile(

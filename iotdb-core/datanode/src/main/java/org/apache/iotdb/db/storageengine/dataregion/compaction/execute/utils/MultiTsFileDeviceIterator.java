@@ -49,8 +49,6 @@ import org.apache.tsfile.read.TsFileDeviceIterator;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.schema.MeasurementSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -68,8 +66,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  protected static final Logger LOGGER =
-      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
   // sort from the newest to the oldest by version (Used by FastPerformer and ReadPointPerformer)
   private final List<TsFileResource> tsFileResourcesSortedByDesc;
@@ -498,26 +494,10 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         // rewrite the deviceId to the original one so that we can use it to query the file
         originalDeviceId = evolvedSchema.rewriteToOriginal(originalDeviceId);
       }
-      LOGGER.warn(
-          "Device {} is {} in file {}",
-          currentDevice.left,
-          originalDeviceId,
-          tsFileResource.getTsFile());
-
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadataByMetadataIndexNode(
               originalDeviceId, firstMeasurementNodeOfCurrentDevice, ignoreAllNullRows);
       applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
-      for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
-        LOGGER.warn(
-            "Read a chunk metadata {}, {}",
-            abstractAlignedChunkMetadata.getValueChunkMetadataList().stream()
-                .map(
-                    iChunkMetadata ->
-                        iChunkMetadata != null ? iChunkMetadata.getMeasurementUid() : null)
-                .collect(Collectors.toList()),
-            abstractAlignedChunkMetadata.getTimeChunkMetadata().getStatistics());
-      }
 
       if (evolvedSchema != null) {
         // rewrite the measurementId to the final ones so that they can be aligned with other files
@@ -530,12 +510,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
                       originalDeviceId.getTableName(), chunkMetadata.getMeasurementUid()));
             }
           }
-          LOGGER.warn(
-              "Chunk metadata after conversion {}, {}",
-              abstractAlignedChunkMetadata.getValueChunkMetadataList().stream()
-                  .map(IChunkMetadata::getMeasurementUid)
-                  .collect(Collectors.toList()),
-              abstractAlignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         }
       }
 
