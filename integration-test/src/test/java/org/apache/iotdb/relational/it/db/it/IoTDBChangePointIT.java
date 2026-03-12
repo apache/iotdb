@@ -47,7 +47,7 @@ public class IoTDBChangePointIT {
         "USE " + DATABASE_NAME,
         // Table with consecutive duplicate values for change-point detection
         "CREATE TABLE cp_data (device STRING TAG, measurement INT64 FIELD)",
-        // d1: values 10,10,20,20,20,30 -> change points at rows with values 10,20,30 (last of
+        // d1: values 10,10,20,20,20,30 -> change points at rows with values 10,20,30 (first of
         // each run)
         "INSERT INTO cp_data VALUES (1, 'd1', 10)",
         "INSERT INTO cp_data VALUES (2, 'd1', 10)",
@@ -99,40 +99,39 @@ public class IoTDBChangePointIT {
 
   @Test
   public void testChangePointDetection() {
-    // The change-point SQL pattern:
-    // SELECT * FROM (SELECT *, LEAD(measurement) OVER (...) AS next FROM t) WHERE measurement <>
-    // next OR next IS NULL
-    // This detects the last row of each consecutive run of identical values.
+    // The change-point SQL pattern keeps only the first occurrence of each consecutive run.
+    // SELECT * FROM (SELECT *, LAG(measurement) OVER (...) AS prev FROM t) WHERE measurement <>
+    // prev OR prev IS NULL
     //
     // d1 values: 10,10,20,20,20,30
-    //   row 1 (10): next=10, 10!=10 false -> not emitted
-    //   row 2 (10): next=20, 10!=20 true  -> emitted (last 10 before 20)
-    //   row 3 (20): next=20, 20!=20 false -> not emitted
-    //   row 4 (20): next=20, 20!=20 false -> not emitted
-    //   row 5 (20): next=30, 20!=30 true  -> emitted (last 20 before 30)
-    //   row 6 (30): next=NULL             -> emitted (last row)
+    //   row 1 (10): prev=NULL             -> emitted (first row)
+    //   row 2 (10): prev=10, 10!=10 false -> not emitted
+    //   row 3 (20): prev=10, 20!=10 true  -> emitted (first 20)
+    //   row 4 (20): prev=20, 20!=20 false -> not emitted
+    //   row 5 (20): prev=20, 20!=20 false -> not emitted
+    //   row 6 (30): prev=20, 30!=20 true  -> emitted (first 30)
     //
     // d2 values: 100,200,200,300
-    //   row 1 (100): next=200, true  -> emitted
-    //   row 2 (200): next=200, false -> not emitted
-    //   row 3 (200): next=300, true  -> emitted
-    //   row 4 (300): next=NULL       -> emitted
+    //   row 1 (100): prev=NULL, emitted (first row)
+    //   row 2 (200): prev=100, true  -> emitted (first 200)
+    //   row 3 (200): prev=200, false -> not emitted
+    //   row 4 (300): prev=200, true  -> emitted (first 300)
 
     String sql =
-        "SELECT time, device, measurement, next FROM "
-            + "(SELECT *, LEAD(measurement) OVER (PARTITION BY device ORDER BY time) AS next FROM cp_data) "
-            + "WHERE measurement <> next OR next IS NULL "
+        "SELECT time, device, measurement, prev FROM "
+            + "(SELECT *, LAG(measurement) OVER (PARTITION BY device ORDER BY time) AS prev FROM cp_data) "
+            + "WHERE measurement <> prev OR prev IS NULL "
             + "ORDER BY device, time";
 
-    String[] expectedHeader = new String[] {"time", "device", "measurement", "next"};
+    String[] expectedHeader = new String[] {"time", "device", "measurement", "prev"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.002Z,d1,10,20,",
-          "1970-01-01T00:00:00.005Z,d1,20,30,",
-          "1970-01-01T00:00:00.006Z,d1,30,null,",
-          "1970-01-01T00:00:00.001Z,d2,100,200,",
-          "1970-01-01T00:00:00.003Z,d2,200,300,",
-          "1970-01-01T00:00:00.004Z,d2,300,null,",
+          "1970-01-01T00:00:00.001Z,d1,10,null,",
+          "1970-01-01T00:00:00.003Z,d1,20,10,",
+          "1970-01-01T00:00:00.006Z,d1,30,20,",
+          "1970-01-01T00:00:00.001Z,d2,100,null,",
+          "1970-01-01T00:00:00.002Z,d2,200,100,",
+          "1970-01-01T00:00:00.004Z,d2,300,200,",
         };
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -140,17 +139,17 @@ public class IoTDBChangePointIT {
 
   @Test
   public void testChangePointAllSameValues() {
-    // All values are the same -> only the last row should be emitted (next IS NULL)
+    // All values are the same -> only the first row should be emitted (prev IS NULL)
     String sql =
-        "SELECT time, device, measurement, next FROM "
-            + "(SELECT *, LEAD(measurement) OVER (PARTITION BY device ORDER BY time) AS next FROM cp_same) "
-            + "WHERE measurement <> next OR next IS NULL "
+        "SELECT time, device, measurement, prev FROM "
+            + "(SELECT *, LAG(measurement) OVER (PARTITION BY device ORDER BY time) AS prev FROM cp_same) "
+            + "WHERE measurement <> prev OR prev IS NULL "
             + "ORDER BY device, time";
 
-    String[] expectedHeader = new String[] {"time", "device", "measurement", "next"};
+    String[] expectedHeader = new String[] {"time", "device", "measurement", "prev"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.003Z,d1,42,null,",
+          "1970-01-01T00:00:00.001Z,d1,42,null,",
         };
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -160,17 +159,17 @@ public class IoTDBChangePointIT {
   public void testChangePointAllDifferentValues() {
     // All values are different -> every row should be emitted
     String sql =
-        "SELECT time, device, measurement, next FROM "
-            + "(SELECT *, LEAD(measurement) OVER (PARTITION BY device ORDER BY time) AS next FROM cp_diff) "
-            + "WHERE measurement <> next OR next IS NULL "
+        "SELECT time, device, measurement, prev FROM "
+            + "(SELECT *, LAG(measurement) OVER (PARTITION BY device ORDER BY time) AS prev FROM cp_diff) "
+            + "WHERE measurement <> prev OR prev IS NULL "
             + "ORDER BY device, time";
 
-    String[] expectedHeader = new String[] {"time", "device", "measurement", "next"};
+    String[] expectedHeader = new String[] {"time", "device", "measurement", "prev"};
     String[] retArray =
         new String[] {
-          "1970-01-01T00:00:00.001Z,d1,1,2,",
-          "1970-01-01T00:00:00.002Z,d1,2,3,",
-          "1970-01-01T00:00:00.003Z,d1,3,null,",
+          "1970-01-01T00:00:00.001Z,d1,1,null,",
+          "1970-01-01T00:00:00.002Z,d1,2,1,",
+          "1970-01-01T00:00:00.003Z,d1,3,2,",
         };
 
     tableResultSetEqualTest(sql, expectedHeader, retArray, DATABASE_NAME);
@@ -178,14 +177,14 @@ public class IoTDBChangePointIT {
 
   @Test
   public void testChangePointSingleRow() {
-    // Single row -> always emitted (next IS NULL)
+    // Single row -> always emitted (prev IS NULL)
     String sql =
-        "SELECT time, device, measurement, next FROM "
-            + "(SELECT *, LEAD(measurement) OVER (PARTITION BY device ORDER BY time) AS next FROM cp_single) "
-            + "WHERE measurement <> next OR next IS NULL "
+        "SELECT time, device, measurement, prev FROM "
+            + "(SELECT *, LAG(measurement) OVER (PARTITION BY device ORDER BY time) AS prev FROM cp_single) "
+            + "WHERE measurement <> prev OR prev IS NULL "
             + "ORDER BY device, time";
 
-    String[] expectedHeader = new String[] {"time", "device", "measurement", "next"};
+    String[] expectedHeader = new String[] {"time", "device", "measurement", "prev"};
     String[] retArray =
         new String[] {
           "1970-01-01T00:00:00.001Z,d1,99,null,",
