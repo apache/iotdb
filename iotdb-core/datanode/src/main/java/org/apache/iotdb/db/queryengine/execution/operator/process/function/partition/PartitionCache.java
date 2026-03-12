@@ -113,6 +113,7 @@ public class PartitionCache {
   public void clear() {
     slices.clear();
     startOffsets.clear();
+    estimatedSize = 0;
   }
 
   public void close() {
