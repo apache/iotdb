@@ -953,7 +953,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         DeviceTableScanNode node,
         Map<String, String> fieldColumnsRenameMap,
         boolean keepNonOutputMeasurementColumns) {
-      outputColumnNames = node.getOutputSymbols();
+      this(node, node.getOutputSymbols(), fieldColumnsRenameMap, keepNonOutputMeasurementColumns);
+    }
+
+    private CommonTableScanOperatorParameters(
+        DeviceTableScanNode node,
+        List<Symbol> outputColumns,
+        Map<String, String> fieldColumnsRenameMap,
+        boolean keepNonOutputMeasurementColumns) {
+      outputColumnNames = outputColumns;
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
       columnSchemas = new ArrayList<>(outputColumnCount);
@@ -4319,8 +4327,14 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   public Operator visitChangePointTableScan(
       ChangePointTableScanNode node, LocalExecutionPlanContext context) {
 
+    List<Symbol> scanOutputSymbols =
+        node.getOutputSymbols().stream()
+            .filter(s -> node.getAssignments().containsKey(s))
+            .collect(Collectors.toList());
+
     CommonTableScanOperatorParameters commonParameter =
-        new CommonTableScanOperatorParameters(node, Collections.emptyMap(), false);
+        new CommonTableScanOperatorParameters(
+            node, scanOutputSymbols, Collections.emptyMap(), false);
 
     SeriesScanOptions seriesScanOptions =
         buildSeriesScanOptions(

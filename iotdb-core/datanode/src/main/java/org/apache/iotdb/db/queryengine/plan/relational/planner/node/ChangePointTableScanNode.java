@@ -153,22 +153,25 @@ public class ChangePointTableScanNode extends DeviceTableScanNode {
    */
   public static ChangePointTableScanNode combineChangePointAndTableScan(
       ChangePointNode changePointNode, DeviceTableScanNode scanNode) {
-    return new ChangePointTableScanNode(
-        changePointNode.getPlanNodeId(),
-        scanNode.getQualifiedObjectName(),
-        scanNode.getOutputSymbols(),
-        scanNode.getAssignments(),
-        scanNode.getDeviceEntries(),
-        scanNode.getTagAndAttributeIndexMap(),
-        scanNode.getScanOrder(),
-        scanNode.getTimePredicate().orElse(null),
-        scanNode.getPushDownPredicate(),
-        scanNode.getPushDownLimit(),
-        scanNode.getPushDownOffset(),
-        scanNode.isPushLimitToEachDevice(),
-        scanNode.containsNonAlignedDevice(),
-        changePointNode.getMeasurementSymbol(),
-        changePointNode.getNextSymbol());
+    ChangePointTableScanNode result =
+        new ChangePointTableScanNode(
+            changePointNode.getPlanNodeId(),
+            scanNode.getQualifiedObjectName(),
+            scanNode.getOutputSymbols(),
+            scanNode.getAssignments(),
+            scanNode.getDeviceEntries(),
+            scanNode.getTagAndAttributeIndexMap(),
+            scanNode.getScanOrder(),
+            scanNode.getTimePredicate().orElse(null),
+            scanNode.getPushDownPredicate(),
+            scanNode.getPushDownLimit(),
+            scanNode.getPushDownOffset(),
+            scanNode.isPushLimitToEachDevice(),
+            scanNode.containsNonAlignedDevice(),
+            changePointNode.getMeasurementSymbol(),
+            changePointNode.getNextSymbol());
+    result.setRegionReplicaSet(scanNode.getRegionReplicaSet());
+    return result;
   }
 
   @Override
