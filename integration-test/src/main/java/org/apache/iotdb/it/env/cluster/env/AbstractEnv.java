@@ -435,7 +435,9 @@ public abstract class AbstractEnv implements BaseEnv {
   @Override
   public Connection getConnection(String username, String password) throws SQLException {
     return new ClusterTestConnection(
-        getWriteConnection(null, username, password), getReadConnections(null, username, password), this);
+        getWriteConnection(null, username, password),
+        getReadConnections(null, username, password),
+        this);
   }
 
   @Override
@@ -444,7 +446,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNodeWrapper, null, username, password),
-        getReadConnections(null, dataNodeWrapper, username, password), this);
+        getReadConnections(null, dataNodeWrapper, username, password),
+        this);
   }
 
   @Override
@@ -453,7 +456,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        Collections.emptyList(), this);
+        Collections.emptyList(),
+        this);
   }
 
   @Override
@@ -462,7 +466,8 @@ public abstract class AbstractEnv implements BaseEnv {
       throws SQLException {
     return new ClusterTestConnection(
         getWriteConnectionWithSpecifiedDataNode(dataNode, null, username, password),
-        getReadConnections(null, username, password), this);
+        getReadConnections(null, username, password),
+        this);
   }
 
   @Override
@@ -471,7 +476,8 @@ public abstract class AbstractEnv implements BaseEnv {
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
       return new ClusterTestConnection(
           getWriteConnection(version, username, password),
-          getReadConnections(version, username, password), this);
+          getReadConnections(version, username, password),
+          this);
     } else {
       return getWriteConnection(version, username, password).getUnderlyingConnecton();
     }
