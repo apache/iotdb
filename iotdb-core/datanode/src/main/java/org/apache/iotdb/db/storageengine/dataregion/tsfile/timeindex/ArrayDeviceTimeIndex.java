@@ -173,7 +173,8 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
     return deviceToIndex.keySet();
   }
 

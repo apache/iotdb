@@ -69,6 +69,7 @@ import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,8 +119,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   private Future<Void> dataPartitionTableCheckFuture;
 
   private ExecutorService dataPartitionTableCheckExecutor =
-          IoTDBThreadPoolFactory.newSingleThreadExecutor(
-                  "DATA_PARTITION_TABLE_CHECK");
+      IoTDBThreadPoolFactory.newSingleThreadExecutor("DATA_PARTITION_TABLE_CHECK");
 
   private final CountDownLatch latch = new CountDownLatch(1);
 
@@ -222,29 +222,33 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         loadSecretKey();
         loadHardwareCode();
 
-        dataPartitionTableCheckFuture = dataPartitionTableCheckExecutor.submit(() -> {
-          LOGGER.info("Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
-          Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeout());
+        dataPartitionTableCheckFuture =
+            dataPartitionTableCheckExecutor.submit(
+                () -> {
+                  LOGGER.info(
+                      "Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
+                  //          Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeout());
 
-          while (latch.getCount() > 0) {
-            List<Integer> dnList = configManager
-                    .getLoadManager()
-                    .filterDataNodeThroughStatus(NodeStatus.Running);
-            if (dnList != null && !dnList.isEmpty()) {
-              LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
-              TSStatus status =
-                      configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
-              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                LOGGER.error("Data partition table integrity check failed!");
-              }
-              latch.countDown();
-            } else {
-              LOGGER.info("No running datanodes found, waiting...");
-              Thread.sleep(5000);  // 等待5秒后重新检查
-            }
-          }
-          return null;
-        });
+                  while (latch.getCount() > 0) {
+                    List<Integer> dnList =
+                        configManager
+                            .getLoadManager()
+                            .filterDataNodeThroughStatus(NodeStatus.Running);
+                    if (dnList != null && !dnList.isEmpty()) {
+                      LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
+                      TSStatus status =
+                          configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
+                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                        LOGGER.error("Data partition table integrity check failed!");
+                      }
+                      latch.countDown();
+                    } else {
+                      LOGGER.info("No running datanodes found, waiting...");
+                      Thread.sleep(5000); // 等待5秒后重新检查
+                    }
+                  }
+                  return null;
+                });
         return;
       } else {
         saveSecretKey();

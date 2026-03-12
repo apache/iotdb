@@ -325,9 +325,8 @@ public class ConfigNodeDescriptor {
     conf.setPartitionTableRecoverWaitAllDnUpTimeout(
         Long.parseLong(
             properties.getProperty(
-                    "partition_table_recover_wait_all_dn_up_timeout",
-                    String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeout())))
-    );
+                "partition_table_recover_wait_all_dn_up_timeout",
+                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeout()))));
 
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());

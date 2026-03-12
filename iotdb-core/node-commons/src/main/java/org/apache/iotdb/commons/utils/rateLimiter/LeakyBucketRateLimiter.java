@@ -23,13 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 /**
- * A global leaky-bucket rate limiter for bytes throughput.
- * Features:
- * - Strict throughput limiting (no burst)
- * - Smooth bandwidth shaping
- * - Thread-safe
- * - Fair for multi-thread
- * - Low contention
+ * A global leaky-bucket rate limiter for bytes throughput. Features: - Strict throughput limiting
+ * (no burst) - Smooth bandwidth shaping - Thread-safe - Fair for multi-thread - Low contention
  */
 public class LeakyBucketRateLimiter {
   /** bytes per second */
@@ -52,7 +47,7 @@ public class LeakyBucketRateLimiter {
   /**
    * Acquire permission for reading bytes.
    *
-   * This method will block if reading too fast.
+   * <p>This method will block if reading too fast.
    */
   public void acquire(long bytes) {
     if (bytes <= 0) {
@@ -95,9 +90,7 @@ public class LeakyBucketRateLimiter {
     return false;
   }
 
-  /**
-   * Update rate dynamically.
-   */
+  /** Update rate dynamically. */
   public void setRate(long newBytesPerSecond) {
     if (newBytesPerSecond <= 0) {
       throw new IllegalArgumentException("bytesPerSecond must be > 0");
@@ -105,23 +98,17 @@ public class LeakyBucketRateLimiter {
     this.bytesPerSecond = newBytesPerSecond;
   }
 
-  /**
-   * Current rate.
-   */
+  /** Current rate. */
   public long getRate() {
     return bytesPerSecond;
   }
 
-  /**
-   * Total bytes processed.
-   */
+  /** Total bytes processed. */
   public long getTotalBytes() {
     return totalBytes.get();
   }
 
-  /**
-   * Expected time based on bytes processed.
-   */
+  /** Expected time based on bytes processed. */
   private long expectedTimeNs(long totalBytes) {
     return startTimeNs + (totalBytes * 1_000_000_000L) / bytesPerSecond;
   }

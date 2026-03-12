@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -79,7 +80,8 @@ public interface ITimeIndex {
    *
    * @return device names
    */
-  Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter);
+  Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter);
 
   /**
    * @return whether end time is empty (Long.MIN_VALUE)

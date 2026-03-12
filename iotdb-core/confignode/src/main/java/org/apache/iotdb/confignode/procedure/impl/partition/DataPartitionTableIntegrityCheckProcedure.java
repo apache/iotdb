@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -88,7 +89,7 @@ public class DataPartitionTableIntegrityCheckProcedure
   NodeManager dataNodeManager;
   private List<TDataNodeConfiguration> allDataNodes = new ArrayList<>();
 
-  //============Need serialize BEGIN=============/
+  // ============Need serialize BEGIN=============/
   /** Collected earliest timeslots from DataNodes: database -> earliest timeslot */
   private Map<String, Long> earliestTimeslots = new ConcurrentHashMap<>();
 
@@ -104,14 +105,16 @@ public class DataPartitionTableIntegrityCheckProcedure
   private static Set<TDataNodeConfiguration> failedDataNodes = new HashSet<>();
 
   private static ScheduledExecutorService heartBeatExecutor;
-  //============Need serialize END=============/
+
+  // ============Need serialize END=============/
 
   public DataPartitionTableIntegrityCheckProcedure() {
     super();
   }
 
   @Override
-  protected Flow executeFromState(final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
+  protected Flow executeFromState(
+      final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
       throws InterruptedException {
     try {
       // Ensure to get the real-time DataNodes in the current cluster at every step
@@ -143,7 +146,8 @@ public class DataPartitionTableIntegrityCheckProcedure
   }
 
   @Override
-  protected void rollbackState(final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
+  protected void rollbackState(
+      final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
       case COLLECT_EARLIEST_TIMESLOTS:
@@ -189,7 +193,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (allDataNodes.isEmpty()) {
-      LOG.error("No DataNodes registered, no way to collect earliest timeslots, terminating procedure");
+      LOG.error(
+          "No DataNodes registered, no way to collect earliest timeslots, terminating procedure");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -198,11 +203,20 @@ public class DataPartitionTableIntegrityCheckProcedure
     allDataNodes.removeAll(skipDataNodes);
     for (TDataNodeConfiguration dataNode : allDataNodes) {
       try {
-        TGetEarliestTimeslotsResp resp = (TGetEarliestTimeslotsResp) SyncDataNodeClientPool.getInstance()
-                .sendSyncRequestToDataNodeWithGivenRetry(dataNode.getLocation().getInternalEndPoint(), null, CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS, MAX_RETRY_COUNT);
+        TGetEarliestTimeslotsResp resp =
+            (TGetEarliestTimeslotsResp)
+                SyncDataNodeClientPool.getInstance()
+                    .sendSyncRequestToDataNodeWithGivenRetry(
+                        dataNode.getLocation().getInternalEndPoint(),
+                        null,
+                        CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS,
+                        MAX_RETRY_COUNT);
         if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           failedDataNodes.add(dataNode);
-          LOG.error("Failed to collected earliest timeslots from the DataNode[id={}], response status is {}", dataNode.getLocation().getDataNodeId(), resp.getStatus());
+          LOG.error(
+              "Failed to collected earliest timeslots from the DataNode[id={}], response status is {}",
+              dataNode.getLocation().getDataNodeId(),
+              resp.getStatus());
           continue;
         }
 
@@ -215,9 +229,9 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         if (LOG.isDebugEnabled()) {
           LOG.debug(
-                  "Collected earliest timeslots from the DataNode[id={}]: {}",
-                  dataNode.getLocation().getDataNodeId(),
-                  nodeTimeslots);
+              "Collected earliest timeslots from the DataNode[id={}]: {}",
+              dataNode.getLocation().getDataNodeId(),
+              nodeTimeslots);
         }
       } catch (Exception e) {
         LOG.error(
@@ -237,7 +251,8 @@ public class DataPartitionTableIntegrityCheckProcedure
           allDataNodes.size() - failedDataNodes.size());
     }
 
-    if (failedDataNodes.size() == allDataNodes.size() && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
+    if (failedDataNodes.size() == allDataNodes.size()
+        && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
     } else {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.ANALYZE_MISSING_PARTITIONS);
@@ -246,7 +261,8 @@ public class DataPartitionTableIntegrityCheckProcedure
   }
 
   /**
-   * Analyze which data partitions are missing based on earliest timeslots. Identify data partitions of databases need to be repaired.
+   * Analyze which data partitions are missing based on earliest timeslots. Identify data partitions
+   * of databases need to be repaired.
    */
   private Flow analyzeMissingPartitions(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
@@ -254,7 +270,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (earliestTimeslots.isEmpty()) {
-      LOG.error("No missing data partitions detected, nothing needs to be repaired, terminating procedure");
+      LOG.error(
+          "No missing data partitions detected, nothing needs to be repaired, terminating procedure");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -266,24 +283,39 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-              localDataPartitionTable = getLocalDataPartitionTable(env, database);
+          localDataPartitionTable = getLocalDataPartitionTable(env, database);
 
       // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
-      if (localDataPartitionTable == null || localDataPartitionTable.isEmpty() || localDataPartitionTable.get(database) == null || localDataPartitionTable.get(database).isEmpty()) {
-        LOG.error("No data partition table related to database {} was found from the ConfigNode", database);
+      if (localDataPartitionTable == null
+          || localDataPartitionTable.isEmpty()
+          || localDataPartitionTable.get(database) == null
+          || localDataPartitionTable.get(database).isEmpty()) {
+        lostDataPartitionsOfDatabases.add(database);
+        LOG.error(
+            "No data partition table related to database {} was found from the ConfigNode, and this issue needs to be repaired",
+            database);
         continue;
       }
 
-      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>> seriesPartitionMap = localDataPartitionTable.get(database);
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          seriesPartitionMap = localDataPartitionTable.get(database);
       for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-              seriesPartitionEntry : seriesPartitionMap.entrySet()) {
-        Map<TTimePartitionSlot, List<TConsensusGroupId>> tTimePartitionSlotListMap = seriesPartitionEntry.getValue();
-        tTimePartitionSlotListMap.keySet().forEach(slot -> {
-          if (!TimePartitionUtils.satisfyPartitionId(slot.getStartTime(), earliestTimeslot)) {
-            lostDataPartitionsOfDatabases.add(database);
-            LOG.warn("Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired", database, earliestTimeslot);
-          }
-        });
+          seriesPartitionEntry : seriesPartitionMap.entrySet()) {
+        Map<TTimePartitionSlot, List<TConsensusGroupId>> tTimePartitionSlotListMap =
+            seriesPartitionEntry.getValue();
+        tTimePartitionSlotListMap
+            .keySet()
+            .forEach(
+                slot -> {
+                  if (!TimePartitionUtils.satisfyPartitionId(
+                      slot.getStartTime(), earliestTimeslot)) {
+                    lostDataPartitionsOfDatabases.add(database);
+                    LOG.warn(
+                        "Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
+                        database,
+                        earliestTimeslot);
+                  }
+                });
       }
     }
 
@@ -300,23 +332,26 @@ public class DataPartitionTableIntegrityCheckProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>> getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database) {
-    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>>  schemaPartitionTable = env.getConfigManager().getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()))
+  private Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+      getLocalDataPartitionTable(final ConfigNodeProcedureEnv env, final String database) {
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable =
+        env.getConfigManager()
+            .getSchemaPartition(Collections.singletonMap(database, Collections.emptyList()))
             .getSchemaPartitionTable();
 
     // Construct request for getting data partition
     final Map<String, Map<TSeriesPartitionSlot, TTimeSlotList>> partitionSlotsMap = new HashMap<>();
     schemaPartitionTable.forEach(
-            (key, value) -> {
-              Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
-              value
-                      .keySet()
-                      .forEach(
-                              slot ->
-                                      slotListMap.put(
-                                              slot, new TTimeSlotList(Collections.emptyList(), true, true)));
-              partitionSlotsMap.put(key, slotListMap);
-            });
+        (key, value) -> {
+          Map<TSeriesPartitionSlot, TTimeSlotList> slotListMap = new HashMap<>();
+          value
+              .keySet()
+              .forEach(
+                  slot ->
+                      slotListMap.put(
+                          slot, new TTimeSlotList(Collections.emptyList(), true, true)));
+          partitionSlotsMap.put(key, slotListMap);
+        });
     final GetDataPartitionPlan getDataPartitionPlan = new GetDataPartitionPlan(partitionSlotsMap);
     return env.getConfigManager().getDataPartition(getDataPartitionPlan).getDataPartitionTable();
   }
@@ -327,16 +362,21 @@ public class DataPartitionTableIntegrityCheckProcedure
    */
   private Flow requestPartitionTables(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Requesting DataPartitionTable generation from {} DataNodes...", allDataNodes.size());
+      LOG.debug(
+          "Requesting DataPartitionTable generation from {} DataNodes...", allDataNodes.size());
     }
 
     if (allDataNodes.isEmpty()) {
-      LOG.error("No DataNodes registered, no way to requested DataPartitionTable generation, terminating procedure");
+      LOG.error(
+          "No DataNodes registered, no way to requested DataPartitionTable generation, terminating procedure");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
 
-    heartBeatExecutor.scheduleAtFixedRate(this::checkPartitionTableGenerationStatus, 0, HEART_BEAT_REQUEST_RATE, TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(heartBeatExecutor, this::checkPartitionTableGenerationStatus,
+            0,
+            HEART_BEAT_REQUEST_RATE,
+            TimeUnit.MILLISECONDS);
 
     allDataNodes.removeAll(skipDataNodes);
     allDataNodes.removeAll(failedDataNodes);
@@ -346,11 +386,20 @@ public class DataPartitionTableIntegrityCheckProcedure
         try {
           TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
           req.setDatabases(lostDataPartitionsOfDatabases);
-          TGenerateDataPartitionTableResp resp = (TGenerateDataPartitionTableResp) SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithGivenRetry(dataNode.getLocation().getInternalEndPoint(), req, CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE, MAX_RETRY_COUNT);
+          TGenerateDataPartitionTableResp resp =
+              (TGenerateDataPartitionTableResp)
+                  SyncDataNodeClientPool.getInstance()
+                      .sendSyncRequestToDataNodeWithGivenRetry(
+                          dataNode.getLocation().getInternalEndPoint(),
+                          req,
+                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE,
+                          MAX_RETRY_COUNT);
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             failedDataNodes.add(dataNode);
-            LOG.error("Failed to request DataPartitionTable generation from the DataNode[id={}], response status is {}", dataNode.getLocation().getDataNodeId(), resp.getStatus());
+            LOG.error(
+                "Failed to request DataPartitionTable generation from the DataNode[id={}], response status is {}",
+                dataNode.getLocation().getDataNodeId(),
+                resp.getStatus());
             continue;
           }
 
@@ -369,7 +418,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
     }
 
-    if (failedDataNodes.size() == allDataNodes.size() && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
+    if (failedDataNodes.size() == allDataNodes.size()
+        && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -378,9 +428,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  /**
-   * Check completion status of DataPartitionTable generation tasks.
-   */
+  /** Check completion status of DataPartitionTable generation tasks. */
   private void checkPartitionTableGenerationStatus() {
     if (LOG.isDebugEnabled()) {
       LOG.info("Checking DataPartitionTable generation completion status...");
@@ -392,36 +440,52 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
-          TGenerateDataPartitionTableHeartbeatResp resp = (TGenerateDataPartitionTableHeartbeatResp) SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNodeWithGivenRetry(dataNode.getLocation().getInternalEndPoint(), null, CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT, MAX_RETRY_COUNT);
-          DataPartitionTableGeneratorState state = DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
+          TGenerateDataPartitionTableHeartbeatResp resp =
+              (TGenerateDataPartitionTableHeartbeatResp)
+                  SyncDataNodeClientPool.getInstance()
+                      .sendSyncRequestToDataNodeWithGivenRetry(
+                          dataNode.getLocation().getInternalEndPoint(),
+                          null,
+                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+                          MAX_RETRY_COUNT);
+          DataPartitionTableGeneratorState state =
+              DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
 
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            LOG.error("Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}", dataNode.getLocation().getDataNodeId(), state, resp.getStatus());
+            LOG.error(
+                "Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
+                dataNode.getLocation().getDataNodeId(),
+                state,
+                resp.getStatus());
             continue;
           }
           switch (state) {
             case SUCCESS:
-              LOG.info("DataNode {} completed DataPartitionTable generation, terminating heart beat", dataNodeId);
+              LOG.info(
+                  "DataNode {} completed DataPartitionTable generation, terminating heart beat",
+                  dataNodeId);
               completeCount++;
               break;
             case IN_PROGRESS:
               LOG.info("DataNode {} still generating DataPartitionTable", dataNodeId);
               break;
             case FAILED:
-              LOG.error("DataNode {} failed to generate DataPartitionTable, terminating heart beat", dataNodeId);
+              LOG.error(
+                  "DataNode {} failed to generate DataPartitionTable, terminating heart beat",
+                  dataNodeId);
               completeCount++;
               break;
             default:
-              LOG.error("DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
+              LOG.error(
+                  "DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
               break;
           }
         } catch (Exception e) {
           LOG.error(
-                  "Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
-                  dataNodeId,
-                  e.getMessage(),
-                  e);
+              "Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
+              dataNodeId,
+              e.getMessage(),
+              e);
           completeCount++;
         }
       } else {
@@ -434,9 +498,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
   }
 
-  /**
-   * Merge DataPartitionTables from all DataNodes into a final table.
-   */
+  /** Merge DataPartitionTables from all DataNodes into a final table. */
   private Flow mergePartitionTables(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
       LOG.info("Merging DataPartitionTables from {} DataNodes...", dataPartitionTables.size());
@@ -456,46 +518,78 @@ public class DataPartitionTableIntegrityCheckProcedure
         for (String database : lostDataPartitionsOfDatabases) {
           // Get current DataPartitionTable from ConfigManager
           Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-                  localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
+              localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
 
           // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
-          if (localDataPartitionTableMap == null || localDataPartitionTableMap.isEmpty() || localDataPartitionTableMap.get(database) == null || localDataPartitionTableMap.get(database).isEmpty()) {
-            LOG.error("No data partition table related to database {} was found from the ConfigNode", database);
+          if (localDataPartitionTableMap == null
+              || localDataPartitionTableMap.isEmpty()
+              || localDataPartitionTableMap.get(database) == null
+              || localDataPartitionTableMap.get(database).isEmpty()) {
+            LOG.error(
+                "No data partition table related to database {} was found from the ConfigNode",
+                database);
             continue;
           }
 
-          localDataPartitionTableMap.values().forEach(map -> map.forEach((tSeriesPartitionSlot, seriesPartitionTableMap) -> {
-            if (tSeriesPartitionSlot == null || seriesPartitionTableMap == null || seriesPartitionTableMap.isEmpty()) {
-              return;
-            }
-            finalDataPartitionMap.computeIfAbsent(tSeriesPartitionSlot, k -> new SeriesPartitionTable(seriesPartitionTableMap));
-          }));
+          localDataPartitionTableMap
+              .values()
+              .forEach(
+                  map ->
+                      map.forEach(
+                          (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
+                            if (tSeriesPartitionSlot == null
+                                || seriesPartitionTableMap == null
+                                || seriesPartitionTableMap.isEmpty()) {
+                              return;
+                            }
+                            finalDataPartitionMap.computeIfAbsent(
+                                tSeriesPartitionSlot,
+                                k -> new SeriesPartitionTable(seriesPartitionTableMap));
+                          }));
         }
 
-        finalDataPartitionMap.forEach((tSeriesPartitionSlot, seriesPartitionTable) -> {
-          dataPartitionTables.values().forEach(dataPartitionTable -> {
-            if (dataPartitionTable == null || dataPartitionTable.getDataPartitionMap() == null || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-              return;
-            }
-            dataPartitionTable.getDataPartitionMap().forEach((dnSeriesPartitionSlot, dnDataPartitionTable) -> {
-              if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
-                return;
-              }
+        finalDataPartitionMap.forEach(
+            (tSeriesPartitionSlot, seriesPartitionTable) -> {
+              dataPartitionTables
+                  .values()
+                  .forEach(
+                      dataPartitionTable -> {
+                        if (dataPartitionTable == null
+                            || dataPartitionTable.getDataPartitionMap() == null
+                            || dataPartitionTable.getDataPartitionMap().isEmpty()) {
+                          return;
+                        }
+                        dataPartitionTable
+                            .getDataPartitionMap()
+                            .forEach(
+                                (dnSeriesPartitionSlot, dnDataPartitionTable) -> {
+                                  if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
+                                    return;
+                                  }
 
-              if (seriesPartitionTable == null || seriesPartitionTable.getSeriesPartitionMap() == null || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
-                finalDataPartitionMap.put(tSeriesPartitionSlot, dnDataPartitionTable);
-              }
+                                  if (seriesPartitionTable == null
+                                      || seriesPartitionTable.getSeriesPartitionMap() == null
+                                      || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
+                                    finalDataPartitionMap.put(
+                                        tSeriesPartitionSlot, dnDataPartitionTable);
+                                  }
 
-              // dnDataPartitionTable merged to seriesPartitionTable
-              dnDataPartitionTable.getSeriesPartitionMap().forEach((k, v) -> v.forEach(tConsensusGroupId -> {
-                if (seriesPartitionTable == null) {
-                  return;
-                }
-                seriesPartitionTable.putDataPartition(k, tConsensusGroupId);
-              }));
+                                  // dnDataPartitionTable merged to seriesPartitionTable
+                                  dnDataPartitionTable
+                                      .getSeriesPartitionMap()
+                                      .forEach(
+                                          (k, v) ->
+                                              v.forEach(
+                                                  tConsensusGroupId -> {
+                                                    if (seriesPartitionTable == null) {
+                                                      return;
+                                                    }
+                                                    seriesPartitionTable.putDataPartition(
+                                                        k, tConsensusGroupId);
+                                                  }));
+                                });
+                      });
             });
-          });
-        });
 
         finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap);
         break;
@@ -523,8 +617,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (lostDataPartitionsOfDatabases.isEmpty()) {
       LOG.error("No database lost data partition table");
       setFailure(
-              "DataPartitionTableIntegrityCheckProcedure",
-              new ProcedureException("No database lost data partition table for raft write"));
+          "DataPartitionTableIntegrityCheckProcedure",
+          new ProcedureException("No database lost data partition table for raft write"));
       return getFlow();
     }
 
@@ -541,7 +635,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       try {
         CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
         Map<String, DataPartitionTable> assignedDataPartition = new HashMap<>();
-        assignedDataPartition.put(lostDataPartitionsOfDatabases.stream().findFirst().get(), finalDataPartitionTable);
+        assignedDataPartition.put(
+            lostDataPartitionsOfDatabases.stream().findFirst().get(), finalDataPartitionTable);
         createPlan.setAssignedDataPartition(assignedDataPartition);
         TSStatus tsStatus = env.getConfigManager().getConsensusManager().write(createPlan);
 
@@ -551,8 +646,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         } else {
           LOG.error("Failed to write DataPartitionTable to raft log");
           setFailure(
-                  "DataPartitionTableIntegrityCheckProcedure",
-                  new ProcedureException("Failed to write DataPartitionTable to raft log"));
+              "DataPartitionTableIntegrityCheckProcedure",
+              new ProcedureException("Failed to write DataPartitionTable to raft log"));
         }
       } catch (Exception e) {
         LOG.error("Error writing DataPartitionTable to raft log", e);
@@ -592,7 +687,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     for (Map.Entry<Integer, DataPartitionTable> entry : dataPartitionTables.entrySet()) {
       stream.writeInt(entry.getKey());
       try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-           ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+          ObjectOutputStream oos = new ObjectOutputStream(baos)) {
         TTransport transport = new TIOStreamTransport(oos);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         entry.getValue().serialize(oos, protocol);
@@ -614,7 +709,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (finalDataPartitionTable != null) {
       try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-           ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+          ObjectOutputStream oos = new ObjectOutputStream(baos)) {
         TTransport transport = new TIOStreamTransport(oos);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         finalDataPartitionTable.serialize(oos, protocol);
@@ -686,7 +781,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       byte[] bytes = new byte[size];
       byteBuffer.get(bytes);
       try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-           ObjectInputStream ois = new ObjectInputStream(bais)) {
+          ObjectInputStream ois = new ObjectInputStream(bais)) {
         TTransport transport = new TIOStreamTransport(ois);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
@@ -712,7 +807,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       byte[] finalDataPartitionTableBytes = new byte[finalDataPartitionTableSize];
       byteBuffer.get(finalDataPartitionTableBytes);
       try (ByteArrayInputStream bais = new ByteArrayInputStream(finalDataPartitionTableBytes);
-           ObjectInputStream ois = new ObjectInputStream(bais)) {
+          ObjectInputStream ois = new ObjectInputStream(bais)) {
         TTransport transport = new TIOStreamTransport(ois);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
 

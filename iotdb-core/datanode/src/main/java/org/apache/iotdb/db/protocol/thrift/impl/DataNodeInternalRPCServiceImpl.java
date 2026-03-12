@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -322,6 +321,8 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -433,22 +434,22 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           0L,
           TimeUnit.SECONDS,
           new ArrayBlockingQueue<>(
-                  IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+              IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
           new IoTThreadFactory(ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName()),
           ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
           new ThreadPoolExecutor.CallerRunsPolicy());
 
   private final ExecutorService partitionTableRecoverExecutor =
-          new WrappedThreadPoolExecutor(
-                  0,
-                  IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
-                  0L,
-                  TimeUnit.SECONDS,
-                  new ArrayBlockingQueue<>(
-                          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
-                  new IoTThreadFactory(ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName()),
-                  ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
-                  new ThreadPoolExecutor.CallerRunsPolicy());
+      new WrappedThreadPoolExecutor(
+          0,
+          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
+          0L,
+          TimeUnit.SECONDS,
+          new ArrayBlockingQueue<>(
+              IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+          new IoTThreadFactory(ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName()),
+          ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
+          new ThreadPoolExecutor.CallerRunsPolicy());
 
   private Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
 
@@ -3200,7 +3201,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TGenerateDataPartitionTableResp generateDataPartitionTable(TGenerateDataPartitionTableReq req) {
+  public TGenerateDataPartitionTableResp generateDataPartitionTable(
+      TGenerateDataPartitionTableReq req) {
     TGenerateDataPartitionTableResp resp = new TGenerateDataPartitionTableResp();
     byte[] empty = new byte[0];
 
@@ -3221,7 +3223,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
 
       currentGenerator =
-          new DataPartitionTableGenerator(partitionTableRecoverExecutor, req.getDatabases(), seriesSlotNum, seriesPartitionExecutorClass);
+          new DataPartitionTableGenerator(
+              partitionTableRecoverExecutor,
+              req.getDatabases(),
+              seriesSlotNum,
+              seriesPartitionExecutorClass);
       currentTaskId = System.currentTimeMillis();
 
       // Start generation synchronously for now to return the data partition table immediately
@@ -3251,7 +3257,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             resp.setDataPartitionTable(empty);
             resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
             resp.setMessage(
-                    "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+                "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
             resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
             break;
         }
@@ -3301,7 +3307,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           break;
         case FAILED:
           resp.setErrorCode(DataPartitionTableGeneratorState.FAILED.getCode());
-          resp.setMessage("DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
+          resp.setMessage(
+              "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage());
           resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
           break;
         default:
@@ -3333,20 +3340,24 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 try {
                   Files.list(sequenceTypePath)
                       .filter(Files::isDirectory)
-                      .forEach(dbPath -> {
-                      String databaseName = dbPath.getFileName().toString();
-                      if (DataPartitionTableGenerator.IGNORE_DATABASE.contains(databaseName)) {
-                        return;
-                      }
-                      databaseEarliestRegionMap.computeIfAbsent(databaseName, key -> Long.MAX_VALUE);
-                      long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
+                      .forEach(
+                          dbPath -> {
+                            String databaseName = dbPath.getFileName().toString();
+                            if (DataPartitionTableGenerator.IGNORE_DATABASE.contains(
+                                databaseName)) {
+                              return;
+                            }
+                            databaseEarliestRegionMap.computeIfAbsent(
+                                databaseName, key -> Long.MAX_VALUE);
+                            long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
 
-                      if (earliestTimeslot != Long.MAX_VALUE) {
-                        earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
-                      }
-                  });
+                            if (earliestTimeslot != Long.MAX_VALUE) {
+                              earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
+                            }
+                          });
                 } catch (IOException e) {
-                  LOGGER.error("Failed to process data directory: {}", sequenceTypePath.toFile(), e);
+                  LOGGER.error(
+                      "Failed to process data directory: {}", sequenceTypePath.toFile(), e);
                 }
               });
     } catch (IOException e) {
@@ -3363,31 +3374,49 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       Files.list(databaseDir.toPath())
           .filter(Files::isDirectory)
           .forEach(
-        regionPath -> {
-            Future<?> future = findEarliestTimeSlotExecutor.submit(() -> {
-                    try {
-                      Files.list(regionPath)
-                          .filter(Files::isDirectory)
-                          .forEach(timeSlotPath -> {
-                            try {
-                              Optional<Path> matchedFile = Files.find(timeSlotPath, 1, (path, attrs) -> attrs.isRegularFile() && path.toString().endsWith(DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME)).findFirst();
-                              if (!matchedFile.isPresent()) {
-                                return;
-                              }
-                              String timeSlotName = timeSlotPath.getFileName().toString();
-                              long timeslot = Long.parseLong(timeSlotName);
-                              if (timeslot < databaseEarliestRegionMap.get(databaseName)) {
-                                databaseEarliestRegionMap.put(databaseName, timeslot);
-                              }
-                            } catch (IOException e) {
-                              LOGGER.error("Failed to find any {} files in the {} directory", DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME, timeSlotPath, e);
-                            }
-                          });
-                    } catch (IOException e) {
-                      LOGGER.error("Failed to scan {}", regionPath, e);
-                    }
-                  });
-          futureList.add(future);
+              regionPath -> {
+                Future<?> future =
+                    findEarliestTimeSlotExecutor.submit(
+                        () -> {
+                          try {
+                            Files.list(regionPath)
+                                .filter(Files::isDirectory)
+                                .forEach(
+                                    timeSlotPath -> {
+                                      try {
+                                        Optional<Path> matchedFile =
+                                            Files.find(
+                                                    timeSlotPath,
+                                                    1,
+                                                    (path, attrs) ->
+                                                        attrs.isRegularFile()
+                                                            && path.toString()
+                                                                .endsWith(
+                                                                    DataPartitionTableGenerator
+                                                                        .SCAN_FILE_SUFFIX_NAME))
+                                                .findFirst();
+                                        if (!matchedFile.isPresent()) {
+                                          return;
+                                        }
+                                        String timeSlotName = timeSlotPath.getFileName().toString();
+                                        long timeslot = Long.parseLong(timeSlotName);
+                                        if (timeslot
+                                            < databaseEarliestRegionMap.get(databaseName)) {
+                                          databaseEarliestRegionMap.put(databaseName, timeslot);
+                                        }
+                                      } catch (IOException e) {
+                                        LOGGER.error(
+                                            "Failed to find any {} files in the {} directory",
+                                            DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME,
+                                            timeSlotPath,
+                                            e);
+                                      }
+                                    });
+                          } catch (IOException e) {
+                            LOGGER.error("Failed to scan {}", regionPath, e);
+                          }
+                        });
+                futureList.add(future);
               });
     } catch (IOException e) {
       LOGGER.error("Failed to walk database directory: {}", databaseDir, e);
@@ -3407,7 +3436,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   /** Serialize DataPartitionTable to ByteBuffer for RPC transmission. */
   private byte[] serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
     try (PublicBAOS baos = new PublicBAOS();
-         DataOutputStream oos = new DataOutputStream(baos)) {
+        DataOutputStream oos = new DataOutputStream(baos)) {
       TTransport transport = new TIOStreamTransport(oos);
       TBinaryProtocol protocol = new TBinaryProtocol(transport);
       dataPartitionTable.serialize(oos, protocol);

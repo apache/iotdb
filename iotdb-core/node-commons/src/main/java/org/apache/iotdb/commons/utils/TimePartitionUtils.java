@@ -132,10 +132,15 @@ public class TimePartitionUtils {
 
   public static long getTimeWithoutOverflow(long partitionId) {
     BigInteger bigTime = bigTimePartitionInterval.multiply(BigInteger.valueOf(partitionId));
-    if (bigTime.compareTo(BigInteger.ZERO) > 0 || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)) {
+    if (bigTime.compareTo(BigInteger.ZERO) > 0
+        || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)) {
       return bigTime.add(bigTimePartitionOrigin).longValue();
     }
-    return BigInteger.valueOf(partitionId).add(BigInteger.ONE).multiply(bigTimePartitionInterval).add(bigTimePartitionOrigin).longValue();
+    return BigInteger.valueOf(partitionId)
+        .add(BigInteger.ONE)
+        .multiply(bigTimePartitionInterval)
+        .add(bigTimePartitionOrigin)
+        .longValue();
   }
 
   public static long getTimeByPartitionId(long partitionId) {
@@ -155,7 +160,8 @@ public class TimePartitionUtils {
   }
 
   public static boolean satisfyPartitionId(long startTime, long partitionId) {
-    long endTime = startTime >= timePartitionLowerBoundWithoutOverflow
+    long endTime =
+        startTime >= timePartitionLowerBoundWithoutOverflow
             ? Long.MAX_VALUE
             : (startTime + timePartitionInterval - 1);
     return satisfyPartitionId(startTime, endTime, partitionId);

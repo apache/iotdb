@@ -1375,9 +1375,7 @@ public class ProcedureManager {
     }
   }
 
-  /**
-   * Used to repair the lost data partition table
-   */
+  /** Used to repair the lost data partition table */
   public TSStatus dataPartitionTableIntegrityCheck() {
     DataPartitionTableIntegrityCheckProcedure procedure;
     synchronized (this) {

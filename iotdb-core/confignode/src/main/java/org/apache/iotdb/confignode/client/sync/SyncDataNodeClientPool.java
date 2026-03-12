@@ -141,14 +141,14 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.SHOW_APPLIED_CONFIGURATIONS,
         (req, client) -> client.showAppliedConfigurations());
     actionMapBuilder.put(
-            CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS,
-            (req, client) -> client.getEarliestTimeslots());
+        CnToDnSyncRequestType.COLLECT_EARLIEST_TIMESLOTS,
+        (req, client) -> client.getEarliestTimeslots());
     actionMapBuilder.put(
-            CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE,
-            (req, client) -> client.generateDataPartitionTable((TGenerateDataPartitionTableReq) req));
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE,
+        (req, client) -> client.generateDataPartitionTable((TGenerateDataPartitionTableReq) req));
     actionMapBuilder.put(
-            CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
-            (req, client) -> client.generateDataPartitionTableHeartbeat());
+        CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+        (req, client) -> client.generateDataPartitionTableHeartbeat());
     actionMap = actionMapBuilder.build();
   }
 

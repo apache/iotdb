@@ -1351,8 +1351,8 @@ public class NodeManager {
   }
 
   /**
-   * Check if all DataNodes are registered and running, then trigger integrity check.
-   * This method should be called after each DataNode registration.
+   * Check if all DataNodes are registered and running, then trigger integrity check. This method
+   * should be called after each DataNode registration.
    */
   private void checkAndTriggerIntegrityCheck() {
     // Only trigger integrity check if this ConfigNode is the leader
@@ -1362,19 +1362,22 @@ public class NodeManager {
 
     // Get all registered DataNodes
     List<TDataNodeConfiguration> registeredDataNodes = getRegisteredDataNodes();
-    
+
     // Check if all registered DataNodes are running
-    boolean allDataNodesRunning = registeredDataNodes.stream()
-        .allMatch(dataNode -> {
-          Integer dataNodeId = dataNode.getLocation().getDataNodeId();
-          NodeStatus status = getLoadManager().getLoadCache().getNodeStatus(dataNodeId);
-          return status == NodeStatus.Running;
-        });
+    boolean allDataNodesRunning =
+        registeredDataNodes.stream()
+            .allMatch(
+                dataNode -> {
+                  Integer dataNodeId = dataNode.getLocation().getDataNodeId();
+                  NodeStatus status = getLoadManager().getLoadCache().getNodeStatus(dataNodeId);
+                  return status == NodeStatus.Running;
+                });
 
     if (allDataNodesRunning && !registeredDataNodes.isEmpty()) {
-      LOGGER.info("All {} DataNodes are registered and running, triggering data partition table integrity check", 
-                 registeredDataNodes.size());
-      
+      LOGGER.info(
+          "All {} DataNodes are registered and running, triggering data partition table integrity check",
+          registeredDataNodes.size());
+
       // Trigger integrity check asynchronously
       try {
         configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
@@ -1383,15 +1386,19 @@ public class NodeManager {
         LOGGER.error("Failed to submit data partition table integrity check procedure", e);
       }
     } else {
-      LOGGER.debug("Not all DataNodes are ready yet. Registered: {}, Running: {}", 
-                   registeredDataNodes.size(), 
-                   (int) registeredDataNodes.stream()
-                       .filter(dataNode -> {
-                         Integer dataNodeId = dataNode.getLocation().getDataNodeId();
-                         NodeStatus status = getLoadManager().getLoadCache().getNodeStatus(dataNodeId);
-                         return status == NodeStatus.Running;
-                       })
-                       .count());
+      LOGGER.debug(
+          "Not all DataNodes are ready yet. Registered: {}, Running: {}",
+          registeredDataNodes.size(),
+          (int)
+              registeredDataNodes.stream()
+                  .filter(
+                      dataNode -> {
+                        Integer dataNodeId = dataNode.getLocation().getDataNodeId();
+                        NodeStatus status =
+                            getLoadManager().getLoadCache().getNodeStatus(dataNodeId);
+                        return status == NodeStatus.Running;
+                      })
+                  .count());
     }
   }
 }

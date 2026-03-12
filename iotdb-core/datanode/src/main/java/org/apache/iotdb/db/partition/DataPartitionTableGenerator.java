@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,18 +82,28 @@ public class DataPartitionTableGenerator {
   private static final int EXECUTOR_MAX_TIMEOUT = 60;
 
   private static final LeakyBucketRateLimiter limiter =
-          new LeakyBucketRateLimiter((long) IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverMaxReadBytesPerSecond() * 1024 * 1024);
+      new LeakyBucketRateLimiter(
+          (long)
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getPartitionTableRecoverMaxReadBytesPerSecond()
+              * 1024
+              * 1024);
 
   public static final String SCAN_FILE_SUFFIX_NAME = ".tsfile";
-  public static final Set<String> IGNORE_DATABASE = new HashSet<String>() {{
-    add("root.__audit");
-  }};
+  public static final Set<String> IGNORE_DATABASE =
+      new HashSet<String>() {
+        {
+          add("root.__audit");
+          add("root.__system");
+        }
+      };
 
   public DataPartitionTableGenerator(
-          ExecutorService executor,
-          Set<String> databases,
-          int seriesSlotNum,
-          String seriesPartitionExecutorClass) {
+      ExecutorService executor,
+      Set<String> databases,
+      int seriesSlotNum,
+      String seriesPartitionExecutorClass) {
     this.executor = executor;
     this.databases = databases;
     this.seriesSlotNum = seriesSlotNum;
@@ -105,7 +116,7 @@ public class DataPartitionTableGenerator {
       Set<String> databases,
       int seriesSlotNum,
       String seriesPartitionExecutorClass) {
-    this.dataDirectories = new String[]{dataDirectory};
+    this.dataDirectories = new String[] {dataDirectory};
     this.executor = executor;
     this.databases = databases;
     this.seriesSlotNum = seriesSlotNum;
@@ -113,11 +124,11 @@ public class DataPartitionTableGenerator {
   }
 
   public DataPartitionTableGenerator(
-          String[] dataDirectories,
-          ExecutorService executor,
-          Set<String> databases,
-          int seriesSlotNum,
-          String seriesPartitionExecutorClass) {
+      String[] dataDirectories,
+      ExecutorService executor,
+      Set<String> databases,
+      int seriesSlotNum,
+      String seriesPartitionExecutorClass) {
     this.dataDirectories = dataDirectories;
     this.executor = executor;
     this.databases = databases;
@@ -132,10 +143,7 @@ public class DataPartitionTableGenerator {
     FAILED
   }
 
-  /**
-   * Start generating DataPartitionTable asynchronously.
-   *
-   */
+  /** Start generating DataPartitionTable asynchronously. */
   public CompletableFuture<Void> startGeneration() {
     if (status != TaskStatus.NOT_STARTED) {
       throw new IllegalStateException("Task is already started or completed");
@@ -150,28 +158,29 @@ public class DataPartitionTableGenerator {
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
     SeriesPartitionExecutor seriesPartitionExecutor =
-            SeriesPartitionExecutor.getSeriesPartitionExecutor(
-                    seriesPartitionExecutorClass, seriesSlotNum);
+        SeriesPartitionExecutor.getSeriesPartitionExecutor(
+            seriesPartitionExecutorClass, seriesSlotNum);
 
     for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
       CompletableFuture<Void> regionFuture =
-              CompletableFuture.runAsync(
-                      () -> {
-                        TsFileManager tsFileManager = dataRegion.getTsFileManager();
-                        String databaseName = dataRegion.getDatabaseName();
-                        if (!databases.contains(databaseName) || IGNORE_DATABASE.contains(databaseName)) {
-                          return;
-                        }
+          CompletableFuture.runAsync(
+              () -> {
+                TsFileManager tsFileManager = dataRegion.getTsFileManager();
+                String databaseName = dataRegion.getDatabaseName();
+                if (!databases.contains(databaseName) || IGNORE_DATABASE.contains(databaseName)) {
+                  return;
+                }
 
-                        tsFileManager.readLock();
-                        List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
-                        List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
-                        tsFileManager.readUnlock();
+                tsFileManager.readLock();
+                List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
+                List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
+                tsFileManager.readUnlock();
 
-                        constructDataPartitionMap(seqTsFileList, seriesPartitionExecutor, dataPartitionMap);
-                        constructDataPartitionMap(unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
-                      },
-                      executor);
+                constructDataPartitionMap(seqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+                constructDataPartitionMap(
+                    unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+              },
+              executor);
       futures.add(regionFuture);
     }
 
@@ -188,7 +197,10 @@ public class DataPartitionTableGenerator {
     status = TaskStatus.COMPLETED;
   }
 
-  private static void constructDataPartitionMap(List<TsFileResource> seqTsFileList, SeriesPartitionExecutor seriesPartitionExecutor, Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
+  private static void constructDataPartitionMap(
+      List<TsFileResource> seqTsFileList,
+      SeriesPartitionExecutor seriesPartitionExecutor,
+      Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
     for (TsFileResource tsFileResource : seqTsFileList) {
       Set<IDeviceID> devices = tsFileResource.getDevices(limiter);
       long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
@@ -199,9 +211,14 @@ public class DataPartitionTableGenerator {
       consensusGroupId.setType(TConsensusGroupType.DataRegion);
 
       for (IDeviceID deviceId : devices) {
-        TSeriesPartitionSlot seriesSlotId = seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
-        TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
-        dataPartitionMap.computeIfAbsent(seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId)).putDataPartition(timePartitionSlot, consensusGroupId);
+        TSeriesPartitionSlot seriesSlotId =
+            seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
+        TTimePartitionSlot timePartitionSlot =
+            new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+        dataPartitionMap
+            .computeIfAbsent(
+                seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId))
+            .putDataPartition(timePartitionSlot, consensusGroupId);
       }
     }
   }
@@ -221,46 +238,49 @@ public class DataPartitionTableGenerator {
       // Process all data directories
       for (String dataDirectory : dataDirectories) {
         LOG.info("Processing data directory: {}", dataDirectory);
-        
+
         // First layer: database directories
         Files.list(Paths.get(dataDirectory))
             .filter(Files::isDirectory)
-            .forEach(sequenceTypePath -> {
-              try {
-                Files.list(sequenceTypePath)
+            .forEach(
+                sequenceTypePath -> {
+                  try {
+                    Files.list(sequenceTypePath)
                         .filter(Files::isDirectory)
-                        .forEach(dbPath -> {
-                          String databaseName = dbPath.getFileName().toString();
-                          if (!databases.contains(databaseName) || IGNORE_DATABASE.contains(databaseName)) {
-                            return;
-                          }
+                        .forEach(
+                            dbPath -> {
+                              String databaseName = dbPath.getFileName().toString();
+                              if (!databases.contains(databaseName)
+                                  || IGNORE_DATABASE.contains(databaseName)) {
+                                return;
+                              }
 
-                          if (LOG.isDebugEnabled()) {
-                            LOG.debug("Processing database: {}", databaseName);
-                          }
+                              if (LOG.isDebugEnabled()) {
+                                LOG.debug("Processing database: {}", databaseName);
+                              }
 
-                          try {
-                            Files.list(dbPath)
+                              try {
+                                Files.list(dbPath)
                                     .filter(Files::isDirectory)
                                     .forEach(
-                                            regionPath -> {
-                                              processRegionDirectory(
-                                                      regionPath,
-                                                      databaseName,
-                                                      dataPartitionMap,
-                                                      executor,
-                                                      futures);
-                                            });
-                          } catch (IOException e) {
-                            LOG.error("Failed to process database directory: {}", dbPath, e);
-                            failedFiles.incrementAndGet();
-                          }
-                        });
-              } catch (IOException e) {
-                LOG.error("Failed to process database directory: {}", sequenceTypePath, e);
-                failedFiles.incrementAndGet();
-              }
-            });
+                                        regionPath -> {
+                                          processRegionDirectory(
+                                              regionPath,
+                                              databaseName,
+                                              dataPartitionMap,
+                                              executor,
+                                              futures);
+                                        });
+                              } catch (IOException e) {
+                                LOG.error("Failed to process database directory: {}", dbPath, e);
+                                failedFiles.incrementAndGet();
+                              }
+                            });
+                  } catch (IOException e) {
+                    LOG.error("Failed to process database directory: {}", sequenceTypePath, e);
+                    failedFiles.incrementAndGet();
+                  }
+                });
       }
 
       // Wait for all tasks to complete
@@ -352,10 +372,7 @@ public class DataPartitionTableGenerator {
           .forEach(
               tsFilePath -> {
                 processTsFile(
-                    tsFilePath.toFile(),
-                    consensusGroupId,
-                    timeSlotLong,
-                    dataPartitionMap);
+                    tsFilePath.toFile(), consensusGroupId, timeSlotLong, dataPartitionMap);
               });
     } catch (IOException e) {
       LOG.error("Failed to walk time slot directory: {}", timeSlotPath, e);
@@ -380,9 +397,14 @@ public class DataPartitionTableGenerator {
               seriesPartitionExecutorClass, seriesSlotNum);
 
       for (org.apache.tsfile.file.metadata.IDeviceID deviceId : devices) {
-        TSeriesPartitionSlot seriesSlotId = seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
-        TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
-        dataPartitionMap.computeIfAbsent(seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId)).putDataPartition(timePartitionSlot, consensusGroupId);
+        TSeriesPartitionSlot seriesSlotId =
+            seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
+        TTimePartitionSlot timePartitionSlot =
+            new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+        dataPartitionMap
+            .computeIfAbsent(
+                seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId))
+            .putDataPartition(timePartitionSlot, consensusGroupId);
       }
 
       if (processedFiles.get() % 1000 == 0) {
@@ -394,9 +416,11 @@ public class DataPartitionTableGenerator {
     }
   }
 
-  private static SeriesPartitionTable newSeriesPartitionTable(TConsensusGroupId consensusGroupId, long timeSlotId) {
+  private static SeriesPartitionTable newSeriesPartitionTable(
+      TConsensusGroupId consensusGroupId, long timeSlotId) {
     SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
-    TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+    TTimePartitionSlot timePartitionSlot =
+        new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
     seriesPartitionTable.putDataPartition(timePartitionSlot, consensusGroupId);
     return seriesPartitionTable;
   }
@@ -407,29 +431,32 @@ public class DataPartitionTableGenerator {
 
     for (String dataDirectory : dataDirectories) {
       Files.list(Paths.get(dataDirectory))
-              .filter(Files::isDirectory)
-              .forEach(sequenceTypePath -> {
-                        try {
-                          Files.list(sequenceTypePath)
-                                  .filter(Files::isDirectory)
-                                  .forEach(dbPath -> {
-                                    String databaseName = dbPath.getFileName().toString();
-                                    if (!databases.contains(databaseName) || IGNORE_DATABASE.contains(databaseName)) {
-                                      return;
-                                    }
+          .filter(Files::isDirectory)
+          .forEach(
+              sequenceTypePath -> {
+                try {
+                  Files.list(sequenceTypePath)
+                      .filter(Files::isDirectory)
+                      .forEach(
+                          dbPath -> {
+                            String databaseName = dbPath.getFileName().toString();
+                            if (!databases.contains(databaseName)
+                                || IGNORE_DATABASE.contains(databaseName)) {
+                              return;
+                            }
 
-                                    try {
-                                      Files.walk(dbPath)
-                                              .filter(Files::isRegularFile)
-                                              .filter(p -> p.toString().endsWith(SCAN_FILE_SUFFIX_NAME))
-                                              .forEach(p -> fileCount.incrementAndGet());
-                                    } catch (IOException e) {
-                                      LOG.error("countTotalFiles failed when scan {}", dbPath, e);
-                                    }
-                                  });
-              } catch (IOException e) {
-                          LOG.error("countTotalFiles failed when scan {}", sequenceTypePath, e);
-                        }
+                            try {
+                              Files.walk(dbPath)
+                                  .filter(Files::isRegularFile)
+                                  .filter(p -> p.toString().endsWith(SCAN_FILE_SUFFIX_NAME))
+                                  .forEach(p -> fileCount.incrementAndGet());
+                            } catch (IOException e) {
+                              LOG.error("countTotalFiles failed when scan {}", dbPath, e);
+                            }
+                          });
+                } catch (IOException e) {
+                  LOG.error("countTotalFiles failed when scan {}", sequenceTypePath, e);
+                }
               });
     }
 

@@ -122,11 +122,12 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<IDeviceID> getDevices(String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
     tsFileResource.readLock();
     try (InputStream inputStream =
-                 FSFactoryProducer.getFSFactory()
-                         .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
       limiter.acquire(bytes.length);
@@ -141,15 +142,15 @@ public class FileTimeIndex implements ITimeIndex {
         return Collections.emptySet();
       } else {
         logger.error(
-                "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+            "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
         throw new RuntimeException(
-                "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
+            "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
       }
     } catch (Exception e) {
       logger.error(
-              "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+          "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
       throw new RuntimeException(
-              "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
     } finally {
       tsFileResource.readUnlock();
     }
