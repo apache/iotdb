@@ -38,8 +38,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     vim \
     tzdata \
-    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -57,8 +55,10 @@ RUN unzip -q apache-iotdb-${VERSION}-ainode-bin.zip \
     && mkdir -p /ainode/logs /ainode/data/ainode
 
 # Copy data directory from build server to image
-# The build script will copy /data/ainode to tmp-data/ before build
-COPY docker/src/main/tmp-data/ /ainode/data/ainode/
+# The build script copies /data/ainode to docker/src/main/ainode-build-data/ before build
+# Note: The trailing slash is important - it copies contents not the directory itself
+COPY docker/src/main/ainode-build-data/ /ainode/data/ainode/
+
 
 # Set directory permissions
 RUN chmod -R 755 /ainode/sbin \

@@ -49,24 +49,24 @@ init_config() {
     # Update configuration based on environment variables
     # Cluster configuration
     update_config "cluster_name" "${CLUSTER_NAME:-defaultCluster}"
-    update_config "ain_seed_config_node" "${SEED_CONFIG_NODE:-127.0.0.1:10710}"
-
-    # DataNode connection configuration
-    update_config "ain_cluster_ingress_address" "${DATA_NODE_ADDRESS:-127.0.0.1}"
-    update_config "ain_cluster_ingress_port" "${DATA_NODE_PORT:-6667}"
-    update_config "ain_cluster_ingress_username" "${DATA_NODE_USERNAME:-root}"
-    update_config "ain_cluster_ingress_password" "${DATA_NODE_PASSWORD:-root}"
+    update_config "ain_seed_config_node" "${AIN_SEED_CONFIG_NODE:-127.0.0.1:10710}"
 
     # AINode service configuration
-    update_config "ain_rpc_address" "${AINODE_RPC_ADDRESS:-0.0.0.0}"
-    update_config "ain_rpc_port" "${AINODE_RPC_PORT:-10810}"
+    update_config "ain_rpc_address" "${AIN_RPC_ADDRESS:-0.0.0.0}"
+    update_config "ain_rpc_port" "${AIN_RPC_PORT:-10810}"
+
+    # DataNode connection configuration
+    update_config "ain_cluster_ingress_address" "${AIN_CLUSTER_INGRESS_ADDRESS:-127.0.0.1}"
+    update_config "ain_cluster_ingress_port" "${AIN_CLUSTER_INGRESS_PORT:-6667}"
+    update_config "ain_cluster_ingress_username" "${AIN_CLUSTER_INGRESS_USERNAME:-root}"
+    update_config "ain_cluster_ingress_password" "${AIN_CLUSTER_INGRESS_PASSWORD:-root}"
 
     # Storage paths configuration
-    update_config "ain_system_dir" "${SYSTEM_DIR:-data/ainode/system}"
-    update_config "ain_models_dir" "${MODELS_DIR:-data/ainode/models}"
+    update_config "ain_system_dir" "${AIN_SYSTEM_DIR:-data/ainode/system}"
+    update_config "ain_models_dir" "${AIN_MODELS_DIR:-data/ainode/models}"
 
     # Thrift compression configuration
-    update_config "ain_thrift_compression_enabled" "${THRIFT_COMPRESSION:-0}"
+    update_config "ain_thrift_compression_enabled" "${AIN_THRIFT_COMPRESSION_ENABLED:-0}"
 
     log "Configuration initialized successfully"
 }

@@ -45,7 +45,7 @@ usage() {
 Usage: $0 -v <version> [options]
 
 Required:
-    -v, --version <version>     Specify IoTDB version (e.g., 1.0.0, 2.0.1)
+    -v, --version <version>     Specify IoTDB version (e.g., 2.0.8)
 
 Options:
     -p, --push                  Push image to registry after build
@@ -56,17 +56,14 @@ Options:
     -h, --help                  Show this help message
 
 Examples:
-    # Build version 1.0.0
-    $0 -v 1.0.0
+    # Build version 2.0.8
+    $0 -v 2.0.8
 
     # Build and push
-    $0 -v 1.0.0 --push
+    $0 -v 2.0.8 --push
 
     # Build with custom data directory
-    $0 -v 1.0.0 --data-dir /mnt/data/ainode
-
-    # Build for private registry
-    $0 -v 2.0.1 --registry registry.example.com/apache --push
+    $0 -v 2.0.8 --data-dir /mnt/data/ainode
 EOF
 }
 
@@ -151,41 +148,75 @@ echo "============================================"
 echo "Version:        ${VERSION}"
 echo "Distribution:   ${DIST_FILE}"
 echo "Data Directory: ${DATA_DIR}"
-echo "Dockerfile:     ${SCRIPT_DIR}/Dockerfile-2.0.7-ainode"
+echo "Dockerfile:     ${SCRIPT_DIR}/Dockerfile-2.0.x-ainode"
 echo "Image Name:     ${FULL_IMAGE_NAME}"
 echo "Build Context:  ${PROJECT_ROOT}"
+echo "Script Dir:     ${SCRIPT_DIR}"
 echo "============================================"
 
-# Prepare temporary data directory for Docker build context
-# Docker cannot COPY files from absolute paths outside build context
-TMP_DATA_DIR="${SCRIPT_DIR}/tmp-data"
-echo "Preparing data directory for build context..."
+# Prepare data directory for Docker build context
+# Use a unique name to avoid .dockerignore conflicts with common patterns like 'tmp*'
+BUILD_DATA_DIR_NAME="ainode-build-data"
+TMP_DATA_DIR="${SCRIPT_DIR}/${BUILD_DATA_DIR_NAME}"
 
-# Clean up old temp data if exists
+echo "Preparing data directory for build context at: ${TMP_DATA_DIR}"
+
+# Clean up old data if exists
 if [ -d "$TMP_DATA_DIR" ]; then
+    echo "Cleaning up existing build data directory..."
     rm -rf "$TMP_DATA_DIR"
 fi
 
-# Copy data to temporary location within build context
+# Create directory and copy data
 mkdir -p "$TMP_DATA_DIR"
-if [ -d "$DATA_DIR" ] && [ "$(ls -A $DATA_DIR)" ]; then
+if [ -d "$DATA_DIR" ] && [ "$(ls -A $DATA_DIR 2>/dev/null)" ]; then
+    echo "Copying data from ${DATA_DIR} to ${TMP_DATA_DIR}..."
     cp -r "$DATA_DIR"/* "$TMP_DATA_DIR/"
-    echo "Copied data from ${DATA_DIR} to ${TMP_DATA_DIR}"
+    echo "Copied $(ls -1 "$TMP_DATA_DIR" | wc -l) items"
 else
-    echo "No data to copy, creating empty directory"
+    echo "No data to copy, created empty directory"
 fi
 
-# Ensure cleanup on exit
+# Verify the directory exists and show contents
+if [ ! -d "$TMP_DATA_DIR" ]; then
+    echo "Error: Failed to create temporary data directory: ${TMP_DATA_DIR}"
+    exit 1
+fi
+
+echo "Build data directory contents:"
+ls -la "$TMP_DATA_DIR" || echo "(empty directory)"
+
+# Check if .dockerignore exists and might exclude our directory
+DOCKERIGNORE_FILE="${PROJECT_ROOT}/.dockerignore"
+if [ -f "$DOCKERIGNORE_FILE" ]; then
+    if grep -q "ainode-build-data" "$DOCKERIGNORE_FILE" || grep -qE "^\*|^tmp|^data" "$DOCKERIGNORE_FILE"; then
+        echo ""
+        echo "WARNING: .dockerignore file detected at ${DOCKERIGNORE_FILE}"
+        echo "It may exclude the '${BUILD_DATA_DIR_NAME}' directory from build context."
+        echo "If build fails with 'COPY failed', add exception to .dockerignore:"
+        echo "  !docker/src/main/${BUILD_DATA_DIR_NAME}/"
+        echo ""
+    fi
+fi
+
+# Cleanup function
 cleanup() {
-    echo "Cleaning up temporary data directory..."
+    echo "Cleaning up temporary data directory: ${TMP_DATA_DIR}"
     rm -rf "$TMP_DATA_DIR"
 }
 trap cleanup EXIT
 
+# Verify Dockerfile exists
+DOCKERFILE="${SCRIPT_DIR}/Dockerfile-2.0.x-ainode"
+if [ ! -f "$DOCKERFILE" ]; then
+    echo "Error: Dockerfile not found at: ${DOCKERFILE}"
+    exit 1
+fi
+
 # Build Docker image
 # Build context is PROJECT_ROOT (3 levels up from current script)
 BUILD_CMD="docker build"
-BUILD_CMD+=" --file ${SCRIPT_DIR}/Dockerfile-2.0.7-ainode"
+BUILD_CMD+=" --file ${DOCKERFILE}"
 BUILD_CMD+=" --build-arg VERSION=${VERSION}"
 BUILD_CMD+=" --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 BUILD_CMD+=" --build-arg VCS_REF=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
@@ -197,9 +228,19 @@ fi
 BUILD_CMD+=" --tag ${FULL_IMAGE_NAME}"
 BUILD_CMD+=" ${PROJECT_ROOT}"
 
-echo "Executing: ${BUILD_CMD}"
+echo ""
+echo "Executing Docker build..."
+echo "Command: ${BUILD_CMD}"
+echo ""
+
 ${BUILD_CMD} || {
+    echo ""
     echo "Error: Docker build failed"
+    echo ""
+    echo "Troubleshooting tips:"
+    echo "1. If error is 'COPY failed: no such file or directory', check if .dockerignore excludes 'docker/src/main/${BUILD_DATA_DIR_NAME}/'"
+    echo "2. Ensure Docker daemon is running"
+    echo "3. Try running with --no-cache option"
     exit 1
 }
 
