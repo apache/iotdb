@@ -108,6 +108,11 @@ public class RelationalInsertRowNode extends InsertRowNode {
     return visitor.visitRelationalInsertRow(this, context);
   }
 
+  @Override
+  public long getTime() {
+    return super.getTime();
+  }
+
   public static RelationalInsertRowNode deserialize(ByteBuffer byteBuffer) {
     RelationalInsertRowNode insertNode = new RelationalInsertRowNode(new PlanNodeId(""));
     insertNode.subDeserialize(byteBuffer);

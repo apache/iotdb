@@ -176,6 +176,11 @@ public class RelationalInsertTabletNode extends InsertTabletNode {
   }
 
   @Override
+  public long getTime() {
+    return super.getTime();
+  }
+
+  @Override
   protected InsertTabletNode getEmptySplit(int count) {
     long[] subTimes = new long[count];
     Object[] values = initTabletValues(dataTypes.length, count, dataTypes);
