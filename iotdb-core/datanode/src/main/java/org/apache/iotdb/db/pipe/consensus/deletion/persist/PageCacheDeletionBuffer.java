@@ -105,7 +105,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
     allocateBuffers();
     persistThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
-            ThreadName.PIPE_CONSENSUS_DELETION_SERIALIZE.getName()
+            ThreadName.IOT_CONSENSUS_V2_DELETION_SERIALIZE.getName()
                 + "(group-"
                 + dataRegionId
                 + ")");
@@ -228,7 +228,7 @@ public class PageCacheDeletionBuffer implements DeletionBuffer {
       ProgressIndex curProgressIndex =
           ReplicateProgressDataNodeManager.extractLocalSimpleProgressIndex(
               maxProgressIndexInCurrentFile);
-      // PipeConsensus ensures that deleteDataNodes use recoverProgressIndex.
+      // IoTConsensusV2 ensures that deleteDataNodes use recoverProgressIndex.
       if (!(curProgressIndex instanceof SimpleProgressIndex)) {
         throw new IOException("Invalid deletion progress index: " + curProgressIndex);
       }

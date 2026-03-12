@@ -33,7 +33,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TCQConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TRatisConfig;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.pipe.resource.log.PipePeriodicalLogReducer;
@@ -1258,7 +1258,7 @@ public class IoTDBDescriptor {
     }
     conf.setIotConsensusV2Mode(
         properties.getProperty(
-            "iot_consensus_v2_mode", PipeConsensusConfig.ReplicateMode.BATCH.getValue()));
+            "iot_consensus_v2_mode", IoTConsensusV2Config.ReplicateMode.BATCH.getValue()));
     int deletionAheadLogBufferQueueCapacity =
         Integer.parseInt(
             properties.getProperty(
