@@ -32,8 +32,18 @@ final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize) {
-    super(endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
+    super(
+        endPoint,
+        username,
+        password,
+        consumerId,
+        consumerGroupId,
+        thriftMaxFrameSize,
+        heartbeatIntervalMs,
+        connectionTimeoutInMs);
   }
 
   @Override
@@ -42,12 +52,14 @@ final class SubscriptionTableProvider extends AbstractSubscriptionProvider {
       final int port,
       final String username,
       final String password,
-      final int thriftMaxFrameSize) {
+      final int thriftMaxFrameSize,
+      final int connectionTimeoutInMs) {
     return new SubscriptionTableSessionBuilder()
         .host(host)
         .port(port)
         .username(username)
         .password(password)
-        .thriftMaxFrameSize(thriftMaxFrameSize);
+        .thriftMaxFrameSize(thriftMaxFrameSize)
+        .connectionTimeoutInMs(connectionTimeoutInMs);
   }
 }

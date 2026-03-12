@@ -36,7 +36,7 @@ public final class SubscriptionSessionWrapper extends Session {
   }
 
   public void open() throws IoTDBConnectionException {
-    super.open();
+    super.open(enableThriftRpcCompaction, connectionTimeoutInMs);
   }
 
   public void close() throws IoTDBConnectionException {
