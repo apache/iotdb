@@ -210,6 +210,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
             memoryBudgetForFileWriter,
             CompactionType.INNER_SEQ_COMPACTION,
             firstEncryptParameter);
+    summary.recordTargetTsFileTableSizeMap(
+        targetResources.get(currentTargetFileIndex), currentWriter.getTableSizeMap());
     currentWriter.setSchema(CompactionTableSchemaCollector.copySchema(schema));
   }
 

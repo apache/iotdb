@@ -26,12 +26,14 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.metricsets.IMetricSet;
+import org.apache.iotdb.metrics.type.AutoGauge;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
@@ -446,6 +448,7 @@ public class WritingMetrics implements IMetricSet {
   public static final String WAL_FLUSH_MEMTABLE_COUNT = "wal_flush_memtable_count";
   public static final String MANUAL_FLUSH_MEMTABLE_COUNT = "manual_flush_memtable_count";
   public static final String MEM_CONTROL_FLUSH_MEMTABLE_COUNT = "mem_control_flush_memtable_count";
+  public static final String BLOCKED_OPERATION_NUM = "blocked_operation_num";
 
   private Gauge flushThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
   private Gauge rejectThreholdGauge = DoNothingMetricManager.DO_NOTHING_GAUGE;
@@ -458,6 +461,9 @@ public class WritingMetrics implements IMetricSet {
   private Counter memControlFlushMemtableCounter = DoNothingMetricManager.DO_NOTHING_COUNTER;
 
   private Histogram avgPointHistogram = DoNothingMetricManager.DO_NOTHING_HISTOGRAM;
+
+  private AutoGauge tableDiskUsageCacheBlockedRequestNumGauge =
+      DoNothingMetricManager.DO_NOTHING_AUTO_GAUGE;
 
   public void bindDataRegionMetrics() {
     List<DataRegion> allDataRegions = StorageEngine.getInstance().getAllDataRegions();
@@ -489,6 +495,16 @@ public class WritingMetrics implements IMetricSet {
     memtableLiveTimer =
         MetricService.getInstance()
             .getOrCreateTimer(Metric.MEMTABLE_LIVE_DURATION.toString(), MetricLevel.IMPORTANT);
+
+    tableDiskUsageCacheBlockedRequestNumGauge =
+        MetricService.getInstance()
+            .createAutoGauge(
+                Metric.TABLE_DISK_USAGE_CACHE.toString(),
+                MetricLevel.IMPORTANT,
+                TableDiskUsageCache.getInstance(),
+                TableDiskUsageCache::getQueueSize,
+                Tag.NAME.toString(),
+                BLOCKED_OPERATION_NUM);
   }
 
   public void unbindDataRegionMetrics() {
@@ -517,6 +533,12 @@ public class WritingMetrics implements IMetricSet {
             Tag.TYPE.toString(),
             REJECT_THRESHOLD);
     MetricService.getInstance().remove(MetricType.TIMER, Metric.MEMTABLE_LIVE_DURATION.toString());
+    MetricService.getInstance()
+        .remove(
+            MetricType.AUTO_GAUGE,
+            Metric.TABLE_DISK_USAGE_CACHE.toString(),
+            Tag.NAME.toString(),
+            BLOCKED_OPERATION_NUM);
   }
 
   public void createDataRegionMemoryCostMetrics(DataRegion dataRegion) {

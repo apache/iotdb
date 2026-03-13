@@ -99,6 +99,7 @@ keyWords
     | DEVICES
     | DISABLE
     | DISCARD
+    | DISK_USAGE
     | DROP
     | ELAPSEDTIME
     | ELSE
@@ -223,6 +224,7 @@ keyWords
     | SGLEVEL
     | SHOW
     | SINK
+    | SIZEINBYTES
     | SLIMIT
     | SOFFSET
     | SOURCE

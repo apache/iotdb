@@ -101,7 +101,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileRepairStatus.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class);
+          + TsFileID.SHALLOW_SIZE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 

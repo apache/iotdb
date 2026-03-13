@@ -1190,6 +1190,16 @@ public class IoTDBDescriptor {
     if (delayAnalyzerConfidenceLevel > 0 && delayAnalyzerConfidenceLevel <= 1) {
       conf.setDelayAnalyzerConfidenceLevel(delayAnalyzerConfidenceLevel);
     }
+
+    // max sub-task num for information table scan
+    int maxSubTaskNumForInformationTableScan =
+        Integer.parseInt(
+            properties.getProperty(
+                "max_sub_task_num_for_information_table_scan",
+                Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+    if (maxSubTaskNumForInformationTableScan > 0) {
+      conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
+    }
   }
 
   private void loadFixedSizeLimitForQuery(
@@ -2252,6 +2262,16 @@ public class IoTDBDescriptor {
                   "max_rows_in_cte_buffer", Integer.toString(conf.getMaxRowsInCteBuffer())));
       if (maxRowsInCteBuffer > 0) {
         conf.setMaxRowsInCteBuffer(maxRowsInCteBuffer);
+      }
+
+      // max sub-task num for information table scan
+      int maxSubTaskNumForInformationTableScan =
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_sub_task_num_for_information_table_scan",
+                  Integer.toString(conf.getMaxSubTaskNumForInformationTableScan())));
+      if (maxSubTaskNumForInformationTableScan > 0) {
+        conf.setMaxSubTaskNumForInformationTableScan(maxSubTaskNumForInformationTableScan);
       }
 
     } catch (Exception e) {
