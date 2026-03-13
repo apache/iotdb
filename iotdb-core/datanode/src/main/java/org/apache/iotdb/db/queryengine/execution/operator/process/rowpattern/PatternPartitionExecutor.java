@@ -32,7 +32,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowsPerMatch
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.SkipToPosition;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -205,18 +204,12 @@ public final class PatternPartitionExecutor {
   // for ALL ROWS PER MATCH WITH UNMATCHED ROWS
   // the output for unmatched row refers to no pattern match.
   private void outputUnmatchedRow(TsBlockBuilder builder) {
-    // Copy origin data
     int index = currentPosition - partitionStart;
-    Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(index);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-    TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
 
     int channel = 0;
     for (int i = 0; i < outputChannels.size(); i++) {
-      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
+      partition.writeTo(columnBuilder, outputChannels.get(i), index);
       channel++;
     }
 
@@ -231,18 +224,12 @@ public final class PatternPartitionExecutor {
 
   // the output for empty match refers to empty pattern match.
   private void outputEmptyMatch(TsBlockBuilder builder) {
-    // Copy origin data
     int index = currentPosition - partitionStart;
-    Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(index);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-    TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
 
     int channel = 0;
     for (int i = 0; i < outputChannels.size(); i++) {
-      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
+      partition.writeTo(columnBuilder, outputChannels.get(i), index);
       channel++;
     }
 
@@ -268,20 +255,13 @@ public final class PatternPartitionExecutor {
       int patternStart,
       int searchStart,
       int searchEnd) {
-    // Copy origin data
     int index = currentPosition - partitionStart;
-    Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(index);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-    TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
 
     int channel = 0;
     // PARTITION BY
     for (int i = 0; i < outputChannels.size(); i++) {
-      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
-
+      partition.writeTo(columnBuilder, outputChannels.get(i), index);
       channel++;
     }
 
@@ -348,18 +328,10 @@ public final class PatternPartitionExecutor {
   // Called by method outputAllRowsPerMatch
   private void outputRow(
       TsBlockBuilder builder, ArrayView labels, int position, int searchStart, int searchEnd) {
-    // Copy origin data
-    Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(position);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-    TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
-
-    // map the column data of the current row from the input table to the output table
     int channel = 0;
     for (int i = 0; i < outputChannels.size(); i++) {
-      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      columnBuilder.write(column, offsetInTsBlock);
+      partition.writeTo(columnBuilder, outputChannels.get(i), position);
       channel++;
     }
 

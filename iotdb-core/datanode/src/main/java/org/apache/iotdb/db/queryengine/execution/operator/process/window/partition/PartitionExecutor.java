@@ -30,7 +30,6 @@ import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.R
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.RowComparator;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.block.column.ColumnBuilder;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
@@ -69,17 +68,42 @@ public final class PartitionExecutor {
       List<WindowFunction> windowFunctions,
       List<FrameInfo> frameInfoList,
       List<Integer> sortChannels) {
-    // Partition
-    this.partition = new Partition(tsBlocks, startIndexInFirstBlock, endIndexInLastBlock);
-    this.partitionStart = startIndexInFirstBlock;
-    this.partitionEnd = startIndexInFirstBlock + this.partition.getPositionCount();
-    // Window functions and frames
+    this(
+        new Partition(tsBlocks, startIndexInFirstBlock, endIndexInLastBlock),
+        dataTypes,
+        startIndexInFirstBlock,
+        outputChannels,
+        windowFunctions,
+        frameInfoList,
+        sortChannels);
+  }
+
+  public PartitionExecutor(
+      Partition partition,
+      List<TSDataType> dataTypes,
+      List<Integer> outputChannels,
+      List<WindowFunction> windowFunctions,
+      List<FrameInfo> frameInfoList,
+      List<Integer> sortChannels) {
+    this(partition, dataTypes, 0, outputChannels, windowFunctions, frameInfoList, sortChannels);
+  }
+
+  private PartitionExecutor(
+      Partition partition,
+      List<TSDataType> dataTypes,
+      int partitionStart,
+      List<Integer> outputChannels,
+      List<WindowFunction> windowFunctions,
+      List<FrameInfo> frameInfoList,
+      List<Integer> sortChannels) {
+    this.partition = partition;
+    this.partitionStart = partitionStart;
+    this.partitionEnd = partitionStart + this.partition.getPositionCount();
     this.windowFunctions = ImmutableList.copyOf(windowFunctions);
     this.frames = new ArrayList<>();
 
     this.outputChannels = ImmutableList.copyOf(outputChannels);
 
-    // Prepare for peer group comparing
     List<TSDataType> sortDataTypes = new ArrayList<>();
     for (int channel : sortChannels) {
       TSDataType dataType = dataTypes.get(channel);
@@ -118,7 +142,6 @@ public final class PartitionExecutor {
                     peerGroupEnd - partitionStart - 1);
             break;
           default:
-            // Unreachable
             throw new UnsupportedOperationException("Unreachable!");
         }
       }
@@ -131,21 +154,15 @@ public final class PartitionExecutor {
   }
 
   public void processNextRow(TsBlockBuilder builder) {
-    // Copy origin data
     int index = currentPosition - partitionStart;
-    Partition.PartitionIndex partitionIndex = partition.getPartitionIndex(index);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-    TsBlock tsBlock = partition.getTsBlock(tsBlockIndex);
 
     int channel = 0;
     for (int i = 0; i < outputChannels.size(); i++) {
-      Column column = tsBlock.getColumn(outputChannels.get(i));
       ColumnBuilder columnBuilder = builder.getColumnBuilder(i);
-      if (column.isNull(offsetInTsBlock)) {
+      if (partition.isNull(outputChannels.get(i), index)) {
         columnBuilder.appendNull();
       } else {
-        columnBuilder.write(column, offsetInTsBlock);
+        partition.writeTo(columnBuilder, outputChannels.get(i), index);
       }
       channel++;
     }

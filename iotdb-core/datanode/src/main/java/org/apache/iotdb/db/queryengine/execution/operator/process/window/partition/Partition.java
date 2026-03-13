@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.queryengine.execution.operator.process.window.partition;
 
+import org.apache.iotdb.db.queryengine.execution.operator.process.function.partition.Slice;
 import org.apache.iotdb.db.queryengine.execution.operator.process.window.utils.ColumnList;
 
 import org.apache.tsfile.block.column.Column;
@@ -27,40 +28,45 @@ import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Binary;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class Partition {
-  private final List<TsBlock> tsBlocks;
+  private final List<Column[]> segments;
   private int cachedPositionCount = -1;
 
   public Partition(List<TsBlock> tsBlocks, int startIndexInFirstBlock, int endIndexInLastBlock) {
+    this.segments = new ArrayList<>(tsBlocks.size());
     if (tsBlocks.size() == 1) {
       int length = endIndexInLastBlock - startIndexInFirstBlock;
-      this.tsBlocks =
-          Collections.singletonList(tsBlocks.get(0).getRegion(startIndexInFirstBlock, length));
-      return;
+      TsBlock region = tsBlocks.get(0).getRegion(startIndexInFirstBlock, length);
+      segments.add(region.getValueColumns());
+    } else {
+      TsBlock firstBlock = tsBlocks.get(0).subTsBlock(startIndexInFirstBlock);
+      segments.add(firstBlock.getValueColumns());
+      for (int i = 1; i < tsBlocks.size() - 1; i++) {
+        segments.add(tsBlocks.get(i).getValueColumns());
+      }
+      TsBlock lastBlock = tsBlocks.get(tsBlocks.size() - 1).getRegion(0, endIndexInLastBlock);
+      segments.add(lastBlock.getValueColumns());
     }
+  }
 
-    this.tsBlocks = new ArrayList<>(tsBlocks.size());
-    // First TsBlock
-    TsBlock firstBlock = tsBlocks.get(0).subTsBlock(startIndexInFirstBlock);
-    this.tsBlocks.add(firstBlock);
-    // Middle TsBlock
-    for (int i = 1; i < tsBlocks.size() - 1; i++) {
-      this.tsBlocks.add(tsBlocks.get(i));
+  public Partition(List<Slice> slices) {
+    this.segments = new ArrayList<>(slices.size());
+    for (Slice slice : slices) {
+      segments.add(slice.getRequiredColumns());
     }
-    // Last TsBlock
-    TsBlock lastBlock = tsBlocks.get(tsBlocks.size() - 1).getRegion(0, endIndexInLastBlock);
-    this.tsBlocks.add(lastBlock);
+  }
+
+  private Partition(List<Column[]> segments, boolean directSegments) {
+    this.segments = segments;
   }
 
   public int getPositionCount() {
     if (cachedPositionCount == -1) {
-      // Lazy initialized
       cachedPositionCount = 0;
-      for (TsBlock block : tsBlocks) {
-        cachedPositionCount += block.getPositionCount();
+      for (Column[] segment : segments) {
+        cachedPositionCount += segment[0].getPositionCount();
       }
     }
 
@@ -68,144 +74,149 @@ public class Partition {
   }
 
   public int getValueColumnCount() {
-    return tsBlocks.get(0).getValueColumnCount();
-  }
-
-  public TsBlock getTsBlock(int tsBlockIndex) {
-    return tsBlocks.get(tsBlockIndex);
+    return segments.get(0).length;
   }
 
   public List<Column[]> getAllColumns() {
-    List<Column[]> allColumns = new ArrayList<>();
-    for (TsBlock block : tsBlocks) {
-      allColumns.add(block.getAllColumns());
-    }
-
-    return allColumns;
+    return segments;
   }
 
   public boolean getBoolean(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getBoolean(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getBoolean(offset);
   }
 
   public int getInt(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getInt(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getInt(offset);
   }
 
   public long getLong(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getLong(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getLong(offset);
   }
 
   public float getFloat(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getFloat(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getFloat(offset);
   }
 
   public double getDouble(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getDouble(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getDouble(offset);
   }
 
   public Binary getBinary(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).getBinary(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].getBinary(offset);
   }
 
   public boolean isNull(int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    TsBlock tsBlock = tsBlocks.get(tsBlockIndex);
-    return tsBlock.getColumn(channel).isNull(offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    return segments.get(segmentIndex)[channel].isNull(offset);
   }
 
   public void writeTo(ColumnBuilder builder, int channel, int rowIndex) {
     PartitionIndex partitionIndex = getPartitionIndex(rowIndex);
-    int tsBlockIndex = partitionIndex.getTsBlockIndex();
-    int offsetInTsBlock = partitionIndex.getOffsetInTsBlock();
-
-    Column column = tsBlocks.get(tsBlockIndex).getColumn(channel);
-    builder.write(column, offsetInTsBlock);
+    int segmentIndex = partitionIndex.getSegmentIndex();
+    int offset = partitionIndex.getOffsetInSegment();
+    Column column = segments.get(segmentIndex)[channel];
+    builder.write(column, offset);
   }
 
   public static class PartitionIndex {
-    private final int tsBlockIndex;
-    private final int offsetInTsBlock;
+    private final int segmentIndex;
+    private final int offsetInSegment;
 
-    PartitionIndex(int tsBlockIndex, int offsetInTsBlock) {
-      this.tsBlockIndex = tsBlockIndex;
-      this.offsetInTsBlock = offsetInTsBlock;
+    PartitionIndex(int segmentIndex, int offsetInSegment) {
+      this.segmentIndex = segmentIndex;
+      this.offsetInSegment = offsetInSegment;
     }
 
-    public int getTsBlockIndex() {
-      return tsBlockIndex;
+    public int getSegmentIndex() {
+      return segmentIndex;
     }
 
-    public int getOffsetInTsBlock() {
-      return offsetInTsBlock;
+    public int getOffsetInSegment() {
+      return offsetInSegment;
     }
   }
 
   // start and end are indexes within partition
   // Both of them are inclusive, i.e. [start, end]
   public Partition getRegion(int start, int end) {
-    PartitionIndex startPartitionIndex = getPartitionIndex(start);
-    PartitionIndex endPartitionIndex = getPartitionIndex(end);
+    PartitionIndex startPI = getPartitionIndex(start);
+    PartitionIndex endPI = getPartitionIndex(end);
 
-    List<TsBlock> tsBlockList = new ArrayList<>();
-    int startTsBlockIndex = startPartitionIndex.getTsBlockIndex();
-    int endTsBlockIndex = endPartitionIndex.getTsBlockIndex();
-    for (int i = startTsBlockIndex; i <= endTsBlockIndex; i++) {
-      tsBlockList.add(tsBlocks.get(i));
+    int startSeg = startPI.getSegmentIndex();
+    int endSeg = endPI.getSegmentIndex();
+    int columnCount = segments.get(0).length;
+
+    List<Column[]> regionSegments = new ArrayList<>();
+
+    if (startSeg == endSeg) {
+      int offset = startPI.getOffsetInSegment();
+      int length = endPI.getOffsetInSegment() - offset + 1;
+      Column[] cols = segments.get(startSeg);
+      Column[] region = new Column[columnCount];
+      for (int c = 0; c < columnCount; c++) {
+        region[c] = cols[c].getRegion(offset, length);
+      }
+      regionSegments.add(region);
+    } else {
+      // First segment
+      Column[] firstCols = segments.get(startSeg);
+      int firstOffset = startPI.getOffsetInSegment();
+      int firstLen = firstCols[0].getPositionCount() - firstOffset;
+      Column[] firstRegion = new Column[columnCount];
+      for (int c = 0; c < columnCount; c++) {
+        firstRegion[c] = firstCols[c].getRegion(firstOffset, firstLen);
+      }
+      regionSegments.add(firstRegion);
+
+      // Middle segments
+      for (int i = startSeg + 1; i < endSeg; i++) {
+        regionSegments.add(segments.get(i));
+      }
+
+      // Last segment
+      Column[] lastCols = segments.get(endSeg);
+      int lastLen = endPI.getOffsetInSegment() + 1;
+      Column[] lastRegion = new Column[columnCount];
+      for (int c = 0; c < columnCount; c++) {
+        lastRegion[c] = lastCols[c].getRegion(0, lastLen);
+      }
+      regionSegments.add(lastRegion);
     }
 
-    int startIndexInFirstBlock = startPartitionIndex.getOffsetInTsBlock();
-    int endIndexInLastBlock = endPartitionIndex.getOffsetInTsBlock();
-    return new Partition(tsBlockList, startIndexInFirstBlock, endIndexInLastBlock + 1);
+    return new Partition(regionSegments, true);
   }
 
-  // rowIndex is index within partition
   public PartitionIndex getPartitionIndex(int rowIndex) {
-    int tsBlockIndex = 0;
-    while (tsBlockIndex < tsBlocks.size()
-        && rowIndex >= tsBlocks.get(tsBlockIndex).getPositionCount()) {
-      rowIndex -= tsBlocks.get(tsBlockIndex).getPositionCount();
-      // Enter next TsBlock
-      tsBlockIndex++;
+    int segmentIndex = 0;
+    while (segmentIndex < segments.size()
+        && rowIndex >= segments.get(segmentIndex)[0].getPositionCount()) {
+      rowIndex -= segments.get(segmentIndex)[0].getPositionCount();
+      segmentIndex++;
     }
 
-    if (tsBlockIndex != tsBlocks.size()) {
-      return new PartitionIndex(tsBlockIndex, rowIndex);
+    if (segmentIndex != segments.size()) {
+      return new PartitionIndex(segmentIndex, rowIndex);
     } else {
-      // Unlikely
       throw new IndexOutOfBoundsException("Index out of Partition's bounds!");
     }
   }
@@ -215,8 +226,8 @@ public class Partition {
 
     for (Integer sortedChannel : sortedChannels) {
       List<Column> columns = new ArrayList<>();
-      for (TsBlock tsBlock : tsBlocks) {
-        columns.add(tsBlock.getColumn(sortedChannel));
+      for (Column[] segment : segments) {
+        columns.add(segment[sortedChannel]);
       }
       columnLists.add(new ColumnList(columns));
     }
