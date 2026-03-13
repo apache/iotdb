@@ -58,6 +58,8 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -67,6 +69,9 @@ import java.util.List;
 import java.util.Map;
 
 public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(FastAlignedSeriesCompactionExecutor.class);
 
   // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
   // linked hash map, which has the same measurement lexicographical order as measurementSchemas.
@@ -216,6 +221,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                 .get(resource)
                 .getChunkMetadataListByTimeseriesMetadataOffset(
                     timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+        for (IChunkMetadata timeChunkMetadata : timeChunkMetadatas) {
+          logger.warn(
+              "Read a time chunk of {} from {}: {}",
+              deviceId,
+              resource.getTsFile(),
+              timeChunkMetadata.getStatistics());
+        }
       } else {
         // read value chunk metadatas
         if (timeseriesOffsetInCurrentFile == null) {
@@ -337,6 +349,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
     CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
     List<Pair<PageHeader, ByteBuffer>> timePages = chunkReader.readPageDataWithoutUncompressing();
+    for (Pair<PageHeader, ByteBuffer> timePage : timePages) {
+      logger.warn(
+          "Read a time page of {} from {}: {}",
+          deviceId,
+          chunkMetadataElement.fileElement.resource.getTsFile(),
+          timePage.left.getStatistics());
+    }
 
     // deserialize value chunks
     List<List<Pair<PageHeader, ByteBuffer>>> valuePagesList = new ArrayList<>();
@@ -432,6 +451,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   @Override
   protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
       throws IOException {
+    logger.warn(
+        "Flush a chunk of {}: {}", deviceId, chunkMetadataElement.chunkMetadata.getStatistics());
     return compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId);
   }
 
@@ -465,6 +486,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   protected boolean flushPageToCompactionWriter(PageElement pageElement)
       throws PageException, IOException {
     AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
+    logger.warn(
+        "Flush a page of {}: {}", alignedPageElement.getTimePageHeader().getStatistics(), deviceId);
     return compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
   }
 

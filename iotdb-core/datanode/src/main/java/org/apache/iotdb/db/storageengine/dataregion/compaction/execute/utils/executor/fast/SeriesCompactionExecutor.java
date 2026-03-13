@@ -42,6 +42,8 @@ import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -52,6 +54,8 @@ import java.util.Optional;
 import java.util.PriorityQueue;
 
 public abstract class SeriesCompactionExecutor {
+
+  private static final Logger logger = LoggerFactory.getLogger(SeriesCompactionExecutor.class);
 
   @FunctionalInterface
   public interface RemovePage {
@@ -270,6 +274,7 @@ public abstract class SeriesCompactionExecutor {
           // finish writing this page
           break;
         }
+        logger.warn("write a point {}", point);
         compactionWriter.write(point, subTaskId);
         pointPriorityReader.next();
       }
@@ -310,6 +315,7 @@ public abstract class SeriesCompactionExecutor {
         currentTime = currentPoint.getTimestamp();
       }
 
+      logger.warn("Write a time point {}", currentPoint);
       // write data point into chunk writer
       compactionWriter.write(currentPoint, subTaskId);
       pointPriorityReader.next();
