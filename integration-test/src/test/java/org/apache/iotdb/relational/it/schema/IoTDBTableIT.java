@@ -3010,37 +3010,42 @@ public class IoTDBTableIT {
         }
 
         // Verify final data for all tables matches successful inserts
-        Awaitility.await().atMost(20, TimeUnit.SECONDS).untilAsserted(
-            () -> {
-              for (int i = 0; i < tableCount; i++) {
-                try (final ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + tableNames[i])) {
-                  assertTrue(rs.next());
-                  final long count = rs.getLong(1);
-                  final int expectedTotal = 20 + successfulInserts[i].get();
-                  if (count != expectedTotal) {
-                    List<Long> actualTimestamps = new ArrayList<>();
-                    try (ResultSet resultSet =
-                        stmt.executeQuery("SELECT * FROM " + tableNames[i] + " order by time")) {
-                      while (resultSet.next()) {
-                        actualTimestamps.add(resultSet.getLong(1));
+        Awaitility.await()
+            .atMost(20, TimeUnit.SECONDS)
+            .untilAsserted(
+                () -> {
+                  for (int i = 0; i < tableCount; i++) {
+                    try (final ResultSet rs =
+                        stmt.executeQuery("SELECT count(*) FROM " + tableNames[i])) {
+                      assertTrue(rs.next());
+                      final long count = rs.getLong(1);
+                      final int expectedTotal = 20 + successfulInserts[i].get();
+                      if (count != expectedTotal) {
+                        List<Long> actualTimestamps = new ArrayList<>();
+                        try (ResultSet resultSet =
+                            stmt.executeQuery(
+                                "SELECT * FROM " + tableNames[i] + " order by time")) {
+                          while (resultSet.next()) {
+                            actualTimestamps.add(resultSet.getLong(1));
+                          }
+                        }
+                        insertedTimestamps.get(i).sort(null);
+                        System.out.println("Expected timestamps of table " + tableNames[i]);
+                        System.out.println(insertedTimestamps.get(i));
+                        System.out.println("Actual timestamps");
+                        System.out.println(actualTimestamps);
                       }
-                    }
-                    insertedTimestamps.get(i).sort(null);
-                    System.out.println("Expected timestamps of table " + tableNames[i]);
-                    System.out.println(insertedTimestamps.get(i));
-                    System.out.println("Actual timestamps");
-                    System.out.println(actualTimestamps);
-                  }
 
-                  // Verify total matches (initial 20 rows per table + successful concurrent inserts)
-                  assertEquals(
-                      "Mismatch between expected total and actual total row count for table " + i,
-                      expectedTotal,
-                      count);
-                }
-              }
-            }
-        );
+                      // Verify total matches (initial 20 rows per table + successful concurrent
+                      // inserts)
+                      assertEquals(
+                          "Mismatch between expected total and actual total row count for table "
+                              + i,
+                          expectedTotal,
+                          count);
+                    }
+                  }
+                });
 
       } finally {
         if (exec != null) {
