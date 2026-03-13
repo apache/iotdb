@@ -39,7 +39,6 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
   private final TSDataType seriesDataType;
   private final CentralMomentAccumulator.MomentType momentType;
 
-  // State
   private long count;
   private double mean;
   private double m2;
@@ -172,7 +171,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
     if (count == 0) {
       columnBuilder.appendNull();
     } else {
-      // Serialize: long(8) + 4*double(32) = 40 bytes
+
       ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES + Double.BYTES * 4);
       buffer.putLong(count);
       buffer.putDouble(mean);
@@ -199,7 +198,7 @@ public class TableCentralMomentAccumulator implements TableAccumulator {
         double result = (count * m3) / ((count - 1) * (count - 2) * stdev * stdev * stdev);
         columnBuilder.writeDouble(result);
       }
-    } else { // KURTOSIS
+    } else {
       if (count < 4) {
         columnBuilder.appendNull();
       } else {

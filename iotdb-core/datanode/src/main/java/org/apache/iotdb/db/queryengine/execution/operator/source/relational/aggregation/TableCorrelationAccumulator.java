@@ -42,9 +42,9 @@ public class TableCorrelationAccumulator implements TableAccumulator {
   private long count;
   private double meanX;
   private double meanY;
-  private double m2X; // sum((x - meanX)^2)
-  private double m2Y; // sum((y - meanY)^2)
-  private double c2; // sum((x - meanX) * (y - meanY))
+  private double m2X;
+  private double m2Y;
+  private double c2;
 
   public TableCorrelationAccumulator(
       TSDataType xDataType,
@@ -118,7 +118,6 @@ public class TableCorrelationAccumulator implements TableAccumulator {
     meanX += deltaX / newCount;
     meanY += deltaY / newCount;
 
-    // Welford's algorithm for covariance and variance
     c2 += deltaX * (y - meanY);
     m2X += deltaX * (x - meanX);
     m2Y += deltaY * (y - meanY);
@@ -180,7 +179,6 @@ public class TableCorrelationAccumulator implements TableAccumulator {
       double deltaX = otherMeanX - meanX;
       double deltaY = otherMeanY - meanY;
 
-      // Merge formulas
       c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
       m2X += otherM2X + deltaX * deltaX * count * otherCount / newCount;
       m2Y += otherM2Y + deltaY * deltaY * count * otherCount / newCount;

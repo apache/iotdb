@@ -44,9 +44,9 @@ public class CorrelationAccumulator implements Accumulator {
   private long count;
   private double meanX;
   private double meanY;
-  private double m2X; // sum((x - meanX)^2)
-  private double m2Y; // sum((y - meanY)^2)
-  private double c2; // sum((x - meanX) * (y - meanY))
+  private double m2X;
+  private double m2Y;
+  private double c2;
 
   public CorrelationAccumulator(TSDataType[] seriesDataTypes, CorrelationType correlationType) {
     this.seriesDataTypes = seriesDataTypes;
@@ -55,8 +55,7 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    // columns[0] is time column
-    // columns[1] and columns[2] are the two data columns
+
     int size = columns[0].getPositionCount();
     for (int i = 0; i < size; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
@@ -97,8 +96,6 @@ public class CorrelationAccumulator implements Accumulator {
     meanX += deltaX / newCount;
     meanY += deltaY / newCount;
 
-    // Welford's algorithm for covariance and variance
-    // C2_new = C2_old + (x - meanX_old) * (y - meanY_new)
     c2 += deltaX * (y - meanY);
     m2X += deltaX * (x - meanX);
     m2Y += deltaY * (y - meanY);
@@ -147,7 +144,6 @@ public class CorrelationAccumulator implements Accumulator {
       double deltaX = otherMeanX - meanX;
       double deltaY = otherMeanY - meanY;
 
-      // Merge formulas
       c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
       m2X += otherM2X + deltaX * deltaX * count * otherCount / newCount;
       m2Y += otherM2Y + deltaY * deltaY * count * otherCount / newCount;
@@ -180,10 +176,10 @@ public class CorrelationAccumulator implements Accumulator {
     switch (correlationType) {
       case CORR:
         if (count < 2) {
-          // Not enough data to calculate correlation
+
           columnBuilder.appendNull();
         } else if (m2X == 0 || m2Y == 0) {
-          // If either variable has zero variance (all values the same), correlation is 0
+
           columnBuilder.writeDouble(0.0);
         } else {
           columnBuilder.writeDouble(c2 / Math.sqrt(m2X * m2Y));
@@ -210,7 +206,7 @@ public class CorrelationAccumulator implements Accumulator {
 
   @Override
   public void removeIntermediate(Column[] input) {
-    // Optional: sliding window logic implementation if needed, otherwise throw exception
+
     throw new UnsupportedOperationException("Remove not implemented for Correlation");
   }
 
@@ -220,9 +216,7 @@ public class CorrelationAccumulator implements Accumulator {
   }
 
   @Override
-  public void setFinal(Column finalResult) {
-    // No-op for this accumulator typically
-  }
+  public void setFinal(Column finalResult) {}
 
   @Override
   public void reset() {

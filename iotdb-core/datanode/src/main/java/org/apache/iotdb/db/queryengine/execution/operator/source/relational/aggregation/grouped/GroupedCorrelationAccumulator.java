@@ -136,7 +136,6 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
     meanXs.add(groupId, deltaX / newCount);
     meanYs.add(groupId, deltaY / newCount);
 
-    // Welford's algorithm for covariance and variance
     c2s.add(groupId, deltaX * (y - meanYs.get(groupId)));
     m2Xs.add(groupId, deltaX * (x - meanXs.get(groupId)));
     m2Ys.add(groupId, deltaY * (y - meanYs.get(groupId)));
@@ -194,7 +193,6 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
       double deltaX = otherMeanX - meanXs.get(groupId);
       double deltaY = otherMeanY - meanYs.get(groupId);
 
-      // Merge formulas
       c2s.add(groupId, otherC2 + deltaX * deltaY * counts.get(groupId) * otherCount / newCount);
       m2Xs.add(groupId, otherM2X + deltaX * deltaX * counts.get(groupId) * otherCount / newCount);
       m2Ys.add(groupId, otherM2Y + deltaY * deltaY * counts.get(groupId) * otherCount / newCount);

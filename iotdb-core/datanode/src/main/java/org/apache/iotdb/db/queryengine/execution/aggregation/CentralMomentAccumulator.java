@@ -35,7 +35,6 @@ public class CentralMomentAccumulator implements Accumulator {
   private final TSDataType seriesDataType;
   private final MomentType momentType;
 
-  // State variables: count, mean, M2, M3, M4
   private long count;
   private double mean;
   private double m2;
@@ -49,7 +48,7 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    // Tree model: columns[0] is Time, columns[1] is data
+
     int size = columns[1].getPositionCount();
     for (int i = 0; i < size; i++) {
       if (bitMap != null && !bitMap.isMarked(i)) {
@@ -91,13 +90,10 @@ public class CentralMomentAccumulator implements Accumulator {
 
     mean += delta_n;
 
-    // 更新 M4 (顺序很重要，必须在更新 M3, M2 之前)
     m4 += term1 * delta_n2 * (count * count - 3 * count + 3) + 6 * delta_n2 * m2 - 4 * delta_n * m3;
 
-    // 更新 M3
     m3 += term1 * delta_n * (count - 2) - 3 * delta_n * m2;
 
-    // 更新 M2
     m2 += term1;
   }
 
@@ -135,24 +131,19 @@ public class CentralMomentAccumulator implements Accumulator {
       double delta3 = delta * delta2;
       double delta4 = delta2 * delta2;
 
-      // 合并公式 (Chan et al.)
-      // M4 合并
       m4 +=
           m4B
               + delta4 * nA * nB * (nA * nA - nA * nB + nB * nB) / (nTotal * nTotal * nTotal)
               + 6.0 * delta2 * (nA * nA * m2B + nB * nB * m2) / (nTotal * nTotal)
               + 4.0 * delta * (nA * m3B - nB * m3) / nTotal;
 
-      // M3 合并
       m3 +=
           m3B
               + delta3 * nA * nB * (nA - nB) / (nTotal * nTotal)
               + 3.0 * delta * (nA * m2B - nB * m2) / nTotal;
 
-      // M2 合并
       m2 += m2B + delta2 * nA * nB / nTotal;
 
-      // Mean 合并
       mean += delta * nB / nTotal;
       count = nTotal;
     }
@@ -164,7 +155,7 @@ public class CentralMomentAccumulator implements Accumulator {
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
-      // 序列化: long + 4 * double = 40 bytes
+
       byte[] bytes = new byte[40];
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(count);
@@ -178,27 +169,26 @@ public class CentralMomentAccumulator implements Accumulator {
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    if (count == 0 || m2 == 0) { // 方差为0或无数据
+    if (count == 0 || m2 == 0) {
       columnBuilder.appendNull();
       return;
     }
 
     if (momentType == MomentType.SKEWNESS) {
-      if (count < 3) { // 偏度要求 N >= 3
+      if (count < 3) {
         columnBuilder.appendNull();
       } else {
-        // 无偏估计公式: (N * M3) / ((N-1)*(N-2) * sigma^3)
-        // sigma = sqrt(M2 / (N-1))
+
         double variance = m2 / (count - 1);
         double stdev = Math.sqrt(variance);
         double result = (count * m3) / ((count - 1) * (count - 2) * stdev * stdev * stdev);
         columnBuilder.writeDouble(result);
       }
-    } else { // KURTOSIS
-      if (count < 4) { // 峰度要求 N >= 4
+    } else {
+      if (count < 4) {
         columnBuilder.appendNull();
       } else {
-        // 无偏估计公式 (超额峰度 Excess Kurtosis)
+
         double variance = m2 / (count - 1);
         double term1 =
             (count * (count + 1) * m4)
@@ -209,7 +199,6 @@ public class CentralMomentAccumulator implements Accumulator {
     }
   }
 
-  // 默认实现
   @Override
   public void removeIntermediate(Column[] input) {
     throw new UnsupportedOperationException();

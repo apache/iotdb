@@ -35,12 +35,11 @@ public class RegressionAccumulator implements Accumulator {
   private final TSDataType[] seriesDataTypes;
   private final RegressionType regressionType;
 
-  // 状态变量 (不需要 m2Y)
   private long count;
   private double meanX;
   private double meanY;
-  private double m2X; // Sum((x - meanX)^2)
-  private double c2; // Sum((x - meanX) * (y - meanY))
+  private double m2X;
+  private double c2;
 
   public RegressionAccumulator(TSDataType[] seriesDataTypes, RegressionType regressionType) {
     this.seriesDataTypes = seriesDataTypes;
@@ -49,8 +48,6 @@ public class RegressionAccumulator implements Accumulator {
 
   @Override
   public void addInput(Column[] columns, BitMap bitMap) {
-    // Tree 模型: columns[0] 是 Time
-    // REGR_SLOPE(y, x) -> columns[1] 是 y, columns[2] 是 x
 
     int size = columns[1].getPositionCount();
     for (int i = 0; i < size; i++) {
@@ -61,8 +58,8 @@ public class RegressionAccumulator implements Accumulator {
         continue;
       }
 
-      double y = getDoubleValue(columns[1], i, seriesDataTypes[0]); // Arg1: Y (因变量)
-      double x = getDoubleValue(columns[2], i, seriesDataTypes[1]); // Arg2: X (自变量)
+      double y = getDoubleValue(columns[1], i, seriesDataTypes[0]);
+      double x = getDoubleValue(columns[2], i, seriesDataTypes[1]);
 
       update(x, y);
     }
@@ -92,7 +89,6 @@ public class RegressionAccumulator implements Accumulator {
     meanX += deltaX / newCount;
     meanY += deltaY / newCount;
 
-    // Welford Covariance & Variance
     c2 += deltaX * (y - meanY);
     m2X += deltaX * (x - meanX);
 
@@ -133,7 +129,6 @@ public class RegressionAccumulator implements Accumulator {
       double deltaX = otherMeanX - meanX;
       double deltaY = otherMeanY - meanY;
 
-      // Merge Logic
       c2 += otherC2 + deltaX * deltaY * count * otherCount / newCount;
       m2X += otherM2X + deltaX * deltaX * count * otherCount / newCount;
 
@@ -149,7 +144,6 @@ public class RegressionAccumulator implements Accumulator {
     if (count == 0) {
       columnBuilders[0].appendNull();
     } else {
-      // 序列化 5 个变量: long(8) + 4 * double(8) = 40 bytes
       byte[] bytes = new byte[40];
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       buffer.putLong(count);
@@ -168,7 +162,6 @@ public class RegressionAccumulator implements Accumulator {
       return;
     }
 
-    // 如果 X 没有波动 (m2X=0), 斜率无法计算 (除以0), 返回 NULL
     if (m2X == 0) {
       columnBuilder.appendNull();
       return;
@@ -181,7 +174,6 @@ public class RegressionAccumulator implements Accumulator {
         columnBuilder.writeDouble(slope);
         break;
       case REGR_INTERCEPT:
-        // Intercept = MeanY - Slope * MeanX
         columnBuilder.writeDouble(meanY - slope * meanX);
         break;
       default:
@@ -189,7 +181,6 @@ public class RegressionAccumulator implements Accumulator {
     }
   }
 
-  // 其他必须实现的接口方法
   @Override
   public void removeIntermediate(Column[] input) {
     throw new UnsupportedOperationException();
