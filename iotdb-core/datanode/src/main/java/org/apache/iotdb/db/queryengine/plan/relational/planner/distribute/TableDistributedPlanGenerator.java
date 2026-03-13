@@ -1270,6 +1270,8 @@ public class TableDistributedPlanGenerator
                 NonAlignedAggregationTreeDeviceViewScanNode>>
         tableScanNodeMap = new HashMap<>();
 
+    // construct AlignedAggregationTreeDeviceViewScanNode and
+    // NonAlignedAggregationTreeDeviceViewScanNode for each region
     for (int i = 0; i < regionReplicaSetsList.size(); i++) {
       DeviceEntry deviceEntry = node.getDeviceEntries().get(i);
       List<TRegionReplicaSet> regionReplicaSets = regionReplicaSetsList.get(i);

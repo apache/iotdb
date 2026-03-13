@@ -113,7 +113,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   private boolean readAndCalcFromChild() throws Exception {
     long start = System.nanoTime();
 
-    while (child.hasNext()) {
+    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && child.hasNext()) {
       // Get next TsBlock from child
       TsBlock tsBlock = child.nextWithTimer();
       if (tsBlock == null || tsBlock.isEmpty()) {
@@ -125,7 +125,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
         return true;
       }
 
-      // If not finished, continue reading from child
+      // If not finished, continue reading from  child
     }
 
     return false;
