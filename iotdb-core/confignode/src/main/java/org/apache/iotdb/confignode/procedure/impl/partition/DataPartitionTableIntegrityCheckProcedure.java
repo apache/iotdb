@@ -103,7 +103,8 @@ public class DataPartitionTableIntegrityCheckProcedure
   private DataPartitionTable finalDataPartitionTable;
 
   private static Set<TDataNodeConfiguration> skipDataNodes = new HashSet<>();
-  private static Set<TDataNodeConfiguration> failedDataNodes = new HashSet<>();
+  private static Set<TDataNodeConfiguration> failedDataNodes =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   private static ScheduledExecutorService heartBeatExecutor;
 
@@ -195,7 +196,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (allDataNodes.isEmpty()) {
       LOG.error(
-          "No DataNodes registered, no way to collect earliest timeslots, terminating procedure");
+          "No DataNodes registered, no way to collect earliest timeslots, waiting for them to go up");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -252,8 +253,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           allDataNodes.size() - failedDataNodes.size());
     }
 
-    if (failedDataNodes.size() == allDataNodes.size()
-        && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
+    if (failedDataNodes.size() == allDataNodes.size()) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
     } else {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.ANALYZE_MISSING_PARTITIONS);

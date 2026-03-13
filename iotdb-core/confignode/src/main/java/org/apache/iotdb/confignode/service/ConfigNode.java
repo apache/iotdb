@@ -81,7 +81,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -120,8 +119,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
 
   private ExecutorService dataPartitionTableCheckExecutor =
       IoTDBThreadPoolFactory.newSingleThreadExecutor("DATA_PARTITION_TABLE_CHECK");
-
-  private final CountDownLatch latch = new CountDownLatch(1);
 
   public ConfigNode() {
     super("ConfigNode");
@@ -164,6 +161,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       dataPartitionTableCheckFuture.get();
     } catch (ExecutionException | InterruptedException e) {
       LOGGER.error("Data partition table check task execute failed", e);
+    } finally {
+      dataPartitionTableCheckExecutor.shutdownNow();
     }
   }
 
@@ -226,10 +225,11 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             dataPartitionTableCheckExecutor.submit(
                 () -> {
                   LOGGER.info(
-                      "Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
-                  //          Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeout());
+                      "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
+                  // @todo
+                  Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
 
-                  while (latch.getCount() > 0) {
+                  while (true) {
                     List<Integer> dnList =
                         configManager
                             .getLoadManager()
@@ -241,10 +241,10 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
                       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
                         LOGGER.error("Data partition table integrity check failed!");
                       }
-                      latch.countDown();
+                      break;
                     } else {
                       LOGGER.info("No running datanodes found, waiting...");
-                      Thread.sleep(5000); // 等待5秒后重新检查
+                      Thread.sleep(5000);
                     }
                   }
                   return null;

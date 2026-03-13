@@ -427,30 +427,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  private final ExecutorService findEarliestTimeSlotExecutor =
-      new WrappedThreadPoolExecutor(
-          0,
-          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
-          0L,
-          TimeUnit.SECONDS,
-          new ArrayBlockingQueue<>(
-              IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
-          new IoTThreadFactory(ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName()),
-          ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
-          new ThreadPoolExecutor.CallerRunsPolicy());
-
-  private final ExecutorService partitionTableRecoverExecutor =
-      new WrappedThreadPoolExecutor(
-          0,
-          IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
-          0L,
-          TimeUnit.SECONDS,
-          new ArrayBlockingQueue<>(
-              IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
-          new IoTThreadFactory(ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName()),
-          ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
-          new ThreadPoolExecutor.CallerRunsPolicy());
-
   private Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
 
   private static final long timeoutMs = 600000; // 600 seconds timeout
@@ -3222,6 +3198,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       String seriesPartitionExecutorClass =
           IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass();
 
+      final ExecutorService partitionTableRecoverExecutor =
+          new WrappedThreadPoolExecutor(
+              0,
+              IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
+              0L,
+              TimeUnit.SECONDS,
+              new ArrayBlockingQueue<>(
+                  IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+              new IoTThreadFactory(ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName()),
+              ThreadName.DATA_PARTITION_RECOVER_PARALLEL_POOL.getName(),
+              new ThreadPoolExecutor.CallerRunsPolicy());
+
       currentGenerator =
           new DataPartitionTableGenerator(
               partitionTableRecoverExecutor,
@@ -3370,6 +3358,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     String databaseName = databaseDir.getName();
     List<Future<?>> futureList = new ArrayList<>();
 
+    final ExecutorService findEarliestTimeSlotExecutor =
+        new WrappedThreadPoolExecutor(
+            0,
+            IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum(),
+            0L,
+            TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(
+                IoTDBDescriptor.getInstance().getConfig().getPartitionTableRecoverWorkerNum()),
+            new IoTThreadFactory(ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName()),
+            ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
+
     try {
       Files.list(databaseDir.toPath())
           .filter(Files::isDirectory)
@@ -3430,6 +3430,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         Thread.currentThread().interrupt();
       }
     }
+    findEarliestTimeSlotExecutor.shutdownNow();
     return databaseEarliestRegionMap.get(databaseName);
   }
 

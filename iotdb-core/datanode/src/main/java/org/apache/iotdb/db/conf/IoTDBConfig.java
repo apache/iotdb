@@ -1221,7 +1221,8 @@ public class IoTDBConfig {
 
   /* Need use these parameters when repair data partition table */
   private int partitionTableRecoverWorkerNum = 10;
-  private int partitionTableRecoverMaxReadBytesPerSecond = 1000;
+  // Rate limit set to 10 MB/s
+  private int partitionTableRecoverMaxReadBytesPerSecond = 10;
 
   IoTDBConfig() {}
 

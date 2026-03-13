@@ -110,32 +110,6 @@ public class DataPartitionTableGenerator {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public DataPartitionTableGenerator(
-      String dataDirectory,
-      ExecutorService executor,
-      Set<String> databases,
-      int seriesSlotNum,
-      String seriesPartitionExecutorClass) {
-    this.dataDirectories = new String[] {dataDirectory};
-    this.executor = executor;
-    this.databases = databases;
-    this.seriesSlotNum = seriesSlotNum;
-    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
-  }
-
-  public DataPartitionTableGenerator(
-      String[] dataDirectories,
-      ExecutorService executor,
-      Set<String> databases,
-      int seriesSlotNum,
-      String seriesPartitionExecutorClass) {
-    this.dataDirectories = dataDirectories;
-    this.executor = executor;
-    this.databases = databases;
-    this.seriesSlotNum = seriesSlotNum;
-    this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
-  }
-
   public enum TaskStatus {
     NOT_STARTED,
     IN_PROGRESS,

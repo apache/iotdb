@@ -322,11 +322,11 @@ public class ConfigNodeDescriptor {
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
 
-    conf.setPartitionTableRecoverWaitAllDnUpTimeout(
+    conf.setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
         Long.parseLong(
             properties.getProperty(
                 "partition_table_recover_wait_all_dn_up_timeout",
-                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeout()))));
+                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs()))));
 
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());
