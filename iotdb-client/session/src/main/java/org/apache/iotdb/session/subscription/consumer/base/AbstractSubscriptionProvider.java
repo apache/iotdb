@@ -90,13 +90,16 @@ public abstract class AbstractSubscriptionProvider {
 
   private final String username;
   private final String password;
+  private final long heartbeatIntervalMs;
+  private final int connectionTimeoutInMs;
 
   protected abstract AbstractSessionBuilder constructSubscriptionSessionBuilder(
       final String host,
       final int port,
       final String username,
       final String password,
-      final int thriftMaxFrameSize);
+      final int thriftMaxFrameSize,
+      final int connectionTimeoutInMs);
 
   protected AbstractSubscriptionProvider(
       final TEndPoint endPoint,
@@ -104,16 +107,25 @@ public abstract class AbstractSubscriptionProvider {
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize) {
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
     this.session =
         new SubscriptionSessionWrapper(
             constructSubscriptionSessionBuilder(
-                endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize));
+                endPoint.ip,
+                endPoint.port,
+                username,
+                password,
+                thriftMaxFrameSize,
+                connectionTimeoutInMs));
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
     this.username = username;
     this.password = password;
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
 
   SubscriptionSessionConnection getSessionConnection() throws IoTDBConnectionException {
@@ -164,6 +176,10 @@ public abstract class AbstractSubscriptionProvider {
     consumerAttributes.put(ConsumerConstant.USERNAME_KEY, username);
     consumerAttributes.put(ConsumerConstant.PASSWORD_KEY, password);
     consumerAttributes.put(ConsumerConstant.SQL_DIALECT_KEY, session.getSqlDialect());
+    consumerAttributes.put(
+        ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
+    consumerAttributes.put(
+        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY, String.valueOf(connectionTimeoutInMs));
 
     final PipeSubscribeHandshakeResp resp =
         handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException

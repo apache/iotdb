@@ -103,6 +103,13 @@ public class AbstractSubscriptionPullConsumerBuilder extends AbstractSubscriptio
   }
 
   @Override
+  public AbstractSubscriptionPullConsumerBuilder connectionTimeoutInMs(
+      final int connectionTimeoutInMs) {
+    super.connectionTimeoutInMs(connectionTimeoutInMs);
+    return this;
+  }
+
+  @Override
   public AbstractSubscriptionPullConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;

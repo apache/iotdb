@@ -118,6 +118,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
 
   private final int thriftMaxFrameSize;
+  private final int connectionTimeoutInMs;
   private final int maxPollParallelism;
 
   @SuppressWarnings("java:S3077")
@@ -187,6 +188,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     this.fileSaveFsync = builder.fileSaveFsync;
 
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.maxPollParallelism = builder.maxPollParallelism;
   }
 
@@ -232,6 +234,11 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                     properties.getOrDefault(
                         ConsumerConstant.THRIFT_MAX_FRAME_SIZE_KEY,
                         SessionConfig.DEFAULT_MAX_FRAME_SIZE))
+            .connectionTimeoutInMs(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY,
+                        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS))
             .maxPollParallelism(
                 (Integer)
                     properties.getOrDefault(
@@ -382,7 +389,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize);
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs);
 
   AbstractSubscriptionProvider constructProviderAndHandshake(final TEndPoint endPoint)
       throws SubscriptionException {
@@ -393,7 +402,9 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this.password,
             this.consumerId,
             this.consumerGroupId,
-            this.thriftMaxFrameSize);
+            this.thriftMaxFrameSize,
+            this.heartbeatIntervalMs,
+            this.connectionTimeoutInMs);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -1428,6 +1439,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
     result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
     result.put("thriftMaxFrameSize", String.valueOf(thriftMaxFrameSize));
+    result.put("connectionTimeoutInMs", String.valueOf(connectionTimeoutInMs));
     result.put("maxPollParallelism", String.valueOf(maxPollParallelism));
     result.put("subscribedTopics", subscribedTopics.toString());
     return result;
