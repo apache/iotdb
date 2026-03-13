@@ -29,6 +29,7 @@ import java.util.Map;
 public class CompactionSeriesContext {
   Map<TsFileResource, Pair<Long, Long>> fileTimeseriesMetdataOffsetMap;
   TSDataType finalType;
+  boolean needUpdateDataType = false;
 
   public CompactionSeriesContext() {
     fileTimeseriesMetdataOffsetMap = new HashMap<>();
@@ -56,5 +57,17 @@ public class CompactionSeriesContext {
     if (this.finalType == null) {
       this.finalType = finalType;
     }
+  }
+
+  public void setFinalType(TSDataType finalType) {
+    this.finalType = finalType;
+  }
+
+  public boolean isNeedUpdateDataType() {
+    return needUpdateDataType;
+  }
+
+  public void setNeedUpdateDataType(boolean needUpdateDataType) {
+    this.needUpdateDataType = needUpdateDataType;
   }
 }
