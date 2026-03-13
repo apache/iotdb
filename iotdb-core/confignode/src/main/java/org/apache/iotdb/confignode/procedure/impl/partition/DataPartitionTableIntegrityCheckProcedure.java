@@ -44,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -373,10 +374,12 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(heartBeatExecutor, this::checkPartitionTableGenerationStatus,
-            0,
-            HEART_BEAT_REQUEST_RATE,
-            TimeUnit.MILLISECONDS);
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        heartBeatExecutor,
+        this::checkPartitionTableGenerationStatus,
+        0,
+        HEART_BEAT_REQUEST_RATE,
+        TimeUnit.MILLISECONDS);
 
     allDataNodes.removeAll(skipDataNodes);
     allDataNodes.removeAll(failedDataNodes);
@@ -510,109 +513,108 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-     Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
+    Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
 
-        for (String database : lostDataPartitionsOfDatabases) {
-          // Get current DataPartitionTable from ConfigManager
-          Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
-              localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
+    for (String database : lostDataPartitionsOfDatabases) {
+      // Get current DataPartitionTable from ConfigManager
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
 
-          // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
-          if (localDataPartitionTableMap == null
-              || localDataPartitionTableMap.isEmpty()
-              || localDataPartitionTableMap.get(database) == null
-              || localDataPartitionTableMap.get(database).isEmpty()) {
-            LOG.warn(
-                "No data partition table related to database {} was found from the ConfigNode, use data partition table of DataNode directly",
-                database);
-            continue;
-          }
+      // Check if ConfigNode has a data partition that is associated with the earliestTimeslot
+      if (localDataPartitionTableMap == null
+          || localDataPartitionTableMap.isEmpty()
+          || localDataPartitionTableMap.get(database) == null
+          || localDataPartitionTableMap.get(database).isEmpty()) {
+        LOG.warn(
+            "No data partition table related to database {} was found from the ConfigNode, use data partition table of DataNode directly",
+            database);
+        continue;
+      }
 
-          localDataPartitionTableMap
-              .values()
-              .forEach(
-                  map ->
-                      map.forEach(
-                          (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
-                            if (tSeriesPartitionSlot == null
-                                || seriesPartitionTableMap == null
-                                || seriesPartitionTableMap.isEmpty()) {
-                              return;
-                            }
-                            finalDataPartitionMap.computeIfAbsent(
-                                tSeriesPartitionSlot,
-                                k -> new SeriesPartitionTable(seriesPartitionTableMap));
-                          }));
-        }
+      localDataPartitionTableMap
+          .values()
+          .forEach(
+              map ->
+                  map.forEach(
+                      (tSeriesPartitionSlot, seriesPartitionTableMap) -> {
+                        if (tSeriesPartitionSlot == null
+                            || seriesPartitionTableMap == null
+                            || seriesPartitionTableMap.isEmpty()) {
+                          return;
+                        }
+                        finalDataPartitionMap.computeIfAbsent(
+                            tSeriesPartitionSlot,
+                            k -> new SeriesPartitionTable(seriesPartitionTableMap));
+                      }));
+    }
 
-        if (finalDataPartitionMap.isEmpty()) {
-          dataPartitionTables
-                  .values()
-                  .forEach(
-                          dataPartitionTable -> {
-                            if (dataPartitionTable == null
-                                    || dataPartitionTable.getDataPartitionMap() == null
-                                    || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-                              return;
-                            }
-                            dataPartitionTable
-                                    .getDataPartitionMap().forEach(
-                                            (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
-                                              if (dnSeriesPartitionSlot == null
-                                                      || dnSeriesPartitionTable == null) {
-                                                return;
-                                              }
-                                              finalDataPartitionMap.computeIfAbsent(
-                                                      dnSeriesPartitionSlot,
-                                                      k -> dnSeriesPartitionTable);
-                                            });
-                          });
-        } else {
-          finalDataPartitionMap.forEach(
-                  (tSeriesPartitionSlot, seriesPartitionTable) -> {
-                    dataPartitionTables
-                            .values()
-                            .forEach(
-                                    dataPartitionTable -> {
-                                      if (dataPartitionTable == null
-                                              || dataPartitionTable.getDataPartitionMap() == null
-                                              || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-                                        return;
-                                      }
-                                      dataPartitionTable
-                                              .getDataPartitionMap()
-                                              .forEach(
-                                                      (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
-                                                        if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
-                                                          return;
-                                                        }
+    if (finalDataPartitionMap.isEmpty()) {
+      dataPartitionTables
+          .values()
+          .forEach(
+              dataPartitionTable -> {
+                if (dataPartitionTable == null
+                    || dataPartitionTable.getDataPartitionMap() == null
+                    || dataPartitionTable.getDataPartitionMap().isEmpty()) {
+                  return;
+                }
+                dataPartitionTable
+                    .getDataPartitionMap()
+                    .forEach(
+                        (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
+                          if (dnSeriesPartitionSlot == null || dnSeriesPartitionTable == null) {
+                            return;
+                          }
+                          finalDataPartitionMap.computeIfAbsent(
+                              dnSeriesPartitionSlot, k -> dnSeriesPartitionTable);
+                        });
+              });
+    } else {
+      finalDataPartitionMap.forEach(
+          (tSeriesPartitionSlot, seriesPartitionTable) -> {
+            dataPartitionTables
+                .values()
+                .forEach(
+                    dataPartitionTable -> {
+                      if (dataPartitionTable == null
+                          || dataPartitionTable.getDataPartitionMap() == null
+                          || dataPartitionTable.getDataPartitionMap().isEmpty()) {
+                        return;
+                      }
+                      dataPartitionTable
+                          .getDataPartitionMap()
+                          .forEach(
+                              (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
+                                if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
+                                  return;
+                                }
 
-                                                        if (seriesPartitionTable == null
-                                                                || seriesPartitionTable.getSeriesPartitionMap() == null
-                                                                || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
-                                                          finalDataPartitionMap.put(
-                                                                  tSeriesPartitionSlot, dnSeriesPartitionTable);
-                                                        }
+                                if (seriesPartitionTable == null
+                                    || seriesPartitionTable.getSeriesPartitionMap() == null
+                                    || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
+                                  finalDataPartitionMap.put(
+                                      tSeriesPartitionSlot, dnSeriesPartitionTable);
+                                }
 
-                                                        // dnDataPartitionTable merged to seriesPartitionTable
-                                                        dnSeriesPartitionTable
-                                                                .getSeriesPartitionMap()
-                                                                .forEach(
-                                                                        (k, v) ->
-                                                                                v.forEach(
-                                                                                        tConsensusGroupId -> {
-                                                                                          if (seriesPartitionTable == null) {
-                                                                                            return;
-                                                                                          }
-                                                                                          seriesPartitionTable.putDataPartition(
-                                                                                                  k, tConsensusGroupId);
-                                                                                        }));
-                                                      });
-                                    });
-                  });
-        }
+                                // dnDataPartitionTable merged to seriesPartitionTable
+                                dnSeriesPartitionTable
+                                    .getSeriesPartitionMap()
+                                    .forEach(
+                                        (k, v) ->
+                                            v.forEach(
+                                                tConsensusGroupId -> {
+                                                  if (seriesPartitionTable == null) {
+                                                    return;
+                                                  }
+                                                  seriesPartitionTable.putDataPartition(
+                                                      k, tConsensusGroupId);
+                                                }));
+                              });
+                    });
+          });
+    }
 
-        finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap);
+    finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap);
 
     LOG.info("DataPartitionTable merge completed successfully");
     setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_RAFT);
