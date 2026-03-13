@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.compaction;
+package org.apache.iotdb.db.storageengine.dataregion.compaction.alterDataType;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,47 +33,62 @@ import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.Path;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.TsFileWriter;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.BooleanDataPoint;
-import org.apache.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
-public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
-  private final String oldThreadName = Thread.currentThread().getName();
+@RunWith(Parameterized.class)
+public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataTypeTest {
   private final IDeviceID device =
       IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + ".d1");
+  private String performerType;
 
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    Thread.currentThread().setName(oldThreadName);
+  }
+
+  @Parameterized.Parameters(name = "type={0}")
+  public static Collection<Object[]> data() {
+    return Arrays.asList(
+        new Object[][] {
+            {"read_chunk"}, {"fast"}, {"read_point"},
+        });
+  }
+
+  public CompactionDataTypeNotMatchTest(String type) {
+    this.performerType = type;
   }
 
   @Test
-  public void testCompactNonAlignedSeriesWithReadChunkCompactionPerformer()
+  public void testCompactNonAlignedSeries()
       throws IOException, WriteProcessException {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
@@ -81,69 +96,18 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
   }
 
   @Test
-  public void testCompactNonAlignedSeriesWithFastCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithNonAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactNonAlignedSeriesWithReadPointCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithNonAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactAlignedSeriesWithReadChunkCompactionPerformer()
+  public void testCompactAlignedSeries()
       throws IOException, WriteProcessException {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
         2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
-  @Test
-  public void testCompactAlignedSeriesWithFastCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactAlignedSeriesWithReadPointCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()
       throws IOException, WriteProcessException {
@@ -163,18 +127,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     seqResources.add(resource1);
 
     MeasurementSchema measurementSchema2 = new MeasurementSchema("s1", TSDataType.INT32);
-    TsFileResource resource2 = createEmptyFileAndResource(true);
-    resource2.setStatusForTest(TsFileResourceStatus.COMPACTING);
-    try (TsFileWriter writer = new TsFileWriter(resource2.getTsFile())) {
-      writer.registerTimeseries(new Path(device), measurementSchema2);
-      TSRecord record = new TSRecord(device, 2);
-      record.addTuple(new IntDataPoint("s1", 10));
-      writer.writeRecord(record);
-      writer.flush();
-    }
-    resource2.updateStartTime(device, 2);
-    resource2.updateEndTime(device, 2);
-    resource2.serialize();
+    TsFileResource resource2 = generateInt32NonAlignedSeriesFile(new TimeRange(2, 2), true);
     seqResources.add(resource2);
   }
 
@@ -184,19 +137,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionTest {
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
 
-    TsFileResource resource1 = createEmptyFileAndResource(true);
-    resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
-    try (TsFileWriter writer = new TsFileWriter(resource1.getTsFile())) {
-      writer.registerAlignedTimeseries(new Path(device), measurementSchemas1);
-      TSRecord record = new TSRecord(device, 1);
-      record.addTuple(new IntDataPoint("s1", 0));
-      record.addTuple(new IntDataPoint("s2", 1));
-      writer.writeRecord(record);
-      writer.flush();
-    }
-    resource1.updateStartTime(device, 1);
-    resource1.updateEndTime(device, 1);
-    resource1.serialize();
+    TsFileResource resource1 = generateInt32AlignedSeriesFile(new TimeRange(1, 1), true);
     seqResources.add(resource1);
 
     List<IMeasurementSchema> measurementSchemas2 = new ArrayList<>();
