@@ -42,8 +42,6 @@ import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.chunk.IChunkWriter;
 import org.apache.tsfile.write.writer.TsFileIOWriter;
 import org.apache.tsfile.write.writer.tsmiterator.TSMIterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 
 public class CompactionTsFileWriter extends TsFileIOWriter {
-  private static final Logger logger = LoggerFactory.getLogger(CompactionTsFileWriter.class);
   CompactionType type;
 
   private volatile boolean isWritingAligned = false;
@@ -91,11 +88,6 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
         new CompactionTsFileOutput(
             super.out, CompactionTaskManager.getInstance().getMergeWriteRateLimiter());
     evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileSetEndVersion);
-    logger.warn(
-        "Evolved schema of {} is {}, maxTsFileSetEndVersion is {}",
-        tsFile.getTsFile(),
-        evolvedSchema,
-        maxTsFileSetEndVersion);
   }
 
   public EncryptParameter getEncryptParameter() {
@@ -186,13 +178,11 @@ public class CompactionTsFileWriter extends TsFileIOWriter {
 
   @Override
   public int startChunkGroup(IDeviceID deviceId) throws IOException {
-    IDeviceID originalDeviceId = deviceId;
     if (evolvedSchema != null) {
-      originalDeviceId = evolvedSchema.rewriteToOriginal(deviceId);
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
     }
-    logger.warn("Device {} is {} in {}", deviceId, originalDeviceId, tsFileResource.getTsFile());
-    currentOriginalDeviceId = originalDeviceId;
-    return super.startChunkGroup(originalDeviceId);
+    currentOriginalDeviceId = deviceId;
+    return super.startChunkGroup(deviceId);
   }
 
   @Override

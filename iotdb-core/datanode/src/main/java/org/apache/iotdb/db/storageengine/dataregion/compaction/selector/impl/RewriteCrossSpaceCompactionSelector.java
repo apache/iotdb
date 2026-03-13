@@ -478,11 +478,10 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
       int previousSeqFileIndex = 0;
       int nextSeqFileIndex = seqFiles.size();
       InsertionCrossCompactionTaskResource result = new InsertionCrossCompactionTaskResource();
-      LOGGER.warn("Testing unseq file {}", unseqFile.resource.getTsFile());
+
       boolean hasPreviousSeqFile = false;
       for (Iterator<DeviceInfo> it = unseqFile.getDeviceInfoIterator(); it.hasNext(); ) {
         DeviceInfo unseqDeviceInfo = it.next();
-        LOGGER.warn("Testing device {}", unseqDeviceInfo.deviceId);
 
         long startTimeOfUnSeqDevice = unseqDeviceInfo.startTime;
         long endTimeOfUnSeqDevice = unseqDeviceInfo.endTime;
@@ -505,25 +504,11 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           if (seqEvolvedSchema != null) {
             deviceIdInSeq = seqEvolvedSchema.rewriteToOriginal(finalDeviceId);
           }
-          LOGGER.warn(
-              "Device in unseq {}, final device {}, device in seq {}",
-              deviceIdInUnseq,
-              finalDeviceId,
-              deviceIdInSeq);
 
           if (seqFile.unsealed()) {
             nextSeqFileIndex = Math.min(nextSeqFileIndex, i);
           }
           if (!seqFile.containsDevice(deviceIdInSeq)) {
-            LOGGER.warn(
-                "seqFile {} does not contain device {}, it has {}",
-                seqFile.resource.getTsFile(),
-                deviceIdInSeq,
-                seqFile.getDevices());
-            LOGGER.warn("seq schema evolution {}", seqEvolvedSchema);
-            LOGGER.warn(
-                "unseqFile {} has {}", unseqFile.resource.getTsFile(), unseqFile.getDevices());
-            LOGGER.warn("unseq schema evolution {}", unseqEvolvedSchema);
             // if the seqFile is deleted by another compaction concurrently,
             // we cannot ensure whether the seqFile overlaps with the unseqFile.
             // Let a later selection retry with compacted file.
@@ -535,9 +520,6 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
           DeviceInfo seqDeviceInfo = seqFile.getDeviceInfoById(deviceIdInSeq);
           long startTimeOfSeqDevice = seqDeviceInfo.startTime;
           long endTimeOfSeqDevice = seqDeviceInfo.endTime;
-          LOGGER.warn("Device in unseq {}, device in seq {}", unseqDeviceInfo, seqDeviceInfo);
-          LOGGER.warn("seq schema evolution {}", seqEvolvedSchema);
-          LOGGER.warn("unseq schema evolution {}", unseqEvolvedSchema);
 
           // overlap
           if (startTimeOfUnSeqDevice <= endTimeOfSeqDevice
