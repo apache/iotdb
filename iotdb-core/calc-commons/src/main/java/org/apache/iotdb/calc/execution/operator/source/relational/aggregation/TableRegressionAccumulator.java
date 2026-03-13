@@ -66,7 +66,7 @@ public class TableRegressionAccumulator implements TableAccumulator {
 
   @Override
   public void addInput(Column[] arguments, AggregationMask mask) {
-    // arguments[0] -> Y, arguments[1] -> X
+
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {

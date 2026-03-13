@@ -249,7 +249,7 @@ public class GroupedCentralMomentAccumulator implements GroupedAccumulator {
         double result = (count * m3) / ((count - 1) * (count - 2) * stdev * stdev * stdev);
         columnBuilder.writeDouble(result);
       }
-    } else { // KURTOSIS
+    } else {
       if (count < 4) {
         columnBuilder.appendNull();
       } else {

@@ -83,7 +83,7 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
 
   @Override
   public void addInput(int[] groupIds, Column[] arguments, AggregationMask mask) {
-    // arguments[0] -> Y, arguments[1] -> X
+
     int positionCount = mask.getSelectedPositionCount();
 
     if (mask.isSelectAll()) {
@@ -135,7 +135,6 @@ public class GroupedRegressionAccumulator implements GroupedAccumulator {
     meanXs.add(groupId, deltaX / newCount);
     meanYs.add(groupId, deltaY / newCount);
 
-    // Welford's algorithm for covariance and variance of X
     c2s.add(groupId, deltaX * (y - meanYs.get(groupId)));
     m2Xs.add(groupId, deltaX * (x - meanXs.get(groupId)));
 
