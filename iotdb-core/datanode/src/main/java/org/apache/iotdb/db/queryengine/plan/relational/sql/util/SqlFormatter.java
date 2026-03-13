@@ -975,7 +975,7 @@ public final class SqlFormatter {
             .append(" TO ")
             .append(formatName(node.getTargets().get(i)));
         if (i != node.getSources().size() - 1) {
-          builder.append(" ");
+          builder.append(", ");
         }
       }
 
