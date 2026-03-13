@@ -1392,7 +1392,7 @@ public class IoTDBTableIT {
 
       // alter multi
       statement.execute("ALTER TABLE alter_column_name ADD COLUMN s901 INT32");
-      statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s1 TO s2 s901 TO s902");
+      statement.execute("ALTER TABLE alter_column_name RENAME COLUMN s1 TO s2, s901 TO s902");
       try {
         statement.execute("INSERT INTO alter_column_name (time, s1, s901) VALUES (0, 0, 0)");
         fail();
