@@ -28,6 +28,9 @@ public class MQTTClient {
 
   private static final String DATABASE = "myMqttTest";
 
+  private static final Random RANDOM = new Random();
+  private static final String Topics = "/myTopic";
+
   public static void main(String[] args) throws Exception {
     MQTT mqtt = new MQTT();
     mqtt.setHost("127.0.0.1", 1883);
@@ -46,7 +49,7 @@ public class MQTTClient {
   }
 
   private static void jsonPayloadFormatter(BlockingConnection connection) throws Exception {
-    Random random = new Random();
+
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 10; i++) {
       String payload =
@@ -57,7 +60,7 @@ public class MQTTClient {
                   + "\"measurements\":[\"s1\"],\n"
                   + "\"values\":[%f]\n"
                   + "}",
-              System.currentTimeMillis(), random.nextDouble());
+              System.currentTimeMillis(), RANDOM.nextDouble());
       sb.append(payload).append(",");
 
       // publish a json object
@@ -74,19 +77,19 @@ public class MQTTClient {
   private static void linePayloadFormatter(BlockingConnection connection) throws Exception {
     // myTable,tag1=t1,tag2=t2 fieldKey1="1,2,3" 1740109006001
     String payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006001";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006002";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload = "myTable,tag1=t1,tag2=t2 fieldKey1=\"1,2,3\" 1740109006003";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
     payload =
         "test1,tag1=t1,tag2=t2 attr3=a5,attr4=a4 field1=\"fieldValue1\",field2=1i,field3=1u 1";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload = "test1,tag1=t1,tag2=t2  field4=2,field5=2i32,field6=2f 2";
@@ -96,17 +99,17 @@ public class MQTTClient {
     payload =
         "test1,tag1=t1,tag2=t2  field7=t,field8=T,field9=true 3 \n "
             + "test1,tag1=t1,tag2=t2  field7=f,field8=F,field9=FALSE 4";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload =
         "test1,tag1=t1,tag2=t2 attr1=a1,attr2=a2 field1=\"fieldValue1\",field2=1i,field3=1u 4 \n "
             + "test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 5";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
 
     payload = "# It's a remark\n " + "test1,tag1=t1,tag2=t2 field4=2,field5=2i32,field6=2f 6";
-    connection.publish(DATABASE + "/myTopic", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
+    connection.publish(DATABASE + Topics, payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     Thread.sleep(10);
   }
 }
