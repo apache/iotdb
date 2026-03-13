@@ -1004,7 +1004,7 @@ sortItem
     ;
 
 querySpecification
-    : SELECT setQuantifier? selectItem (',' selectItem)*
+    : SELECT LOCALLY? setQuantifier? selectItem (',' selectItem)*
       (FROM relation (',' relation)*)?
       (WHERE where=booleanExpression)?
       (GROUP BY groupBy)?
@@ -1669,6 +1669,7 @@ LISTAGG: 'LISTAGG';
 LOAD: 'LOAD';
 LOADED: 'LOADED';
 LOCAL: 'LOCAL';
+LOCALLY: 'LOCALLY';
 LOCALTIME: 'LOCALTIME';
 LOCALTIMESTAMP: 'LOCALTIMESTAMP';
 LOGICAL: 'LOGICAL';

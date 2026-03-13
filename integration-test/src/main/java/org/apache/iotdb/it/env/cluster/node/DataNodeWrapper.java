@@ -307,4 +307,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   public int getRestServicePort() {
     return restServicePort;
   }
+
+  @Override
+  public String toString() {
+    return "DataNodeWrapper{" + internalAddress + ":" + internalPort + "}";
+  }
 }
