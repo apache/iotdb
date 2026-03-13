@@ -330,8 +330,8 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
         DNAuditLogger.getInstance().log(fields, () -> logMessage);
       }
     } catch (Throwable e) {
-      int exitStatusCode = retrieveExitStatusCode(e);
       logger.error("Fail to start server", e);
+      int exitStatusCode = retrieveExitStatusCode(e);
       stop();
       System.exit(exitStatusCode);
     }
