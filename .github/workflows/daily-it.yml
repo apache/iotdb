@@ -97,8 +97,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2:
           [
@@ -120,13 +120,13 @@ jobs:
             cluster2: LightWeightStandaloneMode
           - cluster1: HighPerformanceMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
@@ -216,8 +216,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
@@ -308,8 +308,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2:
           [
@@ -331,13 +331,13 @@ jobs:
             cluster2: LightWeightStandaloneMode
           - cluster1: HighPerformanceMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
@@ -427,8 +427,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2:
           [
@@ -450,13 +450,13 @@ jobs:
             cluster2: LightWeightStandaloneMode
           - cluster1: HighPerformanceMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusBatchMode
+          - cluster1: IoTConsensusV2BatchMode
             cluster2: HighPerformanceMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: LightWeightStandaloneMode
-          - cluster1: PipeConsensusStreamMode
+          - cluster1: IoTConsensusV2StreamMode
             cluster2: HighPerformanceMode
     runs-on: ${{ matrix.os }}
     steps:
@@ -544,8 +544,8 @@ jobs:
         cluster1:
           [
             ScalableSingleNodeMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2: [ScalableSingleNodeMode]
         os: [ubuntu-latest]
@@ -721,8 +721,8 @@ jobs:
         cluster1:
           [
             ScalableSingleNodeMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2: [ScalableSingleNodeMode]
         os: [ubuntu-latest]
@@ -812,8 +812,8 @@ jobs:
         cluster1:
           [
             ScalableSingleNodeMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         cluster2: [ScalableSingleNodeMode]
         os: [ubuntu-latest]
@@ -905,8 +905,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
@@ -997,8 +997,8 @@ jobs:
             LightWeightStandaloneMode,
             ScalableSingleNodeMode,
             HighPerformanceMode,
-            PipeConsensusBatchMode,
-            PipeConsensusStreamMode,
+            IoTConsensusV2BatchMode,
+            IoTConsensusV2StreamMode,
           ]
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}

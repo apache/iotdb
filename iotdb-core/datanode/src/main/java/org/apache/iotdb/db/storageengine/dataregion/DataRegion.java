@@ -4251,7 +4251,7 @@ public class DataRegion implements IDataRegionForQuery {
             + File.separator
             + tsFileResource.getTsFile().getName();
     final File targetFile =
-        (tsFileResource.isGeneratedByPipeConsensus() || tsFileResource.isGeneratedByPipe())
+        (tsFileResource.isGeneratedByIoTConsensusV2() || tsFileResource.isGeneratedByPipe())
             ? pipeAndIoTV2LoadDiskSelector.selectTargetDirectory(
                 tsFileToLoad.getParentFile(), fileName, true, targetTierLevel)
             : ordinaryLoadDiskSelector.selectTargetDirectory(

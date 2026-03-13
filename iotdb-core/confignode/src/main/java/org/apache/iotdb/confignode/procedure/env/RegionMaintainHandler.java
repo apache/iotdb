@@ -630,11 +630,11 @@ public class RegionMaintainHandler {
 
     Map<String, String> processorAttributes = new HashMap<>();
     processorAttributes.put(
-        PROCESSOR_KEY, BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName());
+        PROCESSOR_KEY, BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName());
 
     Map<String, String> connectorAttributes = new HashMap<>();
     connectorAttributes.put(
-        CONNECTOR_KEY, BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName());
+        CONNECTOR_KEY, BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR.getPipePluginName());
     connectorAttributes.put(CONNECTOR_CONSENSUS_GROUP_ID_KEY, String.valueOf(dataRegionId.getId()));
     connectorAttributes.put(CONNECTOR_CONSENSUS_PIPE_NAME, pipeName.toString());
     connectorAttributes.put(CONNECTOR_IOTDB_IP_KEY, receiverEndpoint.ip);

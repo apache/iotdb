@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.utils;
 
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -44,11 +44,11 @@ public class RetryUtils {
 
   public static boolean needRetryWithIncreasingInterval(Exception e) {
     return e instanceof ConnectException
-        || e instanceof PipeConsensusRetryWithIncreasingIntervalException;
+        || e instanceof IoTConsensusV2RetryWithIncreasingIntervalException;
   }
 
   public static boolean notNeedRetryForConsensus(int statusCode) {
-    return statusCode == TSStatusCode.PIPE_CONSENSUS_DEPRECATED_REQUEST.getStatusCode();
+    return statusCode == TSStatusCode.IOT_CONSENSUS_V2_DEPRECATED_REQUEST.getStatusCode();
   }
 
   public static final int MAX_RETRIES = 5;

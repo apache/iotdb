@@ -211,7 +211,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
   }
 
   private static final Pattern SYNC_LAG_PATTERN =
-      Pattern.compile("pipe_consensus\\{[^}]*type=\"syncLag\"[^}]*}\\s+(\\S+)");
+      Pattern.compile("iot_consensus_v2\\{[^}]*type=\"syncLag\"[^}]*}\\s+(\\S+)");
 
   /**
    * Wait until all consensus pipe syncLag metrics on the given leader DataNode reach 0, meaning
@@ -243,7 +243,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                     "Consensus pipe syncLag should be 0.0 but was " + syncLag, 0.0, syncLag, 0.001);
               }
               Assert.assertTrue(
-                  "No pipe_consensus syncLag metric found in leader DataNode metrics", found);
+                  "No iot_consensus_v2 syncLag metric found in leader DataNode metrics", found);
             });
     LOGGER.info("All consensus pipe syncLag == 0 on leader, replication is complete");
   }

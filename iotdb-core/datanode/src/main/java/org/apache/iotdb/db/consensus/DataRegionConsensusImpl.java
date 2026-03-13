@@ -34,8 +34,8 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig;
 import org.apache.iotdb.consensus.config.IoTConsensusConfig.RPC;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig;
-import org.apache.iotdb.consensus.config.PipeConsensusConfig.ReplicateMode;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config;
+import org.apache.iotdb.consensus.config.IoTConsensusV2Config.ReplicateMode;
 import org.apache.iotdb.consensus.config.RatisConfig;
 import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.DataNodeMemoryConfig;
@@ -93,7 +93,7 @@ public class DataRegionConsensusImpl {
     // Make sure both statics are initialized.
     static {
       reinitializeStatics();
-      PipeDataNodeAgent.receiver().pipeConsensus().initConsensusInRuntime();
+      PipeDataNodeAgent.receiver().iotConsensusV2().initConsensusInRuntime();
       DeletionResourceManager.build();
     }
 
@@ -160,10 +160,10 @@ public class DataRegionConsensusImpl {
                               CONF.getRegionMigrationSpeedLimitBytesPerSecond())
                           .build())
                   .build())
-          .setPipeConsensusConfig(
-              PipeConsensusConfig.newBuilder()
+          .setIoTConsensusV2Config(
+              IoTConsensusV2Config.newBuilder()
                   .setRPC(
-                      PipeConsensusConfig.RPC
+                      IoTConsensusV2Config.RPC
                           .newBuilder()
                           .setConnectionTimeoutInMs(CONF.getConnectionTimeoutInMS())
                           .setRpcMaxConcurrentClientNum(CONF.getRpcMaxConcurrentClientNum())
@@ -178,14 +178,15 @@ public class DataRegionConsensusImpl {
                           .setSslTrustStorePassword(COMMON_CONF.getTrustStorePwd())
                           .build())
                   .setPipe(
-                      PipeConsensusConfig.Pipe.newBuilder()
+                      IoTConsensusV2Config.Pipe.newBuilder()
                           .setExtractorPluginName(
                               BuiltinPipePlugin.IOTDB_EXTRACTOR.getPipePluginName())
                           .setProcessorPluginName(
-                              BuiltinPipePlugin.PIPE_CONSENSUS_PROCESSOR.getPipePluginName())
+                              BuiltinPipePlugin.IOT_CONSENSUS_V2_PROCESSOR.getPipePluginName())
                           .setConnectorPluginName(
-                              BuiltinPipePlugin.PIPE_CONSENSUS_ASYNC_CONNECTOR.getPipePluginName())
-                          .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().pipeConsensus())
+                              BuiltinPipePlugin.IOT_CONSENSUS_V2_ASYNC_CONNECTOR
+                                  .getPipePluginName())
+                          .setConsensusPipeReceiver(PipeDataNodeAgent.receiver().iotConsensusV2())
                           .setProgressIndexManager(new ReplicateProgressDataNodeManager())
                           .build())
                   .setReplicateMode(ReplicateMode.fromValue(CONF.getIotConsensusV2Mode()))

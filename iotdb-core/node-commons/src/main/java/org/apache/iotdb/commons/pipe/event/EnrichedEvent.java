@@ -494,10 +494,10 @@ public abstract class EnrichedEvent implements Event {
   }
 
   /**
-   * Used for pipeConsensus. In PipeConsensus, we only need committerKey, commitId and rebootTimes
+   * Used for iotConsensusV2. In IoTConsensusV2, we only need committerKey, commitId and rebootTimes
    * to uniquely identify an event
    */
-  public boolean equalsInPipeConsensus(final Object o) {
+  public boolean equalsInIoTConsensusV2(final Object o) {
     if (this == o) {
       return true;
     }

@@ -230,7 +230,7 @@ public class PipeEventCollector implements EventCollector {
       PipeEventCommitManager.getInstance()
           .enrichWithCommitterKeyAndCommitId((EnrichedEvent) event, creationTime, regionId);
 
-      // Assign a rebootTime for pipeConsensus
+      // Assign a rebootTime for iotConsensusV2
       ((EnrichedEvent) event).setRebootTimes(PipeDataNodeAgent.runtime().getRebootTimes());
     }
 

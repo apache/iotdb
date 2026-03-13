@@ -177,7 +177,9 @@ public class TsFileProcessor {
 
   public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
 
-  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  /**
+   * Point count when the memtable is flushed. Used for metrics on IoTConsensusV2' receiver side.
+   */
   private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
 
   /** Wal node. */

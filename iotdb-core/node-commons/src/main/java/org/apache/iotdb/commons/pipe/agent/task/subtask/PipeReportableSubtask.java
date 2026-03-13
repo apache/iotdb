@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.pipe.agent.task.subtask;
 
-import org.apache.iotdb.commons.exception.pipe.PipeConsensusRetryWithIncreasingIntervalException;
+import org.apache.iotdb.commons.exception.pipe.IoTConsensusV2RetryWithIncreasingIntervalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeCriticalException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeException;
 import org.apache.iotdb.commons.exception.pipe.PipeRuntimeSinkNonReportTimeConfigurableException;
@@ -68,7 +68,7 @@ public abstract class PipeReportableSubtask extends PipeSubtask {
     long sleepInterval = Math.min(1000L * retryCount.get(), 10000);
     // if receiver is read-only/internal-error/write-reject, connector will retry with
     // power-increasing interval
-    if (throwable instanceof PipeConsensusRetryWithIncreasingIntervalException) {
+    if (throwable instanceof IoTConsensusV2RetryWithIncreasingIntervalException) {
       if (retryCount.get() >= 5) {
         sleepInterval = 1000L * 20;
       } else {

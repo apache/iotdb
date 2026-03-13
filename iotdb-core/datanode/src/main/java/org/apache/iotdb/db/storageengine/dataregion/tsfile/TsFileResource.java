@@ -204,8 +204,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private RemoteStorageBlock remoteStorageBlock;
 
-  /** used to prevent circular replication in PipeConsensus */
-  private volatile boolean isGeneratedByPipeConsensus = false;
+  /** used to prevent circular replication in IoTConsensusV2 */
+  private volatile boolean isGeneratedByIoTConsensusV2 = false;
 
   /** used to prevent circular replication in Pipe */
   private volatile boolean isGeneratedByPipe = false;
@@ -328,7 +328,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
 
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
-    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByIoTConsensusV2, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
@@ -368,7 +368,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
             this.setAtomicStatus(TsFileResourceStatus.NORMAL_ON_REMOTE);
             break;
           case PIPE_MARK:
-            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByIoTConsensusV2 = ReadWriteIOUtils.readBoolean(inputStream);
             isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
             break;
           default:
@@ -791,12 +791,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return processor;
   }
 
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
-  public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
-    isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  public void setGeneratedByIoTConsensusV2(boolean generatedByIoTConsensusV2) {
+    isGeneratedByIoTConsensusV2 = generatedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByPipe() {
@@ -1702,7 +1702,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.tsFileSize = this.tsFileSize;
     cloned.processor = this.processor;
     cloned.originTsFileResource = this.originTsFileResource;
-    cloned.isGeneratedByPipeConsensus = this.isGeneratedByPipeConsensus;
+    cloned.isGeneratedByIoTConsensusV2 = this.isGeneratedByIoTConsensusV2;
     cloned.isGeneratedByPipe = this.isGeneratedByPipe;
     cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
     cloned.tierLevel = this.tierLevel;

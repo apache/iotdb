@@ -22,8 +22,8 @@ package org.apache.iotdb.db.pipe.agent.receiver;
 import org.apache.iotdb.commons.pipe.receiver.IoTDBReceiverAgent;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.pipe.receiver.protocol.airgap.IoTDBAirGapReceiverAgent;
+import org.apache.iotdb.db.pipe.receiver.protocol.iotconsensusv2.IoTConsensusV2ReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.legacy.IoTDBLegacyPipeReceiverAgent;
-import org.apache.iotdb.db.pipe.receiver.protocol.pipeconsensus.PipeConsensusReceiverAgent;
 import org.apache.iotdb.db.pipe.receiver.protocol.thrift.IoTDBDataNodeReceiverAgent;
 
 import java.io.File;
@@ -35,13 +35,13 @@ public class PipeDataNodeReceiverAgent {
   private final IoTDBDataNodeReceiverAgent thriftAgent;
   private final IoTDBAirGapReceiverAgent airGapAgent;
   private final IoTDBLegacyPipeReceiverAgent legacyAgent;
-  private final PipeConsensusReceiverAgent pipeConsensusAgent;
+  private final IoTConsensusV2ReceiverAgent iotConsensusV2Agent;
 
   public PipeDataNodeReceiverAgent() {
     thriftAgent = new IoTDBDataNodeReceiverAgent();
     airGapAgent = new IoTDBAirGapReceiverAgent();
     legacyAgent = new IoTDBLegacyPipeReceiverAgent();
-    pipeConsensusAgent = new PipeConsensusReceiverAgent();
+    iotConsensusV2Agent = new IoTConsensusV2ReceiverAgent();
   }
 
   public IoTDBDataNodeReceiverAgent thrift() {
@@ -56,8 +56,8 @@ public class PipeDataNodeReceiverAgent {
     return legacyAgent;
   }
 
-  public PipeConsensusReceiverAgent pipeConsensus() {
-    return pipeConsensusAgent;
+  public IoTConsensusV2ReceiverAgent iotConsensusV2() {
+    return iotConsensusV2Agent;
   }
 
   public void cleanPipeReceiverDirs() {
@@ -67,9 +67,9 @@ public class PipeDataNodeReceiverAgent {
         .map(File::new)
         .forEach(IoTDBReceiverAgent::cleanPipeReceiverDir);
     // consensus
-    String[] pipeConsensusReceiverFileDirs =
+    String[] iotConsensusV2ReceiverFileDirs =
         IoTDBDescriptor.getInstance().getConfig().getIotConsensusV2ReceiverFileDirs();
-    Arrays.stream(pipeConsensusReceiverFileDirs)
+    Arrays.stream(iotConsensusV2ReceiverFileDirs)
         .map(File::new)
         .forEach(IoTDBReceiverAgent::cleanPipeReceiverDir);
   }

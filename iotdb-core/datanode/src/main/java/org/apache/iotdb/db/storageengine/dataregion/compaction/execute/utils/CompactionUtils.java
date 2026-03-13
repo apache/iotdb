@@ -347,22 +347,22 @@ public class CompactionUtils {
     for (TsFileResource targetResource : targetResources) {
       // Initial value
       targetResource.setGeneratedByPipe(true);
-      targetResource.setGeneratedByPipeConsensus(true);
+      targetResource.setGeneratedByIoTConsensusV2(true);
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updateProgressIndex(unseqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             unseqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            unseqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            unseqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
       for (TsFileResource seqResource : seqResources) {
         targetResource.updateProgressIndex(seqResource.getMaxProgressIndex());
         targetResource.setGeneratedByPipe(
             seqResource.isGeneratedByPipe() && targetResource.isGeneratedByPipe());
-        targetResource.setGeneratedByPipeConsensus(
-            seqResource.isGeneratedByPipeConsensus()
-                && targetResource.isGeneratedByPipeConsensus());
+        targetResource.setGeneratedByIoTConsensusV2(
+            seqResource.isGeneratedByIoTConsensusV2()
+                && targetResource.isGeneratedByIoTConsensusV2());
       }
     }
   }

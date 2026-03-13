@@ -70,7 +70,7 @@ public interface CommonConfig {
 
   CommonConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass);
 
-  CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode);
+  CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode);
 
   CommonConfig setSchemaRegionGroupExtensionPolicy(String schemaRegionGroupExtensionPolicy);
 

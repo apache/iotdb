@@ -141,7 +141,7 @@ public class RemoteCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
     return this;
   }
 

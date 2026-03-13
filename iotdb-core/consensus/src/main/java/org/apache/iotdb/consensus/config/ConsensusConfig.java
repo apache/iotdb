@@ -32,7 +32,7 @@ public class ConsensusConfig {
   private final TConsensusGroupType consensusGroupType;
   private final RatisConfig ratisConfig;
   private final IoTConsensusConfig iotConsensusConfig;
-  private final PipeConsensusConfig pipeConsensusConfig;
+  private final IoTConsensusV2Config iotConsensusV2Config;
 
   private ConsensusConfig(
       TEndPoint thisNode,
@@ -41,14 +41,14 @@ public class ConsensusConfig {
       TConsensusGroupType consensusGroupType,
       RatisConfig ratisConfig,
       IoTConsensusConfig iotConsensusConfig,
-      PipeConsensusConfig pipeConsensusConfig) {
+      IoTConsensusV2Config iotConsensusV2Config) {
     this.thisNodeEndPoint = thisNode;
     this.thisNodeId = thisNodeId;
     this.storageDir = storageDir;
     this.consensusGroupType = consensusGroupType;
     this.ratisConfig = ratisConfig;
     this.iotConsensusConfig = iotConsensusConfig;
-    this.pipeConsensusConfig = pipeConsensusConfig;
+    this.iotConsensusV2Config = iotConsensusV2Config;
   }
 
   public TEndPoint getThisNodeEndPoint() {
@@ -75,8 +75,8 @@ public class ConsensusConfig {
     return iotConsensusConfig;
   }
 
-  public PipeConsensusConfig getPipeConsensusConfig() {
-    return pipeConsensusConfig;
+  public IoTConsensusV2Config getIoTConsensusV2Config() {
+    return iotConsensusV2Config;
   }
 
   public static ConsensusConfig.Builder newBuilder() {
@@ -91,7 +91,7 @@ public class ConsensusConfig {
     private TConsensusGroupType consensusGroupType;
     private RatisConfig ratisConfig;
     private IoTConsensusConfig iotConsensusConfig;
-    private PipeConsensusConfig pipeConsensusConfig;
+    private IoTConsensusV2Config iotConsensusV2Config;
 
     public ConsensusConfig build() {
       return new ConsensusConfig(
@@ -102,8 +102,8 @@ public class ConsensusConfig {
           Optional.ofNullable(ratisConfig).orElseGet(() -> RatisConfig.newBuilder().build()),
           Optional.ofNullable(iotConsensusConfig)
               .orElseGet(() -> IoTConsensusConfig.newBuilder().build()),
-          Optional.ofNullable(pipeConsensusConfig)
-              .orElseGet(() -> PipeConsensusConfig.newBuilder().build()));
+          Optional.ofNullable(iotConsensusV2Config)
+              .orElseGet(() -> IoTConsensusV2Config.newBuilder().build()));
     }
 
     public Builder setThisNode(TEndPoint thisNode) {
@@ -136,8 +136,8 @@ public class ConsensusConfig {
       return this;
     }
 
-    public Builder setPipeConsensusConfig(PipeConsensusConfig pipeConsensusConfig) {
-      this.pipeConsensusConfig = pipeConsensusConfig;
+    public Builder setIoTConsensusV2Config(IoTConsensusV2Config iotConsensusV2Config) {
+      this.iotConsensusV2Config = iotConsensusV2Config;
       return this;
     }
   }

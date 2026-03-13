@@ -53,8 +53,8 @@ public class ClusterConstant {
   public static final String SCALABLE_SINGLE_NODE_MODE = "ScalableSingleNodeMode";
   public static final String HIGH_PERFORMANCE_MODE = "HighPerformanceMode";
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE = "StrongConsistencyClusterMode";
-  public static final String PIPE_CONSENSUS_BATCH_MODE = "PipeConsensusBatchMode";
-  public static final String PIPE_CONSENSUS_STREAM_MODE = "PipeConsensusStreamMode";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE = "IoTConsensusV2BatchMode";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE = "IoTConsensusV2StreamMode";
 
   // System arguments in pom.xml
   public static final String LIGHT_WEIGHT_STANDALONE_MODE_CONFIG_NODE_NUM =
@@ -117,35 +117,35 @@ public class ClusterConstant {
   public static final String STRONG_CONSISTENCY_CLUSTER_MODE_DATA_REGION_REPLICA_NUM =
       "strongConsistencyClusterMode.dataRegionReplicaNumber";
 
-  public static final String PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_NUM =
-      "pipeConsensusBatchMode.configNodeNumber";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_NODE_NUM =
-      "pipeConsensusBatchMode.dataNodeNumber";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_CONFIG_NODE_CONSENSUS =
-      "pipeConsensusBatchMode.configNodeConsensus";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_CONSENSUS =
-      "pipeConsensusBatchMode.schemaRegionConsensus";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_CONSENSUS =
-      "pipeConsensusBatchMode.dataRegionConsensus";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM =
-      "pipeConsensusBatchMode.schemaRegionReplicaNumber";
-  public static final String PIPE_CONSENSUS_BATCH_MODE_DATA_REGION_REPLICA_NUM =
-      "pipeConsensusBatchMode.dataRegionReplicaNumber";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_CONFIG_NODE_NUM =
+      "iotConsensusV2BatchMode.configNodeNumber";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_DATA_NODE_NUM =
+      "iotConsensusV2BatchMode.dataNodeNumber";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_CONFIG_NODE_CONSENSUS =
+      "iotConsensusV2BatchMode.configNodeConsensus";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_CONSENSUS =
+      "iotConsensusV2BatchMode.schemaRegionConsensus";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_CONSENSUS =
+      "iotConsensusV2BatchMode.dataRegionConsensus";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "iotConsensusV2BatchMode.schemaRegionReplicaNumber";
+  public static final String IOT_CONSENSUS_V2_BATCH_MODE_DATA_REGION_REPLICA_NUM =
+      "iotConsensusV2BatchMode.dataRegionReplicaNumber";
 
-  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_NUM =
-      "pipeConsensusStreamMode.configNodeNumber";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_NODE_NUM =
-      "pipeConsensusStreamMode.dataNodeNumber";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_CONFIG_NODE_CONSENSUS =
-      "pipeConsensusStreamMode.configNodeConsensus";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_CONSENSUS =
-      "pipeConsensusStreamMode.schemaRegionConsensus";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_CONSENSUS =
-      "pipeConsensusStreamMode.dataRegionConsensus";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM =
-      "pipeConsensusStreamMode.schemaRegionReplicaNumber";
-  public static final String PIPE_CONSENSUS_STREAM_MODE_DATA_REGION_REPLICA_NUM =
-      "pipeConsensusStreamMode.dataRegionReplicaNumber";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_CONFIG_NODE_NUM =
+      "iotConsensusV2StreamMode.configNodeNumber";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_DATA_NODE_NUM =
+      "iotConsensusV2StreamMode.dataNodeNumber";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_CONFIG_NODE_CONSENSUS =
+      "iotConsensusV2StreamMode.configNodeConsensus";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_CONSENSUS =
+      "iotConsensusV2StreamMode.schemaRegionConsensus";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_CONSENSUS =
+      "iotConsensusV2StreamMode.dataRegionConsensus";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_SCHEMA_REGION_REPLICA_NUM =
+      "iotConsensusV2StreamMode.schemaRegionReplicaNumber";
+  public static final String IOT_CONSENSUS_V2_STREAM_MODE_DATA_REGION_REPLICA_NUM =
+      "iotConsensusV2StreamMode.dataRegionReplicaNumber";
 
   // Property file names
   public static final String IOTDB_SYSTEM_PROPERTIES_FILE = "iotdb-system.properties";
