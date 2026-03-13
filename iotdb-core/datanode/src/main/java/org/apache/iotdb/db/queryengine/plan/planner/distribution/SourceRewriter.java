@@ -100,6 +100,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -202,7 +203,7 @@ public class SourceRewriter extends BaseSourceRewriter<DistributionPlanContext> 
     }
 
     // Step 1: constructs DeviceViewSplits
-    Set<TRegionReplicaSet> relatedDataRegions = new HashSet<>();
+    Set<TRegionReplicaSet> relatedDataRegions = new LinkedHashSet<>();
     List<DeviceViewSplit> deviceViewSplits = new ArrayList<>();
     boolean existDeviceCrossRegion = false;
 
