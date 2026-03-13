@@ -60,6 +60,12 @@ public class DataNodeMemoryConfig {
   /** whether to cache metadata(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
+  /**
+   * If a timeseries is not found in a TsFile, also cache a placeholder to indicate the
+   * non-existence.
+   */
+  private boolean mayCacheNonExistSeries = true;
+
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int queryThreadCount = Runtime.getRuntime().availableProcessors();
 
@@ -411,6 +417,10 @@ public class DataNodeMemoryConfig {
         Boolean.parseBoolean(
             properties.getProperty(
                 "meta_data_cache_enable", Boolean.toString(isMetaDataCacheEnable()))));
+    setMayCacheNonExistSeries(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "may_cache_nonexist_series", Boolean.toString(isMetaDataCacheEnable()))));
 
     try {
       // update enable query memory estimation for memory control
@@ -559,6 +569,14 @@ public class DataNodeMemoryConfig {
 
   public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
     this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public boolean isMayCacheNonExistSeries() {
+    return mayCacheNonExistSeries;
+  }
+
+  public void setMayCacheNonExistSeries(boolean mayCacheNonExistSeries) {
+    this.mayCacheNonExistSeries = mayCacheNonExistSeries;
   }
 
   public int getQueryThreadCount() {
