@@ -418,7 +418,7 @@ public class InformationSchema {
     columnsThatSupportPushDownPredicate.put(
         TABLE_DISK_USAGE,
         ImmutableSet.of(
-            ColumnHeaderConstant.DATABASE,
+            ColumnHeaderConstant.DATABASE.toLowerCase(),
             ColumnHeaderConstant.TABLE_NAME_TABLE_MODEL,
             ColumnHeaderConstant.DATA_NODE_ID_TABLE_MODEL,
             ColumnHeaderConstant.REGION_ID_TABLE_MODEL,
