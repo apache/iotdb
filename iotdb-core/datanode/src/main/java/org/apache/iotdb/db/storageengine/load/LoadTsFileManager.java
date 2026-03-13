@@ -346,7 +346,7 @@ public class LoadTsFileManager {
       final DataRegion dataRegion,
       final String databaseName,
       final long writePointCount,
-      final boolean isGeneratedByPipeConsensusLeader) {
+      final boolean isGeneratedByIoTConsensusV2Leader) {
     MemTableFlushTask.recordFlushPointsMetricInternal(
         writePointCount, databaseName, dataRegion.getDataRegionIdString());
     MetricService.getInstance()
@@ -373,7 +373,7 @@ public class LoadTsFileManager {
                     Integer.parseInt(dataRegion.getDataRegionIdString())));
     // It may happen that the replicationNum is 0 when load and db deletion occurs
     // concurrently, so we can just not to count the number of points in this case
-    if (replicationNum != 0 && !isGeneratedByPipeConsensusLeader) {
+    if (replicationNum != 0 && !isGeneratedByIoTConsensusV2Leader) {
       MetricService.getInstance()
           .count(
               writePointCount / replicationNum,

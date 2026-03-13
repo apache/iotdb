@@ -724,28 +724,50 @@ public class SeriesScanUtil implements Accountable {
     MemPointIterator memPointIterator =
         readOnlyMemChunk.createMemPointIterator(
             orderUtils.getScanOrder(), scanOptions.getGlobalTimeFilter());
-    for (Statistics<? extends Serializable> statistics : statisticsList) {
-      long orderTime = orderUtils.getOrderTime(statistics);
-      boolean canSkip =
-          (orderUtils.getAscending() && orderTime > satisfiedTimeRange.getMax())
-              || (!orderUtils.getAscending() && orderTime < satisfiedTimeRange.getMin());
-      if (canSkip) {
-        break;
+    if (orderUtils.getAscending()) {
+      for (Statistics<? extends Serializable> statistics : statisticsList) {
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime > satisfiedTimeRange.getMax()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
-      IVersionPageReader versionPageReader =
-          new LazyMemVersionPageReader(
-              context,
-              timestampInFileName,
-              chunkMetaData.getVersion(),
-              chunkMetaData.getOffsetOfChunkHeader(),
-              isAligned,
-              statistics,
-              memPointIterator,
-              chunkMetaData.isSeq());
-      if (chunkMetaData.isSeq()) {
-        seqPageReaders.add(versionPageReader);
-      } else {
-        unSeqPageReaders.add(versionPageReader);
+    } else {
+      for (int i = statisticsList.size() - 1; i >= 0; i--) {
+        Statistics<? extends Serializable> statistics = statisticsList.get(i);
+        long orderTime = orderUtils.getOrderTime(statistics);
+        if (orderTime < satisfiedTimeRange.getMin()) {
+          break;
+        }
+        IVersionPageReader versionPageReader =
+            new LazyMemVersionPageReader(
+                context,
+                timestampInFileName,
+                chunkMetaData.getVersion(),
+                chunkMetaData.getOffsetOfChunkHeader(),
+                isAligned,
+                statistics,
+                memPointIterator,
+                chunkMetaData.isSeq());
+        if (chunkMetaData.isSeq()) {
+          seqPageReaders.add(versionPageReader);
+        } else {
+          unSeqPageReaders.add(versionPageReader);
+        }
       }
     }
   }

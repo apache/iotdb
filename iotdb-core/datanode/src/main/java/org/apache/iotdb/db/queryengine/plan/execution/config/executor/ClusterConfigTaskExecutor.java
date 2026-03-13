@@ -2203,6 +2203,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     // and history are true), the pipe is split into history-only and realtime–only modes.
     final PipeParameters sourcePipeParameters =
         new PipeParameters(createPipeStatement.getSourceAttributes());
+    final PipeParameters sinkPipeParameters =
+        new PipeParameters(createPipeStatement.getSinkAttributes());
     if (PipeConfig.getInstance().getPipeAutoSplitFullEnabled()
         && PipeDataNodeAgent.task().isFullSync(sourcePipeParameters)) {
       try (final ConfigNodeClient configNodeClient =
@@ -2260,7 +2262,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     PipeSourceConstant.EXTRACTOR_EXCLUSION_DEFAULT_VALUE)))
                         .getAttribute())
                 .setProcessorAttributes(createPipeStatement.getProcessorAttributes())
-                .setConnectorAttributes(createPipeStatement.getSinkAttributes());
+                .setConnectorAttributes(
+                    sinkPipeParameters
+                        .addOrReplaceEquivalentAttributesWithClone(
+                            new PipeParameters(
+                                Collections.singletonMap(
+                                    PipeSinkConstant.SINK_ENABLE_SEND_TSFILE_LIMIT,
+                                    Boolean.TRUE.toString())))
+                        .getAttribute());
 
         final TSStatus historyTsStatus = configNodeClient.createPipe(historyReq);
         // If creation fails, immediately return with exception
