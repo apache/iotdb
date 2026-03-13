@@ -130,6 +130,61 @@ public class TableModelStatementMemorySourceVisitor
         node.getTsBlock(context.getAnalysis()), node.getDataSetHeader());
   }
 
+  @Override
+  public StatementMemorySource visitDescribeQuery(
+      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery node,
+      TableModelStatementMemorySourceContext context) {
+
+    java.util.List<org.apache.iotdb.commons.schema.column.ColumnHeader> columnHeaders =
+        new java.util.ArrayList<>();
+    columnHeaders.add(
+        new org.apache.iotdb.commons.schema.column.ColumnHeader(
+            "Column", org.apache.tsfile.enums.TSDataType.TEXT));
+    columnHeaders.add(
+        new org.apache.iotdb.commons.schema.column.ColumnHeader(
+            "Type", org.apache.tsfile.enums.TSDataType.TEXT));
+
+    org.apache.iotdb.db.queryengine.common.header.DatasetHeader datasetHeader =
+        new org.apache.iotdb.db.queryengine.common.header.DatasetHeader(columnHeaders, true);
+
+    java.util.List<String> columnNames = new java.util.ArrayList<>();
+    java.util.List<String> columnTypes = new java.util.ArrayList<>();
+
+    context
+        .getAnalysis()
+        .getOutputDescriptor()
+        .getVisibleFields()
+        .forEach(
+            field -> {
+              columnNames.add(field.getName().orElse("unknown"));
+              columnTypes.add(field.getType().toString());
+            });
+
+    org.apache.tsfile.read.common.block.TsBlockBuilder builder =
+        new org.apache.tsfile.read.common.block.TsBlockBuilder(
+            java.util.Arrays.asList(
+                org.apache.tsfile.enums.TSDataType.TEXT, org.apache.tsfile.enums.TSDataType.TEXT));
+
+    for (int i = 0; i < columnNames.size(); i++) {
+      builder.getTimeColumnBuilder().writeLong(0);
+
+      builder
+          .getColumnBuilder(0)
+          .writeBinary(
+              new org.apache.tsfile.utils.Binary(
+                  columnNames.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+      builder
+          .getColumnBuilder(1)
+          .writeBinary(
+              new org.apache.tsfile.utils.Binary(
+                  columnTypes.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+      builder.declarePosition();
+    }
+
+    return new StatementMemorySource(builder.build(), datasetHeader);
+  }
+
   private List<String> mergeExplainResults(
       Map<NodeRef<Table>, Pair<Integer, List<String>>> cteExplainResults,
       List<String> mainExplainResult) {
