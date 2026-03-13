@@ -1026,6 +1026,7 @@ text_compressor=LZ4
 # These consistency levels are currently supported:
 # 1. strong(Default, read from the leader replica)
 # 2. weak(Read from a random replica)
+# 3. follower_read(If there are available follower replicas, select one from any of the follower replicas.)
 # effectiveMode: restart
 # Datatype: string
 read_consistency_level=strong
