@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl.subscription.subscription;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.pipe.agent.task.meta.PipeStaticMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
+import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.pipe.task.DropPipePlanV2;
@@ -36,6 +37,7 @@ import org.apache.iotdb.confignode.procedure.store.ProcedureType;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.exception.ConsensusException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -100,6 +102,31 @@ public class DropSubscriptionProcedure extends AbstractOperateSubscriptionAndPip
 
     for (final String topic : unsubscribeReq.getTopicNames()) {
       if (topicsUnsubByGroup.contains(topic)) {
+        // Check if this topic uses consensus-based subscription (same detection as
+        // CreateSubscriptionProcedure). Consensus topics have no pipe to drop.
+        final TopicMeta topicMeta = subscriptionInfo.get().deepCopyTopicMeta(topic);
+        final String topicMode =
+            topicMeta
+                .getConfig()
+                .getStringOrDefault(TopicConstant.MODE_KEY, TopicConstant.MODE_DEFAULT_VALUE);
+        final String topicFormat =
+            topicMeta
+                .getConfig()
+                .getStringOrDefault(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_DEFAULT_VALUE);
+        final boolean isConsensusBasedTopic =
+            TopicConstant.MODE_LIVE_VALUE.equalsIgnoreCase(topicMode)
+                && !TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE.equalsIgnoreCase(topicFormat);
+
+        if (isConsensusBasedTopic) {
+          LOGGER.info(
+              "DropSubscriptionProcedure: topic [{}] is consensus-based (mode={}, format={}), "
+                  + "skipping pipe removal",
+              topic,
+              topicMode,
+              topicFormat);
+          continue;
+        }
+
         // Topic will be subscribed by no consumers in this group
         dropPipeProcedures.add(
             new DropPipeProcedureV2(
