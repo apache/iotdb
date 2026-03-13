@@ -202,14 +202,14 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         final long timestamp =
                             ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionRecord)
+                                        .SubscriptionRecordHandler.SubscriptionResultSet)
                                     dataSet)
                                 .nextRecord()
                                 .getTimestamp();
@@ -243,14 +243,14 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         final long timestamp =
                             ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionRecord)
+                                        .SubscriptionRecordHandler.SubscriptionResultSet)
                                     dataSet)
                                 .nextRecord()
                                 .getTimestamp();
@@ -368,14 +368,14 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         final long timestamp =
                             ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionRecord)
+                                        .SubscriptionRecordHandler.SubscriptionResultSet)
                                     dataSet)
                                 .nextRecord()
                                 .getTimestamp();
@@ -503,14 +503,14 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         final long timestamp =
                             ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionRecord)
+                                        .SubscriptionRecordHandler.SubscriptionResultSet)
                                     dataSet)
                                 .nextRecord()
                                 .getTimestamp();

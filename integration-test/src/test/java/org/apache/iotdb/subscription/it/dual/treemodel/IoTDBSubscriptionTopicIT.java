@@ -649,9 +649,9 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     }
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
-                        for (final ResultSet dataSet : message.getRecords()) {
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           while (((org.apache.iotdb.session.subscription.payload
-                                      .SubscriptionRecordHandler.SubscriptionRecord)
+                                      .SubscriptionRecordHandler.SubscriptionResultSet)
                                   dataSet)
                               .hasNext()) {
                             dataSet.next();

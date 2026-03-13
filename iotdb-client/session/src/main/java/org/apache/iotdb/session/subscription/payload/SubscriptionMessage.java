@@ -100,19 +100,19 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   /////////////////////////////// handlers ///////////////////////////////
 
-  public List<ResultSet> getRecords() {
+  public List<ResultSet> getResultSets() {
     if (handler instanceof SubscriptionRecordHandler) {
-      return ((SubscriptionRecordHandler) handler).getRecords();
+      return ((SubscriptionRecordHandler) handler).getResultSets();
     }
     throw new SubscriptionIncompatibleHandlerException(
-        String.format("%s do not support getRecords().", handler.getClass().getSimpleName()));
+        String.format("%s do not support getResultSets().", handler.getClass().getSimpleName()));
   }
 
   public Iterator<Tablet> getRecordTabletIterator() {
     if (handler instanceof SubscriptionRecordHandler) {
-      final List<ResultSet> records = ((SubscriptionRecordHandler) handler).getRecords();
-      return records.stream()
-          .map(record -> ((SubscriptionRecordHandler.SubscriptionRecord) record).getTablet())
+      final List<ResultSet> resultSets = ((SubscriptionRecordHandler) handler).getResultSets();
+      return resultSets.stream()
+          .map(record -> ((SubscriptionRecordHandler.SubscriptionResultSet) record).getTablet())
           .iterator();
     }
     throw new SubscriptionIncompatibleHandlerException(

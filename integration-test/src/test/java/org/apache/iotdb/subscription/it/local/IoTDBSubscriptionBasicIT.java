@@ -133,9 +133,9 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   }
                   for (final SubscriptionMessage message : messages) {
                     int rowCountInOneMessage = 0;
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         dataSet.next();
@@ -390,14 +390,14 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final ResultSet dataSet : message.getRecords()) {
+                    for (final ResultSet dataSet : message.getResultSets()) {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         timestampSum.getAndAdd(
                             ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionRecord)
+                                        .SubscriptionRecordHandler.SubscriptionResultSet)
                                     dataSet)
                                 .nextRecord()
                                 .getTimestamp());
@@ -551,10 +551,10 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         dataSet.next();
@@ -622,10 +622,10 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionRecord)
+                                  .SubscriptionRecordHandler.SubscriptionResultSet)
                               dataSet)
                           .hasNext()) {
                         dataSet.next();

@@ -173,11 +173,11 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
-                        for (final ResultSet dataSet : message.getRecords()) {
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           try {
                             session_dest.insertTablet(
                                 ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                            .SubscriptionRecordHandler.SubscriptionResultSet)
                                         dataSet)
                                     .getTablet());
                           } catch (StatementExecutionException e) {

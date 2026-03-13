@@ -1055,19 +1055,19 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                       switch (SubscriptionMessageType.valueOf(messageType)) {
                         case RECORD_HANDLER:
                           {
-                            for (final ResultSet dataSet : message.getRecords()) {
+                            for (final ResultSet dataSet : message.getResultSets()) {
                               final List<String> columnNameList =
                                   ((org.apache.iotdb.session.subscription.payload
-                                              .SubscriptionRecordHandler.SubscriptionRecord)
+                                              .SubscriptionRecordHandler.SubscriptionResultSet)
                                           dataSet)
                                       .getColumnNames();
                               while (((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .hasNext()) {
                                 final RowRecord record =
                                     ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionRecord)
+                                                .SubscriptionRecordHandler.SubscriptionResultSet)
                                             dataSet)
                                         .nextRecord();
                                 insertRowRecordEnrichedByConsumerGroupId(

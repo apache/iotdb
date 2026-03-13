@@ -133,9 +133,9 @@ public class TableModelSubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
-          for (final ResultSet dataSet : message.getRecords()) {
-            final SubscriptionRecordHandler.SubscriptionRecord record =
-                (SubscriptionRecordHandler.SubscriptionRecord) dataSet;
+          for (final ResultSet dataSet : message.getResultSets()) {
+            final SubscriptionRecordHandler.SubscriptionResultSet record =
+                (SubscriptionRecordHandler.SubscriptionResultSet) dataSet;
             System.out.println(record.getDatabaseName());
             System.out.println(record.getTableName());
             System.out.println(record.getColumnNames());

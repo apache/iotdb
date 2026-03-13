@@ -49,10 +49,10 @@ import java.util.stream.Stream;
 
 public class SubscriptionRecordHandler implements Iterable<ResultSet>, SubscriptionMessageHandler {
 
-  private final List<ResultSet> records;
+  private final List<ResultSet> resultSets;
 
   public SubscriptionRecordHandler(final Map<String, List<Tablet>> tablets) {
-    final List<ResultSet> records = new ArrayList<>();
+    final List<ResultSet> resultSets = new ArrayList<>();
     for (final Map.Entry<String, List<Tablet>> entry : tablets.entrySet()) {
       final String databaseName = entry.getKey();
       final List<Tablet> tabletList = entry.getValue();
@@ -63,22 +63,22 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
         if (Objects.isNull(tablet)) {
           continue;
         }
-        records.add(new SubscriptionRecord(tablet, databaseName));
+        resultSets.add(new SubscriptionResultSet(tablet, databaseName));
       }
     }
-    this.records = Collections.unmodifiableList(records);
+    this.resultSets = Collections.unmodifiableList(resultSets);
   }
 
-  public List<ResultSet> getRecords() {
-    return records;
+  public List<ResultSet> getResultSets() {
+    return resultSets;
   }
 
   @Override
   public Iterator<ResultSet> iterator() {
-    return records.iterator();
+    return resultSets.iterator();
   }
 
-  public static class SubscriptionRecord extends AbstractResultSet {
+  public static class SubscriptionResultSet extends AbstractResultSet {
 
     private Tablet tablet;
 
@@ -90,7 +90,7 @@ public class SubscriptionRecordHandler implements Iterable<ResultSet>, Subscript
 
     @TableModel private List<ColumnCategory> columnCategoryList;
 
-    private SubscriptionRecord(final Tablet tablet, @Nullable final String databaseName) {
+    private SubscriptionResultSet(final Tablet tablet, @Nullable final String databaseName) {
       super(generateColumnNames(tablet, databaseName), generateColumnTypes(tablet));
       this.tablet = tablet;
       this.databaseName = databaseName;

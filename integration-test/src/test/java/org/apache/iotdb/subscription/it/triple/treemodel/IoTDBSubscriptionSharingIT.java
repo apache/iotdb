@@ -249,13 +249,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_1")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
                               ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -273,13 +273,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_1")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       receiver2
                           .getSessionConnection()
                           .insertTablet(
                               ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -297,13 +297,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
                               ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -321,13 +321,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       receiver2
                           .getSessionConnection()
                           .insertTablet(
                               ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -345,13 +345,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
                               ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionRecord)
+                                          .SubscriptionRecordHandler.SubscriptionResultSet)
                                       dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -373,13 +373,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
-                        for (final ResultSet dataSet : message.getRecords()) {
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           try {
                             receiver1
                                 .getSessionConnection()
                                 .insertTablet(
                                     ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionRecord)
+                                                .SubscriptionRecordHandler.SubscriptionResultSet)
                                             dataSet)
                                         .getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -444,13 +444,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
-                        for (final ResultSet dataSet : message.getRecords()) {
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           try {
                             receiver2
                                 .getSessionConnection()
                                 .insertTablet(
                                     ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionRecord)
+                                                .SubscriptionRecordHandler.SubscriptionResultSet)
                                             dataSet)
                                         .getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {

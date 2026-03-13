@@ -308,20 +308,20 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                     }
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
-                        for (final ResultSet dataSet : message.getRecords()) {
+                        for (final ResultSet dataSet : message.getResultSets()) {
                           while (((org.apache.iotdb.session.subscription.payload
-                                      .SubscriptionRecordHandler.SubscriptionRecord)
+                                      .SubscriptionRecordHandler.SubscriptionResultSet)
                                   dataSet)
                               .hasNext()) {
                             final RowRecord record =
                                 ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                            .SubscriptionRecordHandler.SubscriptionResultSet)
                                         dataSet)
                                     .nextRecord();
                             Assert.assertEquals(
                                 type.toString(),
                                 ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionRecord)
+                                            .SubscriptionRecordHandler.SubscriptionResultSet)
                                         dataSet)
                                     .getColumnTypes()
                                     .get(1));
@@ -331,7 +331,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                                 getValue(
                                     type,
                                     ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionRecord)
+                                                .SubscriptionRecordHandler.SubscriptionResultSet)
                                             dataSet)
                                         .getTablet()));
                             Assert.assertEquals(

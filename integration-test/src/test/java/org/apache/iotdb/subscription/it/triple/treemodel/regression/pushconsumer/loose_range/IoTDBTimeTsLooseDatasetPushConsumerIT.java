@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.subscription.config.TopicConstant;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
@@ -163,13 +164,10 @@ public class IoTDBTimeTsLooseDatasetPushConsumerIT extends AbstractSubscriptionT
             .fileSaveDir("target")
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       session_dest.insertTablet(
-                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
-                                      .SubscriptionRecord)
-                                  dataSet)
-                              .getTablet());
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {

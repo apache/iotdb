@@ -37,6 +37,7 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullCons
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
@@ -402,19 +403,13 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
       }
       switch (SubscriptionMessageType.valueOf(messageType)) {
         case RECORD_HANDLER:
-          for (final ResultSet dataSet : message.getRecords()) {
+          for (final ResultSet dataSet : message.getResultSets()) {
             session.executeNonQueryStatement(
                 "use "
                     + Objects.requireNonNull(
-                        ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
-                                    .SubscriptionRecord)
-                                dataSet)
+                        ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                             .getDatabaseName()));
-            session.insert(
-                ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
-                            .SubscriptionRecord)
-                        dataSet)
-                    .getTablet());
+            session.insert(((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
           }
           break;
         case TS_FILE:

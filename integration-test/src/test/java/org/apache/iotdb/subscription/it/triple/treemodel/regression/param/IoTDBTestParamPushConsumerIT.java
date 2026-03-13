@@ -30,6 +30,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalEx
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -144,15 +145,13 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionTreeRegres
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       // System.out.println("#### " +
-                      // ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler.SubscriptionRecord) dataSet).getTablet().rowSize);
+                      // ((SubscriptionRecordHandler.SubscriptionResultSet)
+                      // dataSet).getTablet().rowSize);
                       session_dest.insertTablet(
-                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
-                                      .SubscriptionRecord)
-                                  dataSet)
-                              .getTablet());
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
@@ -186,13 +185,10 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionTreeRegres
             .autoPollIntervalMs(10)
             .consumeListener(
                 message -> {
-                  for (final ResultSet dataSet : message.getRecords()) {
+                  for (final ResultSet dataSet : message.getResultSets()) {
                     try {
                       session_dest.insertTablet(
-                          ((org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler
-                                      .SubscriptionRecord)
-                                  dataSet)
-                              .getTablet());
+                          ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).getTablet());
                     } catch (StatementExecutionException e) {
                       throw new RuntimeException(e);
                     } catch (IoTDBConnectionException e) {
