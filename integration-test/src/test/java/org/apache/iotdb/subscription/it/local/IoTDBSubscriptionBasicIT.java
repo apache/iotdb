@@ -37,12 +37,11 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushC
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -478,13 +477,12 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .consumeListener(
                 message -> {
                   onReceiveCount.getAndIncrement();
-                  try (final TsFileReader tsFileReader =
-                      (TsFileReader) message.getTsFile().openReader()) {
-                    final QueryDataSet dataSet =
-                        tsFileReader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(new Path("root.db.d1", "s1", true)),
-                                null));
+                  try (final ITsFileTreeReader tsFileReader =
+                      message.getTsFile().openTreeReader()) {
+                    final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                        SubscriptionTreeReaderTestUtils.query(
+                            tsFileReader,
+                            Collections.singletonList(new Path("root.db.d1", "s1", true)));
                     while (dataSet.hasNext()) {
                       dataSet.next();
                       rowCount.addAndGet(1);

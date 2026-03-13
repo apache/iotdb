@@ -29,15 +29,14 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
@@ -342,13 +341,12 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                         }
                         break;
                       case TS_FILE:
-                        try (final TsFileReader tsFileReader =
-                            (TsFileReader) message.getTsFile().openReader()) {
-                          final QueryDataSet dataSet =
-                              tsFileReader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(new Path("root.db.d1", "s1", true)),
-                                      null));
+                        try (final ITsFileTreeReader tsFileReader =
+                            message.getTsFile().openTreeReader()) {
+                          final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  tsFileReader,
+                                  Collections.singletonList(new Path("root.db.d1", "s1", true)));
                           while (dataSet.hasNext()) {
                             final RowRecord record = dataSet.next();
                             Assert.assertEquals(type, record.getFields().get(0).getDataType());

@@ -31,15 +31,14 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.pushconsumer.multi.IoTDBMultiGroupVsMultiConsumerIT;
 
 import org.apache.tsfile.enums.TSDataType;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -199,14 +198,12 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumeListener(
                 message -> {
                   try {
-                    try (final TsFileReader reader =
-                        (TsFileReader) message.getTsFile().openReader()) {
-                      final QueryDataSet dataset =
-                          reader.query(
-                              QueryExpression.create(
-                                  Collections.singletonList(
-                                      new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                  null));
+                    try (final ITsFileTreeReader reader = message.getTsFile().openTreeReader()) {
+                      final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                          SubscriptionTreeReaderTestUtils.query(
+                              reader,
+                              Collections.singletonList(
+                                  new Path(databasePrefix + "0.d_0", "s_0", true)));
                       while (dataset.hasNext()) {
                         rowCount00.addAndGet(1);
                         dataset.next();
@@ -227,14 +224,12 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumeListener(
                 message -> {
                   try {
-                    try (final TsFileReader reader =
-                        (TsFileReader) message.getTsFile().openReader()) {
-                      final QueryDataSet dataset =
-                          reader.query(
-                              QueryExpression.create(
-                                  Collections.singletonList(
-                                      new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                  null));
+                    try (final ITsFileTreeReader reader = message.getTsFile().openTreeReader()) {
+                      final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                          SubscriptionTreeReaderTestUtils.query(
+                              reader,
+                              Collections.singletonList(
+                                  new Path(databasePrefix + "0.d_0", "s_0", true)));
                       while (dataset.hasNext()) {
                         rowCount10.addAndGet(1);
                         dataset.next();
@@ -393,14 +388,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                         }
                         break;
                       case TS_FILE:
-                        try (final TsFileReader reader =
-                            (TsFileReader) message.getTsFile().openReader()) {
-                          final QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(
-                                          new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                      null));
+                        try (final ITsFileTreeReader reader =
+                            message.getTsFile().openTreeReader()) {
+                          final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader,
+                                  Collections.singletonList(
+                                      new Path(databasePrefix + "0.d_0", "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount70.addAndGet(1);
                             dataset.next();
@@ -422,14 +416,12 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_3")
             .consumeListener(
                 message -> {
-                  try (final TsFileReader reader =
-                      (TsFileReader) message.getTsFile().openReader()) {
-                    final QueryDataSet dataset =
-                        reader.query(
-                            QueryExpression.create(
-                                Collections.singletonList(
-                                    new Path(databasePrefix + "6.d_0", "s_0", true)),
-                                null));
+                  try (final ITsFileTreeReader reader = message.getTsFile().openTreeReader()) {
+                    final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                        SubscriptionTreeReaderTestUtils.query(
+                            reader,
+                            Collections.singletonList(
+                                new Path(databasePrefix + "6.d_0", "s_0", true)));
                     while (dataset.hasNext()) {
                       rowCount6.addAndGet(1);
                       dataset.next();
@@ -467,14 +459,13 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                         }
                         break;
                       case TS_FILE:
-                        try (final TsFileReader reader =
-                            (TsFileReader) message.getTsFile().openReader()) {
-                          final QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(
-                                          new Path(databasePrefix + "0.d_0", "s_0", true)),
-                                      null));
+                        try (final ITsFileTreeReader reader =
+                            message.getTsFile().openTreeReader()) {
+                          final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader,
+                                  Collections.singletonList(
+                                      new Path(databasePrefix + "0.d_0", "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount90.addAndGet(1);
                             dataset.next();

@@ -20,14 +20,15 @@
 package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.rpc.subscription.annotation.TableModel;
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 
 import org.apache.thrift.annotation.Nullable;
+import org.apache.tsfile.read.v4.ITsFileReader;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.read.v4.TsFileReaderBuilder;
 import org.apache.tsfile.read.v4.TsFileTreeReaderBuilder;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 
 public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
 
@@ -38,12 +39,25 @@ public class SubscriptionTsFileHandler extends SubscriptionFileHandler {
     this.databaseName = databaseName;
   }
 
-  @SuppressWarnings("unchecked")
-  public <T extends AutoCloseable> T openReader() throws IOException {
-    return (T)
-        (Objects.isNull(databaseName)
-            ? new TsFileTreeReaderBuilder().file(new File(absolutePath)).build()
-            : new TsFileReaderBuilder().file(new File(absolutePath)).build());
+  public ITsFileTreeReader openTreeReader() throws IOException {
+    if (databaseName != null) {
+      throw new SubscriptionIncompatibleHandlerException(
+          String.format(
+              "%s does not support openTreeReader() for table model tsfile.",
+              getClass().getSimpleName()));
+    }
+    return new TsFileTreeReaderBuilder().file(getFile()).build();
+  }
+
+  @TableModel
+  public ITsFileReader openTableReader() throws IOException {
+    if (databaseName == null) {
+      throw new SubscriptionIncompatibleHandlerException(
+          String.format(
+              "%s does not support openTableReader() for tree model tsfile.",
+              getClass().getSimpleName()));
+    }
+    return new TsFileReaderBuilder().file(getFile()).build();
   }
 
   @TableModel

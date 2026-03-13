@@ -36,13 +36,12 @@ import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
 
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.junit.Assert;
 import org.junit.Before;
@@ -661,12 +660,12 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                         }
                         break;
                       case TS_FILE:
-                        try (final TsFileReader tsFileReader =
-                            (TsFileReader) message.getTsFile().openReader()) {
+                        try (final ITsFileTreeReader tsFileReader =
+                            message.getTsFile().openTreeReader()) {
                           final Path path = new Path("root.db.d1", "s1", true);
-                          final QueryDataSet dataSet =
-                              tsFileReader.query(
-                                  QueryExpression.create(Collections.singletonList(path), null));
+                          final SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataSet =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  tsFileReader, Collections.singletonList(path));
                           while (dataSet.hasNext()) {
                             dataSet.next();
                             rowCount.addAndGet(1);

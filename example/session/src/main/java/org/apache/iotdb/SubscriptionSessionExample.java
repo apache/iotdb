@@ -209,7 +209,7 @@ public class SubscriptionSessionExample {
                       }
                     }
                     for (final SubscriptionMessage message : messages) {
-                      try (final ITsFileTreeReader reader = message.getTsFile().openReader()) {
+                      try (final ITsFileTreeReader reader = message.getTsFile().openTreeReader()) {
                         reader.getAllDeviceIds().forEach(System.out::println);
                       }
                     }

@@ -29,18 +29,17 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushC
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.subscription.it.Retry;
 import org.apache.iotdb.subscription.it.RetryRule;
+import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.AbstractSubscriptionTreeRegressionIT;
 
 import org.apache.thrift.TException;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.tsfile.read.TsFileReader;
 import org.apache.tsfile.read.common.Path;
 import org.apache.tsfile.read.common.RowRecord;
-import org.apache.tsfile.read.expression.QueryExpression;
-import org.apache.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.tsfile.read.query.dataset.ResultSet;
+import org.apache.tsfile.read.v4.ITsFileTreeReader;
 import org.apache.tsfile.write.record.Tablet;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -190,12 +189,10 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
                         break;
                       case TS_FILE:
                         try {
-                          TsFileReader reader = (TsFileReader) message.getTsFile().openReader();
-                          QueryDataSet dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(new Path(device, "s_0", true)),
-                                      null));
+                          ITsFileTreeReader reader = message.getTsFile().openTreeReader();
+                          SubscriptionTreeReaderTestUtils.QueryDataSetAdapter dataset =
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader, Collections.singletonList(new Path(device, "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount1.addAndGet(1);
                             RowRecord next = dataset.next();
@@ -203,10 +200,9 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionTreeRe
                                 device + ":" + next.getTimestamp() + "," + next.getFields());
                           }
                           dataset =
-                              reader.query(
-                                  QueryExpression.create(
-                                      Collections.singletonList(new Path(device2, "s_0", true)),
-                                      null));
+                              SubscriptionTreeReaderTestUtils.query(
+                                  reader,
+                                  Collections.singletonList(new Path(device2, "s_0", true)));
                           while (dataset.hasNext()) {
                             rowCount2.addAndGet(1);
                             RowRecord next = dataset.next();
