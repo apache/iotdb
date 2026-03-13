@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.sql.ast;
 
-import org.apache.iotdb.db.exception.sql.SemanticException;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
@@ -51,9 +49,6 @@ public class RenameTable extends Statement {
     this.target = requireNonNull(target, "target name is null");
     this.tableIfExists = tableIfExists;
     this.view = view;
-    if (!view) {
-      throw new SemanticException("The renaming for base table is currently unsupported");
-    }
   }
 
   public QualifiedName getSource() {

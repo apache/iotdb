@@ -65,7 +65,7 @@ import static org.apache.iotdb.udf.api.type.Type.DOUBLE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class TableFunctionTest {
+public class TableFunctionTest extends BaseAnalyzerTest {
 
   @Test
   public void testSimpleRowSemantic() {

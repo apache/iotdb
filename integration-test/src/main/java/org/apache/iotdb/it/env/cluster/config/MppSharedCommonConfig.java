@@ -487,6 +487,13 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
+  public CommonConfig setPipeInsertNodeQueueMemory(long pipeInsertNodeQueueMemory) {
+    dnConfig.setPipeInsertNodeQueueMemory(pipeInsertNodeQueueMemory);
+    cnConfig.setPipeInsertNodeQueueMemory(pipeInsertNodeQueueMemory);
+    return this;
+  }
+
+  @Override
   public CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled) {
     dnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);
     cnConfig.setPipeAirGapReceiverEnabled(isPipeAirGapReceiverEnabled);

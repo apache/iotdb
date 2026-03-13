@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolution;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 
 public class PartitionLastFlushTime implements ILastFlushTime {
@@ -42,5 +44,10 @@ public class PartitionLastFlushTime implements ILastFlushTime {
   @Override
   public ILastFlushTime degradeLastFlushTime() {
     return this;
+  }
+
+  @Override
+  public void accept(SchemaEvolution schemaEvolution) {
+    // no-op
   }
 }

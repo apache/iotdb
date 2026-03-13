@@ -51,6 +51,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_SOURCE_FILES;
@@ -81,7 +83,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -99,6 +101,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     compactionLogger.close();
     new CompactionRecoverTask(COMPACTION_TEST_SG, "0", tsFileManager, compactionLogFile, false)
@@ -144,7 +150,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -162,6 +168,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     // Target files may not exist
     for (int i = 0; i < targetResources.size(); i++) {
@@ -215,7 +225,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -233,6 +243,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
@@ -279,7 +293,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -297,6 +311,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     seqResources.get(0).getTsFile().delete();
@@ -344,7 +362,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -362,6 +380,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
     compactionLogger.close();
@@ -442,7 +464,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -460,6 +482,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     compactionLogger.close();
     CompactionUtils.moveTargetFile(targetResources, CompactionTaskType.CROSS, COMPACTION_TEST_SG);
@@ -552,7 +578,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -570,6 +596,10 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     ICompactionPerformer performer =
         new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
     performer.setSummary(new CompactionTaskSummary());
+    performer.setMaxTsFileVersionAndMinResource(
+        TsFileResource.getMaxTsFileVersionAndMinResource(
+            Stream.concat(seqResources.stream(), unseqResources.stream())
+                .collect(Collectors.toList())));
     performer.perform();
     // Target files may not exist
     for (int i = 0; i < targetResources.size(); i++) {
@@ -667,7 +697,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -744,7 +774,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -829,7 +859,7 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
     createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 

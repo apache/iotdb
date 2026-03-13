@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.BaseAnalyzerTest;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 
 import com.google.common.collect.ImmutableList;
@@ -37,7 +38,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.tableScan;
 import static org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern.window;
 
-public class WindowFunctionTest {
+public class WindowFunctionTest extends BaseAnalyzerTest {
   @Test
   public void testSimpleWindowFunction() {
     PlanTester planTester = new PlanTester();

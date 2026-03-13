@@ -29,12 +29,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 
 public class RenameViewColumnProcedureTest {
   @Test
   public void serializeDeserializeTest() throws IllegalPathException, IOException {
     final RenameViewColumnProcedure renameViewColumnProcedure =
-        new RenameViewColumnProcedure("database1", "table1", "0", "oldName", "newName", false);
+        new RenameViewColumnProcedure(
+            "database1",
+            "table1",
+            "0",
+            Collections.singletonList("old"),
+            Collections.singletonList("new"),
+            false);
 
     final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);

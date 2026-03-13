@@ -37,6 +37,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wri
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileReader;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
@@ -57,6 +58,8 @@ import org.apache.tsfile.read.common.Chunk;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -66,6 +69,9 @@ import java.util.List;
 import java.util.Map;
 
 public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecutor {
+
+  private static final Logger logger =
+      LoggerFactory.getLogger(FastAlignedSeriesCompactionExecutor.class);
 
   // measurementID -> tsfile resource -> timeseries metadata <startOffset, endOffset>
   // linked hash map, which has the same measurement lexicographical order as measurementSchemas.
@@ -89,9 +95,17 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       int subTaskId,
       List<IMeasurementSchema> measurementSchemas,
       FastCompactionTaskSummary summary,
-      boolean ignoreAllNullRows) {
+      boolean ignoreAllNullRows,
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     super(
-        compactionWriter, readerCacheMap, modificationCacheMap, deviceId, true, subTaskId, summary);
+        compactionWriter,
+        readerCacheMap,
+        modificationCacheMap,
+        deviceId,
+        true,
+        subTaskId,
+        summary,
+        maxTsFileVersionAndMinResource);
     this.timeseriesMetadataOffsetMap = timeseriesMetadataOffsetMap;
     this.measurementSchemas = measurementSchemas;
     this.timeColumnMeasurementSchema = measurementSchemas.get(0);
@@ -188,6 +202,9 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
     // read time chunk metadatas and value chunk metadatas in the current file
     List<IChunkMetadata> timeChunkMetadatas = null;
     List<List<IChunkMetadata>> valueChunkMetadatas = new ArrayList<>();
+    EvolvedSchema evolvedSchema =
+        resource.getMergedEvolvedSchema(maxTsFileVersionAndMinResource.getLeft());
+
     for (Map.Entry<String, Map<TsFileResource, Pair<Long, Long>>> entry :
         timeseriesMetadataOffsetMap.entrySet()) {
       String measurementID = entry.getKey();
@@ -204,6 +221,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                 .get(resource)
                 .getChunkMetadataListByTimeseriesMetadataOffset(
                     timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
+        for (IChunkMetadata timeChunkMetadata : timeChunkMetadatas) {
+          logger.warn(
+              "Read a time chunk of {} from {}: {}",
+              deviceId,
+              resource.getTsFile(),
+              timeChunkMetadata.getStatistics());
+        }
       } else {
         // read value chunk metadatas
         if (timeseriesOffsetInCurrentFile == null) {
@@ -216,7 +240,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
                   .get(resource)
                   .getChunkMetadataListByTimeseriesMetadataOffset(
                       timeseriesOffsetInCurrentFile.left, timeseriesOffsetInCurrentFile.right);
-          if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList)) {
+          if (isValueChunkDataTypeMatchSchema(valueColumnChunkMetadataList, evolvedSchema)) {
             valueChunkMetadatas.add(valueColumnChunkMetadataList);
           } else {
             valueChunkMetadatas.add(null);
@@ -270,18 +294,29 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
       // modify aligned chunk metadatas
       ModificationUtils.modifyAlignedChunkMetaData(
           alignedChunkMetadataList, timeModifications, valueModifications, ignoreAllNullRows);
+
+      if (evolvedSchema != null) {
+        String originalTableName = evolvedSchema.getOriginalTableName(deviceId.getTableName());
+        for (AbstractAlignedChunkMetadata abstractAlignedChunkMetadata : alignedChunkMetadataList) {
+          evolvedSchema.rewriteToFinal(abstractAlignedChunkMetadata, originalTableName);
+        }
+      }
     }
     return alignedChunkMetadataList;
   }
 
   private boolean isValueChunkDataTypeMatchSchema(
-      List<IChunkMetadata> chunkMetadataListOfOneValueColumn) {
+      List<IChunkMetadata> chunkMetadataListOfOneValueColumn, EvolvedSchema evolvedSchema) {
     boolean needAlter = false;
     for (IChunkMetadata chunkMetadata : chunkMetadataListOfOneValueColumn) {
       if (chunkMetadata == null) {
         continue;
       }
       String measurement = chunkMetadata.getMeasurementUid();
+      if (evolvedSchema != null) {
+        String originalTableName = evolvedSchema.getOriginalTableName(deviceId.getTableName());
+        measurement = evolvedSchema.getFinalColumnName(originalTableName, measurement);
+      }
       IMeasurementSchema schema = measurementSchemaMap.get(measurement);
       if (!needAlter) {
         // Since all chunks in chunkMetadataListOfOneValueColumn share the same dataType, perform
@@ -314,6 +349,13 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
 
     CompactionChunkReader chunkReader = new CompactionChunkReader(timeChunk);
     List<Pair<PageHeader, ByteBuffer>> timePages = chunkReader.readPageDataWithoutUncompressing();
+    for (Pair<PageHeader, ByteBuffer> timePage : timePages) {
+      logger.warn(
+          "Read a time page of {} from {}: {}",
+          deviceId,
+          chunkMetadataElement.fileElement.resource.getTsFile(),
+          timePage.left.getStatistics());
+    }
 
     // deserialize value chunks
     List<List<Pair<PageHeader, ByteBuffer>>> valuePagesList = new ArrayList<>();
@@ -377,11 +419,15 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         valueChunks.add(null);
         continue;
       }
+
+      Chunk chunk = readChunk(reader, (ChunkMetadata) valueChunkMetadata);
+      // the column may be renamed, enqueue with the final column name
+      chunk.getHeader().setMeasurementID(valueChunkMetadata.getMeasurementUid());
+
       if (valueChunkMetadata.getNewType() != null) {
-        Chunk chunk =
-            readChunk(reader, (ChunkMetadata) valueChunkMetadata)
-                .rewrite(
-                    ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
+        chunk =
+            chunk.rewrite(
+                ((ChunkMetadata) valueChunkMetadata).getNewType(), chunkMetadataElement.chunk);
         valueChunks.add(chunk);
 
         ChunkMetadata chunkMetadata = (ChunkMetadata) valueChunkMetadata;
@@ -390,7 +436,7 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
         statistics.mergeStatistics(chunk.getChunkStatistic());
         chunkMetadata.setStatistics(statistics);
       } else {
-        valueChunks.add(readChunk(reader, (ChunkMetadata) valueChunkMetadata));
+        valueChunks.add(chunk);
       }
     }
     chunkMetadataElement.valueChunks = valueChunks;
@@ -405,6 +451,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   @Override
   protected boolean flushChunkToCompactionWriter(ChunkMetadataElement chunkMetadataElement)
       throws IOException {
+    logger.warn(
+        "Flush a chunk of {}: {}", deviceId, chunkMetadataElement.chunkMetadata.getStatistics());
     return compactionWriter.flushAlignedChunk(chunkMetadataElement, subTaskId);
   }
 
@@ -438,6 +486,8 @@ public class FastAlignedSeriesCompactionExecutor extends SeriesCompactionExecuto
   protected boolean flushPageToCompactionWriter(PageElement pageElement)
       throws PageException, IOException {
     AlignedPageElement alignedPageElement = (AlignedPageElement) pageElement;
+    logger.warn(
+        "Flush a page of {}: {}", alignedPageElement.getTimePageHeader().getStatistics(), deviceId);
     return compactionWriter.flushAlignedPage(alignedPageElement, subTaskId);
   }
 

@@ -39,8 +39,13 @@ import org.apache.iotdb.db.queryengine.plan.planner.LocalExecutionPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LoadTsFile;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.LoadTsFileStatement;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TsFileResourceUtils;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.converter.LoadTsFileDataTypeConverter;
@@ -69,10 +74,13 @@ import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.queryengine.plan.execution.config.TableConfigTaskVisitor.DATABASE_NOT_SPECIFIED;
 import static org.apache.iotdb.db.storageengine.load.metrics.LoadTsFileCostMetricsSet.ANALYSIS;
@@ -101,16 +109,19 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   private final String statementString;
   private final boolean isGeneratedByPipe;
 
+  private final File originalFile;
   private final List<File> tsFiles;
   private final List<Boolean> isMiniTsFile;
   private boolean isMiniTsFileConverted = false;
   private final List<Boolean> isTableModelTsFile;
   private int isTableModelTsFileReliableIndex = -1;
+  private final File schemaEvolutionFile;
+  private EvolvedSchema evolvedSchema;
 
   // User specified configs
   private final int databaseLevel;
   private String databaseForTableData;
-  private final boolean isAsyncLoad;
+  private boolean isAsyncLoad;
   private final boolean isVerifySchema;
   private final boolean isAutoCreateDatabase;
   private final boolean isDeleteAfterLoad;
@@ -120,6 +131,9 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
   // Schema creators for tree and table
   private TreeSchemaAutoCreatorAndVerifier treeSchemaAutoCreatorAndVerifier;
   private LoadTsFileTableSchemaCache tableSchemaCache;
+
+  // for loading iotdb datanode dir
+  Map<String, Map<Integer, TsFileManager>> databaseRegionTsFileManagers;
 
   public LoadTsFileAnalyzer(
       LoadTsFileStatement loadTsFileStatement, boolean isGeneratedByPipe, MPPQueryContext context) {
@@ -132,8 +146,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     this.tsFiles = loadTsFileStatement.getTsFiles();
+    this.originalFile = loadTsFileStatement.getFile();
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.schemaEvolutionFile = loadTsFileStatement.getSchemaEvolutionFile();
 
     this.databaseLevel = loadTsFileStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileStatement.getDatabase();
@@ -156,8 +172,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     this.isGeneratedByPipe = isGeneratedByPipe;
 
     this.tsFiles = loadTsFileTableStatement.getTsFiles();
+    this.originalFile = new File(loadTsFileTableStatement.getFilePath());
     this.isMiniTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
     this.isTableModelTsFile = new ArrayList<>(Collections.nCopies(this.tsFiles.size(), false));
+    this.schemaEvolutionFile = loadTsFileTableStatement.getSchemaEvolutionFile();
 
     this.databaseLevel = loadTsFileTableStatement.getDatabaseLevel();
     this.databaseForTableData = loadTsFileTableStatement.getDatabase();
@@ -200,6 +218,13 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     }
 
     try {
+      if (schemaEvolutionFile != null && schemaEvolutionFile.exists()) {
+
+        SchemaEvolutionFile sevoFile =
+            new SchemaEvolutionFile(schemaEvolutionFile.getAbsolutePath());
+        evolvedSchema = sevoFile.readAsSchema();
+      }
+
       if (!doAnalyzeFileByFile(analysis)) {
         return analysis;
       }
@@ -266,7 +291,156 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
           "LoadTsFileAnalyzer: Current datanode is read only, will try to convert to tablets and insert later.");
     }
 
+    File inputFile;
+    if (isTableModelStatement) {
+      inputFile = new File(loadTsFileTableStatement.getFilePath());
+    } else {
+      inputFile = loadTsFileTreeStatement.getFile();
+    }
+
+    if (LOGGER.isInfoEnabled()) {
+      LOGGER.info("LoadTsFileAnalyzer: Input file: {}", inputFile.getAbsolutePath());
+    }
+    if (inputFile.getName().equals("datanode")) {
+      LOGGER.info("LoadTsFileAnalyzer: Load TsFile from datanode file.");
+      analyzeIoTDBDirectory(inputFile);
+      Set<String> databases = databaseRegionTsFileManagers.keySet();
+      for (String database : databases) {
+        try {
+          getOrCreateTableSchemaCache().autoCreateTableDatabaseIfAbsent(database);
+        } catch (LoadAnalyzeException e) {
+          throw new SemanticException(
+              "Cannot create database " + database + " when loading datanode directory");
+        }
+      }
+    }
+
+    if (schemaEvolutionFile != null && isAsyncLoad) {
+      LOGGER.warn(
+          "Cannot use schema evolution file when loading from datanode directory asynchronously, switching to sync load");
+      isAsyncLoad = false;
+    }
+
     return true;
+  }
+
+  private void analyzeIoTDBDirectory(File dataNodeDirectory) {
+    if (!dataNodeDirectory.exists() || !dataNodeDirectory.isDirectory()) {
+      return;
+    }
+    File systemDirectory = new File(dataNodeDirectory, "system");
+    if (!systemDirectory.exists() || !systemDirectory.isDirectory()) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No system directory found in datanode directory, treat as normal directory.");
+      return;
+    }
+
+    File databasesDirectory = new File(systemDirectory, "databases");
+    if (!databasesDirectory.exists() || !databasesDirectory.isDirectory()) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No databases directory found in datanode directory, treat as normal directory.");
+      return;
+    }
+
+    String[] databases = databasesDirectory.list();
+    if (databases == null) {
+      LOGGER.info(
+          "LoadTsFileAnalyzer: No databases found in datanode directory, treat as normal directory.");
+      return;
+    }
+
+    databaseRegionTsFileManagers = new HashMap<>();
+    for (String database : databases) {
+      File databaseDirectory = new File(databasesDirectory, database);
+      String[] regions = databaseDirectory.list();
+      if (regions == null) {
+        LOGGER.info("LoadTsFileAnalyzer: No region directory found in database {}.", database);
+        continue;
+      }
+
+      for (String region : regions) {
+        File regionDirectory = new File(databaseDirectory, region);
+        String[] timePartitions = regionDirectory.list();
+        if (timePartitions == null) {
+          LOGGER.info(
+              "LoadTsFileAnalyzer: No partition directory found in region {}-{}.",
+              database,
+              region);
+          continue;
+        }
+
+        int regionId = Integer.parseInt(region);
+
+        TsFileManager tsFileManager = new TsFileManager(database, region);
+        databaseRegionTsFileManagers
+            .computeIfAbsent(database, k -> new HashMap<>())
+            .put(regionId, tsFileManager);
+        for (String timePartition : timePartitions) {
+          File timePartitionDir = new File(regionDirectory, timePartition);
+          File filesetsDir = new File(timePartitionDir, "filesets");
+          if (!filesetsDir.exists()) {
+            LOGGER.info(
+                "LoadTsFileAnalyzer: No filesets directory found in partition {}-{}-{}.",
+                database,
+                region,
+                timePartition);
+            continue;
+          }
+
+          String[] filesets = filesetsDir.list();
+          if (filesets == null) {
+            continue;
+          }
+
+          for (String fileset : filesets) {
+            File filesetDir = new File(filesetsDir, fileset);
+            String[] sevos = filesetDir.list();
+            if (sevos == null || sevos.length == 0) {
+              continue;
+            }
+
+            long endFileVersion = Long.parseLong(fileset);
+            long partitionId = Long.parseLong(timePartition);
+            TsFileSet tsFileSet =
+                new TsFileSet(endFileVersion, filesetsDir.getAbsolutePath(), true);
+            tsFileManager.addTsFileSet(tsFileSet, partitionId);
+          }
+        }
+      }
+    }
+
+    LOGGER.info("databaseRegionTsFileManagers: {}", databaseRegionTsFileManagers);
+
+    if (schemaEvolutionFile != null) {
+      if (databaseRegionTsFileManagers.isEmpty()) {
+        // no sevo found, treat as normal load
+        databaseRegionTsFileManagers = null;
+      } else {
+        throw new SemanticException(
+            "Schema evolution file is not supported when loading from datanode directory, if you wish "
+                + "to use specified schema evolution file and ignore ones in the datanode directory, "
+                + "please rename the datanode directory to any other one.");
+      }
+    }
+
+    String userDatabase;
+    if (isTableModelStatement) {
+      userDatabase = loadTsFileTableStatement.getDatabase();
+    } else {
+      userDatabase = loadTsFileTreeStatement.getDatabase();
+    }
+    if (userDatabase != null && isLoadingIoTDBDir()) {
+      throw new SemanticException(
+          "Database is not supported when loading from datanode directory, if you wish "
+              + "to use specified database and ignore ones in the datanode directory, "
+              + "please rename the datanode directory to any other one.");
+    }
+
+    if (isTableModelStatement) {
+      loadTsFileTableStatement.setDatabaseRegionTsFileManagers(databaseRegionTsFileManagers);
+    } else {
+      loadTsFileTreeStatement.setDatabaseRegionTsFileManagers(databaseRegionTsFileManagers);
+    }
   }
 
   private boolean doAsyncLoad(final IAnalysis analysis) {
@@ -291,13 +465,24 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
               tabletConversionThresholdBytes,
               isGeneratedByPipe);
 
-      if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
-        analysis.setFinishQueryAfterAnalyze(true);
-        setRealStatement(analysis);
-        return true;
+      if (!isLoadingIoTDBDir()) {
+        if (LoadUtil.loadTsFileAsyncToActiveDir(tsFiles, activeLoadAttributes, isDeleteAfterLoad)) {
+          analysis.setFinishQueryAfterAnalyze(true);
+          setRealStatement(analysis);
+          return true;
+        }
+        LOGGER.info("Async Load TsFile has failed, and is now trying to load sync");
+        return false;
+      } else {
+        if (LoadUtil.loadDatanodeDirAsyncToActiveDir(
+            originalFile, activeLoadAttributes, isDeleteAfterLoad)) {
+          analysis.setFinishQueryAfterAnalyze(true);
+          setRealStatement(analysis);
+          return true;
+        }
+        LOGGER.info("Async Load datanode dir has failed, and is now trying to load sync");
+        return false;
       }
-      LOGGER.info("Async Load has failed, and is now trying to load sync");
-      return false;
     } finally {
       LoadTsFileCostMetricsSet.getInstance()
           .recordPhaseTimeCost(ANALYSIS_ASYNC_MOVE, System.nanoTime() - startTime);
@@ -522,11 +707,29 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
     addWritePointCount(writePointCount);
   }
 
+  private EvolvedSchema getEvolvedSchema(File tsFile) {
+    if (evolvedSchema != null) {
+      return evolvedSchema;
+    }
+
+    if (isLoadingIoTDBDir()) {
+      TsFileID tsFileID = new TsFileID(tsFile.getAbsolutePath());
+      TsFileManager tsFileManager =
+          databaseRegionTsFileManagers.get(tsFileID.databaseName).get(tsFileID.regionId);
+      List<TsFileSet> tsFileSets =
+          tsFileManager.getTsFileSet(
+              tsFileID.timePartitionId, tsFileID.fileVersion, Long.MAX_VALUE);
+
+      return TsFileSet.getMergedEvolvedSchema(tsFileSets);
+    }
+    return null;
+  }
+
   private void doAnalyzeSingleTableFile(
       final File tsFile,
       final TsFileSequenceReader reader,
       final TsFileSequenceReaderTimeseriesMetadataIterator timeseriesMetadataIterator,
-      final Map<String, TableSchema> tableSchemaMap)
+      Map<String, TableSchema> tableSchemaMap)
       throws IOException, LoadAnalyzeException {
     // construct tsfile resource
     final TsFileResource tsFileResource = constructTsFileResource(reader, tsFile);
@@ -544,18 +747,41 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         } else {
           loadTsFileTreeStatement.setDatabase(dbName.get());
         }
-      } else {
+      } else if (!isLoadingIoTDBDir()) {
         throw new SemanticException(DATABASE_NOT_SPECIFIED);
       }
     }
 
-    getOrCreateTableSchemaCache().setDatabase(databaseForTableData);
-    getOrCreateTableSchemaCache().setTableSchemaMap(tableSchemaMap);
+    String databaseToUse =
+        isLoadingIoTDBDir() ? tsFileResource.getDatabaseName() : databaseForTableData;
+
+    LOGGER.info("Table schemas before rewriting to final: {}", tableSchemaMap);
+
+    EvolvedSchema currEvolvedSchema = getEvolvedSchema(tsFile);
+    LOGGER.info("Schema evolution {}", currEvolvedSchema);
+    if (currEvolvedSchema != null) {
+      LOGGER.info("Rewriting table schemas with {}", currEvolvedSchema);
+      tableSchemaMap = currEvolvedSchema.rewriteToFinal(tableSchemaMap);
+      LOGGER.info("Table schemas after rewriting to final: {}", tableSchemaMap);
+    }
+    getOrCreateTableSchemaCache().setTableSchemaMap(databaseToUse, tableSchemaMap);
     getOrCreateTableSchemaCache().setCurrentModificationsAndTimeIndex(tsFileResource, reader);
 
     while (timeseriesMetadataIterator.hasNext()) {
-      final Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
+      Map<IDeviceID, List<TimeseriesMetadata>> device2TimeseriesMetadata =
           timeseriesMetadataIterator.next();
+
+      if (currEvolvedSchema != null) {
+        device2TimeseriesMetadata =
+            device2TimeseriesMetadata.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        e -> currEvolvedSchema.rewriteToFinal(e.getKey()),
+                        e -> {
+                          currEvolvedSchema.rewriteToFinal(e.getKey().getTableName(), e.getValue());
+                          return e.getValue();
+                        }));
+      }
 
       // Update time index no matter if resource file exists or not, because resource file may be
       // untrusted
@@ -566,7 +792,7 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
       getOrCreateTableSchemaCache().setCurrentTimeIndex(tsFileResource.getTimeIndex());
 
       for (IDeviceID deviceId : device2TimeseriesMetadata.keySet()) {
-        getOrCreateTableSchemaCache().autoCreateAndVerify(deviceId);
+        getOrCreateTableSchemaCache().autoCreateAndVerify(databaseToUse, deviceId);
       }
 
       writePointCount += getWritePointCount(device2TimeseriesMetadata);
@@ -770,6 +996,10 @@ public class LoadTsFileAnalyzer implements AutoCloseable {
         isTableModelTsFileReliableIndex = i;
       }
     }
+  }
+
+  private boolean isLoadingIoTDBDir() {
+    return databaseRegionTsFileManagers != null;
   }
 
   @Override

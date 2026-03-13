@@ -145,7 +145,7 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public Connection getAvailableConnection(String username, String password, String sqlDialect)
       throws SQLException {
-    throw new UnsupportedOperationException();
+    return getConnection(username, password, sqlDialect);
   }
 
   @Override

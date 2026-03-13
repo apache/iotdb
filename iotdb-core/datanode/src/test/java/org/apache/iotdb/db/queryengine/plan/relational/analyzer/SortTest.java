@@ -64,7 +64,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class SortTest {
+public class SortTest extends BaseAnalyzerTest {
 
   static Metadata metadata = new TestMetadata();
   String sql;

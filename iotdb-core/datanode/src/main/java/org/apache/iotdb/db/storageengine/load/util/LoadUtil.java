@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.db.storageengine.load.active.ActiveLoadPathHelper;
 import org.apache.iotdb.db.storageengine.load.disk.ILoadDiskSelector;
 import org.apache.iotdb.db.storageengine.rescon.disk.FolderManager;
@@ -41,7 +42,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import static org.apache.iotdb.commons.utils.FileUtils.copyDirWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.copyFileWithMD5Check;
+import static org.apache.iotdb.commons.utils.FileUtils.moveDirWithMD5Check;
 import static org.apache.iotdb.commons.utils.FileUtils.moveFileWithMD5Check;
 
 public class LoadUtil {
@@ -63,6 +66,26 @@ public class LoadUtil {
         if (!loadTsFilesToActiveDir(loadAttributes, file, isDeleteAfterLoad)) {
           return false;
         }
+      }
+    } catch (Exception e) {
+      LOGGER.warn("Fail to load tsfile to Active dir", e);
+      return false;
+    }
+
+    return true;
+  }
+
+  public static boolean loadDatanodeDirAsyncToActiveDir(
+      final File datanodeDir,
+      final Map<String, String> loadAttributes,
+      final boolean isDeleteAfterLoad) {
+    if (datanodeDir == null || !datanodeDir.isDirectory()) {
+      return true;
+    }
+
+    try {
+      if (!loadDatanodeDirToActiveDir(loadAttributes, datanodeDir, isDeleteAfterLoad)) {
+        return false;
       }
     } catch (Exception e) {
       LOGGER.warn("Fail to load tsfile to Active dir", e);
@@ -101,6 +124,34 @@ public class LoadUtil {
 
   public static String getTsFileResourcePath(final String tsFilePath) {
     return tsFilePath + TsFileResource.RESOURCE_SUFFIX;
+  }
+
+  private static boolean loadDatanodeDirToActiveDir(
+      final Map<String, String> loadAttributes, final File file, final boolean isDeleteAfterLoad)
+      throws IOException {
+    if (file == null) {
+      return true;
+    }
+
+    final File targetFilePath;
+    try {
+      targetFilePath =
+          loadDiskSelector.selectTargetDirectory(file.getParentFile(), file.getName(), false, 0);
+    } catch (Exception e) {
+      LOGGER.warn("Fail to load disk space of file {}", file.getAbsolutePath(), e);
+      return false;
+    }
+
+    if (targetFilePath == null) {
+      LOGGER.warn("Load active listening dir is not set.");
+      return false;
+    }
+    final Map<String, String> attributes =
+        Objects.nonNull(loadAttributes) ? loadAttributes : Collections.emptyMap();
+    final File targetDir = ActiveLoadPathHelper.resolveTargetDir(targetFilePath, attributes);
+
+    loadDatanodeDirAsyncToTargetDir(targetDir, file, isDeleteAfterLoad);
+    return true;
   }
 
   private static boolean loadTsFilesToActiveDir(
@@ -170,6 +221,27 @@ public class LoadUtil {
     return true;
   }
 
+  private static void loadDatanodeDirAsyncToTargetDir(
+      final File targetDir, final File file, final boolean isDeleteAfterLoad) throws IOException {
+    if (!file.exists()) {
+      return;
+    }
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      if (!targetDir.exists()) {
+        throw new IOException("Failed to create target directory " + targetDir.getAbsolutePath());
+      }
+    }
+    RetryUtils.retryOnException(
+        () -> {
+          if (isDeleteAfterLoad) {
+            moveDirWithMD5Check(file, targetDir);
+          } else {
+            copyDirWithMD5Check(file, targetDir);
+          }
+          return null;
+        });
+  }
+
   private static void loadTsFileAsyncToTargetDir(
       final File targetDir, final File file, final boolean isDeleteAfterLoad) throws IOException {
     if (!file.exists()) {
@@ -186,6 +258,15 @@ public class LoadUtil {
             moveFileWithMD5Check(file, targetDir);
           } else {
             copyFileWithMD5Check(file, targetDir);
+          }
+
+          File sevoFile = SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFile(file);
+          if (sevoFile.exists()) {
+            if (isDeleteAfterLoad) {
+              moveFileWithMD5Check(sevoFile, targetDir);
+            } else {
+              copyFileWithMD5Check(sevoFile, targetDir);
+            }
           }
           return null;
         });

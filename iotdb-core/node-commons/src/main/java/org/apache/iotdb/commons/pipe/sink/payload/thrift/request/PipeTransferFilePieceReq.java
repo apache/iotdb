@@ -73,6 +73,29 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
     return this;
   }
 
+  protected final PipeTransferFilePieceReq convertToTPipeTransferReq(
+      String snapshotName, long startWritingOffset, ByteBuffer snapshotPiece) throws IOException {
+
+    this.fileName = snapshotName;
+    this.startWritingOffset = startWritingOffset;
+    this.filePiece = snapshotPiece.array();
+
+    this.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(snapshotName, outputStream);
+      ReadWriteIOUtils.write(startWritingOffset, outputStream);
+      ReadWriteIOUtils.write(snapshotPiece.remaining(), outputStream);
+      ReadWriteIOUtils.writeWithoutSize(
+          snapshotPiece, snapshotPiece.position(), snapshotPiece.remaining(), outputStream);
+      snapshotPiece.position(snapshotPiece.position() + snapshotPiece.remaining());
+      body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return this;
+  }
+
   protected final PipeTransferFilePieceReq translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
 

@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.exception.DataTypeInconsistentException;
@@ -276,7 +277,7 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
           analysis
               .getDataPartitionInfo()
               .getDataRegionReplicaSetForWriting(
-                  insertRowNode.targetPath.getIDeviceIDAsFullDevice(),
+                  new FullDeviceIdKey(insertRowNode.targetPath.getIDeviceIDAsFullDevice()),
                   TimePartitionUtils.getTimePartitionSlot(insertRowNode.getTime()),
                   null);
       // Collect redirectInfo

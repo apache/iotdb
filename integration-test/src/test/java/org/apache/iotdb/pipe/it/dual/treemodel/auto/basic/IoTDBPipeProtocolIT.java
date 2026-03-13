@@ -77,7 +77,9 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaReplicationFactor(schemaRegionReplicationFactor)
         .setDataReplicationFactor(dataRegionReplicationFactor)
         .setPipeMemoryManagementEnabled(false)
-        .setIsPipeEnableMemoryCheck(false);
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeInsertNodeQueueMemory(1024 * 1024)
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -363,7 +365,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .setDataReplicationFactor(1)
         .setEnableSeqSpaceCompaction(false)
         .setEnableUnseqSpaceCompaction(false)
-        .setEnableCrossSpaceCompaction(false);
+        .setEnableCrossSpaceCompaction(false)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeInsertNodeQueueMemory(1024 * 1024)
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
     receiverEnv
         .getConfig()
         .getCommonConfig()
@@ -373,7 +378,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setDataRegionConsensusProtocolClass(ConsensusFactory.IOT_CONSENSUS)
         .setSchemaReplicationFactor(3)
-        .setDataReplicationFactor(2);
+        .setDataReplicationFactor(2)
+        .setIsPipeEnableMemoryCheck(false)
+        .setPipeInsertNodeQueueMemory(1024 * 1024)
+        .setDataNodeMemoryProportion("3:3:1:1:3:1");
 
     // 10 min, assert that the operations will not time out
     senderEnv.getConfig().getCommonConfig().setDnConnectionTimeoutMs(600000);

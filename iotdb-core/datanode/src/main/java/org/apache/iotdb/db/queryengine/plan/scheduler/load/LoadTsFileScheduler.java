@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.StorageExecutor;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Metric;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.storageengine.load.splitter.ChunkData;
 import org.apache.iotdb.db.storageengine.load.splitter.DeletionData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileData;
 import org.apache.iotdb.db.storageengine.load.splitter.TsFileSplitter;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -315,7 +317,9 @@ public class LoadTsFileScheduler implements IScheduler {
     final TsFileDataManager tsFileDataManager = new TsFileDataManager(this, node, block);
     try {
       new TsFileSplitter(
-              node.getTsFileResource().getTsFile(), tsFileDataManager::addOrSendTsFileData)
+              node.getTsFileResource().getTsFile(),
+              tsFileDataManager::addOrSendTsFileData,
+              node.getSchemaEvolutionFile())
           .splitTsFileByDataPartition();
       if (!tsFileDataManager.sendAllTsFileData()) {
         return false;
@@ -846,12 +850,15 @@ public class LoadTsFileScheduler implements IScheduler {
             subSlotList.stream()
                 .map(
                     pair ->
-                        // (database != null) means this file will be loaded into table-model
-                        database != null
-                            ? dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right, database)
-                            : dataPartition.getDataRegionReplicaSetForWriting(
-                                pair.left, pair.right))
+                    // (database != null) means this file will be loaded into table-model
+                    {
+                      SeriesPartitionKey seriesPartitionKey =
+                          CommonUtils.getSeriesPartitionKey(pair.left, database, false);
+                      return database != null
+                          ? dataPartition.getDataRegionReplicaSetForWriting(
+                              seriesPartitionKey, pair.right, database)
+                          : dataPartition.getDataRegionReplicaSetForWriting(pair.left, pair.right);
+                    })
                 .collect(Collectors.toList()));
       }
       return replicaSets;

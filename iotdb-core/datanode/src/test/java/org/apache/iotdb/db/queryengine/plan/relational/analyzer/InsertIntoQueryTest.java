@@ -51,7 +51,7 @@ import static org.apache.iotdb.db.queryengine.plan.statement.component.Ordering.
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class InsertIntoQueryTest {
+public class InsertIntoQueryTest extends BaseAnalyzerTest {
   String sql;
   Analysis analysis;
   LogicalQueryPlan logicalQueryPlan;

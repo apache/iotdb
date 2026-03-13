@@ -83,6 +83,7 @@ public class ActiveLoadPendingQueue {
     private final String pendingDir;
     private final boolean isGeneratedByPipe;
     private final boolean isTableModel;
+    private final boolean isDataNodeDir;
 
     public ActiveLoadEntry(
         String file, String pendingDir, boolean isGeneratedByPipe, boolean isTableModel) {
@@ -90,6 +91,7 @@ public class ActiveLoadPendingQueue {
       this.pendingDir = pendingDir;
       this.isGeneratedByPipe = isGeneratedByPipe;
       this.isTableModel = isTableModel;
+      this.isDataNodeDir = file.endsWith("datanode");
     }
 
     public String getFile() {
@@ -106,6 +108,10 @@ public class ActiveLoadPendingQueue {
 
     public boolean isTableModel() {
       return isTableModel;
+    }
+
+    public boolean isDataNodeDir() {
+      return isDataNodeDir;
     }
   }
 }
