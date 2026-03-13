@@ -116,6 +116,7 @@ import org.apache.iotdb.db.queryengine.execution.operator.schema.source.DevicePr
 import org.apache.iotdb.db.queryengine.execution.operator.schema.source.SchemaSourceFactory;
 import org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.AbstractDataSourceOperator;
+import org.apache.iotdb.db.queryengine.execution.operator.source.ChangePointOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractAggTableScanOperator;
@@ -186,6 +187,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
@@ -950,7 +953,15 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         DeviceTableScanNode node,
         Map<String, String> fieldColumnsRenameMap,
         boolean keepNonOutputMeasurementColumns) {
-      outputColumnNames = node.getOutputSymbols();
+      this(node, node.getOutputSymbols(), fieldColumnsRenameMap, keepNonOutputMeasurementColumns);
+    }
+
+    private CommonTableScanOperatorParameters(
+        DeviceTableScanNode node,
+        List<Symbol> outputColumns,
+        Map<String, String> fieldColumnsRenameMap,
+        boolean keepNonOutputMeasurementColumns) {
+      outputColumnNames = outputColumns;
       int outputColumnCount =
           keepNonOutputMeasurementColumns ? node.getAssignments().size() : outputColumnNames.size();
       columnSchemas = new ArrayList<>(outputColumnCount);
@@ -4304,6 +4315,86 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         partitionChannels,
         node.getMaxRowCountPerPartition(),
         10_000);
+  }
+
+  @Override
+  public Operator visitChangePoint(ChangePointNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException(
+        "ChangePointNode should have been pushed into TableScan");
+  }
+
+  @Override
+  public Operator visitChangePointTableScan(
+      ChangePointTableScanNode node, LocalExecutionPlanContext context) {
+
+    List<Symbol> scanOutputSymbols =
+        node.getOutputSymbols().stream()
+            .filter(s -> node.getAssignments().containsKey(s))
+            .collect(Collectors.toList());
+
+    CommonTableScanOperatorParameters commonParameter =
+        new CommonTableScanOperatorParameters(
+            node, scanOutputSymbols, Collections.emptyMap(), false);
+
+    SeriesScanOptions seriesScanOptions =
+        buildSeriesScanOptions(
+            context,
+            commonParameter.columnSchemaMap,
+            commonParameter.measurementColumnNames,
+            commonParameter.measurementColumnsIndexMap,
+            commonParameter.timeColumnName,
+            node.getTimePredicate(),
+            node.getPushDownLimit(),
+            node.getPushDownOffset(),
+            node.isPushLimitToEachDevice(),
+            node.getPushDownPredicate());
+
+    OperatorContext operatorContext =
+        context
+            .getDriverContext()
+            .addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                ChangePointOperator.class.getSimpleName());
+
+    Set<String> allSensors = new HashSet<>(commonParameter.measurementColumnNames);
+    allSensors.add("");
+
+    String monitoredColumnName = node.getAssignments().get(node.getMeasurementSymbol()).getName();
+    int monitoredMeasurementIndex =
+        commonParameter.measurementColumnNames.indexOf(monitoredColumnName);
+    if (monitoredMeasurementIndex < 0) {
+      throw new IllegalStateException(
+          "Monitored column not found in measurement columns: " + monitoredColumnName);
+    }
+
+    ChangePointOperator.ChangePointOperatorParameter parameter =
+        new ChangePointOperator.ChangePointOperatorParameter(
+            operatorContext,
+            node.getPlanNodeId(),
+            commonParameter.columnSchemas,
+            commonParameter.columnsIndexArray,
+            node.getDeviceEntries(),
+            node.getScanOrder(),
+            seriesScanOptions,
+            commonParameter.measurementColumnNames,
+            allSensors,
+            commonParameter.measurementSchemas,
+            monitoredMeasurementIndex);
+
+    ChangePointOperator changePointOperator = new ChangePointOperator(parameter);
+
+    context.getInstanceContext().collectTable(node.getQualifiedObjectName().getObjectName());
+    addSource(
+        changePointOperator,
+        context,
+        node,
+        commonParameter.measurementColumnNames,
+        commonParameter.measurementSchemas,
+        allSensors,
+        ChangePointTableScanNode.class.getSimpleName());
+
+    return changePointOperator;
   }
 
   @Override

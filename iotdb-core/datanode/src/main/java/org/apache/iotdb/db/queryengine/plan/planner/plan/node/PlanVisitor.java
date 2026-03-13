@@ -123,6 +123,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalIn
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupReference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
@@ -797,6 +798,16 @@ public abstract class PlanVisitor<R, C> {
 
   public R visitRowNumber(RowNumberNode node, C context) {
     return visitSingleChildProcess(node, context);
+  }
+
+  public R visitChangePoint(ChangePointNode node, C context) {
+    return visitSingleChildProcess(node, context);
+  }
+
+  public R visitChangePointTableScan(
+      org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode node,
+      C context) {
+    return visitDeviceTableScan(node, context);
   }
 
   public R visitValuesNode(ValuesNode node, C context) {

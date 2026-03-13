@@ -27,6 +27,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkN
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ChangePointTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExchangeNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.FillNode;
@@ -139,6 +140,14 @@ public class TableModelTypeProviderExtractor {
     @Override
     public Void visitTableScan(TableScanNode node, Void context) {
       node.getAssignments().forEach((k, v) -> beTypeProvider.putTableModelType(k, v.getType()));
+      return null;
+    }
+
+    @Override
+    public Void visitChangePointTableScan(ChangePointTableScanNode node, Void context) {
+      visitTableScan(node, context);
+      Symbol nextSymbol = node.getNextSymbol();
+      beTypeProvider.putTableModelType(nextSymbol, feTypeProvider.getTableModelType(nextSymbol));
       return null;
     }
 
