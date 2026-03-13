@@ -51,6 +51,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckV
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -130,6 +131,7 @@ public class AuthorityChecker {
 
   public static boolean invalidateCache(String username, String roleName) {
     PipeInsertionDataNodeListener.getInstance().invalidateAllCache();
+    ExternalServiceManagementService.getInstance().clearServiceUserCache(username);
     return authorityFetcher.get().getAuthorCache().invalidateCache(username, roleName);
   }
 

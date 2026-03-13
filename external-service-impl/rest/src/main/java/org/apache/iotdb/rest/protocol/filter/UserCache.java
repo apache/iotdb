@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class UserCache {
@@ -49,6 +50,15 @@ public class UserCache {
 
   public void setUser(String key, User user) {
     cache.put(key, user);
+  }
+
+  public void clearUserCache(String userName) {
+    for (Map.Entry<String, User> mapValue : cache.asMap().entrySet()) {
+      if (mapValue.getValue().getUsername().equals(userName)) {
+        cache.invalidate(mapValue.getKey());
+        return;
+      }
+    }
   }
 
   private static class UserCacheHolder {
