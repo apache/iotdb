@@ -2253,6 +2253,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
                                     Boolean.toString(false),
                                     PipeSourceConstant.EXTRACTOR_HISTORY_ENABLE_KEY,
                                     Boolean.toString(true),
+                                    PipeSourceConstant.EXTRACTOR_MODE_KEY,
+                                    PipeSourceConstant.EXTRACTOR_MODE_SNAPSHOT_VALUE,
                                     // We force the historical pipe to transfer data only
                                     // Thus we can transfer schema only once
                                     // And may drop the historical pipe on successfully transferred
