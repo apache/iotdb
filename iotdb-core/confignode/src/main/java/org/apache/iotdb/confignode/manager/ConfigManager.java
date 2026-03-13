@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.Model;
 import org.apache.iotdb.common.rpc.thrift.TAINodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TAINodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TExternalServiceListResp;
@@ -114,6 +116,7 @@ import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.cache.node.NodeHeartbeatSample;
+import org.apache.iotdb.confignode.manager.load.cache.region.RegionGroupStatistics;
 import org.apache.iotdb.confignode.manager.node.ClusterNodeStartUtils;
 import org.apache.iotdb.confignode.manager.node.NodeManager;
 import org.apache.iotdb.confignode.manager.node.NodeMetrics;
@@ -209,7 +212,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTimeSlotListResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTriggerTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUDFTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
+import org.apache.iotdb.confignode.rpc.thrift.TLoadBalanceReq;
 import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMigrationInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferReq;
@@ -229,6 +234,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodes4InformationSchemaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowMigrationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
@@ -279,6 +286,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -1933,6 +1941,19 @@ public class ConfigManager implements IManager {
     }
   }
 
+  public TShowMigrationsResp showMigrations(TShowMigrationsReq showMigrationsReq) {
+    TSStatus status = confirmLeader();
+    TShowMigrationsResp showMigrationsResp = new TShowMigrationsResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TMigrationInfo> migrationInfoList = procedureManager.getRunningMigrations();
+      showMigrationsResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      showMigrationsResp.setMigrationInfoList(migrationInfoList);
+    } else {
+      showMigrationsResp.setStatus(status);
+    }
+    return showMigrationsResp;
+  }
+
   @Override
   public TShowAINodesResp showAINodes() {
     TSStatus status = confirmLeader();
@@ -3005,6 +3026,96 @@ public class ConfigManager implements IManager {
     resp.setStatus(status);
     resp.setConfigNodeList(getNodeManager().getRegisteredConfigNodes());
     return resp;
+  }
+
+  @Override
+  public TSStatus loadBalance(TLoadBalanceReq req) {
+    List<TDataNodeConfiguration> availableDataNodes =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running, NodeStatus.Unknown);
+    Map<Integer, TDataNodeConfiguration> availableDataNodeMap =
+        new HashMap<>(availableDataNodes.size());
+    availableDataNodes.forEach(
+        dataNodeConfiguration -> {
+          int dataNodeId = dataNodeConfiguration.getLocation().getDataNodeId();
+          availableDataNodeMap.put(dataNodeId, dataNodeConfiguration);
+        });
+    Map<TConsensusGroupId, RegionGroupStatistics> regionGroupStatisticsMap =
+        getLoadManager().getLoadCache().getCurrentRegionGroupStatisticsMap();
+    List<TRegionReplicaSet> dataRegions =
+        getPartitionManager().getAllReplicaSets(TConsensusGroupType.DataRegion);
+
+    List<Integer> targetNodeIds = null;
+    if (req.isSetTargetNodeIds() && !req.getTargetNodeIds().isEmpty()) {
+      targetNodeIds = req.getTargetNodeIds();
+    }
+    Map<TConsensusGroupId, TRegionReplicaSet> targetRegionGroupMap =
+        getLoadManager()
+            .autoBalanceRegionReplicasDistribution(
+                availableDataNodeMap,
+                regionGroupStatisticsMap,
+                dataRegions,
+                dataRegions.get(0).getDataNodeLocationsSize(),
+                targetNodeIds);
+    Map<Integer, Integer> regionCounter = new TreeMap<>();
+    for (TRegionReplicaSet regionReplicaSet : targetRegionGroupMap.values()) {
+      regionReplicaSet
+          .getDataNodeLocations()
+          .forEach(location -> regionCounter.merge(location.getDataNodeId(), 1, Integer::sum));
+    }
+    LOGGER.info("[AutoMigration] Target region counter: {}", regionCounter);
+
+    // Process each region sequentially to avoid data race and resource leak
+    for (TRegionReplicaSet regionReplicaSet : dataRegions) {
+      try {
+        int regionId = regionReplicaSet.getRegionId().getId();
+        List<Integer> originalDataNodeIds =
+            regionReplicaSet.getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList());
+        int replicationFactor = originalDataNodeIds.size();
+        List<Integer> targetDataNodeIds =
+            targetRegionGroupMap.get(regionReplicaSet.getRegionId()).getDataNodeLocations().stream()
+                .map(TDataNodeLocation::getDataNodeId)
+                .collect(Collectors.toList());
+        LOGGER.info(
+            "[AutoMigration] Start balancing region {} from {} to {}",
+            regionId,
+            originalDataNodeIds,
+            targetDataNodeIds);
+        boolean[] isDataNodeEmployed = new boolean[replicationFactor];
+        Arrays.fill(isDataNodeEmployed, false);
+        for (int originalId : originalDataNodeIds) {
+          if (targetDataNodeIds.contains(originalId)) {
+            // Prune: prefill the overlap replicas
+            isDataNodeEmployed[targetDataNodeIds.indexOf(originalId)] = true;
+          }
+        }
+        for (int originalId : originalDataNodeIds) {
+          if (!targetDataNodeIds.contains(originalId)) {
+            for (int j = 0; j < replicationFactor; j++) {
+              if (!isDataNodeEmployed[j]) {
+                isDataNodeEmployed[j] = true;
+                getProcedureManager()
+                    .migrateRegion(
+                        new TMigrateRegionReq(
+                            regionId, originalId, targetDataNodeIds.get(j), Model.TREE));
+                LOGGER.info(
+                    "[AutoMigration] Submit migrating region {} from DataNode {} to DataNode {}",
+                    regionId,
+                    originalId,
+                    targetDataNodeIds.get(j));
+                break;
+              }
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOGGER.error("Failed to migrate region {} because {}", regionReplicaSet, e.getMessage());
+      }
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage(
+            "Successfully submit migrate regions task! IoTDB will migrate regions automatically.");
   }
 
   @TestOnly
