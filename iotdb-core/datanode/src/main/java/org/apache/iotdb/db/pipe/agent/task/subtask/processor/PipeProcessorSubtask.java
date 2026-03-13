@@ -38,7 +38,7 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeDataNodeSinglePipeMetrics;
 import org.apache.iotdb.db.pipe.metric.processor.PipeProcessorMetrics;
-import org.apache.iotdb.db.pipe.processor.pipeconsensus.PipeConsensusProcessor;
+import org.apache.iotdb.db.pipe.processor.iotconsensusv2.IoTConsensusV2Processor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.pipe.api.PipeProcessor;
 import org.apache.iotdb.pipe.api.event.Event;
@@ -220,7 +220,7 @@ public class PipeProcessorSubtask extends PipeReportableSubtask {
               // been released, and the progress of the event can not be reported.
               && !outputEventCollector.isFailedToIncreaseReferenceCount()
               // Events generated from consensusPipe's transferred data should never be reported.
-              && !(pipeProcessor instanceof PipeConsensusProcessor);
+              && !(pipeProcessor instanceof IoTConsensusV2Processor);
       if (shouldReport
           && event instanceof EnrichedEvent
           && outputEventCollector.hasNoCollectInvocationAfterReset()) {

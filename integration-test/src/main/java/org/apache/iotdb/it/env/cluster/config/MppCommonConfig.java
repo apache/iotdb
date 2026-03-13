@@ -198,8 +198,8 @@ public class MppCommonConfig extends MppBaseConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    setProperty("iot_consensus_v2_mode", ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    setProperty("iot_consensus_v2_mode", iotConsensusV2Mode);
     return this;
   }
 

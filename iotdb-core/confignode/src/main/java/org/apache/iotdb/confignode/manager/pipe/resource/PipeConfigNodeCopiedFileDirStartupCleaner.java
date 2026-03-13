@@ -35,14 +35,14 @@ public class PipeConfigNodeCopiedFileDirStartupCleaner {
 
   /** Delete the snapshot directory of pipe. */
   public static void clean() {
-    File pipeConsensusDir =
+    File iotConsensusV2Dir =
         new File(
             ConfigNodeDescriptor.getInstance().getConf().getConsensusDir()
                 + File.separator
                 + PipeSnapshotResourceManager.PIPE_SNAPSHOT_DIR_NAME);
-    if (pipeConsensusDir.isDirectory()) {
-      LOGGER.info("Pipe snapshot dir found, deleting it: {},", pipeConsensusDir);
-      FileUtils.deleteFileOrDirectory(pipeConsensusDir);
+    if (iotConsensusV2Dir.isDirectory()) {
+      LOGGER.info("Pipe snapshot dir found, deleting it: {},", iotConsensusV2Dir);
+      FileUtils.deleteFileOrDirectory(iotConsensusV2Dir);
     }
   }
 
