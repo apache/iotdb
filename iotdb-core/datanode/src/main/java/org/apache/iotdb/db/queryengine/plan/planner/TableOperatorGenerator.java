@@ -314,6 +314,7 @@ import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
@@ -2879,11 +2880,12 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getMeasurementColumnNameMap(),
             tsTable.getCachedTableTTL());
 
+    // construct source operator (generator)
     TreeNonAlignedDeviceViewScanNode scanNode =
         new TreeNonAlignedDeviceViewScanNode(
             node.getPlanNodeId(),
             node.getQualifiedObjectName(),
-            // The outputSymbols of AggTableScanNode is not equals with TableScanNode
+            // the outputSymbols of AggTableScanNode is not equals with TableScanNode
             parameter.getOutputSymbols(),
             node.getAssignments(),
             node.getDeviceEntries(),
@@ -2898,28 +2900,30 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getTreeDBName(),
             node.getMeasurementColumnNameMap());
 
-    DeviceIteratorScanOperator.TreeNonAlignedDeviceViewScanParameters params =
-        constructTreeNonAlignedDeviceViewScanOperatorParameter(
-            scanNode,
-            context,
-            TreeNonAlignedDeviceViewScanNode.class.getSimpleName(),
-            node.getMeasurementColumnNameMap(),
-            idColumnValueExtractor,
-            tsTable.getCachedTableTTL());
+    Operator sourceOperator = visitTreeNonAlignedDeviceViewScan(scanNode, context);
+    if (sourceOperator instanceof DeviceIteratorScanOperator) {
+      // Use deviceChildOperatorTreeGenerator directly, we will control switch of devices in
+      // TreeNonAlignedDeviceViewAggregationScanOperator
+      TreeNonAlignedDeviceViewAggregationScanOperator aggTableScanOperator =
+          new TreeNonAlignedDeviceViewAggregationScanOperator(
+              parameter,
+              idColumnValueExtractor,
+              ((DeviceIteratorScanOperator) sourceOperator).getDeviceChildOperatorTreeGenerator());
 
-    TreeNonAlignedDeviceViewAggregationScanOperator aggTableScanOperator =
-        new TreeNonAlignedDeviceViewAggregationScanOperator(
-            parameter, idColumnValueExtractor, params.generator);
-
-    addSource(
-        aggTableScanOperator,
-        context,
-        node,
-        parameter.getMeasurementColumnNames(),
-        parameter.getMeasurementSchemas(),
-        parameter.getAllSensors(),
-        AggregationTableScanNode.class.getSimpleName());
-    return aggTableScanOperator;
+      addSource(
+          aggTableScanOperator,
+          context,
+          node,
+          parameter.getMeasurementColumnNames(),
+          parameter.getMeasurementSchemas(),
+          parameter.getAllSensors(),
+          AggregationTableScanNode.class.getSimpleName());
+      return aggTableScanOperator;
+    } else {
+      checkState(sourceOperator instanceof EmptyDataOperator, "");
+      // source data is empty, return directly
+      return sourceOperator;
+    }
   }
 
   private AbstractAggTableScanOperator.AbstractAggTableScanOperatorParameter

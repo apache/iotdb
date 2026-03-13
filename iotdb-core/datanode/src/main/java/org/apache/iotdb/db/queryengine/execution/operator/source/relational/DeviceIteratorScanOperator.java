@@ -188,6 +188,10 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
         + RamUsageEstimator.sizeOfCollection(deviceEntries);
   }
 
+  public DeviceChildOperatorTreeGenerator getDeviceChildOperatorTreeGenerator() {
+    return deviceChildOperatorTreeGenerator;
+  }
+
   public static class TreeNonAlignedDeviceViewScanParameters {
     public final OperatorContext context;
     public final List<DeviceEntry> deviceEntries;
