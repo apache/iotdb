@@ -93,6 +93,7 @@ public class TsFileSplitter {
     this.consumer = consumer;
     if (evolvedSchema != null) {
       this.consumer = new SchemaEvolutionTsFileDataConsumer(this.consumer, evolvedSchema);
+      logger.warn("The evolved schema for {} is {}", tsFile, evolvedSchema);
     }
   }
 
