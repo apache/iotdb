@@ -1139,6 +1139,17 @@ public class IoTDBDescriptor {
     // update trusted_uri_pattern
     loadTrustedUriPattern(properties);
 
+    conf.setPartitionTableRecoverWorkerNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_worker_num",
+                String.valueOf(conf.getPartitionTableRecoverWorkerNum()))));
+    conf.setPartitionTableRecoverMaxReadBytesPerSecond(
+        Integer.parseInt(
+            properties.getProperty(
+                "partition_table_recover_max_read_bytes_per_second",
+                String.valueOf(conf.getPartitionTableRecoverMaxReadBytesPerSecond()))));
+
     conf.setIncludeNullValueInWriteThroughputMetric(
         Boolean.parseBoolean(
             properties.getProperty(

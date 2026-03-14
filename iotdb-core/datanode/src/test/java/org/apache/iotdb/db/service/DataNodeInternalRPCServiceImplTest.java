@@ -68,6 +68,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -81,6 +83,8 @@ import java.util.Objects;
 
 public class DataNodeInternalRPCServiceImplTest {
 
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DataNodeInternalRPCServiceImplTest.class);
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static IConsensus instance;

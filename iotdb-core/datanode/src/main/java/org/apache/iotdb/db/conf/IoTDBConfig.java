@@ -1237,6 +1237,10 @@ public class IoTDBConfig {
 
   private long maxObjectSizeInByte = 4 * 1024 * 1024 * 1024L;
 
+  /* Need use these parameters when repair data partition table */
+  private int partitionTableRecoverWorkerNum = 10;
+  private int partitionTableRecoverMaxReadBytesPerSecond = 1000;
+
   IoTDBConfig() {}
 
   public int getMaxLogEntriesNumPerBatch() {
@@ -4424,5 +4428,21 @@ public class IoTDBConfig {
 
   public void setMaxObjectSizeInByte(long maxObjectSizeInByte) {
     this.maxObjectSizeInByte = maxObjectSizeInByte;
+  }
+
+  public int getPartitionTableRecoverWorkerNum() {
+    return partitionTableRecoverWorkerNum;
+  }
+
+  public void setPartitionTableRecoverWorkerNum(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  }
+
+  public int getPartitionTableRecoverMaxReadBytesPerSecond() {
+    return partitionTableRecoverMaxReadBytesPerSecond;
+  }
+
+  public void setPartitionTableRecoverMaxReadBytesPerSecond(int partitionTableRecoverWorkerNum) {
+    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
   }
 }

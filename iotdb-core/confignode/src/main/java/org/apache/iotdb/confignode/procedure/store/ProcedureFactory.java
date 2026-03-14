@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -404,6 +405,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE:
         procedure = new AddNeverFinishSubProcedureProcedure();
         break;
+      case DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE:
+        procedure = new DataPartitionTableIntegrityCheckProcedure();
+        break;
       default:
         LOGGER.error("Unknown Procedure type: {}", typeCode);
         throw new IOException("Unknown Procedure type: " + typeCode);
@@ -554,6 +558,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.NEVER_FINISH_PROCEDURE;
     } else if (procedure instanceof AddNeverFinishSubProcedureProcedure) {
       return ProcedureType.ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE;
+    } else if (procedure instanceof DataPartitionTableIntegrityCheckProcedure) {
+      return ProcedureType.DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE;
     }
     throw new UnsupportedOperationException(
         "Procedure type " + procedure.getClass() + " is not supported");

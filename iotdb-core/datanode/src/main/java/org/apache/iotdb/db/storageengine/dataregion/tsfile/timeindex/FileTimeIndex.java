@@ -22,6 +22,7 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
@@ -95,6 +96,41 @@ public class FileTimeIndex implements ITimeIndex {
             .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
       // The first byte is VERSION_NUMBER, second byte is timeIndexType.
       byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
+      if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
+        return ArrayDeviceTimeIndex.getDevices(inputStream);
+      } else {
+        return PlainDeviceTimeIndex.getDevices(inputStream);
+      }
+    } catch (NoSuchFileException e) {
+      // deleted by ttl
+      if (tsFileResource.isDeleted()) {
+        return Collections.emptySet();
+      } else {
+        logger.error(
+            "Can't read file {} from disk ", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+        throw new RuntimeException(
+            "Can't read file " + tsFilePath + TsFileResource.RESOURCE_SUFFIX + " from disk");
+      }
+    } catch (Exception e) {
+      logger.error(
+          "Failed to get devices from tsfile: {}", tsFilePath + TsFileResource.RESOURCE_SUFFIX, e);
+      throw new RuntimeException(
+          "Failed to get devices from tsfile: " + tsFilePath + TsFileResource.RESOURCE_SUFFIX);
+    } finally {
+      tsFileResource.readUnlock();
+    }
+  }
+
+  @Override
+  public Set<IDeviceID> getDevices(
+      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
+    tsFileResource.readLock();
+    try (InputStream inputStream =
+        FSFactoryProducer.getFSFactory()
+            .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
+      // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
+      limiter.acquire(bytes.length);
       if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
         return ArrayDeviceTimeIndex.getDevices(inputStream);
       } else {

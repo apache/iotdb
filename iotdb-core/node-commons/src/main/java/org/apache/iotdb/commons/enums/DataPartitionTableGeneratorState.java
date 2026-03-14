@@ -17,42 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.commons.enums;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
-  SHOW_APPLIED_CONFIGURATIONS,
+public enum DataPartitionTableGeneratorState {
+  SUCCESS(0),
+  FAILED(1),
+  IN_PROGRESS(2),
+  UNKNOWN(-1);
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
+  private final int code;
 
-  // Data Partition Table Maintenance
-  COLLECT_EARLIEST_TIMESLOTS,
-  GENERATE_DATA_PARTITION_TABLE,
-  GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+  DataPartitionTableGeneratorState(int code) {
+    this.code = code;
+  }
 
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
+  public int getCode() {
+    return code;
+  }
 
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+  /**
+   * get DataNodeRemoveState by code
+   *
+   * @param code code
+   * @return DataNodeRemoveState
+   */
+  public static DataPartitionTableGeneratorState getStateByCode(int code) {
+    for (DataPartitionTableGeneratorState state : DataPartitionTableGeneratorState.values()) {
+      if (state.code == code) {
+        return state;
+      }
+    }
+    return UNKNOWN;
+  }
 }
