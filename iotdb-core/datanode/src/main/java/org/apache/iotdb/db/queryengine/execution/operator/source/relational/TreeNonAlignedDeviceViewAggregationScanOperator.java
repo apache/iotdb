@@ -73,7 +73,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   @Override
   protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() {
     try {
-      // First try to calculate from cached data
+      // Try to calculate from cached data
       if (calcFromCachedData()) {
         updateResultTsBlock();
         checkIfAllAggregatorHasFinalResult();
@@ -125,7 +125,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
         return true;
       }
 
-      // If not finished, continue reading from  child
+      // If not finished, continue reading from child
     }
 
     return false;
@@ -163,12 +163,16 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   /** same with {@link DeviceIteratorScanOperator#initQueryDataSource(IQueryDataSource)} */
   @Override
   public void initQueryDataSource(IQueryDataSource dataSource) {
+    if (resultTsBlockBuilder == null) {
+      // only need to do this when init firstly
+      this.queryDataSource = (QueryDataSource) dataSource;
+      this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
+    }
 
-    this.queryDataSource = (QueryDataSource) dataSource;
-    this.resultTsBlockBuilder = new TsBlockBuilder(getResultDataTypes());
     if (dataSourceOperators == null || dataSourceOperators.isEmpty()) {
       return;
     }
+
     for (Operator operator : dataSourceOperators) {
       ((AbstractDataSourceOperator) operator).initQueryDataSource(dataSource);
     }

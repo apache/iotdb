@@ -2956,7 +2956,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
     Map<Symbol, Integer> aggColumnLayout = new HashMap<>(aggDistinctArgumentCount);
     int[] aggColumnsIndexArray = new int[aggDistinctArgumentCount];
 
-    // TODO MODIFY
     List<Symbol> outputSymbols = new ArrayList<>();
 
     String timeColumnName = null;
