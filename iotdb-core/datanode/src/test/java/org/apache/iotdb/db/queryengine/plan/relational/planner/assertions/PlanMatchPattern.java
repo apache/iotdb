@@ -726,17 +726,8 @@ public final class PlanMatchPattern {
   }
 
   public static AsofJoinClauseProvider asofJoinClause(
-      ComparisonExpression.Operator operator,
-      String left,
-      String right,
-      String leftTable,
-      String rightTable) {
-    return new AsofJoinClauseProvider(
-        operator,
-        new SymbolAlias(left),
-        new SymbolAlias(right),
-        new Identifier(leftTable),
-        new Identifier(rightTable));
+      ComparisonExpression.Operator operator, String left, String right) {
+    return new AsofJoinClauseProvider(operator, new SymbolAlias(left), new SymbolAlias(right));
   }
 
   public static SymbolAlias symbol(String alias) {

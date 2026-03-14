@@ -202,7 +202,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeadingHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -376,9 +375,7 @@ public class StatementAnalyzer {
           "LEADER",
           new HintFactory(LeaderHint.hintName, LeaderHint::new, true),
           "FOLLOWER",
-          new HintFactory(FollowerHint.hintName, FollowerHint::new, true),
-          "LEADING",
-          new HintFactory(LeadingHint.hintName, LeadingHint::new, false));
+          new HintFactory(FollowerHint.hintName, FollowerHint::new, true));
 
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
