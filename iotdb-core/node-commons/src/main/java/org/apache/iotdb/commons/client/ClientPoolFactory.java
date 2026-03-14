@@ -25,17 +25,17 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeInternalServiceClien
 import org.apache.iotdb.commons.client.async.AsyncDataNodeExternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.client.async.AsyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncPipeDataTransferServiceClient;
 import org.apache.iotdb.commons.client.property.ClientPoolProperty;
-import org.apache.iotdb.commons.client.property.PipeConsensusClientProperty;
+import org.apache.iotdb.commons.client.property.IoTConsensusV2ClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.property.ThriftClientProperty.DefaultProperty;
 import org.apache.iotdb.commons.client.sync.SyncAINodeClient;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
-import org.apache.iotdb.commons.client.sync.SyncPipeConsensusServiceClient;
+import org.apache.iotdb.commons.client.sync.SyncIoTConsensusV2ServiceClient;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -322,21 +322,21 @@ public class ClientPoolFactory {
     }
   }
 
-  public static class SyncPipeConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, SyncPipeConsensusServiceClient> {
+  public static class SyncIoTConsensusV2ServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, SyncIoTConsensusV2ServiceClient> {
 
-    private final PipeConsensusClientProperty config;
+    private final IoTConsensusV2ClientProperty config;
 
-    public SyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+    public SyncIoTConsensusV2ServiceClientPoolFactory(IoTConsensusV2ClientProperty config) {
       this.config = config;
     }
 
     @Override
-    public GenericKeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, SyncPipeConsensusServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, SyncPipeConsensusServiceClient> clientPool =
+    public GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusV2ServiceClient> createClientPool(
+        ClientManager<TEndPoint, SyncIoTConsensusV2ServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, SyncIoTConsensusV2ServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
-              new SyncPipeConsensusServiceClient.Factory(
+              new SyncIoTConsensusV2ServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
@@ -345,7 +345,7 @@ public class ClientPoolFactory {
                       .setPrintLogWhenEncounterException(
                           config.isPrintLogWhenThriftClientEncounterException())
                       .build()),
-              new ClientPoolProperty.Builder<SyncPipeConsensusServiceClient>()
+              new ClientPoolProperty.Builder<SyncIoTConsensusV2ServiceClient>()
                   .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());
@@ -355,21 +355,21 @@ public class ClientPoolFactory {
     }
   }
 
-  public static class AsyncPipeConsensusServiceClientPoolFactory
-      implements IClientPoolFactory<TEndPoint, AsyncPipeConsensusServiceClient> {
+  public static class AsyncIoTConsensusV2ServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncIoTConsensusV2ServiceClient> {
 
-    private final PipeConsensusClientProperty config;
+    private final IoTConsensusV2ClientProperty config;
 
-    public AsyncPipeConsensusServiceClientPoolFactory(PipeConsensusClientProperty config) {
+    public AsyncIoTConsensusV2ServiceClientPoolFactory(IoTConsensusV2ClientProperty config) {
       this.config = config;
     }
 
     @Override
-    public GenericKeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> createClientPool(
-        ClientManager<TEndPoint, AsyncPipeConsensusServiceClient> manager) {
-      GenericKeyedObjectPool<TEndPoint, AsyncPipeConsensusServiceClient> clientPool =
+    public GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusV2ServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncIoTConsensusV2ServiceClient> manager) {
+      GenericKeyedObjectPool<TEndPoint, AsyncIoTConsensusV2ServiceClient> clientPool =
           new GenericKeyedObjectPool<>(
-              new AsyncPipeConsensusServiceClient.Factory(
+              new AsyncIoTConsensusV2ServiceClient.Factory(
                   manager,
                   new ThriftClientProperty.Builder()
                       // TODO: consider timeout and evict strategy.
@@ -379,8 +379,8 @@ public class ClientPoolFactory {
                       .setPrintLogWhenEncounterException(
                           config.isPrintLogWhenThriftClientEncounterException())
                       .build(),
-                  ThreadName.ASYNC_DATANODE_PIPE_CONSENSUS_CLIENT_POOL.getName()),
-              new ClientPoolProperty.Builder<AsyncPipeConsensusServiceClient>()
+                  ThreadName.ASYNC_DATANODE_IOT_CONSENSUS_V2_CLIENT_POOL.getName()),
+              new ClientPoolProperty.Builder<AsyncIoTConsensusV2ServiceClient>()
                   .setMaxClientNumForEachNode(config.getMaxClientNumForEachNode())
                   .build()
                   .getConfig());

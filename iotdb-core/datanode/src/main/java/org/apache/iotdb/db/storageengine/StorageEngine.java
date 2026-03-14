@@ -790,7 +790,7 @@ public class StorageEngine implements IService {
         region.syncDeleteDataFiles();
         region.deleteFolder(systemDir);
         region.deleteDALFolderAndClose();
-        PipeDataNodeAgent.receiver().pipeConsensus().releaseReceiverResource(regionId);
+        PipeDataNodeAgent.receiver().iotConsensusV2().releaseReceiverResource(regionId);
         switch (CONFIG.getDataRegionConsensusProtocolClass()) {
           case ConsensusFactory.IOT_CONSENSUS:
           case ConsensusFactory.IOT_CONSENSUS_V2:

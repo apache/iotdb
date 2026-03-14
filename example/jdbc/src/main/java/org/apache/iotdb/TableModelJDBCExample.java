@@ -34,6 +34,7 @@ import java.sql.Statement;
 public class TableModelJDBCExample {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TableModelJDBCExample.class);
+  private static final String SHOW_TABLES = "SHOW TABLES";
 
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
@@ -57,7 +58,7 @@ public class TableModelJDBCExample {
           "create table table2(region_id STRING TAG, plant_id STRING TAG, color STRING ATTRIBUTE, temperature FLOAT FIELD, speed DOUBLE FIELD) with (TTL=6600000)");
 
       // show tables from current database
-      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+      try (ResultSet resultSet = statement.executeQuery(SHOW_TABLES)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
@@ -85,7 +86,7 @@ public class TableModelJDBCExample {
                 "jdbc:iotdb://127.0.0.1:6667/test1?sql_dialect=table", "root", "root");
         Statement statement = connection.createStatement()) {
       // show tables from current database test1
-      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+      try (ResultSet resultSet = statement.executeQuery(SHOW_TABLES)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
@@ -96,7 +97,7 @@ public class TableModelJDBCExample {
       // change database to test2
       statement.execute("use test2");
 
-      try (ResultSet resultSet = statement.executeQuery("SHOW TABLES")) {
+      try (ResultSet resultSet = statement.executeQuery(SHOW_TABLES)) {
         ResultSetMetaData metaData = resultSet.getMetaData();
         System.out.println(metaData.getColumnCount());
         while (resultSet.next()) {
