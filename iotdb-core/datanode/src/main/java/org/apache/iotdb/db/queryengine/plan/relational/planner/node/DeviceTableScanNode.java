@@ -148,21 +148,20 @@ public class DeviceTableScanNode extends TableScanNode {
       boolean pushLimitToEachDevice,
       boolean containsNonAlignedDevice,
       Identifier alias) {
-    super(
+    this(
         id,
         qualifiedObjectName,
         outputSymbols,
         assignments,
+        deviceEntries,
+        tagAndAttributeIndexMap,
+        scanOrder,
+        timePredicate,
         pushDownPredicate,
         pushDownLimit,
-        pushDownOffset);
-    this.deviceEntries = deviceEntries;
-    this.tagAndAttributeIndexMap = tagAndAttributeIndexMap;
-    this.scanOrder = scanOrder;
-    this.timePredicate = timePredicate;
-    this.pushDownPredicate = pushDownPredicate;
-    this.pushLimitToEachDevice = pushLimitToEachDevice;
-    this.containsNonAlignedDevice = containsNonAlignedDevice;
+        pushDownOffset,
+        pushLimitToEachDevice,
+        containsNonAlignedDevice);
     this.alias = alias;
   }
 

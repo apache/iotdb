@@ -517,27 +517,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightCoercions.put(rightOutput, right.getSymbol(rightField).toSymbolReference());
       rightJoinColumns.put(identifier, rightOutput);
 
-      // Extract tables from the actual fields used in the join condition
-      Field leftFieldObj = left.getScope().getRelationType().getFieldByIndex(leftField);
-      Identifier leftTable =
-          extractTableName(leftFieldObj)
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          String.format(
-                              "Cannot find source table for field %s in JOIN USING clause",
-                              leftFieldObj.getName())));
-
-      Field rightFieldObj = right.getScope().getRelationType().getFieldByIndex(rightField);
-      Identifier rightTable =
-          extractTableName(rightFieldObj)
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          String.format(
-                              "Cannot find source table for field %s in JOIN USING clause",
-                              rightFieldObj.getName())));
-
       clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput));
     }
 
@@ -739,41 +718,6 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
       rightPlanBuilder = rightCoercions.getSubPlan();
 
       for (int i = 0; i < leftComparisonExpressions.size(); i++) {
-        // Extract tables from expressions
-        Set<QualifiedName> leftDependencies =
-            SymbolsExtractor.extractNames(
-                leftComparisonExpressions.get(i), analysis.getColumnReferences());
-        Set<QualifiedName> rightDependencies =
-            SymbolsExtractor.extractNames(
-                rightComparisonExpressions.get(i), analysis.getColumnReferences());
-
-        if (leftDependencies.size() != 1 || rightDependencies.size() != 1) {
-          throw new IllegalStateException("Cannot find source table for symbol");
-        }
-
-        QualifiedName leftQualifiedName = leftDependencies.iterator().next();
-        QualifiedName rightQualifiedName = rightDependencies.iterator().next();
-
-        Identifier leftTable =
-            leftQualifiedName
-                .getPrefix()
-                .map(prefix -> new Identifier(prefix.getSuffix()))
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            String.format(
-                                "Cannot find source table for symbol %s in JOIN ON clause")));
-
-        Identifier rightTable =
-            rightQualifiedName
-                .getPrefix()
-                .map(prefix -> new Identifier(prefix.getSuffix()))
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            String.format(
-                                "Cannot find source table for symbol %s in JOIN ON clause")));
-
         if (asofCriteria != null && i == 0) {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
@@ -1701,21 +1645,5 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
     public Map<IrLabel, ExpressionAndValuePointers> getVariableDefinitions() {
       return variableDefinitions;
     }
-  }
-
-  /**
-   * Extracts the table name from a field. Priority: 1) relation alias (if exists), 2) origin table
-   * name.
-   *
-   * @param field the field to extract the table name from
-   * @return the table identifier, or empty if not found
-   */
-  private static Optional<Identifier> extractTableName(Field field) {
-    Optional<Identifier> fromAlias =
-        field.getRelationAlias().map(alias -> new Identifier(alias.getSuffix()));
-    if (fromAlias.isPresent()) {
-      return fromAlias;
-    }
-    return field.getOriginTable().map(originTable -> new Identifier(originTable.getObjectName()));
   }
 }

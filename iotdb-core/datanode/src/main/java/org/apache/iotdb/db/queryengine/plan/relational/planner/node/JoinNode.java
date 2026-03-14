@@ -295,9 +295,8 @@ public class JoinNode extends TwoChildProcessNode {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<EquiJoinClause> criteria = new ArrayList<>(size);
     while (size-- > 0) {
-      Symbol left = Symbol.deserialize(byteBuffer);
-      Symbol right = Symbol.deserialize(byteBuffer);
-      criteria.add(new EquiJoinClause(left, right));
+      criteria.add(
+          new EquiJoinClause(Symbol.deserialize(byteBuffer), Symbol.deserialize(byteBuffer)));
     }
 
     Optional<AsofJoinClause> asofJoinClause = Optional.empty();

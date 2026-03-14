@@ -166,9 +166,8 @@ public final class JoinMatcher implements Matcher {
     }
 
     @CanIgnoreReturnValue
-    public Builder equiCriteria(String left, String right, String leftTable, String rightTable) {
-      this.equiCriteria =
-          Optional.of(ImmutableList.of(equiJoinClause(left, right, leftTable, rightTable)));
+    public Builder equiCriteria(String left, String right) {
+      this.equiCriteria = Optional.of(ImmutableList.of(equiJoinClause(left, right)));
 
       return this;
     }

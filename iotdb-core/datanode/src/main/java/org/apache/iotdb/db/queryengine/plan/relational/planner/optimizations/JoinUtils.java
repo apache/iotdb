@@ -19,22 +19,18 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.Metadata;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.EqualityInference;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ComparisonExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
 import java.util.Collection;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -406,75 +402,6 @@ public class JoinUtils {
 
     public Expression getPostJoinPredicate() {
       return postJoinPredicate;
-    }
-  }
-
-  /**
-   * Finds the source table for a given symbol by traversing the plan tree. Returns Optional.empty()
-   * if the symbol cannot be traced to a specific table.
-   *
-   * @param node the plan node to search
-   * @param symbol the symbol to find the source table for
-   * @return the table identifier if found, Optional.empty() otherwise
-   */
-  public static Optional<Identifier> findSourceTable(PlanNode node, Symbol symbol) {
-    if (node instanceof DeviceTableScanNode) {
-      DeviceTableScanNode scanNode = (DeviceTableScanNode) node;
-      if (scanNode.getOutputSymbols().contains(symbol)) {
-        Identifier alias = scanNode.getAlias();
-        if (alias != null) {
-          return Optional.of(alias);
-        }
-        return Optional.of(new Identifier(scanNode.getQualifiedObjectName().getObjectName()));
-      }
-      return Optional.empty();
-    }
-
-    // For other node types, recursively check children
-    for (PlanNode child : node.getChildren()) {
-      if (child.getOutputSymbols().contains(symbol)) {
-        Optional<Identifier> result = findSourceTable(child, symbol);
-        if (result.isPresent()) {
-          return result;
-        }
-      }
-    }
-
-    return Optional.empty();
-  }
-
-  /**
-   * Collects all table names or aliases from a PlanNode by traversing the plan tree.
-   *
-   * @param node the plan node to traverse
-   * @return a set of all table identifiers (names or aliases) found in the plan
-   */
-  public static Set<Identifier> collectAllTables(PlanNode node) {
-    Set<Identifier> tables = new java.util.HashSet<>();
-    collectAllTables(node, tables);
-    return tables;
-  }
-
-  /**
-   * Recursively collects all table names or aliases from a PlanNode and its children.
-   *
-   * @param node the plan node to traverse
-   * @param tables the set to accumulate table identifiers
-   */
-  private static void collectAllTables(PlanNode node, Set<Identifier> tables) {
-    if (node instanceof DeviceTableScanNode) {
-      DeviceTableScanNode scanNode = (DeviceTableScanNode) node;
-      Identifier alias = scanNode.getAlias();
-      if (alias != null) {
-        tables.add(alias);
-      } else {
-        tables.add(new Identifier(scanNode.getQualifiedObjectName().getObjectName()));
-      }
-    }
-
-    // Recursively process all children
-    for (PlanNode child : node.getChildren()) {
-      collectAllTables(child, tables);
     }
   }
 }
