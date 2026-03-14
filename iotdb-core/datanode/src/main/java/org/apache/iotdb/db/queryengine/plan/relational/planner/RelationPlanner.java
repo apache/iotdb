@@ -534,7 +534,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
                               "Cannot find source table for field %s in JOIN USING clause",
                               rightFieldObj.getName())));
 
-      clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput, leftTable, rightTable));
+      clauses.add(new JoinNode.EquiJoinClause(leftOutput, rightOutput));
     }
 
     ProjectNode leftCoercion =
@@ -777,11 +777,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           asofJoinClause =
               Optional.of(
                   new JoinNode.AsofJoinClause(
-                      joinConditionComparisonOperators.get(i),
-                      leftSymbol,
-                      rightSymbol,
-                      leftTable,
-                      rightTable));
+                      joinConditionComparisonOperators.get(i), leftSymbol, rightSymbol));
           continue;
         }
 
@@ -789,8 +785,7 @@ public class RelationPlanner extends AstVisitor<RelationPlan, Void> {
           Symbol leftSymbol = leftCoercions.get(leftComparisonExpressions.get(i));
           Symbol rightSymbol = rightCoercions.get(rightComparisonExpressions.get(i));
 
-          equiClauses.add(
-              new JoinNode.EquiJoinClause(leftSymbol, rightSymbol, leftTable, rightTable));
+          equiClauses.add(new JoinNode.EquiJoinClause(leftSymbol, rightSymbol));
         } else {
           postInnerJoinConditions.add(
               new ComparisonExpression(

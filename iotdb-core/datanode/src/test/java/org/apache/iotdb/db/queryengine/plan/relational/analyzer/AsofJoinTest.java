@@ -61,12 +61,7 @@ public class AsofJoinTest {
                 JoinNode.JoinType.INNER,
                 builder ->
                     builder
-                        .asofCriteria(
-                            ComparisonExpression.Operator.LESS_THAN,
-                            "time",
-                            "time_0",
-                            "table1",
-                            "table2")
+                        .asofCriteria(ComparisonExpression.Operator.LESS_THAN, "time", "time_0")
                         .left(
                             sort(
                                 ImmutableList.of(sort("time", ASCENDING, LAST)),
@@ -90,12 +85,7 @@ public class AsofJoinTest {
                 JoinNode.JoinType.INNER,
                 builder ->
                     builder
-                        .asofCriteria(
-                            ComparisonExpression.Operator.GREATER_THAN,
-                            "time",
-                            "time_0",
-                            "table1",
-                            "table2")
+                        .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .left(
                             sort(
                                 ImmutableList.of(sort("time", DESCENDING, LAST)),
@@ -128,11 +118,7 @@ public class AsofJoinTest {
                         builder ->
                             builder
                                 .asofCriteria(
-                                    ComparisonExpression.Operator.GREATER_THAN,
-                                    "time",
-                                    "time_0",
-                                    "table1",
-                                    "table2")
+                                    ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                                 .left(
                                     sort(
                                         ImmutableList.of(sort("time", DESCENDING, LAST)),
@@ -167,11 +153,7 @@ public class AsofJoinTest {
                         builder ->
                             builder
                                 .asofCriteria(
-                                    ComparisonExpression.Operator.GREATER_THAN,
-                                    "expr",
-                                    "time_0",
-                                    "table1",
-                                    "table2")
+                                    ComparisonExpression.Operator.GREATER_THAN, "expr", "time_0")
                                 .equiCriteria("tag1", "tag1_1", "table1", "table2")
                                 .left(
                                     sort(
@@ -225,12 +207,7 @@ public class AsofJoinTest {
                 JoinNode.JoinType.INNER,
                 builder ->
                     builder
-                        .asofCriteria(
-                            ComparisonExpression.Operator.GREATER_THAN,
-                            "time",
-                            "time_0",
-                            "table1",
-                            "table2")
+                        .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .equiCriteria(
                             ImmutableList.of(
                                 equiJoinClause("tag1", "tag1_1", "table1", "table2"),
@@ -247,12 +224,7 @@ public class AsofJoinTest {
                 JoinNode.JoinType.INNER,
                 builder ->
                     builder
-                        .asofCriteria(
-                            ComparisonExpression.Operator.GREATER_THAN,
-                            "time",
-                            "time_0",
-                            "table1",
-                            "table2")
+                        .asofCriteria(ComparisonExpression.Operator.GREATER_THAN, "time", "time_0")
                         .equiCriteria(
                             ImmutableList.of(
                                 equiJoinClause("tag1", "tag1_1", "table1", "table2"),

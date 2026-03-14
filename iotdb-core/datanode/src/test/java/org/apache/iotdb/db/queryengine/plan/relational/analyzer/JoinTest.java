@@ -188,11 +188,7 @@ public class JoinTest {
     joinNode = (JoinNode) getChildrenNode(logicalPlanNode, 3);
     List<JoinNode.EquiJoinClause> joinCriteria =
         Collections.singletonList(
-            new JoinNode.EquiJoinClause(
-                Symbol.of("time"),
-                Symbol.of("time_0"),
-                ImmutableSet.of(new Identifier("t1")),
-                ImmutableSet.of(new Identifier("t2"))));
+            new JoinNode.EquiJoinClause(Symbol.of("time"), Symbol.of("time_0")));
 
     assertJoinNodeEquals(
         joinNode,
