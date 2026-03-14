@@ -87,16 +87,17 @@ public class AINodeInstanceManagementIT {
     // Load sundial to each device
     statement.execute(String.format("LOAD MODEL sundial TO DEVICES '%s'", TARGET_DEVICES));
     checkModelOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+    // Unload sundial from each device
+    statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES));
+    checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
 
     // Load timer_xl to each device
     statement.execute(String.format("LOAD MODEL timer_xl TO DEVICES '%s'", TARGET_DEVICES));
     checkModelOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
-
-    // Clean every device
-    statement.execute(String.format("UNLOAD MODEL sundial FROM DEVICES '%s'", TARGET_DEVICES));
+    // Unload timer_xl from each device
     statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES));
     checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
-    checkModelNotOnSpecifiedDevice(statement, "sundial", TARGET_DEVICES.toString());
+
   }
 
   private static final int LOOP_CNT = 10;
