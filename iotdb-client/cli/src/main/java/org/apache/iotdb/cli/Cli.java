@@ -205,6 +205,7 @@ public class Cli extends AbstractCli {
 
       echoStarting(ctx);
       displayLogo(ctx, properties.getLogo(), properties.getVersion(), properties.getBuildInfo());
+      displayVisitHistory(connection, ctx);
       ctx.getPrinter().println(String.format("Successfully login at %s:%s", host, port));
       while (true) {
         boolean readLine = readerReadLine(ctx, connection);

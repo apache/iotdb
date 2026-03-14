@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.protocol.basic;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSVisitHistoryResp;
 
 public class BasicOpenSessionResp extends TSStatus {
   private long sessionId;
+
+  private TSVisitHistoryResp tsVisitHistoryResp;
 
   public long getSessionId() {
     return sessionId;
@@ -31,5 +34,13 @@ public class BasicOpenSessionResp extends TSStatus {
   public BasicOpenSessionResp sessionId(long sessionId) {
     this.sessionId = sessionId;
     return this;
+  }
+
+  public void setTsVisitHistoryResp(TSVisitHistoryResp tsVisitHistoryResp) {
+    this.tsVisitHistoryResp = tsVisitHistoryResp;
+  }
+
+  public TSVisitHistoryResp getTsVisitHistoryResp() {
+    return tsVisitHistoryResp;
   }
 }

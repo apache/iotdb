@@ -623,11 +623,9 @@ public class IoTDBSimpleQueryTableIT {
         final Statement statement = connection.createStatement()) {
       try (final ResultSet resultSet = statement.executeQuery("SHOW DATABASES")) {
         while (resultSet.next()) {
-          final StringBuilder builder = new StringBuilder();
-          builder.append(resultSet.getString(1));
+          final String dbName = resultSet.getString(1);
           Assert.assertTrue(
-              builder.toString().equals("group_with_hyphen")
-                  || builder.toString().equals("information_schema"));
+              dbName.equals("group_with_hyphen") || dbName.equals("information_schema"));
         }
       }
     } catch (final SQLException e) {

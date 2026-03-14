@@ -817,7 +817,8 @@ public class IoTDBSimpleQueryIT {
       // Test Case 5: Edge case - offset equals or exceeds total count
       int largeOffset = allPaths.size() + 10;
       int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("show timeseries offset " + largeOffset)) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.db*.** offset " + largeOffset)) {
         while (resultSet.next()) {
           count++;
         }

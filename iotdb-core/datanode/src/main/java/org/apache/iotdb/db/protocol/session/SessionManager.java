@@ -70,6 +70,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
@@ -278,6 +279,19 @@ public class SessionManager implements SessionManagerMBean {
             openSessionResp.getMessage(),
             username,
             session);
+
+        // Visit history and login history recording are auxiliary features.
+        // Their failure should not block the core login flow or leak the
+        // already-registered session (e.g. when the system is in read-only mode).
+        TSStatus tsStatus = DataNodeAuthUtils.getVisitHistory(openSessionResp, userId);
+        if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          LOGGER.warn("Failed to get visit history for user {}: {}", username, tsStatus);
+        }
+        long loginTime = CommonDateTimeUtils.currentTime();
+        DataNodeAuthUtils.recordLoginHistory(
+            username, userId, session.getClientAddress(), true, loginTime);
+        CompletableFuture.runAsync(
+            () -> DataNodeAuthUtils.clearLoginHistoryForLoginSuccess(username, userId, loginTime));
         updateIdleTime();
         if (enableLoginLock) {
           loginLockManager.clearFailure(userId, session.getClientAddress());
@@ -288,6 +302,7 @@ public class SessionManager implements SessionManagerMBean {
       if (enableLoginLock) {
         loginLockManager.recordFailure(userId, session.getClientAddress());
       }
+
       AUDIT_LOGGER.log(
           new AuditLogFields(
               userId,
@@ -300,7 +315,11 @@ public class SessionManager implements SessionManagerMBean {
               String.format(
                   "User %s (ID=%d) login failed with code: %d, %s",
                   username, userId, loginStatus.getCode(), loginStatus.getMessage()));
+      long loginTime = CommonDateTimeUtils.currentTime();
+      DataNodeAuthUtils.recordLoginHistory(
+          username, userId, session.getClientAddress(), false, loginTime);
     }
+
     return openSessionResp;
   }
 

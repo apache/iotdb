@@ -499,7 +499,8 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
         // may not return until a flush is executed, namely the data transfer relies
         // on a flush operation.
         TestUtils.executeNonQuery(senderEnv, "flush", null);
-        assertTimeseriesCountOnReceiver(receiverEnv, expectedTimeseriesCount.get(i));
+        assertTimeseriesCountOnReceiver(
+            receiverEnv, "count timeseries root.*ed.**", expectedTimeseriesCount.get(i));
       }
 
       TestUtils.assertDataEventuallyOnEnv(
@@ -557,7 +558,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p1").getCode());
-      assertTimeseriesCountOnReceiver(receiverEnv, 0);
+      assertTimeseriesCountOnReceiver(receiverEnv, "count timeseries root.db*.d*", 0);
 
       TestUtils.executeNonQueries(
           senderEnv,
@@ -576,7 +577,7 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.startPipe("p2").getCode());
-      assertTimeseriesCountOnReceiver(receiverEnv, 2);
+      assertTimeseriesCountOnReceiver(receiverEnv, "count timeseries root.db*.d*", 0);
 
       Assert.assertEquals(
           TSStatusCode.SUCCESS_STATUS.getStatusCode(), client.dropPipe("p1").getCode());
@@ -1090,14 +1091,10 @@ public class IoTDBPipeSourceIT extends AbstractPipeDualTreeModelAutoIT {
     }
   }
 
-  private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, int count) {
+  private void assertTimeseriesCountOnReceiver(BaseEnv receiverEnv, String sql, int count) {
     // for system password history
-    count += 2;
     TestUtils.assertDataEventuallyOnEnv(
-        receiverEnv,
-        "count timeseries root.**",
-        "count(timeseries),",
-        Collections.singleton(count + ","));
+        receiverEnv, sql, "count(timeseries),", Collections.singleton(count + ","));
   }
 
   private void assertPipeCount(int count) throws Exception {

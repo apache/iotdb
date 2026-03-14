@@ -90,6 +90,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
   public static final String PREFIX_PASSWORD_HISTORY = "root.__audit.password_history";
   private static final Logger logger = LoggerFactory.getLogger(DNAuditLogger.class);
 
+  public static final String PREFIX_LOGIN_HISTORY = "root.__audit.login.u_%d.node_%s";
+
+  public static final String VISIT_HISTORY_PATH = "root.__audit.login.u_%d.**";
+
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
@@ -97,6 +101,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final String AUDIT_CN_LOG_DEVICE = "root.__audit.log.node_%s.u_all";
 
   private static final String AUDIT_LOG_DEVICE_PATH = "root.__audit.log.**";
+  private static final String AUDIT_LOG_PREFIX = "AUDIT";
   private static final SessionInfo sessionInfo =
       new SessionInfo(
           0,
@@ -114,6 +119,10 @@ public class DNAuditLogger extends AbstractAuditLogger {
   private static final DataNodeDevicePathCache DEVICE_PATH_CACHE =
       DataNodeDevicePathCache.getInstance();
   private static final AtomicBoolean tableViewIsInitialized = new AtomicBoolean(false);
+  private static final AtomicBoolean loginHistoryViewIsInitialized = new AtomicBoolean(false);
+
+  private static final String LOGIN_HISTORY_TABLE_NAME = "login_history";
+  private static final String LOGIN_HISTORY_IP = "ip";
 
   private Coordinator coordinator;
 
@@ -260,175 +269,397 @@ public class DNAuditLogger extends AbstractAuditLogger {
     return insertStatement;
   }
 
+  /** Result of checking audit database and table existence via ConfigNode. */
+  private static class AuditDbCheckResult {
+    final boolean dbInTreeModelExists;
+    final boolean tableExists;
+
+    AuditDbCheckResult(boolean dbInTreeModelExists, boolean tableExists) {
+      this.dbInTreeModelExists = dbInTreeModelExists;
+      this.tableExists = tableExists;
+    }
+  }
+
+  /**
+   * Check whether the audit database exists in the tree model and whether the specified table
+   * already exists in the table model.
+   *
+   * <p>This method queries metadata from ConfigNode in two steps:
+   *
+   * <ol>
+   *   <li>Check whether the audit database exists in the tree model.
+   *   <li>If it exists, check whether the audit database is visible in the table model and whether
+   *       the specified table already exists.
+   * </ol>
+   *
+   * <p>The result is returned as an {@link AuditDbCheckResult} object containing the existence
+   * status of both the database and the table.
+   *
+   * @param tableName the name of the audit table to check in the table model
+   * @param logPrefix the prefix used in log messages to identify the caller context
+   * @return an {@link AuditDbCheckResult} containing:
+   *     <ul>
+   *       <li>{@code dbInTreeModelExists} - whether the audit database exists in the tree model
+   *       <li>{@code tableExists} - whether the specified table already exists in the table model
+   *     </ul>
+   *
+   * @throws RuntimeException if unexpected errors occur while communicating with ConfigNode
+   */
+  private AuditDbCheckResult checkAuditDbAndTable(String tableName, String logPrefix) {
+    boolean dbInTreeModelExists = false;
+    boolean tableExists = false;
+    Statement statement =
+        StatementGenerator.createStatement(
+            "SHOW DATABASES " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
+    try (final ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      ShowDatabaseStatement showStatement = (ShowDatabaseStatement) statement;
+      final List<String> databasePathPattern =
+          Arrays.asList(showStatement.getPathPattern().getNodes());
+      final TGetDatabaseReq req =
+          new TGetDatabaseReq(databasePathPattern, showStatement.getAuthorityScope().serialize())
+              .setIsTableModel(false);
+      final TShowDatabaseResp resp = client.showDatabase(req);
+      if (resp.getDatabaseInfoMapSize() > 0) {
+        dbInTreeModelExists = true;
+        statement = StatementGenerator.createStatement("SHOW DATABASES ", ZoneId.systemDefault());
+        showStatement = (ShowDatabaseStatement) statement;
+        final List<String> allDatabasePathPattern =
+            Arrays.asList(showStatement.getPathPattern().getNodes());
+        final TGetDatabaseReq tableModelReq =
+            new TGetDatabaseReq(
+                    allDatabasePathPattern, showStatement.getAuthorityScope().serialize())
+                .setIsTableModel(true)
+                .setCanSeeAuditDB(true);
+        final TShowDatabaseResp tableResp = client.showDatabase(tableModelReq);
+        if (tableResp.getDatabaseInfoMapSize() > 0
+            && tableResp.getDatabaseInfoMap().containsKey(SystemConstant.AUDIT_PREFIX_KEY)) {
+          TShowTableResp showTableResp = client.showTables(SystemConstant.AUDIT_PREFIX_KEY, false);
+          for (TTableInfo tableInfo : showTableResp.getTableInfoList()) {
+            if (tableInfo.getTableName().equals(tableName)) {
+              tableExists = true;
+              break;
+            }
+          }
+        }
+      }
+    } catch (ClientManagerException | TException e) {
+      logger.warn(
+          "[{}] Failed to show database before creating view: {}", logPrefix, e.getMessage());
+    }
+    return new AuditDbCheckResult(dbInTreeModelExists, tableExists);
+  }
+
+  private boolean ensureAuditDatabaseInTreeModel() {
+    Statement statement =
+        StatementGenerator.createStatement(
+            "CREATE DATABASE "
+                + SystemConstant.AUDIT_DATABASE
+                + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
+            ZoneId.systemDefault());
+    ExecutionResult result =
+        coordinator.executeForTreeModel(
+            statement,
+            SESSION_MANAGER.requestQueryId(),
+            sessionInfo,
+            "",
+            ClusterPartitionFetcher.getInstance(),
+            SCHEMA_FETCHER);
+    return result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        || result.status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode();
+  }
+
+  private IClientSession createInternalAuditSession(String sessionSuffix) {
+    IClientSession session =
+        new InternalClientSession(
+            String.format("%s_%s", sessionSuffix, SystemConstant.AUDIT_DATABASE));
+    session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
+    session.setZoneId(ZoneId.systemDefault());
+    session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
+    session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
+    session.setSqlDialect(IClientSession.SqlDialect.TABLE);
+    SESSION_MANAGER.registerSession(session);
+    return session;
+  }
+
+  private boolean ensureAuditDatabaseInTableModel(IClientSession session, String logPrefix) {
+    SqlParser relationSqlParser = new SqlParser();
+    Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
+        relationSqlParser.createStatement(
+            "CREATE DATABASE " + SystemConstant.AUDIT_PREFIX_KEY, ZoneId.systemDefault(), session);
+    TSStatus status =
+        coordinator.executeForTableModel(
+                stmt,
+                relationSqlParser,
+                session,
+                SESSION_MANAGER.requestQueryId(),
+                SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                "",
+                metadata,
+                config.getQueryTimeoutThreshold(),
+                false,
+                false)
+            .status;
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
+      logger.warn(
+          "[{}] Failed to create database in table model: {}", logPrefix, status.getMessage());
+      return true;
+    }
+    return false;
+  }
+
+  private boolean executeCreateView(
+      IClientSession session,
+      String createViewSql,
+      String logPrefix,
+      String successMsg,
+      String errorMsg) {
+    SqlParser relationSqlParser = new SqlParser();
+    Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
+    org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
+        relationSqlParser.createStatement(createViewSql, ZoneId.systemDefault(), session);
+    TSStatus status =
+        coordinator.executeForTableModel(
+                stmt,
+                relationSqlParser,
+                session,
+                SESSION_MANAGER.requestQueryId(),
+                SESSION_MANAGER.getSessionInfoOfTableModel(session),
+                "",
+                metadata,
+                config.getQueryTimeoutThreshold(),
+                false,
+                false)
+            .status;
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode()
+            != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
+      logger.warn("[{}] {}, {}", logPrefix, errorMsg, status.getMessage());
+      return false;
+    }
+    logger.info("[{}] {}", logPrefix, successMsg);
+    return true;
+  }
+
   public void createViewIfNecessary() {
     if (!tableViewIsInitialized.get()) {
       synchronized (this) {
         if (tableViewIsInitialized.get()) {
           return;
         }
-        boolean dbInTreeModelExists = false;
-        Statement statement =
-            StatementGenerator.createStatement(
-                "SHOW DATABASES " + SystemConstant.AUDIT_DATABASE, ZoneId.systemDefault());
-        try (final ConfigNodeClient client =
-            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
-          ShowDatabaseStatement showStatement = (ShowDatabaseStatement) statement;
-          final List<String> databasePathPattern =
-              Arrays.asList(showStatement.getPathPattern().getNodes());
-          final TGetDatabaseReq req =
-              new TGetDatabaseReq(
-                      databasePathPattern, showStatement.getAuthorityScope().serialize())
-                  .setIsTableModel(false);
-          final TShowDatabaseResp resp = client.showDatabase(req);
-          if (resp.getDatabaseInfoMapSize() > 0) {
-            dbInTreeModelExists = true;
-            statement =
-                StatementGenerator.createStatement("SHOW DATABASES ", ZoneId.systemDefault());
-            showStatement = (ShowDatabaseStatement) statement;
-            final List<String> allDatabasePathPattern =
-                Arrays.asList(showStatement.getPathPattern().getNodes());
-            final TGetDatabaseReq tableModelReq =
-                new TGetDatabaseReq(
-                        allDatabasePathPattern, showStatement.getAuthorityScope().serialize())
-                    .setIsTableModel(true)
-                    .setCanSeeAuditDB(true);
-            final TShowDatabaseResp tableResp = client.showDatabase(tableModelReq);
-            if (tableResp.getDatabaseInfoMapSize() > 0
-                && tableResp.getDatabaseInfoMap().containsKey(SystemConstant.AUDIT_PREFIX_KEY)) {
-              TShowTableResp showTableResp =
-                  client.showTables(SystemConstant.AUDIT_PREFIX_KEY, false);
-              for (TTableInfo tableInfo : showTableResp.getTableInfoList()) {
-                if (tableInfo.getTableName().equals("audit_log")) {
-                  logger.info(
-                      "[AUDIT] Database {} already exists for audit log",
-                      SystemConstant.AUDIT_PREFIX_KEY);
-                  tableViewIsInitialized.set(true);
-                  return;
-                }
-              }
-            }
-          }
-        } catch (ClientManagerException | TException e) {
-          logger.warn(
-              "[AUDIT] Failed to show database before creating database {} for audit log",
-              SystemConstant.AUDIT_DATABASE);
+        AuditDbCheckResult checkResult = checkAuditDbAndTable("audit_log", AUDIT_LOG_PREFIX);
+        if (checkResult.tableExists) {
+          logger.info(
+              "[{}}] Database {} already exists for audit log",
+              AUDIT_LOG_PREFIX,
+              SystemConstant.AUDIT_PREFIX_KEY);
+          tableViewIsInitialized.set(true);
+          return;
+        }
+        boolean dbInTreeModelExists = checkResult.dbInTreeModelExists;
+        if (!dbInTreeModelExists && ensureAuditDatabaseInTreeModel()) {
+          dbInTreeModelExists = true;
         }
         if (!dbInTreeModelExists) {
-          statement =
-              StatementGenerator.createStatement(
-                  "CREATE DATABASE "
-                      + SystemConstant.AUDIT_DATABASE
-                      + " WITH SCHEMA_REGION_GROUP_NUM=1, DATA_REGION_GROUP_NUM=1",
-                  ZoneId.systemDefault());
-          ExecutionResult result =
-              coordinator.executeForTreeModel(
-                  statement,
-                  SESSION_MANAGER.requestQueryId(),
-                  sessionInfo,
-                  "",
-                  ClusterPartitionFetcher.getInstance(),
-                  SCHEMA_FETCHER);
-          if (result.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              || result.status.getCode() == TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-            dbInTreeModelExists = true;
-          }
+          logger.warn(
+              "[{}}] Failed to create database {} for audit log",
+              AUDIT_LOG_PREFIX,
+              SystemConstant.AUDIT_DATABASE);
+          return;
         }
-        if (dbInTreeModelExists) {
-          setTtl();
-          SqlParser relationSqlParser = new SqlParser();
-          IClientSession session =
-              new InternalClientSession(
-                  String.format(
-                      "%s_%s", DNAuditLogger.class.getSimpleName(), SystemConstant.AUDIT_DATABASE));
-          session.setUsername(AuthorityChecker.INTERNAL_AUDIT_USER);
-          session.setZoneId(ZoneId.systemDefault());
-          session.setClientVersion(IoTDBConstant.ClientVersion.V_1_0);
-          session.setDatabaseName(SystemConstant.AUDIT_DATABASE);
-          session.setSqlDialect(IClientSession.SqlDialect.TABLE);
-          SESSION_MANAGER.registerSession(session);
-          Metadata metadata = LocalExecutionPlanner.getInstance().metadata;
-
-          org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Statement stmt =
-              relationSqlParser.createStatement(
-                  "CREATE DATABASE " + SystemConstant.AUDIT_PREFIX_KEY,
-                  ZoneId.systemDefault(),
-                  session);
-          TSStatus status =
-              coordinator.executeForTableModel(
-                      stmt,
-                      relationSqlParser,
-                      session,
-                      SESSION_MANAGER.requestQueryId(),
-                      SESSION_MANAGER.getSessionInfoOfTableModel(session),
-                      "",
-                      metadata,
-                      config.getQueryTimeoutThreshold(),
-                      false)
-                  .status;
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              && status.getCode() != TSStatusCode.DATABASE_ALREADY_EXISTS.getStatusCode()) {
-            logger.warn(
-                "[AUDIT] Failed to create database in table model for audit log, because {}",
-                status.getMessage());
+        setTtl();
+        IClientSession session = createInternalAuditSession(DNAuditLogger.class.getSimpleName());
+        try {
+          if (ensureAuditDatabaseInTableModel(session, AUDIT_LOG_PREFIX)) {
+            return;
           }
-          stmt =
-              relationSqlParser.createStatement(
-                  String.format(
-                      "CREATE VIEW __audit.audit_log (\n"
-                          + "    %s STRING TAG,\n"
-                          + "    %s STRING TAG,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s BOOLEAN FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD,\n"
-                          + "    %s STRING FIELD\n"
-                          + ") AS root.__audit.log.**",
-                      AUDIT_LOG_NODE_ID,
-                      AUDIT_LOG_USER_ID,
-                      AUDIT_LOG_USERNAME,
-                      AUDIT_LOG_CLI_HOSTNAME,
-                      AUDIT_LOG_AUDIT_EVENT_TYPE,
-                      AUDIT_LOG_OPERATION_TYPE,
-                      AUDIT_LOG_PRIVILEGE_TYPE,
-                      AUDIT_LOG_PRIVILEGE_LEVEL,
-                      AUDIT_LOG_RESULT,
-                      AUDIT_LOG_DATABASE,
-                      AUDIT_LOG_SQL_STRING,
-                      AUDIT_LOG_LOG),
-                  ZoneId.systemDefault(),
-                  session);
-          status =
-              coordinator.executeForTableModel(
-                      stmt,
-                      relationSqlParser,
-                      session,
-                      SESSION_MANAGER.requestQueryId(),
-                      SESSION_MANAGER.getSessionInfoOfTableModel(session),
-                      "",
-                      metadata,
-                      config.getQueryTimeoutThreshold(),
-                      false)
-                  .status;
-          if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
-              && status.getCode()
-                  != TSStatusCode.MEASUREMENT_ALREADY_EXISTS_IN_TEMPLATE.getStatusCode()) {
-            logger.warn(
-                "[AUDIT] Failed to create view for audit log, because {}", status.getMessage());
-          } else {
-            logger.info("[AUDIT] Create view for audit log successfully");
+          String createViewSql =
+              String.format(
+                  "CREATE VIEW __audit.audit_log (\n"
+                      + "    %s STRING TAG,\n"
+                      + "    %s STRING TAG,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s BOOLEAN FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD,\n"
+                      + "    %s STRING FIELD\n"
+                      + ") AS root.__audit.log.**",
+                  AUDIT_LOG_NODE_ID,
+                  AUDIT_LOG_USER_ID,
+                  AUDIT_LOG_USERNAME,
+                  AUDIT_LOG_CLI_HOSTNAME,
+                  AUDIT_LOG_AUDIT_EVENT_TYPE,
+                  AUDIT_LOG_OPERATION_TYPE,
+                  AUDIT_LOG_PRIVILEGE_TYPE,
+                  AUDIT_LOG_PRIVILEGE_LEVEL,
+                  AUDIT_LOG_RESULT,
+                  AUDIT_LOG_DATABASE,
+                  AUDIT_LOG_SQL_STRING,
+                  AUDIT_LOG_LOG);
+          if (executeCreateView(
+              session,
+              createViewSql,
+              AUDIT_LOG_PREFIX,
+              "Create view for audit log successfully",
+              "Failed to create view for audit log, because")) {
             tableViewIsInitialized.set(true);
           }
-        } else {
-          logger.warn(
-              "[AUDIT] Failed to create database {} for audit log", SystemConstant.AUDIT_DATABASE);
+        } finally {
+          SESSION_MANAGER.removeCurrSession();
         }
       }
     }
+  }
+
+  /**
+   * Create login history view for table model so root user can query visit history via SELECT. This
+   * is independent of audit switch - login history is always recorded and should be queryable
+   * regardless of whether audit log is enabled.
+   */
+  public void createLoginHistoryViewIfNecessary() {
+    if (loginHistoryViewIsInitialized.get()) {
+      return;
+    }
+
+    synchronized (this) {
+      if (loginHistoryViewIsInitialized.get()) {
+        return;
+      }
+
+      tryCreateLoginHistoryView();
+    }
+  }
+
+  /**
+   * Try to create the login history view.
+   *
+   * <p>This method performs several prerequisite checks before creating the view:
+   *
+   * <ul>
+   *   <li>Coordinator must be available
+   *   <li>The view must not already exist
+   *   <li>The audit database must exist in the tree model
+   * </ul>
+   *
+   * <p>If all conditions are satisfied, the login history view will be created.
+   */
+  private void tryCreateLoginHistoryView() {
+
+    if (coordinator == null) {
+      logger.warn(
+          "[LOGIN_HISTORY] Coordinator is not set, skip creating login history view for table model");
+      return;
+    }
+
+    AuditDbCheckResult checkResult =
+        checkAuditDbAndTable(LOGIN_HISTORY_TABLE_NAME, "LOGIN_HISTORY");
+
+    if (checkResult.tableExists) {
+      logger.info(
+          "[LOGIN_HISTORY] View {} already exists for visit history", LOGIN_HISTORY_TABLE_NAME);
+      loginHistoryViewIsInitialized.set(true);
+      return;
+    }
+
+    if (!ensureAuditDatabase(checkResult)) {
+      return;
+    }
+
+    createLoginHistoryView();
+  }
+
+  /**
+   * Ensure the audit database exists in the tree model.
+   *
+   * <p>If the database does not exist, this method will attempt to create it. If creation fails,
+   * the login history view cannot be created.
+   *
+   * @param checkResult the result of the audit database/table existence check
+   * @return true if the audit database exists or is successfully created, false otherwise
+   */
+  private boolean ensureAuditDatabase(AuditDbCheckResult checkResult) {
+
+    boolean dbExists = checkResult.dbInTreeModelExists;
+
+    if (!dbExists && ensureAuditDatabaseInTreeModel()) {
+      dbExists = true;
+    }
+
+    if (!dbExists) {
+      logger.warn("[LOGIN_HISTORY] Failed to create database {}", SystemConstant.AUDIT_DATABASE);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Create the login history view in the table model.
+   *
+   * <p>This method creates a SQL view on top of the underlying audit log series so that login
+   * history can be queried using the table model.
+   *
+   * <p>The view maps audit log fields such as user id, node id, username, IP address, and login
+   * result to a relational table structure.
+   */
+  private void createLoginHistoryView() {
+
+    IClientSession session =
+        createInternalAuditSession(DNAuditLogger.class.getSimpleName() + "LoginHistory");
+
+    try {
+
+      if (ensureAuditDatabaseInTableModel(session, "LOGIN_HISTORY")) {
+        return;
+      }
+
+      String createViewSql = buildCreateViewSql();
+
+      if (executeCreateView(
+          session,
+          createViewSql,
+          "LOGIN_HISTORY",
+          "Create view for login history successfully",
+          "Failed to create view for login history:")) {
+
+        loginHistoryViewIsInitialized.set(true);
+      }
+
+    } finally {
+      SESSION_MANAGER.removeCurrSession();
+    }
+  }
+
+  /**
+   * Build the SQL statement used to create the login history view.
+   *
+   * <p>The view exposes login audit records stored in the time-series tree model
+   * (root.__audit.login.**) as a relational table under the __audit database.
+   *
+   * @return the SQL string used to create the login history view
+   */
+  private String buildCreateViewSql() {
+    return String.format(
+        "CREATE VIEW __audit.%s (\n"
+            + "    %s STRING TAG,\n"
+            + "    %s STRING TAG,\n"
+            + "    %s STRING FIELD,\n"
+            + "    %s STRING FIELD,\n"
+            + "    %s BOOLEAN FIELD\n"
+            + ") AS root.__audit.login.**",
+        LOGIN_HISTORY_TABLE_NAME,
+        AUDIT_LOG_USER_ID,
+        AUDIT_LOG_NODE_ID,
+        AUDIT_LOG_USERNAME,
+        LOGIN_HISTORY_IP,
+        AUDIT_LOG_RESULT);
   }
 
   public void checkAndSetTtl() {
@@ -483,26 +714,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_LOG_DEVICE, dataNodeId, user)));
       asyncBatchUtils.push(statement);
     } catch (Exception e) {
-      logger.warn("[AUDIT] Failed to log audit events because", e);
-    }
-    AuditEventType type = auditLogFields.getAuditEventType();
-    if (isLoginEvent(type)) {
-      // TODO: @wenyanshi-123 Reactivate the following codes in the future
-      //      try {
-      //        statement.setDevicePath(
-      //            DEVICE_PATH_CACHE.getPartialPath(
-      //                String.format(AUDIT_LOGIN_LOG_DEVICE, dataNodeId, user)));
-      //      } catch (IllegalPathException e) {
-      //        logger.error("Failed to log audit login events because ", e);
-      //        return;
-      //      }
-      //      coordinator.executeForTreeModel(
-      //          statement,
-      //          SESSION_MANAGER.requestQueryId(),
-      //          sessionInfo,
-      //          "",
-      //          ClusterPartitionFetcher.getInstance(),
-      //          SCHEMA_FETCHER);
+      logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);
     }
   }
 
@@ -523,7 +735,7 @@ public class DNAuditLogger extends AbstractAuditLogger {
               DEVICE_PATH_CACHE.getPartialPath(String.format(AUDIT_CN_LOG_DEVICE, nodeId)));
       asyncBatchUtils.push(statement);
     } catch (Exception e) {
-      logger.warn("[AUDIT] Failed to log audit events because", e);
+      logger.warn("[{}}] Failed to log audit events because", AUDIT_LOG_PREFIX, e);
     }
   }
 

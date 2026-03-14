@@ -140,6 +140,7 @@ import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaMana
 import org.apache.iotdb.db.storageengine.rescon.quotas.OperationQuota;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
 import org.apache.iotdb.db.utils.CommonUtils;
+import org.apache.iotdb.db.utils.DataNodeAuthUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SetThreadName;
@@ -242,6 +243,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -328,6 +330,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   private TSExecuteStatementResp executeStatementInternal(
       NativeStatementRequest request, SelectResult setResult) {
     IClientSession clientSession = SESSION_MANAGER.getCurrSessionAndUpdateIdleTime();
+
     if (!SESSION_MANAGER.checkLogin(clientSession)) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
@@ -336,6 +339,10 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
     Long statementId = request.getStatementId();
     long queryId = Long.MIN_VALUE;
     String statement = request.getSql();
+
+    String username = "";
+    long userId = -1;
+    boolean shouldClearVisitHistory = false;
 
     int rpcMaxConcurrentClientNum =
         IoTDBDescriptor.getInstance().getConfig().getRpcMaxConcurrentClientNum();
@@ -384,6 +391,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                       TSStatusCode.ILLEGAL_PARAMETER,
                       "The value of minSessionPerUser cannot exceed the value of dn_rpc_max_comput_cient_num."));
             }
+          }
+          if (stat.getType() == StatementType.DELETE_USER) {
+            shouldClearVisitHistory = true;
+            username = s.getUserName();
+            userId = AuthorityChecker.getUserId(username).orElse(-1L);
           }
         }
 
@@ -474,6 +486,12 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                       TSStatusCode.ILLEGAL_PARAMETER, "This minSessionPerUser number is illegal."));
             }
           }
+
+          if (stat.getAuthorType() == AuthorRType.DROP_USER) {
+            shouldClearVisitHistory = true;
+            username = stat.getUserName();
+            userId = AuthorityChecker.getUserId(username).orElse(-1L);
+          }
         }
 
         if (s instanceof SetSqlDialect) {
@@ -526,6 +544,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           resp.setOperationType("dropDB");
         }
         return resp;
+      }
+
+      // clear visitHistory after drop user.
+      if (shouldClearVisitHistory && COMMON_CONFIG.isEnableAuditLog()) {
+        long finalUserId = userId;
+        String finalUsername = username;
+        CompletableFuture.runAsync(
+            () -> DataNodeAuthUtils.clearLoginHistoryForDropUser(finalUsername, finalUserId));
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
@@ -1680,6 +1706,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       clientSession.setDatabaseName(database.get().toLowerCase(Locale.ENGLISH));
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
+    if (openSessionResp.getTsVisitHistoryResp() != null) {
+      resp.setVisitHistory(openSessionResp.getTsVisitHistoryResp());
+    }
     Map<String, String> configuration = new HashMap<>();
     configuration.put(
         TIME_PRECISION, CommonDescriptor.getInstance().getConfig().getTimestampPrecision());

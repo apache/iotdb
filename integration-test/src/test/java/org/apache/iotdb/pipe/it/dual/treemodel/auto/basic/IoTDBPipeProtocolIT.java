@@ -460,7 +460,10 @@ public class IoTDBPipeProtocolIT extends AbstractPipeDualTreeModelAutoIT {
           null);
 
       TestUtils.assertDataEventuallyOnEnv(
-          receiverEnv, "count timeseries", "count(timeseries),", Collections.singleton("4,"));
+          receiverEnv,
+          "count timeseries root.db.d1.**",
+          "count(timeseries),",
+          Collections.singleton("2,"));
 
       TestUtils.assertDataEventuallyOnEnv(
           receiverEnv, "count databases", "count,", Collections.singleton("3,"));

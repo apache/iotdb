@@ -183,6 +183,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCAR
 import static org.apache.iotdb.commons.schema.SchemaConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.DEVICE;
 import static org.apache.iotdb.commons.schema.column.ColumnHeaderConstant.ENDTIME;
+import static org.apache.iotdb.db.auth.AuthorityChecker.INTERNAL_AUDIT_USER_ID;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.PARTITION_FETCHER;
 import static org.apache.iotdb.db.queryengine.metric.QueryPlanCostMetricSet.SCHEMA_FETCHER;
 import static org.apache.iotdb.db.queryengine.plan.analyze.AnalyzeUtils.validateSchema;
@@ -4074,6 +4075,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitDeleteData(
       DeleteDataStatement deleteDataStatement, MPPQueryContext context) {
+    boolean canSeeAuditDB = false;
+    if (context.getSession().getUserEntity().getUserId() == INTERNAL_AUDIT_USER_ID) {
+      canSeeAuditDB = true;
+    }
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     analysis.setRealStatement(deleteDataStatement);
@@ -4081,7 +4086,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     PathPatternTree patternTree = new PathPatternTree();
     deleteDataStatement.getPathList().forEach(patternTree::appendPathPattern);
 
-    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context, false);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, true, context, canSeeAuditDB);
     Set<IDeviceID> deduplicatedDeviceIDs = new HashSet<>();
 
     // Check for invalid series and alias series
@@ -4132,7 +4137,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     if (schemaTree.hasLogicalViewMeasurement()) {
-      updateSchemaTreeByViews(analysis, schemaTree, context, false);
+      updateSchemaTreeByViews(analysis, schemaTree, context, canSeeAuditDB);
 
       Set<MeasurementPath> deletePatternSet = new HashSet<>(deleteDataStatement.getPathList());
       IMeasurementSchema measurementSchema;

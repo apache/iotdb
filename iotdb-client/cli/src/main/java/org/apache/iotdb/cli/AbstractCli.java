@@ -27,6 +27,7 @@ import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSVisitHistoryResp;
 import org.apache.iotdb.tool.data.ImportData;
 
 import org.apache.commons.cli.CommandLine;
@@ -893,6 +894,45 @@ public abstract class AbstractCli {
           cliPrefix += ":" + databaseOfConnection;
         }
       }
+    }
+  }
+
+  static void displayVisitHistory(IoTDBConnection connection, CliContext ctx) {
+    TSVisitHistoryResp visitHistoryResp = connection.getVisitHistoryResp();
+    if (visitHistoryResp == null) {
+      return;
+    }
+    ZoneId zoneId = ZoneId.of(connection.getTimeZone());
+    if (visitHistoryResp.getLastSuccessloginTime() != 0L) {
+      ctx.getPrinter().println("---Last Successful Session------------------");
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  "Time: %s",
+                  RpcUtils.formatDatetime(
+                      timeFormat,
+                      timestampPrecision,
+                      visitHistoryResp.getLastSuccessloginTime(),
+                      zoneId)));
+      ctx.getPrinter()
+          .println(String.format("IP Address: %s", visitHistoryResp.getLastSuccessIp()));
+    }
+    if (visitHistoryResp.getLastFailedLoginTime() != 0L) {
+      ctx.getPrinter().println("---Last Failed Session----------------------");
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  "Time: %s",
+                  RpcUtils.formatDatetime(
+                      timeFormat,
+                      timestampPrecision,
+                      visitHistoryResp.getLastFailedLoginTime(),
+                      zoneId)));
+      ctx.getPrinter().println(String.format("IP Address: %s", visitHistoryResp.getLastFailedIp()));
+      ctx.getPrinter()
+          .println(
+              String.format(
+                  "Cumulative Failed Attempts: %d", visitHistoryResp.getFailedAttempts()));
     }
   }
 }

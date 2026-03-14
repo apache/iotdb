@@ -93,6 +93,15 @@ struct TSOpenSessionResp {
 
   // The configuration settings for this session.
   4: optional map<string, string> configuration
+  5: optional TSVisitHistoryResp visitHistory;
+}
+
+struct TSVisitHistoryResp{
+    1: optional i64 lastSuccessloginTime;
+    2: optional i64 lastFailedLoginTime;
+    3: optional string lastSuccessIp;
+    4: optional string lastFailedIp;
+    5: optional i32 failedAttempts;
 }
 
 // OpenSession()

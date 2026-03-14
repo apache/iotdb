@@ -89,7 +89,6 @@ public abstract class Statement extends StatementNode {
    * Checks whether this statement should be split into multiple sub-statements based on the given
    * async requirement. Used to limit resource consumption during statement analysis, etc.
    *
-   * @param requireAsync whether async execution is required
    * @return true if the statement should be split, false otherwise. Default implementation returns
    *     false.
    */

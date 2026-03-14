@@ -347,6 +347,9 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
         DNAuditLogger.getInstance().setCoordinator(Coordinator.getInstance());
         DNAuditLogger.getInstance().start();
+        // Create login history view for table model (independent of audit switch)
+        // So root user can query visit history via SELECT * FROM __audit.login_history
+        DNAuditLogger.getInstance().createLoginHistoryViewIfNecessary();
         AuditLogFields fields =
             new AuditLogFields(
                 -1,
@@ -990,7 +993,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     initProtocols();
   }
 
-  protected void checkParameterValid() throws StartupException {
+  protected void checkParameterValid() {
     // 1. Check the validity of parameter dn_rpc_max_comput_cient_num
     int maxConcurrentClientNum = config.getRpcMaxConcurrentClientNum();
     TCheckMaxClientNumResp status = AuthorityChecker.checkMaxClientNumValid(maxConcurrentClientNum);

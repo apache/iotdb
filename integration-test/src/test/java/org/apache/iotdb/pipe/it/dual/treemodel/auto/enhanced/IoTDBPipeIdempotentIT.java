@@ -189,9 +189,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "create timeseries root.db.device.s01 with datatype=FLOAT,encoding=PLAIN"),
         "CREATE VIEW root.view.device.status AS SELECT s01 FROM root.db.device",
         "CREATE VIEW root.view.device.status1 AS SELECT s01 FROM root.db.device",
-        "count timeseries",
+        "count timeseries root.*.device.**",
         "count(timeseries),",
-        Collections.singleton("5,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -203,9 +203,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "CREATE VIEW root.view.device.status AS SELECT s01 FROM root.db.device"),
         "ALTER VIEW root.view.device.status AS SELECT s02 FROM root.db.device",
         "CREATE VIEW root.view.device.status1 AS SELECT s01 FROM root.db.device",
-        "count timeseries",
+        "count timeseries root.*.device.**",
         "count(timeseries),",
-        Collections.singleton("6,"));
+        Collections.singleton("4,"));
   }
 
   @Test
@@ -216,9 +216,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "CREATE VIEW root.view.device.status AS SELECT s01 FROM root.db.device"),
         "ALTER VIEW root.view.device.status ADD TAGS tag3=v3, tag4=v4",
         "CREATE VIEW root.view.device.status1 AS SELECT s01 FROM root.db.device",
-        "count timeseries",
+        "count timeseries root.*.device.**",
         "count(timeseries),",
-        Collections.singleton("5,"));
+        Collections.singleton("3,"));
   }
 
   @Test
@@ -229,9 +229,9 @@ public class IoTDBPipeIdempotentIT extends AbstractPipeDualTreeModelAutoIT {
             "CREATE VIEW root.view.device.status AS SELECT s01 FROM root.db.device"),
         "delete view root.view.device.status",
         "CREATE VIEW root.view.device.status1 AS SELECT s01 FROM root.db.device",
-        "count timeseries",
+        "count timeseries root.*.device.**",
         "count(timeseries),",
-        Collections.singleton("4,"));
+        Collections.singleton("2,"));
   }
 
   @Test

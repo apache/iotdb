@@ -31,6 +31,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSVisitHistoryResp;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -81,6 +82,8 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+
+  private TSVisitHistoryResp visitHistoryResp;
 
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
@@ -575,6 +578,8 @@ public class IoTDBConnection implements Connection {
       // validate connection
       RpcUtils.verifySuccess(openResp.getStatus());
 
+      this.visitHistoryResp = openResp.getVisitHistory();
+
       this.timeFactor = RpcUtils.getTimeFactor(openResp);
       if (protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
@@ -704,5 +709,9 @@ public class IoTDBConnection implements Connection {
 
   public String getDatabase() {
     return params.getDb().orElse(null);
+  }
+
+  public TSVisitHistoryResp getVisitHistoryResp() {
+    return visitHistoryResp;
   }
 }
