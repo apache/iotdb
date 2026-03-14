@@ -84,7 +84,7 @@ public class CorrelatedSubqueryTest {
                 JoinNode.JoinType.INNER,
                 builder ->
                     builder
-                        .equiCriteria("s1", "s2_7", "t1", "t2")
+                        .equiCriteria("s1", "s2_7")
                         .left(sort(tableScan1))
                         .right(
                             sort(
@@ -133,7 +133,7 @@ public class CorrelatedSubqueryTest {
                         JoinNode.JoinType.LEFT,
                         builder ->
                             builder
-                                .equiCriteria("s1", "s2_3", "t1", "t2")
+                                .equiCriteria("s1", "s2_3")
                                 .left(sort(tableScan1))
                                 .right(
                                     sort(
