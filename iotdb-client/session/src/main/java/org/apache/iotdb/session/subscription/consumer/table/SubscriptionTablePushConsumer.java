@@ -40,9 +40,18 @@ public class SubscriptionTablePushConsumer extends AbstractSubscriptionPushConsu
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize) {
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
     return new SubscriptionTableProvider(
-        endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
+        endPoint,
+        username,
+        password,
+        consumerId,
+        consumerGroupId,
+        thriftMaxFrameSize,
+        heartbeatIntervalMs,
+        connectionTimeoutInMs);
   }
 
   /////////////////////////////// ctor ///////////////////////////////

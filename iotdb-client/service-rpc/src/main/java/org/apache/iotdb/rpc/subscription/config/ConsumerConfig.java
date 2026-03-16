@@ -80,6 +80,18 @@ public class ConsumerConfig extends PipeParameters {
     return getString(ConsumerConstant.SQL_DIALECT_KEY);
   }
 
+  public long getHeartbeatIntervalMs() {
+    return getLongOrDefault(
+        ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY,
+        ConsumerConstant.HEARTBEAT_INTERVAL_MS_DEFAULT_VALUE);
+  }
+
+  public int getConnectionTimeoutInMs() {
+    return getIntOrDefault(
+        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY,
+        ConsumerConstant.CONNECTION_TIMEOUT_MS_DEFAULT_VALUE);
+  }
+
   public void setConsumerId(final String consumerId) {
     attributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
   }

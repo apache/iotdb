@@ -57,6 +57,11 @@ public class SubscriptionTreeSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTreeSessionBuilder connectionTimeoutInMs(final int connectionTimeoutInMs) {
+    super.connectionTimeoutInMs = connectionTimeoutInMs;
+    return this;
+  }
+
   public ISubscriptionTreeSession build() {
     return new SubscriptionTreeSession(this);
   }

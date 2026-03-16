@@ -48,6 +48,7 @@ public class AbstractSubscriptionConsumerBuilder {
   protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
   protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+  protected int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
   protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
   public AbstractSubscriptionConsumerBuilder host(final String host) {
@@ -117,6 +118,12 @@ public class AbstractSubscriptionConsumerBuilder {
 
   public AbstractSubscriptionConsumerBuilder thriftMaxFrameSize(final int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+    return this;
+  }
+
+  public AbstractSubscriptionConsumerBuilder connectionTimeoutInMs(
+      final int connectionTimeoutInMs) {
+    this.connectionTimeoutInMs = Math.max(connectionTimeoutInMs, 0);
     return this;
   }
 

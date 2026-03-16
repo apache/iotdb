@@ -50,9 +50,18 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize) {
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
     return new SubscriptionTreeProvider(
-        endPoint, username, password, consumerId, consumerGroupId, thriftMaxFrameSize);
+        endPoint,
+        username,
+        password,
+        consumerId,
+        consumerGroupId,
+        thriftMaxFrameSize,
+        heartbeatIntervalMs,
+        connectionTimeoutInMs);
   }
 
   /////////////////////////////// ctor ///////////////////////////////
@@ -77,6 +86,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
             .fileSaveDir(builder.fileSaveDir)
             .fileSaveFsync(builder.fileSaveFsync)
             .thriftMaxFrameSize(builder.thriftMaxFrameSize)
+            .connectionTimeoutInMs(builder.connectionTimeoutInMs)
             .maxPollParallelism(builder.maxPollParallelism)
             .ackStrategy(builder.ackStrategy)
             .consumeListener(builder.consumeListener)
@@ -187,6 +197,7 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
     private boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
     private int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    private int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     private int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     private AckStrategy ackStrategy = AckStrategy.defaultValue();
@@ -260,6 +271,11 @@ public class SubscriptionTreePushConsumer extends AbstractSubscriptionPushConsum
 
     public Builder thriftMaxFrameSize(final int thriftMaxFrameSize) {
       this.thriftMaxFrameSize = thriftMaxFrameSize;
+      return this;
+    }
+
+    public Builder connectionTimeoutInMs(final int connectionTimeoutInMs) {
+      this.connectionTimeoutInMs = Math.max(connectionTimeoutInMs, 0);
       return this;
     }
 
