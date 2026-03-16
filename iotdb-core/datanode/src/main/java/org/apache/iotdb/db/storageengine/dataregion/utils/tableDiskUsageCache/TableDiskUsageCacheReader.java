@@ -35,6 +35,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class TableDiskUsageCacheReader implements Closeable {
 
@@ -79,20 +81,20 @@ public class TableDiskUsageCacheReader implements Closeable {
           this.prepareReaderFuture == null
               ? TableDiskUsageCache.getInstance().startRead(dataRegion, true, true)
               : this.prepareReaderFuture;
-      do {
-        if (prepareReaderFuture.isDone()) {
-          Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
-              prepareReaderFuture.get();
-          this.tsFileTableSizeCacheReader = readerPair.left;
-          this.tsFileTableSizeCacheReader.openKeyFile();
-          this.objectTableSizeCacheReader = readerPair.right;
-          break;
-        } else {
-          Thread.sleep(1);
-        }
-      } while (System.nanoTime() - startTime < maxRunTime);
+      // Ensure we perform at least one check on the future even if the remaining
+      // runtime is already exhausted.
+      long waitTime = Math.max(0, maxRunTime - (System.nanoTime() - startTime));
+      try {
+        Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
+            prepareReaderFuture.get(waitTime, TimeUnit.NANOSECONDS);
+        this.tsFileTableSizeCacheReader = readerPair.left;
+        this.tsFileTableSizeCacheReader.openKeyFile();
+        this.objectTableSizeCacheReader = readerPair.right;
+      } catch (TimeoutException timeoutException) {
+        return false;
+      }
     }
-    return this.tsFileTableSizeCacheReader != null;
+    return true;
   }
 
   public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) throws Exception {

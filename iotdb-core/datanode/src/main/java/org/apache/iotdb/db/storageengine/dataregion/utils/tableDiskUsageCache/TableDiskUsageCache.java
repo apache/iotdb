@@ -57,7 +57,7 @@ public class TableDiskUsageCache {
   protected TableDiskUsageCache() {
     scheduledExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.FILE_TIME_INDEX_RECORD.getName());
+            ThreadName.TABLE_SIZE_INDEX_RECORD.getName());
     scheduledExecutorService.submit(this::run);
   }
 
@@ -69,7 +69,7 @@ public class TableDiskUsageCache {
             syncTsFileTableSizeCacheIfNecessary(writer);
             persistPendingObjectDeltasIfNecessary(writer);
           }
-          Operation operation = queue.poll(1, TimeUnit.SECONDS);
+          Operation operation = queue.poll(5, TimeUnit.SECONDS);
           if (operation != null) {
             operation.apply(this);
             processedOperationCountSinceLastPeriodicCheck++;
@@ -78,8 +78,15 @@ public class TableDiskUsageCache {
             performPeriodicMaintenance();
           }
         } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          return;
+          // Ignore unexpected interruptions to guarantee the worker thread continues running.
+          // This worker relies on the `stop` flag to terminate gracefully. Therefore, if an
+          // interruption occurs while the cache is still active, we log the event and keep
+          // processing subsequent operations.
+          if (!stop) {
+            LOGGER.warn(
+                "TableDiskUsageCache worker thread was interrupted unexpectedly while waiting for operations.",
+                e);
+          }
         } catch (Exception e) {
           LOGGER.error("Meet exception when apply TableDiskUsageCache operation.", e);
         }
@@ -195,13 +202,20 @@ public class TableDiskUsageCache {
   }
 
   protected boolean addOperationToQueue(Operation operation) {
-    if (failedToRecover || stop) {
+    if (failedToRecover) {
+      return false;
+    }
+    if (stop) {
+      LOGGER.warn(
+          "Skip adding operation {} to queue because TableDiskUsageCache has been stopped.",
+          operation);
       return false;
     }
     try {
       queue.put(operation);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      LOGGER.warn("Interrupted while adding operation {} to queue.", operation, e);
       return false;
     }
     return true;
@@ -277,14 +291,19 @@ public class TableDiskUsageCache {
     }
 
     public abstract void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException;
+
+    @Override
+    public String toString() {
+      return this.getClass().getSimpleName();
+    }
   }
 
   protected static class StartReadOperation extends Operation {
     protected final DataRegion region;
     protected final boolean readTsFileCache;
     protected final boolean readObjectFileCache;
-    public CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>> future =
-        new CompletableFuture<>();
+    private final CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>>
+        future = new CompletableFuture<>();
 
     public StartReadOperation(
         DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
@@ -340,7 +359,7 @@ public class TableDiskUsageCache {
             }
             writer.decreaseActiveReaderNum();
             // Complete pending remove when the last reader exits
-            if (writer.getRemovedFuture() != null) {
+            if (writer.getActiveReaderNum() == 0 && writer.getRemovedFuture() != null) {
               writer.close();
               writer.getRemovedFuture().complete(null);
               writer.setRemovedFuture(null);
@@ -475,6 +494,9 @@ public class TableDiskUsageCache {
     public void decreaseActiveReaderNum() {
       if (activeReaderNum > 0) {
         activeReaderNum--;
+      } else {
+        LOGGER.warn(
+            "Attempt to decrease activeReaderNum when it is already 0. This may indicate an incorrect reader lifecycle management.");
       }
     }
 

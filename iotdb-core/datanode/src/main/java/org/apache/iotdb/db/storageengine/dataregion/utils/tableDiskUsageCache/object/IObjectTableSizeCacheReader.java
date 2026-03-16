@@ -24,10 +24,25 @@ import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.Da
 import java.io.IOException;
 
 public interface IObjectTableSizeCacheReader extends AutoCloseable {
+  /**
+   * Load table size information from object index files into the given context.
+   *
+   * @param dataRegionContext the query context used to store table size results
+   * @param startTime the start time of the current execution slice, in nanoseconds
+   * @param maxRunTime the maximum allowed runtime for this execution slice, in nanoseconds
+   * @return true if the loading process finishes within the given time budget, false if the
+   *     execution should yield and continue in the next invocation
+   * @throws IOException if an I/O error occurs while reading object files
+   */
   boolean loadObjectFileTableSize(
       DataRegionTableSizeQueryContext dataRegionContext, long startTime, long maxRunTime)
       throws IOException;
 
+  /**
+   * Override {@link AutoCloseable#close()} to remove the checked exception from the method
+   * signature. Implementations are not expected to throw any checked exception during close, which
+   * simplifies the usage for callers.
+   */
   @Override
   void close();
 }

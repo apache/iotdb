@@ -110,6 +110,8 @@ import org.apache.tsfile.read.reader.series.PaginationController;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BytesUtils;
 import org.apache.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -153,6 +155,9 @@ import static org.apache.iotdb.db.queryengine.plan.execution.config.metadata.ext
 public class InformationSchemaContentSupplierFactory {
 
   private static final SessionManager sessionManager = SessionManager.getInstance();
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(InformationSchemaContentSupplierFactory.class);
 
   private InformationSchemaContentSupplierFactory() {}
 
@@ -1271,6 +1276,10 @@ public class InformationSchemaContentSupplierFactory {
                             false, operatorContext.getInstanceContext());
                     return true;
                   }),
+              // No timePartitionFilter here because the iteration granularity is DataRegion. The
+              // actual predicate pushdown happens later in getTablesToScan(), where pushDownFilter
+              // and pagination are applied to determine which tables in each time partition should
+              // be scanned.
               Optional.empty());
     }
 
@@ -1500,7 +1509,8 @@ public class InformationSchemaContentSupplierFactory {
       try {
         currentDataRegionCacheReader.close();
         currentDataRegionCacheReader = null;
-      } catch (IOException ignored) {
+      } catch (IOException e) {
+        LOGGER.error("Failed to close reader in TableDiskUsageSupplier", e);
       }
     }
   }

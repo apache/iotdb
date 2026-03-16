@@ -39,6 +39,14 @@ public class StorageEngineTimePartitionIterator implements Accountable {
   private long currentTimePartition;
   private Iterator<Long> timePartitionIterator;
 
+  /**
+   * StorageEngineTimePartitionIterator is used to iterate over DataRegions and their corresponding
+   * time partitions in the StorageEngine.
+   *
+   * @param dataRegionFilter Used to filter DataRegions before iteration. Only DataRegions that
+   *     satisfy this predicate will be processed.
+   * @param timePartitionFilter Used to filter specific time partitions inside a DataRegion.
+   */
   public StorageEngineTimePartitionIterator(
       Optional<DataRegionFilterFunc> dataRegionFilter,
       Optional<TimePartitionFilterFunc> timePartitionFilter) {

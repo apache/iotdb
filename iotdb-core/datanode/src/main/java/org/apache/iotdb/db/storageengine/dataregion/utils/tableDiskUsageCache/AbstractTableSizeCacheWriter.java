@@ -64,7 +64,7 @@ public abstract class AbstractTableSizeCacheWriter {
   }
 
   public void closeIfIdle() {
-    if (System.currentTimeMillis() - lastWriteTimestamp >= TimeUnit.MINUTES.toMillis(1)) {
+    if (System.currentTimeMillis() - lastWriteTimestamp >= TimeUnit.HOURS.toMillis(1)) {
       close();
     }
   }

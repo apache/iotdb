@@ -3653,7 +3653,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    if (!analyzeWhere(
+    if (!analyzeWhereForShowStatements(
         analysis,
         showQueriesStatement.getWhereCondition(),
         ColumnHeaderConstant.showQueriesColumnHeaders)) {
@@ -3688,7 +3688,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     analysis.setSourceExpressions(sourceExpressions);
     sourceExpressions.forEach(expression -> analyzeExpressionType(analysis, expression));
 
-    if (!analyzeWhere(
+    if (!analyzeWhereForShowStatements(
         analysis,
         showDiskUsageStatement.getWhereCondition(),
         ColumnHeaderConstant.showDiskUsageColumnHeaders)) {
@@ -3700,7 +3700,19 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private boolean analyzeWhere(
+  /**
+   * Analyze the WHERE clause and extract value filter predicates.
+   *
+   * <p>The predicate will be simplified and checked for type correctness. If the predicate does not
+   * contain a value filter or simplifies to TRUE, the WHERE clause will be ignored.
+   *
+   * @param analysis analysis context
+   * @param whereCondition WHERE clause
+   * @param statementColumnHeaders column headers used for type binding
+   * @return true if the WHERE clause contains a valid value filter, otherwise false
+   * @throws SemanticException if the predicate type is not BOOLEAN
+   */
+  private boolean analyzeWhereForShowStatements(
       Analysis analysis, WhereCondition whereCondition, List<ColumnHeader> statementColumnHeaders) {
     if (whereCondition == null) {
       return true;

@@ -190,8 +190,13 @@ public class LimitOffsetPushDown implements PlanOptimizer {
       for (PlanNode child : node.getChildren()) {
         newNode.addChild(child.accept(this, subContext));
       }
+
+      // If the CollectNode has more than one child, the final result is produced
+      // by merging multiple data streams. In this case, LIMIT/OFFSET cannot be
+      // fully pushed down to all children because the global ordering or final
+      // row count must still be enforced at the parent level.
+      // Therefore, the parent LIMIT/OFFSET node should be preserved.
       if (node.getChildren().size() > 1) {
-        // keep parent limit/offset node
         context.setEnablePushDown(false);
       }
       return newNode;
