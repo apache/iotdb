@@ -557,11 +557,11 @@ public class AnalyzeUtils {
           "The column '" + columnName + "' does not exist or is not a tag column");
     }
 
-    TagPredicate newPredicate = getIdPredicate(comparisonExpression, right, idColumnOrdinal);
+    TagPredicate newPredicate = getTagPredicate(comparisonExpression, right, idColumnOrdinal);
     return combinePredicates(oldPredicate, newPredicate);
   }
 
-  private static TagPredicate getIdPredicate(
+  private static TagPredicate getTagPredicate(
       ComparisonExpression comparisonExpression, Expression right, int idColumnOrdinal) {
     if (comparisonExpression.getOperator() != ComparisonExpression.Operator.EQUAL) {
       throw new SemanticException("The operator of tag predicate must be '=' for " + right);
