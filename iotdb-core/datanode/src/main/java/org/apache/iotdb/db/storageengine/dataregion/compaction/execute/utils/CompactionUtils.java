@@ -550,7 +550,7 @@ public class CompactionUtils {
           continue;
         }
       }
-      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName);
+      TsTable tsTable = DataNodeTableCache.getInstance().getTable(databaseName, tableName, false);
       if (tsTable == null) {
         continue;
       }
@@ -675,7 +675,10 @@ public class CompactionUtils {
     }
     ISchemaTree schemaTree =
         schemaFetcher.fetchSchema(
-            patternTree, false, new MPPQueryContext(new QueryId("compaction")), true);
+            patternTree,
+            false,
+            new MPPQueryContext(new QueryId("compaction_fetch_schema_" + System.nanoTime())),
+            true);
     DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
     if (deviceSchemaInfo == null) {
       return Collections.nCopies(measurements.size(), null);

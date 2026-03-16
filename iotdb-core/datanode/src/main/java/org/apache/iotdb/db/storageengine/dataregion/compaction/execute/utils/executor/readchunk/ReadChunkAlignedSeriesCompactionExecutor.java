@@ -146,7 +146,8 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
 
   private void collectValueColumnSchemaListForTable(String database) throws IOException {
     TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-    TsTable tsTable = DataNodeTableCache.getInstance().getTable(database, device.getTableName());
+    TsTable tsTable =
+        DataNodeTableCache.getInstance().getTable(database, device.getTableName(), false);
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
     for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
       Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair =

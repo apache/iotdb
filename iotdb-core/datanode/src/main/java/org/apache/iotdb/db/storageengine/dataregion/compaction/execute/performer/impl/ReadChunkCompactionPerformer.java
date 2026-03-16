@@ -334,6 +334,9 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
           break;
         }
       }
+      if (dataTypeInCurrentFile == null) {
+        continue;
+      }
       if (correctDataType == null) {
         correctDataType = dataTypeInCurrentFile;
       } else if (correctDataType != dataTypeInCurrentFile) {

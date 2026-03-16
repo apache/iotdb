@@ -24,7 +24,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFakeSchemaFetcherImpl;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 
@@ -45,7 +44,6 @@ import org.junit.Before;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class AbstractCompactionAlterDataTypeTest extends AbstractCompactionTest {
@@ -54,16 +52,11 @@ public class AbstractCompactionAlterDataTypeTest extends AbstractCompactionTest 
   protected final IDeviceID device =
       IDeviceID.Factory.DEFAULT_FACTORY.create(COMPACTION_TEST_SG + ".d1");
 
-  protected CompactionFakeSchemaFetcherImpl schemaFetcher;
-
   @Before
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-Worker-1");
-    this.schemaFetcher = new CompactionFakeSchemaFetcherImpl();
-    schemaFetcher.getSchemaTree().setDatabases(Collections.singleton(COMPACTION_TEST_SG));
-    CompactionUtils.setSchemaFetcher(schemaFetcher);
   }
 
   @After

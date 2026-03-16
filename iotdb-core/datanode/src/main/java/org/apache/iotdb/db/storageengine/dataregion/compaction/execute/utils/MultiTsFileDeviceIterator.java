@@ -325,7 +325,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   private Map<String, MeasurementSchema> getAllSchemasOfCurrentDeviceForTable() throws IOException {
     Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
     TsTable tsTable =
-        DataNodeTableCache.getInstance().getTable(databaseName, currentDevice.left.getTableName());
+        DataNodeTableCache.getInstance()
+            .getTable(databaseName, currentDevice.left.getTableName(), false);
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
@@ -510,7 +511,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>>>
         timeseriesMetadataOffsetMap = new LinkedHashMap<>();
     TsTable tsTable =
-        DataNodeTableCache.getInstance().getTable(databaseName, currentDevice.left.getTableName());
+        DataNodeTableCache.getInstance()
+            .getTable(databaseName, currentDevice.left.getTableName(), false);
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
       if (iterator == null || !iterator.current().equals(currentDevice)) {
@@ -544,6 +546,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           }
           if (schema == null) {
             schema = reader.getMeasurementSchema(entrySet.getValue().left.getChunkMetadataList());
+          }
+          if (schema == null) {
+            continue;
           }
           existedPair = new Pair<>(schema, new HashMap<>());
           timeseriesMetadataOffsetMap.put(measurementId, existedPair);
