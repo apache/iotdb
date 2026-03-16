@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.alterDataType;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -43,14 +42,21 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 @SuppressWarnings("OptionalGetWithoutIsPresent")
+@RunWith(Parameterized.class)
 public class CompactionDataTypeNotMatchAlterableDataTypeTest
     extends AbstractCompactionAlterDataTypeTest {
+
+  private String performerType;
 
   @Before
   public void setUp()
@@ -63,39 +69,25 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
     super.tearDown();
   }
 
-  @Test
-  public void testCompactNonAlignedSeriesWithReadChunkCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithNonAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+  @Parameterized.Parameters(name = "type={0}")
+  public static Collection<Object[]> data() {
+    return Arrays.asList(
+        new Object[][] {
+          {"read_chunk"}, {"fast"}, {"read_point"},
+        });
+  }
+
+  public CompactionDataTypeNotMatchAlterableDataTypeTest(String type) {
+    this.performerType = type;
   }
 
   @Test
-  public void testCompactNonAlignedSeriesWithFastCompactionPerformer()
-      throws IOException, WriteProcessException {
+  public void testCompactNonAlignedSeries()
+      throws IOException, WriteProcessException, IllegalPathException {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactNonAlignedSeriesWithReadPointCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithNonAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
@@ -104,37 +96,11 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
 
   @Test
   public void testCompactAlignedSeriesWithReadChunkCompactionPerformer()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactAlignedSeriesWithFastCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new FastCompactionPerformer(false), 0);
-    Assert.assertTrue(task.start());
-    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
-    Assert.assertEquals(
-        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
-  }
-
-  @Test
-  public void testCompactAlignedSeriesWithReadPointCompactionPerformer()
-      throws IOException, WriteProcessException {
-    generateDataTypeNotMatchFilesWithAlignedSeries();
-    InnerSpaceCompactionTask task =
-        new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadPointCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
@@ -142,7 +108,7 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
   }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     MeasurementSchema measurementSchema1 = new MeasurementSchema("s1", TSDataType.INT32);
     TsFileResource resource1 = generateInt32NonAlignedSeriesFile(new TimeRange(1, 1), true);
     seqResources.add(resource1);
@@ -150,10 +116,14 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
     MeasurementSchema measurementSchema2 = new MeasurementSchema("s1", TSDataType.FLOAT);
     TsFileResource resource2 = generateFloatNonAlignedSeriesFile(new TimeRange(2, 2), true);
     seqResources.add(resource2);
+
+    schemaFetcher
+        .getSchemaTree()
+        .appendSingleMeasurementPath(new MeasurementPath(device, "s1", measurementSchema2));
   }
 
   private void generateDataTypeNotMatchFilesWithAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     List<IMeasurementSchema> measurementSchemas1 = new ArrayList<>();
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
@@ -178,5 +148,12 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
     resource2.updateEndTime(device, 2);
     resource2.serialize();
     seqResources.add(resource2);
+
+    MeasurementPath s1Path = new MeasurementPath(device, "s1", measurementSchemas2.get(0));
+    s1Path.setUnderAlignedEntity(true);
+    MeasurementPath s2Path = new MeasurementPath(device, "s2", measurementSchemas2.get(1));
+    s2Path.setUnderAlignedEntity(true);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s1Path);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s2Path);
   }
 }

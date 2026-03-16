@@ -170,8 +170,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
               || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
             continue;
           }
-          TsTableColumnSchema schemaInTsTable =
-              tsTable.getColumnSchema(chunkMetadata.getMeasurementUid());
+          TsTableColumnSchema schemaInTsTable = null;
+          if (tsTable != null) {
+            schemaInTsTable = tsTable.getColumnSchema(chunkMetadata.getMeasurementUid());
+          }
           IMeasurementSchema measurementSchema;
           if (schemaInTsTable == null) {
             ChunkHeader chunkHeader =

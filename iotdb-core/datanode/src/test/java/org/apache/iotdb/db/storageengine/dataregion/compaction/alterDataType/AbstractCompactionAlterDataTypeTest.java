@@ -67,6 +67,7 @@ public class AbstractCompactionAlterDataTypeTest extends AbstractCompactionTest 
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    CompactionUtils.setSchemaFetcher(null);
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
   }

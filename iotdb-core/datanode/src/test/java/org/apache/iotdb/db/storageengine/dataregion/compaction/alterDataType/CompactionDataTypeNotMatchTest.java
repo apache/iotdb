@@ -19,11 +19,10 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.alterDataType;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
@@ -74,7 +73,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
   public static Collection<Object[]> data() {
     return Arrays.asList(
         new Object[][] {
-            {"read_chunk"}, {"fast"}, {"read_point"},
+          {"read_chunk"}, {"fast"}, {"read_point"},
         });
   }
 
@@ -84,7 +83,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
 
   @Test
   public void testCompactNonAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     generateDataTypeNotMatchFilesWithNonAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -97,7 +96,7 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
 
   @Test
   public void testCompactAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
@@ -108,9 +107,8 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
         2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
   }
 
-
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     MeasurementSchema measurementSchema1 = new MeasurementSchema("s1", TSDataType.BOOLEAN);
     TsFileResource resource1 = createEmptyFileAndResource(true);
     resource1.setStatusForTest(TsFileResourceStatus.COMPACTING);
@@ -129,10 +127,14 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
     MeasurementSchema measurementSchema2 = new MeasurementSchema("s1", TSDataType.INT32);
     TsFileResource resource2 = generateInt32NonAlignedSeriesFile(new TimeRange(2, 2), true);
     seqResources.add(resource2);
+
+    schemaFetcher
+        .getSchemaTree()
+        .appendSingleMeasurementPath(new MeasurementPath(device, "s1", measurementSchema2));
   }
 
   private void generateDataTypeNotMatchFilesWithAlignedSeries()
-      throws IOException, WriteProcessException {
+      throws IOException, WriteProcessException, IllegalPathException {
     List<IMeasurementSchema> measurementSchemas1 = new ArrayList<>();
     measurementSchemas1.add(new MeasurementSchema("s1", TSDataType.INT32));
     measurementSchemas1.add(new MeasurementSchema("s2", TSDataType.INT32));
@@ -157,5 +159,12 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
     resource2.updateEndTime(device, 2);
     resource2.serialize();
     seqResources.add(resource2);
+
+    MeasurementPath s1Path = new MeasurementPath(device, "s1", measurementSchemas2.get(0));
+    s1Path.setUnderAlignedEntity(true);
+    MeasurementPath s2Path = new MeasurementPath(device, "s2", measurementSchemas2.get(1));
+    s2Path.setUnderAlignedEntity(true);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s1Path);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s2Path);
   }
 }

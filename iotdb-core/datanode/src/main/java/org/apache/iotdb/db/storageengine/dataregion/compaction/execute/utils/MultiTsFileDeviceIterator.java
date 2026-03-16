@@ -359,6 +359,9 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           measurementSchema =
               reader.getMeasurementSchema(timeseriesMetadata.getChunkMetadataList());
         }
+        if (measurementSchema == null) {
+          continue;
+        }
         schemaMap.put(timeseriesMetadata.getMeasurementId(), measurementSchema);
       }
     }

@@ -23,9 +23,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.FastCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadPointCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -69,12 +67,12 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionAlterDataType
   public static Collection<Object[]> data() {
     return Arrays.asList(
         new Object[][] {
-            {true, "read_chunk"},
-            {false, "read_chunk"},
-            {true, "fast"},
-            {false, "fast"},
-            {true, "read_point"},
-            {false, "read_point"},
+          {true, "read_chunk"},
+          {false, "read_chunk"},
+          {true, "fast"},
+          {false, "fast"},
+          {true, "read_point"},
+          {false, "read_point"},
         });
   }
 
