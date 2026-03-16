@@ -31,8 +31,6 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
-import org.apache.iotdb.db.queryengine.common.QueryId;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -673,12 +671,7 @@ public class CompactionUtils {
     } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
-    ISchemaTree schemaTree =
-        schemaFetcher.fetchSchema(
-            patternTree,
-            false,
-            null,
-            true);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, false, null, true);
     DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
     if (deviceSchemaInfo == null) {
       return Collections.nCopies(measurements.size(), null);
