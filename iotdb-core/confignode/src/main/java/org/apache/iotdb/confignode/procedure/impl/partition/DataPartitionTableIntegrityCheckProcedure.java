@@ -98,7 +98,7 @@ public class DataPartitionTableIntegrityCheckProcedure
   /** Final merged DataPartitionTable */
   private DataPartitionTable finalDataPartitionTable;
 
-  private static Set<TDataNodeConfiguration> skipDataNodes = new HashSet<>();
+  private static Set<TDataNodeConfiguration> skipDataNodes = Collections.newSetFromMap(new ConcurrentHashMap<>());
   private static Set<TDataNodeConfiguration> failedDataNodes =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
   // ============Need serialize END=============/
@@ -149,6 +149,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       case COLLECT_EARLIEST_TIMESLOTS:
       case ANALYZE_MISSING_PARTITIONS:
       case REQUEST_PARTITION_TABLES:
+      case REQUEST_PARTITION_TABLES_HEART_BEAT:
       case MERGE_PARTITION_TABLES:
       case WRITE_PARTITION_TABLE_TO_RAFT:
         // Cleanup resources
@@ -490,7 +491,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       Thread.currentThread().interrupt();
       LOG.error("Error checking DataPartitionTable status due to thread interruption.");
     }
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
+    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
     return Flow.HAS_MORE_STATE;
   }
 

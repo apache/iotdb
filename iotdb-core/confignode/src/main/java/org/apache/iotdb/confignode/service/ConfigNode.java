@@ -69,7 +69,6 @@ import org.apache.iotdb.metrics.metricsets.logback.LogbackMetrics;
 import org.apache.iotdb.metrics.metricsets.net.NetMetrics;
 import org.apache.iotdb.metrics.metricsets.system.SystemMetrics;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.ratis.util.ExitUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -226,7 +225,6 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
                 () -> {
                   LOGGER.info(
                       "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
-                  // @todo
                   Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
 
                   while (true) {
