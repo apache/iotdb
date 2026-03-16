@@ -341,6 +341,7 @@ public class IoTDBConnectionsIT {
         TimeUnit.SECONDS.sleep(1);
       }
     }
+    TimeUnit.SECONDS.sleep(3);
   }
 
   @Test
