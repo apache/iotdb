@@ -452,7 +452,7 @@ public class AnalyzeUtils {
       }
     }
     if (tagPredicate != null) {
-      predicate.setIdPredicate(tagPredicate);
+      predicate.setTagPredicate(tagPredicate);
     }
     if (timeRange.getStartTime() > timeRange.getEndTime()) {
       throw new SemanticException(
