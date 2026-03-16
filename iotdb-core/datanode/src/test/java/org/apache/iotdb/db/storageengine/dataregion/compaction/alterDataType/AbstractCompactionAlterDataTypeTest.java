@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.alterDataType;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.queryengine.plan.relational.metadata.fetcher.cache.TreeDeviceSchemaCacheManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionFakeSchemaFetcherImpl;
@@ -68,6 +69,7 @@ public class AbstractCompactionAlterDataTypeTest extends AbstractCompactionTest 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     CompactionUtils.setSchemaFetcher(null);
+    TreeDeviceSchemaCacheManager.getInstance().cleanUp();
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
   }

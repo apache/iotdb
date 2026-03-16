@@ -256,18 +256,16 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
       }
     }
 
-    if (ignoreAllNullRows) {
-      List<IMeasurementSchema> latestMeasurementSchemas =
-          CompactionUtils.getLatestMeasurementSchemasForTreeModel(
-              device, measurementNamesNeedToUpdate);
-      for (int i = 0; i < measurementSchemasNeedToUpdate.size(); i++) {
-        IMeasurementSchema latestMeasurementSchema = latestMeasurementSchemas.get(i);
-        if (latestMeasurementSchema == null) {
-          continue;
-        }
-        Pair<IMeasurementSchema, Boolean> pair = measurementSchemasNeedToUpdate.get(i);
-        pair.setLeft(latestMeasurementSchema);
+    List<IMeasurementSchema> latestMeasurementSchemas =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+            device, measurementNamesNeedToUpdate);
+    for (int i = 0; i < measurementSchemasNeedToUpdate.size(); i++) {
+      IMeasurementSchema latestMeasurementSchema = latestMeasurementSchemas.get(i);
+      if (latestMeasurementSchema == null) {
+        continue;
       }
+      Pair<IMeasurementSchema, Boolean> pair = measurementSchemasNeedToUpdate.get(i);
+      pair.setLeft(latestMeasurementSchema);
     }
 
     this.schemaList =

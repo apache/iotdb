@@ -26,7 +26,6 @@ import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathPatternTree;
 import org.apache.iotdb.commons.path.PatternTreeMap;
-import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.commons.schema.table.TsTable;
 import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
@@ -675,11 +674,8 @@ public class CompactionUtils {
       throw new RuntimeException(e);
     }
     ISchemaTree schemaTree =
-        schemaFetcher.fetchRawSchemaInMeasurementLevel(
-            patternTree,
-            SchemaConstant.ALL_MATCH_SCOPE,
-            new MPPQueryContext(new QueryId("compaction")),
-            true);
+        schemaFetcher.fetchSchema(
+            patternTree, false, new MPPQueryContext(new QueryId("compaction")), true);
     DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
     if (deviceSchemaInfo == null) {
       return Collections.nCopies(measurements.size(), null);
