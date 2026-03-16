@@ -677,7 +677,7 @@ public class CompactionUtils {
         schemaFetcher.fetchSchema(
             patternTree,
             false,
-            new MPPQueryContext(new QueryId("compaction_fetch_schema_" + System.nanoTime())),
+            null,
             true);
     DeviceSchemaInfo deviceSchemaInfo = schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
     if (deviceSchemaInfo == null) {
