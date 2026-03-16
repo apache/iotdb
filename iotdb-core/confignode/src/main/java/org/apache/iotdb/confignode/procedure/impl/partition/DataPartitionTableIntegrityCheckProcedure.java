@@ -44,7 +44,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -62,6 +61,7 @@ import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -132,7 +132,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           return analyzeMissingPartitions(env);
         case REQUEST_PARTITION_TABLES:
           heartBeatExecutor = Executors.newScheduledThreadPool(1);
-          return requestPartitionTables(env);
+          return requestPartitionTables();
         case MERGE_PARTITION_TABLES:
           return mergePartitionTables(env);
         case WRITE_PARTITION_TABLE_TO_RAFT:
@@ -304,19 +304,23 @@ public class DataPartitionTableIntegrityCheckProcedure
           seriesPartitionEntry : seriesPartitionMap.entrySet()) {
         Map<TTimePartitionSlot, List<TConsensusGroupId>> tTimePartitionSlotListMap =
             seriesPartitionEntry.getValue();
-        tTimePartitionSlotListMap
-            .keySet()
-            .forEach(
-                slot -> {
-                  if (!TimePartitionUtils.satisfyPartitionId(
-                      slot.getStartTime(), earliestTimeslot)) {
-                    lostDataPartitionsOfDatabases.add(database);
-                    LOG.warn(
-                        "Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
-                        database,
-                        earliestTimeslot);
-                  }
-                });
+
+        if (tTimePartitionSlotListMap.isEmpty()) {
+          continue;
+        }
+
+        TTimePartitionSlot localEarliestSlot = tTimePartitionSlotListMap.keySet()
+                .stream()
+                .min(Comparator.comparingLong(TTimePartitionSlot::getStartTime))
+                .orElse(null);
+
+        if (!TimePartitionUtils.satisfyPartitionId(localEarliestSlot.getStartTime(), earliestTimeslot)) {
+          lostDataPartitionsOfDatabases.add(database);
+          LOG.warn(
+                  "Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
+                  database,
+                  earliestTimeslot);
+        }
       }
     }
 
@@ -361,7 +365,7 @@ public class DataPartitionTableIntegrityCheckProcedure
    * Request DataPartitionTable generation from target DataNodes. Each DataNode scans its tsfile
    * resources and generates a DataPartitionTable.
    */
-  private Flow requestPartitionTables(final ConfigNodeProcedureEnv env) {
+  private Flow requestPartitionTables() {
     if (LOG.isDebugEnabled()) {
       LOG.debug(
           "Requesting DataPartitionTable generation from {} DataNodes...", allDataNodes.size());
