@@ -95,7 +95,7 @@ public class RenameTableColumnProcedure
           LOGGER.info("Rename column to table {}.{} on config node", database, tableName);
           renameColumn(env);
           break;
-        case EXECUTE_ON_REGION:
+        case EXECUTE_ON_REGIONS:
           LOGGER.info("Rename column to table {}.{} on data regions", database, tableName);
           executeOnRegions(env);
           break;
@@ -160,7 +160,7 @@ public class RenameTableColumnProcedure
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       setFailure(new ProcedureException(new IoTDBException(status)));
     } else {
-      setNextState(RenameTableColumnState.EXECUTE_ON_REGION);
+      setNextState(RenameTableColumnState.EXECUTE_ON_REGIONS);
     }
   }
 
