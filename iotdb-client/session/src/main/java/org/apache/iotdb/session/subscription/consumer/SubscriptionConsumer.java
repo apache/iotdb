@@ -118,6 +118,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
   private final Set<SubscriptionCommitContext> inFlightFilesCommitContextSet = new HashSet<>();
 
   private final int thriftMaxFrameSize;
+  private final int connectionTimeoutInMs;
   private final int maxPollParallelism;
 
   @SuppressWarnings("java:S3077")
@@ -187,6 +188,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     this.fileSaveFsync = builder.fileSaveFsync;
 
     this.thriftMaxFrameSize = builder.thriftMaxFrameSize;
+    this.connectionTimeoutInMs = builder.connectionTimeoutInMs;
     this.maxPollParallelism = builder.maxPollParallelism;
   }
 
@@ -231,6 +233,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
                     properties.getOrDefault(
                         ConsumerConstant.THRIFT_MAX_FRAME_SIZE_KEY,
                         SessionConfig.DEFAULT_MAX_FRAME_SIZE))
+            .connectionTimeoutInMs(
+                (Integer)
+                    properties.getOrDefault(
+                        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY,
+                        SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS))
             .maxPollParallelism(
                 (Integer)
                     properties.getOrDefault(
@@ -381,7 +388,9 @@ abstract class SubscriptionConsumer implements AutoCloseable {
             this.password,
             this.consumerId,
             this.consumerGroupId,
-            this.thriftMaxFrameSize);
+            this.thriftMaxFrameSize,
+            this.heartbeatIntervalMs,
+            this.connectionTimeoutInMs);
     try {
       provider.handshake();
     } catch (final Exception e) {
@@ -1398,6 +1407,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     protected boolean fileSaveFsync = ConsumerConstant.FILE_SAVE_FSYNC_DEFAULT_VALUE;
 
     protected int thriftMaxFrameSize = SessionConfig.DEFAULT_MAX_FRAME_SIZE;
+    protected int connectionTimeoutInMs = SessionConfig.DEFAULT_CONNECTION_TIMEOUT_MS;
     protected int maxPollParallelism = ConsumerConstant.MAX_POLL_PARALLELISM_DEFAULT_VALUE;
 
     public Builder host(final String host) {
@@ -1468,6 +1478,11 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       return this;
     }
 
+    public Builder connectionTimeoutInMs(final int connectionTimeoutInMs) {
+      this.connectionTimeoutInMs = Math.max(connectionTimeoutInMs, 0);
+      return this;
+    }
+
     public Builder maxPollParallelism(final int maxPollParallelism) {
       // Here the minimum value of max poll parallelism is set to 1 instead of 0, in order to use a
       // single thread to execute poll whenever there are idle resources available, thereby
@@ -1510,6 +1525,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
     result.put("fileSaveFsync", String.valueOf(fileSaveFsync));
     result.put("inFlightFilesCommitContextSet", inFlightFilesCommitContextSet.toString());
     result.put("thriftMaxFrameSize", String.valueOf(thriftMaxFrameSize));
+    result.put("connectionTimeoutInMs", String.valueOf(connectionTimeoutInMs));
     result.put("maxPollParallelism", String.valueOf(maxPollParallelism));
     result.put("subscribedTopics", subscribedTopics.toString());
     return result;
