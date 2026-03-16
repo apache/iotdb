@@ -441,6 +441,46 @@ public class CommonDescriptor {
             properties.getProperty(
                 "subscription_consensus_batch_max_wal_entries",
                 String.valueOf(config.getSubscriptionConsensusBatchMaxWalEntries()))));
+    config.setSubscriptionConsensusCommitPersistInterval(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_commit_persist_interval",
+                String.valueOf(config.getSubscriptionConsensusCommitPersistInterval()))));
+    config.setSubscriptionConsensusCommitFsyncEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_commit_fsync_enabled",
+                String.valueOf(config.isSubscriptionConsensusCommitFsyncEnabled()))));
+    config.setSubscriptionConsensusExclusiveConsumption(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_exclusive_consumption",
+                String.valueOf(config.isSubscriptionConsensusExclusiveConsumption()))));
+    config.setSubscriptionConsensusConsumerEvictionTimeoutMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_consumer_eviction_timeout_ms",
+                String.valueOf(config.getSubscriptionConsensusConsumerEvictionTimeoutMs()))));
+    config.setSubscriptionConsensusLagBasedPriority(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_lag_based_priority",
+                String.valueOf(config.isSubscriptionConsensusLagBasedPriority()))));
+    config.setSubscriptionConsensusPrefetchingQueueCapacity(
+        Integer.parseInt(
+            properties.getProperty(
+                "subscription_consensus_prefetching_queue_capacity",
+                String.valueOf(config.getSubscriptionConsensusPrefetchingQueueCapacity()))));
+    config.setSubscriptionConsensusWatermarkEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "subscription_consensus_watermark_enabled",
+                String.valueOf(config.isSubscriptionConsensusWatermarkEnabled()))));
+    config.setSubscriptionConsensusWatermarkIntervalMs(
+        Long.parseLong(
+            properties.getProperty(
+                "subscription_consensus_watermark_interval_ms",
+                String.valueOf(config.getSubscriptionConsensusWatermarkIntervalMs()))));
   }
 
   public void loadRetryProperties(TrimProperties properties) throws IOException {

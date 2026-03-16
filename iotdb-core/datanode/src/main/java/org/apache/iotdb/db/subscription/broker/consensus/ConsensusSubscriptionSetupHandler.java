@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PrefixTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensus;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
@@ -43,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Handles the setup and teardown of consensus-based subscription queues on DataNode. When a
@@ -55,6 +60,17 @@ public class ConsensusSubscriptionSetupHandler {
       LoggerFactory.getLogger(ConsensusSubscriptionSetupHandler.class);
 
   private static final IoTDBConfig IOTDB_CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
+  /** Last-known preferred writer node ID per region, used to detect routing changes. */
+  private static final ConcurrentHashMap<TConsensusGroupId, Integer> lastKnownPreferredWriter =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Per-region current epoch value. Uses the routing-broadcast timestamp from ConfigNode, ensuring
+   * all DataNodes derive the same epoch for the same routing change without local persistence.
+   */
+  private static final ConcurrentHashMap<TConsensusGroupId, Long> regionEpoch =
+      new ConcurrentHashMap<>();
 
   private ConsensusSubscriptionSetupHandler() {
     // utility class
@@ -147,7 +163,9 @@ public class ConsensusSubscriptionSetupHandler {
           // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
           // for brand-new regions that have no prior subscription progress.
           final long persistedIndex =
-              commitManager.getCommittedSearchIndex(consumerGroupId, topicName, groupId.toString());
+              commitManager
+                  .getOrCreateState(consumerGroupId, topicName, groupId)
+                  .getCommittedSearchIndex();
           final long startSearchIndex =
               (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
 
@@ -165,7 +183,7 @@ public class ConsensusSubscriptionSetupHandler {
               .bindConsensusPrefetchingQueue(
                   consumerGroupId,
                   topicName,
-                  groupId.toString(),
+                  groupId,
                   serverImpl,
                   converter,
                   commitManager,
@@ -191,14 +209,13 @@ public class ConsensusSubscriptionSetupHandler {
     if (!(groupId instanceof DataRegionId)) {
       return;
     }
-    final String regionIdStr = groupId.toString();
     LOGGER.info(
-        "DataRegion {} being removed, unbinding all consensus subscription queues", regionIdStr);
+        "DataRegion {} being removed, unbinding all consensus subscription queues", groupId);
     try {
-      SubscriptionAgent.broker().unbindByRegion(regionIdStr);
+      SubscriptionAgent.broker().unbindByRegion(groupId);
     } catch (final Exception e) {
       LOGGER.error(
-          "Failed to unbind consensus subscription queues for removed region {}", regionIdStr, e);
+          "Failed to unbind consensus subscription queues for removed region {}", groupId, e);
     }
   }
 
@@ -352,7 +369,9 @@ public class ConsensusSubscriptionSetupHandler {
       // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
       // for brand-new regions that have no prior subscription progress.
       final long persistedIndex =
-          commitManager.getCommittedSearchIndex(consumerGroupId, topicName, groupId.toString());
+          commitManager
+              .getOrCreateState(consumerGroupId, topicName, groupId)
+              .getCommittedSearchIndex();
       final long startSearchIndex =
           (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
 
@@ -371,7 +390,7 @@ public class ConsensusSubscriptionSetupHandler {
           .bindConsensusPrefetchingQueue(
               consumerGroupId,
               topicName,
-              groupId.toString(),
+              groupId,
               serverImpl,
               converter,
               commitManager,
@@ -458,5 +477,76 @@ public class ConsensusSubscriptionSetupHandler {
         newTopicNames);
 
     setupConsensusSubscriptions(consumerGroupId, newTopicNames);
+  }
+
+  public static void onRegionRouteChanged(
+      final Map<TConsensusGroupId, TRegionReplicaSet> newMap, final long routingTimestamp) {
+    if (!SubscriptionConfig.getInstance().isSubscriptionConsensusEpochOrderingEnabled()) {
+      return;
+    }
+
+    final int myNodeId = IOTDB_CONFIG.getDataNodeId();
+
+    for (final Map.Entry<TConsensusGroupId, TRegionReplicaSet> newEntry : newMap.entrySet()) {
+      final TConsensusGroupId groupId = newEntry.getKey();
+      final TRegionReplicaSet newReplicaSet = newEntry.getValue();
+
+      final int newPreferredNodeId = getPreferredNodeId(newReplicaSet);
+      final Integer oldPreferredBoxed = lastKnownPreferredWriter.put(groupId, newPreferredNodeId);
+      final int oldPreferredNodeId = (oldPreferredBoxed != null) ? oldPreferredBoxed : -1;
+
+      if (oldPreferredNodeId == newPreferredNodeId) {
+        continue; // no leader change for this region
+      }
+
+      final ConsensusGroupId regionId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(groupId);
+      final long oldEpoch = regionEpoch.getOrDefault(groupId, 0L);
+      final long newEpoch = routingTimestamp;
+      regionEpoch.put(groupId, newEpoch);
+
+      LOGGER.info(
+          "ConsensusSubscriptionSetupHandler: region {} preferred writer changed {} -> {}, "
+              + "epoch {} -> {}",
+          regionId,
+          oldPreferredNodeId,
+          newPreferredNodeId,
+          oldEpoch,
+          newEpoch);
+
+      if (oldPreferredNodeId == myNodeId) {
+        // This node was the old preferred writer: inject epoch sentinel, then update epoch.
+        // Order matters: sentinel marks the end of oldEpoch; subsequent in-flight writes
+        // that slip past the sentinel will carry newEpoch, avoiding a stale-epoch tail that
+        // would cause the consumer-side EpochOrderingProcessor to enter unnecessary BUFFERING.
+        try {
+          SubscriptionAgent.broker().onOldLeaderRegionChanged(regionId, oldEpoch);
+          SubscriptionAgent.broker().onNewLeaderRegionChanged(regionId, newEpoch);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to inject epoch sentinel / update epoch for region {} (oldLeader={})",
+              regionId,
+              myNodeId,
+              e);
+        }
+      }
+
+      if (newPreferredNodeId == myNodeId) {
+        // This node is the new preferred writer: update epoch on queues
+        try {
+          SubscriptionAgent.broker().onNewLeaderRegionChanged(regionId, newEpoch);
+        } catch (final Exception e) {
+          LOGGER.warn("Failed to set epoch for region {} (newLeader={})", regionId, myNodeId, e);
+        }
+      }
+    }
+  }
+
+  private static int getPreferredNodeId(final TRegionReplicaSet replicaSet) {
+    final List<TDataNodeLocation> locations = replicaSet.getDataNodeLocations();
+    if (locations == null || locations.isEmpty()) {
+      return -1;
+    }
+    return locations.get(0).getDataNodeId();
   }
 }

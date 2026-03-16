@@ -204,6 +204,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
+import org.apache.iotdb.db.subscription.broker.consensus.ConsensusSubscriptionSetupHandler;
 import org.apache.iotdb.db.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.trigger.executor.TriggerFireResult;
 import org.apache.iotdb.db.trigger.service.TriggerManagementService;
@@ -272,6 +273,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TNotifyRegionMigrationReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPipeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressReq;
+import org.apache.iotdb.mpp.rpc.thrift.TPullCommitProgressResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushConsumerGroupMetaRespExceptionMessage;
@@ -1536,6 +1539,21 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req) {
+    try {
+      final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+      final Map<String, Long> progress =
+          SubscriptionAgent.broker().collectAllCommitProgress(dataNodeId);
+      return new TPullCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()))
+          .setCommitProgress(progress);
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when pulling commit progress", e);
+      return new TPullCommitProgressResp(
+          new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
   public TPipeHeartbeatResp pipeHeartbeat(TPipeHeartbeatReq req) throws TException {
     final TPipeHeartbeatResp resp = new TPipeHeartbeatResp(new ArrayList<>());
     PipeDataNodeAgent.task().collectPipeMetaList(req, resp);
@@ -2223,6 +2241,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus updateRegionCache(TRegionRouteReq req) {
     boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
     if (result) {
+      // Notify consensus subscription queues of any preferred-writer changes
+      try {
+        ConsensusSubscriptionSetupHandler.onRegionRouteChanged(
+            req.getRegionRouteMap(), req.getTimestamp());
+      } catch (final Exception e) {
+        LOGGER.warn("Failed to process epoch ordering on region route change", e);
+      }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
       return RpcUtils.getStatus(TSStatusCode.PARTITION_CACHE_UPDATE_ERROR);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -32,15 +33,21 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
+import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
+import org.apache.iotdb.rpc.subscription.payload.poll.EpochChangePayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.ErrorPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
 
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.write.record.Tablet;
@@ -76,10 +83,14 @@ import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitC
  *       LogDispatcher). This avoids waiting for WAL flush to disk.
  *   <li><b>WAL fallback</b>: Uses {@link ConsensusReqReader.ReqIterator} to read from WAL files for
  *       gap-filling (pending queue overflow) or catch-up scenarios.
- *   <li><b>WAL pinning</b>: Supplies the earliest outstanding (uncommitted) search index to {@link
- *       IoTConsensusServerImpl}, preventing WAL deletion of entries not yet consumed by the
- *       subscription.
  * </ol>
+ *
+ * <p>WAL retention is size-based (mirrors Kafka's log retention policy): the WAL is preserved while
+ * its total size is within the configured {@code subscriptionConsensusWalRetentionSizeInBytes}
+ * limit. Once the limit is exceeded, WAL segments may be deleted regardless of consumer progress.
+ * Consumers that fall too far behind may receive a gap-detection error and need to reset. This is
+ * intentional — pinning the WAL indefinitely for slow consumers would risk unbounded disk growth,
+ * consistent with how Kafka handles consumer lag.
  *
  * <p>A background prefetch thread continuously drains the pending queue, converts InsertNode
  * entries to Tablets via {@link ConsensusLogToTabletConverter}, and enqueues {@link
@@ -98,7 +109,7 @@ public class ConsensusPrefetchingQueue {
 
   private final String brokerId; // consumer group id
   private final String topicName;
-  private final String consensusGroupId;
+  private final ConsensusGroupId consensusGroupId;
 
   private final IoTConsensusServerImpl serverImpl;
 
@@ -119,14 +130,12 @@ public class ConsensusPrefetchingQueue {
 
   private final ConsensusSubscriptionCommitManager commitManager;
 
-  /** Commit ID generator, monotonically increasing within this queue's lifetime. */
-  private final AtomicLong commitIdGenerator;
-
   /**
-   * Commit IDs less than or equal to this threshold are considered outdated. Updated on creation
-   * and on seek to invalidate all pre-seek events.
+   * Seek generation counter (fencing token). Incremented on each seek operation. Any commit context
+   * with a different seekGeneration is considered outdated. This replaces the old commitId-based
+   * threshold mechanism, providing per-queue fencing without a shared generator.
    */
-  private volatile long outdatedCommitIdThreshold;
+  private final AtomicLong seekGeneration;
 
   private final AtomicLong nextExpectedSearchIndex;
 
@@ -138,52 +147,68 @@ public class ConsensusPrefetchingQueue {
    */
   private final Map<Pair<String, SubscriptionCommitContext>, SubscriptionEvent> inFlightEvents;
 
-  /**
-   * Tracks outstanding (uncommitted) events for WAL pinning. Maps commitId to the startSearchIndex
-   * of that event batch. The earliest entry's value is supplied to IoTConsensusServerImpl to pin
-   * WAL files from deletion.
-   */
-  private final ConcurrentSkipListMap<Long, Long> outstandingCommitIdToStartIndex;
-
-  private static final int MAX_PREFETCHING_QUEUE_SIZE = 256;
+  private static final int MAX_PREFETCHING_QUEUE_SIZE =
+      SubscriptionConfig.getInstance().getSubscriptionConsensusPrefetchingQueueCapacity();
 
   /** Counter of WAL gap entries that could not be filled (data loss). */
   private final AtomicLong walGapSkippedEntries = new AtomicLong(0);
 
   /**
-   * Sparse in-memory mapping from data timestamp to searchIndex, used by {@link
-   * #seekToTimestamp(long)} to approximate a searchIndex for a given timestamp. Sampled every
-   * {@link #TIMESTAMP_SAMPLE_INTERVAL} entries during prefetch. Cleared on seek.
+   * Interval-based in-memory index for {@link #seekToTimestamp(long)}. Organized by searchIndex
+   * intervals (each {@link #INTERVAL_SIZE} entries), recording the maximum data timestamp observed
+   * within each interval. This design tolerates out-of-order timestamps: seek finds the first
+   * interval whose maxTimestamp >= targetTimestamp, guaranteeing no data with timestamp >=
+   * targetTimestamp is skipped (though earlier data within that interval may also be returned).
    *
-   * <p>TODO: For a more robust long-term solution, consider extending WALMetaData to store per-entry timestamps
-   * so that timestamp-based seek can use file-level min/max filtering + in-file binary search without
-   * full InsertNode deserialization.
+   * <p>Key: interval start searchIndex (floor-aligned to INTERVAL_SIZE). Value: max data timestamp
+   * seen in that interval.
+   *
+   * <p>This is analogous to Kafka's timeindex, which records maxTimestamp per segment rather than
+   * timestamp→offset mappings, making it immune to out-of-order producer timestamps.
    */
-  private final NavigableMap<Long, Long> timestampToSearchIndex = new ConcurrentSkipListMap<>();
+  private final NavigableMap<Long, Long> intervalMaxTimestampIndex = new ConcurrentSkipListMap<>();
 
-  private static final int TIMESTAMP_SAMPLE_INTERVAL = 100;
+  private static final int INTERVAL_SIZE = 100;
 
-  private long timestampSampleCounter = 0;
+  /** Tracks the current interval being built during prefetch. */
+  private long currentIntervalStart = -1;
+
+  private long currentIntervalMaxTimestamp = Long.MIN_VALUE;
 
   private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
   private volatile boolean isClosed = false;
 
+  // ======================== Epoch Ordering ========================
+
   /**
-   * Background thread that drains pendingEntries and fills prefetchingQueue. TODO: manage thread
-   * count
+   * Epoch counter for this queue. Incremented when the preferred writer for this consensus group
+   * changes. Attached to each message's {@link SubscriptionCommitContext} so the client-side {@code
+   * EpochOrderingProcessor} can reorder across leader transitions.
    */
+  private volatile long epoch = 0;
+
+  /** Counter of epoch changes (setEpoch + injectEpochSentinel calls) for monitoring. */
+  private final AtomicLong epochChangeCount = new AtomicLong(0);
+
+  // ======================== Watermark ========================
+
+  /** Maximum data timestamp observed across all InsertNodes processed by this queue. */
+  private volatile long maxObservedTimestamp = Long.MIN_VALUE;
+
+  /** Wall-clock time (ms) of last watermark injection. 0 means never injected. */
+  private volatile long lastWatermarkEmitTimeMs = 0;
+
   private final Thread prefetchThread;
 
   public ConsensusPrefetchingQueue(
       final String brokerId,
       final String topicName,
-      final String consensusGroupId,
+      final ConsensusGroupId consensusGroupId,
       final IoTConsensusServerImpl serverImpl,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
-      final long startSearchIndex,
-      final AtomicLong sharedCommitIdGenerator) {
+      final long startSearchIndex) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
@@ -192,14 +217,12 @@ public class ConsensusPrefetchingQueue {
     this.converter = converter;
     this.commitManager = commitManager;
 
-    this.commitIdGenerator = sharedCommitIdGenerator;
-    this.outdatedCommitIdThreshold = commitIdGenerator.get();
+    this.seekGeneration = new AtomicLong(0);
     this.nextExpectedSearchIndex = new AtomicLong(startSearchIndex);
     this.reqIterator = consensusReqReader.getReqIterator(startSearchIndex);
 
     this.prefetchingQueue = new PriorityBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
-    this.outstandingCommitIdToStartIndex = new ConcurrentSkipListMap<>();
 
     // Create and register the in-memory pending queue with IoTConsensusServerImpl.
     this.pendingEntries = new ArrayBlockingQueue<>(PENDING_QUEUE_CAPACITY);
@@ -218,6 +241,9 @@ public class ConsensusPrefetchingQueue {
         topicName,
         consensusGroupId,
         startSearchIndex);
+
+    // Register metrics
+    ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().register(this);
   }
 
   // ======================== Lock Operations ========================
@@ -294,6 +320,15 @@ public class ConsensusPrefetchingQueue {
               event);
           event.nack();
           continue;
+        }
+
+        // Sentinel/metadata events (EPOCH_CHANGE, WATERMARK) are fire-and-forget:
+        // skip inFlightEvents tracking so they are not recycled and re-delivered indefinitely.
+        if (event.getCurrentResponse().getResponseType()
+                == SubscriptionPollResponseType.EPOCH_CHANGE.getType()
+            || event.getCurrentResponse().getResponseType()
+                == SubscriptionPollResponseType.WATERMARK.getType()) {
+          return event;
         }
 
         // Mark as polled before updating inFlightEvents
@@ -450,6 +485,8 @@ public class ConsensusPrefetchingQueue {
           } else if (lingerTablets.isEmpty()) {
             // Pending queue was empty and no lingering tablets — try catch-up from WAL
             tryCatchUpFromWAL();
+            // Idle watermark: even without new data, periodically emit watermark
+            maybeInjectWatermark();
           }
           // If we have lingering tablets but pending was empty, fall through to time check below
 
@@ -473,6 +510,9 @@ public class ConsensusPrefetchingQueue {
             lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
             lingerFirstTabletTimeMs = 0;
           }
+
+          // Emit watermark after processing data (if interval has elapsed)
+          maybeInjectWatermark();
         } catch (final InterruptedException e) {
           Thread.currentThread().interrupt();
           break;
@@ -561,6 +601,11 @@ public class ConsensusPrefetchingQueue {
       final InsertNode insertNode = deserializeToInsertNode(request);
       if (insertNode != null) {
         recordTimestampSample(insertNode, searchIndex);
+        // Track maximum data timestamp for watermark propagation
+        final long maxTs = extractMaxTime(insertNode);
+        if (maxTs > maxObservedTimestamp) {
+          maxObservedTimestamp = maxTs;
+        }
         final List<Tablet> tablets = converter.convert(insertNode);
         if (!tablets.isEmpty()) {
           lingerTablets.addAll(tablets);
@@ -610,6 +655,10 @@ public class ConsensusPrefetchingQueue {
         final InsertNode insertNode = deserializeToInsertNode(walEntry);
         if (insertNode != null) {
           recordTimestampSample(insertNode, walIndex);
+          final long maxTs = extractMaxTime(insertNode);
+          if (maxTs > maxObservedTimestamp) {
+            maxObservedTimestamp = maxTs;
+          }
           final List<Tablet> tablets = converter.convert(insertNode);
           batchedTablets.addAll(tablets);
         }
@@ -640,6 +689,10 @@ public class ConsensusPrefetchingQueue {
           final InsertNode insertNode = deserializeToInsertNode(walEntry);
           if (insertNode != null) {
             recordTimestampSample(insertNode, walIndex);
+            final long maxTs = extractMaxTime(insertNode);
+            if (maxTs > maxObservedTimestamp) {
+              maxObservedTimestamp = maxTs;
+            }
             final List<Tablet> tablets = converter.convert(insertNode);
             batchedTablets.addAll(tablets);
           }
@@ -683,6 +736,10 @@ public class ConsensusPrefetchingQueue {
             final InsertNode insertNode = deserializeToInsertNode(walEntry);
             if (insertNode != null) {
               recordTimestampSample(insertNode, walIndex);
+              final long maxTs = extractMaxTime(insertNode);
+              if (maxTs > maxObservedTimestamp) {
+                maxObservedTimestamp = maxTs;
+              }
               final List<Tablet> tablets = converter.convert(insertNode);
               batchedTablets.addAll(tablets);
             }
@@ -795,6 +852,10 @@ public class ConsensusPrefetchingQueue {
         final InsertNode insertNode = deserializeToInsertNode(walEntry);
         if (insertNode != null) {
           recordTimestampSample(insertNode, walIndex);
+          final long maxTs = extractMaxTime(insertNode);
+          if (maxTs > maxObservedTimestamp) {
+            maxObservedTimestamp = maxTs;
+          }
           final List<Tablet> tablets = converter.convert(insertNode);
           if (!tablets.isEmpty()) {
             batchedTablets.addAll(tablets);
@@ -927,15 +988,8 @@ public class ConsensusPrefetchingQueue {
       return;
     }
 
-    final long commitId = commitIdGenerator.getAndIncrement();
-
-    // Record the mapping from commitId to the end searchIndex
-    // so that when the client commits, we know which WAL position has been consumed
-    commitManager.recordCommitMapping(
-        brokerId, topicName, consensusGroupId, commitId, endSearchIndex);
-
-    // Track outstanding event for WAL pinning
-    outstandingCommitIdToStartIndex.put(commitId, startSearchIndex);
+    // endSearchIndex IS the event identity — no intermediate commitId mapping needed
+    commitManager.recordMapping(brokerId, topicName, consensusGroupId, endSearchIndex);
 
     final SubscriptionCommitContext commitContext =
         new SubscriptionCommitContext(
@@ -943,7 +997,10 @@ public class ConsensusPrefetchingQueue {
             PipeDataNodeAgent.runtime().getRebootTimes(),
             topicName,
             brokerId,
-            commitId);
+            endSearchIndex,
+            seekGeneration.get(),
+            consensusGroupId.toString(),
+            epoch);
 
     // nextOffset <= 0 means all tablets delivered in single batch
     // -tablets.size() indicates total count
@@ -960,13 +1017,48 @@ public class ConsensusPrefetchingQueue {
 
     LOGGER.debug(
         "ConsensusPrefetchingQueue {}: ENQUEUED event with {} tablets, "
-            + "searchIndex range [{}, {}], commitId={}, prefetchQueueSize={}",
+            + "searchIndex range [{}, {}], prefetchQueueSize={}",
         this,
         tablets.size(),
         startSearchIndex,
         endSearchIndex,
-        commitId,
         prefetchingQueue.size());
+
+    // After enqueuing the data event, no automatic sentinel injection in 方案B.
+    // Sentinel injection is triggered externally by ConsensusSubscriptionSetupHandler.
+  }
+
+  /**
+   * Injects an {@link SubscriptionPollResponseType#EPOCH_CHANGE} sentinel into the prefetching
+   * queue. Called by the broker when this node loses preferred-writer status for the consensus
+   * group. The sentinel signals the client that the ending epoch's data is complete.
+   *
+   * @param endingEpoch the epoch number that is ending
+   */
+  public void injectEpochSentinel(final long endingEpoch) {
+    // Sentinels are fire-and-forget (not in inFlightEvents), use INVALID_COMMIT_ID
+    final SubscriptionCommitContext sentinelCtx =
+        new SubscriptionCommitContext(
+            IoTDBDescriptor.getInstance().getConfig().getDataNodeId(),
+            PipeDataNodeAgent.runtime().getRebootTimes(),
+            topicName,
+            brokerId,
+            INVALID_COMMIT_ID,
+            seekGeneration.get(),
+            consensusGroupId.toString(),
+            endingEpoch);
+    final SubscriptionEvent sentinel =
+        new SubscriptionEvent(
+            SubscriptionPollResponseType.EPOCH_CHANGE.getType(),
+            new EpochChangePayload(endingEpoch),
+            sentinelCtx);
+    prefetchingQueue.add(sentinel);
+    epochChangeCount.incrementAndGet();
+
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: injected EPOCH_CHANGE sentinel, endingEpoch={}",
+        this,
+        endingEpoch);
   }
 
   // ======================== Commit (Ack/Nack) ========================
@@ -983,7 +1075,7 @@ public class ConsensusPrefetchingQueue {
   private boolean ackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
     final AtomicBoolean acked = new AtomicBoolean(false);
-    final long commitId = commitContext.getCommitId();
+    final long endSearchIndex = commitContext.getCommitId();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
@@ -1011,8 +1103,7 @@ public class ConsensusPrefetchingQueue {
         });
 
     if (acked.get()) {
-      commitManager.commit(brokerId, topicName, consensusGroupId, commitId);
-      outstandingCommitIdToStartIndex.remove(commitId);
+      commitManager.commit(brokerId, topicName, consensusGroupId, endSearchIndex);
     }
 
     return acked.get();
@@ -1038,7 +1129,7 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
       final AtomicBoolean acked = new AtomicBoolean(false);
-      final long commitId = commitContext.getCommitId();
+      final long endSearchIndex = commitContext.getCommitId();
       inFlightEvents.compute(
           new Pair<>(consumerId, commitContext),
           (key, ev) -> {
@@ -1056,8 +1147,7 @@ public class ConsensusPrefetchingQueue {
             return null;
           });
       if (acked.get()) {
-        commitManager.commit(brokerId, topicName, consensusGroupId, commitId);
-        outstandingCommitIdToStartIndex.remove(commitId);
+        commitManager.commit(brokerId, topicName, consensusGroupId, endSearchIndex);
       }
       return acked.get();
     } finally {
@@ -1085,6 +1175,18 @@ public class ConsensusPrefetchingQueue {
             }
             ev.nack();
             nacked.set(true);
+            if (ev.isPoisoned()) {
+              LOGGER.error(
+                  "ConsensusPrefetchingQueue {}: poison message detected (nackCount={}), "
+                      + "force-acking event {} to prevent infinite re-delivery",
+                  this,
+                  ev.getNackCount(),
+                  ev);
+              ev.ack();
+              ev.recordCommittedTimestamp();
+              ev.cleanUp(false);
+              return null;
+            }
             prefetchingQueue.add(ev);
             return null;
           });
@@ -1110,6 +1212,18 @@ public class ConsensusPrefetchingQueue {
 
           ev.nack();
           nacked.set(true);
+          if (ev.isPoisoned()) {
+            LOGGER.error(
+                "ConsensusPrefetchingQueue {}: poison message detected (nackCount={}), "
+                    + "force-acking event {} to prevent infinite re-delivery",
+                this,
+                ev.getNackCount(),
+                ev);
+            ev.ack();
+            ev.recordCommittedTimestamp();
+            ev.cleanUp(false);
+            return null;
+          }
           prefetchingQueue.add(ev);
           return null;
         });
@@ -1135,6 +1249,18 @@ public class ConsensusPrefetchingQueue {
             }
             if (ev.pollable()) {
               ev.nack();
+              if (ev.isPoisoned()) {
+                LOGGER.error(
+                    "ConsensusPrefetchingQueue {}: poison message detected during recycle "
+                        + "(nackCount={}), force-acking event {}",
+                    this,
+                    ev.getNackCount(),
+                    ev);
+                ev.ack();
+                ev.recordCommittedTimestamp();
+                ev.cleanUp(false);
+                return null;
+              }
               prefetchingQueue.add(ev);
               LOGGER.debug(
                   "ConsensusPrefetchingQueue {}: recycled timed-out event {} back to prefetching queue",
@@ -1158,7 +1284,9 @@ public class ConsensusPrefetchingQueue {
       inFlightEvents.values().forEach(event -> event.cleanUp(true));
       inFlightEvents.clear();
 
-      outstandingCommitIdToStartIndex.clear();
+      intervalMaxTimestampIndex.clear();
+      currentIntervalStart = -1;
+      currentIntervalMaxTimestamp = Long.MIN_VALUE;
     } finally {
       releaseWriteLock();
     }
@@ -1181,18 +1309,22 @@ public class ConsensusPrefetchingQueue {
         return;
       }
 
-      // 1. Invalidate all pre-seek commit contexts
-      outdatedCommitIdThreshold = commitIdGenerator.get();
+      // 1. Invalidate all pre-seek commit contexts via fencing token
+      seekGeneration.incrementAndGet();
 
       // 2. Clean up all queued and in-flight events
       prefetchingQueue.forEach(event -> event.cleanUp(true));
       prefetchingQueue.clear();
       inFlightEvents.values().forEach(event -> event.cleanUp(true));
       inFlightEvents.clear();
-      outstandingCommitIdToStartIndex.clear();
 
       // 3. Discard stale pending entries from in-memory queue
       pendingEntries.clear();
+
+      // 3.5. Keep timestamp interval index across seek operations.
+      // This preserves historical timestamp->searchIndex hints so a later
+      // seekToTimestamp() after seekToEnd/seekToBeginning does not only rely
+      // on newly observed post-seek data.
 
       // 4. Reset WAL read position
       nextExpectedSearchIndex.set(targetSearchIndex);
@@ -1202,11 +1334,10 @@ public class ConsensusPrefetchingQueue {
       commitManager.resetState(brokerId, topicName, consensusGroupId, targetSearchIndex);
 
       LOGGER.info(
-          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, "
-              + "outdatedCommitIdThreshold={}",
+          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, seekGeneration={}",
           this,
           targetSearchIndex,
-          outdatedCommitIdThreshold);
+          seekGeneration.get());
     } finally {
       releaseWriteLock();
     }
@@ -1231,77 +1362,182 @@ public class ConsensusPrefetchingQueue {
 
   /**
    * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Uses the in-memory
-   * sparse mapping ({@link #timestampToSearchIndex}) to approximate the searchIndex, then seeks to
-   * that position. If no mapping entry exists (targetTimestamp earlier than all samples), falls back
-   * to seekToBeginning. If targetTimestamp is beyond the latest sample, seeks to the current WAL
-   * write position (equivalent to seekToEnd).
+   * interval-based index ({@link #intervalMaxTimestampIndex}) to find the first searchIndex
+   * interval whose maxTimestamp >= targetTimestamp. This guarantees no data with timestamp >=
+   * targetTimestamp is missed, even with out-of-order writes. If no interval matches, falls back to
+   * seekToBeginning. If targetTimestamp exceeds all known intervals, seeks to end.
    */
   public void seekToTimestamp(final long targetTimestamp) {
-    final Map.Entry<Long, Long> floor = timestampToSearchIndex.floorEntry(targetTimestamp);
-    final long approxSearchIndex;
-    if (floor == null) {
-      // targetTimestamp is earlier than all known samples — seek to beginning
-      approxSearchIndex = 0;
-    } else {
-      final Map.Entry<Long, Long> lastEntry = timestampToSearchIndex.lastEntry();
-      if (lastEntry != null && floor.getKey().equals(lastEntry.getKey())
-          && targetTimestamp > lastEntry.getKey()) {
-        // targetTimestamp is beyond the latest known sample — seek to end
+    // Flush the current in-progress interval so it participates in the search
+    flushCurrentInterval();
+
+    long approxSearchIndex = 0; // fallback: seek to beginning
+    if (!intervalMaxTimestampIndex.isEmpty()) {
+      final Map.Entry<Long, Long> lastEntry = intervalMaxTimestampIndex.lastEntry();
+      if (lastEntry != null && targetTimestamp > lastEntry.getValue()) {
+        // targetTimestamp is beyond the max timestamp of all known intervals — seek to end
         approxSearchIndex = consensusReqReader.getCurrentSearchIndex();
       } else {
-        approxSearchIndex = floor.getValue();
+        // Linear scan to find the first interval whose maxTimestamp >= targetTimestamp.
+        // This guarantees no data with timestamp >= targetTimestamp is missed, even with
+        // out-of-order writes. O(N) where N = number of intervals (typically < 10,000).
+        for (final Map.Entry<Long, Long> entry : intervalMaxTimestampIndex.entrySet()) {
+          if (entry.getValue() >= targetTimestamp) {
+            approxSearchIndex = entry.getKey();
+            break;
+          }
+        }
       }
     }
     LOGGER.info(
-        "ConsensusPrefetchingQueue {}: seekToTimestamp={}, approxSearchIndex={} (from sparse map, size={})",
+        "ConsensusPrefetchingQueue {}: seekToTimestamp={}, approxSearchIndex={} (from interval index, size={})",
         this,
         targetTimestamp,
         approxSearchIndex,
-        timestampToSearchIndex.size());
+        intervalMaxTimestampIndex.size());
     seekToSearchIndex(approxSearchIndex);
   }
 
   /**
-   * Records a sparse timestamp→searchIndex sample for {@link #seekToTimestamp(long)}. Called during
-   * prefetch for every successfully deserialized InsertNode.
+   * Records timestamp information for interval-based index. Called for every successfully
+   * deserialized InsertNode during prefetch. Tracks the max data timestamp within each searchIndex
+   * interval of size {@link #INTERVAL_SIZE}.
    */
   private void recordTimestampSample(final InsertNode insertNode, final long searchIndex) {
-    if (timestampSampleCounter++ % TIMESTAMP_SAMPLE_INTERVAL == 0) {
-      final long minTime = extractMinTime(insertNode);
-      if (minTime != Long.MAX_VALUE) {
-        timestampToSearchIndex.put(minTime, searchIndex);
-      }
+    final long maxTs = extractMaxTime(insertNode);
+    if (maxTs == Long.MIN_VALUE) {
+      return; // extraction failed
+    }
+    final long intervalStart = (searchIndex / INTERVAL_SIZE) * INTERVAL_SIZE;
+    if (intervalStart != currentIntervalStart) {
+      // Entering a new interval — flush the previous one
+      flushCurrentInterval();
+      currentIntervalStart = intervalStart;
+      currentIntervalMaxTimestamp = maxTs;
+    } else {
+      currentIntervalMaxTimestamp = Math.max(currentIntervalMaxTimestamp, maxTs);
+    }
+  }
+
+  /** Persists the current in-progress interval into the index map. */
+  private void flushCurrentInterval() {
+    if (currentIntervalStart >= 0) {
+      intervalMaxTimestampIndex.merge(currentIntervalStart, currentIntervalMaxTimestamp, Math::max);
     }
   }
 
   /**
-   * Extracts the minimum timestamp from an InsertNode. For InsertMultiTabletsNode (whose
-   * getMinTime() throws NotImplementedException), iterates over inner InsertTabletNodes.
+   * Extracts the maximum timestamp from an InsertNode. For row nodes this is the single timestamp;
+   * for tablet nodes, {@code times} is sorted so the last element is the max. For composite nodes,
+   * iterates over children.
    *
-   * @return the minimum timestamp, or Long.MAX_VALUE if extraction fails
+   * @return the maximum timestamp, or {@code Long.MIN_VALUE} if extraction fails
    */
-  private long extractMinTime(final InsertNode insertNode) {
+  private long extractMaxTime(final InsertNode insertNode) {
     try {
-      return insertNode.getMinTime();
-    } catch (final Exception e) {
-      // InsertMultiTabletsNode.getMinTime() is not implemented
+      if (insertNode instanceof InsertRowNode) {
+        return ((InsertRowNode) insertNode).getTime();
+      }
+      if (insertNode instanceof InsertTabletNode) {
+        final InsertTabletNode tabletNode = (InsertTabletNode) insertNode;
+        final int rowCount = tabletNode.getRowCount();
+        return rowCount > 0 ? tabletNode.getTimes()[rowCount - 1] : Long.MIN_VALUE;
+      }
       if (insertNode instanceof InsertMultiTabletsNode) {
-        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
         for (final InsertTabletNode child :
             ((InsertMultiTabletsNode) insertNode).getInsertTabletNodeList()) {
-          try {
-            min = Math.min(min, child.getMinTime());
-          } catch (final Exception ignored) {
+          final int rowCount = child.getRowCount();
+          if (rowCount > 0) {
+            max = Math.max(max, child.getTimes()[rowCount - 1]);
           }
         }
-        return min;
+        return max;
       }
-      return Long.MAX_VALUE;
+      if (insertNode instanceof InsertRowsNode) {
+        long max = Long.MIN_VALUE;
+        for (final InsertRowNode row : ((InsertRowsNode) insertNode).getInsertRowNodeList()) {
+          max = Math.max(max, row.getTime());
+        }
+        return max;
+      }
+      if (insertNode instanceof InsertRowsOfOneDeviceNode) {
+        long max = Long.MIN_VALUE;
+        for (final InsertRowNode row :
+            ((InsertRowsOfOneDeviceNode) insertNode).getInsertRowNodeList()) {
+          max = Math.max(max, row.getTime());
+        }
+        return max;
+      }
+      // Fallback: use getMinTime() which at least gets a timestamp
+      return insertNode.getMinTime();
+    } catch (final Exception e) {
+      return Long.MIN_VALUE;
     }
+  }
+
+  /**
+   * Checks whether it is time to inject a watermark event and does so if the configured interval
+   * has elapsed. Called from the prefetch loop after processing data and during idle periods.
+   */
+  private void maybeInjectWatermark() {
+    if (maxObservedTimestamp == Long.MIN_VALUE) {
+      return; // No data observed yet — nothing to report
+    }
+    final long intervalMs =
+        SubscriptionConfig.getInstance().getSubscriptionConsensusWatermarkIntervalMs();
+    if (intervalMs <= 0) {
+      return; // Watermark disabled
+    }
+    final long now = System.currentTimeMillis();
+    if (now - lastWatermarkEmitTimeMs >= intervalMs) {
+      injectWatermark(maxObservedTimestamp);
+      lastWatermarkEmitTimeMs = now;
+    }
+  }
+
+  /**
+   * Injects a {@link SubscriptionPollResponseType#WATERMARK} event into the prefetching queue.
+   * Follows the same pattern as {@link #injectEpochSentinel(long)} — the committed mapping is
+   * deliberately NOT recorded because watermark events are metadata, not user data.
+   *
+   * @param watermarkTimestamp the maximum data timestamp observed so far
+   */
+  private void injectWatermark(final long watermarkTimestamp) {
+    // Watermarks are fire-and-forget (not in inFlightEvents), use INVALID_COMMIT_ID
+    final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    final SubscriptionCommitContext watermarkCtx =
+        new SubscriptionCommitContext(
+            dataNodeId,
+            PipeDataNodeAgent.runtime().getRebootTimes(),
+            topicName,
+            brokerId,
+            INVALID_COMMIT_ID,
+            seekGeneration.get(),
+            consensusGroupId.toString(),
+            epoch);
+    final SubscriptionEvent watermarkEvent =
+        new SubscriptionEvent(
+            SubscriptionPollResponseType.WATERMARK.getType(),
+            new WatermarkPayload(watermarkTimestamp, dataNodeId),
+            watermarkCtx);
+    prefetchingQueue.add(watermarkEvent);
+
+    LOGGER.debug(
+        "ConsensusPrefetchingQueue {}: injected WATERMARK, watermarkTimestamp={}",
+        this,
+        watermarkTimestamp);
+  }
+
+  /** Returns the maximum observed data timestamp for metrics. */
+  public long getMaxObservedTimestamp() {
+    return maxObservedTimestamp;
   }
 
   public void close() {
     markClosed();
+    // Deregister metrics
+    ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().deregister(getPrefetchingQueueId());
     // Stop background prefetch thread
     prefetchThread.interrupt();
     try {
@@ -1350,7 +1586,7 @@ public class ConsensusPrefetchingQueue {
 
   public boolean isCommitContextOutdated(final SubscriptionCommitContext commitContext) {
     return PipeDataNodeAgent.runtime().getRebootTimes() > commitContext.getRebootTimes()
-        || outdatedCommitIdThreshold > commitContext.getCommitId();
+        || seekGeneration.get() != commitContext.getSeekGeneration();
   }
 
   // ======================== Status ========================
@@ -1363,6 +1599,30 @@ public class ConsensusPrefetchingQueue {
     isClosed = true;
   }
 
+  // ======================== Epoch Control ========================
+
+  /**
+   * Called on the <em>old</em> write-leader when routing changes away from this DataNode. Sets the
+   * /** Sets the epoch counter. Called on the new write-leader when routing changes.
+   */
+  public void setEpoch(final long epoch) {
+    this.epoch = epoch;
+    epochChangeCount.incrementAndGet();
+    LOGGER.info("ConsensusPrefetchingQueue {}: epoch set to {}", this, epoch);
+  }
+
+  public long getEpoch() {
+    return epoch;
+  }
+
+  public long getWalGapSkippedEntries() {
+    return walGapSkippedEntries.get();
+  }
+
+  public long getEpochChangeCount() {
+    return epochChangeCount.get();
+  }
+
   public String getPrefetchingQueueId() {
     return brokerId + "_" + topicName;
   }
@@ -1372,7 +1632,7 @@ public class ConsensusPrefetchingQueue {
   }
 
   public long getCurrentCommitId() {
-    return commitIdGenerator.get();
+    return seekGeneration.get();
   }
 
   public int getPrefetchedEventCount() {
@@ -1391,8 +1651,19 @@ public class ConsensusPrefetchingQueue {
     return topicName;
   }
 
-  public String getConsensusGroupId() {
+  public ConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
+  }
+
+  /**
+   * Returns the subscription lag for this queue: the difference between the current WAL write
+   * position and the committed search index. A high lag indicates consumers are falling behind.
+   */
+  public long getLag() {
+    final long currentWalIndex = consensusReqReader.getCurrentSearchIndex();
+    final long committed =
+        commitManager.getCommittedSearchIndex(brokerId, topicName, consensusGroupId);
+    return Math.max(0, currentWalIndex - Math.max(committed, 0));
   }
 
   // ======================== Stringify ========================
@@ -1401,14 +1672,14 @@ public class ConsensusPrefetchingQueue {
     final Map<String, String> result = new HashMap<>();
     result.put("brokerId", brokerId);
     result.put("topicName", topicName);
-    result.put("consensusGroupId", consensusGroupId);
+    result.put("consensusGroupId", consensusGroupId.toString());
     result.put("currentReadSearchIndex", String.valueOf(nextExpectedSearchIndex.get()));
     result.put("prefetchingQueueSize", String.valueOf(prefetchingQueue.size()));
     result.put("inFlightEventsSize", String.valueOf(inFlightEvents.size()));
-    result.put("outstandingEventsSize", String.valueOf(outstandingCommitIdToStartIndex.size()));
     result.put("pendingEntriesSize", String.valueOf(pendingEntries.size()));
-    result.put("commitIdGenerator", commitIdGenerator.toString());
+    result.put("seekGeneration", String.valueOf(seekGeneration.get()));
     result.put("walGapSkippedEntries", String.valueOf(walGapSkippedEntries.get()));
+    result.put("lag", String.valueOf(getLag()));
     result.put("isClosed", String.valueOf(isClosed));
     return result;
   }

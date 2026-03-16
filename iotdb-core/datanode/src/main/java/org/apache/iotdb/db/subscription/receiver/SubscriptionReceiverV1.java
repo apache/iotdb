@@ -692,8 +692,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
 
-    SubscriptionAgent.broker()
-        .seek(consumerConfig, topicName, seekType, req.getTimestamp());
+    SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType, req.getTimestamp());
 
     LOGGER.info(
         "Subscription: consumer {} seek topic {} with seekType={}, timestamp={}",

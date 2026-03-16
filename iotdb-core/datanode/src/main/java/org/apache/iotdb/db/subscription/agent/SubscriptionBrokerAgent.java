@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.subscription.agent;
 
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.iot.IoTConsensusServerImpl;
 import org.apache.iotdb.db.subscription.broker.ConsensusSubscriptionBroker;
 import org.apache.iotdb.db.subscription.broker.SubscriptionBroker;
@@ -359,7 +360,7 @@ public class SubscriptionBrokerAgent {
   public void bindConsensusPrefetchingQueue(
       final String consumerGroupId,
       final String topicName,
-      final String consensusGroupId,
+      final ConsensusGroupId consensusGroupId,
       final IoTConsensusServerImpl serverImpl,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
@@ -395,7 +396,7 @@ public class SubscriptionBrokerAgent {
     prefetchingQueueCount.invalidate();
   }
 
-  public void unbindByRegion(final String regionId) {
+  public void unbindByRegion(final ConsensusGroupId regionId) {
     int totalClosed = 0;
     for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
       totalClosed += broker.unbindByRegion(regionId);
@@ -406,6 +407,26 @@ public class SubscriptionBrokerAgent {
           "Subscription: unbound {} consensus prefetching queue(s) for removed region [{}]",
           totalClosed,
           regionId);
+    }
+  }
+
+  public void onOldLeaderRegionChanged(final ConsensusGroupId regionId, final long endingEpoch) {
+    LOGGER.info(
+        "SubscriptionBrokerAgent: old leader region changed regionId={}, endingEpoch={}",
+        regionId,
+        endingEpoch);
+    for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      broker.injectEpochSentinelForRegion(regionId, endingEpoch);
+    }
+  }
+
+  public void onNewLeaderRegionChanged(final ConsensusGroupId regionId, final long newEpoch) {
+    LOGGER.info(
+        "SubscriptionBrokerAgent: new leader region changed regionId={}, newEpoch={}",
+        regionId,
+        newEpoch);
+    for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      broker.setEpochForRegion(regionId, newEpoch);
     }
   }
 
@@ -502,6 +523,18 @@ public class SubscriptionBrokerAgent {
     return prefetchingQueueCount.get();
   }
 
+  public Map<String, Long> getConsensusLagSummary() {
+    final Map<String, Long> result = new ConcurrentHashMap<>();
+    for (final Map.Entry<String, ConsensusSubscriptionBroker> entry :
+        consumerGroupIdToConsensusBroker.entrySet()) {
+      final String groupId = entry.getKey();
+      for (final Map.Entry<String, Long> lag : entry.getValue().getLagSummary().entrySet()) {
+        result.put(groupId + "/" + lag.getKey(), lag.getValue());
+      }
+    }
+    return result;
+  }
+
   private int getPrefetchingQueueCountInternal() {
     int count =
         consumerGroupIdToPipeBroker.values().stream()
@@ -512,6 +545,12 @@ public class SubscriptionBrokerAgent {
             .map(ConsensusSubscriptionBroker::getQueueCount)
             .reduce(0, Integer::sum);
     return count;
+  }
+
+  /////////////////////////////// Commit Progress ///////////////////////////////
+
+  public Map<String, Long> collectAllCommitProgress(final int dataNodeId) {
+    return ConsensusSubscriptionCommitManager.getInstance().collectAllProgress(dataNodeId);
   }
 
   /////////////////////////////// Cache ///////////////////////////////

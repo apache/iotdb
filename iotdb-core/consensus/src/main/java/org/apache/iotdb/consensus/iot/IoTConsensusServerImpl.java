@@ -957,6 +957,10 @@ public class IoTConsensusServerImpl {
   /**
    * Computes and updates the safe-to-delete WAL search index based on replication progress and
    * subscription WAL retention policy. When no subscriptions exist, WAL is cleaned normally.
+   *
+   * <p>Subscription retention uses this region's own WAL disk usage (not global) and supports
+   * graduated cleanup: when WAL exceeds the retention limit, only enough oldest WAL files are
+   * released to bring the size back within the limit, rather than releasing all WAL at once.
    */
   public void checkAndUpdateSafeDeletedSearchIndex() {
     if (configuration.isEmpty()) {
@@ -977,15 +981,23 @@ public class IoTConsensusServerImpl {
           configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
 
       // Subscription WAL retention: if subscriptions exist and retention is configured,
-      // prevent WAL deletion when total WAL size is within the retention limit.
+      // use this region's own WAL size to decide how much to retain.
       long subscriptionRetentionBound = Long.MAX_VALUE;
       if (hasSubscriptions && retentionSizeLimit > 0) {
-        final long totalWalSize = consensusReqReader.getTotalSize();
-        if (totalWalSize <= retentionSizeLimit) {
-          // WAL size is within retention limit — preserve all WAL for subscribers
-          subscriptionRetentionBound = ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+        final long regionWalSize = consensusReqReader.getRegionDiskUsage();
+        if (regionWalSize <= retentionSizeLimit) {
+          // Region WAL size is within retention limit — preserve all WAL for subscribers.
+          // Use Long.MIN_VALUE + 1 instead of DEFAULT_SAFELY_DELETED_SEARCH_INDEX (Long.MIN_VALUE)
+          // because WAL's DeleteOutdatedFileTask treats Long.MIN_VALUE as a special case that
+          // allows all files to be deleted (no consensus constraint), which is opposite to our
+          // intent here. Long.MIN_VALUE + 1 avoids the special case and is still less than any
+          // real searchIndex (>= 0), so no WAL files will pass the searchIndex filter.
+          subscriptionRetentionBound = Long.MIN_VALUE + 1;
+        } else {
+          // Region WAL exceeds retention limit — free just enough to bring it back within limit
+          final long excess = regionWalSize - retentionSizeLimit;
+          subscriptionRetentionBound = consensusReqReader.getSearchIndexToFreeAtLeast(excess);
         }
-        // else: WAL exceeds retention limit — allow normal cleanup (bound stays MAX_VALUE)
       }
 
       consensusReqReader.setSafelyDeletedSearchIndex(

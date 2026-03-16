@@ -39,6 +39,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -85,10 +86,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.EPOCH_CHANGE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.WATERMARK;
 import static org.apache.iotdb.session.subscription.util.SetPartitioner.partition;
 
 abstract class AbstractSubscriptionConsumer implements AutoCloseable {
@@ -120,6 +123,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final int thriftMaxFrameSize;
   private final int maxPollParallelism;
+
+  /**
+   * The latest watermark timestamp received from the server. Updated when WATERMARK events are
+   * processed and stripped. Consumer users can query this to check timestamp progress.
+   */
+  protected volatile long latestWatermarkTimestamp = Long.MIN_VALUE;
 
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
@@ -393,8 +402,8 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   }
 
   /**
-   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Each node independently
-   * locates its own position, so this works correctly across multi-leader replicas.
+   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Each node
+   * independently locates its own position, so this works correctly across multi-leader replicas.
    */
   public void seek(final String topicName, final long targetTimestamp)
       throws SubscriptionException {
@@ -402,8 +411,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP, targetTimestamp);
   }
 
-  private void seekInternal(
-      final String topicName, final short seekType, final long timestamp)
+  private void seekInternal(final String topicName, final short seekType, final long timestamp)
       throws SubscriptionException {
     providers.acquireReadLock();
     try {
@@ -550,8 +558,60 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
                       });
+                  put(
+                      EPOCH_CHANGE,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        LOGGER.info(
+                            "Received EPOCH_CHANGE sentinel: regionId={}, epoch={}, consumer={}",
+                            commitContext.getRegionId(),
+                            commitContext.getEpoch(),
+                            coreReportMessage());
+                        return Optional.of(new SubscriptionMessage(commitContext));
+                      });
+                  put(
+                      WATERMARK,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        final WatermarkPayload payload = (WatermarkPayload) resp.getPayload();
+                        LOGGER.debug(
+                            "Received WATERMARK: regionId={}, timestamp={}, dataNodeId={}, consumer={}",
+                            commitContext.getRegionId(),
+                            payload.getWatermarkTimestamp(),
+                            payload.getDataNodeId(),
+                            coreReportMessage());
+                        return Optional.of(
+                            new SubscriptionMessage(
+                                commitContext, payload.getWatermarkTimestamp()));
+                      });
                 }
               });
+
+  /**
+   * Returns the set of DataNode IDs for providers that are currently available. Used by subclasses
+   * to detect unavailable DataNodes and notify the epoch ordering processor.
+   */
+  protected Set<Integer> getAvailableDataNodeIds() {
+    providers.acquireReadLock();
+    try {
+      final Set<Integer> ids = new HashSet<>();
+      for (final AbstractSubscriptionProvider provider : providers.getAllAvailableProviders()) {
+        ids.add(provider.getDataNodeId());
+      }
+      return ids;
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  /**
+   * Returns the latest watermark timestamp received from the server. This tracks the maximum data
+   * timestamp observed across all polled regions. Returns {@code Long.MIN_VALUE} if no watermark
+   * has been received yet.
+   */
+  public long getLatestWatermarkTimestamp() {
+    return latestWatermarkTimestamp;
+  }
 
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {

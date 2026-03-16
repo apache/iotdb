@@ -19,8 +19,20 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.consensus.ConfigRegionId;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
+import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
+import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,17 +42,20 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Manages commit state for consensus-based subscriptions.
  *
- * <p>This manager tracks which events have been committed by consumers and maps commit IDs back to
- * WAL search indices. It maintains the progress for each (consumerGroup, topic, region) triple and
- * supports persistence and recovery.
+ * <p>This manager tracks which events have been committed by consumers using their end search
+ * indices directly (no intermediate commitId mapping). It maintains the progress for each
+ * (consumerGroup, topic, region) triple and supports persistence and recovery.
  *
  * <p>Progress is tracked <b>per-region</b> because searchIndex is region-local — each DataRegion
  * has its own independent WAL with its own searchIndex namespace. Using a single state per topic
@@ -49,7 +64,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>Key responsibilities:
  *
  * <ul>
- *   <li>Track the mapping from commitId to searchIndex
+ *   <li>Track outstanding (dispatched but not-yet-committed) events by searchIndex
  *   <li>Handle commit/ack from consumers
  *   <li>Persist and recover progress state
  * </ul>
@@ -62,7 +77,10 @@ public class ConsensusSubscriptionCommitManager {
   private static final String PROGRESS_FILE_PREFIX = "consensus_subscription_progress_";
   private static final String PROGRESS_FILE_SUFFIX = ".dat";
 
-  /** Key: "consumerGroupId_topicName_regionId" -> progress tracking state */
+  private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
+      ConfigNodeClientManager.getInstance();
+
+  /** Key: "consumerGroupId##topicName##regionId" -> progress tracking state */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
       new ConcurrentHashMap<>();
 
@@ -86,42 +104,44 @@ public class ConsensusSubscriptionCommitManager {
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
-   * @param regionId the consensus group / data region ID string
+   * @param regionId the consensus group / data region ID
    * @return the commit state
    */
   public ConsensusSubscriptionCommitState getOrCreateState(
-      final String consumerGroupId, final String topicName, final String regionId) {
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     return commitStates.computeIfAbsent(
         key,
         k -> {
-          // Try to recover from persisted state
+          // Try to recover from persisted local state
           final ConsensusSubscriptionCommitState recovered = tryRecover(key);
           if (recovered != null) {
             return recovered;
           }
-          return new ConsensusSubscriptionCommitState(new SubscriptionConsensusProgress(0L, 0L));
+          // Fallback: query ConfigNode for the last known committed search index
+          final long fallbackSearchIndex =
+              queryCommitProgressFromConfigNode(consumerGroupId, topicName, regionId);
+          return new ConsensusSubscriptionCommitState(
+              new SubscriptionConsensusProgress(fallbackSearchIndex, 0L));
         });
   }
 
   /**
-   * Records commitId to searchIndex mapping for later commit handling.
+   * Records a dispatched event's search index for commit tracking.
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
-   * @param regionId the consensus group / data region ID string
-   * @param commitId the assigned commit ID
+   * @param regionId the consensus group / data region ID
    * @param searchIndex the WAL search index corresponding to this event
    */
-  public void recordCommitMapping(
+  public void recordMapping(
       final String consumerGroupId,
       final String topicName,
-      final String regionId,
-      final long commitId,
+      final ConsensusGroupId regionId,
       final long searchIndex) {
     final ConsensusSubscriptionCommitState state =
         getOrCreateState(consumerGroupId, topicName, regionId);
-    state.recordMapping(commitId, searchIndex);
+    state.recordMapping(searchIndex);
   }
 
   /**
@@ -130,28 +150,28 @@ public class ConsensusSubscriptionCommitManager {
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
-   * @param regionId the consensus group / data region ID string
-   * @param commitId the committed event's commit ID
+   * @param regionId the consensus group / data region ID
+   * @param searchIndex the end search index of the committed event
    * @return true if commit handled successfully
    */
   public boolean commit(
       final String consumerGroupId,
       final String topicName,
-      final String regionId,
-      final long commitId) {
+      final ConsensusGroupId regionId,
+      final long searchIndex) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot commit for unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}, commitId={}",
+              + "consumerGroupId={}, topicName={}, regionId={}, searchIndex={}",
           consumerGroupId,
           topicName,
           regionId,
-          commitId);
+          searchIndex);
       return false;
     }
-    final boolean success = state.commit(commitId);
+    final boolean success = state.commit(searchIndex);
     if (success) {
       // Periodically persist progress
       persistProgressIfNeeded(key, state);
@@ -164,11 +184,11 @@ public class ConsensusSubscriptionCommitManager {
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
-   * @param regionId the consensus group / data region ID string
+   * @param regionId the consensus group / data region ID
    * @return the committed search index, or -1 if no state exists
    */
   public long getCommittedSearchIndex(
-      final String consumerGroupId, final String topicName, final String regionId) {
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
     if (state == null) {
@@ -182,10 +202,10 @@ public class ConsensusSubscriptionCommitManager {
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
-   * @param regionId the consensus group / data region ID string
+   * @param regionId the consensus group / data region ID
    */
   public void removeState(
-      final String consumerGroupId, final String topicName, final String regionId) {
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     commitStates.remove(key);
     // Clean up persisted file
@@ -226,7 +246,7 @@ public class ConsensusSubscriptionCommitManager {
   public void resetState(
       final String consumerGroupId,
       final String topicName,
-      final String regionId,
+      final ConsensusGroupId regionId,
       final long newSearchIndex) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
@@ -251,6 +271,17 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  /** Collects all current committedSearchIndex values for reporting to ConfigNode. */
+  public Map<String, Long> collectAllProgress(final int dataNodeId) {
+    final Map<String, Long> result = new ConcurrentHashMap<>();
+    final String suffix = KEY_SEPARATOR + dataNodeId;
+    for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
+        commitStates.entrySet()) {
+      result.put(entry.getKey() + suffix, entry.getValue().getCommittedSearchIndex());
+    }
+    return result;
+  }
+
   // ======================== Helper Methods ========================
 
   // Use a separator that cannot appear in consumerGroupId, topicName, or regionId
@@ -258,8 +289,8 @@ public class ConsensusSubscriptionCommitManager {
   private static final String KEY_SEPARATOR = "##";
 
   private String generateKey(
-      final String consumerGroupId, final String topicName, final String regionId) {
-    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionId;
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
+    return consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionId.toString();
   }
 
   private File getProgressFile(final String key) {
@@ -282,10 +313,45 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
+  private long queryCommitProgressFromConfigNode(
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
+    try (final ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+      final TGetCommitProgressReq req =
+          new TGetCommitProgressReq(
+              consumerGroupId,
+              topicName,
+              regionId.getId(),
+              IoTDBDescriptor.getInstance().getConfig().getDataNodeId());
+      final TGetCommitProgressResp resp = configNodeClient.getCommitProgress(req);
+      if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && resp.isSetCommittedSearchIndex()) {
+        LOGGER.info(
+            "ConsensusSubscriptionCommitManager: recovered committedSearchIndex={} from "
+                + "ConfigNode for consumerGroupId={}, topicName={}, regionId={}",
+            resp.committedSearchIndex,
+            consumerGroupId,
+            topicName,
+            regionId);
+        return resp.committedSearchIndex;
+      }
+    } catch (final ClientManagerException | TException e) {
+      LOGGER.warn(
+          "ConsensusSubscriptionCommitManager: failed to query commit progress from ConfigNode "
+              + "for consumerGroupId={}, topicName={}, regionId={}, starting from 0",
+          consumerGroupId,
+          topicName,
+          regionId,
+          e);
+    }
+    return 0L;
+  }
+
   private void persistProgressIfNeeded(
       final String key, final ConsensusSubscriptionCommitState state) {
-    // Persist every 100 commits to reduce disk IO
-    if (state.getProgress().getCommitIndex() % 100 == 0) {
+    final int interval =
+        SubscriptionConfig.getInstance().getSubscriptionConsensusCommitPersistInterval();
+    if (interval > 0 && state.getProgress().getCommitIndex() % interval == 0) {
       persistProgress(key, state);
     }
   }
@@ -296,6 +362,9 @@ public class ConsensusSubscriptionCommitManager {
         final DataOutputStream dos = new DataOutputStream(fos)) {
       state.serialize(dos);
       dos.flush();
+      if (SubscriptionConfig.getInstance().isSubscriptionConsensusCommitFsyncEnabled()) {
+        fos.getFD().sync();
+      }
     } catch (final IOException e) {
       LOGGER.warn("Failed to persist consensus subscription progress to {}", file, e);
     }
@@ -304,18 +373,24 @@ public class ConsensusSubscriptionCommitManager {
   // ======================== Inner State Class ========================
 
   /**
-   * Tracks commit state for a single (consumerGroup, topic, region) triple. Maintains the mapping
-   * from commitId to searchIndex and tracks committed progress within one region's WAL.
+   * Tracks commit state for a single (consumerGroup, topic, region) triple. Tracks outstanding and
+   * committed search indices within one region's WAL.
    */
   public static class ConsensusSubscriptionCommitState {
 
     private final SubscriptionConsensusProgress progress;
 
-    /**
-     * Maps commitId -> searchIndex. Records which WAL search index corresponds to each committed
-     * event. Entries are removed once committed.
-     */
-    private final Map<Long, Long> commitIdToSearchIndex = new ConcurrentHashMap<>();
+    /** LRU set of recently committed search indices for idempotent re-commit detection. */
+    private static final int RECENTLY_COMMITTED_CAPACITY = 1024;
+
+    private final Set<Long> recentlyCommittedSearchIndices =
+        Collections.newSetFromMap(
+            new LinkedHashMap<Long, Boolean>() {
+              @Override
+              protected boolean removeEldestEntry(final Map.Entry<Long, Boolean> eldest) {
+                return size() > RECENTLY_COMMITTED_CAPACITY;
+              }
+            });
 
     /**
      * Tracks the safe recovery position: the highest search index where all prior dispatched events
@@ -357,21 +432,19 @@ public class ConsensusSubscriptionCommitManager {
     /** Threshold for warning about outstanding (uncommitted) search indices accumulation. */
     private static final int OUTSTANDING_SIZE_WARN_THRESHOLD = 10000;
 
-    public void recordMapping(final long commitId, final long searchIndex) {
+    public void recordMapping(final long searchIndex) {
       synchronized (this) {
-        commitIdToSearchIndex.put(commitId, searchIndex);
         outstandingSearchIndices.add(searchIndex);
         final int size = outstandingSearchIndices.size();
         if (size > OUTSTANDING_SIZE_WARN_THRESHOLD && size % OUTSTANDING_SIZE_WARN_THRESHOLD == 1) {
           LOGGER.warn(
               "ConsensusSubscriptionCommitState: outstandingSearchIndices size ({}) exceeds "
                   + "threshold ({}), consumers may not be committing. committedSearchIndex={}, "
-                  + "maxCommittedSearchIndex={}, commitIdToSearchIndex size={}",
+                  + "maxCommittedSearchIndex={}",
               size,
               OUTSTANDING_SIZE_WARN_THRESHOLD,
               committedSearchIndex,
-              maxCommittedSearchIndex,
-              commitIdToSearchIndex.size());
+              maxCommittedSearchIndex);
         }
       }
     }
@@ -383,26 +456,26 @@ public class ConsensusSubscriptionCommitManager {
      * have been committed. This prevents the recovery position from jumping over uncommitted gaps,
      * ensuring at-least-once delivery even after crash recovery.
      *
-     * @param commitId the commit ID to commit
+     * @param searchIndex the end search index of the event to commit
      * @return true if successfully committed
      */
-    public boolean commit(final long commitId) {
+    public boolean commit(final long searchIndex) {
       progress.incrementCommitIndex();
 
-      // Advance committed search index contiguously (gap-aware).
-      // Both remove from commitIdToSearchIndex and outstandingSearchIndices must be
-      // inside the same synchronized block to prevent a race with recordMapping():
-      //   recordMapping: put(commitId, si) -> add(si)
-      //   commit:        remove(commitId) -> remove(si)
-      // Without atomicity, commit could remove from map between put and add,
-      // leaving si permanently in outstandingSearchIndices (WAL leak).
       synchronized (this) {
-        final Long searchIndex = commitIdToSearchIndex.remove(commitId);
-        if (searchIndex == null) {
-          LOGGER.warn("ConsensusSubscriptionCommitState: unknown commitId {} for commit", commitId);
+        if (!outstandingSearchIndices.remove(searchIndex)) {
+          // Check if this is an idempotent re-commit
+          if (recentlyCommittedSearchIndices.contains(searchIndex)) {
+            LOGGER.debug(
+                "ConsensusSubscriptionCommitState: idempotent re-commit for searchIndex {}",
+                searchIndex);
+            return true;
+          }
+          LOGGER.warn(
+              "ConsensusSubscriptionCommitState: unknown searchIndex {} for commit", searchIndex);
           return false;
         }
-        outstandingSearchIndices.remove(searchIndex);
+        recentlyCommittedSearchIndices.add(searchIndex);
         if (searchIndex > maxCommittedSearchIndex) {
           maxCommittedSearchIndex = searchIndex;
         }
@@ -428,8 +501,8 @@ public class ConsensusSubscriptionCommitManager {
      */
     public void resetForSeek(final long newSearchIndex) {
       synchronized (this) {
-        commitIdToSearchIndex.clear();
         outstandingSearchIndices.clear();
+        recentlyCommittedSearchIndices.clear();
         final long baseIndex = newSearchIndex - 1;
         committedSearchIndex = baseIndex;
         maxCommittedSearchIndex = baseIndex;

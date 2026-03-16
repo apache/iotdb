@@ -30,6 +30,7 @@ public enum SubscriptionOperation {
   DROP_SUBSCRIPTION("drop subscription"),
   SYNC_CONSUMER_GROUP_META("sync consumer group meta"),
   SYNC_TOPIC_META("sync topic meta"),
+  SYNC_COMMIT_PROGRESS("sync commit progress"),
   ;
 
   private final String name;

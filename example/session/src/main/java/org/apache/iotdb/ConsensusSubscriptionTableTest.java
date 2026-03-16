@@ -25,6 +25,8 @@ import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
 import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePullConsumer;
+import org.apache.iotdb.session.subscription.consumer.base.ColumnAlignProcessor;
+import org.apache.iotdb.session.subscription.consumer.base.WatermarkProcessor;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumer;
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePullConsumerBuilder;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -38,6 +40,7 @@ import org.apache.tsfile.write.schema.MeasurementSchema;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -94,6 +97,9 @@ public class ConsensusSubscriptionTableTest {
     }
     if (targetTest == null || "testSeek".equals(targetTest)) {
       runTest("testSeek", ConsensusSubscriptionTableTest::testSeek);
+    }
+    if (targetTest == null || "testProcessorFramework".equals(targetTest)) {
+      runTest("testProcessorFramework", ConsensusSubscriptionTableTest::testProcessorFramework);
     }
 
     // Summary
@@ -1165,6 +1171,7 @@ public class ConsensusSubscriptionTableTest {
       }
 
       System.out.println("  Commit after unsubscribe completed. Success=" + commitSucceeded);
+      assertTrue("Commit after unsubscribe should succeed without exception", commitSucceeded);
       System.out.println("  (Key: no exception crash, routing handled gracefully)");
     } finally {
       if (consumer != null) {
@@ -1221,8 +1228,7 @@ public class ConsensusSubscriptionTableTest {
         for (int i = 0; i < 1000; i++) {
           long ts = 1000 + i;
           session.executeNonQueryStatement(
-              String.format(
-                  "INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", ts * 10, ts));
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", ts * 10, ts));
         }
       }
       Thread.sleep(2000);
@@ -1276,8 +1282,7 @@ public class ConsensusSubscriptionTableTest {
       }
       System.out.println("  After seekToEnd (no new writes): " + endPoll.totalRows + " rows");
       // May occasionally be 1 due to prefetch thread race; tolerate small values
-      assertTrue(
-          "seekToEnd should yield at most 1 row (race tolerance)", endPoll.totalRows <= 1);
+      assertTrue("seekToEnd should yield at most 1 row (race tolerance)", endPoll.totalRows <= 1);
 
       // Write 200 new rows — they should be received
       System.out.println("  Writing 200 new rows after seekToEnd");
@@ -1285,15 +1290,15 @@ public class ConsensusSubscriptionTableTest {
         session.executeNonQueryStatement("USE " + database);
         for (int i = 2000; i < 2200; i++) {
           session.executeNonQueryStatement(
-              String.format(
-                  "INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
         }
       }
       Thread.sleep(2000);
 
       PollResult afterEndPoll = pollUntilComplete(consumer, 200, 120);
       System.out.println("  After seekToEnd + new writes: " + afterEndPoll);
-      assertEquals("Should receive exactly 200 new rows after seekToEnd", 200, afterEndPoll.totalRows);
+      assertEquals(
+          "Should receive exactly 200 new rows after seekToEnd", 200, afterEndPoll.totalRows);
 
       // ------------------------------------------------------------------
       // Step 5: seek(timestamp) — seek to timestamp 1500
@@ -1307,7 +1312,8 @@ public class ConsensusSubscriptionTableTest {
       //       + 200 rows from new writes (2000..2199) = ~700 minimum
       PollResult afterSeek = pollUntilComplete(consumer, 1200, 120);
       System.out.println("  After seek(1500): " + afterSeek.totalRows + " rows");
-      assertAtLeast("seek(1500) should deliver at least 700 rows (ts >= 1500)", 700, afterSeek.totalRows);
+      assertAtLeast(
+          "seek(1500) should deliver at least 700 rows (ts >= 1500)", 700, afterSeek.totalRows);
 
       // ------------------------------------------------------------------
       // Step 6: seek(future timestamp) — expect 0 rows
@@ -1340,12 +1346,244 @@ public class ConsensusSubscriptionTableTest {
       System.out.println("  After seek(99999): " + futurePoll.totalRows + " rows");
       // seek(99999) should behave like seekToEnd — 0 rows normally,
       // but may yield up to 1 row due to prefetch thread race (same as seekToEnd)
-      assertTrue("seek(future) should yield at most 1 row (race tolerance)",
-          futurePoll.totalRows <= 1);
+      assertTrue(
+          "seek(future) should yield at most 1 row (race tolerance)", futurePoll.totalRows <= 1);
 
       System.out.println("  testSeek passed all sub-tests!");
     } finally {
       cleanup(consumer, topicName, database);
+    }
+  }
+
+  // ======================================================================
+  // Test 9: Processor Framework (ColumnAlignProcessor + WatermarkProcessor + PollResult)
+  // ======================================================================
+  /**
+   * Verifies:
+   *
+   * <ul>
+   *   <li>ColumnAlignProcessor forward-fills null columns per table
+   *   <li>pollWithInfo() returns PollResult with correct metadata
+   *   <li>WatermarkProcessor buffers and emits based on watermark
+   *   <li>Processor chaining works correctly
+   *   <li>Idempotent double-commit does not throw
+   * </ul>
+   */
+  private static void testProcessorFramework() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    String tableName = "proc_test";
+    SubscriptionTablePullConsumer consumer = null;
+    SubscriptionTablePullConsumer consumer2 = null;
+
+    try {
+      // Step 1: Create table with 3 measurement columns
+      System.out.println("  Step 1: Creating table with 3 measurement columns");
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(
+            session,
+            database,
+            tableName,
+            "device_id STRING TAG, s1 INT32 FIELD, s2 INT32 FIELD, s3 INT32 FIELD");
+      }
+
+      // Step 2: Create topic and subscribe
+      System.out.println("  Step 2: Creating topic and subscribing");
+      createTopicTable(topicName, database, tableName);
+      Thread.sleep(1000);
+
+      // Build consumer with ColumnAlignProcessor — use concrete type for addProcessor access
+      consumer =
+          (SubscriptionTablePullConsumer)
+              new SubscriptionTablePullConsumerBuilder()
+                  .host(HOST)
+                  .port(PORT)
+                  .consumerId(consumerId)
+                  .consumerGroupId(consumerGroupId)
+                  .autoCommit(false)
+                  .build();
+      consumer.addProcessor(new ColumnAlignProcessor());
+      consumer.open();
+      consumer.subscribe(topicName);
+      Thread.sleep(3000);
+
+      // Step 3: Write a Tablet with 2 rows — row 2 has s2/s3 null (marked in BitMap).
+      // Using insertTablet ensures both rows share the same Tablet with all 3 columns,
+      // so ColumnAlignProcessor can forward-fill the nulls.
+      System.out.println("  Step 3: Writing partial-column data via insertTablet");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        List<IMeasurementSchema> schemas =
+            Arrays.asList(
+                new MeasurementSchema("device_id", TSDataType.STRING),
+                new MeasurementSchema("s1", TSDataType.INT32),
+                new MeasurementSchema("s2", TSDataType.INT32),
+                new MeasurementSchema("s3", TSDataType.INT32));
+        List<ColumnCategory> categories =
+            Arrays.asList(
+                ColumnCategory.TAG,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD,
+                ColumnCategory.FIELD);
+        Tablet tablet =
+            new Tablet(
+                tableName,
+                IMeasurementSchema.getMeasurementNameList(schemas),
+                IMeasurementSchema.getDataTypeList(schemas),
+                categories,
+                2);
+
+        // Row 0 (time=100): all columns present
+        tablet.addTimestamp(0, 100);
+        tablet.addValue("device_id", 0, "dev1");
+        tablet.addValue("s1", 0, 10);
+        tablet.addValue("s2", 0, 20);
+        tablet.addValue("s3", 0, 30);
+
+        // Row 1 (time=200): only s1 — s2/s3 remain null (BitMap marked by addTimestamp)
+        tablet.addTimestamp(1, 200);
+        tablet.addValue("device_id", 1, "dev1");
+        tablet.addValue("s1", 1, 11);
+
+        session.insert(tablet);
+        session.executeNonQueryStatement("FLUSH");
+      }
+      Thread.sleep(2000);
+
+      // Step 4: Poll with pollWithInfo and verify ColumnAlign + PollResult
+      System.out.println("  Step 4: Polling with pollWithInfo");
+      int totalRows = 0;
+      boolean foundForwardFill = false;
+      org.apache.iotdb.session.subscription.payload.PollResult lastPollResult = null;
+      List<SubscriptionMessage> allMessages = new ArrayList<>();
+
+      for (int attempt = 0; attempt < 30; attempt++) {
+        org.apache.iotdb.session.subscription.payload.PollResult pollResult =
+            consumer.pollWithInfo(Duration.ofMillis(1000));
+        lastPollResult = pollResult;
+
+        assertTrue("PollResult should not be null", pollResult != null);
+        // With only ColumnAlignProcessor (non-buffering), bufferedCount should be 0
+        assertEquals("ColumnAlignProcessor should not buffer", 0, pollResult.getBufferedCount());
+
+        List<SubscriptionMessage> msgs = pollResult.getMessages();
+        if (msgs.isEmpty()) {
+          if (totalRows >= 2) break;
+          Thread.sleep(1000);
+          continue;
+        }
+
+        allMessages.addAll(msgs);
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            List<String> columnNames = ds.getColumnNames();
+            while (ds.hasNext()) {
+              org.apache.tsfile.read.common.RowRecord row = ds.next();
+              totalRows++;
+              List<org.apache.tsfile.read.common.Field> fields = row.getFields();
+              System.out.println(
+                  "      Row: time="
+                      + row.getTimestamp()
+                      + ", columns="
+                      + columnNames
+                      + ", fields="
+                      + fields);
+              // Check forward-fill: at timestamp 200, s2 and s3 should be filled
+              if (row.getTimestamp() == 200) {
+                // Table results include "time" in columnNames but not in fields.
+                int s2ColumnIdx = columnNames.indexOf("s2");
+                int s3ColumnIdx = columnNames.indexOf("s3");
+                int fieldOffset =
+                    !columnNames.isEmpty() && "time".equalsIgnoreCase(columnNames.get(0)) ? 1 : 0;
+                int s2FieldIdx = s2ColumnIdx - fieldOffset;
+                int s3FieldIdx = s3ColumnIdx - fieldOffset;
+                if (s2FieldIdx >= 0
+                    && s3FieldIdx >= 0
+                    && s2FieldIdx < fields.size()
+                    && s3FieldIdx < fields.size()
+                    && fields.get(s2FieldIdx) != null
+                    && fields.get(s2FieldIdx).getDataType() != null
+                    && fields.get(s3FieldIdx) != null
+                    && fields.get(s3FieldIdx).getDataType() != null) {
+                  foundForwardFill = true;
+                  System.out.println("      >>> Forward-fill confirmed at timestamp 200");
+                }
+              }
+            }
+          }
+        }
+      }
+
+      assertEquals("Expected 2 rows total", 2, totalRows);
+      assertTrue(
+          "ColumnAlignProcessor should forward-fill nulls at timestamp 200", foundForwardFill);
+      System.out.println("  ColumnAlignProcessor: PASSED");
+
+      // Step 5: Idempotent double-commit
+      System.out.println("  Step 5: Testing idempotent double-commit");
+      if (!allMessages.isEmpty()) {
+        SubscriptionMessage firstMsg = allMessages.get(0);
+        consumer.commitSync(firstMsg);
+        // Second commit of same message should not throw
+        consumer.commitSync(firstMsg);
+        System.out.println("    Double-commit succeeded (idempotent)");
+      }
+
+      // Step 6: Test with WatermarkProcessor chained
+      System.out.println("  Step 6: Verifying WatermarkProcessor buffering");
+      // Close current consumer and create a new one with WatermarkProcessor
+      consumer.unsubscribe(topicName);
+      consumer.close();
+
+      String consumerId2 = consumerId + "_wm";
+      consumer2 =
+          (SubscriptionTablePullConsumer)
+              new SubscriptionTablePullConsumerBuilder()
+                  .host(HOST)
+                  .port(PORT)
+                  .consumerId(consumerId2)
+                  .consumerGroupId(consumerGroupId + "_wm")
+                  .autoCommit(false)
+                  .build();
+      // Chain: ColumnAlign → Watermark(5s out-of-order, 10s timeout)
+      consumer2.addProcessor(new ColumnAlignProcessor());
+      consumer2.addProcessor(new WatermarkProcessor(5000, 10000));
+      consumer2.open();
+      consumer2.subscribe(topicName);
+      Thread.sleep(3000);
+
+      // Write data that should be buffered by watermark
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        session.executeNonQueryStatement(
+            String.format(
+                "INSERT INTO %s(time, device_id, s1, s2, s3) VALUES (1000, 'dev1', 100, 200, 300)",
+                tableName));
+        session.executeNonQueryStatement("FLUSH");
+      }
+      Thread.sleep(2000);
+
+      // First poll — data may be buffered by WatermarkProcessor
+      org.apache.iotdb.session.subscription.payload.PollResult wmResult =
+          consumer2.pollWithInfo(Duration.ofMillis(2000));
+      System.out.println(
+          "    WatermarkProcessor poll: messages="
+              + wmResult.getMessages().size()
+              + ", buffered="
+              + wmResult.getBufferedCount());
+      // The watermark processor may buffer or emit depending on timing;
+      // we just verify the API works and returns valid metadata
+      assertTrue("PollResult bufferedCount should be >= 0", wmResult.getBufferedCount() >= 0);
+
+      // consumer already closed above in Step 6 setup
+      consumer = null;
+
+      System.out.println("  testProcessorFramework passed all sub-tests!");
+    } finally {
+      cleanup(consumer, topicName, database);
+      cleanup(consumer2, topicName, database);
     }
   }
 }

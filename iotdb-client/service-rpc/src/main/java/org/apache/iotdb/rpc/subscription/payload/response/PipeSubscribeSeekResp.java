@@ -42,9 +42,10 @@ public class PipeSubscribeSeekResp extends TPipeSubscribeResp {
     return resp;
   }
 
-  /** Deserialize {@code TPipeSubscribeResp} to obtain parameters, called by the subscription client. */
-  public static PipeSubscribeSeekResp fromTPipeSubscribeResp(
-      final TPipeSubscribeResp seekResp) {
+  /**
+   * Deserialize {@code TPipeSubscribeResp} to obtain parameters, called by the subscription client.
+   */
+  public static PipeSubscribeSeekResp fromTPipeSubscribeResp(final TPipeSubscribeResp seekResp) {
     final PipeSubscribeSeekResp resp = new PipeSubscribeSeekResp();
 
     resp.status = seekResp.status;

@@ -60,8 +60,7 @@ public class PipeSubscribeSeekReq extends TPipeSubscribeReq {
    * client.
    */
   public static PipeSubscribeSeekReq toTPipeSubscribeReq(
-      final String topicName, final short seekType, final long timestamp)
-      throws IOException {
+      final String topicName, final short seekType, final long timestamp) throws IOException {
     final PipeSubscribeSeekReq req = new PipeSubscribeSeekReq();
 
     req.topicName = topicName;
@@ -83,7 +82,9 @@ public class PipeSubscribeSeekReq extends TPipeSubscribeReq {
     return req;
   }
 
-  /** Deserialize {@code TPipeSubscribeReq} to obtain parameters, called by the subscription server. */
+  /**
+   * Deserialize {@code TPipeSubscribeReq} to obtain parameters, called by the subscription server.
+   */
   public static PipeSubscribeSeekReq fromTPipeSubscribeReq(final TPipeSubscribeReq seekReq) {
     final PipeSubscribeSeekReq req = new PipeSubscribeSeekReq();
 
