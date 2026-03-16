@@ -903,6 +903,38 @@ public class WALNode implements IWALNode {
     return WALManager.getInstance().getTotalDiskUsage();
   }
 
+  @Override
+  public long getRegionDiskUsage() {
+    return buffer.getDiskUsage();
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      // No files or only the current-writing file — cannot free anything
+      return DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    // Exclude the last file (currently being written)
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        // The next file's startSearchIndex is the boundary: everything before it can be deleted
+        if (i + 1 < walFiles.length) {
+          return WALFileUtils.parseStartSearchIndex(walFiles[i + 1].getName());
+        }
+        break;
+      }
+    }
+    // Could not free enough even by deleting all non-current files — allow deleting all
+    return Long.MAX_VALUE;
+  }
+
   // endregion
 
   @Override

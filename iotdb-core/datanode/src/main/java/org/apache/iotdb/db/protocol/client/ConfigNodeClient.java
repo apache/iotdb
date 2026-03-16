@@ -117,6 +117,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetClusterIdResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -1263,6 +1265,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   public TGetAllSubscriptionInfoResp getAllSubscriptionInfo() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.getAllSubscriptionInfo(), resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.getCommitProgress(req), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

@@ -21,12 +21,14 @@ package org.apache.iotdb.confignode.persistence.subscription;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
+import org.apache.iotdb.commons.subscription.meta.consumer.CommitProgressKeeper;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMeta;
 import org.apache.iotdb.commons.subscription.meta.consumer.ConsumerGroupMetaKeeper;
 import org.apache.iotdb.commons.subscription.meta.subscription.SubscriptionMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMeta;
 import org.apache.iotdb.commons.subscription.meta.topic.TopicMetaKeeper;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.AlterConsumerGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.CommitProgressHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.consumer.runtime.ConsumerGroupHandleMetaChangePlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterMultipleTopicsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.subscription.topic.AlterTopicPlan;
@@ -72,6 +74,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
 
   private final TopicMetaKeeper topicMetaKeeper;
   private final ConsumerGroupMetaKeeper consumerGroupMetaKeeper;
+  private final CommitProgressKeeper commitProgressKeeper;
 
   private final ReentrantReadWriteLock subscriptionInfoLock = new ReentrantReadWriteLock(true);
 
@@ -81,6 +84,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
   public SubscriptionInfo() {
     this.topicMetaKeeper = new TopicMetaKeeper();
     this.consumerGroupMetaKeeper = new ConsumerGroupMetaKeeper();
+    this.commitProgressKeeper = new CommitProgressKeeper();
     this.subscriptionInfoVersion = new SubscriptionInfoVersion();
   }
 
@@ -567,6 +571,21 @@ public class SubscriptionInfo implements SnapshotProcessor {
     }
   }
 
+  public TSStatus handleCommitProgressChanges(CommitProgressHandleMetaChangePlan plan) {
+    acquireWriteLock();
+    try {
+      LOGGER.info("Handling commit progress meta changes ...");
+      commitProgressKeeper.replaceAll(plan.getCommitProgressMap());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } finally {
+      releaseWriteLock();
+    }
+  }
+
+  public CommitProgressKeeper getCommitProgressKeeper() {
+    return commitProgressKeeper;
+  }
+
   /////////////////////////////////  Subscription  /////////////////////////////////
 
   public void validateBeforeSubscribe(TSubscribeReq subscribeReq) throws SubscriptionException {
@@ -741,6 +760,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       try (final FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile)) {
         topicMetaKeeper.processTakeSnapshot(fileOutputStream);
         consumerGroupMetaKeeper.processTakeSnapshot(fileOutputStream);
+        commitProgressKeeper.processTakeSnapshot(fileOutputStream);
         fileOutputStream.getFD().sync();
       }
 
@@ -765,6 +785,7 @@ public class SubscriptionInfo implements SnapshotProcessor {
       try (final FileInputStream fileInputStream = new FileInputStream(snapshotFile)) {
         topicMetaKeeper.processLoadSnapshot(fileInputStream);
         consumerGroupMetaKeeper.processLoadSnapshot(fileInputStream);
+        commitProgressKeeper.processLoadSnapshot(fileInputStream);
       }
     } finally {
       releaseWriteLock();

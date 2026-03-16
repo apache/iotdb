@@ -39,6 +39,8 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
+import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
+import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
@@ -84,10 +86,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.EPOCH_CHANGE;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.ERROR;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.FILE_INIT;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TABLETS;
 import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.TERMINATION;
+import static org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType.WATERMARK;
 import static org.apache.iotdb.session.subscription.util.SetPartitioner.partition;
 
 abstract class AbstractSubscriptionConsumer implements AutoCloseable {
@@ -119,6 +123,12 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
   private final int thriftMaxFrameSize;
   private final int maxPollParallelism;
+
+  /**
+   * The latest watermark timestamp received from the server. Updated when WATERMARK events are
+   * processed and stripped. Consumer users can query this to check timestamp progress.
+   */
+  protected volatile long latestWatermarkTimestamp = Long.MIN_VALUE;
 
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
@@ -374,6 +384,43 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     }
   }
 
+  /////////////////////////////// seek ///////////////////////////////
+
+  /**
+   * Seeks to the earliest available WAL position. Actual position depends on WAL retention — old
+   * segments may have been reclaimed.
+   */
+  public void seekToBeginning(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_BEGINNING, 0);
+  }
+
+  /** Seeks to the current WAL tail. Only newly written data will be consumed after this. */
+  public void seekToEnd(final String topicName) throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_END, 0);
+  }
+
+  /**
+   * Seeks to the earliest WAL entry whose data timestamp >= targetTimestamp. Each node
+   * independently locates its own position, so this works correctly across multi-leader replicas.
+   */
+  public void seek(final String topicName, final long targetTimestamp)
+      throws SubscriptionException {
+    checkIfOpened();
+    seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP, targetTimestamp);
+  }
+
+  private void seekInternal(final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekWithRedirection(topicName, seekType, timestamp);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
   /////////////////////////////// subscription provider ///////////////////////////////
 
   protected abstract AbstractSubscriptionProvider constructSubscriptionProvider(
@@ -511,8 +558,60 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
                         unsubscribe(Collections.singleton(topicNameToUnsubscribe), false);
                         return Optional.empty();
                       });
+                  put(
+                      EPOCH_CHANGE,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        LOGGER.info(
+                            "Received EPOCH_CHANGE sentinel: regionId={}, epoch={}, consumer={}",
+                            commitContext.getRegionId(),
+                            commitContext.getEpoch(),
+                            coreReportMessage());
+                        return Optional.of(new SubscriptionMessage(commitContext));
+                      });
+                  put(
+                      WATERMARK,
+                      (resp, timer) -> {
+                        final SubscriptionCommitContext commitContext = resp.getCommitContext();
+                        final WatermarkPayload payload = (WatermarkPayload) resp.getPayload();
+                        LOGGER.debug(
+                            "Received WATERMARK: regionId={}, timestamp={}, dataNodeId={}, consumer={}",
+                            commitContext.getRegionId(),
+                            payload.getWatermarkTimestamp(),
+                            payload.getDataNodeId(),
+                            coreReportMessage());
+                        return Optional.of(
+                            new SubscriptionMessage(
+                                commitContext, payload.getWatermarkTimestamp()));
+                      });
                 }
               });
+
+  /**
+   * Returns the set of DataNode IDs for providers that are currently available. Used by subclasses
+   * to detect unavailable DataNodes and notify the epoch ordering processor.
+   */
+  protected Set<Integer> getAvailableDataNodeIds() {
+    providers.acquireReadLock();
+    try {
+      final Set<Integer> ids = new HashSet<>();
+      for (final AbstractSubscriptionProvider provider : providers.getAllAvailableProviders()) {
+        ids.add(provider.getDataNodeId());
+      }
+      return ids;
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  /**
+   * Returns the latest watermark timestamp received from the server. This tracks the maximum data
+   * timestamp observed across all polled regions. Returns {@code Long.MIN_VALUE} if no watermark
+   * has been received yet.
+   */
+  public long getLatestWatermarkTimestamp() {
+    return latestWatermarkTimestamp;
+  }
 
   protected List<SubscriptionMessage> multiplePoll(
       /* @NotNull */ final Set<String> topicNames, final long timeoutMs) {
@@ -1371,6 +1470,44 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
             this, topicNames, providers);
     LOGGER.warn(errorMessage);
     throw new SubscriptionRuntimeCriticalException(errorMessage);
+  }
+
+  /**
+   * Sends seek request to ALL available providers. Unlike subscribe/unsubscribe, seek must reach
+   * every node because data regions for the topic may be distributed across different nodes.
+   */
+  private void seekWithRedirection(
+      final String topicName, final short seekType, final long timestamp)
+      throws SubscriptionException {
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seek topic %s",
+              this, topicName));
+    }
+    boolean anySuccess = false;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seek(topicName, seekType, timestamp);
+        anySuccess = true;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "{} failed to seek topic {} from subscription provider {}, continuing with other providers...",
+            this,
+            topicName,
+            provider,
+            e);
+      }
+    }
+    if (!anySuccess) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seek topic %s from all available subscription providers %s",
+              this, topicName, providers);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage);
+    }
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {

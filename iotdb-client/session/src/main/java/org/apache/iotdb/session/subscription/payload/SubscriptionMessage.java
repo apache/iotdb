@@ -25,6 +25,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,11 +38,15 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionMessageHandler handler;
 
+  /** Watermark timestamp, valid only when messageType == WATERMARK. */
+  private final long watermarkTimestamp;
+
   public SubscriptionMessage(
       final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
     this.handler = new SubscriptionSessionDataSetsHandler(tablets);
+    this.watermarkTimestamp = Long.MIN_VALUE;
   }
 
   public SubscriptionMessage(
@@ -51,6 +56,24 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
     this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
+    this.watermarkTimestamp = Long.MIN_VALUE;
+  }
+
+  /** Sentinel message carrying epoch boundary information. No handler needed. */
+  public SubscriptionMessage(final SubscriptionCommitContext commitContext) {
+    this.commitContext = commitContext;
+    this.messageType = SubscriptionMessageType.EPOCH_SENTINEL.getType();
+    this.handler = null;
+    this.watermarkTimestamp = Long.MIN_VALUE;
+  }
+
+  /** Watermark message carrying server-side timestamp progress for a region. */
+  public SubscriptionMessage(
+      final SubscriptionCommitContext commitContext, final long watermarkTimestamp) {
+    this.commitContext = commitContext;
+    this.messageType = SubscriptionMessageType.WATERMARK.getType();
+    this.handler = null;
+    this.watermarkTimestamp = watermarkTimestamp;
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -59,6 +82,34 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   public short getMessageType() {
     return messageType;
+  }
+
+  /**
+   * Returns the watermark timestamp carried by this message. Only valid when {@code
+   * getMessageType() == SubscriptionMessageType.WATERMARK.getType()}.
+   *
+   * @return the watermark timestamp, or {@code Long.MIN_VALUE} if not a watermark message
+   */
+  public long getWatermarkTimestamp() {
+    return watermarkTimestamp;
+  }
+
+  /**
+   * Estimates the heap memory occupied by this message in bytes. For tablet-based messages, this
+   * delegates to {@link Tablet#ramBytesUsed()} for accurate per-column estimation.
+   *
+   * @return estimated byte size
+   */
+  public long estimateSize() {
+    // Object header + references + primitives (rough constant)
+    long size = 64;
+    if (handler instanceof SubscriptionSessionDataSetsHandler) {
+      final Iterator<Tablet> it = ((SubscriptionSessionDataSetsHandler) handler).tabletIterator();
+      while (it.hasNext()) {
+        size += it.next().ramBytesUsed();
+      }
+    }
+    return size;
   }
 
   /////////////////////////////// override ///////////////////////////////

@@ -30,7 +30,7 @@ public class SubscriptionConfig {
   private static final CommonConfig COMMON_CONFIG = CommonDescriptor.getInstance().getConfig();
 
   public boolean getSubscriptionEnabled() {
-    return false;
+    return true; // TODO: make it configurable after subscription is stable
   }
 
   public float getSubscriptionCacheMemoryUsagePercentage() {
@@ -137,6 +137,58 @@ public class SubscriptionConfig {
     return COMMON_CONFIG.getSubscriptionMetaSyncerSyncIntervalMinutes();
   }
 
+  // Consensus subscription batching parameters
+  public int getSubscriptionConsensusBatchMaxDelayInMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxDelayInMs();
+  }
+
+  public long getSubscriptionConsensusBatchMaxSizeInBytes() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxSizeInBytes();
+  }
+
+  public int getSubscriptionConsensusBatchMaxTabletCount() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxTabletCount();
+  }
+
+  public int getSubscriptionConsensusBatchMaxWalEntries() {
+    return COMMON_CONFIG.getSubscriptionConsensusBatchMaxWalEntries();
+  }
+
+  public int getSubscriptionConsensusCommitPersistInterval() {
+    return COMMON_CONFIG.getSubscriptionConsensusCommitPersistInterval();
+  }
+
+  public boolean isSubscriptionConsensusCommitFsyncEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusCommitFsyncEnabled();
+  }
+
+  public boolean isSubscriptionConsensusExclusiveConsumption() {
+    return COMMON_CONFIG.isSubscriptionConsensusExclusiveConsumption();
+  }
+
+  public long getSubscriptionConsensusConsumerEvictionTimeoutMs() {
+    return COMMON_CONFIG.getSubscriptionConsensusConsumerEvictionTimeoutMs();
+  }
+
+  public boolean isSubscriptionConsensusLagBasedPriority() {
+    return COMMON_CONFIG.isSubscriptionConsensusLagBasedPriority();
+  }
+
+  public int getSubscriptionConsensusPrefetchingQueueCapacity() {
+    return COMMON_CONFIG.getSubscriptionConsensusPrefetchingQueueCapacity();
+  }
+
+  public boolean isSubscriptionConsensusEpochOrderingEnabled() {
+    return COMMON_CONFIG.isSubscriptionConsensusEpochOrderingEnabled();
+  }
+
+  public long getSubscriptionConsensusWatermarkIntervalMs() {
+    if (!COMMON_CONFIG.isSubscriptionConsensusWatermarkEnabled()) {
+      return -1;
+    }
+    return COMMON_CONFIG.getSubscriptionConsensusWatermarkIntervalMs();
+  }
+
   /////////////////////////////// Utils ///////////////////////////////
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionConfig.class);
@@ -207,6 +259,18 @@ public class SubscriptionConfig {
     LOGGER.info(
         "SubscriptionMetaSyncerSyncIntervalMinutes: {}",
         getSubscriptionMetaSyncerSyncIntervalMinutes());
+
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxDelayInMs: {}", getSubscriptionConsensusBatchMaxDelayInMs());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxSizeInBytes: {}",
+        getSubscriptionConsensusBatchMaxSizeInBytes());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxTabletCount: {}",
+        getSubscriptionConsensusBatchMaxTabletCount());
+    LOGGER.info(
+        "SubscriptionConsensusBatchMaxWalEntries: {}",
+        getSubscriptionConsensusBatchMaxWalEntries());
   }
 
   /////////////////////////////// Singleton ///////////////////////////////

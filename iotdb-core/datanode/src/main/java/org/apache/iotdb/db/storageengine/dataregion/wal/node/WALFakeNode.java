@@ -143,6 +143,16 @@ public class WALFakeNode implements IWALNode {
     return 0;
   }
 
+  @Override
+  public long getRegionDiskUsage() {
+    return 0;
+  }
+
+  @Override
+  public long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
         Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));

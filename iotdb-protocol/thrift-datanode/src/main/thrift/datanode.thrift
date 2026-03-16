@@ -597,6 +597,14 @@ struct TPushConsumerGroupMetaRespExceptionMessage {
   3: required i64 timeStamp
 }
 
+struct TPullCommitProgressReq {
+}
+
+struct TPullCommitProgressResp {
+  1: required common.TSStatus status
+  2: optional map<string, i64> commitProgress
+}
+
 struct TConstructViewSchemaBlackListReq {
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
@@ -1175,6 +1183,11 @@ service IDataNodeRPCService {
   * Send one consumer group meta to DataNodes.
   */
   TPushConsumerGroupMetaResp pushSingleConsumerGroupMeta(TPushSingleConsumerGroupMetaReq req)
+
+ /**
+  * Pull commit progress from DataNode for subscription consensus persistence
+  */
+  TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

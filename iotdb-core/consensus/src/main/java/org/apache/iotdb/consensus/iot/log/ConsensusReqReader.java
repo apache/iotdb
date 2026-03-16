@@ -90,4 +90,25 @@ public interface ConsensusReqReader {
 
   /** Get total size of wal files. */
   long getTotalSize();
+
+  /**
+   * Get disk usage of this specific WAL node (region-local), as opposed to {@link #getTotalSize()}
+   * which returns the global WAL disk usage across all WAL nodes.
+   */
+  default long getRegionDiskUsage() {
+    return getTotalSize();
+  }
+
+  /**
+   * Calculate the search index boundary that, if used as safelyDeletedSearchIndex, would free at
+   * least {@code bytesToFree} bytes of WAL files from the oldest files of this WAL node.
+   *
+   * @param bytesToFree the minimum number of bytes to free
+   * @return the startSearchIndex of the WAL file just after the freed range, or {@link
+   *     #DEFAULT_SAFELY_DELETED_SEARCH_INDEX} if no files need to be freed
+   */
+  default long getSearchIndexToFreeAtLeast(long bytesToFree) {
+    // Default implementation: if any freeing is needed, allow deleting everything.
+    return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  }
 }

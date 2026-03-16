@@ -71,6 +71,9 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
   private volatile SubscriptionCommitContext rootCommitContext;
 
   private static final long NACK_COUNT_REPORT_THRESHOLD = 3;
+
+  private static final long POISON_MESSAGE_NACK_THRESHOLD = 10;
+
   private final AtomicLong nackCount = new AtomicLong();
 
   /**
@@ -246,6 +249,15 @@ public class SubscriptionEvent implements Comparable<SubscriptionEvent> {
     if (nackCount.getAndIncrement() > NACK_COUNT_REPORT_THRESHOLD) {
       LOGGER.warn("{} has been nacked {} times", this, nackCount);
     }
+  }
+
+  /** Returns the current nack count for this event. */
+  public long getNackCount() {
+    return nackCount.get();
+  }
+
+  public boolean isPoisoned() {
+    return nackCount.get() >= POISON_MESSAGE_NACK_THRESHOLD;
   }
 
   public void recordLastPolledConsumerId(final String consumerId) {

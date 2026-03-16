@@ -191,6 +191,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllPipeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllSubscriptionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTopicInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetCommitProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDataNodeLocationsResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetJarInListReq;
@@ -2506,6 +2508,33 @@ public class ConfigManager implements IManager {
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? subscriptionManager.getSubscriptionCoordinator().getAllSubscriptionInfo()
         : new TGetAllSubscriptionInfoResp(status, Collections.emptyList());
+  }
+
+  public TGetCommitProgressResp getCommitProgress(TGetCommitProgressReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return new TGetCommitProgressResp(status);
+    }
+    final String key =
+        req.getConsumerGroupId()
+            + "##"
+            + req.getTopicName()
+            + "##"
+            + req.getRegionId()
+            + "##"
+            + req.getDataNodeId();
+    final Long committedSearchIndex =
+        subscriptionManager
+            .getSubscriptionCoordinator()
+            .getSubscriptionInfo()
+            .getCommitProgressKeeper()
+            .getProgress(key);
+    final TGetCommitProgressResp resp =
+        new TGetCommitProgressResp(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    if (committedSearchIndex != null) {
+      resp.setCommittedSearchIndex(committedSearchIndex);
+    }
+    return resp;
   }
 
   @Override

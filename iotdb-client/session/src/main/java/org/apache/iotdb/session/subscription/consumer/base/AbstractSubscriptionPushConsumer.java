@@ -26,6 +26,7 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeListener;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
 import org.apache.iotdb.session.subscription.util.CollectionUtils;
 
 import org.slf4j.Logger;
@@ -180,6 +181,22 @@ public abstract class AbstractSubscriptionPushConsumer extends AbstractSubscript
       try {
         final List<SubscriptionMessage> messages =
             multiplePoll(subscribedTopics.keySet(), autoPollTimeoutMs);
+        // Update watermark timestamp before stripping watermark events
+        for (final SubscriptionMessage m : messages) {
+          if (m.getMessageType() == SubscriptionMessageType.WATERMARK.getType()) {
+            final long ts = m.getWatermarkTimestamp();
+            if (ts > latestWatermarkTimestamp) {
+              latestWatermarkTimestamp = ts;
+            }
+          }
+        }
+        // Strip system messages — push consumer does not use processors
+        messages.removeIf(
+            m -> {
+              final short type = m.getMessageType();
+              return type == SubscriptionMessageType.EPOCH_SENTINEL.getType()
+                  || type == SubscriptionMessageType.WATERMARK.getType();
+            });
         if (messages.isEmpty()) {
           LOGGER.info(
               "SubscriptionPushConsumer {} poll empty message from topics {} after {} millisecond(s)",
