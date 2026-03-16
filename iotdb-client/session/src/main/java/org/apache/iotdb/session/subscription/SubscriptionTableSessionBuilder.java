@@ -58,6 +58,11 @@ public class SubscriptionTableSessionBuilder extends AbstractSessionBuilder {
     return this;
   }
 
+  public SubscriptionTableSessionBuilder connectionTimeoutInMs(final int connectionTimeoutInMs) {
+    super.connectionTimeoutInMs = connectionTimeoutInMs;
+    return this;
+  }
+
   public ISubscriptionTableSession build() throws IoTDBConnectionException {
     final ISubscriptionTableSession session = new SubscriptionTableSession(this);
     session.open();

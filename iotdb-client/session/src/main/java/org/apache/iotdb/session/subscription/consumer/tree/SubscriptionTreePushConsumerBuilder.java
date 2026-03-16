@@ -102,6 +102,13 @@ public class SubscriptionTreePushConsumerBuilder extends AbstractSubscriptionPus
   }
 
   @Override
+  public SubscriptionTreePushConsumerBuilder connectionTimeoutInMs(
+      final int connectionTimeoutInMs) {
+    super.connectionTimeoutInMs(connectionTimeoutInMs);
+    return this;
+  }
+
+  @Override
   public SubscriptionTreePushConsumerBuilder maxPollParallelism(final int maxPollParallelism) {
     super.maxPollParallelism(maxPollParallelism);
     return this;
