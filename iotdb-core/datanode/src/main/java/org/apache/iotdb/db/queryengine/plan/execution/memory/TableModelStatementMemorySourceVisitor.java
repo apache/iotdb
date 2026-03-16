@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -34,16 +34,21 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD
 import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -132,23 +137,17 @@ public class TableModelStatementMemorySourceVisitor
 
   @Override
   public StatementMemorySource visitDescribeQuery(
-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery node,
-      TableModelStatementMemorySourceContext context) {
+      final DescribeQuery node, final TableModelStatementMemorySourceContext context) {
 
-    java.util.List<org.apache.iotdb.commons.schema.column.ColumnHeader> columnHeaders =
-        new java.util.ArrayList<>();
-    columnHeaders.add(
-        new org.apache.iotdb.commons.schema.column.ColumnHeader(
-            "Column", org.apache.tsfile.enums.TSDataType.TEXT));
-    columnHeaders.add(
-        new org.apache.iotdb.commons.schema.column.ColumnHeader(
-            "Type", org.apache.tsfile.enums.TSDataType.TEXT));
+    List<ColumnHeader> columnHeaders = new ArrayList<>();
+    // Jackie's requested lowercase headers
+    columnHeaders.add(new ColumnHeader("column_name", TSDataType.TEXT));
+    columnHeaders.add(new ColumnHeader("column_type", TSDataType.TEXT));
 
-    org.apache.iotdb.db.queryengine.common.header.DatasetHeader datasetHeader =
-        new org.apache.iotdb.db.queryengine.common.header.DatasetHeader(columnHeaders, true);
+    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);
 
-    java.util.List<String> columnNames = new java.util.ArrayList<>();
-    java.util.List<String> columnTypes = new java.util.ArrayList<>();
+    List<String> columnNames = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
 
     context
         .getAnalysis()
@@ -160,24 +159,19 @@ public class TableModelStatementMemorySourceVisitor
               columnTypes.add(field.getType().toString());
             });
 
-    org.apache.tsfile.read.common.block.TsBlockBuilder builder =
-        new org.apache.tsfile.read.common.block.TsBlockBuilder(
-            java.util.Arrays.asList(
-                org.apache.tsfile.enums.TSDataType.TEXT, org.apache.tsfile.enums.TSDataType.TEXT));
+    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < columnNames.size(); i++) {
       builder.getTimeColumnBuilder().writeLong(0);
 
+      // Jackie's Fix: No more long paths, just simple class names
       builder
           .getColumnBuilder(0)
-          .writeBinary(
-              new org.apache.tsfile.utils.Binary(
-                  columnNames.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+          .writeBinary(new Binary(columnNames.get(i), TSFileConfig.STRING_CHARSET));
+
       builder
           .getColumnBuilder(1)
-          .writeBinary(
-              new org.apache.tsfile.utils.Binary(
-                  columnTypes.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+          .writeBinary(new Binary(columnTypes.get(i), TSFileConfig.STRING_CHARSET));
 
       builder.declarePosition();
     }

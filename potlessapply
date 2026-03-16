@@ -1,0 +1,222 @@
+warning: in the working copy of 'integration-test/src/test/java/org/apache/iotdb/relational/it/query/recent/IoTDBDescribeTableIT.java', CRLF will be replaced by LF the next time Git touches it
+[1mdiff --git a/integration-test/src/test/java/org/apache/iotdb/relational/it/query/recent/IoTDBDescribeTableIT.java b/integration-test/src/test/java/org/apache/iotdb/relational/it/query/recent/IoTDBDescribeTableIT.java[m
+[1mindex e69de29bb2..8d63dfb12c 100644[m
+[1m--- a/integration-test/src/test/java/org/apache/iotdb/relational/it/query/recent/IoTDBDescribeTableIT.java[m
+[1m+++ b/integration-test/src/test/java/org/apache/iotdb/relational/it/query/recent/IoTDBDescribeTableIT.java[m
+[36m@@ -0,0 +1,32 @@[m
+[32m+[m[32mpackage org.apache.iotdb.relational.it.query.recent;[m
+[32m+[m
+[32m+[m[32mimport org.apache.iotdb.it.env.EnvFactory;[m
+[32m+[m[32mimport org.apache.iotdb.itbase.category.TableLocalStandaloneIT;[m
+[32m+[m[32mimport org.junit.Test;[m
+[32m+[m[32mimport org.junit.experimental.categories.Category;[m
+[32m+[m[32mimport java.sql.Connection;[m
+[32m+[m[32mimport java.sql.ResultSet;[m
+[32m+[m[32mimport java.sql.ResultSetMetaData;[m
+[32m+[m[32mimport java.sql.Statement;[m
+[32m+[m[32mimport static org.junit.Assert.assertEquals;[m
+[32m+[m[32mimport static org.junit.Assert.fail;[m
+[32m+[m
+[32m+[m[32m@Category({TableLocalStandaloneIT.class})[m
+[32m+[m[32mpublic class IoTDBDescribeTableIT {[m
+[32m+[m[32m    @Test[m
+[32m+[m[32m    public void testDescribeTable() {[m
+[32m+[m[32m        try (Connection connection = EnvFactory.getEnv().getConnection("TABLE");[m
+[32m+[m[32m             Statement statement = connection.createStatement()) {[m
+[32m+[m[32m            statement.execute("CREATE DATABASE test_db");[m
+[32m+[m[32m            statement.execute("USE test_db");[m
+[32m+[m[32m            statement.execute("CREATE TABLE t1 (id1 TAG, s1 INT32)");[m
+[32m+[m[32m            try (ResultSet resultSet = statement.executeQuery("DESCRIBE t1")) {[m
+[32m+[m[32m                ResultSetMetaData metaData = resultSet.getMetaData();[m
+[32m+[m[32m                assertEquals("column_name", metaData.getColumnName(1).toLowerCase());[m
+[32m+[m[32m                assertEquals("column_type", metaData.getColumnName(2).toLowerCase());[m
+[32m+[m[32m            }[m
+[32m+[m[32m        } catch (Exception e) {[m
+[32m+[m[32m            fail(e.getMessage());[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+[32m+[m[32m}[m
+\ No newline at end of file[m
+[1mdiff --git a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution/memory/TableModelStatementMemorySourceVisitor.java b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution/memory/TableModelStatementMemorySourceVisitor.java[m
+[1mindex b3ee230d2e..f75179d9a9 100644[m
+[1m--- a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution/memory/TableModelStatementMemorySourceVisitor.java[m
+[1m+++ b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/execution/memory/TableModelStatementMemorySourceVisitor.java[m
+[36m@@ -7,7 +7,7 @@[m
+  * "License"); you may not use this file except in compliance[m
+  * with the License.  You may obtain a copy of the License at[m
+  *[m
+[31m- *     http://www.apache.org/licenses/LICENSE-2.0[m
+[32m+[m[32m * http://www.apache.org/licenses/LICENSE-2.0[m
+  *[m
+  * Unless required by applicable law or agreed to in writing,[m
+  * software distributed under the License is distributed on an[m
+[36m@@ -34,16 +34,21 @@[m [mimport org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableD[m
+ import org.apache.iotdb.db.queryengine.plan.relational.planner.distribute.TableDistributedPlanner;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.AstVisitor;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CountDevice;[m
+[32m+[m[32mimport org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Explain;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Node;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowDevice;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;[m
+ [m
+[32m+[m[32mimport org.apache.tsfile.common.conf.TSFileConfig;[m
+ import org.apache.tsfile.enums.TSDataType;[m
+ import org.apache.tsfile.read.common.block.TsBlock;[m
+[32m+[m[32mimport org.apache.tsfile.read.common.block.TsBlockBuilder;[m
+[32m+[m[32mimport org.apache.tsfile.utils.Binary;[m
+ import org.apache.tsfile.utils.Pair;[m
+ [m
+ import java.util.ArrayList;[m
+[32m+[m[32mimport java.util.Arrays;[m
+ import java.util.Collections;[m
+ import java.util.List;[m
+ import java.util.Map;[m
+[36m@@ -132,23 +137,17 @@[m [mpublic class TableModelStatementMemorySourceVisitor[m
+ [m
+   @Override[m
+   public StatementMemorySource visitDescribeQuery([m
+[31m-      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeQuery node,[m
+[31m-      TableModelStatementMemorySourceContext context) {[m
+[32m+[m[32m      final DescribeQuery node, final TableModelStatementMemorySourceContext context) {[m
+ [m
+[31m-    java.util.List<org.apache.iotdb.commons.schema.column.ColumnHeader> columnHeaders =[m
+[31m-        new java.util.ArrayList<>();[m
+[31m-    columnHeaders.add([m
+[31m-        new org.apache.iotdb.commons.schema.column.ColumnHeader([m
+[31m-            "Column", org.apache.tsfile.enums.TSDataType.TEXT));[m
+[31m-    columnHeaders.add([m
+[31m-        new org.apache.iotdb.commons.schema.column.ColumnHeader([m
+[31m-            "Type", org.apache.tsfile.enums.TSDataType.TEXT));[m
+[32m+[m[32m    List<ColumnHeader> columnHeaders = new ArrayList<>();[m
+[32m+[m[32m    // Jackie's requested lowercase headers[m
+[32m+[m[32m    columnHeaders.add(new ColumnHeader("column_name", TSDataType.TEXT));[m
+[32m+[m[32m    columnHeaders.add(new ColumnHeader("column_type", TSDataType.TEXT));[m
+ [m
+[31m-    org.apache.iotdb.db.queryengine.common.header.DatasetHeader datasetHeader =[m
+[31m-        new org.apache.iotdb.db.queryengine.common.header.DatasetHeader(columnHeaders, true);[m
+[32m+[m[32m    DatasetHeader datasetHeader = new DatasetHeader(columnHeaders, true);[m
+ [m
+[31m-    java.util.List<String> columnNames = new java.util.ArrayList<>();[m
+[31m-    java.util.List<String> columnTypes = new java.util.ArrayList<>();[m
+[32m+[m[32m    List<String> columnNames = new ArrayList<>();[m
+[32m+[m[32m    List<String> columnTypes = new ArrayList<>();[m
+ [m
+     context[m
+         .getAnalysis()[m
+[36m@@ -160,24 +159,19 @@[m [mpublic class TableModelStatementMemorySourceVisitor[m
+               columnTypes.add(field.getType().toString());[m
+             });[m
+ [m
+[31m-    org.apache.tsfile.read.common.block.TsBlockBuilder builder =[m
+[31m-        new org.apache.tsfile.read.common.block.TsBlockBuilder([m
+[31m-            java.util.Arrays.asList([m
+[31m-                org.apache.tsfile.enums.TSDataType.TEXT, org.apache.tsfile.enums.TSDataType.TEXT));[m
+[32m+[m[32m    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));[m
+ [m
+     for (int i = 0; i < columnNames.size(); i++) {[m
+       builder.getTimeColumnBuilder().writeLong(0);[m
+ [m
+[32m+[m[32m      // Jackie's Fix: No more long paths, just simple class names[m
+       builder[m
+           .getColumnBuilder(0)[m
+[31m-          .writeBinary([m
+[31m-              new org.apache.tsfile.utils.Binary([m
+[31m-                  columnNames.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));[m
+[32m+[m[32m          .writeBinary(new Binary(columnNames.get(i), TSFileConfig.STRING_CHARSET));[m
+[32m+[m
+       builder[m
+           .getColumnBuilder(1)[m
+[31m-          .writeBinary([m
+[31m-              new org.apache.tsfile.utils.Binary([m
+[31m-                  columnTypes.get(i).getBytes(java.nio.charset.StandardCharsets.UTF_8)));[m
+[32m+[m[32m          .writeBinary(new Binary(columnTypes.get(i), TSFileConfig.STRING_CHARSET));[m
+ [m
+       builder.declarePosition();[m
+     }[m
+[1mdiff --git a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/ast/AstVisitor.java b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/ast/AstVisitor.java[m
+[1mindex 154e1d0a01..38c684d2e3 100644[m
+[1m--- a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/ast/AstVisitor.java[m
+[1m+++ b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/ast/AstVisitor.java[m
+[36m@@ -445,10 +445,6 @@[m [mpublic abstract class AstVisitor<R, C> {[m
+     return visitStatement(node, context);[m
+   }[m
+ [m
+[31m-  protected R visitDescribeTable(DescribeTable node, C context) {[m
+[31m-    return visitStatement(node, context);[m
+[31m-  }[m
+[31m-[m
+   protected R visitDescribeQuery(DescribeQuery node, C context) {[m
+     return visitStatement(node, context);[m
+   }[m
+[36m@@ -549,6 +545,11 @@[m [mpublic abstract class AstVisitor<R, C> {[m
+     return visitNode(node, context);[m
+   }[m
+ [m
+[32m+[m[32m  protected R visitDescribeTable([m
+[32m+[m[32m      org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable node, C context) {[m
+[32m+[m[32m    return visitStatement(node, context);[m
+[32m+[m[32m  }[m
+[32m+[m
+   protected R visitGroupingElement(GroupingElement node, C context) {[m
+     return visitNode(node, context);[m
+   }[m
+[1mdiff --git a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/util/SqlFormatter.java b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/util/SqlFormatter.java[m
+[1mindex 0c1d862a88..cbc32a2318 100644[m
+[1m--- a/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/util/SqlFormatter.java[m
+[1m+++ b/iotdb-core/datanode/src/main/java/org/apache/iotdb/db/queryengine/plan/relational/sql/util/SqlFormatter.java[m
+[36m@@ -34,6 +34,7 @@[m [mimport org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTable;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateTopic;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.CreateView;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Delete;[m
+[32m+[m[32mimport org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DescribeTable;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropColumn;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropDB;[m
+ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.DropFunction;[m
+[36m@@ -1711,6 +1712,13 @@[m [mpublic final class SqlFormatter {[m
+       }[m
+     }[m
+ [m
+[32m+[m[32m    @Override[m
+[32m+[m[32m    protected Void visitDescribeTable(DescribeTable node, Integer indent) {[m
+[32m+[m[32m      builder.append("DESCRIBE ");[m
+[32m+[m[32m      builder.append(node.getTable().toString());[m
+[32m+[m[32m      return null;[m
+[32m+[m[32m    }[m
+[32m+[m
+     @Override[m
+     public Void visitTableArgument(TableFunctionTableArgument node, Integer indent) {[m
+       Relation relation = node.getTable();[m
+[1mdiff --git a/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/schema/column/ColumnHeaderConstant.java b/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/schema/column/ColumnHeaderConstant.java[m
+[1mindex 55fecde7c3..e1d97ae9dc 100644[m
+[1m--- a/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/schema/column/ColumnHeaderConstant.java[m
+[1m+++ b/iotdb-core/node-commons/src/main/java/org/apache/iotdb/commons/schema/column/ColumnHeaderConstant.java[m
+[36m@@ -349,6 +349,9 @@[m [mpublic class ColumnHeaderConstant {[m
+   public static final String SHOW_CONFIGURATIONS_DEFAULT_VALUE = "default_value";[m
+   public static final String SHOW_CONFIGURATIONS_DESCRIPTION = "description";[m
+ [m
+[32m+[m[32m  public static final String COLUMN_NAME_DUCKDB = "column_name";[m
+[32m+[m[32m  public static final String COLUMN_TYPE_DUCKDB = "column_type";[m
+[32m+[m
+   public static final List<ColumnHeader> lastQueryColumnHeaders =[m
+       ImmutableList.of([m
+           new ColumnHeader(TIMESERIES, TSDataType.TEXT),[m
+[36m@@ -708,14 +711,14 @@[m [mpublic class ColumnHeaderConstant {[m
+ [m
+   public static final List<ColumnHeader> describeTableColumnHeaders =[m
+       ImmutableList.of([m
+[31m-          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),[m
+[31m-          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),[m
+[32m+[m[32m          new ColumnHeader(COLUMN_NAME_DUCKDB, TSDataType.TEXT),[m
+[32m+[m[32m          new ColumnHeader(COLUMN_TYPE_DUCKDB, TSDataType.TEXT),[m
+           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT));[m
+ [m
+   public static final List<ColumnHeader> describeTableDetailsColumnHeaders =[m
+       ImmutableList.of([m
+[31m-          new ColumnHeader(COLUMN_NAME, TSDataType.TEXT),[m
+[31m-          new ColumnHeader(COLUMN_DATA_TYPE, TSDataType.TEXT),[m
+[32m+[m[32m          new ColumnHeader(COLUMN_NAME_DUCKDB, TSDataType.TEXT),[m
+[32m+[m[32m          new ColumnHeader(COLUMN_TYPE_DUCKDB, TSDataType.TEXT),[m
+           new ColumnHeader(COLUMN_CATEGORY, TSDataType.TEXT),[m
+           new ColumnHeader(STATUS, TSDataType.TEXT),[m
+           new ColumnHeader(COMMENT, TSDataType.TEXT));[m
