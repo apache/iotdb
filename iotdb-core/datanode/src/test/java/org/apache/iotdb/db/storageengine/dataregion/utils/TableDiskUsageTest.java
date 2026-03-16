@@ -28,10 +28,10 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.compaction.tablemodel.CompactionTableModelTestFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndexReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
@@ -60,7 +60,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, InterruptedException {
     super.setUp();
-    TableDiskUsageCache.getInstance().ensureRunning();
+    TableDiskUsageIndex.getInstance().ensureRunning();
     mockDataRegion = Mockito.mock(DataRegion.class);
     Mockito.when(mockDataRegion.getDatabaseName()).thenReturn("test");
     Mockito.when(mockDataRegion.getDataRegionId()).thenReturn(0);
@@ -69,7 +69,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     StorageEngine.getInstance().setDataRegion(new DataRegionId(0), mockDataRegion);
     mockTsFileManager = new TsFileManager("test", "0", "");
     Mockito.when(mockDataRegion.getTsFileManager()).thenReturn(mockTsFileManager);
-    TableDiskUsageCache.getInstance().registerRegion(mockDataRegion);
+    TableDiskUsageIndex.getInstance().registerRegion(mockDataRegion);
   }
 
   @After
@@ -116,7 +116,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     Map<String, Long> tableSizeMap = new HashMap<>();
     tableSizeMap.put("table1", 10000000L);
     tableSizeMap.put("table2", 10000000L);
-    TableDiskUsageCache.getInstance()
+    TableDiskUsageIndex.getInstance()
         .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), tableSizeMap);
 
     TsFileResource resource2 = prepareFile(4);
@@ -153,7 +153,7 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     Map<String, Long> tableSizeMap = new HashMap<>();
     tableSizeMap.put("table1", 10000000L);
     tableSizeMap.put("table2", 10000000L);
-    TableDiskUsageCache.getInstance()
+    TableDiskUsageIndex.getInstance()
         .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), tableSizeMap);
 
     TsFileResource resource2 = prepareFile(4);
@@ -165,8 +165,8 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     timePartitionTableSizeMap.put("table1", 0L);
     timePartitionTableSizeMap.put("table2", 0L);
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
-    TableDiskUsageCacheReader reader =
-        new TableDiskUsageCacheReader(mockDataRegion, context, false);
+    TableDiskUsageIndexReader reader =
+        new TableDiskUsageIndexReader(mockDataRegion, context, false);
     queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
@@ -191,13 +191,13 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     Map<String, Long> tableSizeMap = new HashMap<>();
     tableSizeMap.put("table1", 10000000L);
     tableSizeMap.put("table2", 10000000L);
-    TableDiskUsageCache.getInstance()
+    TableDiskUsageIndex.getInstance()
         .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), tableSizeMap);
 
     TsFileResource resource2 = prepareFile(4);
     mockTsFileManager.add(resource2, true);
     // resource1 renamed to resource2 and recorded in cache
-    TableDiskUsageCache.getInstance()
+    TableDiskUsageIndex.getInstance()
         .write(mockDataRegion.getDatabaseName(), resource1.getTsFileID(), resource2.getTsFileID());
 
     DataRegionTableSizeQueryContext context = new DataRegionTableSizeQueryContext(false);
@@ -206,8 +206,8 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
     timePartitionTableSizeMap.put("table1", 0L);
     timePartitionTableSizeMap.put("table2", 0L);
     context.addTimePartition(0, new TimePartitionTableSizeQueryContext(timePartitionTableSizeMap));
-    TableDiskUsageCacheReader reader =
-        new TableDiskUsageCacheReader(mockDataRegion, context, false);
+    TableDiskUsageIndexReader reader =
+        new TableDiskUsageIndexReader(mockDataRegion, context, false);
     queryTableSize(context);
     int entryNum = 0;
     for (Map.Entry<Long, TimePartitionTableSizeQueryContext> timePartitionEntry :
@@ -255,15 +255,15 @@ public class TableDiskUsageTest extends AbstractCompactionTest {
   }
 
   private void queryTableSize(DataRegionTableSizeQueryContext queryContext) throws Exception {
-    TableDiskUsageCacheReader reader =
-        new TableDiskUsageCacheReader(mockDataRegion, queryContext, false);
+    TableDiskUsageIndexReader reader =
+        new TableDiskUsageIndexReader(mockDataRegion, queryContext, false);
     try {
-      Assert.assertTrue(reader.prepareCacheReader(System.nanoTime(), Long.MAX_VALUE));
-      Assert.assertTrue(reader.loadObjectFileTableSizeCache(System.nanoTime(), Long.MAX_VALUE));
-      Assert.assertTrue(reader.prepareCachedTsFileIDKeys(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.prepareIndexReader(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.loadObjectFileTableSizeIndex(System.nanoTime(), Long.MAX_VALUE));
+      Assert.assertTrue(reader.prepareIndexTsFileIDKeys(System.nanoTime(), Long.MAX_VALUE));
       Assert.assertTrue(reader.checkAllFilesInTsFileManager(System.nanoTime(), Long.MAX_VALUE));
       Assert.assertTrue(
-          reader.readCacheValueFilesAndUpdateResultMap(System.nanoTime(), Long.MAX_VALUE));
+          reader.readIndexValueFilesAndUpdateResultMap(System.nanoTime(), Long.MAX_VALUE));
     } finally {
       reader.close();
     }

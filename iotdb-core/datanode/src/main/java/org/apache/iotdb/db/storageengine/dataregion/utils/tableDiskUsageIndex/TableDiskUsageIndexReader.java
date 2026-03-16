@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.utils.TableDiskUsageStatisticUtil;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.IObjectTableSizeIndexReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableSizeIndexReader;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -38,15 +38,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class TableDiskUsageCacheReader implements Closeable {
+public class TableDiskUsageIndexReader implements Closeable {
 
   private final DataRegion dataRegion;
   private final DataRegionTableSizeQueryContext dataRegionContext;
 
-  private CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>>
+  private CompletableFuture<Pair<TsFileTableSizeIndexReader, IObjectTableSizeIndexReader>>
       prepareReaderFuture;
-  private TsFileTableSizeCacheReader tsFileTableSizeCacheReader;
-  private IObjectTableSizeCacheReader objectTableSizeCacheReader;
+  private TsFileTableSizeIndexReader tsFileTableSizeIndexReader;
+  private IObjectTableSizeIndexReader objectTableSizeIndexReader;
 
   private boolean objectFileSizeLoaded = false;
   private boolean tsFileIdKeysPrepared = false;
@@ -57,10 +57,10 @@ public class TableDiskUsageCacheReader implements Closeable {
   private final boolean currentDatabaseOnlyHasOneTable;
   private TableDiskUsageStatisticUtil tableDiskUsageStatisticUtil;
 
-  private final List<Pair<TsFileID, Long>> tsFilesToQueryInCache = new ArrayList<>();
-  private Iterator<Pair<TsFileID, Long>> tsFilesToQueryInCacheIterator = null;
+  private final List<Pair<TsFileID, Long>> tsFilesToQueryInIndex = new ArrayList<>();
+  private Iterator<Pair<TsFileID, Long>> iteratorOfTsFilesToQueryInIndex = null;
 
-  public TableDiskUsageCacheReader(
+  public TableDiskUsageIndexReader(
       DataRegion dataRegion,
       DataRegionTableSizeQueryContext dataRegionContext,
       boolean databaseHasOnlyOneTable) {
@@ -75,21 +75,21 @@ public class TableDiskUsageCacheReader implements Closeable {
     dataRegionContext.reserveMemoryForResultMap();
   }
 
-  public boolean prepareCacheReader(long startTime, long maxRunTime) throws Exception {
-    if (this.tsFileTableSizeCacheReader == null) {
+  public boolean prepareIndexReader(long startTime, long maxRunTime) throws Exception {
+    if (this.tsFileTableSizeIndexReader == null) {
       this.prepareReaderFuture =
           this.prepareReaderFuture == null
-              ? TableDiskUsageCache.getInstance().startRead(dataRegion, true, true)
+              ? TableDiskUsageIndex.getInstance().startRead(dataRegion, true, true)
               : this.prepareReaderFuture;
       // Ensure we perform at least one check on the future even if the remaining
       // runtime is already exhausted.
       long waitTime = Math.max(0, maxRunTime - (System.nanoTime() - startTime));
       try {
-        Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader> readerPair =
+        Pair<TsFileTableSizeIndexReader, IObjectTableSizeIndexReader> readerPair =
             prepareReaderFuture.get(waitTime, TimeUnit.NANOSECONDS);
-        this.tsFileTableSizeCacheReader = readerPair.left;
-        this.tsFileTableSizeCacheReader.openKeyFile();
-        this.objectTableSizeCacheReader = readerPair.right;
+        this.tsFileTableSizeIndexReader = readerPair.left;
+        this.tsFileTableSizeIndexReader.openKeyFile();
+        this.objectTableSizeIndexReader = readerPair.right;
       } catch (TimeoutException timeoutException) {
         return false;
       }
@@ -97,24 +97,24 @@ public class TableDiskUsageCacheReader implements Closeable {
     return true;
   }
 
-  public boolean loadObjectFileTableSizeCache(long startTime, long maxRunTime) throws Exception {
+  public boolean loadObjectFileTableSizeIndex(long startTime, long maxRunTime) throws Exception {
     if (objectFileSizeLoaded) {
       return true;
     }
-    if (objectTableSizeCacheReader.loadObjectFileTableSize(
+    if (objectTableSizeIndexReader.loadObjectFileTableSize(
         dataRegionContext, startTime, maxRunTime)) {
-      closeObjectFileTableSizeCacheReader();
+      closeObjectFileTableSizeIndexReader();
       objectFileSizeLoaded = true;
       return true;
     }
     return false;
   }
 
-  public boolean prepareCachedTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
+  public boolean prepareIndexTsFileIDKeys(long startTime, long maxRunTime) throws Exception {
     if (tsFileIdKeysPrepared) {
       return true;
     }
-    if (tsFileTableSizeCacheReader.readFromKeyFile(dataRegionContext, startTime, maxRunTime)) {
+    if (tsFileTableSizeIndexReader.readFromKeyFile(dataRegionContext, startTime, maxRunTime)) {
       dataRegionContext.reserveMemoryForTsFileIDs();
       tsFileIdKeysPrepared = true;
       return true;
@@ -153,7 +153,7 @@ public class TableDiskUsageCacheReader implements Closeable {
                 currentTimePartitionEntry.getValue(),
                 dataRegionContext.isNeedAllData(),
                 currentDatabaseOnlyHasOneTable,
-                tsFilesToQueryInCache,
+                tsFilesToQueryInIndex,
                 dataRegionContext.getFragmentInstanceContext());
       } else {
         closeTableDiskUsageStatisticUtil();
@@ -162,15 +162,15 @@ public class TableDiskUsageCacheReader implements Closeable {
     }
   }
 
-  public boolean readCacheValueFilesAndUpdateResultMap(long startTime, long maxRunTime)
+  public boolean readIndexValueFilesAndUpdateResultMap(long startTime, long maxRunTime)
       throws IOException {
-    if (this.tsFilesToQueryInCacheIterator == null) {
-      this.tsFilesToQueryInCache.sort(Comparator.comparingLong(Pair::getRight));
-      this.tsFilesToQueryInCacheIterator = tsFilesToQueryInCache.iterator();
-      this.tsFileTableSizeCacheReader.openValueFile();
+    if (this.iteratorOfTsFilesToQueryInIndex == null) {
+      this.tsFilesToQueryInIndex.sort(Comparator.comparingLong(Pair::getRight));
+      this.iteratorOfTsFilesToQueryInIndex = tsFilesToQueryInIndex.iterator();
+      this.tsFileTableSizeIndexReader.openValueFile();
     }
-    return tsFileTableSizeCacheReader.readFromValueFile(
-        tsFilesToQueryInCacheIterator, dataRegionContext, startTime, maxRunTime);
+    return tsFileTableSizeIndexReader.readFromValueFile(
+        iteratorOfTsFilesToQueryInIndex, dataRegionContext, startTime, maxRunTime);
   }
 
   public DataRegion getDataRegion() {
@@ -180,10 +180,10 @@ public class TableDiskUsageCacheReader implements Closeable {
   @Override
   public void close() throws IOException {
     closeTableDiskUsageStatisticUtil();
-    closeTsFileTableSizeCacheReader();
-    closeObjectFileTableSizeCacheReader();
+    closeTsFileTableSizeIndexReader();
+    closeObjectFileTableSizeIndexReader();
     if (prepareReaderFuture != null) {
-      TableDiskUsageCache.getInstance().endRead(dataRegion);
+      TableDiskUsageIndex.getInstance().endRead(dataRegion);
       prepareReaderFuture = null;
     }
     dataRegionContext.releaseMemory();
@@ -196,16 +196,16 @@ public class TableDiskUsageCacheReader implements Closeable {
     }
   }
 
-  private void closeTsFileTableSizeCacheReader() {
-    if (tsFileTableSizeCacheReader != null) {
-      tsFileTableSizeCacheReader.closeCurrentFile();
+  private void closeTsFileTableSizeIndexReader() {
+    if (tsFileTableSizeIndexReader != null) {
+      tsFileTableSizeIndexReader.closeCurrentFile();
     }
   }
 
-  private void closeObjectFileTableSizeCacheReader() {
-    if (objectTableSizeCacheReader != null) {
-      objectTableSizeCacheReader.close();
-      objectTableSizeCacheReader = null;
+  private void closeObjectFileTableSizeIndexReader() {
+    if (objectTableSizeIndexReader != null) {
+      objectTableSizeIndexReader.close();
+      objectTableSizeIndexReader = null;
     }
   }
 }

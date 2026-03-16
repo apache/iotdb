@@ -138,7 +138,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeInd
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.fileTimeIndexCache.FileTimeIndexCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.utils.validate.TsFileValidator;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
@@ -430,7 +430,7 @@ public class DataRegion implements IDataRegionForQuery {
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             databaseName + "-" + dataRegionIdString + "-UpgradeMod");
 
-    TableDiskUsageCache.getInstance().registerRegion(this);
+    TableDiskUsageIndex.getInstance().registerRegion(this);
 
     // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
     if (config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RATIS_CONSENSUS)
@@ -2050,7 +2050,7 @@ public class DataRegion implements IDataRegionForQuery {
         databaseName + "-" + dataRegionIdString,
         systemDir);
     int regionId = dataRegionId.getId();
-    TableDiskUsageCache.getInstance().remove(databaseName, regionId);
+    TableDiskUsageIndex.getInstance().remove(databaseName, regionId);
     FileTimeIndexCacheRecorder.getInstance().removeFileTimeIndexCache(regionId);
     writeLock("deleteFolder");
     try {
@@ -3960,7 +3960,7 @@ public class DataRegion implements IDataRegionForQuery {
 
       tableSizeMap.ifPresent(
           stringLongMap ->
-              TableDiskUsageCache.getInstance()
+              TableDiskUsageIndex.getInstance()
                   .write(databaseName, newTsFileResource.getTsFileID(), stringLongMap));
 
       FileMetrics.getInstance()

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
@@ -44,14 +44,14 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
     this.tableSizeResultMap = tableSizeResultMap;
   }
 
-  public void addCachedTsFileIDAndOffsetInValueFile(TsFileID tsFileID, long offset) {
+  public void addIndexedTsFileIDAndOffsetInValueFile(TsFileID tsFileID, long offset) {
     if (tsFileIDOffsetInValueFileMap == null) {
       tsFileIDOffsetInValueFileMap = new HashMap<>();
     }
     tsFileIDOffsetInValueFileMap.put(tsFileID, offset);
   }
 
-  public void replaceCachedTsFileID(TsFileID originTsFileID, TsFileID newTsFileID) {
+  public void replaceIndexedTsFileID(TsFileID originTsFileID, TsFileID newTsFileID) {
     if (tsFileIDOffsetInValueFileMap == null) {
       return;
     }
@@ -73,7 +73,7 @@ public class TimePartitionTableSizeQueryContext implements Accountable {
     return tableSizeResultMap;
   }
 
-  public Long getCachedTsFileIdOffset(TsFileID tsFileID) {
+  public Long getIndexedTsFileIdOffset(TsFileID tsFileID) {
     return tsFileIDOffsetInValueFileMap == null ? null : tsFileIDOffsetInValueFileMap.get(tsFileID);
   }
 

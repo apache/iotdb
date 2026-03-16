@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.EmptyObjectTableSizeCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object.IObjectTableSizeCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.EmptyObjectTableSizeIndexReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object.IObjectTableSizeIndexReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableDiskUsageIndexWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableSizeIndexReader;
 
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
@@ -44,17 +44,17 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class TableDiskUsageCache {
-  protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageCache.class);
+public class TableDiskUsageIndex {
+  protected static final Logger LOGGER = LoggerFactory.getLogger(TableDiskUsageIndex.class);
   protected final BlockingQueue<Operation> queue = new LinkedBlockingQueue<>(1000);
   // regionId -> writer mapping
-  protected final Map<Integer, DataRegionTableSizeCacheWriter> writerMap = new HashMap<>();
+  protected final Map<Integer, DataRegionTableSizeIndexWriter> writerMap = new HashMap<>();
   protected ScheduledExecutorService scheduledExecutorService;
   private int processedOperationCountSinceLastPeriodicCheck = 0;
   protected volatile boolean failedToRecover = false;
   private volatile boolean stop = false;
 
-  protected TableDiskUsageCache() {
+  protected TableDiskUsageIndex() {
     scheduledExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.TABLE_SIZE_INDEX_RECORD.getName());
@@ -65,8 +65,8 @@ public class TableDiskUsageCache {
     try {
       while (!stop) {
         try {
-          for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
-            syncTsFileTableSizeCacheIfNecessary(writer);
+          for (DataRegionTableSizeIndexWriter writer : writerMap.values()) {
+            syncTsFileTableSizeIndexIfNecessary(writer);
             persistPendingObjectDeltasIfNecessary(writer);
           }
           Operation operation = queue.poll(5, TimeUnit.SECONDS);
@@ -80,19 +80,20 @@ public class TableDiskUsageCache {
         } catch (InterruptedException e) {
           // Ignore unexpected interruptions to guarantee the worker thread continues running.
           // This worker relies on the `stop` flag to terminate gracefully. Therefore, if an
-          // interruption occurs while the cache is still active, we log the event and keep
+          // interruption occurs while TableDiskUsageIndex is still active, we log the event and
+          // keep
           // processing subsequent operations.
           if (!stop) {
             LOGGER.warn(
-                "TableDiskUsageCache worker thread was interrupted unexpectedly while waiting for operations.",
+                "TableDiskUsageIndex worker thread was interrupted unexpectedly while waiting for operations.",
                 e);
           }
         } catch (Exception e) {
-          LOGGER.error("Meet exception when apply TableDiskUsageCache operation.", e);
+          LOGGER.error("Meet exception when apply TableDiskUsageIndex operation.", e);
         }
       }
     } finally {
-      writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
+      writerMap.values().forEach(DataRegionTableSizeIndexWriter::close);
     }
   }
 
@@ -103,31 +104,31 @@ public class TableDiskUsageCache {
   }
 
   /**
-   * Any unrecoverable error in a single writer will mark the whole TableDiskUsageCache as failed
+   * Any unrecoverable error in a single writer will mark the whole TableDiskUsageIndex as failed
    * and disable further operations.
    */
   protected void failedToRecover(Exception e) {
     failedToRecover = true;
-    LOGGER.error("Failed to recover TableDiskUsageCache", e);
+    LOGGER.error("Failed to recover TableDiskUsageIndex", e);
   }
 
-  protected void syncTsFileTableSizeCacheIfNecessary(DataRegionTableSizeCacheWriter writer) {
+  protected void syncTsFileTableSizeIndexIfNecessary(DataRegionTableSizeIndexWriter writer) {
     try {
-      writer.tsFileCacheWriter.syncIfNecessary();
+      writer.tsFileIndexWriter.syncIfNecessary();
     } catch (IOException e) {
-      LOGGER.warn("Failed to sync tsfile table size cache.", e);
+      LOGGER.warn("Failed to sync tsfile table size index.", e);
     }
   }
 
   // Hook for subclasses to persist pending object table size deltas. No-op by default.
-  protected void persistPendingObjectDeltasIfNecessary(DataRegionTableSizeCacheWriter writer) {}
+  protected void persistPendingObjectDeltasIfNecessary(DataRegionTableSizeIndexWriter writer) {}
 
   protected void compactIfNecessary(long maxRunTime) {
     if (!StorageEngine.getInstance().isReadyForReadAndWrite()) {
       return;
     }
     long startTime = System.currentTimeMillis();
-    for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
+    for (DataRegionTableSizeIndexWriter writer : writerMap.values()) {
       if (System.currentTimeMillis() - startTime > maxRunTime) {
         break;
       }
@@ -139,7 +140,7 @@ public class TableDiskUsageCache {
   }
 
   protected void checkAndMayCloseIdleWriter() {
-    for (DataRegionTableSizeCacheWriter writer : writerMap.values()) {
+    for (DataRegionTableSizeIndexWriter writer : writerMap.values()) {
       writer.closeIfIdle();
     }
   }
@@ -161,15 +162,15 @@ public class TableDiskUsageCache {
     throw new UnsupportedOperationException("writeObjectDelta");
   }
 
-  public CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>> startRead(
-      DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
+  public CompletableFuture<Pair<TsFileTableSizeIndexReader, IObjectTableSizeIndexReader>> startRead(
+      DataRegion dataRegion, boolean readTsFileIndex, boolean readObjectFileIndex) {
     StartReadOperation operation =
-        new StartReadOperation(dataRegion, readTsFileCache, readObjectFileCache);
+        new StartReadOperation(dataRegion, readTsFileIndex, readObjectFileIndex);
     if (!addOperationToQueue(operation)) {
       operation.future.complete(
           new Pair<>(
-              new TsFileTableSizeCacheReader(0, null, 0, null, dataRegion.getDataRegionId()),
-              new EmptyObjectTableSizeCacheReader()));
+              new TsFileTableSizeIndexReader(0, null, 0, null, dataRegion.getDataRegionId()),
+              new EmptyObjectTableSizeIndexReader()));
     }
     return operation.future;
   }
@@ -197,7 +198,7 @@ public class TableDiskUsageCache {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     } catch (Exception e) {
-      LOGGER.error("Meet exception when remove TableDiskUsageCache.", e);
+      LOGGER.error("Meet exception when remove TableDiskUsageIndex.", e);
     }
   }
 
@@ -207,7 +208,7 @@ public class TableDiskUsageCache {
     }
     if (stop) {
       LOGGER.warn(
-          "Skip adding operation {} to queue because TableDiskUsageCache has been stopped.",
+          "Skip adding operation {} to queue because TableDiskUsageIndex has been stopped.",
           operation);
       return false;
     }
@@ -233,7 +234,7 @@ public class TableDiskUsageCache {
       stop = true;
       scheduledExecutorService.shutdown();
       scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS);
-      writerMap.values().forEach(DataRegionTableSizeCacheWriter::close);
+      writerMap.values().forEach(DataRegionTableSizeIndexWriter::close);
       writerMap.clear();
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -252,25 +253,25 @@ public class TableDiskUsageCache {
     }
   }
 
-  protected DataRegionTableSizeCacheWriter createWriter(
+  protected DataRegionTableSizeIndexWriter createWriter(
       String database, int regionId, DataRegion region) {
-    return new DataRegionTableSizeCacheWriter(database, regionId, region);
+    return new DataRegionTableSizeIndexWriter(database, regionId, region);
   }
 
-  protected TsFileTableSizeCacheReader createTsFileCacheReader(
-      DataRegionTableSizeCacheWriter dataRegionWriter, int regionId) {
-    TsFileTableDiskUsageCacheWriter tsFileCacheWriter = dataRegionWriter.tsFileCacheWriter;
-    return new TsFileTableSizeCacheReader(
-        tsFileCacheWriter.keyFileLength(),
-        tsFileCacheWriter.getKeyFile(),
-        tsFileCacheWriter.valueFileLength(),
-        tsFileCacheWriter.getValueFile(),
+  protected TsFileTableSizeIndexReader createTsFileIndexReader(
+      DataRegionTableSizeIndexWriter dataRegionWriter, int regionId) {
+    TsFileTableDiskUsageIndexWriter tsFileIndexWriter = dataRegionWriter.tsFileIndexWriter;
+    return new TsFileTableSizeIndexReader(
+        tsFileIndexWriter.keyFileLength(),
+        tsFileIndexWriter.getKeyFile(),
+        tsFileIndexWriter.valueFileLength(),
+        tsFileIndexWriter.getValueFile(),
         regionId);
   }
 
-  protected IObjectTableSizeCacheReader createObjectFileCacheReader(
-      DataRegionTableSizeCacheWriter dataRegionWriter, int regionId) {
-    return new EmptyObjectTableSizeCacheReader();
+  protected IObjectTableSizeIndexReader createObjectFileIndexReader(
+      DataRegionTableSizeIndexWriter dataRegionWriter, int regionId) {
+    return new EmptyObjectTableSizeIndexReader();
   }
 
   protected abstract static class Operation {
@@ -290,7 +291,7 @@ public class TableDiskUsageCache {
       return database;
     }
 
-    public abstract void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException;
+    public abstract void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException;
 
     @Override
     public String toString() {
@@ -300,41 +301,41 @@ public class TableDiskUsageCache {
 
   protected static class StartReadOperation extends Operation {
     protected final DataRegion region;
-    protected final boolean readTsFileCache;
-    protected final boolean readObjectFileCache;
-    private final CompletableFuture<Pair<TsFileTableSizeCacheReader, IObjectTableSizeCacheReader>>
+    protected final boolean readTsFileIndex;
+    protected final boolean readObjectFileIndex;
+    private final CompletableFuture<Pair<TsFileTableSizeIndexReader, IObjectTableSizeIndexReader>>
         future = new CompletableFuture<>();
 
     public StartReadOperation(
-        DataRegion dataRegion, boolean readTsFileCache, boolean readObjectFileCache) {
+        DataRegion dataRegion, boolean readTsFileIndex, boolean readObjectFileIndex) {
       super(dataRegion.getDatabaseName(), dataRegion.getDataRegionId());
       this.region = dataRegion;
-      this.readTsFileCache = readTsFileCache;
-      this.readObjectFileCache = readObjectFileCache;
+      this.readTsFileIndex = readTsFileIndex;
+      this.readObjectFileIndex = readObjectFileIndex;
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
-      DataRegionTableSizeCacheWriter writer = tableDiskUsageCache.writerMap.get(regionId);
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException {
+      DataRegionTableSizeIndexWriter writer = tableDiskUsageIndex.writerMap.get(regionId);
       try {
         if (writer == null || writer.getRemovedFuture() != null) {
           // region is removing or removed
           future.complete(
               new Pair<>(
-                  new TsFileTableSizeCacheReader(0, null, 0, null, regionId),
-                  new EmptyObjectTableSizeCacheReader()));
+                  new TsFileTableSizeIndexReader(0, null, 0, null, regionId),
+                  new EmptyObjectTableSizeIndexReader()));
           return;
         }
         writer.increaseActiveReaderNum();
         // Flush buffered writes to ensure readers observe a consistent snapshot
         writer.flush();
-        TsFileTableSizeCacheReader tsFileTableSizeCacheReader =
-            readTsFileCache ? tableDiskUsageCache.createTsFileCacheReader(writer, regionId) : null;
-        IObjectTableSizeCacheReader objectTableSizeCacheReader =
-            readObjectFileCache
-                ? tableDiskUsageCache.createObjectFileCacheReader(writer, regionId)
+        TsFileTableSizeIndexReader tsFileTableSizeIndexReader =
+            readTsFileIndex ? tableDiskUsageIndex.createTsFileIndexReader(writer, regionId) : null;
+        IObjectTableSizeIndexReader objectTableSizeIndexReader =
+            readObjectFileIndex
+                ? tableDiskUsageIndex.createObjectFileIndexReader(writer, regionId)
                 : null;
-        future.complete(new Pair<>(tsFileTableSizeCacheReader, objectTableSizeCacheReader));
+        future.complete(new Pair<>(tsFileTableSizeIndexReader, objectTableSizeIndexReader));
       } catch (Throwable t) {
         future.completeExceptionally(t);
       }
@@ -350,8 +351,8 @@ public class TableDiskUsageCache {
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
-      tableDiskUsageCache.writerMap.computeIfPresent(
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException {
+      tableDiskUsageIndex.writerMap.computeIfPresent(
           regionId,
           (k, writer) -> {
             if (writer.dataRegion != region) {
@@ -382,11 +383,11 @@ public class TableDiskUsageCache {
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
-      DataRegionTableSizeCacheWriter dataRegionTableSizeCacheWriter =
-          tableDiskUsageCache.writerMap.get(regionId);
-      if (dataRegionTableSizeCacheWriter != null) {
-        dataRegionTableSizeCacheWriter.tsFileCacheWriter.write(tsFileID, tableSizeMap);
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException {
+      DataRegionTableSizeIndexWriter dataRegionTableSizeIndexWriter =
+          tableDiskUsageIndex.writerMap.get(regionId);
+      if (dataRegionTableSizeIndexWriter != null) {
+        dataRegionTableSizeIndexWriter.tsFileIndexWriter.write(tsFileID, tableSizeMap);
       }
     }
   }
@@ -402,10 +403,10 @@ public class TableDiskUsageCache {
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) throws IOException {
-      DataRegionTableSizeCacheWriter writer = tableDiskUsageCache.writerMap.get(regionId);
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) throws IOException {
+      DataRegionTableSizeIndexWriter writer = tableDiskUsageIndex.writerMap.get(regionId);
       if (writer != null) {
-        writer.tsFileCacheWriter.write(originTsFileID, newTsFileID);
+        writer.tsFileIndexWriter.write(originTsFileID, newTsFileID);
       }
     }
   }
@@ -421,9 +422,9 @@ public class TableDiskUsageCache {
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) {
-      tableDiskUsageCache.writerMap.computeIfAbsent(
-          regionId, regionId -> tableDiskUsageCache.createWriter(database, regionId, dataRegion));
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) {
+      tableDiskUsageIndex.writerMap.computeIfAbsent(
+          regionId, regionId -> tableDiskUsageIndex.createWriter(database, regionId, dataRegion));
       future.complete(null);
     }
 
@@ -441,8 +442,8 @@ public class TableDiskUsageCache {
     }
 
     @Override
-    public void apply(TableDiskUsageCache tableDiskUsageCache) {
-      tableDiskUsageCache.writerMap.computeIfPresent(
+    public void apply(TableDiskUsageIndex tableDiskUsageIndex) {
+      tableDiskUsageIndex.writerMap.computeIfPresent(
           regionId,
           (k, writer) -> {
             if (writer.getActiveReaderNum() > 0) {
@@ -457,34 +458,34 @@ public class TableDiskUsageCache {
     }
   }
 
-  public static TableDiskUsageCache getInstance() {
-    return TableDiskUsageCache.InstanceHolder.INSTANCE;
+  public static TableDiskUsageIndex getInstance() {
+    return TableDiskUsageIndex.InstanceHolder.INSTANCE;
   }
 
   private static class InstanceHolder {
     private InstanceHolder() {}
 
-    private static final TableDiskUsageCache INSTANCE = loadInstance();
+    private static final TableDiskUsageIndex INSTANCE = loadInstance();
 
-    private static TableDiskUsageCache loadInstance() {
-      ServiceLoader<TableDiskUsageCacheProvider> loader =
-          ServiceLoader.load(TableDiskUsageCacheProvider.class);
-      for (TableDiskUsageCacheProvider provider : loader) {
+    private static TableDiskUsageIndex loadInstance() {
+      ServiceLoader<TableDiskUsageIndexProvider> loader =
+          ServiceLoader.load(TableDiskUsageIndexProvider.class);
+      for (TableDiskUsageIndexProvider provider : loader) {
         return provider.create();
       }
-      return new DefaultTableDiskUsageCacheProvider().create();
+      return new DefaultTableDiskUsageIndexProvider().create();
     }
   }
 
-  protected static class DataRegionTableSizeCacheWriter {
+  protected static class DataRegionTableSizeIndexWriter {
     protected final DataRegion dataRegion;
-    protected final TsFileTableDiskUsageCacheWriter tsFileCacheWriter;
+    protected final TsFileTableDiskUsageIndexWriter tsFileIndexWriter;
     protected int activeReaderNum = 0;
     protected CompletableFuture<Void> removedFuture;
 
-    protected DataRegionTableSizeCacheWriter(String database, int regionId, DataRegion dataRegion) {
+    protected DataRegionTableSizeIndexWriter(String database, int regionId, DataRegion dataRegion) {
       this.dataRegion = dataRegion;
-      this.tsFileCacheWriter = new TsFileTableDiskUsageCacheWriter(database, regionId);
+      this.tsFileIndexWriter = new TsFileTableDiskUsageIndexWriter(database, regionId);
     }
 
     public void increaseActiveReaderNum() {
@@ -505,17 +506,17 @@ public class TableDiskUsageCache {
     }
 
     public void compactIfNecessary() {
-      if (tsFileCacheWriter.needCompact()) {
-        tsFileCacheWriter.compact();
+      if (tsFileIndexWriter.needCompact()) {
+        tsFileIndexWriter.compact();
       }
     }
 
     public void closeIfIdle() {
-      tsFileCacheWriter.closeIfIdle();
+      tsFileIndexWriter.closeIfIdle();
     }
 
     public void flush() throws IOException {
-      tsFileCacheWriter.flush();
+      tsFileIndexWriter.flush();
     }
 
     public void setRemovedFuture(CompletableFuture<Void> removedFuture) {
@@ -527,7 +528,7 @@ public class TableDiskUsageCache {
     }
 
     public void close() {
-      tsFileCacheWriter.close();
+      tsFileIndexWriter.close();
     }
   }
 }

@@ -23,8 +23,8 @@ import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContex
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.MetadataIndexNode;
@@ -49,7 +49,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   public static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TableDiskUsageStatisticUtil.class);
   private final String database;
-  private final List<Pair<TsFileID, Long>> tsFilesToQueryInCache;
+  private final List<Pair<TsFileID, Long>> tsFilesToQueryInIndex;
   private final TimePartitionTableSizeQueryContext tableSizeQueryContext;
   private final boolean databaseHasOnlyOneTable;
   private final boolean needAllData;
@@ -60,12 +60,12 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
       TimePartitionTableSizeQueryContext tableSizeQueryContext,
       boolean needAllData,
       boolean databaseHasOnlyOneTable,
-      List<Pair<TsFileID, Long>> tsFilesToQueryInCache,
+      List<Pair<TsFileID, Long>> tsFilesToQueryInIndex,
       Optional<FragmentInstanceContext> context) {
     super(dataRegion.getTsFileManager(), timePartition, context);
     this.database = dataRegion.getDatabaseName();
     this.tableSizeQueryContext = tableSizeQueryContext;
-    this.tsFilesToQueryInCache = tsFilesToQueryInCache;
+    this.tsFilesToQueryInIndex = tsFilesToQueryInIndex;
     this.databaseHasOnlyOneTable = databaseHasOnlyOneTable;
     this.needAllData = needAllData;
   }
@@ -73,9 +73,9 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
   @Override
   protected boolean calculateWithoutOpenFile(TsFileResource tsFileResource) {
     TsFileID tsFileID = tsFileResource.getTsFileID();
-    Long cachedValueOffset = tableSizeQueryContext.getCachedTsFileIdOffset(tsFileID);
+    Long cachedValueOffset = tableSizeQueryContext.getIndexedTsFileIdOffset(tsFileID);
     if (cachedValueOffset != null) {
-      tsFilesToQueryInCache.add(new Pair<>(tsFileID, cachedValueOffset));
+      tsFilesToQueryInIndex.add(new Pair<>(tsFileID, cachedValueOffset));
       return true;
     }
 
@@ -84,7 +84,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     }
     String table = tableSizeQueryContext.getTableSizeResultMap().keySet().iterator().next();
     tableSizeQueryContext.updateResult(table, tsFileResource.getTsFileSize(), needAllData);
-    TableDiskUsageCache.getInstance()
+    TableDiskUsageIndex.getInstance()
         .write(
             database,
             tsFileResource.getTsFileID(),
@@ -105,7 +105,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
           tsFileMetadata.getTableMetadataIndexNodeMap().keySet().iterator().next();
       tableSizeQueryContext.updateResult(
           satisfiedTable, tsFileResource.getTsFileSize(), needAllData);
-      TableDiskUsageCache.getInstance()
+      TableDiskUsageIndex.getInstance()
           .write(
               database,
               tsFileResource.getTsFileID(),
@@ -133,7 +133,7 @@ public class TableDiskUsageStatisticUtil extends DiskUsageStatisticUtil {
     for (Map.Entry<String, Long> entry : tsFileTableSizeMap.entrySet()) {
       tableSizeQueryContext.updateResult(entry.getKey(), entry.getValue(), needAllData);
     }
-    TableDiskUsageCache.getInstance().write(database, resource.getTsFileID(), tsFileTableSizeMap);
+    TableDiskUsageIndex.getInstance().write(database, resource.getTsFileID(), tsFileTableSizeMap);
   }
 
   public static Optional<Map<String, Long>> calculateTableSizeMap(TsFileResource resource) {

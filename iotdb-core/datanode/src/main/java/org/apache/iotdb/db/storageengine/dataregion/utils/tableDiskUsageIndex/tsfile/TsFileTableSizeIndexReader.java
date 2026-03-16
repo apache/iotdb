@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -44,9 +44,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-public class TsFileTableSizeCacheReader {
+public class TsFileTableSizeIndexReader {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileTableSizeCacheReader.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileTableSizeIndexReader.class);
 
   private final File keyFile;
   private final long keyFileLength;
@@ -55,7 +55,7 @@ public class TsFileTableSizeCacheReader {
   private DirectBufferedSeekableFileInputStream inputStream;
   private final int regionId;
 
-  public TsFileTableSizeCacheReader(
+  public TsFileTableSizeIndexReader(
       long keyFileLength, File keyFile, long valueFileLength, File valueFile, int regionId) {
     this.keyFile = keyFile;
     this.keyFileLength = keyFileLength;
@@ -99,7 +99,7 @@ public class TsFileTableSizeCacheReader {
         lastCompleteKeyOffsets.add(lastCompleteEntryEndOffsetInKeyFile);
       }
     } catch (Exception e) {
-      logger.warn("Failed to read table tsfile size cache file {}", keyFile, e);
+      logger.warn("Failed to read table tsfile size index file {}", keyFile, e);
     } finally {
       closeCurrentFile();
     }
@@ -128,7 +128,7 @@ public class TsFileTableSizeCacheReader {
       }
     } catch (Exception e) {
       logger.warn(
-          "Failed to read table tsfile size cache {} after position: {} and {} after position: {}",
+          "Failed to read table tsfile size index {} after position: {} and {} after position: {}",
           keyFile,
           valueFile,
           keyFileTruncateSize,
@@ -154,10 +154,10 @@ public class TsFileTableSizeCacheReader {
       try {
         KeyFileEntry keyFileEntry = readOneEntryFromKeyFile();
         if (keyFileEntry.originTsFileID == null) {
-          dataRegionContext.addCachedTsFileIDAndOffsetInValueFile(
+          dataRegionContext.addIndexedTsFileIDAndOffsetInValueFile(
               keyFileEntry.tsFileID, keyFileEntry.offset);
         } else {
-          dataRegionContext.replaceCachedTsFileID(
+          dataRegionContext.replaceIndexedTsFileID(
               keyFileEntry.originTsFileID, keyFileEntry.tsFileID);
         }
       } catch (IOException e) {
@@ -181,10 +181,10 @@ public class TsFileTableSizeCacheReader {
     TsFileID tsFileID =
         new TsFileID(regionId, timePartition, timestamp, fileVersion, compactionVersion);
     KeyFileEntry keyFileEntry;
-    if (type == TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET) {
+    if (type == TsFileTableDiskUsageIndexWriter.KEY_FILE_RECORD_TYPE_OFFSET) {
       long offset = ReadWriteIOUtils.readLong(inputStream);
       keyFileEntry = new KeyFileEntry(tsFileID, offset);
-    } else if (type == TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT) {
+    } else if (type == TsFileTableDiskUsageIndexWriter.KEY_FILE_RECORD_TYPE_REDIRECT) {
       long originTimestamp = ReadWriteIOUtils.readLong(inputStream);
       long originFileVersion = ReadWriteIOUtils.readLong(inputStream);
       long originCompactionVersion = ReadWriteIOUtils.readLong(inputStream);
@@ -201,17 +201,17 @@ public class TsFileTableSizeCacheReader {
   }
 
   public boolean readFromValueFile(
-      Iterator<Pair<TsFileID, Long>> tsFilesToQueryInCache,
+      Iterator<Pair<TsFileID, Long>> tsFilesToQueryInIndex,
       DataRegionTableSizeQueryContext dataRegionContext,
       long startTime,
       long maxRunTime)
       throws IOException {
     do {
-      if (!tsFilesToQueryInCache.hasNext()) {
+      if (!tsFilesToQueryInIndex.hasNext()) {
         closeCurrentFile();
         return true;
       }
-      Pair<TsFileID, Long> pair = tsFilesToQueryInCache.next();
+      Pair<TsFileID, Long> pair = tsFilesToQueryInIndex.next();
       long timePartition = pair.left.timePartitionId;
       long offset = pair.right;
       inputStream.seek(offset);

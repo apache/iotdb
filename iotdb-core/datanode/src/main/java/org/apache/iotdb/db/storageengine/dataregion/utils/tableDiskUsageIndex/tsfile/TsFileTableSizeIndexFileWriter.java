@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 
@@ -33,8 +33,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET;
-import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableDiskUsageIndexWriter.KEY_FILE_RECORD_TYPE_OFFSET;
+import static org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableDiskUsageIndexWriter.KEY_FILE_RECORD_TYPE_REDIRECT;
 
 public class TsFileTableSizeIndexFileWriter {
   private final int regionId;
@@ -69,14 +69,14 @@ public class TsFileTableSizeIndexFileWriter {
   }
 
   private void recover() throws IOException {
-    TsFileTableSizeCacheReader cacheFileReader =
-        new TsFileTableSizeCacheReader(
+    TsFileTableSizeIndexReader indexFileReader =
+        new TsFileTableSizeIndexReader(
             currentKeyIndexFile.length(),
             currentKeyIndexFile,
             currentValueIndexFile.length(),
             currentValueIndexFile,
             regionId);
-    Pair<Long, Long> truncateSize = cacheFileReader.selfCheck();
+    Pair<Long, Long> truncateSize = indexFileReader.selfCheck();
     if (truncateSize.left != currentKeyIndexFile.length()) {
       try (FileChannel channel =
           FileChannel.open(currentKeyIndexFile.toPath(), StandardOpenOption.WRITE)) {

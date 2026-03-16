@@ -90,9 +90,9 @@ import org.apache.iotdb.db.relational.grammar.sql.RelationalSqlKeywords;
 import org.apache.iotdb.db.schemaengine.table.InformationSchemaUtils;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.utils.StorageEngineTimePartitionIterator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCacheReader;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndexReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
 import org.apache.iotdb.db.utils.MathUtils;
 import org.apache.iotdb.db.utils.TimestampPrecisionUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -1230,7 +1230,7 @@ public class InformationSchemaContentSupplierFactory {
     private DataRegion currentDataRegion;
     private boolean currentDatabaseOnlyHasOneTable;
 
-    private TableDiskUsageCacheReader currentDataRegionCacheReader;
+    private TableDiskUsageIndexReader currentDataRegionCacheReader;
     private DataRegionTableSizeQueryContext currentDataRegionTableSizeQueryContext;
 
     private final StorageEngineTimePartitionIterator dataRegionIterator;
@@ -1313,7 +1313,7 @@ public class InformationSchemaContentSupplierFactory {
             continue;
           }
           currentDataRegionCacheReader =
-              new TableDiskUsageCacheReader(
+              new TableDiskUsageIndexReader(
                   currentDataRegion,
                   currentDataRegionTableSizeQueryContext,
                   currentDatabaseOnlyHasOneTable);
@@ -1411,7 +1411,7 @@ public class InformationSchemaContentSupplierFactory {
 
       try {
         try {
-          if (!currentDataRegionCacheReader.prepareCacheReader(start, maxRuntime)) {
+          if (!currentDataRegionCacheReader.prepareIndexReader(start, maxRuntime)) {
             return null;
           }
         } finally {
@@ -1421,7 +1421,7 @@ public class InformationSchemaContentSupplierFactory {
         }
 
         try {
-          if (!currentDataRegionCacheReader.loadObjectFileTableSizeCache(start, maxRuntime)) {
+          if (!currentDataRegionCacheReader.loadObjectFileTableSizeIndex(start, maxRuntime)) {
             return null;
           }
         } finally {
@@ -1431,7 +1431,7 @@ public class InformationSchemaContentSupplierFactory {
         }
 
         try {
-          if (!currentDataRegionCacheReader.prepareCachedTsFileIDKeys(start, maxRuntime)) {
+          if (!currentDataRegionCacheReader.prepareIndexTsFileIDKeys(start, maxRuntime)) {
             return null;
           }
         } finally {
@@ -1451,7 +1451,7 @@ public class InformationSchemaContentSupplierFactory {
         }
 
         try {
-          if (!currentDataRegionCacheReader.readCacheValueFilesAndUpdateResultMap(
+          if (!currentDataRegionCacheReader.readIndexValueFilesAndUpdateResultMap(
               start, maxRuntime)) {
             return null;
           }

@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -501,8 +501,8 @@ public class WritingMetrics implements IMetricSet {
             .createAutoGauge(
                 Metric.TABLE_DISK_USAGE_CACHE.toString(),
                 MetricLevel.IMPORTANT,
-                TableDiskUsageCache.getInstance(),
-                TableDiskUsageCache::getQueueSize,
+                TableDiskUsageIndex.getInstance(),
+                TableDiskUsageIndex::getQueueSize,
                 Tag.NAME.toString(),
                 BLOCKED_OPERATION_NUM);
   }

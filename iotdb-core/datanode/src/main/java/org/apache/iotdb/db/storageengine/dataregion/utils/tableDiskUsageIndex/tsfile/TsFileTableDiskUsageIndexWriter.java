@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile;
 
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.utils.FileUtils;
@@ -26,8 +26,8 @@ import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.AbstractTableSizeCacheWriter;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.AbstractTableSizeIndexWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
 
 import org.apache.tsfile.utils.Pair;
 
@@ -43,9 +43,9 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWriter {
-  public static final String TSFILE_CACHE_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
-  public static final String TSFILE_CACHE_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
+public class TsFileTableDiskUsageIndexWriter extends AbstractTableSizeIndexWriter {
+  public static final String TSFILE_INDEX_KEY_FILENAME_PREFIX = "TableSizeKeyFile_";
+  public static final String TSFILE_INDEX_VALUE_FILENAME_PREFIX = "TableSizeValueFile_";
   public static final int KEY_FILE_OFFSET_RECORD_LENGTH = 5 * Long.BYTES + 1;
   public static final byte KEY_FILE_RECORD_TYPE_OFFSET = 1;
   public static final byte KEY_FILE_RECORD_TYPE_REDIRECT = 2;
@@ -53,7 +53,7 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   private TsFileTableSizeIndexFileWriter tsFileTableSizeIndexFileWriter;
   private long lastSyncTimestamp = System.currentTimeMillis();
 
-  public TsFileTableDiskUsageCacheWriter(String database, int regionId) {
+  public TsFileTableDiskUsageIndexWriter(String database, int regionId) {
     super(database, regionId);
     recoverTsFileTableSizeIndexFile(true);
   }
@@ -67,9 +67,9 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
     if (files != null) {
       for (File file : files) {
         String fileName = file.getName();
-        boolean isKeyFile = fileName.startsWith(TSFILE_CACHE_KEY_FILENAME_PREFIX);
-        boolean isValueFile = !isKeyFile && fileName.startsWith(TSFILE_CACHE_VALUE_FILENAME_PREFIX);
-        boolean isTempFile = fileName.endsWith(TEMP_CACHE_FILE_SUBFIX);
+        boolean isKeyFile = fileName.startsWith(TSFILE_INDEX_KEY_FILENAME_PREFIX);
+        boolean isValueFile = !isKeyFile && fileName.startsWith(TSFILE_INDEX_VALUE_FILENAME_PREFIX);
+        boolean isTempFile = fileName.endsWith(TEMP_INDEX_FILE_SUBFIX);
         if (!isKeyFile) {
           if (isValueFile && !isTempFile) {
             valueFiles.add(file);
@@ -88,10 +88,10 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
           continue;
         }
         File valueFile =
-            new File(dir + File.separator + TSFILE_CACHE_VALUE_FILENAME_PREFIX + version);
+            new File(dir + File.separator + TSFILE_INDEX_VALUE_FILENAME_PREFIX + version);
         // may have a valid value index file
         if (!valueFile.exists()) {
-          File tempValueFile = new File(valueFile.getPath() + TEMP_CACHE_FILE_SUBFIX);
+          File tempValueFile = new File(valueFile.getPath() + TEMP_INDEX_FILE_SUBFIX);
           if (tempValueFile.exists()) {
             try {
               Files.move(tempValueFile.toPath(), valueFile.toPath());
@@ -110,11 +110,11 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
         keyFiles.add(file);
       }
       if (keyFiles.size() > 1) {
-        deleteOldVersionFiles(currentIndexFileVersion, TSFILE_CACHE_KEY_FILENAME_PREFIX, keyFiles);
+        deleteOldVersionFiles(currentIndexFileVersion, TSFILE_INDEX_KEY_FILENAME_PREFIX, keyFiles);
       }
       if (valueFiles.size() > 1) {
         deleteOldVersionFiles(
-            currentIndexFileVersion, TSFILE_CACHE_VALUE_FILENAME_PREFIX, valueFiles);
+            currentIndexFileVersion, TSFILE_INDEX_VALUE_FILENAME_PREFIX, valueFiles);
       }
     }
     File currentKeyIndexFile = generateKeyFile(currentIndexFileVersion, false);
@@ -129,7 +129,7 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   }
 
   private int getVersion(String fileName) throws NumberFormatException {
-    String removePrefixStr = fileName.substring(TSFILE_CACHE_KEY_FILENAME_PREFIX.length());
+    String removePrefixStr = fileName.substring(TSFILE_INDEX_KEY_FILENAME_PREFIX.length());
     int suffixIdx = removePrefixStr.indexOf('.');
     return Integer.parseInt(
         suffixIdx > 0 ? removePrefixStr.substring(0, suffixIdx) : removePrefixStr);
@@ -156,8 +156,8 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
     }
     TsFileManager tsFileManager = dataRegion.getTsFileManager();
     int fileNum = tsFileManager.size(true) + tsFileManager.size(false);
-    int estimatedEntryNumInCacheFile = (int) (keyFileLength() / KEY_FILE_OFFSET_RECORD_LENGTH);
-    int delta = estimatedEntryNumInCacheFile - fileNum;
+    int estimatedEntryNumInIndexFile = (int) (keyFileLength() / KEY_FILE_OFFSET_RECORD_LENGTH);
+    int delta = estimatedEntryNumInIndexFile - fileNum;
     return delta >= 1000;
   }
 
@@ -165,8 +165,8 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
   public void compact() {
     previousCompactionTimestamp = System.currentTimeMillis();
     this.tsFileTableSizeIndexFileWriter.close();
-    TsFileTableSizeCacheReader cacheFileReader =
-        new TsFileTableSizeCacheReader(
+    TsFileTableSizeIndexReader indexFileReader =
+        new TsFileTableSizeIndexReader(
             tsFileTableSizeIndexFileWriter.getKeyFile().length(),
             tsFileTableSizeIndexFileWriter.getKeyFile(),
             tsFileTableSizeIndexFileWriter.getValueFile().length(),
@@ -174,25 +174,26 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
             regionId);
     Map<Long, TimePartitionTableSizeQueryContext> contextMap = new HashMap<>();
     try {
-      cacheFileReader.openKeyFile();
-      while (cacheFileReader.hasNextEntryInKeyFile()) {
-        TsFileTableSizeCacheReader.KeyFileEntry keyFileEntry =
-            cacheFileReader.readOneEntryFromKeyFile();
+      indexFileReader.openKeyFile();
+      while (indexFileReader.hasNextEntryInKeyFile()) {
+        TsFileTableSizeIndexReader.KeyFileEntry keyFileEntry =
+            indexFileReader.readOneEntryFromKeyFile();
         TimePartitionTableSizeQueryContext context =
             contextMap.computeIfAbsent(
                 keyFileEntry.getTimePartitionId(),
                 k -> new TimePartitionTableSizeQueryContext(Collections.emptyMap()));
         if (keyFileEntry.originTsFileID == null) {
-          context.addCachedTsFileIDAndOffsetInValueFile(keyFileEntry.tsFileID, keyFileEntry.offset);
+          context.addIndexedTsFileIDAndOffsetInValueFile(
+              keyFileEntry.tsFileID, keyFileEntry.offset);
         } else {
-          context.replaceCachedTsFileID(keyFileEntry.originTsFileID, keyFileEntry.tsFileID);
+          context.replaceIndexedTsFileID(keyFileEntry.originTsFileID, keyFileEntry.tsFileID);
         }
       }
     } catch (IOException e) {
       logger.error("Failed to read key file during compaction", e);
       return;
     } finally {
-      cacheFileReader.closeCurrentFile();
+      indexFileReader.closeCurrentFile();
     }
 
     List<Pair<TsFileID, Long>> validFilesOrderByOffset = new ArrayList<>();
@@ -211,7 +212,7 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
       Stream.concat(resources.left.stream(), resources.right.stream())
           .forEach(
               resource -> {
-                Long offset = context.getCachedTsFileIdOffset(resource.getTsFileID());
+                Long offset = context.getIndexedTsFileIdOffset(resource.getTsFileID());
                 if (offset != null) {
                   validFilesOrderByOffset.add(new Pair<>(resource.getTsFileID(), offset));
                 }
@@ -226,11 +227,11 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
               regionId,
               generateKeyFile(currentIndexFileVersion + 1, true),
               generateValueFile(currentIndexFileVersion + 1, true));
-      cacheFileReader.openValueFile();
+      indexFileReader.openValueFile();
       for (Pair<TsFileID, Long> pair : validFilesOrderByOffset) {
         TsFileID tsFileID = pair.getLeft();
         long offset = pair.getRight();
-        Map<String, Long> tableSizeMap = cacheFileReader.readOneEntryFromValueFile(offset, true);
+        Map<String, Long> tableSizeMap = indexFileReader.readOneEntryFromValueFile(offset, true);
         targetFileWriter.write(tsFileID, tableSizeMap);
       }
       targetFileWriter.close();
@@ -241,12 +242,12 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
       Files.move(targetFileWriter.getKeyFile().toPath(), targetKeyFile.toPath());
       Files.move(targetFileWriter.getValueFile().toPath(), targetValueFile.toPath());
     } catch (Exception e) {
-      logger.error("Failed to execute compaction for tsfile table size cache file", e);
+      logger.error("Failed to execute compaction for tsfile table size index file", e);
     } finally {
       if (targetFileWriter != null) {
         targetFileWriter.close();
       }
-      cacheFileReader.closeCurrentFile();
+      indexFileReader.closeCurrentFile();
       this.recoverTsFileTableSizeIndexFile(false);
     }
   }
@@ -255,18 +256,18 @@ public class TsFileTableDiskUsageCacheWriter extends AbstractTableSizeCacheWrite
     return new File(
         dir
             + File.separator
-            + TSFILE_CACHE_KEY_FILENAME_PREFIX
+            + TSFILE_INDEX_KEY_FILENAME_PREFIX
             + version
-            + (isTempFile ? TEMP_CACHE_FILE_SUBFIX : ""));
+            + (isTempFile ? TEMP_INDEX_FILE_SUBFIX : ""));
   }
 
   private File generateValueFile(int version, boolean isTempFile) {
     return new File(
         dir
             + File.separator
-            + TSFILE_CACHE_VALUE_FILENAME_PREFIX
+            + TSFILE_INDEX_VALUE_FILENAME_PREFIX
             + version
-            + (isTempFile ? TEMP_CACHE_FILE_SUBFIX : ""));
+            + (isTempFile ? TEMP_INDEX_FILE_SUBFIX : ""));
   }
 
   @Override

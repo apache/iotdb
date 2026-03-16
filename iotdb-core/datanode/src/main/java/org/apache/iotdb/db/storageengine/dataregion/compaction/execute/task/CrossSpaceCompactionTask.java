@@ -39,7 +39,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TableDiskUsageCache;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 
 import org.apache.tsfile.utils.TsFileUtils;
 import org.slf4j.Logger;
@@ -283,7 +283,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     }
     for (TsFileResource resource : targetTsfileResourceList) {
       if (!resource.isDeleted()) {
-        TableDiskUsageCache.getInstance()
+        TableDiskUsageIndex.getInstance()
             .write(
                 storageGroupName,
                 resource.getTsFileID(),

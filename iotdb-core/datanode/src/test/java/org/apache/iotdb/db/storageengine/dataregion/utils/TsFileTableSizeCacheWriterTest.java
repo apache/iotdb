@@ -28,11 +28,11 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.AbstractCompactio
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileID;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.AbstractTableSizeCacheWriter;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.TimePartitionTableSizeQueryContext;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableDiskUsageCacheWriter;
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.tsfile.TsFileTableSizeCacheReader;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.AbstractTableSizeIndexWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TimePartitionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableDiskUsageIndexWriter;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.tsfile.TsFileTableSizeIndexReader;
 
 import org.apache.tsfile.exception.write.WriteProcessException;
 import org.apache.tsfile.utils.Pair;
@@ -83,8 +83,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
   @Test
   public void testCompactEmptyTargetFile() throws IOException {
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());
@@ -110,8 +110,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
   @Test
   public void testCompactTargetFile1() throws IOException {
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());
@@ -137,13 +137,13 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     Assert.assertEquals("TableSizeValueFile_1", targetValueFile.getName());
     writer.close();
 
-    TsFileTableSizeCacheReader reader =
-        new TsFileTableSizeCacheReader(
+    TsFileTableSizeIndexReader reader =
+        new TsFileTableSizeIndexReader(
             targetKeyFile.length(), targetKeyFile, targetValueFile.length(), targetValueFile, 1);
     reader.openKeyFile();
     int count = 0;
     while (reader.hasNextEntryInKeyFile()) {
-      TsFileTableSizeCacheReader.KeyFileEntry keyFileEntry = reader.readOneEntryFromKeyFile();
+      TsFileTableSizeIndexReader.KeyFileEntry keyFileEntry = reader.readOneEntryFromKeyFile();
       count++;
     }
     reader.closeCurrentFile();
@@ -152,8 +152,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
   @Test
   public void testCompactTargetFile2() throws IOException {
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     File oldKeyFile = writer.getKeyFile();
     File oldValueFile = writer.getValueFile();
     Assert.assertEquals("TableSizeKeyFile_0", oldKeyFile.getName());
@@ -179,13 +179,13 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     Assert.assertEquals("TableSizeValueFile_1", targetValueFile.getName());
     writer.close();
 
-    TsFileTableSizeCacheReader reader =
-        new TsFileTableSizeCacheReader(
+    TsFileTableSizeIndexReader reader =
+        new TsFileTableSizeIndexReader(
             targetKeyFile.length(), targetKeyFile, targetValueFile.length(), targetValueFile, 1);
     reader.openKeyFile();
     int count = 0;
     while (reader.hasNextEntryInKeyFile()) {
-      TsFileTableSizeCacheReader.KeyFileEntry keyFileEntry = reader.readOneEntryFromKeyFile();
+      TsFileTableSizeIndexReader.KeyFileEntry keyFileEntry = reader.readOneEntryFromKeyFile();
       Assert.assertNotEquals(3, keyFileEntry.tsFileID.fileVersion);
       count++;
     }
@@ -195,8 +195,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
   @Test
   public void testReadPerformance() throws IOException {
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     for (int i = 1; i <= 10; i++) {
       for (int j = 1; j <= 10000; j++) {
         TsFileResource resource =
@@ -212,15 +212,15 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     File keyFile = writer.getKeyFile();
     File valueFile = writer.getValueFile();
     DataRegionTableSizeQueryContext context = new DataRegionTableSizeQueryContext(true);
-    TsFileTableSizeCacheReader reader =
-        new TsFileTableSizeCacheReader(keyFile.length(), keyFile, valueFile.length(), valueFile, 0);
+    TsFileTableSizeIndexReader reader =
+        new TsFileTableSizeIndexReader(keyFile.length(), keyFile, valueFile.length(), valueFile, 0);
     List<Pair<TsFileID, Long>> offsets = new ArrayList<>();
     long start = System.currentTimeMillis();
     reader.openKeyFile();
     for (int i = 1; i <= 10; i++) {
       for (int j = 1; j <= 10000; j++) {
         Assert.assertTrue(reader.hasNextEntryInKeyFile());
-        TsFileTableSizeCacheReader.KeyFileEntry entry = reader.readOneEntryFromKeyFile();
+        TsFileTableSizeIndexReader.KeyFileEntry entry = reader.readOneEntryFromKeyFile();
         Assert.assertNotNull(entry);
         Assert.assertNull(entry.originTsFileID);
         Assert.assertEquals(new TsFileID(0, i, j, j, 0L), entry.tsFileID);
@@ -254,8 +254,8 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
 
   @Test
   public void testRecoverWriter1() throws IOException {
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     for (int i = 1; i <= 10; i++) {
       for (int j = 1; j <= 10; j++) {
         TsFileResource resource =
@@ -273,21 +273,21 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
     Assert.assertEquals(keyFileValidLength + 4, keyFile.length());
     Assert.assertEquals(valueFileValidLength + 4, valueFile.length());
 
-    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer = new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertEquals(keyFileValidLength, keyFile.length());
     Assert.assertEquals(valueFileValidLength, valueFile.length());
 
     Files.write(keyFile.toPath(), new byte[] {0, 0, 0, 0}, StandardOpenOption.APPEND);
-    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer = new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertEquals(keyFileValidLength, keyFile.length());
     Assert.assertEquals(valueFileValidLength, valueFile.length());
 
     ByteBuffer buffer =
-        ByteBuffer.allocate(TsFileTableDiskUsageCacheWriter.KEY_FILE_OFFSET_RECORD_LENGTH);
+        ByteBuffer.allocate(TsFileTableDiskUsageIndexWriter.KEY_FILE_OFFSET_RECORD_LENGTH);
     TsFileID tsFileID = new TsFileID(0, 1, 2, 3, 4);
-    ReadWriteIOUtils.write(TsFileTableDiskUsageCacheWriter.KEY_FILE_RECORD_TYPE_OFFSET, buffer);
+    ReadWriteIOUtils.write(TsFileTableDiskUsageIndexWriter.KEY_FILE_RECORD_TYPE_OFFSET, buffer);
     ReadWriteIOUtils.write(tsFileID.timePartitionId, buffer);
     ReadWriteIOUtils.write(tsFileID.timestamp, buffer);
     ReadWriteIOUtils.write(tsFileID.fileVersion, buffer);
@@ -297,7 +297,7 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
         keyFile.toPath(),
         Arrays.copyOf(buffer.array(), buffer.position()),
         StandardOpenOption.APPEND);
-    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer = new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertEquals(keyFileValidLength, keyFile.length());
     Assert.assertEquals(valueFileValidLength, valueFile.length());
@@ -310,7 +310,7 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
         valueFile.toPath(),
         Arrays.copyOf(buffer.array(), buffer.position()),
         StandardOpenOption.APPEND);
-    writer = new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    writer = new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertEquals(keyFileValidLength, keyFile.length());
     Assert.assertEquals(valueFileValidLength, valueFile.length());
@@ -323,28 +323,28 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
             mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
     dir.mkdirs();
     File keyFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "0");
     File valueFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "0");
     File tempKeyFile2 =
         new File(
             dir,
-            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX
+            TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX
                 + "1"
-                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+                + AbstractTableSizeIndexWriter.TEMP_INDEX_FILE_SUBFIX);
     File tempValueFile2 =
         new File(
             dir,
-            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+            TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX
                 + "1"
-                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+                + AbstractTableSizeIndexWriter.TEMP_INDEX_FILE_SUBFIX);
 
     Files.createFile(keyFile1.toPath());
     Files.createFile(valueFile1.toPath());
     Files.createFile(tempKeyFile2.toPath());
     Files.createFile(tempValueFile2.toPath());
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertTrue(keyFile1.exists());
     Assert.assertTrue(valueFile1.exists());
@@ -361,20 +361,20 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
             mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
     dir.mkdirs();
     File keyFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "0");
     File valueFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "0");
     File keyFile2 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "1");
     File valueFile2 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "1");
 
     Files.createFile(keyFile1.toPath());
     Files.createFile(valueFile1.toPath());
     Files.createFile(keyFile2.toPath());
     Files.createFile(valueFile2.toPath());
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertFalse(keyFile1.exists());
     Assert.assertFalse(valueFile1.exists());
@@ -391,26 +391,26 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
             mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
     dir.mkdirs();
     File keyFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "0");
     File valueFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "0");
     File keyFile2 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "1");
     File tempValueFile2 =
         new File(
             dir,
-            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+            TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX
                 + "1"
-                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+                + AbstractTableSizeIndexWriter.TEMP_INDEX_FILE_SUBFIX);
     File valueFile2 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "1");
 
     Files.createFile(keyFile1.toPath());
     Files.createFile(valueFile1.toPath());
     Files.createFile(keyFile2.toPath());
     Files.createFile(tempValueFile2.toPath());
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertFalse(keyFile1.exists());
     Assert.assertFalse(valueFile1.exists());
@@ -428,37 +428,37 @@ public class TsFileTableSizeCacheWriterTest extends AbstractCompactionTest {
             mockDataRegion.getDatabaseName(), mockDataRegion.getDataRegionIdString());
     dir.mkdirs();
     File keyFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "1");
     File valueFile1 =
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "1");
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "1");
     File tempKeyFile2 =
         new File(
             dir,
-            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX
+            TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX
                 + "2"
-                + TsFileTableDiskUsageCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+                + TsFileTableDiskUsageIndexWriter.TEMP_INDEX_FILE_SUBFIX);
     File tempValueFile2 =
         new File(
             dir,
-            TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX
+            TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX
                 + "2"
-                + AbstractTableSizeCacheWriter.TEMP_CACHE_FILE_SUBFIX);
+                + AbstractTableSizeIndexWriter.TEMP_INDEX_FILE_SUBFIX);
 
     Files.createFile(keyFile1.toPath());
     Files.createFile(tempKeyFile2.toPath());
     Files.createFile(tempValueFile2.toPath());
-    TsFileTableDiskUsageCacheWriter writer =
-        new TsFileTableDiskUsageCacheWriter(mockDataRegion.getDatabaseName(), 0);
+    TsFileTableDiskUsageIndexWriter writer =
+        new TsFileTableDiskUsageIndexWriter(mockDataRegion.getDatabaseName(), 0);
     writer.close();
     Assert.assertFalse(keyFile1.exists());
     Assert.assertFalse(valueFile1.exists());
     Assert.assertFalse(tempValueFile2.exists());
     Assert.assertFalse(tempKeyFile2.exists());
     Assert.assertEquals(
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_KEY_FILENAME_PREFIX + "0"),
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_KEY_FILENAME_PREFIX + "0"),
         writer.getKeyFile());
     Assert.assertEquals(
-        new File(dir, TsFileTableDiskUsageCacheWriter.TSFILE_CACHE_VALUE_FILENAME_PREFIX + "0"),
+        new File(dir, TsFileTableDiskUsageIndexWriter.TSFILE_INDEX_VALUE_FILENAME_PREFIX + "0"),
         writer.getValueFile());
   }
 

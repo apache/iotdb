@@ -17,13 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.object;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.object;
 
-import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache.DataRegionTableSizeQueryContext;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.DataRegionTableSizeQueryContext;
 
 import java.io.IOException;
 
-public interface IObjectTableSizeCacheReader extends AutoCloseable {
+public interface IObjectTableSizeIndexReader extends AutoCloseable {
   /**
    * Load table size information from object index files into the given context.
    *

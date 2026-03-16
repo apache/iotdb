@@ -17,8 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
-public interface TableDiskUsageCacheProvider {
-  TableDiskUsageCache create();
+public class DefaultTableDiskUsageIndexProvider implements TableDiskUsageIndexProvider {
+
+  @Override
+  public TableDiskUsageIndex create() {
+    return Holder.INSTANCE;
+  }
+
+  private static class Holder {
+    private static final TableDiskUsageIndex INSTANCE = new TableDiskUsageIndex();
+  }
 }

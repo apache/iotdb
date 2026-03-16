@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
 import org.apache.iotdb.db.queryengine.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.queryengine.plan.planner.memory.MemoryReservationManager;
@@ -71,15 +71,15 @@ public class DataRegionTableSizeQueryContext {
     return fragmentInstanceContext;
   }
 
-  public void addCachedTsFileIDAndOffsetInValueFile(TsFileID tsFileID, long offset) {
+  public void addIndexedTsFileIDAndOffsetInValueFile(TsFileID tsFileID, long offset) {
     if (useTimePartition(tsFileID.timePartitionId)) {
-      previousUsedTimePartitionContext.addCachedTsFileIDAndOffsetInValueFile(tsFileID, offset);
+      previousUsedTimePartitionContext.addIndexedTsFileIDAndOffsetInValueFile(tsFileID, offset);
     }
   }
 
-  public void replaceCachedTsFileID(TsFileID originTsFileID, TsFileID newTsFileID) {
+  public void replaceIndexedTsFileID(TsFileID originTsFileID, TsFileID newTsFileID) {
     if (useTimePartition(originTsFileID.timePartitionId)) {
-      previousUsedTimePartitionContext.replaceCachedTsFileID(originTsFileID, newTsFileID);
+      previousUsedTimePartitionContext.replaceIndexedTsFileID(originTsFileID, newTsFileID);
     }
   }
 

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageCache;
+package org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex;
 
 import org.apache.iotdb.db.storageengine.StorageEngine;
 
@@ -30,23 +30,23 @@ import java.nio.file.Files;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public abstract class AbstractTableSizeCacheWriter {
+public abstract class AbstractTableSizeIndexWriter {
   protected static final Logger logger =
-      LoggerFactory.getLogger(AbstractTableSizeCacheWriter.class);
-  public static final String TEMP_CACHE_FILE_SUBFIX = ".tmp";
+      LoggerFactory.getLogger(AbstractTableSizeIndexWriter.class);
+  public static final String TEMP_INDEX_FILE_SUBFIX = ".tmp";
   protected final int regionId;
   protected long previousCompactionTimestamp = System.currentTimeMillis();
   protected long lastWriteTimestamp = System.currentTimeMillis();
   protected int currentIndexFileVersion = 0;
   protected final File dir;
 
-  public AbstractTableSizeCacheWriter(String database, int regionId) {
+  public AbstractTableSizeIndexWriter(String database, int regionId) {
     this.regionId = regionId;
     this.dir = StorageEngine.getDataRegionSystemDir(database, regionId + "");
   }
 
   protected void failedToRecover(Exception e) {
-    TableDiskUsageCache.getInstance().failedToRecover(e);
+    TableDiskUsageIndex.getInstance().failedToRecover(e);
   }
 
   protected void deleteOldVersionFiles(int maxVersion, String prefix, List<File> files) {
@@ -58,7 +58,7 @@ public abstract class AbstractTableSizeCacheWriter {
         }
       } catch (Exception e) {
         logger.warn(
-            "Failed to delete old version table size cache file {}", file.getAbsolutePath());
+            "Failed to delete old version table size index file {}", file.getAbsolutePath());
       }
     }
   }
