@@ -74,7 +74,7 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
   // the reversed version of finalToOriginalTableNames
   private Map<String, String> originalToFinalTableNames = new LinkedHashMap<>();
 
-  // the reversed version of finalToOriginalColumnNames
+  // the reversed version of finalToOriginalColumnNames (the first key is the original table name)
   private Map<String, Map<String, String>> originalToFinalColumnNames = new LinkedHashMap<>();
 
   public void renameTable(String oldTableName, String newTableName) {
