@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -68,9 +67,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Procedure for checking and restoring data partition table integrity. This procedure scans all
@@ -105,9 +101,6 @@ public class DataPartitionTableIntegrityCheckProcedure
   private static Set<TDataNodeConfiguration> skipDataNodes = new HashSet<>();
   private static Set<TDataNodeConfiguration> failedDataNodes =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
-
-  private static ScheduledExecutorService heartBeatExecutor;
-
   // ============Need serialize END=============/
 
   public DataPartitionTableIntegrityCheckProcedure() {
@@ -131,8 +124,9 @@ public class DataPartitionTableIntegrityCheckProcedure
           lostDataPartitionsOfDatabases = new HashSet<>();
           return analyzeMissingPartitions(env);
         case REQUEST_PARTITION_TABLES:
-          heartBeatExecutor = Executors.newScheduledThreadPool(1);
           return requestPartitionTables();
+        case REQUEST_PARTITION_TABLES_HEART_BEAT:
+          return requestPartitionTablesHeartBeat();
         case MERGE_PARTITION_TABLES:
           return mergePartitionTables(env);
         case WRITE_PARTITION_TABLE_TO_RAFT:
@@ -378,13 +372,6 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        heartBeatExecutor,
-        this::checkPartitionTableGenerationStatus,
-        0,
-        HEART_BEAT_REQUEST_RATE,
-        TimeUnit.MILLISECONDS);
-
     allDataNodes.removeAll(skipDataNodes);
     allDataNodes.removeAll(failedDataNodes);
     for (TDataNodeConfiguration dataNode : allDataNodes) {
@@ -407,13 +394,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                 "Failed to request DataPartitionTable generation from the DataNode[id={}], response status is {}",
                 dataNode.getLocation().getDataNodeId(),
                 resp.getStatus());
-            continue;
           }
-
-          byte[] bytes = resp.getDataPartitionTable();
-          DataPartitionTable dataPartitionTable = new DataPartitionTable();
-          dataPartitionTable.deserialize(ByteBuffer.wrap(bytes));
-          dataPartitionTables.put(dataNodeId, dataPartitionTable);
         } catch (Exception e) {
           failedDataNodes.add(dataNode);
           LOG.error(
@@ -431,12 +412,11 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.MERGE_PARTITION_TABLES);
+    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
   }
 
-  /** Check completion status of DataPartitionTable generation tasks. */
-  private void checkPartitionTableGenerationStatus() {
+  private Flow requestPartitionTablesHeartBeat() {
     if (LOG.isDebugEnabled()) {
       LOG.info("Checking DataPartitionTable generation completion status...");
     }
@@ -448,51 +428,50 @@ public class DataPartitionTableIntegrityCheckProcedure
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
           TGenerateDataPartitionTableHeartbeatResp resp =
-              (TGenerateDataPartitionTableHeartbeatResp)
-                  SyncDataNodeClientPool.getInstance()
-                      .sendSyncRequestToDataNodeWithGivenRetry(
-                          dataNode.getLocation().getInternalEndPoint(),
-                          null,
-                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
-                          MAX_RETRY_COUNT);
+                  (TGenerateDataPartitionTableHeartbeatResp)
+                          SyncDataNodeClientPool.getInstance()
+                                  .sendSyncRequestToDataNodeWithGivenRetry(
+                                          dataNode.getLocation().getInternalEndPoint(),
+                                          null,
+                                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+                                          MAX_RETRY_COUNT);
           DataPartitionTableGeneratorState state =
-              DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
+                  DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
 
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.error(
-                "Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
-                dataNode.getLocation().getDataNodeId(),
-                state,
-                resp.getStatus());
+                    "Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
+                    dataNode.getLocation().getDataNodeId(),
+                    state,
+                    resp.getStatus());
             continue;
           }
+
           switch (state) {
             case SUCCESS:
+              byte[] bytes = resp.getDataPartitionTable();
+              DataPartitionTable dataPartitionTable = new DataPartitionTable();
+              dataPartitionTable.deserialize(ByteBuffer.wrap(bytes));
+              dataPartitionTables.put(dataNodeId, dataPartitionTable);
               LOG.info(
-                  "DataNode {} completed DataPartitionTable generation, terminating heart beat",
-                  dataNodeId);
+                      "DataNode {} completed DataPartitionTable generation, terminating heart beat",
+                      dataNodeId);
               completeCount++;
               break;
             case IN_PROGRESS:
               LOG.info("DataNode {} still generating DataPartitionTable", dataNodeId);
               break;
-            case FAILED:
-              LOG.error(
-                  "DataNode {} failed to generate DataPartitionTable, terminating heart beat",
-                  dataNodeId);
-              completeCount++;
-              break;
             default:
               LOG.error(
-                  "DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
+                      "DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
               break;
           }
         } catch (Exception e) {
           LOG.error(
-              "Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
-              dataNodeId,
-              e.getMessage(),
-              e);
+                  "Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
+                  dataNodeId,
+                  e.getMessage(),
+                  e);
           completeCount++;
         }
       } else {
@@ -501,8 +480,18 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (completeCount >= allDataNodes.size()) {
-      heartBeatExecutor.shutdown();
+      setNextState(DataPartitionTableIntegrityCheckProcedureState.MERGE_PARTITION_TABLES);
+      return Flow.HAS_MORE_STATE;
     }
+
+    try {
+      Thread.sleep(HEART_BEAT_REQUEST_RATE);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.error("Error checking DataPartitionTable status due to thread interruption.");
+    }
+    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
+    return Flow.HAS_MORE_STATE;
   }
 
   /** Merge DataPartitionTables from all DataNodes into a final table. */
@@ -676,6 +665,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     return getFlow();
   }
 
+  /** Determine whether there are still DataNode nodes with failed execution of a certain step in this round. If such nodes exist, calculate the skipDataNodes and exclude these nodes when requesting the list of DataNode nodes in the cluster for the next round; if no such nodes exist, it means the procedure has been completed */
   private Flow getFlow() {
     if (!failedDataNodes.isEmpty()) {
       allDataNodes.removeAll(failedDataNodes);

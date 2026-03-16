@@ -26,6 +26,8 @@ public enum DataPartitionTableIntegrityCheckProcedureState {
   ANALYZE_MISSING_PARTITIONS,
   /** Request DataPartitionTable generation from DataNodes */
   REQUEST_PARTITION_TABLES,
+  /** Round robin get DataPartitionTable generation result from DataNodes */
+  REQUEST_PARTITION_TABLES_HEART_BEAT,
   /** Merge DataPartitionTables from all DataNodes */
   MERGE_PARTITION_TABLES,
   /** Write final DataPartitionTable to raft log */

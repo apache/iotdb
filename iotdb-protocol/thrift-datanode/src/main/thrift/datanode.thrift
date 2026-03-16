@@ -695,13 +695,13 @@ struct TGenerateDataPartitionTableResp {
   1: required common.TSStatus status
   2: required i32 errorCode
   3: optional string message
-  4: optional binary dataPartitionTable
 }
 
 struct TGenerateDataPartitionTableHeartbeatResp {
   1: required common.TSStatus status
   2: required i32 errorCode
   3: optional string message
+  4: optional binary dataPartitionTable
 }
 
 /**
