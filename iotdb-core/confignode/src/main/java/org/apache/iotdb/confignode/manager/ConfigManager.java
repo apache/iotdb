@@ -112,7 +112,6 @@ import org.apache.iotdb.confignode.consensus.response.partition.SchemaPartitionR
 import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
-import org.apache.iotdb.confignode.exception.DatabaseNotExistsException;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
@@ -842,28 +841,21 @@ public class ConfigManager implements IManager {
 
   @SuppressWarnings("OptionalGetWithoutIsPresent")
   @Override
-  public SeriesPartitionKey getSeriesPartitionKey(IDeviceID deviceID, String databaseName) {
-    SeriesPartitionKey seriesPartitionKey;
-    boolean isTableModel = false;
-    try {
-      TDatabaseSchema databaseSchema =
-          getClusterSchemaManager().getDatabaseSchemaByName(databaseName);
-      isTableModel = databaseSchema.isTableModel;
-    } catch (DatabaseNotExistsException e) {
-      throw new IoTDBRuntimeException(e, TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
-    }
+  public SeriesPartitionKey getSeriesPartitionKey(
+      final IDeviceID deviceID, final String databaseName) {
+    final SeriesPartitionKey seriesPartitionKey;
 
-    if (isTableModel) {
+    if (PathUtils.isTableModelDatabase(databaseName)) {
       try {
-        Optional<TsTable> tableOptional =
+        final Optional<TsTable> tableOptional =
             getClusterSchemaManager().getTableIfExists(databaseName, deviceID.getTableName());
-        TsTable tsTable = tableOptional.get();
-        boolean canAlterTableName = tsTable.canAlterName();
+        final TsTable tsTable = tableOptional.get();
+        final boolean canAlterTableName = tsTable.canAlterName();
         seriesPartitionKey =
             canAlterTableName
                 ? new NoTableNameDeviceIdKey(deviceID)
                 : new FullDeviceIdKey(deviceID);
-      } catch (NoSuchElementException | MetadataException e) {
+      } catch (final NoSuchElementException | MetadataException e) {
         throw new IoTDBRuntimeException(e, TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
       }
     } else {
