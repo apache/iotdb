@@ -227,7 +227,7 @@ public class EvolvedSchema implements Accountable, SchemaEvolution {
   private DeletionPredicate rewriteToFinal(DeletionPredicate predicate) {
     String finalTableName = getFinalTableName(predicate.getTableName());
     TagPredicate tagPredicate = predicate.getTagPredicate();
-    tagPredicate = tagPredicate.rewriteToOriginal(this);
+    tagPredicate = tagPredicate.rewriteToFinal(this);
     List<String> newMeasurements =
         predicate.getMeasurementNames().stream()
             .map(m -> getFinalColumnName(predicate.getTableName(), m))
