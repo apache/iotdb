@@ -97,7 +97,6 @@ public class AINodeInstanceManagementIT {
     // Unload timer_xl from each device
     statement.execute(String.format("UNLOAD MODEL timer_xl FROM DEVICES '%s'", TARGET_DEVICES));
     checkModelNotOnSpecifiedDevice(statement, "timer_xl", TARGET_DEVICES.toString());
-
   }
 
   private static final int LOOP_CNT = 10;
