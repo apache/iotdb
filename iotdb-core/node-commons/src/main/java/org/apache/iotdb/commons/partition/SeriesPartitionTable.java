@@ -274,6 +274,15 @@ public class SeriesPartitionTable {
     return removedTimePartitions;
   }
 
+  public void merge(SeriesPartitionTable sourceMap) {
+    if (sourceMap == null) return;
+    sourceMap.seriesPartitionMap.forEach((timeSlot, groups) -> {
+      this.seriesPartitionMap
+              .computeIfAbsent(timeSlot, k -> new ArrayList<>())
+              .addAll(groups);
+    });
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(seriesPartitionMap.size(), outputStream);

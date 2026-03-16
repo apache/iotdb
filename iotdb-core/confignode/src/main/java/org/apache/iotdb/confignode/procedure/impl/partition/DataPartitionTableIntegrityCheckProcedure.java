@@ -266,10 +266,9 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (earliestTimeslots.isEmpty()) {
-      LOG.error(
+      LOG.warn(
           "No missing data partitions detected, nothing needs to be repaired, terminating procedure");
-      setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
-      return Flow.HAS_MORE_STATE;
+      return Flow.NO_MORE_STATE;
     }
 
     // Find all databases that have lost data partition tables
@@ -542,74 +541,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                       }));
     }
 
-    if (finalDataPartitionMap.isEmpty()) {
-      dataPartitionTables
-          .values()
-          .forEach(
-              dataPartitionTable -> {
-                if (dataPartitionTable == null
-                    || dataPartitionTable.getDataPartitionMap() == null
-                    || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-                  return;
-                }
-                dataPartitionTable
-                    .getDataPartitionMap()
-                    .forEach(
-                        (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
-                          if (dnSeriesPartitionSlot == null || dnSeriesPartitionTable == null) {
-                            return;
-                          }
-                          finalDataPartitionMap.computeIfAbsent(
-                              dnSeriesPartitionSlot, k -> dnSeriesPartitionTable);
-                        });
-              });
-    } else {
-      finalDataPartitionMap.forEach(
-          (tSeriesPartitionSlot, seriesPartitionTable) -> {
-            dataPartitionTables
-                .values()
-                .forEach(
-                    dataPartitionTable -> {
-                      if (dataPartitionTable == null
-                          || dataPartitionTable.getDataPartitionMap() == null
-                          || dataPartitionTable.getDataPartitionMap().isEmpty()) {
-                        return;
-                      }
-                      dataPartitionTable
-                          .getDataPartitionMap()
-                          .forEach(
-                              (dnSeriesPartitionSlot, dnSeriesPartitionTable) -> {
-                                if (!tSeriesPartitionSlot.equals(dnSeriesPartitionSlot)) {
-                                  return;
-                                }
-
-                                if (seriesPartitionTable == null
-                                    || seriesPartitionTable.getSeriesPartitionMap() == null
-                                    || seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
-                                  finalDataPartitionMap.put(
-                                      tSeriesPartitionSlot, dnSeriesPartitionTable);
-                                }
-
-                                // dnDataPartitionTable merged to seriesPartitionTable
-                                dnSeriesPartitionTable
-                                    .getSeriesPartitionMap()
-                                    .forEach(
-                                        (k, v) ->
-                                            v.forEach(
-                                                tConsensusGroupId -> {
-                                                  if (seriesPartitionTable == null) {
-                                                    return;
-                                                  }
-                                                  seriesPartitionTable.putDataPartition(
-                                                      k, tConsensusGroupId);
-                                                }));
-                              });
-                    });
-          });
-    }
-
-    finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap);
-
+    finalDataPartitionTable = new DataPartitionTable(finalDataPartitionMap).merge(dataPartitionTables);
     LOG.info("DataPartitionTable merge completed successfully");
     setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_RAFT);
     return Flow.HAS_MORE_STATE;
