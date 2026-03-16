@@ -95,7 +95,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(getTimeIndexType(), outputStream);
+    ReadWriteIOUtils.write(ARRAY_DEVICE_TIME_INDEX_TYPE, outputStream);
     int deviceNum = deviceToIndex.size();
 
     ReadWriteIOUtils.write(deviceNum, outputStream);

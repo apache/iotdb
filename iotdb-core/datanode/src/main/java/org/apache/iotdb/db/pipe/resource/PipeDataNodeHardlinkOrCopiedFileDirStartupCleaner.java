@@ -58,14 +58,14 @@ public class PipeDataNodeHardlinkOrCopiedFileDirStartupCleaner {
   }
 
   private static void cleanSnapshotDir() {
-    final File pipeConsensusDir =
+    final File iotConsensusV2Dir =
         new File(
             IoTDBDescriptor.getInstance().getConfig().getConsensusDir()
                 + File.separator
                 + PipeSnapshotResourceManager.PIPE_SNAPSHOT_DIR_NAME);
-    if (pipeConsensusDir.isDirectory()) {
-      LOGGER.info("Pipe snapshot dir found, deleting it: {},", pipeConsensusDir);
-      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(pipeConsensusDir);
+    if (iotConsensusV2Dir.isDirectory()) {
+      LOGGER.info("Pipe snapshot dir found, deleting it: {},", iotConsensusV2Dir);
+      org.apache.iotdb.commons.utils.FileUtils.deleteFileOrDirectory(iotConsensusV2Dir);
     }
   }
 

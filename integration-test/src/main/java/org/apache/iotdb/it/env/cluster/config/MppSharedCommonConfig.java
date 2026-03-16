@@ -196,9 +196,9 @@ public class MppSharedCommonConfig implements CommonConfig {
   }
 
   @Override
-  public CommonConfig setIoTConsensusV2Mode(String ioTConsensusV2Mode) {
-    cnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
-    dnConfig.setIoTConsensusV2Mode(ioTConsensusV2Mode);
+  public CommonConfig setIoTConsensusV2Mode(String iotConsensusV2Mode) {
+    cnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
+    dnConfig.setIoTConsensusV2Mode(iotConsensusV2Mode);
     return this;
   }
 
