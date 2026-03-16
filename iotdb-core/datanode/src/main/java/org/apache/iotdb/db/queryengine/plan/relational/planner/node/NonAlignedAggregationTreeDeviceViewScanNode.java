@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner.node;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -81,6 +83,8 @@ public class NonAlignedAggregationTreeDeviceViewScanNode extends AggregationTree
         measurementColumnNameMap);
   }
 
+  private NonAlignedAggregationTreeDeviceViewScanNode() {}
+
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitNonAlignedAggregationTreeDeviceViewScan(this, context);
@@ -110,6 +114,15 @@ public class NonAlignedAggregationTreeDeviceViewScanNode extends AggregationTree
         groupIdSymbol,
         getTreeDBName(),
         getMeasurementColumnNameMap());
+  }
+
+  protected PlanNodeType getPlanNodeType() {
+    return PlanNodeType.NON_ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE;
+  }
+
+  public static AggregationTreeDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
+    return AggregationTreeDeviceViewScanNode.deserialize(
+        byteBuffer, new NonAlignedAggregationTreeDeviceViewScanNode());
   }
 
   @Override
