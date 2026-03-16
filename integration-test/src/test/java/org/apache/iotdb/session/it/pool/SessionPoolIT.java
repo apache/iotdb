@@ -242,7 +242,7 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void tryIfTheServerIsRestart() {
+  public void tryIfTheServerIsRestart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(3);
     SessionDataSetWrapper wrapper = null;
     BaseNodeWrapper node = EnvFactory.getEnv().getDataNodeWrapper(0);
@@ -268,6 +268,7 @@ public class SessionPoolIT {
           .ensureNodeStatus(
               Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
       pool = EnvFactory.getEnv().getSessionPool(3);
+      TimeUnit.SECONDS.sleep(3);
       correctQuery(pool, DEFAULT_QUERY_TIMEOUT);
       pool.close();
       return;
@@ -335,7 +336,7 @@ public class SessionPoolIT {
   }
 
   @Test
-  public void restart() {
+  public void restart() throws InterruptedException {
     ISessionPool pool = EnvFactory.getEnv().getSessionPool(1);
     write10Data(pool, true);
     // stop the server.
@@ -353,6 +354,7 @@ public class SessionPoolIT {
     EnvFactory.getEnv()
         .ensureNodeStatus(
             Collections.singletonList(node), Collections.singletonList(NodeStatus.Running));
+    TimeUnit.SECONDS.sleep(3);
     write10Data(pool, true);
     pool.close();
   }
