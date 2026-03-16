@@ -28,6 +28,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
@@ -309,20 +310,14 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
                         for (final ResultSet dataSet : message.getResultSets()) {
-                          while (((org.apache.iotdb.session.subscription.payload
-                                      .SubscriptionRecordHandler.SubscriptionResultSet)
-                                  dataSet)
+                          while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                               .hasNext()) {
                             final RowRecord record =
-                                ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionResultSet)
-                                        dataSet)
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                     .nextRecord();
                             Assert.assertEquals(
                                 type.toString(),
-                                ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionResultSet)
-                                        dataSet)
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                     .getColumnTypes()
                                     .get(1));
                             Assert.assertEquals(type, record.getFields().get(0).getDataType());
@@ -330,9 +325,7 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                                 expectedData,
                                 getValue(
                                     type,
-                                    ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionResultSet)
-                                            dataSet)
+                                    ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                         .getTablet()));
                             Assert.assertEquals(
                                 expectedData, record.getFields().get(0).getObjectValue(type));

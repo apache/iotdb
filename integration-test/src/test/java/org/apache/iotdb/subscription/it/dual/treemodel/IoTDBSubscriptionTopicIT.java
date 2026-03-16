@@ -34,6 +34,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
@@ -650,9 +651,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
                       case RECORD_HANDLER:
                         for (final ResultSet dataSet : message.getResultSets()) {
-                          while (((org.apache.iotdb.session.subscription.payload
-                                      .SubscriptionRecordHandler.SubscriptionResultSet)
-                                  dataSet)
+                          while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                               .hasNext()) {
                             dataSet.next();
                             rowCount.addAndGet(1);

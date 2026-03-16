@@ -388,9 +388,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                         for (final ResultSet dataSet : message.getResultSets()) {
                           try {
                             session_dest.insertTablet(
-                                ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionResultSet)
-                                        dataSet)
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                     .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);
@@ -469,9 +467,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionTreeRe
                         for (final ResultSet dataSet : message.getResultSets()) {
                           try {
                             session_dest2.insertTablet(
-                                ((org.apache.iotdb.session.subscription.payload
-                                            .SubscriptionRecordHandler.SubscriptionResultSet)
-                                        dataSet)
+                                ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                     .getTablet());
                           } catch (StatementExecutionException e) {
                             throw new RuntimeException(e);

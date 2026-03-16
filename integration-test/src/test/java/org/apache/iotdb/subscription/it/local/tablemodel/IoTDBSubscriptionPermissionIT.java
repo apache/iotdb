@@ -31,6 +31,7 @@ import org.apache.iotdb.session.subscription.consumer.ISubscriptionTablePushCons
 import org.apache.iotdb.session.subscription.consumer.table.SubscriptionTablePushConsumerBuilder;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.model.Topic;
+import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.local.AbstractSubscriptionLocalIT;
 
@@ -319,8 +320,7 @@ public class IoTDBSubscriptionPermissionIT extends AbstractSubscriptionLocalIT {
   }
 
   private static void countRowsFromMessage(
-      final org.apache.iotdb.session.subscription.payload.SubscriptionMessage message,
-      final AtomicInteger rowCount) {
+      final SubscriptionMessage message, final AtomicInteger rowCount) {
     for (final ResultSet dataSet : message.getResultSets()) {
       try {
         while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet).hasNext()) {

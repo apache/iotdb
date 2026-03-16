@@ -31,6 +31,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.triple.AbstractSubscriptionTripleIT;
 import org.apache.iotdb.subscription.it.triple.treemodel.regression.pushconsumer.multi.IoTDBMultiGroupVsMultiConsumerIT;
@@ -254,9 +255,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
-                              ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
                       throw new RuntimeException(e);
@@ -278,9 +277,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                       receiver2
                           .getSessionConnection()
                           .insertTablet(
-                              ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
                       throw new RuntimeException(e);
@@ -302,9 +299,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
-                              ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
                       throw new RuntimeException(e);
@@ -326,9 +321,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                       receiver2
                           .getSessionConnection()
                           .insertTablet(
-                              ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
                       throw new RuntimeException(e);
@@ -350,9 +343,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                       receiver1
                           .getSessionConnection()
                           .insertTablet(
-                              ((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
                       throw new RuntimeException(e);
@@ -378,9 +369,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                             receiver1
                                 .getSessionConnection()
                                 .insertTablet(
-                                    ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionResultSet)
-                                            dataSet)
+                                    ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                         .getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {
                             throw new RuntimeException(e);
@@ -449,9 +438,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                             receiver2
                                 .getSessionConnection()
                                 .insertTablet(
-                                    ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionResultSet)
-                                            dataSet)
+                                    ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                         .getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {
                             throw new RuntimeException(e);

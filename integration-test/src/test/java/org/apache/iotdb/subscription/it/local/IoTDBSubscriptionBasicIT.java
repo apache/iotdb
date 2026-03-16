@@ -36,6 +36,7 @@ import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullC
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePushConsumer;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 
@@ -134,9 +135,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   for (final SubscriptionMessage message : messages) {
                     int rowCountInOneMessage = 0;
                     for (final ResultSet dataSet : message.getResultSets()) {
-                      while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionResultSet)
-                              dataSet)
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                           .hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
@@ -391,14 +390,10 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
                     for (final ResultSet dataSet : message.getResultSets()) {
-                      while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionResultSet)
-                              dataSet)
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                           .hasNext()) {
                         timestampSum.getAndAdd(
-                            ((org.apache.iotdb.session.subscription.payload
-                                        .SubscriptionRecordHandler.SubscriptionResultSet)
-                                    dataSet)
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                 .nextRecord()
                                 .getTimestamp());
                         rowCount.addAndGet(1);
@@ -553,9 +548,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 message -> {
                   for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionResultSet)
-                              dataSet)
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                           .hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
@@ -624,9 +617,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 message -> {
                   for (final ResultSet dataSet : message.getResultSets()) {
                     try {
-                      while (((org.apache.iotdb.session.subscription.payload
-                                  .SubscriptionRecordHandler.SubscriptionResultSet)
-                              dataSet)
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                           .hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);

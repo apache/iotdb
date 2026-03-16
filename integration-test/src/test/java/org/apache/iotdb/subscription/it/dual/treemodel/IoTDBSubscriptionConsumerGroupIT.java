@@ -33,6 +33,7 @@ import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.SubscriptionTreeReaderTestUtils;
 import org.apache.iotdb.subscription.it.dual.AbstractSubscriptionDualIT;
@@ -1057,18 +1058,12 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                           {
                             for (final ResultSet dataSet : message.getResultSets()) {
                               final List<String> columnNameList =
-                                  ((org.apache.iotdb.session.subscription.payload
-                                              .SubscriptionRecordHandler.SubscriptionResultSet)
-                                          dataSet)
+                                  ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                       .getColumnNames();
-                              while (((org.apache.iotdb.session.subscription.payload
-                                          .SubscriptionRecordHandler.SubscriptionResultSet)
-                                      dataSet)
+                              while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                   .hasNext()) {
                                 final RowRecord record =
-                                    ((org.apache.iotdb.session.subscription.payload
-                                                .SubscriptionRecordHandler.SubscriptionResultSet)
-                                            dataSet)
+                                    ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
                                         .nextRecord();
                                 insertRowRecordEnrichedByConsumerGroupId(
                                     columnNameList, record.getTimestamp(), consumerGroupId);
