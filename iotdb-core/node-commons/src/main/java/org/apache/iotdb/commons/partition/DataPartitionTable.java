@@ -305,15 +305,17 @@ public class DataPartitionTable {
    * Support single table merging
    * Merge another DataPartitionTable into the current object (used for incremental merging)
    */
-  public void merge(DataPartitionTable sourcePartitionTable) {
+  public DataPartitionTable merge(DataPartitionTable sourcePartitionTable) {
+    DataPartitionTable merged = new DataPartitionTable(this.dataPartitionMap);
     if (sourcePartitionTable == null) {
-      return;
+      return merged;
     }
     for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry : sourcePartitionTable.dataPartitionMap.entrySet()) {
-      this.dataPartitionMap
+      merged.dataPartitionMap
               .computeIfAbsent(entry.getKey(), k -> new SeriesPartitionTable())
               .merge(entry.getValue());
     }
+    return merged;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

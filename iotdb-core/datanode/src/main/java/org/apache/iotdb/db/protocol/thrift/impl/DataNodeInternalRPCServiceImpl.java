@@ -66,6 +66,7 @@ import org.apache.iotdb.commons.enums.DataPartitionTableGeneratorState;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.path.ExtendedPartialPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -328,6 +329,7 @@ import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.NotImplementedException;
+import org.apache.tsfile.external.commons.lang3.StringUtils;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.Pair;
@@ -3238,7 +3240,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat() {
     TGenerateDataPartitionTableHeartbeatResp resp = new TGenerateDataPartitionTableHeartbeatResp();
     // Set default value
-    resp.setDataPartitionTable(new byte[0]);
+    resp.setDatabaseScopedDataPartitionTables(Collections.emptyList());
     try {
       currentGeneratorFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
       if (currentGenerator == null) {
@@ -3250,10 +3252,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       parseGenerationStatus(resp);
       if (currentGenerator.getStatus().equals(DataPartitionTableGenerator.TaskStatus.COMPLETED)) {
-        DataPartitionTable dataPartitionTable = currentGenerator.getDataPartitionTable();
-        if (dataPartitionTable != null) {
-          byte[] result = serializeDataPartitionTable(dataPartitionTable);
-          resp.setDataPartitionTable(result);
+        boolean success = false;
+        List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList = new ArrayList<>();
+        Map<String, DataPartitionTable> dataPartitionTableMap = currentGenerator.getDatabasePartitionTableMap();
+        if (!dataPartitionTableMap.isEmpty()) {
+          for (Map.Entry<String, DataPartitionTable> entry : dataPartitionTableMap.entrySet()) {
+            String database = entry.getKey();
+            DataPartitionTable dataPartitionTable = entry.getValue();
+            if (StringUtils.isEmpty(database) && dataPartitionTable != null) {
+              DatabaseScopedDataPartitionTable databaseScopedDataPartitionTable = new DatabaseScopedDataPartitionTable(database, dataPartitionTable);
+              databaseScopedDataPartitionTableList.add(databaseScopedDataPartitionTable);
+              success = true;
+            }
+          }
+        }
+
+        if (success) {
+          List<ByteBuffer> result = serializeDatabaseScopedTableList(databaseScopedDataPartitionTableList);
+          resp.setDatabaseScopedDataPartitionTables(result);
+
           // Clear current generator
           currentGenerator = null;
         }
@@ -3406,10 +3423,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                         }
                                         String timeSlotName = timeSlotPath.getFileName().toString();
                                         long timeslot = Long.parseLong(timeSlotName);
-                                        if (timeslot
-                                            < databaseEarliestRegionMap.get(databaseName)) {
-                                          databaseEarliestRegionMap.put(databaseName, timeslot);
-                                        }
+                                        databaseEarliestRegionMap.compute(
+                                                databaseName,
+                                                (k, v) ->
+                                                        v == null ? timeslot : Math.min(v, timeslot));
                                       } catch (IOException e) {
                                         LOGGER.error(
                                             "Failed to find any {} files in the {} directory",
@@ -3440,17 +3457,30 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return databaseEarliestRegionMap.get(databaseName);
   }
 
-  /** Serialize DataPartitionTable to ByteBuffer for RPC transmission. */
-  private byte[] serializeDataPartitionTable(DataPartitionTable dataPartitionTable) {
-    try (PublicBAOS baos = new PublicBAOS();
-        DataOutputStream oos = new DataOutputStream(baos)) {
-      TTransport transport = new TIOStreamTransport(oos);
-      TBinaryProtocol protocol = new TBinaryProtocol(transport);
-      dataPartitionTable.serialize(oos, protocol);
-      return baos.getBuf();
-    } catch (IOException | TException e) {
-      LOGGER.error("Failed to serialize DataPartitionTable", e);
-      return ByteBuffer.allocate(0).array();
+  private List<ByteBuffer> serializeDatabaseScopedTableList(List<DatabaseScopedDataPartitionTable> list) {
+    if (list == null || list.isEmpty()) {
+      return Collections.emptyList();
     }
+
+    List<ByteBuffer> result = new ArrayList<>(list.size());
+
+    for (DatabaseScopedDataPartitionTable table : list) {
+      try (PublicBAOS baos = new PublicBAOS();
+           DataOutputStream oos = new DataOutputStream(baos)) {
+
+        TTransport transport = new TIOStreamTransport(oos);
+        TBinaryProtocol protocol = new TBinaryProtocol(transport);
+
+        table.serialize(oos, protocol);
+
+        result.add(ByteBuffer.wrap(baos.toByteArray()));
+
+      } catch (IOException | TException e) {
+        LOGGER.error("Failed to serialize DatabaseScopedDataPartitionTable for database: {}",
+                table.getDatabase(), e);
+      }
+    }
+
+    return result;
   }
 }

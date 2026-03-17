@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
+import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -60,7 +62,7 @@ public class DataPartitionTableGenerator {
   // Task status
   private volatile TaskStatus status = TaskStatus.NOT_STARTED;
   private volatile String errorMessage;
-  private volatile DataPartitionTable dataPartitionTable;
+  private Map<String, DataPartitionTable> databasePartitionTableMap = new ConcurrentHashMap<>();
 
   // Progress tracking
   private final AtomicInteger processedFiles = new AtomicInteger(0);
@@ -101,6 +103,10 @@ public class DataPartitionTableGenerator {
     this.databases = databases;
     this.seriesSlotNum = seriesSlotNum;
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
+  }
+
+  public Map<String, DataPartitionTable> getDatabasePartitionTableMap() {
+    return databasePartitionTableMap;
   }
 
   public enum TaskStatus {
@@ -150,6 +156,23 @@ public class DataPartitionTableGenerator {
                         seqTsFileList, seriesPartitionExecutor, dataPartitionMap);
                     constructDataPartitionMap(
                         unseqTsFileList, seriesPartitionExecutor, dataPartitionMap);
+
+                    if (dataPartitionMap.isEmpty()) {
+                      LOG.error("Failed to generate DataPartitionTable, dataPartitionMap is empty");
+                      status = TaskStatus.FAILED;
+                      errorMessage = "DataPartitionMap is empty after processing resource file";
+                      return;
+                    }
+
+                    DataPartitionTable dataPartitionTable = new DataPartitionTable(dataPartitionMap);
+
+                    databasePartitionTableMap.compute(databaseName, (k,v) -> {
+                      if (v == null) {
+                        return new DataPartitionTable(dataPartitionMap);
+                      }
+                      v.merge(dataPartitionTable);
+                      return v;
+                    });
                   } catch (Exception e) {
                     LOG.error("Error processing data region: {}", dataRegion.getDatabaseName(), e);
                     failedFiles.incrementAndGet();
@@ -163,14 +186,6 @@ public class DataPartitionTableGenerator {
       // Wait for all tasks to complete
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-      if (dataPartitionMap.isEmpty()) {
-        LOG.error("Failed to generate DataPartitionTable, dataPartitionMap is empty");
-        status = TaskStatus.FAILED;
-        errorMessage = "DataPartitionMap is empty after processing resource file";
-        return;
-      }
-
-      dataPartitionTable = new DataPartitionTable(dataPartitionMap);
       status = TaskStatus.COMPLETED;
       LOG.info(
           "DataPartitionTable generation completed successfully. Processed: {}, Failed: {}",
@@ -231,22 +246,6 @@ public class DataPartitionTableGenerator {
 
   public String getErrorMessage() {
     return errorMessage;
-  }
-
-  public DataPartitionTable getDataPartitionTable() {
-    return dataPartitionTable;
-  }
-
-  public int getProcessedFiles() {
-    return processedFiles.get();
-  }
-
-  public int getFailedFiles() {
-    return failedFiles.get();
-  }
-
-  public long getTotalFiles() {
-    return totalFiles.get();
   }
 
   public double getProgress() {
