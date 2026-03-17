@@ -274,7 +274,6 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
     long position = 0;
     try (final RandomAccessFile reader = new RandomAccessFile(file, "r")) {
       while (true) {
-        mayLimitRateAndRecordIO(readFileBufferSize);
         final int readLength = reader.read(readBuffer);
         if (readLength == -1) {
           break;
@@ -284,6 +283,8 @@ public abstract class IoTDBAirGapSink extends IoTDBSink {
             readLength == readFileBufferSize
                 ? readBuffer
                 : Arrays.copyOfRange(readBuffer, 0, readLength);
+
+        mayLimitRateAndRecordIO(payload.length);
         if (!send(
             pipeName,
             creationTime,

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.pipe.sink.protocol.thrift.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.client.IoTDBSyncClient;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
@@ -39,13 +40,13 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventBatc
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventPlainBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTabletEventTsFileBatch;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.batch.PipeTransferBatchReqBuilder;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.util.cacher.LeaderCacheUtils;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
@@ -120,7 +121,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
   @Override
   protected PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
-    return PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, position, payLoad);
+    return PipeTransferMultiFilePieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   @Override
@@ -530,22 +531,31 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
     TPipeTransferResp resp;
 
     // 1. Transfer tsFile, and mod file if exists and receiver's version >= 2
-    if (Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver()) {
-      transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
+    final boolean withMod =
+        Objects.nonNull(modFile) && clientManager.supportModsIfIsDataNodeReceiver();
+    transferFilePieces(pipeName2WeightMap, modFile, clientAndStatus, true);
+    if (withMod) {
       transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, true);
+    }
 
-      try {
-        // 2. Transfer schema evolution file if exists
-        if (resource != null) {
-          EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
-          if (evolvedSchema != null) {
-            ByteBuffer fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
-            final byte[] payload = fileBuffer.array();
+    try {
+      // 2. Transfer schema evolution file if exists
+      EvolvedSchema evolvedSchema = null;
+      ByteBuffer fileBuffer = null;
+      if (resource != null) {
+        evolvedSchema = resource.getMergedEvolvedSchema();
+        if (evolvedSchema != null) {
+          fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
+          final String sevoName =
+              SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile);
+
+          while (fileBuffer.remaining() > 0) {
+            final int length =
+                Math.min(
+                    PipeConfig.getInstance().getPipeSinkReadFileBufferSize(),
+                    fileBuffer.remaining());
             final TPipeTransferReq uncompressedReq =
-                PipeTransferTsFilePieceReq.toTPipeTransferReq(
-                    SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile),
-                    0,
-                    payload);
+                PipeTransferMultiFilePieceReq.toTPipeTransferReq(sevoName, fileBuffer, length);
             final TPipeTransferReq sevoReq = compressIfNeeded(uncompressedReq);
 
             pipeName2WeightMap.forEach(
@@ -555,6 +565,7 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                         pipePair.getRight(),
                         clientAndStatus.getLeft().getEndPoint(),
                         (long) (sevoReq.getBody().length * weight)));
+            mayLimitRateAndRecordIO(length);
 
             resp = clientAndStatus.left.pipeTransfer(sevoReq);
 
@@ -564,67 +575,44 @@ public class IoTDBDataRegionSyncSink extends IoTDBDataNodeSyncSink {
                 && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
               receiverStatusHandler.handle(
                   resp.getStatus(),
-                  String.format("Seal file %s error, result status %s.", tsFile, resp.getStatus()),
+                  String.format(
+                      "Seal file %s error, result status %s.", sevoName, resp.getStatus()),
                   tsFile.getName());
               return;
             }
-            LOGGER.info("Transferred schema evolution file for tsfile {}.", tsFile);
           }
         }
-
-        // 3. Transfer file seal signal with mod, which means the file is transferred completely
-        final TPipeTransferReq req =
-            compressIfNeeded(
-                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName));
-
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    clientAndStatus.getLeft().getEndPoint(),
-                    (long) (req.getBody().length * weight)));
-
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-
-      } catch (final Exception e) {
-        clientAndStatus.setRight(false);
-        clientManager.adjustTimeoutIfNecessary(e);
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
       }
-    } else {
-      transferFilePieces(pipeName2WeightMap, tsFile, clientAndStatus, false);
 
-      // 2. Transfer file seal signal without mod, which means the file is transferred completely
-      try {
-        final TPipeTransferReq req =
-            compressIfNeeded(
-                PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName));
+      // 3. Transfer file seal signal with mod, which means the file is transferred completely
+      final TPipeTransferReq req =
+          compressIfNeeded(
+              PipeTransferMultiFileSealReq.toTPipeTransferReq(
+                  withMod ? modFile.getName() : null,
+                  withMod ? modFile.length() : 0L,
+                  Objects.nonNull(evolvedSchema)
+                      ? SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile)
+                      : null,
+                  Objects.nonNull(evolvedSchema) ? fileBuffer.limit() : 0L,
+                  tsFile.getName(),
+                  tsFile.length(),
+                  dataBaseName));
 
-        pipeName2WeightMap.forEach(
-            (pipePair, weight) ->
-                rateLimitIfNeeded(
-                    pipePair.getLeft(),
-                    pipePair.getRight(),
-                    clientAndStatus.getLeft().getEndPoint(),
-                    (long) (req.getBody().length * weight)));
+      pipeName2WeightMap.forEach(
+          (pipePair, weight) ->
+              rateLimitIfNeeded(
+                  pipePair.getLeft(),
+                  pipePair.getRight(),
+                  clientAndStatus.getLeft().getEndPoint(),
+                  (long) (req.getBody().length * weight)));
 
-        resp = clientAndStatus.getLeft().pipeTransfer(req);
-      } catch (final Exception e) {
-        clientAndStatus.setRight(false);
-        clientManager.adjustTimeoutIfNecessary(e);
-        throw new PipeConnectionException(
-            String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()),
-            e);
-      }
+      resp = clientAndStatus.getLeft().pipeTransfer(req);
+
+    } catch (final Exception e) {
+      clientAndStatus.setRight(false);
+      clientManager.adjustTimeoutIfNecessary(e);
+      throw new PipeConnectionException(
+          String.format("Network error when seal file %s, because %s.", tsFile, e.getMessage()), e);
     }
 
     final TSStatus status = resp.getStatus();

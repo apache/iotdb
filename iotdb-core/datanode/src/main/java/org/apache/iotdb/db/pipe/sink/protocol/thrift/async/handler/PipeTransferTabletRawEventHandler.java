@@ -45,7 +45,7 @@ public class PipeTransferTabletRawEventHandler extends PipeTransferTabletInserti
 
   @Override
   protected void updateLeaderCache(final TSStatus status) {
-    connector.updateLeaderCache(
+    sink.updateLeaderCache(
         ((PipeRawTabletInsertionEvent) event).getDeviceId(), status.getRedirectNode());
   }
 }
