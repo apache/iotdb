@@ -125,16 +125,20 @@ public class FileTimeIndex implements ITimeIndex {
   public Set<IDeviceID> getDevices(
       String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
     tsFileResource.readLock();
-    try (InputStream inputStream =
-        FSFactoryProducer.getFSFactory()
-            .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
-      // The first byte is VERSION_NUMBER, second byte is timeIndexType.
-      byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
-      limiter.acquire(bytes.length);
-      if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
-        return ArrayDeviceTimeIndex.getDevices(inputStream);
-      } else {
-        return PlainDeviceTimeIndex.getDevices(inputStream);
+    try {
+      limiter.acquire(tsFileResource.getTsFileSize());
+
+      try (InputStream inputStream =
+          FSFactoryProducer.getFSFactory()
+              .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
+        // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+        byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
+
+        if (bytes[1] == ARRAY_DEVICE_TIME_INDEX_TYPE) {
+          return ArrayDeviceTimeIndex.getDevices(inputStream);
+        } else {
+          return PlainDeviceTimeIndex.getDevices(inputStream);
+        }
       }
     } catch (NoSuchFileException e) {
       // deleted by ttl

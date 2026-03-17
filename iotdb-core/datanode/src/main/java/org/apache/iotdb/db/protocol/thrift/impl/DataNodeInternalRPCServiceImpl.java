@@ -3343,13 +3343,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   /** Process data directory to find the earliest timeslots for each database. */
   private void processDataDirectoryForEarliestTimeslots(
       File dataDir, Map<String, Long> earliestTimeslots) {
-    try {
-      Files.list(dataDir.toPath())
+    try (Stream<Path> sequenceTypePaths = Files.list(dataDir.toPath())) {
+      sequenceTypePaths
           .filter(Files::isDirectory)
           .forEach(
               sequenceTypePath -> {
-                try {
-                  Files.list(sequenceTypePath)
+                try (Stream<Path> dbPaths = Files.list(sequenceTypePath)) {
+                  dbPaths
                       .filter(Files::isDirectory)
                       .forEach(
                           dbPath -> {
@@ -3393,16 +3393,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
             new ThreadPoolExecutor.CallerRunsPolicy());
 
-    try {
-      Files.list(databaseDir.toPath())
+    try (Stream<Path> databasePaths = Files.list(databaseDir.toPath())) {
+      databasePaths
           .filter(Files::isDirectory)
           .forEach(
               regionPath -> {
                 Future<?> future =
                     findEarliestTimeSlotExecutor.submit(
                         () -> {
-                          try {
-                            Files.list(regionPath)
+                          try (Stream<Path> regionPaths = Files.list(regionPath)) {
+                            regionPaths
                                 .filter(Files::isDirectory)
                                 .forEach(
                                     timeSlotPath -> {

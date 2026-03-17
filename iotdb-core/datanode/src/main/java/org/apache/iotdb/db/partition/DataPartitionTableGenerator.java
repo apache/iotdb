@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
-import org.apache.iotdb.commons.partition.DatabaseScopedDataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -34,7 +33,6 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
-
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -123,7 +120,16 @@ public class DataPartitionTableGenerator {
     }
 
     status = TaskStatus.IN_PROGRESS;
-    return CompletableFuture.runAsync(this::generateDataPartitionTableByMemory);
+    return CompletableFuture.runAsync(() -> {
+      try {
+        generateDataPartitionTableByMemory();
+      } catch (Throwable t) {
+        status = TaskStatus.FAILED;
+        errorMessage = "Failed to generate DataPartitionTable: " + t.getMessage();
+        LOG.error("Failed to generate DataPartitionTable asynchronously", t);
+        throw t;
+      }
+    }, executor);
   }
 
   private void generateDataPartitionTableByMemory() {

@@ -156,12 +156,14 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     }
     active();
     LOGGER.info("IoTDB started");
-    try {
-      dataPartitionTableCheckFuture.get();
-    } catch (ExecutionException | InterruptedException e) {
-      LOGGER.error("Data partition table check task execute failed", e);
-    } finally {
-      dataPartitionTableCheckExecutor.shutdownNow();
+    if (dataPartitionTableCheckFuture != null) {
+      try {
+        dataPartitionTableCheckFuture.get();
+      } catch (ExecutionException | InterruptedException e) {
+        LOGGER.error("Data partition table check task execute failed", e);
+      } finally {
+        dataPartitionTableCheckExecutor.shutdownNow();
+      }
     }
   }
 

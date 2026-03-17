@@ -729,7 +729,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     int earliestTimeslotsSize = byteBuffer.getInt();
     earliestTimeslots = new ConcurrentHashMap<>();
     for (int i = 0; i < earliestTimeslotsSize; i++) {
-      String database = String.valueOf(byteBuffer.getChar());
+      String database = ReadWriteIOUtils.readString(byteBuffer);
       long timeslot = byteBuffer.getLong();
       earliestTimeslots.put(database, timeslot);
     }

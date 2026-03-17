@@ -108,8 +108,25 @@ public class LeakyBucketRateLimiter {
     return totalBytes.get();
   }
 
-  /** Expected time based on bytes processed. */
+  /**
+   * Calculate the expected time using double (double can easily hold nanoseconds on the order of 10^18), then perform clamping and convert to long.
+   * Advantages: Extremely simple, zero exceptions thrown, and double precision is sufficient (nanosecond-level errors are negligible).
+   * Disadvantages: In extreme cases (when totalBytes is close to 2^63), double loses precision in the trailing digits. However, in IoTDB's actual scenarios, bytesPerSecond is typically between 10MB/s and 1GB/s, so this situation will not occur.
+   */
   private long expectedTimeNs(long totalBytes) {
-    return startTimeNs + (totalBytes * 1_000_000_000L) / bytesPerSecond;
+    if (totalBytes <= 0) {
+      return startTimeNs;
+    }
+
+    // Use double for calculations to avoid overflow in long multiplication
+    double seconds = (double) totalBytes / bytesPerSecond;
+    double elapsedNsDouble = seconds * 1_000_000_000.0;
+
+    if (elapsedNsDouble > Long.MAX_VALUE - startTimeNs) {
+      // clamp
+      return Long.MAX_VALUE;
+    }
+
+    return startTimeNs + (long) elapsedNsDouble;
   }
 }

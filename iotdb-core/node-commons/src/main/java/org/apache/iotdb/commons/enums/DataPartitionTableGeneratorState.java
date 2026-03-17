@@ -36,10 +36,10 @@ public enum DataPartitionTableGeneratorState {
   }
 
   /**
-   * get DataNodeRemoveState by code
+   * get DataPartitionTableGeneratorState by code
    *
    * @param code code
-   * @return DataNodeRemoveState
+   * @return DataPartitionTableGeneratorState
    */
   public static DataPartitionTableGeneratorState getStateByCode(int code) {
     for (DataPartitionTableGeneratorState state : DataPartitionTableGeneratorState.values()) {

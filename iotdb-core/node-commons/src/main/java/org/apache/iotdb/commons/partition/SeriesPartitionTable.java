@@ -73,10 +73,12 @@ public class SeriesPartitionTable {
   }
 
   public void putDataPartition(TTimePartitionSlot timePartitionSlot, TConsensusGroupId groupId) {
-    seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>());
-    List<TConsensusGroupId> groupList = seriesPartitionMap.get(timePartitionSlot);
-    if (!groupList.contains(groupId)) {
-      groupList.add(groupId);
+    List<TConsensusGroupId> groupList =
+            seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>());
+    synchronized (groupList) {
+      if (!groupList.contains(groupId)) {
+        groupList.add(groupId);
+      }
     }
   }
 

@@ -130,17 +130,15 @@ public class TimePartitionUtils {
     return partitionId.longValue();
   }
 
+  /** Since bigTimePartitionInterval.multiply(partitionId) is always an exact multiple of
+  * bigTimePartitionInterval, the previous conditional logic was redundant and the else
+  * branch was unreachable. We directly compute the time without risk of overflow here.
+  */
   public static long getTimeWithoutOverflow(long partitionId) {
-    BigInteger bigTime = bigTimePartitionInterval.multiply(BigInteger.valueOf(partitionId));
-    if (bigTime.compareTo(BigInteger.ZERO) > 0
-        || bigTime.remainder(bigTimePartitionInterval).equals(BigInteger.ZERO)) {
-      return bigTime.add(bigTimePartitionOrigin).longValue();
-    }
-    return BigInteger.valueOf(partitionId)
-        .add(BigInteger.ONE)
-        .multiply(bigTimePartitionInterval)
-        .add(bigTimePartitionOrigin)
-        .longValue();
+    return bigTimePartitionInterval
+            .multiply(BigInteger.valueOf(partitionId))
+            .add(bigTimePartitionOrigin)
+            .longValue();
   }
 
   public static long getTimeByPartitionId(long partitionId) {
