@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.readchunk;
 
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnSchema;
 import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.exception.CompactionLastTimeCheckFailedException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.CompactionTaskSummary;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.ModifiedStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.AlignedSeriesBatchCompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.executor.batch.utils.CompactionAlignedPageLazyLoadPointReader;
@@ -34,6 +38,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFi
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import org.apache.tsfile.common.conf.TSFileConfig;
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encoding.decoder.Decoder;
 import org.apache.tsfile.encrypt.EncryptUtils;
@@ -45,6 +50,7 @@ import org.apache.tsfile.file.metadata.AbstractAlignedChunkMetadata;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.file.metadata.statistics.Statistics;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
@@ -62,6 +68,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +93,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
   private boolean lastWriteTimestampSet = false;
 
   public ReadChunkAlignedSeriesCompactionExecutor(
+      String database,
       IDeviceID device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>>
@@ -99,13 +107,17 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.writer = writer;
     this.targetResource = targetResource;
     this.summary = summary;
-    collectValueColumnSchemaList();
+    this.ignoreAllNullRows = ignoreAllNullRows;
+    if (device.isTableModel()) {
+      collectValueColumnSchemaListForTable(database);
+    } else {
+      collectValueColumnSchemaListForTree();
+    }
     fillAlignedChunkMetadataToMatchSchemaList();
     int compactionFileLevel =
         Integer.parseInt(this.targetResource.getTsFile().getName().split("-")[2]);
     flushController = new ReadChunkAlignedSeriesCompactionFlushController(compactionFileLevel);
     this.chunkWriter = constructAlignedChunkWriter();
-    this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
   // used for batched column compaction
@@ -133,11 +145,69 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     this.ignoreAllNullRows = ignoreAllNullRows;
   }
 
-  private void collectValueColumnSchemaList() throws IOException {
+  private void collectValueColumnSchemaListForTable(String database) throws IOException {
+    TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+    TsTable tsTable =
+        DataNodeTableCache.getInstance().getTable(database, device.getTableName(), false);
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
-      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair =
-          this.readerAndChunkMetadataList.get(i);
+    Iterator<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>> iterator =
+        readerAndChunkMetadataList.descendingIterator();
+    while (iterator.hasNext()) {
+      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair = iterator.next();
+      CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
+      List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
+      for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+        if (alignedChunkMetadata == null) {
+          continue;
+        }
+        if (timeSchema == null) {
+          timeSchema =
+              new MeasurementSchema(
+                  alignedChunkMetadata.getTimeChunkMetadata().getMeasurementUid(),
+                  alignedChunkMetadata.getTimeChunkMetadata().getDataType(),
+                  TSEncoding.valueOf(tsFileConfig.getTimeEncoder()),
+                  tsFileConfig.getCompressor());
+        }
+        for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+          if (chunkMetadata == null
+              || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
+            continue;
+          }
+          TsTableColumnSchema schemaInTsTable = null;
+          if (tsTable != null) {
+            schemaInTsTable = tsTable.getColumnSchema(chunkMetadata.getMeasurementUid());
+          }
+          IMeasurementSchema measurementSchema;
+          if (schemaInTsTable == null) {
+            ChunkHeader chunkHeader =
+                reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
+            measurementSchema =
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType());
+          } else {
+            measurementSchema = schemaInTsTable.getMeasurementSchema();
+          }
+          measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), measurementSchema);
+        }
+      }
+    }
+    this.schemaList =
+        measurementSchemaMap.values().stream()
+            .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementName))
+            .collect(Collectors.toList());
+  }
+
+  private void collectValueColumnSchemaListForTree() throws IOException {
+    Map<String, Pair<IMeasurementSchema, Boolean>> measurementSchemaMap = new HashMap<>();
+    List<Pair<IMeasurementSchema, Boolean>> measurementSchemasNeedToUpdate = new ArrayList<>();
+    List<String> measurementNamesNeedToUpdate = new ArrayList<>();
+    Iterator<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>> iterator =
+        readerAndChunkMetadataList.descendingIterator();
+    while (iterator.hasNext()) {
+      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair = iterator.next();
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
@@ -158,24 +228,48 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         }
 
         for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
-          if (chunkMetadata == null
-              || measurementSchemaMap.containsKey(chunkMetadata.getMeasurementUid())) {
+          if (chunkMetadata == null) {
             continue;
           }
-          ChunkHeader chunkHeader = reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
-          IMeasurementSchema schema =
-              new MeasurementSchema(
-                  chunkHeader.getMeasurementID(),
-                  chunkHeader.getDataType(),
-                  chunkHeader.getEncodingType(),
-                  chunkHeader.getCompressionType());
-          measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), schema);
+          Pair<IMeasurementSchema, Boolean> measurementSchema =
+              measurementSchemaMap.get(chunkMetadata.getMeasurementUid());
+          if (measurementSchema == null) {
+            ChunkHeader chunkHeader =
+                reader.readChunkHeader(chunkMetadata.getOffsetOfChunkHeader());
+            IMeasurementSchema schema =
+                new MeasurementSchema(
+                    chunkHeader.getMeasurementID(),
+                    chunkHeader.getDataType(),
+                    chunkHeader.getEncodingType(),
+                    chunkHeader.getCompressionType());
+            measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), new Pair<>(schema, false));
+            continue;
+          }
+          if (measurementSchema.getLeft().getType() != chunkMetadata.getDataType()
+              && !measurementSchema.getRight()) {
+            measurementSchema.setRight(true);
+            measurementSchemasNeedToUpdate.add(measurementSchema);
+            measurementNamesNeedToUpdate.add(chunkMetadata.getMeasurementUid());
+          }
         }
       }
     }
 
+    List<IMeasurementSchema> latestMeasurementSchemas =
+        CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+            device, measurementNamesNeedToUpdate);
+    for (int i = 0; i < measurementSchemasNeedToUpdate.size(); i++) {
+      IMeasurementSchema latestMeasurementSchema = latestMeasurementSchemas.get(i);
+      if (latestMeasurementSchema == null) {
+        continue;
+      }
+      Pair<IMeasurementSchema, Boolean> pair = measurementSchemasNeedToUpdate.get(i);
+      pair.setLeft(latestMeasurementSchema);
+    }
+
     this.schemaList =
         measurementSchemaMap.values().stream()
+            .map(Pair::getLeft)
             .sorted(Comparator.comparing(IMeasurementSchema::getMeasurementName))
             .collect(Collectors.toList());
   }

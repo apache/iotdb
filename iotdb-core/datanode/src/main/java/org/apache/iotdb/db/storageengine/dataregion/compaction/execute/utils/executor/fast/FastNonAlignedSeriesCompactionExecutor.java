@@ -21,6 +21,7 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.ex
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PatternTreeMap;
+import org.apache.iotdb.commons.utils.MetadataUtils;
 import org.apache.iotdb.db.exception.ChunkTypeInconsistentException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.subtask.FastCompactionTaskSummary;
@@ -165,9 +166,17 @@ public class FastNonAlignedSeriesCompactionExecutor extends SeriesCompactionExec
           removeFile(fileElement);
         }
       }
+      boolean checked = false;
       for (int i = 0; i < iChunkMetadataList.size(); i++) {
         IChunkMetadata chunkMetadata = iChunkMetadataList.get(i);
-        if (dataType != null && chunkMetadata.getDataType() != dataType) {
+        if (!checked) {
+          if (!MetadataUtils.canAlter(chunkMetadata.getDataType(), dataType)) {
+            removeFile(fileElement);
+            break;
+          }
+          checked = true;
+        }
+        if (chunkMetadata.getDataType() != dataType) {
           chunkMetadata.setNewType(dataType);
         }
         // add into queue
