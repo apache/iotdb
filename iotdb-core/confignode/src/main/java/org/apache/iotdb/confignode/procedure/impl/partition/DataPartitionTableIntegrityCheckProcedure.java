@@ -128,6 +128,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         case REQUEST_PARTITION_TABLES_HEART_BEAT:
           return requestPartitionTablesHeartBeat();
         case MERGE_PARTITION_TABLES:
+          finalDataPartitionTables = new HashMap<>();
           return mergePartitionTables(env);
         case WRITE_PARTITION_TABLE_TO_RAFT:
           return writePartitionTableToRaft(env);
@@ -145,20 +146,26 @@ public class DataPartitionTableIntegrityCheckProcedure
   protected void rollbackState(
       final ConfigNodeProcedureEnv env, final DataPartitionTableIntegrityCheckProcedureState state)
       throws IOException, InterruptedException, ProcedureException {
+    // Cleanup resources
     switch (state) {
       case COLLECT_EARLIEST_TIMESLOTS:
+        earliestTimeslots.clear();
+        break;
       case ANALYZE_MISSING_PARTITIONS:
+        lostDataPartitionsOfDatabases.clear();
+        break;
       case REQUEST_PARTITION_TABLES:
       case REQUEST_PARTITION_TABLES_HEART_BEAT:
-      case MERGE_PARTITION_TABLES:
-      case WRITE_PARTITION_TABLE_TO_RAFT:
-        // Cleanup resources
-        earliestTimeslots.clear();
         dataPartitionTables.clear();
-        allDataNodes.clear();
-        finalDataPartitionTables = null;
+        break;
+      case MERGE_PARTITION_TABLES:
+        finalDataPartitionTables.clear();
         break;
       default:
+        allDataNodes.clear();
+        earliestTimeslots.clear();
+        dataPartitionTables.clear();
+        finalDataPartitionTables.clear();
         throw new ProcedureException("Unknown state for rollback: " + state);
     }
   }
@@ -858,7 +865,6 @@ public class DataPartitionTableIntegrityCheckProcedure
       try {
         ByteBuffer dataBuffer = data.duplicate();
 
-        // 直接调用静态deserialize方法
         DatabaseScopedDataPartitionTable table =
                 DatabaseScopedDataPartitionTable.deserialize(dataBuffer);
 

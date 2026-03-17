@@ -120,16 +120,7 @@ public class DataPartitionTableGenerator {
     }
 
     status = TaskStatus.IN_PROGRESS;
-    return CompletableFuture.runAsync(() -> {
-      try {
-        generateDataPartitionTableByMemory();
-      } catch (Throwable t) {
-        status = TaskStatus.FAILED;
-        errorMessage = "Failed to generate DataPartitionTable: " + t.getMessage();
-        LOG.error("Failed to generate DataPartitionTable asynchronously", t);
-        throw t;
-      }
-    }, executor);
+    return CompletableFuture.runAsync(this::generateDataPartitionTableByMemory);
   }
 
   private void generateDataPartitionTableByMemory() {

@@ -3259,7 +3259,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           for (Map.Entry<String, DataPartitionTable> entry : dataPartitionTableMap.entrySet()) {
             String database = entry.getKey();
             DataPartitionTable dataPartitionTable = entry.getValue();
-            if (StringUtils.isEmpty(database) && dataPartitionTable != null) {
+            if (!StringUtils.isEmpty(database) && dataPartitionTable != null) {
               DatabaseScopedDataPartitionTable databaseScopedDataPartitionTable = new DatabaseScopedDataPartitionTable(database, dataPartitionTable);
               databaseScopedDataPartitionTableList.add(databaseScopedDataPartitionTable);
               success = true;
