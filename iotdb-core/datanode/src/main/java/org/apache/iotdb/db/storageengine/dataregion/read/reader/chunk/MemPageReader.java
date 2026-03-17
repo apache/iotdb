@@ -41,7 +41,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -126,7 +126,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public TsBlock getAllSatisfiedData(Consumer<Long> filterRowsRecorder) {
+  public TsBlock getAllSatisfiedData(LongConsumer filterRowsRecorder) {
     getTsBlock();
 
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(tsDataType));
@@ -142,18 +142,20 @@ public class MemPageReader implements IPageReader {
     return builder.build();
   }
 
-  private boolean[] buildSatisfyInfoArray(Consumer<Long> filterRowsRecorder) {
+  private boolean[] buildSatisfyInfoArray(LongConsumer filterRowsRecorder) {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {
       boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
       Arrays.fill(satisfyInfo, true);
       return satisfyInfo;
     }
 
-    boolean[] selection = new boolean[tsBlock.getPositionCount()];
-    Arrays.fill(selection, true);
-    return filterRowsRecorder == null
-        ? recordFilter.satisfyTsBlock(tsBlock)
-        : recordFilter.satisfyTsBlock(selection, tsBlock, filterRowsRecorder);
+    if (filterRowsRecorder == null) {
+      return recordFilter.satisfyTsBlock(tsBlock);
+    } else {
+      boolean[] selection = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(selection, true);
+      return recordFilter.satisfyTsBlock(selection, tsBlock, filterRowsRecorder);
+    }
   }
 
   private int buildTimeColumn(TsBlockBuilder builder, boolean[] satisfyInfo) {

@@ -317,7 +317,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil
 import static org.apache.iotdb.db.queryengine.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.join.merge.MergeSortComparator.getComparator;
 import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.OUTPUT_PLAN_NODE_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
 import static org.apache.iotdb.db.queryengine.plan.analyze.PredicateUtils.convertPredicateToFilter;
 import static org.apache.iotdb.db.queryengine.plan.expression.leaf.TimestampOperand.TIMESTAMP_EXPRESSION_STRING;
 import static org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.AggregationDescriptor.getAggregationTypeByFuncName;
@@ -2684,7 +2684,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .map(DownStreamChannelLocation::getRemotePlanNodeId)
             .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
     if (!downStreamPlanNodeId.isEmpty()) {
-      operatorContext.recordSpecifiedInfo(OUTPUT_PLAN_NODE_ID, downStreamPlanNodeId);
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeId);
     }
 
     checkArgument(
@@ -2722,7 +2722,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             .map(DownStreamChannelLocation::getRemotePlanNodeId)
             .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
     if (!downStreamPlanNodeIds.isEmpty()) {
-      operatorContext.recordSpecifiedInfo(OUTPUT_PLAN_NODE_ID, downStreamPlanNodeIds);
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeIds);
     }
 
     // TODO implement pipeline division for shuffle sink

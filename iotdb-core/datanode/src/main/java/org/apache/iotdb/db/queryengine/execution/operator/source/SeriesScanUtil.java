@@ -918,7 +918,7 @@ public class SeriesScanUtil implements Accountable {
           new TsBlockBuilder(getTsDataTypeList()),
           scanOptions.getPushDownFilter(),
           paginationController,
-          s -> this.context.getQueryStatistics().addFilteredRowsOfRowLevel(s));
+          this.context.getQueryStatistics()::addFilteredRowsOfRowLevel);
     }
     return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
         tsBlock,
@@ -2056,7 +2056,7 @@ public class SeriesScanUtil implements Accountable {
         TsBlock tsBlock =
             this.context.isVerbose()
                 ? data.getAllSatisfiedData(
-                    s -> this.context.getQueryStatistics().addFilteredRowsOfRowLevel(s))
+                    this.context.getQueryStatistics()::addFilteredRowsOfRowLevel)
                 : data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();

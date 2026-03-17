@@ -28,6 +28,19 @@ public class ChunkMetadataLoaderUtils {
 
   private ChunkMetadataLoaderUtils() {}
 
+  /**
+   * Checks whether a chunk should be skipped during query execution. *
+   *
+   * <p>A chunk is skipped if:
+   *
+   * <ol>
+   *   <li>Its time range is invalid ({@code startTime > endTime}).
+   *   <li>The global time filter can fully eliminate it based on statistics, in which case the
+   *       chunk's row count is recorded in filtered-rows statistics at chunk level.
+   * </ol>
+   *
+   * <p>Note: for unclosed TsFiles, {@link IChunkMetadata} may return an inaccurate row count.
+   */
   public static boolean shouldSkipAndRecord(
       IChunkMetadata metadata, Filter globalTimeFilter, QueryContext context) {
     if (metadata.getStartTime() > metadata.getEndTime()) {

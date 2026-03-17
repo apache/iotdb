@@ -151,7 +151,9 @@ public class FileLoaderUtils {
           return null;
         }
         if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
-          // record the timeSeries level filtered data
+          // for unclosed tsfile, the timeSeriesMetadata.getStatistics().getCount() may be
+          // inaccurate
+          // maybe return one but actual count is much more than one
           context
               .getQueryStatistics()
               .addFilteredRowsOfTimeSeriesLevel(timeSeriesMetadata.getStatistics().getCount());

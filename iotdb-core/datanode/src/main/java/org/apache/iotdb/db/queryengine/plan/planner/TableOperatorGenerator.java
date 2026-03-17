@@ -323,7 +323,7 @@ import static org.apache.iotdb.db.queryengine.execution.operator.process.join.me
 import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.CLASSIFIER;
 import static org.apache.iotdb.db.queryengine.execution.operator.process.rowpattern.PhysicalValuePointer.MATCH_NUMBER;
 import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DELIMITER_BETWEEN_ID;
-import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.OUTPUT_PLAN_NODE_ID;
+import static org.apache.iotdb.db.queryengine.execution.operator.sink.IdentitySinkOperator.DOWNSTREAM_PLAN_NODE_ID;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.constructAlignedPath;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.InformationSchemaContentSupplierFactory.getSupplier;
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.aggregation.AccumulatorFactory.createAccumulator;
@@ -396,7 +396,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             .map(DownStreamChannelLocation::getRemotePlanNodeId)
             .collect(Collectors.joining(DELIMITER_BETWEEN_ID));
     if (!downStreamPlanNodeId.isEmpty()) {
-      operatorContext.recordSpecifiedInfo(OUTPUT_PLAN_NODE_ID, downStreamPlanNodeId);
+      operatorContext.recordSpecifiedInfo(DOWNSTREAM_PLAN_NODE_ID, downStreamPlanNodeId);
     }
     checkArgument(
         MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");

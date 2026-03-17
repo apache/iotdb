@@ -30,14 +30,15 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ExchangeOperator implements SourceOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExchangeOperator.class);
 
-  public static final String SIZE_IN_BYTES = "sizeInBytes";
+  private final AtomicLong receivedSizeInBytes = new AtomicLong(0);
+  public static final String SIZE_IN_BYTES = "size_in_bytes";
 
   private final OperatorContext operatorContext;
 
@@ -57,6 +58,7 @@ public class ExchangeOperator implements SourceOperator {
     this.operatorContext = operatorContext;
     this.sourceHandle = sourceHandle;
     this.sourceId = sourceId;
+    this.operatorContext.getSpecifiedInfo().put(SIZE_IN_BYTES, receivedSizeInBytes);
   }
 
   /**
@@ -74,6 +76,7 @@ public class ExchangeOperator implements SourceOperator {
     this.sourceHandle = sourceHandle;
     this.sourceId = sourceId;
     this.maxReturnSize = maxReturnSize;
+    this.operatorContext.getSpecifiedInfo().put(SIZE_IN_BYTES, receivedSizeInBytes);
   }
 
   @Override
@@ -84,15 +87,7 @@ public class ExchangeOperator implements SourceOperator {
   @Override
   public TsBlock next() throws Exception {
     TsBlock receiveBlock = sourceHandle.receive();
-    if (receiveBlock != null) {
-      Map<String, String> specifiedInfo = operatorContext.getSpecifiedInfo();
-      specifiedInfo.compute(
-          SIZE_IN_BYTES,
-          (key, oldValue) ->
-              String.valueOf(
-                  receiveBlock.getSizeInBytes()
-                      + Long.parseLong(oldValue == null ? "0" : oldValue)));
-    }
+    receivedSizeInBytes.addAndGet(receiveBlock.getRetainedSizeInBytes());
     return receiveBlock;
   }
 

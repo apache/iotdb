@@ -39,7 +39,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 
 public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected List<TSDataType> tsDataTypeList;
@@ -274,9 +274,9 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     }
     TsBlock tsBlock = builder.build();
     if (pushDownFilter != null) {
-      Consumer<Long> filterRowsRecorder =
+      LongConsumer filterRowsRecorder =
           this.getQueryContext().isVerbose()
-              ? s -> this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(s)
+              ? this.getQueryContext().getQueryStatistics()::addFilteredRowsOfRowLevel
               : null;
       tsBlock =
           TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(

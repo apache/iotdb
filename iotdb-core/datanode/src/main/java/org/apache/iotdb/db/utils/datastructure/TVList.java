@@ -915,7 +915,7 @@ public abstract class TVList implements WALEntryValue {
         // we will move to index 2 finally, and the index track is (0 -> 1 -> 2)
 
         // skip deleted rows
-        skipDeletedOrTimeNotSatisfiedRows(this.getQueryContext().isVerbose());
+        skipDeletedOrTimeNotSatisfiedRows();
         // skip duplicated timestamp
         while (index + 1 < rows
             && getTime(getScanOrderIndex(index + 1)) == getTime(getScanOrderIndex(index))) {
@@ -941,7 +941,7 @@ public abstract class TVList implements WALEntryValue {
           index++;
         }
         // skip deleted rows
-        skipDeletedOrTimeNotSatisfiedRows(this.getQueryContext().isVerbose());
+        skipDeletedOrTimeNotSatisfiedRows();
       }
       probeNext = true;
     }
@@ -952,7 +952,7 @@ public abstract class TVList implements WALEntryValue {
      *
      * @param isRecord
      */
-    protected void skipDeletedOrTimeNotSatisfiedRows(boolean isRecord) {
+    protected void skipDeletedOrTimeNotSatisfiedRows() {
       long filteredRows = 0;
       while (index < rows) {
         if (!isNullValue(getValueIndex(getScanOrderIndex(index)))) {
@@ -970,7 +970,7 @@ public abstract class TVList implements WALEntryValue {
         }
         index++;
       }
-      if (isRecord) {
+      if (this.getQueryContext().isVerbose()) {
         this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
       }
     }
