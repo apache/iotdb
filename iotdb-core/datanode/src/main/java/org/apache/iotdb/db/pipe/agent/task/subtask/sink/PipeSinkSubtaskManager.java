@@ -62,10 +62,10 @@ public class PipeSinkSubtaskManager {
 
   public synchronized String register(
       final Supplier<? extends PipeSinkSubtaskExecutor> executorSupplier,
-      final PipeParameters pipeConnectorParameters,
+      final PipeParameters pipeSinkParameters,
       final PipeTaskSinkRuntimeEnvironment environment) {
     final String connectorKey =
-        pipeConnectorParameters
+        pipeSinkParameters
             .getStringOrDefault(
                 Arrays.asList(PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
                 BuiltinPipePlugin.IOTDB_THRIFT_CONNECTOR.getPipePluginName())
@@ -79,23 +79,31 @@ public class PipeSinkSubtaskManager {
             environment.getRegionId(),
             connectorKey);
 
-    final boolean isDataRegionConnector =
+    final boolean isDataSinkConnector =
         StorageEngine.getInstance()
             .getAllDataRegionIds()
             .contains(new DataRegionId(environment.getRegionId()));
 
-    final int connectorNum;
+    final int sinkNum;
     boolean realTimeFirst = false;
-    String attributeSortedString = generateAttributeSortedString(pipeConnectorParameters);
-    if (isDataRegionConnector) {
-      connectorNum =
-          pipeConnectorParameters.getIntOrDefault(
+    String attributeSortedString = generateAttributeSortedString(pipeSinkParameters);
+    if (isDataSinkConnector) {
+      sinkNum =
+          pipeSinkParameters.getIntOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_KEY,
                   PipeSinkConstant.SINK_IOTDB_PARALLEL_TASKS_KEY),
-              PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
+              PipeSinkConstant.SINGLE_THREAD_DEFAULT_SINK.contains(
+                      pipeSinkParameters
+                          .getStringOrDefault(
+                              Arrays.asList(
+                                  PipeSinkConstant.CONNECTOR_KEY, PipeSinkConstant.SINK_KEY),
+                              BuiltinPipePlugin.IOTDB_THRIFT_SINK.getPipePluginName())
+                          .toLowerCase())
+                  ? 1
+                  : PipeSinkConstant.CONNECTOR_IOTDB_PARALLEL_TASKS_DEFAULT_VALUE);
       realTimeFirst =
-          pipeConnectorParameters.getBooleanOrDefault(
+          pipeSinkParameters.getBooleanOrDefault(
               Arrays.asList(
                   PipeSinkConstant.CONNECTOR_REALTIME_FIRST_KEY,
                   PipeSinkConstant.SINK_REALTIME_FIRST_KEY),
@@ -104,7 +112,7 @@ public class PipeSinkSubtaskManager {
     } else {
       // Do not allow parallel tasks for schema region connectors
       // to avoid the potential disorder of the schema region data transfer
-      connectorNum = 1;
+      sinkNum = 1;
       attributeSortedString = "schema_" + attributeSortedString;
     }
     environment.setAttributeSortedString(attributeSortedString);
@@ -112,8 +120,7 @@ public class PipeSinkSubtaskManager {
     if (!attributeSortedString2SubtaskLifeCycleMap.containsKey(attributeSortedString)) {
       final PipeSinkSubtaskExecutor executor = executorSupplier.get();
 
-      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList =
-          new ArrayList<>(connectorNum);
+      final List<PipeSinkSubtaskLifeCycle> pipeSinkSubtaskLifeCycleList = new ArrayList<>(sinkNum);
 
       AtomicInteger counter = new AtomicInteger(0);
       // Shared pending queue for all subtasks
@@ -126,20 +133,20 @@ public class PipeSinkSubtaskManager {
         ((PipeRealtimePriorityBlockingQueue) pendingQueue).setOfferTsFileCounter(counter);
       }
 
-      for (int connectorIndex = 0; connectorIndex < connectorNum; connectorIndex++) {
+      for (int connectorIndex = 0; connectorIndex < sinkNum; connectorIndex++) {
         final PipeConnector pipeConnector =
-            isDataRegionConnector
-                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeConnectorParameters)
-                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeConnectorParameters);
+            isDataSinkConnector
+                ? PipeDataNodeAgent.plugin().dataRegion().reflectSink(pipeSinkParameters)
+                : PipeDataNodeAgent.plugin().schemaRegion().reflectSink(pipeSinkParameters);
         // 1. Construct, validate and customize PipeConnector, and then handshake (create
         // connection) with the target
         try {
           if (pipeConnector instanceof IoTDBDataRegionAsyncSink) {
             ((IoTDBDataRegionAsyncSink) pipeConnector).setTransferTsFileCounter(counter);
           }
-          pipeConnector.validate(new PipeParameterValidator(pipeConnectorParameters));
+          pipeConnector.validate(new PipeParameterValidator(pipeSinkParameters));
           pipeConnector.customize(
-              pipeConnectorParameters, new PipeTaskRuntimeConfiguration(environment));
+              pipeSinkParameters, new PipeTaskRuntimeConfiguration(environment));
           pipeConnector.handshake();
         } catch (final Exception e) {
           try {
