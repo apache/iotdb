@@ -188,9 +188,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final Iterator<Tablet> it =
-                                message.getSessionDataSetsHandler().tabletIterator();
+                      case RECORD_HANDLER:
+                        for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                             it.hasNext(); ) {
                           final Tablet tablet = it.next();
                           try {
@@ -204,9 +203,9 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
@@ -237,9 +236,8 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final Iterator<Tablet> it =
-                                message.getSessionDataSetsHandler().tabletIterator();
+                      case RECORD_HANDLER:
+                        for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                             it.hasNext(); ) {
                           final Tablet tablet = it.next();
                           try {
@@ -252,9 +250,9 @@ public class IoTDBOneConsumerMultiTopicsMixIT extends AbstractSubscriptionRegres
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(

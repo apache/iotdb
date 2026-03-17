@@ -34,7 +34,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
@@ -493,8 +493,7 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final Iterator<Tablet> it =
-                            message.getSessionDataSetsHandler().tabletIterator();
+                    for (final Iterator<Tablet> it = message.getRecordTabletIterator();
                         it.hasNext(); ) {
                       final Tablet tablet = it.next();
                       session.insertTablet(tablet);
@@ -649,18 +648,17 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
                       continue;
                     }
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           while (dataSet.hasNext()) {
                             dataSet.next();
                             rowCount.addAndGet(1);
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
-                        try (final TsFileReader tsFileReader =
-                            message.getTsFileHandler().openReader()) {
+                      case TS_FILE:
+                        try (final TsFileReader tsFileReader = message.getTsFile().openReader()) {
                           final Path path = new Path("root.db.d1", "s1", true);
                           final QueryDataSet dataSet =
                               tsFileReader.query(
@@ -944,15 +942,14 @@ public class IoTDBSubscriptionTopicIT extends AbstractSubscriptionDualIT {
         continue;
       }
       switch (SubscriptionMessageType.valueOf(messageType)) {
-        case SESSION_DATA_SETS_HANDLER:
-          for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-              it.hasNext(); ) {
+        case RECORD_HANDLER:
+          for (final Iterator<Tablet> it = message.getRecordTabletIterator(); it.hasNext(); ) {
             final Tablet tablet = it.next();
             session.insertTablet(tablet);
           }
           break;
-        case TS_FILE_HANDLER:
-          final SubscriptionTsFileHandler tsFileHandler = message.getTsFileHandler();
+        case TS_FILE:
+          final SubscriptionTsFileHandler tsFileHandler = message.getTsFile();
           session.executeNonQueryStatement(
               String.format("load '%s'", tsFileHandler.getFile().getAbsolutePath()));
           break;

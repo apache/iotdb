@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.thrift.TException;
@@ -125,8 +125,8 @@ public class IoTDBTimeRangeAccurateDBDataSetPushConsumerIT
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       Tablet tablet = dataSet.getTablet();
                       session_dest.insertTablet(tablet);

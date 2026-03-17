@@ -36,7 +36,7 @@ import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.model.Subscription;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -134,8 +134,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   }
                   for (final SubscriptionMessage message : messages) {
                     int rowCountInOneMessage = 0;
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
+                    for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                        message.getResultSets()) {
                       while (dataSet.hasNext()) {
                         dataSet.next();
                         rowCount.addAndGet(1);
@@ -270,8 +270,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                 message -> {
                   onReceiveCount.getAndIncrement();
                   message
-                      .getSessionDataSetsHandler()
-                      .tabletIterator()
+                      .getRecordTabletIterator()
                       .forEachRemaining(tablet -> rowCount.addAndGet(tablet.rowSize));
                   return ConsumeResult.SUCCESS;
                 })
@@ -390,8 +389,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
                   final List<SubscriptionMessage> messages =
                       consumer.poll(IoTDBSubscriptionITConstant.POLL_TIMEOUT_MS);
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
+                    for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                        message.getResultSets()) {
                       while (dataSet.hasNext()) {
                         timestampSum.getAndAdd(dataSet.next().getTimestamp());
                         rowCount.addAndGet(1);
@@ -470,7 +469,7 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .consumeListener(
                 message -> {
                   onReceiveCount.getAndIncrement();
-                  try (final TsFileReader tsFileReader = message.getTsFileHandler().openReader()) {
+                  try (final TsFileReader tsFileReader = message.getTsFile().openReader()) {
                     final QueryDataSet dataSet =
                         tsFileReader.query(
                             QueryExpression.create(
@@ -544,8 +543,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     while (dataSet.hasNext()) {
                       dataSet.next();
                       rowCount.addAndGet(1);
@@ -609,8 +608,8 @@ public class IoTDBSubscriptionBasicIT extends AbstractSubscriptionLocalIT {
             .ackStrategy(AckStrategy.AFTER_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     while (dataSet.hasNext()) {
                       dataSet.next();
                       rowCount.addAndGet(1);

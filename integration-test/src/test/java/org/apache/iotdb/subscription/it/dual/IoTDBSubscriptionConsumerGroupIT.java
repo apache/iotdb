@@ -33,7 +33,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -1051,10 +1051,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                         continue;
                       }
                       switch (SubscriptionMessageType.valueOf(messageType)) {
-                        case SESSION_DATA_SETS_HANDLER:
+                        case RECORD_HANDLER:
                           {
-                            for (final SubscriptionSessionDataSet dataSet :
-                                message.getSessionDataSetsHandler()) {
+                            for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                                message.getResultSets()) {
                               final List<String> columnNameList = dataSet.getColumnNames();
                               while (dataSet.hasNext()) {
                                 final RowRecord record = dataSet.next();
@@ -1064,10 +1064,10 @@ public class IoTDBSubscriptionConsumerGroupIT extends AbstractSubscriptionDualIT
                             }
                             break;
                           }
-                        case TS_FILE_HANDLER:
+                        case TS_FILE:
                           {
                             try (final TsFileReader tsFileReader =
-                                message.getTsFileHandler().openReader()) {
+                                message.getTsFile().openReader()) {
                               final QueryDataSet dataSet =
                                   tsFileReader.query(
                                       QueryExpression.create(

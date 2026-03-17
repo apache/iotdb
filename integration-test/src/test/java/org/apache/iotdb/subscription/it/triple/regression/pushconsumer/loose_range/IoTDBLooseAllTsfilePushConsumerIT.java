@@ -173,7 +173,7 @@ public class IoTDBLooseAllTsfilePushConsumerIT extends AbstractSubscriptionRegre
                 message -> {
                   try {
                     onReceive.addAndGet(1);
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     for (int i = 0; i < 2; i++) {
                       QueryDataSet dataset =
                           reader.query(

@@ -161,7 +161,7 @@ public class IoTDBTimeLooseTsfilePushConsumerIT extends AbstractSubscriptionRegr
                 message -> {
                   try {
                     onReceive.addAndGet(1);
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     List<Path> paths = new ArrayList<>(2);
                     for (int i = 0; i < 2; i++) {
                       paths.add(new Path(device, "s_" + i, true));

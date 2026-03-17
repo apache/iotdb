@@ -174,7 +174,7 @@ public class IoTDBOneConsumerMultiTopicsTsfileIT extends AbstractSubscriptionReg
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
