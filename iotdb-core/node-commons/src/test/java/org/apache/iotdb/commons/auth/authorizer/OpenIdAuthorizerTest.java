@@ -22,11 +22,16 @@ package org.apache.iotdb.commons.auth.authorizer;
 import org.apache.iotdb.commons.conf.CommonConfig;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import io.jsonwebtoken.Jwts;
 import net.minidev.json.JSONObject;
 import org.junit.After;
 import org.junit.Assert;
@@ -40,6 +45,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.security.PrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Collections;
@@ -96,15 +102,16 @@ public class OpenIdAuthorizerTest {
 
     OpenIdAuthorizer authorizer = new OpenIdAuthorizer(jwk);
     String expiredToken =
-        Jwts.builder()
-            .subject("attacker")
-            .expiration(Date.from(Instant.now().minusSeconds(3600)))
-            .claim(
-                "realm_access",
-                Collections.singletonMap(
-                    "roles", Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)))
-            .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
-            .compact();
+        createSignedToken(
+            keyPair.getPrivate(),
+            new JWTClaimsSet.Builder()
+                .subject("attacker")
+                .expirationTime(Date.from(Instant.now().minusSeconds(3600)))
+                .claim(
+                    "realm_access",
+                    Collections.singletonMap(
+                        "roles",
+                        Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
     Assert.assertFalse(authorizer.login(expiredToken, "", false));
     Assert.assertFalse(authorizer.isAdmin(expiredToken));
@@ -120,17 +127,18 @@ public class OpenIdAuthorizerTest {
     try {
       OpenIdAuthorizer authorizer = new OpenIdAuthorizer(issuer);
       String token =
-          Jwts.builder()
-              .subject("attacker")
-              .issuer("https://evil.example/issuer")
-              .claim("aud", "iotdb")
-              .expiration(Date.from(Instant.now().plusSeconds(3600)))
-              .claim(
-                  "realm_access",
-                  Collections.singletonMap(
-                      "roles", Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)))
-              .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
-              .compact();
+          createSignedToken(
+              keyPair.getPrivate(),
+              new JWTClaimsSet.Builder()
+                  .subject("attacker")
+                  .issuer("https://evil.example/issuer")
+                  .audience("iotdb")
+                  .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
+                  .claim(
+                      "realm_access",
+                      Collections.singletonMap(
+                          "roles",
+                          Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
       Assert.assertFalse(authorizer.login(token, "", false));
       Assert.assertFalse(authorizer.isAdmin(token));
@@ -149,17 +157,18 @@ public class OpenIdAuthorizerTest {
     try {
       OpenIdAuthorizer authorizer = new OpenIdAuthorizer(issuer);
       String token =
-          Jwts.builder()
-              .subject("attacker")
-              .issuer(issuer)
-              .claim("aud", "unrelated-client")
-              .expiration(Date.from(Instant.now().plusSeconds(3600)))
-              .claim(
-                  "realm_access",
-                  Collections.singletonMap(
-                      "roles", Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)))
-              .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
-              .compact();
+          createSignedToken(
+              keyPair.getPrivate(),
+              new JWTClaimsSet.Builder()
+                  .subject("attacker")
+                  .issuer(issuer)
+                  .audience("unrelated-client")
+                  .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
+                  .claim(
+                      "realm_access",
+                      Collections.singletonMap(
+                          "roles",
+                          Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
       Assert.assertFalse(authorizer.login(token, "", false));
       Assert.assertFalse(authorizer.isAdmin(token));
@@ -172,6 +181,13 @@ public class OpenIdAuthorizerTest {
     KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
     keyPairGenerator.initialize(2048);
     return keyPairGenerator.generateKeyPair();
+  }
+
+  private String createSignedToken(PrivateKey privateKey, JWTClaimsSet.Builder claimsBuilder)
+      throws JOSEException {
+    SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsBuilder.build());
+    signedJwt.sign(new RSASSASigner(privateKey));
+    return signedJwt.serialize();
   }
 
   private HttpServer startProviderServer(KeyPair keyPair) throws Exception {
