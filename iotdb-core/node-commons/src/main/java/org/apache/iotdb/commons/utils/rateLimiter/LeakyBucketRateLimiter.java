@@ -109,9 +109,12 @@ public class LeakyBucketRateLimiter {
   }
 
   /**
-   * Calculate the expected time using double (double can easily hold nanoseconds on the order of 10^18), then perform clamping and convert to long.
-   * Advantages: Extremely simple, zero exceptions thrown, and double precision is sufficient (nanosecond-level errors are negligible).
-   * Disadvantages: In extreme cases (when totalBytes is close to 2^63), double loses precision in the trailing digits. However, in IoTDB's actual scenarios, bytesPerSecond is typically between 10MB/s and 1GB/s, so this situation will not occur.
+   * Calculate the expected time using double (double can easily hold nanoseconds on the order of
+   * 10^18), then perform clamping and convert to long. Advantages: Extremely simple, zero
+   * exceptions thrown, and double precision is sufficient (nanosecond-level errors are negligible).
+   * Disadvantages: In extreme cases (when totalBytes is close to 2^63), double loses precision in
+   * the trailing digits. However, in IoTDB's actual scenarios, bytesPerSecond is typically between
+   * 10MB/s and 1GB/s, so this situation will not occur.
    */
   private long expectedTimeNs(long totalBytes) {
     if (totalBytes <= 0) {

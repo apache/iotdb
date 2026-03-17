@@ -33,6 +33,7 @@ import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,15 +162,18 @@ public class DataPartitionTableGenerator {
                       return;
                     }
 
-                    DataPartitionTable dataPartitionTable = new DataPartitionTable(dataPartitionMap);
+                    DataPartitionTable dataPartitionTable =
+                        new DataPartitionTable(dataPartitionMap);
 
-                    databasePartitionTableMap.compute(databaseName, (k,v) -> {
-                      if (v == null) {
-                        return new DataPartitionTable(dataPartitionMap);
-                      }
-                      v.merge(dataPartitionTable);
-                      return v;
-                    });
+                    databasePartitionTableMap.compute(
+                        databaseName,
+                        (k, v) -> {
+                          if (v == null) {
+                            return new DataPartitionTable(dataPartitionMap);
+                          }
+                          v.merge(dataPartitionTable);
+                          return v;
+                        });
                   } catch (Exception e) {
                     LOG.error("Error processing data region: {}", dataRegion.getDatabaseName(), e);
                     failedFiles.incrementAndGet();

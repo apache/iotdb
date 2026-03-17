@@ -4385,7 +4385,8 @@ public class IoTDBConfig {
     return partitionTableRecoverMaxReadMBsPerSecond;
   }
 
-  public void setPartitionTableRecoverMaxReadMBsPerSecond(int partitionTableRecoverMaxReadMBsPerSecond) {
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(
+      int partitionTableRecoverMaxReadMBsPerSecond) {
     this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

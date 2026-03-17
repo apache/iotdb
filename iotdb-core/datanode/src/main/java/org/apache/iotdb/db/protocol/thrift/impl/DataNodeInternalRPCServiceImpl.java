@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.protocol.thrift.impl;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -323,6 +322,8 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.trigger.api.enums.FailureStrategy;
 import org.apache.iotdb.trigger.api.enums.TriggerEvent;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -3250,14 +3251,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       parseGenerationStatus(resp);
       if (currentGenerator.getStatus().equals(DataPartitionTableGenerator.TaskStatus.COMPLETED)) {
         boolean success = false;
-        List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList = new ArrayList<>();
-        Map<String, DataPartitionTable> dataPartitionTableMap = currentGenerator.getDatabasePartitionTableMap();
+        List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList =
+            new ArrayList<>();
+        Map<String, DataPartitionTable> dataPartitionTableMap =
+            currentGenerator.getDatabasePartitionTableMap();
         if (!dataPartitionTableMap.isEmpty()) {
           for (Map.Entry<String, DataPartitionTable> entry : dataPartitionTableMap.entrySet()) {
             String database = entry.getKey();
             DataPartitionTable dataPartitionTable = entry.getValue();
             if (!StringUtils.isEmpty(database) && dataPartitionTable != null) {
-              DatabaseScopedDataPartitionTable databaseScopedDataPartitionTable = new DatabaseScopedDataPartitionTable(database, dataPartitionTable);
+              DatabaseScopedDataPartitionTable databaseScopedDataPartitionTable =
+                  new DatabaseScopedDataPartitionTable(database, dataPartitionTable);
               databaseScopedDataPartitionTableList.add(databaseScopedDataPartitionTable);
               success = true;
             }
@@ -3265,7 +3269,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         }
 
         if (success) {
-          List<ByteBuffer> result = serializeDatabaseScopedTableList(databaseScopedDataPartitionTableList);
+          List<ByteBuffer> result =
+              serializeDatabaseScopedTableList(databaseScopedDataPartitionTableList);
           resp.setDatabaseScopedDataPartitionTables(result);
 
           // Clear current generator
@@ -3304,23 +3309,40 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     switch (currentGenerator.getStatus()) {
       case IN_PROGRESS:
-        setResponseFields(resp, DataPartitionTableGeneratorState.IN_PROGRESS.getCode(), String.format(
+        setResponseFields(
+            resp,
+            DataPartitionTableGeneratorState.IN_PROGRESS.getCode(),
+            String.format(
                 "DataPartitionTable generation in progress: %.1f%%",
-                currentGenerator.getProgress() * 100), RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        LOGGER.info(String.format(
+                currentGenerator.getProgress() * 100),
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        LOGGER.info(
+            String.format(
                 "DataPartitionTable generation with task ID: %s in progress: %.1f%%",
                 currentTaskId, currentGenerator.getProgress() * 100));
         break;
       case COMPLETED:
-        setResponseFields(resp, DataPartitionTableGeneratorState.SUCCESS.getCode(), "DataPartitionTable generation completed successfully", RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        setResponseFields(
+            resp,
+            DataPartitionTableGeneratorState.SUCCESS.getCode(),
+            "DataPartitionTable generation completed successfully",
+            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
         LOGGER.info("DataPartitionTable generation completed with task ID: {}", currentTaskId);
         break;
       case FAILED:
-        setResponseFields(resp, DataPartitionTableGeneratorState.FAILED.getCode(), "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        setResponseFields(
+            resp,
+            DataPartitionTableGeneratorState.FAILED.getCode(),
+            "DataPartitionTable generation failed: " + currentGenerator.getErrorMessage(),
+            RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         LOGGER.info("DataPartitionTable generation failed with task ID: {}", currentTaskId);
         break;
       default:
-        setResponseFields(resp, DataPartitionTableGeneratorState.UNKNOWN.getCode(), "Unknown task status: " + currentGenerator.getStatus(), RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+        setResponseFields(
+            resp,
+            DataPartitionTableGeneratorState.UNKNOWN.getCode(),
+            "Unknown task status: " + currentGenerator.getStatus(),
+            RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         LOGGER.info("DataPartitionTable generation failed with task ID: {}", currentTaskId);
         break;
     }
@@ -3341,10 +3363,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   /**
-   * Process data directory to find the earliest timeslots for each database.
-   * Map<String, Long> earliestTimeslots
-   * key(String): database name
-   * value(Long): the earliest time slot id of the database
+   * Process data directory to find the earliest timeslots for each database. Map<String, Long>
+   * earliestTimeslots key(String): database name value(Long): the earliest time slot id of the
+   * database
    */
   private void processDataDirectoryForEarliestTimeslots(
       File dataDir, Map<String, Long> earliestTimeslots) {
@@ -3366,7 +3387,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             }
                             databaseEarliestRegionMap.computeIfAbsent(
                                 databaseName, key -> Long.MAX_VALUE);
-                            long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile(), databaseEarliestRegionMap);
+                            long earliestTimeslot =
+                                findEarliestTimeslotInDatabase(
+                                    dbPath.toFile(), databaseEarliestRegionMap);
 
                             if (earliestTimeslot != Long.MAX_VALUE) {
                               earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
@@ -3383,7 +3406,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   /** Find the earliest timeslot in a database directory. */
-  private long findEarliestTimeslotInDatabase(File databaseDir, Map<String, Long> databaseEarliestRegionMap) {
+  private long findEarliestTimeslotInDatabase(
+      File databaseDir, Map<String, Long> databaseEarliestRegionMap) {
     String databaseName = databaseDir.getName();
     List<Future<?>> futureList = new ArrayList<>();
 
@@ -3430,9 +3454,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                                         String timeSlotName = timeSlotPath.getFileName().toString();
                                         long timeslot = Long.parseLong(timeSlotName);
                                         databaseEarliestRegionMap.compute(
-                                                databaseName,
-                                                (k, v) ->
-                                                        v == null ? timeslot : Math.min(v, timeslot));
+                                            databaseName,
+                                            (k, v) -> v == null ? timeslot : Math.min(v, timeslot));
                                       } catch (IOException e) {
                                         LOGGER.error(
                                             "Failed to find any {} files in the {} directory",
@@ -3463,7 +3486,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return databaseEarliestRegionMap.get(databaseName);
   }
 
-  private List<ByteBuffer> serializeDatabaseScopedTableList(List<DatabaseScopedDataPartitionTable> list) {
+  private List<ByteBuffer> serializeDatabaseScopedTableList(
+      List<DatabaseScopedDataPartitionTable> list) {
     if (list == null || list.isEmpty()) {
       return Collections.emptyList();
     }
@@ -3472,7 +3496,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     for (DatabaseScopedDataPartitionTable table : list) {
       try (PublicBAOS baos = new PublicBAOS();
-           DataOutputStream oos = new DataOutputStream(baos)) {
+          DataOutputStream oos = new DataOutputStream(baos)) {
 
         TTransport transport = new TIOStreamTransport(oos);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
@@ -3482,8 +3506,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         result.add(ByteBuffer.wrap(baos.toByteArray()));
 
       } catch (IOException | TException e) {
-        LOGGER.error("Failed to serialize DatabaseScopedDataPartitionTable for database: {}",
-                table.getDatabase(), e);
+        LOGGER.error(
+            "Failed to serialize DatabaseScopedDataPartitionTable for database: {}",
+            table.getDatabase(),
+            e);
       }
     }
 

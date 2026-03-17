@@ -28,7 +28,7 @@ public class DatabaseScopedDataPartitionTable {
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
-          throws IOException, TException {
+      throws IOException, TException {
     ReadWriteIOUtils.write(database, outputStream);
 
     ReadWriteIOUtils.write(dataPartitionTable != null, outputStream);
@@ -53,7 +53,7 @@ public class DatabaseScopedDataPartitionTable {
   }
 
   public static DatabaseScopedDataPartitionTable deserialize(
-          InputStream inputStream, TProtocol protocol) throws IOException, TException {
+      InputStream inputStream, TProtocol protocol) throws IOException, TException {
     String database = ReadWriteIOUtils.readString(inputStream);
 
     boolean hasDataPartitionTable = ReadWriteIOUtils.readBool(inputStream);
@@ -72,8 +72,8 @@ public class DatabaseScopedDataPartitionTable {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     DatabaseScopedDataPartitionTable that = (DatabaseScopedDataPartitionTable) o;
-    return Objects.equals(database, that.database) &&
-            Objects.equals(dataPartitionTable, that.dataPartitionTable);
+    return Objects.equals(database, that.database)
+        && Objects.equals(dataPartitionTable, that.dataPartitionTable);
   }
 
   @Override

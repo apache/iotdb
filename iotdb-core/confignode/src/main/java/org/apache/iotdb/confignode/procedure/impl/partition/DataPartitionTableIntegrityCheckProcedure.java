@@ -44,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGenerateDataPartitionTableResp;
 import org.apache.iotdb.mpp.rpc.thrift.TGetEarliestTimeslotsResp;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -91,16 +92,19 @@ public class DataPartitionTableIntegrityCheckProcedure
   private Map<String, Long> earliestTimeslots = new ConcurrentHashMap<>();
 
   /** DataPartitionTables collected from DataNodes: dataNodeId -> DataPartitionTable */
-  private Map<Integer, List<DatabaseScopedDataPartitionTable>> dataPartitionTables = new ConcurrentHashMap<>();
+  private Map<Integer, List<DatabaseScopedDataPartitionTable>> dataPartitionTables =
+      new ConcurrentHashMap<>();
 
   private Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
 
   /** Final merged DataPartitionTable */
   private Map<String, DataPartitionTable> finalDataPartitionTables;
 
-  private static Set<TDataNodeConfiguration> skipDataNodes = Collections.newSetFromMap(new ConcurrentHashMap<>());
+  private static Set<TDataNodeConfiguration> skipDataNodes =
+      Collections.newSetFromMap(new ConcurrentHashMap<>());
   private static Set<TDataNodeConfiguration> failedDataNodes =
       Collections.newSetFromMap(new ConcurrentHashMap<>());
+
   // ============Need serialize END=============/
 
   public DataPartitionTableIntegrityCheckProcedure() {
@@ -310,23 +314,25 @@ public class DataPartitionTableIntegrityCheckProcedure
           continue;
         }
 
-        TTimePartitionSlot localEarliestSlot = tTimePartitionSlotListMap.keySet()
-                .stream()
+        TTimePartitionSlot localEarliestSlot =
+            tTimePartitionSlotListMap.keySet().stream()
                 .min(Comparator.comparingLong(TTimePartitionSlot::getStartTime))
                 .orElse(null);
 
-        if (localEarliestSlot.getStartTime() > TimePartitionUtils.getTimeByPartitionId(earliestTimeslot)) {
+        if (localEarliestSlot.getStartTime()
+            > TimePartitionUtils.getTimeByPartitionId(earliestTimeslot)) {
           lostDataPartitionsOfDatabases.add(database);
           LOG.warn(
-                  "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
-                  database,
-                  earliestTimeslot);
+              "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
+              database,
+              earliestTimeslot);
         }
       }
     }
 
     if (lostDataPartitionsOfDatabases.isEmpty()) {
-      LOG.info("[DataPartitionIntegrity] No databases have lost data partitions, terminating procedure");
+      LOG.info(
+          "[DataPartitionIntegrity] No databases have lost data partitions, terminating procedure");
       return Flow.NO_MORE_STATE;
     }
 
@@ -419,7 +425,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
+    setNextState(
+        DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -435,49 +442,54 @@ public class DataPartitionTableIntegrityCheckProcedure
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
           TGenerateDataPartitionTableHeartbeatResp resp =
-                  (TGenerateDataPartitionTableHeartbeatResp)
-                          SyncDataNodeClientPool.getInstance()
-                                  .sendSyncRequestToDataNodeWithGivenRetry(
-                                          dataNode.getLocation().getInternalEndPoint(),
-                                          null,
-                                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
-                                          MAX_RETRY_COUNT);
+              (TGenerateDataPartitionTableHeartbeatResp)
+                  SyncDataNodeClientPool.getInstance()
+                      .sendSyncRequestToDataNodeWithGivenRetry(
+                          dataNode.getLocation().getInternalEndPoint(),
+                          null,
+                          CnToDnSyncRequestType.GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
+                          MAX_RETRY_COUNT);
           DataPartitionTableGeneratorState state =
-                  DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
+              DataPartitionTableGeneratorState.getStateByCode(resp.getErrorCode());
 
           if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             LOG.error(
-                    "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
-                    dataNode.getLocation().getDataNodeId(),
-                    state,
-                    resp.getStatus());
+                "[DataPartitionIntegrity] Failed to request DataPartitionTable generation heart beat from the DataNode[id={}], state is {}, response status is {}",
+                dataNode.getLocation().getDataNodeId(),
+                state,
+                resp.getStatus());
             continue;
           }
 
           switch (state) {
             case SUCCESS:
               List<ByteBuffer> byteBufferList = resp.getDatabaseScopedDataPartitionTables();
-              List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList = deserializeDatabaseScopedTableList(byteBufferList);
+              List<DatabaseScopedDataPartitionTable> databaseScopedDataPartitionTableList =
+                  deserializeDatabaseScopedTableList(byteBufferList);
               dataPartitionTables.put(dataNodeId, databaseScopedDataPartitionTableList);
               LOG.info(
-                      "[DataPartitionIntegrity] DataNode {} completed DataPartitionTable generation, terminating heart beat",
-                      dataNodeId);
+                  "[DataPartitionIntegrity] DataNode {} completed DataPartitionTable generation, terminating heart beat",
+                  dataNodeId);
               completeCount++;
               break;
             case IN_PROGRESS:
-              LOG.info("[DataPartitionIntegrity] DataNode {} still generating DataPartitionTable", dataNodeId);
+              LOG.info(
+                  "[DataPartitionIntegrity] DataNode {} still generating DataPartitionTable",
+                  dataNodeId);
               break;
             default:
               LOG.error(
-                      "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}", dataNodeId, resp.getErrorCode());
+                  "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}",
+                  dataNodeId,
+                  resp.getErrorCode());
               break;
           }
         } catch (Exception e) {
           LOG.error(
-                  "[DataPartitionIntegrity] Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
-                  dataNodeId,
-                  e.getMessage(),
-                  e);
+              "[DataPartitionIntegrity] Error checking DataPartitionTable status from DataNode {}: {}, terminating heart beat",
+              dataNodeId,
+              e.getMessage(),
+              e);
           completeCount++;
         }
       } else {
@@ -494,9 +506,11 @@ public class DataPartitionTableIntegrityCheckProcedure
       Thread.sleep(HEART_BEAT_REQUEST_RATE);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      LOG.error("[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread interruption.");
+      LOG.error(
+          "[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread interruption.");
     }
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
+    setNextState(
+        DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
   }
 
@@ -507,7 +521,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     if (dataPartitionTables.isEmpty()) {
-      LOG.error("[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is empty");
+      LOG.error(
+          "[DataPartitionIntegrity] No DataPartitionTables to merge, dataPartitionTables is empty");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -546,12 +561,18 @@ public class DataPartitionTableIntegrityCheckProcedure
                             k -> new SeriesPartitionTable(seriesPartitionTableMap));
                       }));
 
-      dataPartitionTables.forEach((k, v) -> v.forEach(databaseScopedDataPartitionTable -> {
-        if (!databaseScopedDataPartitionTable.getDatabase().equals(database)) {
-          return;
-        }
-        finalDataPartitionTables.put(database, new DataPartitionTable(finalDataPartitionMap).merge(databaseScopedDataPartitionTable.getDataPartitionTable()));
-      }));
+      dataPartitionTables.forEach(
+          (k, v) ->
+              v.forEach(
+                  databaseScopedDataPartitionTable -> {
+                    if (!databaseScopedDataPartitionTable.getDatabase().equals(database)) {
+                      return;
+                    }
+                    finalDataPartitionTables.put(
+                        database,
+                        new DataPartitionTable(finalDataPartitionMap)
+                            .merge(databaseScopedDataPartitionTable.getDataPartitionTable()));
+                  }));
     }
 
     LOG.info("[DataPartitionIntegrity] DataPartitionTables merge completed successfully");
@@ -611,7 +632,12 @@ public class DataPartitionTableIntegrityCheckProcedure
     return getFlow();
   }
 
-  /** Determine whether there are still DataNode nodes with failed execution of a certain step in this round. If such nodes exist, calculate the skipDataNodes and exclude these nodes when requesting the list of DataNode nodes in the cluster for the next round; if no such nodes exist, it means the procedure has been completed */
+  /**
+   * Determine whether there are still DataNode nodes with failed execution of a certain step in
+   * this round. If such nodes exist, calculate the skipDataNodes and exclude these nodes when
+   * requesting the list of DataNode nodes in the cluster for the next round; if no such nodes
+   * exist, it means the procedure has been completed
+   */
   private Flow getFlow() {
     if (!failedDataNodes.isEmpty()) {
       allDataNodes.removeAll(failedDataNodes);
@@ -637,7 +663,8 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     // Serialize dataPartitionTables count
     stream.writeInt(dataPartitionTables.size());
-    for (Map.Entry<Integer, List<DatabaseScopedDataPartitionTable>> entry : dataPartitionTables.entrySet()) {
+    for (Map.Entry<Integer, List<DatabaseScopedDataPartitionTable>> entry :
+        dataPartitionTables.entrySet()) {
       stream.writeInt(entry.getKey());
 
       List<DatabaseScopedDataPartitionTable> tableList = entry.getValue();
@@ -645,7 +672,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
       for (DatabaseScopedDataPartitionTable table : tableList) {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-             DataOutputStream dos = new DataOutputStream(baos)) {
+            DataOutputStream dos = new DataOutputStream(baos)) {
 
           TTransport transport = new TIOStreamTransport(dos);
           TBinaryProtocol protocol = new TBinaryProtocol(transport);
@@ -658,7 +685,11 @@ public class DataPartitionTableIntegrityCheckProcedure
           // data written for a single object
           stream.write(data);
         } catch (IOException | TException e) {
-          LOG.error("[DataPartitionIntegrity] {} serialize failed for dataNodeId: {}", this.getClass().getSimpleName(), entry.getKey(), e);
+          LOG.error(
+              "[DataPartitionIntegrity] {} serialize failed for dataNodeId: {}",
+              this.getClass().getSimpleName(),
+              entry.getKey(),
+              e);
           throw new IOException("Failed to serialize dataPartitionTables", e);
         }
       }
@@ -669,31 +700,34 @@ public class DataPartitionTableIntegrityCheckProcedure
       stream.writeUTF(database);
     }
 
-      if (finalDataPartitionTables != null && !finalDataPartitionTables.isEmpty()) {
-        stream.writeInt(finalDataPartitionTables.size());
+    if (finalDataPartitionTables != null && !finalDataPartitionTables.isEmpty()) {
+      stream.writeInt(finalDataPartitionTables.size());
 
-        for (Map.Entry<String, DataPartitionTable> entry : finalDataPartitionTables.entrySet()) {
-          stream.writeUTF(entry.getKey());
+      for (Map.Entry<String, DataPartitionTable> entry : finalDataPartitionTables.entrySet()) {
+        stream.writeUTF(entry.getKey());
 
-          try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-               DataOutputStream dos = new DataOutputStream(baos)) {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            DataOutputStream dos = new DataOutputStream(baos)) {
 
-            TTransport transport = new TIOStreamTransport(dos);
-            TBinaryProtocol protocol = new TBinaryProtocol(transport);
+          TTransport transport = new TIOStreamTransport(dos);
+          TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-            entry.getValue().serialize(dos, protocol);
+          entry.getValue().serialize(dos, protocol);
 
-            byte[] data = baos.toByteArray();
-            stream.writeInt(data.length);
-            stream.write(data);
-          } catch (IOException | TException e) {
-            LOG.error("[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed", this.getClass().getSimpleName(), e);
-            throw new IOException("Failed to serialize finalDataPartitionTables", e);
-          }
+          byte[] data = baos.toByteArray();
+          stream.writeInt(data.length);
+          stream.write(data);
+        } catch (IOException | TException e) {
+          LOG.error(
+              "[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed",
+              this.getClass().getSimpleName(),
+              e);
+          throw new IOException("Failed to serialize finalDataPartitionTables", e);
         }
-      } else {
-        stream.writeInt(0);
       }
+    } else {
+      stream.writeInt(0);
+    }
 
     stream.writeInt(skipDataNodes.size());
     for (TDataNodeConfiguration skipDataNode : skipDataNodes) {
@@ -756,17 +790,21 @@ public class DataPartitionTableIntegrityCheckProcedure
         byteBuffer.get(bytes);
 
         try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-             DataInputStream dis = new DataInputStream(bais)) {
+            DataInputStream dis = new DataInputStream(bais)) {
 
           TTransport transport = new TIOStreamTransport(dis);
           TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
           DatabaseScopedDataPartitionTable table =
-                  DatabaseScopedDataPartitionTable.deserialize(dis, protocol);
+              DatabaseScopedDataPartitionTable.deserialize(dis, protocol);
           tableList.add(table);
 
         } catch (IOException | TException e) {
-          LOG.error("[DataPartitionIntegrity] {} deserialize failed for dataNodeId: {}", this.getClass().getSimpleName(), dataNodeId, e);
+          LOG.error(
+              "[DataPartitionIntegrity] {} deserialize failed for dataNodeId: {}",
+              this.getClass().getSimpleName(),
+              dataNodeId,
+              e);
           throw new RuntimeException("Failed to deserialize dataPartitionTables", e);
         }
       }
@@ -792,7 +830,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       byteBuffer.get(bytes);
 
       try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-           DataInputStream dis = new DataInputStream(bais)) {
+          DataInputStream dis = new DataInputStream(bais)) {
 
         TTransport transport = new TIOStreamTransport(dis);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
@@ -803,7 +841,10 @@ public class DataPartitionTableIntegrityCheckProcedure
         finalDataPartitionTables.put(database, dataPartitionTable);
 
       } catch (IOException | TException e) {
-        LOG.error("[DataPartitionIntegrity] {} deserialize finalDataPartitionTables failed", this.getClass().getSimpleName(), e);
+        LOG.error(
+            "[DataPartitionIntegrity] {} deserialize finalDataPartitionTables failed",
+            this.getClass().getSimpleName(),
+            e);
         throw new RuntimeException("Failed to deserialize finalDataPartitionTables", e);
       }
     }
@@ -849,7 +890,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
   }
 
-  private List<DatabaseScopedDataPartitionTable> deserializeDatabaseScopedTableList(List<ByteBuffer> dataList) {
+  private List<DatabaseScopedDataPartitionTable> deserializeDatabaseScopedTableList(
+      List<ByteBuffer> dataList) {
     if (dataList == null || dataList.isEmpty()) {
       return Collections.emptyList();
     }
@@ -866,12 +908,13 @@ public class DataPartitionTableIntegrityCheckProcedure
         ByteBuffer dataBuffer = data.duplicate();
 
         DatabaseScopedDataPartitionTable table =
-                DatabaseScopedDataPartitionTable.deserialize(dataBuffer);
+            DatabaseScopedDataPartitionTable.deserialize(dataBuffer);
 
         result.add(table);
 
       } catch (Exception e) {
-        LOG.error("[DataPartitionIntegrity] Failed to deserialize DatabaseScopedDataPartitionTable", e);
+        LOG.error(
+            "[DataPartitionIntegrity] Failed to deserialize DatabaseScopedDataPartitionTable", e);
       }
     }
 

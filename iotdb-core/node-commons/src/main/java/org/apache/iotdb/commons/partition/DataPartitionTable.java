@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
@@ -282,7 +283,8 @@ public class DataPartitionTable {
   }
 
   /**
-   * Merge a complete DataPartitionTable from the partition tables received from multiple DataNodes (supports cross-database merging, which is exactly the logic implemented in the current PR)
+   * Merge a complete DataPartitionTable from the partition tables received from multiple DataNodes
+   * (supports cross-database merging, which is exactly the logic implemented in the current PR)
    *
    * @param sourceMap Map<databaseName, DataPartitionTableFromDN>
    * @return The complete merged partition table
@@ -290,30 +292,34 @@ public class DataPartitionTable {
   public DataPartitionTable merge(Map<Integer, DataPartitionTable> sourceMap) {
     DataPartitionTable merged = new DataPartitionTable(this.dataPartitionMap);
     for (DataPartitionTable table : sourceMap.values()) {
-      for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry : table.dataPartitionMap.entrySet()) {
+      for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry :
+          table.dataPartitionMap.entrySet()) {
         TSeriesPartitionSlot slot = entry.getKey();
         SeriesPartitionTable seriesTable = entry.getValue();
-        merged.dataPartitionMap
-                .computeIfAbsent(slot, k -> new SeriesPartitionTable())
-                .merge(seriesTable);
+        merged
+            .dataPartitionMap
+            .computeIfAbsent(slot, k -> new SeriesPartitionTable())
+            .merge(seriesTable);
       }
     }
     return merged;
   }
 
   /**
-   * Support single table merging
-   * Merge another DataPartitionTable into the current object (used for incremental merging)
+   * Support single table merging Merge another DataPartitionTable into the current object (used for
+   * incremental merging)
    */
   public DataPartitionTable merge(DataPartitionTable sourcePartitionTable) {
     DataPartitionTable merged = new DataPartitionTable(this.dataPartitionMap);
     if (sourcePartitionTable == null) {
       return merged;
     }
-    for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry : sourcePartitionTable.dataPartitionMap.entrySet()) {
-      merged.dataPartitionMap
-              .computeIfAbsent(entry.getKey(), k -> new SeriesPartitionTable())
-              .merge(entry.getValue());
+    for (Map.Entry<TSeriesPartitionSlot, SeriesPartitionTable> entry :
+        sourcePartitionTable.dataPartitionMap.entrySet()) {
+      merged
+          .dataPartitionMap
+          .computeIfAbsent(entry.getKey(), k -> new SeriesPartitionTable())
+          .merge(entry.getValue());
     }
     return merged;
   }
