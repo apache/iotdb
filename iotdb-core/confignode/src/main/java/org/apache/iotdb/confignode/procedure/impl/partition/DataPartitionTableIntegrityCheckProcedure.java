@@ -81,7 +81,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       LoggerFactory.getLogger(DataPartitionTableIntegrityCheckProcedure.class);
 
   private static final int MAX_RETRY_COUNT = 3;
-  private static final long HEART_BEAT_REQUEST_RATE = 60000;
+  private static final long HEART_BEAT_REQUEST_RATE = 10000;
 
   NodeManager dataNodeManager;
   private List<TDataNodeConfiguration> allDataNodes = new ArrayList<>();
