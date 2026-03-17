@@ -315,7 +315,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                 .min(Comparator.comparingLong(TTimePartitionSlot::getStartTime))
                 .orElse(null);
 
-        if (!TimePartitionUtils.satisfyPartitionId(localEarliestSlot.getStartTime(), earliestTimeslot)) {
+        if (localEarliestSlot.getStartTime() > TimePartitionUtils.getTimeByPartitionId(earliestTimeslot)) {
           lostDataPartitionsOfDatabases.add(database);
           LOG.warn(
                   "Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
@@ -496,7 +496,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       Thread.currentThread().interrupt();
       LOG.error("Error checking DataPartitionTable status due to thread interruption.");
     }
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
+    setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
   }
 
