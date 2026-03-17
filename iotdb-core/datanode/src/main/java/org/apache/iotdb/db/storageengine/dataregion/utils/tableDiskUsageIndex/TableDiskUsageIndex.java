@@ -69,7 +69,7 @@ public class TableDiskUsageIndex {
             syncTsFileTableSizeIndexIfNecessary(writer);
             persistPendingObjectDeltasIfNecessary(writer);
           }
-          Operation operation = queue.poll(5, TimeUnit.SECONDS);
+          Operation operation = queue.poll(1, TimeUnit.SECONDS);
           if (operation != null) {
             operation.apply(this);
             processedOperationCountSinceLastPeriodicCheck++;
@@ -81,8 +81,7 @@ public class TableDiskUsageIndex {
           // Ignore unexpected interruptions to guarantee the worker thread continues running.
           // This worker relies on the `stop` flag to terminate gracefully. Therefore, if an
           // interruption occurs while TableDiskUsageIndex is still active, we log the event and
-          // keep
-          // processing subsequent operations.
+          // keep processing subsequent operations.
           if (!stop) {
             LOGGER.warn(
                 "TableDiskUsageIndex worker thread was interrupted unexpectedly while waiting for operations.",

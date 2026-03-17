@@ -272,8 +272,9 @@ public enum PlanNodeType {
 
   LAST_QUERY_SCAN((short) 98),
   ALTER_ENCODING_COMPRESSOR((short) 99),
-  SHOW_DISK_USAGE((short) 100),
-  TREE_COLLECT((short) 101),
+  // 100 - 106 are occupied
+  SHOW_DISK_USAGE((short) 107),
+  TREE_COLLECT((short) 108),
 
   CREATE_OR_UPDATE_TABLE_DEVICE((short) 902),
   TABLE_DEVICE_QUERY_SCAN((short) 903),
@@ -613,9 +614,10 @@ public enum PlanNodeType {
         return LastQueryScanNode.deserialize(buffer);
       case 99:
         return AlterEncodingCompressorNode.deserialize(buffer);
-      case 100:
+      // 100 - 106 are occupied
+      case 107:
         return ShowDiskUsageNode.deserialize(buffer);
-      case 101:
+      case 108:
         return CollectNode.deserialize(buffer);
       case 902:
         return CreateOrUpdateTableDeviceNode.deserialize(buffer);
