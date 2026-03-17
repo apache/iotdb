@@ -176,7 +176,6 @@ import org.apache.tsfile.external.commons.lang3.tuple.Triple;
 import org.apache.tsfile.file.metadata.ChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Factory;
-import org.apache.tsfile.file.metadata.StringArrayDeviceID;
 import org.apache.tsfile.file.metadata.TableSchema;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.fileSystem.FSType;
@@ -3597,8 +3596,6 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public int executeCompaction() throws InterruptedException {
-    CompactionUtils.getLatestMeasurementSchemasForTreeModel(
-        new StringArrayDeviceID("root.test1.d10"), Arrays.asList("s1"));
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
