@@ -157,14 +157,6 @@ public class TimePartitionUtils {
     return startPartition <= partitionId && endPartition >= partitionId;
   }
 
-  public static boolean satisfyPartitionId(long startTime, long partitionId) {
-    long endTime =
-        startTime >= timePartitionLowerBoundWithoutOverflow
-            ? Long.MAX_VALUE
-            : (startTime + timePartitionInterval - 1);
-    return satisfyPartitionId(startTime, endTime, partitionId);
-  }
-
   public static boolean satisfyPartitionStartTime(Filter timeFilter, long partitionStartTime) {
     if (timeFilter == null) {
       return true;

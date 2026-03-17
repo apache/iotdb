@@ -1144,11 +1144,11 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "partition_table_recover_worker_num",
                 String.valueOf(conf.getPartitionTableRecoverWorkerNum()))));
-    conf.setPartitionTableRecoverMaxReadBytesPerSecond(
+    conf.setPartitionTableRecoverMaxReadMBsPerSecond(
         Integer.parseInt(
             properties.getProperty(
                 "partition_table_recover_max_read_bytes_per_second",
-                String.valueOf(conf.getPartitionTableRecoverMaxReadBytesPerSecond()))));
+                String.valueOf(conf.getPartitionTableRecoverMaxReadMBsPerSecond()))));
 
     conf.setIncludeNullValueInWriteThroughputMetric(
         Boolean.parseBoolean(

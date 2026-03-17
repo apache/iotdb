@@ -1222,7 +1222,7 @@ public class IoTDBConfig {
   /* Need use these parameters when repair data partition table */
   private int partitionTableRecoverWorkerNum = 10;
   // Rate limit set to 10 MB/s
-  private int partitionTableRecoverMaxReadBytesPerSecond = 10;
+  private int partitionTableRecoverMaxReadMBsPerSecond = 10;
 
   IoTDBConfig() {}
 
@@ -4381,11 +4381,11 @@ public class IoTDBConfig {
     this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
   }
 
-  public int getPartitionTableRecoverMaxReadBytesPerSecond() {
-    return partitionTableRecoverMaxReadBytesPerSecond;
+  public int getPartitionTableRecoverMaxReadMBsPerSecond() {
+    return partitionTableRecoverMaxReadMBsPerSecond;
   }
 
-  public void setPartitionTableRecoverMaxReadBytesPerSecond(int partitionTableRecoverMaxReadBytesPerSecond) {
-    this.partitionTableRecoverMaxReadBytesPerSecond = partitionTableRecoverMaxReadBytesPerSecond;
+  public void setPartitionTableRecoverMaxReadMBsPerSecond(int partitionTableRecoverMaxReadMBsPerSecond) {
+    this.partitionTableRecoverMaxReadMBsPerSecond = partitionTableRecoverMaxReadMBsPerSecond;
   }
 }

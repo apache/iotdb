@@ -430,9 +430,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  // Must be lower than the RPC request timeout, in milliseconds
-  private static final long timeoutMs = 50000;
-
   public DataNodeInternalRPCServiceImpl() {
     super();
     partitionFetcher = ClusterPartitionFetcher.getInstance();
@@ -3237,6 +3234,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TGenerateDataPartitionTableHeartbeatResp generateDataPartitionTableHeartbeat() {
     TGenerateDataPartitionTableHeartbeatResp resp = new TGenerateDataPartitionTableHeartbeatResp();
+    // Must be lower than the RPC request timeout, in milliseconds
+    final long timeoutMs = 50000;
     // Set default value
     resp.setDatabaseScopedDataPartitionTables(Collections.emptyList());
     try {
@@ -3308,6 +3307,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         setResponseFields(resp, DataPartitionTableGeneratorState.IN_PROGRESS.getCode(), String.format(
                 "DataPartitionTable generation in progress: %.1f%%",
                 currentGenerator.getProgress() * 100), RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        LOGGER.info(String.format(
+                "DataPartitionTable generation with task ID: %s in progress: %.1f%%",
+                currentTaskId, currentGenerator.getProgress() * 100));
         break;
       case COMPLETED:
         setResponseFields(resp, DataPartitionTableGeneratorState.SUCCESS.getCode(), "DataPartitionTable generation completed successfully", RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
@@ -3338,7 +3340,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  /** Process data directory to find the earliest timeslots for each database. */
+  /**
+   * Process data directory to find the earliest timeslots for each database.
+   * Map<String, Long> earliestTimeslots
+   * key(String): database name
+   * value(Long): the earliest time slot id of the database
+   */
   private void processDataDirectoryForEarliestTimeslots(
       File dataDir, Map<String, Long> earliestTimeslots) {
     Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();

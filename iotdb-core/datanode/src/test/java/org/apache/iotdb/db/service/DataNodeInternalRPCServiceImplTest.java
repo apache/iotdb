@@ -83,8 +83,6 @@ import java.util.Objects;
 
 public class DataNodeInternalRPCServiceImplTest {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataNodeInternalRPCServiceImplTest.class);
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
   DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   private static IConsensus instance;

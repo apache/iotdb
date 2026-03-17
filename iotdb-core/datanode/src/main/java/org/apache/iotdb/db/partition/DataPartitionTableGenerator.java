@@ -77,7 +77,7 @@ public class DataPartitionTableGenerator {
           (long)
                   IoTDBDescriptor.getInstance()
                       .getConfig()
-                      .getPartitionTableRecoverMaxReadBytesPerSecond()
+                      .getPartitionTableRecoverMaxReadMBsPerSecond()
               * 1024
               * 1024);
 
