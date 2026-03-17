@@ -1,0 +1,25 @@
+### model
+model_type: timer_xl
+seq_len: 672
+input_token_len: 96
+output_token_lens:
+  - 96
+
+### method
+finetune_type: full
+
+### dataset
+dataset_type: csv
+data_path: /path/to/ETTh1.csv
+train_ratio: 0.7
+val_ratio: 0.15
+test_ratio: 0.15
+
+### training
+num_train_epochs: 20
+train_batch_size: 64
+learning_rate: 1.0e-5
+weight_decay: 0.01
+warmup_ratio: 0.1
+use_amp: true
+early_stopping_patience: 3
