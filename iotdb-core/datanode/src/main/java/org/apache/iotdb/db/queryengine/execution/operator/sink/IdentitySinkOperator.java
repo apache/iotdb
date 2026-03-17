@@ -38,6 +38,9 @@ public class IdentitySinkOperator implements Operator {
       RamUsageEstimator.shallowSizeOfInstance(IdentitySinkOperator.class)
           + RamUsageEstimator.shallowSizeOfInstance(DownStreamChannelIndex.class);
 
+  public static final String OUTPUT_PLAN_NODE_ID = "OutputPlanNodeId";
+  public static final String DELIMITER_BETWEEN_ID = ", ";
+
   private final OperatorContext operatorContext;
   private final List<Operator> children;
 

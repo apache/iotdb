@@ -63,7 +63,7 @@ public class MemAlignedChunkLoaderTest {
   public void testMemAlignedChunkLoader() throws IOException {
     AlignedReadOnlyMemChunk chunk = Mockito.mock(AlignedReadOnlyMemChunk.class);
     ChunkMetadata chunkMetadata = Mockito.mock(ChunkMetadata.class);
-    QueryContext ctx = new QueryContext(false);
+    QueryContext ctx = new QueryContext(false, false);
     MemAlignedChunkLoader memAlignedChunkLoader = new MemAlignedChunkLoader(ctx, chunk);
 
     try {
@@ -116,7 +116,7 @@ public class MemAlignedChunkLoaderTest {
         alignedTvListMap.keySet().stream().map(x -> (AlignedTVList) x).collect(Collectors.toList());
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
-            dataTypes, null, alignedTvLists, false, maxNumberOfPointsInPage);
+            dataTypes, null, alignedTvLists, false, maxNumberOfPointsInPage, null);
     timeValuePairIterator.setStreamingQueryMemChunk(false);
     timeValuePairIterator.nextBatch();
     Mockito.when(chunk.getMemPointIterator()).thenReturn(timeValuePairIterator);

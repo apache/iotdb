@@ -415,6 +415,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstChunkMetadata)) {
+
+      // record the chunk level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfChunkLevel(firstChunkMetadata.getStatistics().getCount());
       skipCurrentChunk();
       return;
     }
@@ -832,13 +837,30 @@ public class SeriesScanUtil implements Accountable {
     firstPageReader = null;
   }
 
+  /**
+   * Logic of Filter Application and Predicate Splitting:
+   *
+   * <p>1. Predicate Splitting (determined during query planning): - AND connection (e.g., `where s1
+   * > 300 and time < 100`): The predicate is split. `time < 100` goes to `globalTimeFilter`, and
+   * `s1 > 300` goes to `pushDownFilter`. - OR connection (e.g., `where s1 > 300 or time < 100`):
+   * The entire predicate is assigned to `pushDownFilter`. `globalTimeFilter` remains empty (accepts
+   * all).
+   *
+   * <p>2. Filter Application in nextPage(): - Case 1: hasCachedNextOverlappedPage (Overlapped data
+   * processed by MergeReader) The `cachedTsBlock` comes from `mergeReader`. The source PageReaders
+   * of the mergeReader have already applied `globalTimeFilter` during their initialization/loading
+   * phase. Therefore, `filterAndPaginateCachedBlock(cachedTsBlock)` ONLY applies `pushDownFilter`
+   * (and pagination).
+   *
+   * <p>- Case 2: Non-overlapped data (firstPageReader) The `firstPageReader` also has
+   * `globalTimeFilter` applied internally. We explicitly call
+   * `firstPageReader.addPushDownFilter(...)` to ensure the value filter is applied.
+   */
   public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
-      TsBlock res =
-          applyPushDownFilterAndLimitOffset(
-              cachedTsBlock, scanOptions.getPushDownFilter(), paginationController);
+      TsBlock res = filterAndPaginateCachedBlock(cachedTsBlock);
       cachedTsBlock = null;
 
       // cached tsblock has handled by pagination controller & push down filter, return directly
@@ -884,6 +906,25 @@ public class SeriesScanUtil implements Accountable {
 
       return getTransferedDataTypeTsBlock(tsBlock);
     }
+  }
+
+  private TsBlock filterAndPaginateCachedBlock(TsBlock tsBlock) {
+    if (scanOptions.getPushDownFilter() == null) {
+      return paginationController.applyTsBlock(tsBlock);
+    }
+    if (this.context.isVerbose()) {
+      return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+          tsBlock,
+          new TsBlockBuilder(getTsDataTypeList()),
+          scanOptions.getPushDownFilter(),
+          paginationController,
+          s -> this.context.getQueryStatistics().addFilteredRowsOfRowLevel(s));
+    }
+    return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+        tsBlock,
+        new TsBlockBuilder(getTsDataTypeList()),
+        scanOptions.getPushDownFilter(),
+        paginationController);
   }
 
   private TsBlock getTransferedDataTypeTsBlock(TsBlock tsBlock) {
@@ -1349,15 +1390,7 @@ public class SeriesScanUtil implements Accountable {
     return tsBlock;
   }
 
-  private TsBlock applyPushDownFilterAndLimitOffset(
-      TsBlock tsBlock, Filter pushDownFilter, PaginationController paginationController) {
-    if (pushDownFilter == null) {
-      return paginationController.applyTsBlock(tsBlock);
-    }
-    return TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-        tsBlock, new TsBlockBuilder(getTsDataTypeList()), pushDownFilter, paginationController);
-  }
-
+  /** filter data in whole page level, and apply the offset at the same time */
   private void filterFirstPageReader() {
     if (firstPageReader == null || firstPageReader.isModified()) {
       return;
@@ -1368,6 +1401,10 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(pageReader)) {
+      // record the page level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfPageLevel(pageReader.getStatistics().getCount());
       skipCurrentPage();
       return;
     }
@@ -1839,7 +1876,8 @@ public class SeriesScanUtil implements Accountable {
     if (firstTimeSeriesMetadata == null) {
       return;
     }
-
+    // if the time range is overLapped, current file cannot be considered as truth, so all filters
+    // are invalid
     if (currentFileOverlapped() || firstTimeSeriesMetadata.isModified()) {
       return;
     }
@@ -1847,6 +1885,11 @@ public class SeriesScanUtil implements Accountable {
     // globalTimeFilter.canSkip() must be FALSE
     Filter pushDownFilter = scanOptions.getPushDownFilter();
     if (pushDownFilter != null && pushDownFilter.canSkip(firstTimeSeriesMetadata)) {
+
+      // record the timeSeries level filtered data
+      this.context
+          .getQueryStatistics()
+          .addFilteredRowsOfTimeSeriesLevel(firstTimeSeriesMetadata.getStatistics().getCount());
       skipCurrentFile();
       return;
     }
@@ -2009,7 +2052,12 @@ public class SeriesScanUtil implements Accountable {
     public TsBlock getAllSatisfiedPageData(boolean ascending) throws IOException {
       long startTime = System.nanoTime();
       try {
-        TsBlock tsBlock = data.getAllSatisfiedData();
+
+        TsBlock tsBlock =
+            this.context.isVerbose()
+                ? data.getAllSatisfiedData(
+                    s -> this.context.getQueryStatistics().addFilteredRowsOfRowLevel(s))
+                : data.getAllSatisfiedData();
         if (!ascending) {
           tsBlock.reverse();
         }

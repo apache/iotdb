@@ -30,10 +30,14 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
+import java.util.Map;
+
 public class ExchangeOperator implements SourceOperator {
 
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ExchangeOperator.class);
+
+  public static final String SIZE_IN_BYTES = "sizeInBytes";
 
   private final OperatorContext operatorContext;
 
@@ -79,7 +83,17 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public TsBlock next() throws Exception {
-    return sourceHandle.receive();
+    TsBlock receiveBlock = sourceHandle.receive();
+    if (receiveBlock != null) {
+      Map<String, String> specifiedInfo = operatorContext.getSpecifiedInfo();
+      specifiedInfo.compute(
+          SIZE_IN_BYTES,
+          (key, oldValue) ->
+              String.valueOf(
+                  receiveBlock.getSizeInBytes()
+                      + Long.parseLong(oldValue == null ? "0" : oldValue)));
+    }
+    return receiveBlock;
   }
 
   @Override

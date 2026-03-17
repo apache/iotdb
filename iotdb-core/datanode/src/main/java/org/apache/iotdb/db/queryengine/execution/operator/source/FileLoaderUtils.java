@@ -151,6 +151,10 @@ public class FileLoaderUtils {
           return null;
         }
         if (globalTimeFilter != null && globalTimeFilter.canSkip(timeSeriesMetadata)) {
+          // record the timeSeries level filtered data
+          context
+              .getQueryStatistics()
+              .addFilteredRowsOfTimeSeriesLevel(timeSeriesMetadata.getStatistics().getCount());
           return null;
         }
       }
@@ -228,6 +232,11 @@ public class FileLoaderUtils {
           return null;
         }
         if (globalTimeFilter != null && globalTimeFilter.canSkip(alignedTimeSeriesMetadata)) {
+          // record the timeSeries level filtered data
+          context
+              .getQueryStatistics()
+              .addFilteredRowsOfTimeSeriesLevel(
+                  alignedTimeSeriesMetadata.getStatistics().getCount());
           return null;
         }
       }

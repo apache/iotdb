@@ -31,7 +31,6 @@ import io.airlift.units.Duration;
 import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -177,7 +176,7 @@ public class OperatorContext implements Accountable {
   }
 
   public Map<String, String> getSpecifiedInfo() {
-    return specifiedInfo == null ? new HashMap<>() : specifiedInfo;
+    return specifiedInfo == null ? specifiedInfo = new ConcurrentHashMap<>() : specifiedInfo;
   }
 
   @Override

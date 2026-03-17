@@ -751,6 +751,11 @@ struct TQueryStatistics {
   47: i64 loadChunkActualIOSize
 
   48: i64 chunkWithMetadataErrorsCount
+
+  49: i64 timeSeriesIndexFilteredRows
+  50: i64 chunkIndexFilteredRows
+  51: i64 pageIndexFilteredRows
+  52: i64 rowScanFilteredRows
 }
 
 
