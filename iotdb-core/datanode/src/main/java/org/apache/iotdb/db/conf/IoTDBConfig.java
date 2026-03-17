@@ -4385,7 +4385,7 @@ public class IoTDBConfig {
     return partitionTableRecoverMaxReadBytesPerSecond;
   }
 
-  public void setPartitionTableRecoverMaxReadBytesPerSecond(int partitionTableRecoverWorkerNum) {
-    this.partitionTableRecoverWorkerNum = partitionTableRecoverWorkerNum;
+  public void setPartitionTableRecoverMaxReadBytesPerSecond(int partitionTableRecoverMaxReadBytesPerSecond) {
+    this.partitionTableRecoverMaxReadBytesPerSecond = partitionTableRecoverMaxReadBytesPerSecond;
   }
 }
