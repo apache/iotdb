@@ -128,8 +128,7 @@ public class IoTDBTestAutoCommitTrueDataSetPullConsumerIT
         break;
       }
       for (final SubscriptionMessage message : messages) {
-        for (final Iterator<Tablet> it = message.getSessionDataSetsHandler().tabletIterator();
-            it.hasNext(); ) {
+        for (final Iterator<Tablet> it = message.getRecordTabletIterator(); it.hasNext(); ) {
           final Tablet tablet = it.next();
           session.insertTablet(tablet);
           System.out.println(
