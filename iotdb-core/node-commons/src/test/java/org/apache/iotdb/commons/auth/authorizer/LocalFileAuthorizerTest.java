@@ -16,16 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.auth.authorizer;
+package org.apache.iotdb.commons.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
-import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.auth.entity.PrivilegeUnion;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -51,16 +48,13 @@ public class LocalFileAuthorizerTest {
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
     authorizer = BasicAuthorizer.getInstance();
     authorizer.reset();
     nodeName = new PartialPath("root.laptop.d1");
   }
 
   @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
+  public void tearDown() throws Exception {}
 
   @Test
   public void testLogin() throws AuthException {

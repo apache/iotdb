@@ -34,55 +34,66 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import net.minidev.json.JSONObject;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Instant;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class OpenIdAuthorizerTest {
 
   private final CommonConfig config = CommonDescriptor.getInstance().getConfig();
-
-  private String originalUserFolder;
-  private String originalRoleFolder;
-  private String originalOpenIdAudience;
-  private Path baseDir;
+  private PrivateKey privateKey;
+  private JSONObject publicJwk;
 
   @Before
-  public void setUp() throws IOException {
-    originalUserFolder = config.getUserFolder();
-    originalRoleFolder = config.getRoleFolder();
-    originalOpenIdAudience = config.getOpenIdAudience();
-
-    baseDir = Files.createTempDirectory("openid-authorizer-test-");
-    config.setUserFolder(Files.createDirectories(baseDir.resolve("users")).toString());
-    config.setRoleFolder(Files.createDirectories(baseDir.resolve("roles")).toString());
+  public void setUp() throws Exception {
+    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+    keyPairGenerator.initialize(2048);
+    KeyPair keyPair = keyPairGenerator.generateKeyPair();
+    privateKey = keyPair.getPrivate();
+    publicJwk =
+        new JSONObject(
+            new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                .keyUse(KeyUse.SIGNATURE)
+                .keyID("datanode-openid-test-key")
+                .build()
+                .toJSONObject());
   }
 
   @After
-  public void tearDown() throws IOException {
-    config.setUserFolder(originalUserFolder);
-    config.setRoleFolder(originalRoleFolder);
-    config.setOpenIdAudience(originalOpenIdAudience);
+  public void tearDown() throws IOException {}
 
-    if (baseDir != null) {
-      try (java.util.stream.Stream<Path> stream = Files.walk(baseDir)) {
-        stream.sorted(Comparator.reverseOrder()).forEach(this::deleteIfExists);
-      }
-    }
+  @Test
+  public void loginWithJWT() throws Exception {
+    String jwt = createJwt(false);
+    OpenIdAuthorizer authorizer = new OpenIdAuthorizer(publicJwk);
+    assertTrue(authorizer.login(jwt, null, false));
+  }
+
+  @Test
+  public void isAdmin_hasAccess() throws Exception {
+    String jwt = createJwt(true);
+    OpenIdAuthorizer authorizer = new OpenIdAuthorizer(publicJwk);
+    assertTrue(authorizer.isAdmin(jwt));
+  }
+
+  @Test
+  public void isAdmin_noAdminClaim() throws Exception {
+    String jwt = createJwt(false);
+    OpenIdAuthorizer authorizer = new OpenIdAuthorizer(publicJwk);
+    assertFalse(authorizer.isAdmin(jwt));
   }
 
   @Test
@@ -113,8 +124,8 @@ public class OpenIdAuthorizerTest {
                         "roles",
                         Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
-    Assert.assertFalse(authorizer.login(expiredToken, "", false));
-    Assert.assertFalse(authorizer.isAdmin(expiredToken));
+    assertFalse(authorizer.login(expiredToken, "", false));
+    assertFalse(authorizer.isAdmin(expiredToken));
   }
 
   @Test
@@ -140,8 +151,8 @@ public class OpenIdAuthorizerTest {
                           "roles",
                           Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
-      Assert.assertFalse(authorizer.login(token, "", false));
-      Assert.assertFalse(authorizer.isAdmin(token));
+      assertFalse(authorizer.login(token, "", false));
+      assertFalse(authorizer.isAdmin(token));
     } finally {
       server.stop(0);
     }
@@ -170,8 +181,8 @@ public class OpenIdAuthorizerTest {
                           "roles",
                           Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME))));
 
-      Assert.assertFalse(authorizer.login(token, "", false));
-      Assert.assertFalse(authorizer.isAdmin(token));
+      assertFalse(authorizer.login(token, "", false));
+      assertFalse(authorizer.isAdmin(token));
     } finally {
       server.stop(0);
     }
@@ -231,11 +242,20 @@ public class OpenIdAuthorizerTest {
     }
   }
 
-  private void deleteIfExists(Path path) {
-    try {
-      Files.deleteIfExists(path);
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to delete test path " + path, e);
-    }
+  private String createJwt(boolean hasAdminRole) throws JOSEException {
+    JWTClaimsSet.Builder claimsBuilder =
+        new JWTClaimsSet.Builder()
+            .subject("datanode-test-user")
+            .expirationTime(Date.from(Instant.now().plusSeconds(3600)))
+            .claim(
+                "realm_access",
+                Collections.singletonMap(
+                    "roles",
+                    hasAdminRole
+                        ? Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)
+                        : Collections.singletonList("offline_access")));
+    SignedJWT signedJwt = new SignedJWT(new JWSHeader(JWSAlgorithm.RS256), claimsBuilder.build());
+    signedJwt.sign(new RSASSASigner(privateKey));
+    return signedJwt.serialize();
   }
 }

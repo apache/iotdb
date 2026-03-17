@@ -94,7 +94,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     }
     this.expectedIssuer = expectedIssuer;
     this.acceptedAudiences = Collections.unmodifiableSet(new HashSet<>(acceptedAudiences));
-    logger.info("Initialized with providerKey: {}", providerKey);
   }
 
   public OpenIdAuthorizer(String providerUrl)
@@ -115,8 +114,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     // Fetch Metadata
     OIDCProviderMetadata providerMetadata = fetchMetadata(providerUrl);
 
-    logger.debug("Using Provider Metadata: {}", providerMetadata);
-
     Set<String> acceptedAudiences = parseAudiences(config.getOpenIdAudience());
     if (acceptedAudiences.isEmpty()) {
       throw new AuthException(
@@ -133,7 +130,6 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
     try {
       URL url = new URI(providerMetadata.getJWKSetURI().toString()).toURL();
-      logger.debug("Using url {}", url);
       return new ProviderContext(getProviderRsaJwk(url.openStream()), issuer, acceptedAudiences);
     } catch (IOException e) {
       throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Unable to start the Auth", e);
@@ -194,14 +190,9 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     try {
       claims = validateToken(token);
     } catch (JwtException e) {
-      logger.error("Unable to login the user with Username (token) {}", token, e);
+      logger.error("Unable to login the user with Username (token), {}", e.getMessage());
       return false;
     }
-    logger.debug("JWT was validated successfully!");
-    logger.debug("ID: {}", claims.getId());
-    logger.debug("Subject: {}", claims.getSubject());
-    logger.debug("Issuer: {}", claims.getIssuer());
-    logger.debug("Expiration: {}", claims.getExpiration());
     // Create User if not exists
     String iotdbUsername = getUsername(claims);
     if (!super.listAllUsers().contains(iotdbUsername)) {
@@ -308,7 +299,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       try {
         claims = validateToken(token);
       } catch (JwtException e) {
-        logger.warn("Unable to validate token {}!", token, e);
+        logger.warn("Unable to validate token! {}", e.getMessage());
         return false;
       }
     }
