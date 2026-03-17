@@ -68,6 +68,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -149,9 +150,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     TsTable tsTable =
         DataNodeTableCache.getInstance().getTable(database, device.getTableName(), false);
     Map<String, IMeasurementSchema> measurementSchemaMap = new HashMap<>();
-    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
-      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair =
-          this.readerAndChunkMetadataList.get(i);
+    Iterator<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>> iterator =
+        readerAndChunkMetadataList.descendingIterator();
+    while (iterator.hasNext()) {
+      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair = iterator.next();
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
@@ -207,9 +209,10 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
     Map<String, Pair<IMeasurementSchema, Boolean>> measurementSchemaMap = new HashMap<>();
     List<Pair<IMeasurementSchema, Boolean>> measurementSchemasNeedToUpdate = new ArrayList<>();
     List<String> measurementNamesNeedToUpdate = new ArrayList<>();
-    for (int i = this.readerAndChunkMetadataList.size() - 1; i >= 0; i--) {
-      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair =
-          this.readerAndChunkMetadataList.get(i);
+    Iterator<Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>>> iterator =
+        readerAndChunkMetadataList.descendingIterator();
+    while (iterator.hasNext()) {
+      Pair<TsFileSequenceReader, List<AbstractAlignedChunkMetadata>> pair = iterator.next();
       CompactionTsFileReader reader = (CompactionTsFileReader) pair.getLeft();
       List<AbstractAlignedChunkMetadata> alignedChunkMetadataList = pair.getRight();
       for (AbstractAlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
