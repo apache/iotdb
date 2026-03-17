@@ -724,7 +724,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -874,7 +874,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return Optional.of(new SubscriptionMessage(commitContext, file.getAbsolutePath()));
+            return Optional.of(
+                new SubscriptionMessage(commitContext, file.getAbsolutePath(), null));
           }
         case ERROR:
           {
@@ -924,7 +925,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -945,7 +946,8 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
-        return Optional.of(new SubscriptionMessage(commitContext, tablets));
+        return Optional.of(
+            new SubscriptionMessage(commitContext, Collections.singletonMap(null, tablets)));
       }
 
       timer.update();
@@ -1129,13 +1131,12 @@ abstract class SubscriptionConsumer implements AutoCloseable {
         new HashMap<>();
     for (final SubscriptionMessage message : messages) {
       // make every effort to delete stale intermediate file
-      if (Objects.equals(
-              SubscriptionMessageType.TS_FILE_HANDLER.getType(), message.getMessageType())
+      if (Objects.equals(SubscriptionMessageType.TS_FILE.getType(), message.getMessageType())
           &&
           // do not delete file that can resume from breakpoint
           !inFlightFilesCommitContextSet.contains(message.getCommitContext())) {
         try {
-          message.getTsFileHandler().deleteFile();
+          message.getTsFile().deleteFile();
         } catch (final Exception ignored) {
         }
       }

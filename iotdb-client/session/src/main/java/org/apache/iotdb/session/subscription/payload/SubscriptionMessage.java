@@ -19,15 +19,18 @@
 
 package org.apache.iotdb.session.subscription.payload;
 
+import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
+import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
-public class SubscriptionMessage
-    implements Comparable<SubscriptionMessage>, SubscriptionMessageHandler {
+public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
 
   private final SubscriptionCommitContext commitContext;
 
@@ -36,17 +39,19 @@ public class SubscriptionMessage
   private final SubscriptionMessageHandler handler;
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
+      final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.SESSION_DATA_SETS_HANDLER.getType();
-    this.handler = new SubscriptionSessionDataSetsHandler(tablets);
+    this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
+    this.handler = new SubscriptionRecordHandler(tablets);
   }
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final String absolutePath) {
+      final SubscriptionCommitContext commitContext,
+      final String absolutePath,
+      @Nullable final String databaseName) {
     this.commitContext = commitContext;
-    this.messageType = SubscriptionMessageType.TS_FILE_HANDLER.getType();
-    this.handler = new SubscriptionTsFileHandler(absolutePath);
+    this.messageType = SubscriptionMessageType.TS_FILE.getType();
+    this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
   }
 
   public SubscriptionCommitContext getCommitContext() {
@@ -94,13 +99,31 @@ public class SubscriptionMessage
 
   /////////////////////////////// handlers ///////////////////////////////
 
-  @Override
-  public SubscriptionSessionDataSetsHandler getSessionDataSetsHandler() {
-    return handler.getSessionDataSetsHandler();
+  public List<SubscriptionRecordHandler.SubscriptionResultSet> getResultSets() {
+    if (handler instanceof SubscriptionRecordHandler) {
+      return ((SubscriptionRecordHandler) handler).getResultSets();
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format("%s do not support getResultSets().", handler.getClass().getSimpleName()));
   }
 
-  @Override
-  public SubscriptionTsFileHandler getTsFileHandler() {
-    return handler.getTsFileHandler();
+  public Iterator<Tablet> getRecordTabletIterator() {
+    if (handler instanceof SubscriptionRecordHandler) {
+      return ((SubscriptionRecordHandler) handler)
+          .getResultSets().stream()
+              .map(SubscriptionRecordHandler.SubscriptionResultSet::getTablet)
+              .iterator();
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format(
+            "%s do not support getRecordTabletIterator().", handler.getClass().getSimpleName()));
+  }
+
+  public SubscriptionTsFileHandler getTsFile() {
+    if (handler instanceof SubscriptionTsFileHandler) {
+      return (SubscriptionTsFileHandler) handler;
+    }
+    throw new SubscriptionIncompatibleHandlerException(
+        String.format("%s do not support getTsFile().", handler.getClass().getSimpleName()));
   }
 }
