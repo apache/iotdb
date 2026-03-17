@@ -1,0 +1,26 @@
+### model
+model_type: sundial
+seq_len: 2880
+input_token_len: 16
+output_token_lens:
+  - 720
+
+### method
+finetune_type: lora
+lora_rank: 2
+lora_alpha: 8
+lora_dropout: 0.1
+lora_target_modules:
+  - q_proj
+  - v_proj
+
+### dataset
+dataset_type: csv
+data_path: /path/to/electricity.csv
+
+### training
+num_train_epochs: 10
+train_batch_size: 32
+learning_rate: 1.0e-6
+scheduler_type: cosine
+use_amp: true

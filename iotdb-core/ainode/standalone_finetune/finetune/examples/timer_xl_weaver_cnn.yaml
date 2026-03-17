@@ -1,0 +1,24 @@
+### model
+model_type: timer_xl
+seq_len: 672
+input_token_len: 96
+output_token_lens:
+  - 96
+
+### method
+finetune_type: weaver_cnn
+freeze_backbone: true
+input_channel: 9
+output_channel: 36
+
+### dataset
+dataset_type: csv
+data_path: /path/to/ETTh1.csv
+multivariate: true
+
+### training
+num_train_epochs: 50
+train_batch_size: 16
+learning_rate: 1.0e-3
+weight_decay: 0.01
+use_amp: true
