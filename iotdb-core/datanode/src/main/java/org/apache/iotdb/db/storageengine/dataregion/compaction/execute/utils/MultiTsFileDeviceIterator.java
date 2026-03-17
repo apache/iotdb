@@ -280,8 +280,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Set<String> seriesNeedToUpdateDataType = new HashSet<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
@@ -290,7 +290,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
       reader.getDeviceTimeseriesMetadata(
           timeseriesMetadataList,
-          deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+          iterator.getFirstMeasurementNodeOfCurrentDevice(),
           seriesNeedToUpdateDataType,
           true,
           null);
@@ -330,8 +330,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
       TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIterator.current().equals(currentDevice)) {
+      if (deviceIterator == null || !deviceIterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
@@ -381,8 +380,8 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     Map<String, CompactionSeriesContext> compactionSeriesContextMap = new HashMap<>();
     List<String> seriesNeedToUpdateDataType = new ArrayList<>();
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
-      if (!deviceIteratorMap.containsKey(resource)
-          || !deviceIteratorMap.get(resource).current().equals(currentDevice)) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(resource);
+      if (iterator == null || !iterator.current().equals(currentDevice)) {
         // if this tsfile has no more device or next device is not equals to the current device,
         // which means this tsfile does not contain the current device, then skip it.
         continue;
@@ -391,9 +390,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
           ((CompactionTsFileReader) reader)
               .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
-                  Collections.emptySet(),
-                  false)
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(), Collections.emptySet(), false)
               .entrySet()) {
         String measurementId = entrySet.getKey();
         TimeseriesMetadata timeseriesMetadata = entrySet.getValue().left;
@@ -467,7 +464,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
           reader
               .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(),
                   timeseriesMetadataOffsetMap.keySet(),
                   true)
               .entrySet()) {
@@ -529,7 +526,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
           reader
               .getTimeseriesMetadataAndOffsetByDevice(
-                  deviceIteratorMap.get(resource).getFirstMeasurementNodeOfCurrentDevice(),
+                  iterator.getFirstMeasurementNodeOfCurrentDevice(),
                   timeseriesMetadataOffsetMap.keySet(),
                   true)
               .entrySet()) {

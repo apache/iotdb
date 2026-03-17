@@ -163,7 +163,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
         if (timeSchema == null) {
           timeSchema =
               new MeasurementSchema(
-                  "",
+                  alignedChunkMetadata.getTimeChunkMetadata().getMeasurementUid(),
                   alignedChunkMetadata.getTimeChunkMetadata().getDataType(),
                   TSEncoding.valueOf(tsFileConfig.getTimeEncoder()),
                   tsFileConfig.getCompressor());
@@ -188,12 +188,7 @@ public class ReadChunkAlignedSeriesCompactionExecutor {
                     chunkHeader.getEncodingType(),
                     chunkHeader.getCompressionType());
           } else {
-            measurementSchema =
-                new MeasurementSchema(
-                    chunkMetadata.getMeasurementUid(),
-                    schemaInTsTable.getDataType(),
-                    tsFileConfig.getValueEncoder(schemaInTsTable.getDataType()),
-                    tsFileConfig.getCompressor(schemaInTsTable.getDataType()));
+            measurementSchema = schemaInTsTable.getMeasurementSchema();
           }
           measurementSchemaMap.put(chunkMetadata.getMeasurementUid(), measurementSchema);
         }
