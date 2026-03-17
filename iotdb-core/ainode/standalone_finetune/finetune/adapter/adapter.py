@@ -9,8 +9,6 @@ from standalone_finetune.hparams.model_args import ModelArguments
 
 logger = logging.getLogger(__name__)
 
-logger = Logger()
-
 
 def freeze_model_parameters(
     model: torch.nn.Module,

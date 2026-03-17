@@ -128,23 +128,3 @@ def parse_params_into_args(
     )
 
     return model_args, data_args, training_args, finetune_args
-
-
-def save_args_to_yaml(
-    model_args: ModelArguments,
-    data_args: DataArguments,
-    training_args: TrainingArguments,
-    finetune_args: FinetuneArguments,
-    output_path: str,
-) -> None:
-    """Save arguments to a YAML file."""
-    config = {
-        "model": model_args.to_dict(),
-        "data": data_args.to_dict(),
-        "training": training_args.to_dict(),
-        "finetune": finetune_args.to_dict(),
-    }
-
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as f:
-        yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
