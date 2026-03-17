@@ -129,19 +129,19 @@ BUILTIN_SKTIME_MODEL_MAP = {
 
 # Built-in huggingface transformers models, their weights are not included in AINode by default
 BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
-    # "timer_xl": ModelInfo(
-    #     model_id="timer_xl",
-    #     category=ModelCategory.BUILTIN,
-    #     state=ModelStates.INACTIVE,
-    #     model_type="timer",
-    #     pipeline_cls="pipeline_timer.TimerPipeline",
-    #     repo_id="thuml/timer-base-84m",
-    #     auto_map={
-    #         "AutoConfig": "configuration_timer.TimerConfig",
-    #         "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
-    #     },
-    #     transformers_registered=True,
-    # ),
+    "timer_xl": ModelInfo(
+        model_id="timer_xl",
+        category=ModelCategory.BUILTIN,
+        state=ModelStates.INACTIVE,
+        model_type="timer",
+        pipeline_cls="pipeline_timer.TimerPipeline",
+        repo_id="thuml/timer-base-84m",
+        auto_map={
+            "AutoConfig": "configuration_timer.TimerConfig",
+            "AutoModelForCausalLM": "modeling_timer.TimerForPrediction",
+        },
+        transformers_registered=True,
+    ),
     "sundial": ModelInfo(
         model_id="sundial",
         category=ModelCategory.BUILTIN,

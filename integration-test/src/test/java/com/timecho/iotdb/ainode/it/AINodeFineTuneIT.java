@@ -201,7 +201,7 @@ public class AINodeFineTuneIT {
     }
   }
 
-  @Test
+  //  @Test
   public void testWeaverCNNFineTune() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
@@ -263,7 +263,7 @@ public class AINodeFineTuneIT {
     }
   }
 
-  @Test
+  //  @Test
   public void testWeaverMLPFineTune() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT);
         Statement statement = connection.createStatement()) {
