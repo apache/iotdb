@@ -45,11 +45,16 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** Uses an OpenID Connect provider for Authorization / Authentication. */
 public class OpenIdAuthorizer extends BasicAuthorizer {
@@ -62,6 +67,8 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private final RSAPublicKey providerKey;
+  private final String expectedIssuer;
+  private final Set<String> acceptedAudiences;
 
   /** Stores all claims to the respective user */
   private final Map<String, Claims> loggedClaims = new HashMap<>();
@@ -71,6 +78,11 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   public OpenIdAuthorizer(JSONObject jwk) throws AuthException {
+    this(jwk, null, Collections.emptySet());
+  }
+
+  public OpenIdAuthorizer(JSONObject jwk, String expectedIssuer, Set<String> acceptedAudiences)
+      throws AuthException {
     super(
         new LocalFileUserManager(config.getUserFolder()),
         new LocalFileRoleManager(config.getRoleFolder()));
@@ -80,15 +92,21 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
       throw new AuthException(
           TSStatusCode.INIT_AUTH_ERROR, "Unable to get OIDC Provider Key from JWK " + jwk, e);
     }
+    this.expectedIssuer = expectedIssuer;
+    this.acceptedAudiences = Collections.unmodifiableSet(new HashSet<>(acceptedAudiences));
     logger.info("Initialized with providerKey: {}", providerKey);
   }
 
   public OpenIdAuthorizer(String providerUrl)
       throws AuthException, URISyntaxException, ParseException, IOException {
-    this(getJwkFromProvider(providerUrl));
+    this(loadProviderContext(providerUrl));
   }
 
-  private static JSONObject getJwkFromProvider(String providerUrl)
+  private OpenIdAuthorizer(ProviderContext providerContext) throws AuthException {
+    this(providerContext.jwk, providerContext.issuer, providerContext.acceptedAudiences);
+  }
+
+  private static ProviderContext loadProviderContext(String providerUrl)
       throws URISyntaxException, IOException, ParseException, AuthException {
     if (providerUrl == null) {
       throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
@@ -99,10 +117,24 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
     logger.debug("Using Provider Metadata: {}", providerMetadata);
 
+    Set<String> acceptedAudiences = parseAudiences(config.getOpenIdAudience());
+    if (acceptedAudiences.isEmpty()) {
+      throw new AuthException(
+          TSStatusCode.INIT_AUTH_ERROR,
+          "openID_audience must be configured when OpenIdAuthorizer is enabled");
+    }
+
+    String issuer =
+        providerMetadata.getIssuer() == null ? null : providerMetadata.getIssuer().getValue();
+    if (issuer == null || issuer.isEmpty()) {
+      throw new AuthException(
+          TSStatusCode.INIT_AUTH_ERROR, "OIDC provider metadata does not contain an issuer");
+    }
+
     try {
       URL url = new URI(providerMetadata.getJWKSetURI().toString()).toURL();
       logger.debug("Using url {}", url);
-      return getProviderRsaJwk(url.openStream());
+      return new ProviderContext(getProviderRsaJwk(url.openStream()), issuer, acceptedAudiences);
     } catch (IOException e) {
       throw new AuthException(TSStatusCode.INIT_AUTH_ERROR, "Unable to start the Auth", e);
     }
@@ -194,12 +226,51 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   }
 
   private Claims validateToken(String token) {
-    return Jwts.parser()
-        .clockSkewSeconds(MAX_CLOCK_SKEW_SECONDS)
-        .verifyWith(providerKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload();
+    Claims claims =
+        Jwts.parser()
+            .clockSkewSeconds(MAX_CLOCK_SKEW_SECONDS)
+            .verifyWith(providerKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
+    validateClaims(claims);
+    return claims;
+  }
+
+  private void validateClaims(Claims claims) {
+    if (expectedIssuer != null && !expectedIssuer.equals(claims.getIssuer())) {
+      throw new JwtException(
+          String.format("Unexpected issuer %s, expected %s", claims.getIssuer(), expectedIssuer));
+    }
+    if (!acceptedAudiences.isEmpty() && !hasAcceptedAudience(claims.get("aud"))) {
+      throw new JwtException(
+          String.format(
+              "Unexpected audience %s, expected one of %s", claims.get("aud"), acceptedAudiences));
+    }
+  }
+
+  private boolean hasAcceptedAudience(Object audienceClaim) {
+    if (audienceClaim instanceof String) {
+      return acceptedAudiences.contains(audienceClaim);
+    }
+    if (audienceClaim instanceof List<?>) {
+      for (Object audience : (List<?>) audienceClaim) {
+        if (audience instanceof String && acceptedAudiences.contains(audience)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  private static Set<String> parseAudiences(String configuredAudiences) {
+    if (configuredAudiences == null || configuredAudiences.trim().isEmpty()) {
+      return Collections.emptySet();
+    }
+    return Arrays.stream(configuredAudiences.split(","))
+        .map(String::trim)
+        .filter(audience -> !audience.isEmpty())
+        .collect(Collectors.toCollection(HashSet::new));
   }
 
   private String getUsername(Claims claims) {
@@ -256,6 +327,18 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   @Override
   public boolean checkUserPrivileges(String userName, PrivilegeUnion union) throws AuthException {
     return isAdmin(userName);
+  }
+
+  private static class ProviderContext {
+    private final JSONObject jwk;
+    private final String issuer;
+    private final Set<String> acceptedAudiences;
+
+    private ProviderContext(JSONObject jwk, String issuer, Set<String> acceptedAudiences) {
+      this.jwk = jwk;
+      this.issuer = issuer;
+      this.acceptedAudiences = acceptedAudiences;
+    }
   }
 
   @Override

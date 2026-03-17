@@ -60,6 +60,7 @@ public class CommonConfig {
 
   // Open ID Secret
   private String openIdProviderUrl = "";
+  private String openIdAudience = "";
 
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
@@ -541,6 +542,14 @@ public class CommonConfig {
 
   public void setOpenIdProviderUrl(String openIdProviderUrl) {
     this.openIdProviderUrl = openIdProviderUrl;
+  }
+
+  public String getOpenIdAudience() {
+    return openIdAudience;
+  }
+
+  public void setOpenIdAudience(String openIdAudience) {
+    this.openIdAudience = openIdAudience;
   }
 
   public String getAuthorizerProvider() {

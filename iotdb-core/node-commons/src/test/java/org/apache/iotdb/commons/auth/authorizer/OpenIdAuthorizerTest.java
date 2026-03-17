@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 import io.jsonwebtoken.Jwts;
 import net.minidev.json.JSONObject;
 import org.junit.After;
@@ -32,6 +34,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
@@ -48,12 +52,14 @@ public class OpenIdAuthorizerTest {
 
   private String originalUserFolder;
   private String originalRoleFolder;
+  private String originalOpenIdAudience;
   private Path baseDir;
 
   @Before
   public void setUp() throws IOException {
     originalUserFolder = config.getUserFolder();
     originalRoleFolder = config.getRoleFolder();
+    originalOpenIdAudience = config.getOpenIdAudience();
 
     baseDir = Files.createTempDirectory("openid-authorizer-test-");
     config.setUserFolder(Files.createDirectories(baseDir.resolve("users")).toString());
@@ -64,6 +70,7 @@ public class OpenIdAuthorizerTest {
   public void tearDown() throws IOException {
     config.setUserFolder(originalUserFolder);
     config.setRoleFolder(originalRoleFolder);
+    config.setOpenIdAudience(originalOpenIdAudience);
 
     if (baseDir != null) {
       try (java.util.stream.Stream<Path> stream = Files.walk(baseDir)) {
@@ -101,6 +108,111 @@ public class OpenIdAuthorizerTest {
 
     Assert.assertFalse(authorizer.login(expiredToken, "", false));
     Assert.assertFalse(authorizer.isAdmin(expiredToken));
+  }
+
+  @Test
+  public void testWrongIssuerRejected() throws Exception {
+    config.setOpenIdAudience("iotdb");
+    KeyPair keyPair = generateKeyPair();
+    HttpServer server = startProviderServer(keyPair);
+    String issuer = "http://127.0.0.1:" + server.getAddress().getPort() + "/";
+
+    try {
+      OpenIdAuthorizer authorizer = new OpenIdAuthorizer(issuer);
+      String token =
+          Jwts.builder()
+              .subject("attacker")
+              .issuer("https://evil.example/issuer")
+              .claim("aud", "iotdb")
+              .expiration(Date.from(Instant.now().plusSeconds(3600)))
+              .claim(
+                  "realm_access",
+                  Collections.singletonMap(
+                      "roles", Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)))
+              .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
+              .compact();
+
+      Assert.assertFalse(authorizer.login(token, "", false));
+      Assert.assertFalse(authorizer.isAdmin(token));
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  public void testWrongAudienceRejected() throws Exception {
+    config.setOpenIdAudience("iotdb");
+    KeyPair keyPair = generateKeyPair();
+    HttpServer server = startProviderServer(keyPair);
+    String issuer = "http://127.0.0.1:" + server.getAddress().getPort() + "/";
+
+    try {
+      OpenIdAuthorizer authorizer = new OpenIdAuthorizer(issuer);
+      String token =
+          Jwts.builder()
+              .subject("attacker")
+              .issuer(issuer)
+              .claim("aud", "unrelated-client")
+              .expiration(Date.from(Instant.now().plusSeconds(3600)))
+              .claim(
+                  "realm_access",
+                  Collections.singletonMap(
+                      "roles", Collections.singletonList(OpenIdAuthorizer.IOTDB_ADMIN_ROLE_NAME)))
+              .signWith(keyPair.getPrivate(), Jwts.SIG.RS256)
+              .compact();
+
+      Assert.assertFalse(authorizer.login(token, "", false));
+      Assert.assertFalse(authorizer.isAdmin(token));
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  private KeyPair generateKeyPair() throws Exception {
+    KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+    keyPairGenerator.initialize(2048);
+    return keyPairGenerator.generateKeyPair();
+  }
+
+  private HttpServer startProviderServer(KeyPair keyPair) throws Exception {
+    JSONObject publicJwk =
+        new JSONObject(
+            new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
+                .keyUse(KeyUse.SIGNATURE)
+                .keyID("openid-provider-test-key")
+                .build()
+                .toJSONObject());
+
+    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    String issuer = "http://127.0.0.1:" + server.getAddress().getPort() + "/";
+    String metadata =
+        "{"
+            + "\"issuer\":\""
+            + issuer
+            + "\","
+            + "\"jwks_uri\":\""
+            + issuer
+            + "jwks.json\","
+            + "\"subject_types_supported\":[\"public\"],"
+            + "\"response_types_supported\":[\"code\"],"
+            + "\"id_token_signing_alg_values_supported\":[\"RS256\"]"
+            + "}";
+    String jwks = "{\"keys\":[" + publicJwk.toJSONString() + "]}";
+
+    server.createContext(
+        "/.well-known/openid-configuration", exchange -> writeJson(exchange, metadata));
+    server.createContext("/jwks.json", exchange -> writeJson(exchange, jwks));
+    server.start();
+    return server;
+  }
+
+  private void writeJson(HttpExchange exchange, String json) throws IOException {
+    byte[] response = json.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().set("Content-Type", "application/json");
+    exchange.sendResponseHeaders(200, response.length);
+    try (OutputStream outputStream = exchange.getResponseBody()) {
+      outputStream.write(response);
+    }
   }
 
   private void deleteIfExists(Path path) {

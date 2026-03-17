@@ -1753,6 +1753,12 @@ authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuth
 # Privilege: SECURITY
 openID_url=
 
+# If OpenIdAuthorizer is enabled, then openID_audience must contain the IoTDB client ID
+# or a comma-separated allowlist of accepted audiences.
+# effectiveMode: restart
+# Privilege: SECURITY
+openID_audience=
+
 # encryption provider class
 # effectiveMode: first_start
 iotdb_server_encrypt_decrypt_provider=org.apache.iotdb.commons.security.encrypt.MessageDigestEncrypt

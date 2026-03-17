@@ -80,6 +80,8 @@ public class CommonDescriptor {
     // if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
     config.setOpenIdProviderUrl(
         properties.getProperty("openID_url", config.getOpenIdProviderUrl()).trim());
+    config.setOpenIdAudience(
+        properties.getProperty("openID_audience", config.getOpenIdAudience()).trim());
     config.setEncryptDecryptProvider(
         properties
             .getProperty(
