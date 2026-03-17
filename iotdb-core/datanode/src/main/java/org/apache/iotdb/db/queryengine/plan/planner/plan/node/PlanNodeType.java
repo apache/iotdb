@@ -117,7 +117,6 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
@@ -696,7 +695,8 @@ public enum PlanNodeType {
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
-        return AggregationTreeDeviceViewScanNode.deserialize(buffer);
+        throw new UnsupportedOperationException(
+            "AggregationTreeDeviceViewScanNode should not be deserialized");
       case 1023:
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
       case 1024:

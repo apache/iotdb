@@ -1252,7 +1252,29 @@ public class TableDistributedPlanGenerator
     DataPartition dataPartition = analysis.getDataPartitionInfo();
     if (dbName == null || dataPartition == null) {
       node.setRegionReplicaSet(NOT_ASSIGNED);
-      return Collections.singletonList(node);
+      return Collections.singletonList(
+          new AlignedAggregationTreeDeviceViewScanNode(
+              node.getPlanNodeId(),
+              node.getQualifiedObjectName(),
+              node.getOutputSymbols(),
+              node.getAssignments(),
+              node.getDeviceEntries(),
+              node.getTagAndAttributeIndexMap(),
+              node.getScanOrder(),
+              node.getTimePredicate().orElse(null),
+              node.getPushDownPredicate(),
+              node.getPushDownLimit(),
+              node.getPushDownOffset(),
+              node.isPushLimitToEachDevice(),
+              node.containsNonAlignedDevice(),
+              node.getProjection(),
+              node.getAggregations(),
+              node.getGroupingSets(),
+              node.getPreGroupedSymbols(),
+              node.getStep(),
+              node.getGroupIdSymbol(),
+              node.getTreeDBName(),
+              node.getMeasurementColumnNameMap()));
     }
 
     AggregationDistributionInfo distributionInfo =
