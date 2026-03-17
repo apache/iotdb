@@ -430,8 +430,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private static final String SYSTEM = "system";
 
-  private Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
-
   // Must be lower than the RPC request timeout, in milliseconds
   private static final long timeoutMs = 50000;
 
@@ -3343,6 +3341,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   /** Process data directory to find the earliest timeslots for each database. */
   private void processDataDirectoryForEarliestTimeslots(
       File dataDir, Map<String, Long> earliestTimeslots) {
+    Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
     try (Stream<Path> sequenceTypePaths = Files.list(dataDir.toPath())) {
       sequenceTypePaths
           .filter(Files::isDirectory)
@@ -3360,7 +3359,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                             }
                             databaseEarliestRegionMap.computeIfAbsent(
                                 databaseName, key -> Long.MAX_VALUE);
-                            long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile());
+                            long earliestTimeslot = findEarliestTimeslotInDatabase(dbPath.toFile(), databaseEarliestRegionMap);
 
                             if (earliestTimeslot != Long.MAX_VALUE) {
                               earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
@@ -3377,7 +3376,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   /** Find the earliest timeslot in a database directory. */
-  private long findEarliestTimeslotInDatabase(File databaseDir) {
+  private long findEarliestTimeslotInDatabase(File databaseDir, Map<String, Long> databaseEarliestRegionMap) {
     String databaseName = databaseDir.getName();
     List<Future<?>> futureList = new ArrayList<>();
 
