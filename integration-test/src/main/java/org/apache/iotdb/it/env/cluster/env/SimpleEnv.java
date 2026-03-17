@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.itbase.runtime.NodeConnection;
+
+import java.sql.SQLException;
+
 public class SimpleEnv extends AbstractEnv {
 
   @Override
@@ -35,5 +39,11 @@ public class SimpleEnv extends AbstractEnv {
   public void initClusterEnvironment(
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
+
+  @Override
+  public NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) throws SQLException {
+    return super.getWriteConnection(null, username3, password3, treeSqlDialect);
   }
 }

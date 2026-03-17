@@ -39,6 +39,7 @@ import org.apache.iotdb.it.env.remote.config.RemoteClusterConfig;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 import org.apache.iotdb.itbase.env.ClusterConfig;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -523,5 +524,11 @@ public class RemoteServerEnv implements BaseEnv {
   @Override
   public void setIsExternalServiceRelatedTest(boolean isExternalServiceRelatedTest) {
     // do nothing
+  }
+
+  @Override
+  public NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) throws SQLException {
+    return null;
   }
 }

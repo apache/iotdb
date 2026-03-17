@@ -103,6 +103,8 @@ public class SessionManager implements SessionManagerMBean {
   public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
+  private final Object sessionLimitLock = new Object();
+
   protected SessionManager() {
     // singleton
     String mbeanName =
@@ -182,27 +184,32 @@ public class SessionManager implements SessionManagerMBean {
     final TSStatus loginStatus =
         AuthorityChecker.checkUser(username, password, useEncryptedPassword);
     if (loginStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      // check session nums
-      User user = AuthorityChecker.getAuthorityFetcher().getAuthorCache().getUserCache(username);
-      TSStatus checkSessionNumStatus =
-          checkSessionNums(username, user.getMaxSessionPerUser(), user.getMinSessionPerUser());
       // check the version compatibility
       if (!tsProtocolVersion.equals(CURRENT_RPC_VERSION)) {
         openSessionResp
             .sessionId(-1)
             .setCode(TSStatusCode.INCOMPATIBLE_VERSION.getStatusCode())
             .setMessage("The version is incompatible, please upgrade to " + IoTDBConstant.VERSION);
-      } else if (checkSessionNumStatus.getCode()
-          == TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode()) {
-        openSessionResp
-            .sessionId(-1)
-            .setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode())
-            .setMessage(checkSessionNumStatus.getMessage());
       } else {
-        session.setSqlDialect(sqlDialect);
-        supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
-        String logInMessage = "Login successfully";
+        synchronized (sessionLimitLock) {
+          // check session nums
+          User user =
+              AuthorityChecker.getAuthorityFetcher().getAuthorCache().getUserCache(username);
+          TSStatus checkSessionNumStatus =
+              checkSessionNums(username, user.getMaxSessionPerUser(), user.getMinSessionPerUser());
+          if (checkSessionNumStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            session.setSqlDialect(sqlDialect);
+            supplySession(session, userId, username, ZoneId.of(zoneId), clientVersion);
+          } else {
+            openSessionResp
+                .sessionId(-1)
+                .setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode())
+                .setMessage(checkSessionNumStatus.getMessage());
+            return openSessionResp;
+          }
+        }
 
+        String logInMessage = "Login successfully";
         long passwordStaleWarningDays =
             CommonDescriptor.getInstance().getConfig().getPasswordStaleWarningDays();
         if (passwordStaleWarningDays > 0 && expirationAndModifiedTime != null) {
@@ -735,7 +742,7 @@ public class SessionManager implements SessionManagerMBean {
     int usedSessionNum =
         Math.toIntExact(
             sessions.keySet().stream().filter(s -> s != null && s.getUsername() != null).count());
-    if (usedSessionNum == rpcMaxConcurrentClientNum) {
+    if (usedSessionNum >= rpcMaxConcurrentClientNum) {
       sessionNumCheckStatus.setCode(TSStatusCode.SESSION_NUMS_EXCEEDED.getStatusCode());
       sessionNumCheckStatus.setMessage(
           "The current number of client connections has reached the maximum connection limit allowed by the system.");
@@ -770,6 +777,8 @@ public class SessionManager implements SessionManagerMBean {
         sessionNumCheckStatus.setMessage(
             String.format(
                 "Insufficient connection pool resources, please try again later. ", username));
+      } else {
+        sessionNumCheckStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       }
     }
     return sessionNumCheckStatus;

@@ -924,7 +924,7 @@ public abstract class AbstractEnv implements BaseEnv {
         .build();
   }
 
-  protected NodeConnection getWriteConnection(
+  public NodeConnection getWriteConnection(
       Constant.Version version, String username, String password, String sqlDialect)
       throws SQLException {
     return getWriteConnectionFromDataNodeList(

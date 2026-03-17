@@ -20,8 +20,11 @@
 package org.apache.iotdb.it.env.cluster.env;
 
 import org.apache.iotdb.it.env.cluster.EnvUtils;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 
 import org.apache.tsfile.utils.Pair;
+
+import java.sql.SQLException;
 
 public class MultiClusterEnv extends AbstractEnv {
 
@@ -51,5 +54,11 @@ public class MultiClusterEnv extends AbstractEnv {
   public void initClusterEnvironment(
       final int configNodesNum, final int dataNodesNum, final int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount);
+  }
+
+  @Override
+  public NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) throws SQLException {
+    return null;
   }
 }

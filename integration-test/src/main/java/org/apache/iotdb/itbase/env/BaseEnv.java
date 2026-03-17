@@ -30,7 +30,7 @@ import org.apache.iotdb.isession.pool.ITableSessionPool;
 import org.apache.iotdb.it.env.cluster.node.AbstractNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.ConfigNodeWrapper;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.itbase.runtime.NodeConnection;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 
@@ -364,18 +364,21 @@ public interface BaseEnv {
 
   static Properties constructProperties(String username, String password, String sqlDialect) {
     Properties info = new Properties();
-
     if (username != null) {
-      info.put("user", username);
+      info.setProperty("user", username);
     }
     if (password != null) {
-      info.put("password", password);
+      info.setProperty("password", password);
     }
     if (sqlDialect != null) {
-      info.put(Config.SQL_DIALECT, sqlDialect);
+      // JDBC URL 参数解析中使用的 key 为 Config.SQL_DIALECT("sql_dialect")
+      info.setProperty("sql_dialect", sqlDialect);
     }
     return info;
   }
 
   void setIsExternalServiceRelatedTest(boolean isExternalServiceRelatedTest);
+
+  NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) throws SQLException;
 }

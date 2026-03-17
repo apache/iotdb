@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.it.env.cluster.env;
 
+import org.apache.iotdb.itbase.runtime.NodeConnection;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,6 +42,12 @@ public class AIEnv extends AbstractEnv {
       int configNodesNum, int dataNodesNum, int testWorkingRetryCount) {
     super.initEnvironment(configNodesNum, dataNodesNum, testWorkingRetryCount, true);
     checkActivationStatus(configNodesNum + dataNodesNum + 1);
+  }
+
+  @Override
+  public NodeConnection getWriteConnection(
+      Object o, String username3, String password3, String treeSqlDialect) {
+    return null;
   }
 
   private void checkActivationStatus(int nodeCnt) {
