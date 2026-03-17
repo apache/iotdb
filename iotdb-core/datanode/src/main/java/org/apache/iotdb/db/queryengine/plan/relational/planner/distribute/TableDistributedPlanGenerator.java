@@ -1595,14 +1595,6 @@ public class TableDistributedPlanGenerator
       List<List<TRegionReplicaSet>> regionReplicaSetsList,
       Map<TRegionReplicaSet, AggregationTableScanNode> regionNodeMap,
       AggregationTableScanNode partialAggTableScanNode) {
-    AggregationTreeDeviceViewScanNode aggregationTreeDeviceViewScanNode;
-    if (originalAggTableScanNode instanceof AggregationTreeDeviceViewScanNode) {
-      aggregationTreeDeviceViewScanNode =
-          (AggregationTreeDeviceViewScanNode) originalAggTableScanNode;
-    } else {
-      aggregationTreeDeviceViewScanNode = null;
-    }
-
     for (int i = 0; i < regionReplicaSetsList.size(); i++) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSetsList.get(i)) {
         AggregationTableScanNode aggregationTableScanNode =
@@ -1610,49 +1602,26 @@ public class TableDistributedPlanGenerator
                 regionReplicaSet,
                 k -> {
                   AggregationTableScanNode scanNode =
-                      (aggregationTreeDeviceViewScanNode == null)
-                          ? new AggregationTableScanNode(
-                              queryId.genPlanNodeId(),
-                              partialAggTableScanNode.getQualifiedObjectName(),
-                              partialAggTableScanNode.getOutputSymbols(),
-                              partialAggTableScanNode.getAssignments(),
-                              new ArrayList<>(),
-                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
-                              partialAggTableScanNode.getScanOrder(),
-                              partialAggTableScanNode.getTimePredicate().orElse(null),
-                              partialAggTableScanNode.getPushDownPredicate(),
-                              partialAggTableScanNode.getPushDownLimit(),
-                              partialAggTableScanNode.getPushDownOffset(),
-                              partialAggTableScanNode.isPushLimitToEachDevice(),
-                              partialAggTableScanNode.containsNonAlignedDevice(),
-                              partialAggTableScanNode.getProjection(),
-                              partialAggTableScanNode.getAggregations(),
-                              partialAggTableScanNode.getGroupingSets(),
-                              partialAggTableScanNode.getPreGroupedSymbols(),
-                              partialAggTableScanNode.getStep(),
-                              partialAggTableScanNode.getGroupIdSymbol())
-                          : new AggregationTreeDeviceViewScanNode(
-                              queryId.genPlanNodeId(),
-                              partialAggTableScanNode.getQualifiedObjectName(),
-                              partialAggTableScanNode.getOutputSymbols(),
-                              partialAggTableScanNode.getAssignments(),
-                              new ArrayList<>(),
-                              partialAggTableScanNode.getTagAndAttributeIndexMap(),
-                              partialAggTableScanNode.getScanOrder(),
-                              partialAggTableScanNode.getTimePredicate().orElse(null),
-                              partialAggTableScanNode.getPushDownPredicate(),
-                              partialAggTableScanNode.getPushDownLimit(),
-                              partialAggTableScanNode.getPushDownOffset(),
-                              partialAggTableScanNode.isPushLimitToEachDevice(),
-                              partialAggTableScanNode.containsNonAlignedDevice(),
-                              partialAggTableScanNode.getProjection(),
-                              partialAggTableScanNode.getAggregations(),
-                              partialAggTableScanNode.getGroupingSets(),
-                              partialAggTableScanNode.getPreGroupedSymbols(),
-                              partialAggTableScanNode.getStep(),
-                              partialAggTableScanNode.getGroupIdSymbol(),
-                              aggregationTreeDeviceViewScanNode.getTreeDBName(),
-                              aggregationTreeDeviceViewScanNode.getMeasurementColumnNameMap());
+                      new AggregationTableScanNode(
+                          queryId.genPlanNodeId(),
+                          partialAggTableScanNode.getQualifiedObjectName(),
+                          partialAggTableScanNode.getOutputSymbols(),
+                          partialAggTableScanNode.getAssignments(),
+                          new ArrayList<>(),
+                          partialAggTableScanNode.getTagAndAttributeIndexMap(),
+                          partialAggTableScanNode.getScanOrder(),
+                          partialAggTableScanNode.getTimePredicate().orElse(null),
+                          partialAggTableScanNode.getPushDownPredicate(),
+                          partialAggTableScanNode.getPushDownLimit(),
+                          partialAggTableScanNode.getPushDownOffset(),
+                          partialAggTableScanNode.isPushLimitToEachDevice(),
+                          partialAggTableScanNode.containsNonAlignedDevice(),
+                          partialAggTableScanNode.getProjection(),
+                          partialAggTableScanNode.getAggregations(),
+                          partialAggTableScanNode.getGroupingSets(),
+                          partialAggTableScanNode.getPreGroupedSymbols(),
+                          partialAggTableScanNode.getStep(),
+                          partialAggTableScanNode.getGroupIdSymbol());
                   scanNode.setRegionReplicaSet(regionReplicaSet);
                   return scanNode;
                 });

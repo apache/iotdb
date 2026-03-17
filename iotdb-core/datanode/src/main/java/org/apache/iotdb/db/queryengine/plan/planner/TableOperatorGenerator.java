@@ -2876,7 +2876,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         constructAbstractAggTableScanOperatorParameter(
             node,
             context,
-            TreeAlignedDeviceViewAggregationScanOperator.class.getSimpleName(),
+            TreeNonAlignedDeviceViewAggregationScanOperator.class.getSimpleName(),
             node.getMeasurementColumnNameMap(),
             tsTable.getCachedTableTTL());
 
@@ -2885,7 +2885,8 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         new TreeNonAlignedDeviceViewScanNode(
             node.getPlanNodeId(),
             node.getQualifiedObjectName(),
-            // the outputSymbols of AggTableScanNode is not equals with TableScanNode
+            // the outputSymbols of TreeNonAlignedDeviceViewAggregationScanOperator is not equals
+            // with TreeNonAlignedDeviceViewScanNode
             parameter.getOutputSymbols(),
             node.getAssignments(),
             node.getDeviceEntries(),
@@ -2917,7 +2918,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           parameter.getMeasurementColumnNames(),
           parameter.getMeasurementSchemas(),
           parameter.getAllSensors(),
-          AggregationTableScanNode.class.getSimpleName());
+          TreeNonAlignedDeviceViewAggregationScanOperator.class.getSimpleName());
       return aggTableScanOperator;
     } else {
       checkState(sourceOperator instanceof EmptyDataOperator, "");
