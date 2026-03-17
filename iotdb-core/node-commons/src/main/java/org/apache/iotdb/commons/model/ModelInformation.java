@@ -236,7 +236,7 @@ public class ModelInformation {
   }
 
   public static ModelInformation deserialize(ByteBuffer buffer) {
-	  ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(buffer)];
+    ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(buffer)];
     String modelName = ReadWriteIOUtils.readString(buffer);
     if (status == ModelStatus.UNAVAILABLE) {
       return new ModelInformation(modelName, status);
@@ -265,17 +265,11 @@ public class ModelInformation {
     String attribute = ReadWriteIOUtils.readString(buffer);
 
     return new ModelInformation(
-      modelName,
-        inputShape,
-        outputShape,
-        inputDataType,
-        outputDataType,
-        attribute,
-        status);
+        modelName, inputShape, outputShape, inputDataType, outputDataType, attribute, status);
   }
 
   public static ModelInformation deserialize(InputStream stream) throws IOException {
-	  ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(stream)];
+    ModelStatus status = ModelStatus.values()[ReadWriteIOUtils.readInt(stream)];
     String modelName = ReadWriteIOUtils.readString(stream);
     if (status == ModelStatus.UNAVAILABLE) {
       return new ModelInformation(modelName, status);
@@ -303,13 +297,7 @@ public class ModelInformation {
 
     String attribute = ReadWriteIOUtils.readString(stream);
     return new ModelInformation(
-      modelName,
-        inputShape,
-        outputShape,
-        inputDataType,
-        outputDataType,
-        attribute,
-        status);
+        modelName, inputShape, outputShape, inputDataType, outputDataType, attribute, status);
   }
 
   public ByteBuffer serializeShowModelResult() throws IOException {
