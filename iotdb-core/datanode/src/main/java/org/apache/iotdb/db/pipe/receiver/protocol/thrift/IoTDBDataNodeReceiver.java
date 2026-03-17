@@ -881,7 +881,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
-    LOGGER.info("Receiver id = {}: executing {}", receiverId.get(), statement);
+    LOGGER.debug("Receiver id = {}: executing {}", receiverId.get(), statement);
     // Judge which model the statement belongs to
     final boolean isTableModelStatement;
     final String databaseName;

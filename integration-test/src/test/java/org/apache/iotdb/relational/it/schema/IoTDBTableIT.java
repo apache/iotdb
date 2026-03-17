@@ -1138,7 +1138,7 @@ public class IoTDBTableIT {
         fail("the table cannot be renamed");
       } catch (SQLException e) {
         assertEquals(
-            "701: Table 'testdb.alter_table_name_disabled' is created in a old version and cannot be renamed, please migrate its data to a new table manually",
+            "701: Table 'testdb.alter_table_name_disabled' is created in an old version and cannot be renamed, please migrate its data to a new table manually",
             e.getMessage());
       }
     }
