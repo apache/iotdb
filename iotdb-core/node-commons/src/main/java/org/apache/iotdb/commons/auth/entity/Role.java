@@ -711,4 +711,12 @@ public class Role {
     }
     return priSet;
   }
+
+  public boolean renameTable(String databaseName, String oldTableName, String newTableName) {
+    DatabasePrivilege databasePrivilege = objectPrivilegeMap.get(databaseName);
+    if (databasePrivilege != null) {
+      return databasePrivilege.renameTable(oldTableName, newTableName);
+    }
+    return false;
+  }
 }

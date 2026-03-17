@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.queryengine.plan.relational.planner;
 
 import org.apache.iotdb.db.queryengine.plan.planner.plan.LogicalQueryPlan;
+import org.apache.iotdb.db.queryengine.plan.relational.analyzer.BaseAnalyzerTest;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.assertions.PlanMatchPattern;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ArithmeticBinaryExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Cast;
@@ -55,7 +56,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.N
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
-public class ExampleTest {
+public class ExampleTest extends BaseAnalyzerTest {
   @Test
   public void exampleTest() {
     PlanTester planTester = new PlanTester();

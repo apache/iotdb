@@ -55,7 +55,11 @@ public class StatementTestUtils {
   }
 
   public static String tableName() {
-    return "table1";
+    return tableName(1);
+  }
+
+  public static String tableName(int i) {
+    return "table" + i;
   }
 
   public static String[] genColumnNames() {
@@ -232,7 +236,11 @@ public class StatementTestUtils {
   }
 
   public static TsTable genTsTable() {
-    final TsTable tsTable = new TsTable(tableName());
+    return genTsTable(1);
+  }
+
+  public static TsTable genTsTable(int tableId) {
+    final TsTable tsTable = new TsTable(tableName(tableId));
     String[] measurements = genColumnNames();
     TSDataType[] dataTypes = genDataTypes();
     TsTableColumnCategory[] columnCategories = genColumnCategories();

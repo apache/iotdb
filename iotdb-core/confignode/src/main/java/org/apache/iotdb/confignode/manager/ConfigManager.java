@@ -48,7 +48,11 @@ import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.FullDeviceIdKey;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.NoTableNameDeviceIdKey;
+import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor.SeriesPartitionKey;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.path.PathDeserializeUtil;
@@ -259,6 +263,7 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -278,6 +283,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -825,9 +832,36 @@ public class ConfigManager implements IManager {
         return Collections.emptyList();
       }
     }
+    IDeviceID deviceID = Factory.DEFAULT_FACTORY.create(devicePath);
+
+    SeriesPartitionKey seriesPartitionKey = getSeriesPartitionKey(deviceID, database.getFullPath());
     return Collections.singletonList(
-        getPartitionManager()
-            .getSeriesPartitionSlot(IDeviceID.Factory.DEFAULT_FACTORY.create(devicePath)));
+        getPartitionManager().getSeriesPartitionSlot(seriesPartitionKey));
+  }
+
+  @SuppressWarnings("OptionalGetWithoutIsPresent")
+  @Override
+  public SeriesPartitionKey getSeriesPartitionKey(
+      final IDeviceID deviceID, final String databaseName) {
+    final SeriesPartitionKey seriesPartitionKey;
+
+    if (PathUtils.isTableModelDatabase(databaseName)) {
+      try {
+        final Optional<TsTable> tableOptional =
+            getClusterSchemaManager().getTableIfExists(databaseName, deviceID.getTableName());
+        final TsTable tsTable = tableOptional.get();
+        final boolean canAlterTableName = tsTable.canAlterName();
+        seriesPartitionKey =
+            canAlterTableName
+                ? new NoTableNameDeviceIdKey(deviceID)
+                : new FullDeviceIdKey(deviceID);
+      } catch (final NoSuchElementException | MetadataException e) {
+        throw new IoTDBRuntimeException(e, TSStatusCode.TABLE_NOT_EXISTS.getStatusCode());
+      }
+    } else {
+      seriesPartitionKey = new FullDeviceIdKey(deviceID);
+    }
+    return seriesPartitionKey;
   }
 
   @Override
@@ -921,9 +955,10 @@ public class ConfigManager implements IManager {
     for (final IDeviceID deviceID : devicePaths) {
       for (final String database : databases) {
         if (PathUtils.isStartWith(deviceID, database)) {
+          SeriesPartitionKey seriesPartitionKey = getSeriesPartitionKey(deviceID, database);
           partitionSlotsMap
               .computeIfAbsent(database, key -> new HashSet<>())
-              .add(getPartitionManager().getSeriesPartitionSlot(deviceID));
+              .add(getPartitionManager().getSeriesPartitionSlot(seriesPartitionKey));
           break;
         }
       }

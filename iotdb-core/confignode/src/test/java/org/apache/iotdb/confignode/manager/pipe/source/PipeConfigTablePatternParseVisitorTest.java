@@ -138,17 +138,23 @@ public class PipeConfigTablePatternParseVisitorTest {
   @Test
   public void testRenameTableColumn() {
     testInput(
-        new RenameTableColumnPlan("db1", "ab", "old", "new"),
-        new RenameTableColumnPlan("db1", "ac", "old", "new"),
-        new RenameTableColumnPlan("da", "ac", "old", "new"));
+        new RenameTableColumnPlan(
+            "db1", "ab", Collections.singletonList("old"), Collections.singletonList("new")),
+        new RenameTableColumnPlan(
+            "db1", "ac", Collections.singletonList("old"), Collections.singletonList("new")),
+        new RenameTableColumnPlan(
+            "da", "ac", Collections.singletonList("old"), Collections.singletonList("new")));
   }
 
   @Test
   public void testRenameViewColumn() {
     testInput(
-        new RenameViewColumnPlan("db1", "ab", "old", "new"),
-        new RenameViewColumnPlan("db1", "ac", "old", "new"),
-        new RenameViewColumnPlan("da", "ac", "old", "new"));
+        new RenameViewColumnPlan(
+            "db1", "ab", Collections.singletonList("old"), Collections.singletonList("new")),
+        new RenameViewColumnPlan(
+            "db1", "ac", Collections.singletonList("old"), Collections.singletonList("new")),
+        new RenameViewColumnPlan(
+            "da", "ac", Collections.singletonList("old"), Collections.singletonList("new")));
   }
 
   @Test

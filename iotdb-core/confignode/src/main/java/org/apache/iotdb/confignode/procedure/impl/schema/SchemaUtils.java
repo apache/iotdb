@@ -236,11 +236,13 @@ public class SchemaUtils {
       final String database,
       final TsTable table,
       final ConfigManager configManager,
-      final String oldName) {
+      final String oldName,
+      final List<String> oldColumnNames) {
     final TUpdateTableReq req = new TUpdateTableReq();
     req.setType(TsTableInternalRPCType.PRE_UPDATE_TABLE.getOperationType());
     req.setTableInfo(TsTableInternalRPCUtil.serializeSingleTsTableWithDatabase(database, table));
     req.setOldName(oldName);
+    req.setOldColumnNames(oldColumnNames);
 
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();

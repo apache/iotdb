@@ -126,6 +126,10 @@ public abstract class RequestDelegate<T> {
         break;
       }
     }
+
+    if (!exceptionInconsistent && exceptionMsg[0] != null) {
+      throw new SQLException(exceptionMsg[0]);
+    }
     for (int i = 0; i < businessExceptions.length; i++) {
       if (businessExceptions[i] != null) {
         // As each exception has its own stacktrace, in order to display them clearly, we can only
@@ -133,9 +137,6 @@ public abstract class RequestDelegate<T> {
         logger.warn(
             "Exception happens during request to {}", getEndpoints().get(i), businessExceptions[i]);
       }
-    }
-    if (!exceptionInconsistent && exceptionMsg[0] != null) {
-      throw new SQLException(exceptionMsg[0]);
     }
     if (exceptionInconsistent) {
       throw new InconsistentDataException(Arrays.asList(exceptionMsg), getEndpoints());

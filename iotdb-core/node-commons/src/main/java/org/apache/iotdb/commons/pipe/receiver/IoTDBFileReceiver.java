@@ -506,7 +506,7 @@ public abstract class IoTDBFileReceiver implements IoTDBReceiver {
   }
 
   private boolean isFileExistedAndNameCorrect(final String fileName) {
-    return writingFile != null && writingFile.exists() && writingFile.getName().equals(fileName);
+    return writingFile != null && writingFile.exists() && (writingFile.getName().equals(fileName));
   }
 
   private void closeCurrentWritingFileWriter(final boolean fsyncBeforeClose) {

@@ -24,13 +24,14 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
 
-public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 {
+public class PipeTransferMultiFileSealReq extends PipeTransferFileSealReqV2 {
 
-  private PipeTransferTsFileSealWithModReq() {
+  private PipeTransferMultiFileSealReq() {
     // Empty constructor
   }
 
@@ -53,46 +54,49 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+  public static PipeTransferMultiFileSealReq toTPipeTransferReq(
       final String modFileName,
       final long modFileLength,
       final String tsFileName,
       final long tsFileLength)
       throws IOException {
-    return toTPipeTransferReq(modFileName, modFileLength, tsFileName, tsFileLength, null);
+    // Sevo file depending on incoming adaptations
+    return toTPipeTransferReq(modFileName, modFileLength, null, 0L, tsFileName, tsFileLength, null);
   }
 
-  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
+  public static PipeTransferMultiFileSealReq toTPipeTransferReq(
       final String modFileName,
       final long modFileLength,
+      final String sevoFileName,
+      final long sevoFileLength,
       final String tsFileName,
       final long tsFileLength,
       final String dataBaseName)
       throws IOException {
-    return (PipeTransferTsFileSealWithModReq)
-        new PipeTransferTsFileSealWithModReq()
+    final List<String> fileNames = new ArrayList<>();
+    final List<Long> fileLengths = new ArrayList<>();
+    if (Objects.nonNull(modFileName)) {
+      fileNames.add(modFileName);
+      fileLengths.add(modFileLength);
+    }
+    if (Objects.nonNull(sevoFileName)) {
+      fileNames.add(sevoFileName);
+      fileLengths.add(sevoFileLength);
+    }
+    fileNames.add(tsFileName);
+    fileLengths.add(tsFileLength);
+    return (PipeTransferMultiFileSealReq)
+        new PipeTransferMultiFileSealReq()
             .convertToTPipeTransferReq(
-                Arrays.asList(modFileName, tsFileName),
-                Arrays.asList(modFileLength, tsFileLength),
+                fileNames,
+                fileLengths,
                 Collections.singletonMap(
                     generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }
 
-  public static PipeTransferTsFileSealWithModReq toTPipeTransferReq(
-      final String tsFileName, final long tsFileLength, final String dataBaseName)
-      throws IOException {
-    return (PipeTransferTsFileSealWithModReq)
-        new PipeTransferTsFileSealWithModReq()
-            .convertToTPipeTransferReq(
-                Collections.singletonList(tsFileName),
-                Collections.singletonList(tsFileLength),
-                Collections.singletonMap(
-                    generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
-  }
-
-  public static PipeTransferTsFileSealWithModReq fromTPipeTransferReq(final TPipeTransferReq req) {
-    return (PipeTransferTsFileSealWithModReq)
-        new PipeTransferTsFileSealWithModReq().translateFromTPipeTransferReq(req);
+  public static PipeTransferMultiFileSealReq fromTPipeTransferReq(final TPipeTransferReq req) {
+    return (PipeTransferMultiFileSealReq)
+        new PipeTransferMultiFileSealReq().translateFromTPipeTransferReq(req);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
@@ -100,38 +104,28 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
   public static byte[] toTPipeTransferBytes(
       final String modFileName,
       final long modFileLength,
-      final String tsFileName,
-      final long tsFileLength)
-      throws IOException {
-    return new PipeTransferTsFileSealWithModReq()
-        .convertToTPipeTransferSnapshotSealBytes(
-            Arrays.asList(modFileName, tsFileName),
-            Arrays.asList(modFileLength, tsFileLength),
-            new HashMap<>());
-  }
-
-  public static byte[] toTPipeTransferBytes(
-      final String modFileName,
-      final long modFileLength,
+      final String sevoFileName,
+      final long sevoFileLength,
       final String tsFileName,
       final long tsFileLength,
       final String dataBaseName)
       throws IOException {
-    return new PipeTransferTsFileSealWithModReq()
+    final List<String> fileNames = new ArrayList<>();
+    final List<Long> fileLengths = new ArrayList<>();
+    if (Objects.nonNull(modFileName)) {
+      fileNames.add(modFileName);
+      fileLengths.add(modFileLength);
+    }
+    if (Objects.nonNull(sevoFileName)) {
+      fileNames.add(sevoFileName);
+      fileLengths.add(sevoFileLength);
+    }
+    fileNames.add(tsFileName);
+    fileLengths.add(tsFileLength);
+    return new PipeTransferMultiFileSealReq()
         .convertToTPipeTransferSnapshotSealBytes(
-            Arrays.asList(modFileName, tsFileName),
-            Arrays.asList(modFileLength, tsFileLength),
-            Collections.singletonMap(
-                generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
-  }
-
-  public static byte[] toTPipeTransferBytes(
-      final String tsFileName, final long tsFileLength, final String dataBaseName)
-      throws IOException {
-    return new PipeTransferTsFileSealWithModReq()
-        .convertToTPipeTransferSnapshotSealBytes(
-            Collections.singletonList(tsFileName),
-            Collections.singletonList(tsFileLength),
+            fileNames,
+            fileLengths,
             Collections.singletonMap(
                 generateDatabaseNameWithFileNameKey(tsFileName), dataBaseName));
   }
@@ -140,7 +134,7 @@ public class PipeTransferTsFileSealWithModReq extends PipeTransferFileSealReqV2 
 
   @Override
   public boolean equals(final Object obj) {
-    return obj instanceof PipeTransferTsFileSealWithModReq && super.equals(obj);
+    return obj instanceof PipeTransferMultiFileSealReq && super.equals(obj);
   }
 
   @Override

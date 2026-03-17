@@ -42,6 +42,8 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEnt
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Deletion;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.Modification;
 import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.fileset.TsFileSet;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndex;
@@ -209,6 +211,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private Map<IDeviceID, List<Pair<String, TimeValuePair>>> lastValues;
 
+  private TsFileManager tsFileManager = null;
+
   @TestOnly
   public TsFileResource() {
     this.tsFileID = new TsFileID();
@@ -257,6 +261,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     this.tsFileID = originTsFileResource.tsFileID;
     this.isSeq = originTsFileResource.isSeq;
     this.tierLevel = originTsFileResource.tierLevel;
+    this.tsFileManager = originTsFileResource.tsFileManager;
   }
 
   public synchronized void serialize(String targetFilePath) throws IOException {
@@ -610,8 +615,25 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
-  public Optional<Long> getStartTime(IDeviceID deviceId) {
+  public IDeviceID toOriginalDeviceID(IDeviceID deviceID) {
+    return toOriginalDeviceID(Long.MAX_VALUE, deviceID);
+  }
+
+  public IDeviceID toOriginalDeviceID(long maxTsFileVersion, IDeviceID deviceID) {
+    if (maxTsFileVersion == Long.MIN_VALUE) {
+      // already the original deviceID
+      return deviceID;
+    }
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
+    if (evolvedSchema != null) {
+      return evolvedSchema.rewriteToOriginal(deviceID);
+    }
+    return deviceID;
+  }
+
+  public Optional<Long> getStartTime(IDeviceID deviceId, long maxTsFileVersion) {
     try {
+      deviceId = toOriginalDeviceID(maxTsFileVersion, deviceId);
       return deviceId == null ? Optional.of(getFileStartTime()) : timeIndex.getStartTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -623,9 +645,14 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
+  public Optional<Long> getStartTime(IDeviceID deviceId) {
+    return getStartTime(deviceId, Long.MAX_VALUE);
+  }
+
   /** open file's end time is Long.MIN_VALUE */
-  public Optional<Long> getEndTime(IDeviceID deviceId) {
+  public Optional<Long> getEndTime(IDeviceID deviceId, long maxTsFileVersion) {
     try {
+      deviceId = toOriginalDeviceID(maxTsFileVersion, deviceId);
       return deviceId == null ? Optional.of(getFileEndTime()) : timeIndex.getEndTime(deviceId);
     } catch (Exception e) {
       LOGGER.error(
@@ -637,9 +664,18 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
   }
 
+  /** open file's end time is Long.MIN_VALUE */
+  public Optional<Long> getEndTime(IDeviceID deviceId) {
+    return getEndTime(deviceId, Long.MAX_VALUE);
+  }
+
   // cannot use FileTimeIndex
-  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending) {
+  public long getOrderTimeForSeq(IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
+      if (evolvedSchema != null) {
+        deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+      }
       return ascending
           ? timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE)
           : timeIndex.getEndTime(deviceId).orElse(Long.MAX_VALUE);
@@ -649,8 +685,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   // can use FileTimeIndex
-  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending) {
+  public long getOrderTimeForUnseq(IDeviceID deviceId, boolean ascending, long maxTsFileVersion) {
     if (timeIndex instanceof ArrayDeviceTimeIndex) {
+      EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
+      if (evolvedSchema != null) {
+        deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+      }
       if (ascending) {
         return timeIndex.getStartTime(deviceId).orElse(Long.MIN_VALUE);
       } else {
@@ -718,6 +758,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
    * Whether this TsFile definitely not contains this device, if ture, it must not contain this
    * device, if false, it may or may not contain this device Notice: using method be CAREFULLY and
    * you really understand the meaning!!!!!
+   *
+   * @param device the IDeviceID before schema evolution
    */
   public boolean definitelyNotContains(IDeviceID device) {
     return timeIndex.definitelyNotContains(device);
@@ -1003,14 +1045,41 @@ public class TsFileResource implements PersistentResource, Cloneable {
   }
 
   public boolean isDeviceIdExist(IDeviceID deviceId) {
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema();
+    if (evolvedSchema != null) {
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+    }
     return timeIndex.checkDeviceIdExist(deviceId);
   }
 
   /**
+   * @param deviceId IDeviceId after schema evolution
+   */
+  public boolean isFinalDeviceIdSatisfied(
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
+    return isFinalDeviceIdSatisfied(deviceId, timeFilter, isSeq, debug, Long.MAX_VALUE);
+  }
+
+  /**
+   * @param deviceId the IDeviceID after schema evolution
+   * @return true if the device is contained in the TsFile
+   */
+  public boolean isFinalDeviceIdSatisfied(
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug, long maxTsFileVersion) {
+    EvolvedSchema evolvedSchema = getMergedEvolvedSchema(maxTsFileVersion);
+    if (evolvedSchema != null) {
+      deviceId = evolvedSchema.rewriteToOriginal(deviceId);
+    }
+    return isOriginalDeviceIdSatisfied(deviceId, timeFilter, isSeq, debug);
+  }
+
+  /**
+   * @param deviceId the IDeviceID before schema evolution
    * @return true if the device is contained in the TsFile
    */
   @SuppressWarnings("OptionalGetWithoutIsPresent")
-  public boolean isSatisfied(IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
+  public boolean isOriginalDeviceIdSatisfied(
+      IDeviceID deviceId, Filter timeFilter, boolean isSeq, boolean debug) {
     if (deviceId != null && definitelyNotContains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
@@ -1057,6 +1126,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
   /**
    * Check whether the given device may still alive or not. Return false if the device does not
    * exist or out of dated.
+   *
+   * @param device IDeviceID before schema evolution
    */
   public boolean isDeviceAlive(IDeviceID device, long ttl) {
     if (definitelyNotContains(device)) {
@@ -1634,5 +1705,60 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public TsFileResource shallowCloneForNative() throws CloneNotSupportedException {
     return (TsFileResource) clone();
+  }
+
+  public List<TsFileSet> getTsFileSets() {
+    if (tsFileManager == null) {
+      // loading TsFile, no TsFileSets
+      return Collections.emptyList();
+    }
+    return tsFileManager.getTsFileSet(
+        tsFileID.timePartitionId, tsFileID.fileVersion, Long.MAX_VALUE);
+  }
+
+  public EvolvedSchema getMergedEvolvedSchema() {
+    return getMergedEvolvedSchema(Long.MAX_VALUE);
+  }
+
+  public EvolvedSchema getMergedEvolvedSchema(long excludedMaxFileVersion) {
+    List<EvolvedSchema> list = new ArrayList<>();
+    List<TsFileSet> tsFileSets = getTsFileSets();
+    for (TsFileSet fileSet : tsFileSets) {
+      if (fileSet.getEndVersion() >= excludedMaxFileVersion) {
+        break;
+      }
+
+      try {
+        EvolvedSchema readEvolvedSchema = fileSet.readEvolvedSchema();
+        list.add(readEvolvedSchema);
+      } catch (IOException e) {
+        LOGGER.warn("Cannot read evolved schema from {}, skipping it", fileSet);
+      }
+    }
+
+    return EvolvedSchema.merge(list.toArray(new EvolvedSchema[0]));
+  }
+
+  public static Pair<Long, TsFileResource> getMaxTsFileVersionAndMinResource(
+      List<TsFileResource> tsFileResources) {
+    long maxTsFileVersion = Long.MIN_VALUE;
+    long minResourceVersion = Long.MAX_VALUE;
+    TsFileResource minTsFileResource = null;
+    for (TsFileResource tsFileResource : tsFileResources) {
+      maxTsFileVersion = Math.max(tsFileResource.getVersion(), maxTsFileVersion);
+      if (tsFileResource.getVersion() < minResourceVersion) {
+        minTsFileResource = tsFileResource;
+        minResourceVersion = tsFileResource.getVersion();
+      }
+    }
+    return new Pair<>(maxTsFileVersion, minTsFileResource);
+  }
+
+  public void setTsFileManager(TsFileManager tsFileManager) {
+    this.tsFileManager = tsFileManager;
+  }
+
+  public TsFileManager getTsFileManager() {
+    return tsFileManager;
   }
 }

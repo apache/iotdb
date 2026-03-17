@@ -30,10 +30,10 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.pipe.api.exception.PipeConnectionException;
 import org.apache.iotdb.pipe.api.exception.PipeException;
@@ -205,7 +205,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
       transferFilePieces(tsFile, true);
 
       req =
-          PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
+          PipeTransferMultiFileSealReq.toTPipeTransferReq(
               modFile.getName(), modFile.length(), tsFile.getName(), tsFile.length());
     } else {
       transferFilePieces(tsFile, false);
@@ -286,7 +286,7 @@ public class ImportTsFileRemotely extends ImportTsFileBase {
 
   private PipeTransferFilePieceReq getTransferMultiFilePieceReq(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
-    return PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, position, payLoad);
+    return PipeTransferMultiFilePieceReq.toTPipeTransferReq(fileName, position, payLoad);
   }
 
   private PipeTransferFilePieceReq getTransferSingleFilePieceReq(

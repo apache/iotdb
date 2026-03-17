@@ -39,6 +39,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * This class reads roles from local files through LocalFileRoleAccessor and manages them in a hash
@@ -250,5 +251,27 @@ public abstract class BasicRoleManager implements IEntityManager, SnapshotProces
     }
     rtlist.sort(Comparator.comparingLong(TListUserInfo::getUserId));
     return rtlist;
+  }
+
+  public void renameTable(String databaseName, String oldTableName, String newTableName) {
+    for (Entry<String, Role> entry : entityMap.entrySet()) {
+      String entityName = entry.getKey();
+      Role entity = entry.getValue();
+      lock.writeLock(entityName);
+      try {
+        if (entity.renameTable(databaseName, oldTableName, newTableName)) {
+          accessor.saveEntity(entity);
+        }
+      } catch (IOException e) {
+        LOGGER.error(
+            "Rename table {}.{} failed for entity {}, may need to reset privileges manually",
+            databaseName,
+            oldTableName,
+            entityName,
+            e);
+      } finally {
+        lock.writeUnlock(entityName);
+      }
+    }
   }
 }

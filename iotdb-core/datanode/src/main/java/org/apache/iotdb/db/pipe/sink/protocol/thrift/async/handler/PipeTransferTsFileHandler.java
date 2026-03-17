@@ -33,10 +33,13 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeTsFileMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.client.IoTDBDataNodeAsyncClientManager;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.pipe.sink.protocol.thrift.async.IoTDBDataRegionAsyncSink;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.pipe.api.exception.PipeException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
@@ -51,6 +54,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +79,8 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
   private final File tsFile;
   private final File modFile;
   private File currentFile;
+  private ByteBuffer sevoBuffer;
+  private final TsFileResource resource;
 
   private final boolean transferMod;
 
@@ -87,22 +93,25 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
 
   private RandomAccessFile reader;
 
+  private volatile boolean needTransferSevo = false;
+  private volatile boolean isSevoTransferred = false;
   private final AtomicBoolean isSealSignalSent;
 
   private IoTDBDataNodeAsyncClientManager clientManager;
 
   public PipeTransferTsFileHandler(
-      final IoTDBDataRegionAsyncSink connector,
+      final IoTDBDataRegionAsyncSink sink,
       final Map<Pair<String, Long>, Double> pipeName2WeightMap,
       final List<EnrichedEvent> events,
       final AtomicInteger eventsReferenceCount,
       final AtomicBoolean eventsHadBeenAddedToRetryQueue,
       final File tsFile,
       final File modFile,
+      final TsFileResource resource,
       final boolean transferMod,
       final String dataBaseName)
       throws InterruptedException {
-    super(connector);
+    super(sink);
 
     this.pipeName2WeightMap = pipeName2WeightMap;
 
@@ -115,6 +124,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     this.transferMod = transferMod;
     this.dataBaseName = dataBaseName;
     currentFile = transferMod ? modFile : tsFile;
+    this.resource = resource;
 
     // NOTE: Waiting for resource enough for slicing here may cause deadlock!
     // TsFile events are producing and consuming at the same time, and the memory of a TsFile
@@ -165,7 +175,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (client == null) {
       LOGGER.warn(
           "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
-          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
     }
@@ -173,41 +183,45 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     client.setShouldReturnSelf(false);
     client.setTimeoutDynamically(clientManager.getConnectionTimeout());
 
-    PipeResourceMetrics.getInstance().recordDiskIO(readFileBufferSize);
-    if (connector.isEnableSendTsFileLimit()) {
-      TsFileSendRateLimiter.getInstance().acquire(readFileBufferSize);
-    }
     final int readLength = reader.read(readBuffer);
 
     if (readLength == -1) {
       if (currentFile == modFile) {
-        currentFile = tsFile;
-        position = 0;
         try {
           reader.close();
         } catch (final IOException e) {
           LOGGER.warn("Failed to close file reader when successfully transferred mod file.", e);
         }
+
+        if (!isSevoTransferred && transferSevo(client)) {
+          // if the transfer has been initiated, return directly to allow the callback to trigger
+          // the next transfer
+          return;
+        }
+
+        currentFile = tsFile;
+        position = 0;
         reader = new RandomAccessFile(tsFile, "r");
         transfer(clientManager, client);
       } else if (currentFile == tsFile) {
         isSealSignalSent.set(true);
 
         final TPipeTransferReq uncompressedReq =
-            transferMod
-                ? PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    modFile.getName(),
-                    modFile.length(),
-                    tsFile.getName(),
-                    tsFile.length(),
-                    dataBaseName)
-                : PipeTransferTsFileSealWithModReq.toTPipeTransferReq(
-                    tsFile.getName(), tsFile.length(), dataBaseName);
-        final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
+            PipeTransferMultiFileSealReq.toTPipeTransferReq(
+                transferMod ? modFile.getName() : null,
+                transferMod ? modFile.length() : 0L,
+                Objects.nonNull(sevoBuffer)
+                    ? SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile)
+                    : null,
+                Objects.nonNull(sevoBuffer) ? sevoBuffer.limit() : 0L,
+                tsFile.getName(),
+                tsFile.length(),
+                dataBaseName);
+        final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
         pipeName2WeightMap.forEach(
             (pipePair, weight) ->
-                connector.rateLimitIfNeeded(
+                sink.rateLimitIfNeeded(
                     pipePair.getLeft(),
                     pipePair.getRight(),
                     client.getEndPoint(),
@@ -224,17 +238,23 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         readLength == readFileBufferSize
             ? readBuffer
             : Arrays.copyOfRange(readBuffer, 0, readLength);
+
+    PipeResourceMetrics.getInstance().recordDiskIO(payload.length);
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(payload.length);
+    }
+
     final TPipeTransferReq uncompressedReq =
-        transferMod
-            ? PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(
+        transferMod || needTransferSevo
+            ? PipeTransferMultiFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload)
             : PipeTransferTsFilePieceReq.toTPipeTransferReq(
                 currentFile.getName(), position, payload);
-    final TPipeTransferReq req = connector.compressIfNeeded(uncompressedReq);
+    final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
 
     pipeName2WeightMap.forEach(
         (pipePair, weight) ->
-            connector.rateLimitIfNeeded(
+            sink.rateLimitIfNeeded(
                 pipePair.getLeft(),
                 pipePair.getRight(),
                 client.getEndPoint(),
@@ -247,12 +267,54 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     position += readLength;
   }
 
+  // Return iff the function has actually sent some data
+  private boolean transferSevo(AsyncPipeDataTransferServiceClient client)
+      throws IOException, TException {
+    if (Objects.isNull(sevoBuffer)) {
+      if (resource == null) {
+        isSevoTransferred = true;
+        // transferring tsfile written from tablets, no schema evolution
+        return false;
+      }
+
+      final EvolvedSchema evolvedSchema = resource.getMergedEvolvedSchema();
+      if (evolvedSchema == null) {
+        isSevoTransferred = true;
+        return false;
+      }
+
+      sevoBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
+      needTransferSevo = true;
+      LOGGER.info("Transferring schema evolution file for tsfile {}.", tsFile);
+    }
+    final TPipeTransferReq uncompressedReq =
+        PipeTransferMultiFilePieceReq.toTPipeTransferReq(
+            SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(currentFile),
+            sevoBuffer,
+            readFileBufferSize);
+    final TPipeTransferReq req = sink.compressIfNeeded(uncompressedReq);
+
+    pipeName2WeightMap.forEach(
+        (pipePair, weight) ->
+            sink.rateLimitIfNeeded(
+                pipePair.getLeft(),
+                pipePair.getRight(),
+                client.getEndPoint(),
+                (long) (req.getBody().length * weight)));
+    if (sink.isEnableSendTsFileLimit()) {
+      TsFileSendRateLimiter.getInstance().acquire(req.getBody().length);
+    }
+
+    tryTransfer(client, req);
+    return true;
+  }
+
   @Override
   public void onComplete(final TPipeTransferResp response) {
     try {
       super.onComplete(response);
     } finally {
-      if (connector.isClosed()) {
+      if (sink.isClosed()) {
         returnClientIfNecessary();
       }
     }
@@ -266,8 +328,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          connector
-              .statusHandler()
+          sink.statusHandler()
               .handle(
                   status,
                   String.format(
@@ -341,12 +402,13 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         // Only handle the failed statuses to avoid string format performance overhead
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
             && status.getCode() != TSStatusCode.REDIRECTION_RECOMMEND.getStatusCode()) {
-          connector
-              .statusHandler()
-              .handle(status, response.getStatus().getMessage(), tsFile.getName());
+          sink.statusHandler().handle(status, response.getStatus().getMessage(), tsFile.getName());
         }
       }
 
+      if (Objects.nonNull(sevoBuffer)) {
+        isSevoTransferred = sevoBuffer.remaining() == 0;
+      }
       transfer(clientManager, client);
     } catch (final Exception e) {
       onError(e);
@@ -415,7 +477,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
         returnClientIfNecessary();
       } finally {
         if (eventsHadBeenAddedToRetryQueue.compareAndSet(false, true)) {
-          connector.addFailureEventsToRetryQueue(events, exception);
+          sink.addFailureEventsToRetryQueue(events, exception);
         }
       }
     }
@@ -426,7 +488,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
       return;
     }
 
-    if (connector.isClosed()) {
+    if (sink.isClosed()) {
       closeClient();
     }
 
@@ -450,7 +512,7 @@ public class PipeTransferTsFileHandler extends PipeTransferTrackableHandler {
     if (client == null) {
       LOGGER.warn(
           "Client has been returned to the pool. Current handler status is {}. Will not transfer {}.",
-          connector.isClosed() ? "CLOSED" : "NOT CLOSED",
+          sink.isClosed() ? "CLOSED" : "NOT CLOSED",
           tsFile);
       return;
     }

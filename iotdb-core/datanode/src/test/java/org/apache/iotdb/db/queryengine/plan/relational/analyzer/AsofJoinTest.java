@@ -48,7 +48,7 @@ import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.N
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.ASCENDING;
 import static org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem.Ordering.DESCENDING;
 
-public class AsofJoinTest {
+public class AsofJoinTest extends BaseAnalyzerTest {
   @Test
   public void simpleTest() {
     PlanTester planTester = new PlanTester();

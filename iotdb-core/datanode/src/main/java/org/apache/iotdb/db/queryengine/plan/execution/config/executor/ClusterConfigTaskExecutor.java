@@ -92,6 +92,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
@@ -4505,8 +4506,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> alterTableRenameColumn(
       final String database,
       final String tableName,
-      final String oldName,
-      final String newName,
+      final List<String> oldNames,
+      final List<String> newNames,
       final String queryId,
       final boolean tableIfExists,
       final boolean columnIfExists,
@@ -4517,8 +4518,8 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
       final ByteArrayOutputStream stream = new ByteArrayOutputStream();
       try {
-        ReadWriteIOUtils.write(oldName, stream);
-        ReadWriteIOUtils.write(newName, stream);
+        IOUtils.write(oldNames, stream);
+        IOUtils.write(newNames, stream);
       } catch (final IOException ignored) {
         // ByteArrayOutputStream won't throw IOException
       }

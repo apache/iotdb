@@ -138,4 +138,9 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
   public TsFileID getTsFileID() {
     return resource.getTsFileID();
   }
+
+  @Override
+  public String toString() {
+    return "DiskAlignedChunkLoader{" + "context=" + context + ", resource=" + resource + '}';
+  }
 }

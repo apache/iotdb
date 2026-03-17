@@ -41,6 +41,7 @@ import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.TimeRange;
+import org.apache.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -97,6 +98,8 @@ public abstract class SeriesCompactionExecutor {
 
   protected boolean isAligned;
 
+  protected final Pair<Long, TsFileResource> maxTsFileVersionAndMinResource;
+
   protected SeriesCompactionExecutor(
       AbstractCompactionWriter compactionWriter,
       Map<TsFileResource, TsFileSequenceReader> readerCacheMap,
@@ -105,7 +108,8 @@ public abstract class SeriesCompactionExecutor {
       IDeviceID deviceId,
       boolean isAligned,
       int subTaskId,
-      FastCompactionTaskSummary summary) {
+      FastCompactionTaskSummary summary,
+      Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     this.compactionWriter = compactionWriter;
     this.subTaskId = subTaskId;
     this.deviceId = deviceId;
@@ -128,6 +132,7 @@ public abstract class SeriesCompactionExecutor {
               int timeCompare = Long.compare(o1.getStartTime(), o2.getStartTime());
               return timeCompare != 0 ? timeCompare : o2.getPriority().compareTo(o1.getPriority());
             });
+    this.maxTsFileVersionAndMinResource = maxTsFileVersionAndMinResource;
   }
 
   public abstract void execute()
@@ -350,12 +355,14 @@ public abstract class SeriesCompactionExecutor {
    */
   protected List<FileElement> findOverlapFiles(FileElement fileToCheck) {
     List<FileElement> overlappedFiles = new ArrayList<>();
-    Optional<Long> endTimeInCheckingFile = fileToCheck.resource.getEndTime(deviceId);
+    Optional<Long> endTimeInCheckingFile =
+        fileToCheck.resource.getEndTime(deviceId, maxTsFileVersionAndMinResource.left);
     for (FileElement otherFile : fileList) {
       if (!endTimeInCheckingFile.isPresent()) {
         continue;
       }
-      Optional<Long> startTimeInOtherFile = otherFile.resource.getStartTime(deviceId);
+      Optional<Long> startTimeInOtherFile =
+          otherFile.resource.getStartTime(deviceId, maxTsFileVersionAndMinResource.left);
       if (startTimeInOtherFile.isPresent()
           && startTimeInOtherFile.get() <= endTimeInCheckingFile.get()) {
         if (!otherFile.isSelected) {

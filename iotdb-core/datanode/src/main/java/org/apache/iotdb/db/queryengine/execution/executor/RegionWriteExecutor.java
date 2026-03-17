@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.exception.table.TableSchemaInconsistentException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.schema.template.Template;
@@ -174,7 +175,9 @@ public class RegionWriteExecutor {
         return RegionExecutionResult.create(
             false, errorMsg, RpcUtils.getStatus(TSStatusCode.NO_AVAILABLE_REGION_GROUP));
       }
-      LOGGER.warn(e.getMessage(), e);
+      if (!(e instanceof TableSchemaInconsistentException)) {
+        LOGGER.warn(e.getMessage(), e);
+      }
       return RegionExecutionResult.create(
           false,
           e.getMessage(),

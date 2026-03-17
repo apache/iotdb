@@ -21,10 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.wr
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionTableSchema;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.CompactionUtils;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.io.CompactionTsFileWriter;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.constant.CompactionType;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ITimeIndex;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.EncryptDBUtils;
@@ -35,6 +37,7 @@ import org.apache.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.tsfile.read.TimeValuePair;
 import org.apache.tsfile.read.TsFileSequenceReader;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Pair;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.Schema;
 
@@ -73,17 +76,24 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
 
   private final EncryptParameter encryptParameter;
 
+  private final long maxTsFileVersion;
+
   @TestOnly
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    this(targetResources, seqFileResources, EncryptDBUtils.getDefaultFirstEncryptParam());
+    this(
+        targetResources,
+        seqFileResources,
+        EncryptDBUtils.getDefaultFirstEncryptParam(),
+        Long.MIN_VALUE);
   }
 
   protected AbstractCrossCompactionWriter(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqFileResources,
-      EncryptParameter encryptParameter)
+      EncryptParameter encryptParameter,
+      long maxTsFileVersion)
       throws IOException {
     currentDeviceEndTime = new long[seqFileResources.size()];
     isCurrentDeviceExistedInSourceSeqFiles = new boolean[seqFileResources.size()];
@@ -99,14 +109,16 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
     for (int i = 0; i < targetResources.size(); i++) {
       this.targetFileWriters.add(
           new CompactionTsFileWriter(
-              targetResources.get(i).getTsFile(),
+              targetResources.get(i),
               memorySizeForEachWriter,
               CompactionType.CROSS_COMPACTION,
-              this.encryptParameter));
+              this.encryptParameter,
+              maxTsFileVersion));
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
     this.targetResources = targetResources;
+    this.maxTsFileVersion = maxTsFileVersion;
   }
 
   @Override
@@ -126,7 +138,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
       CompactionTsFileWriter targetFileWriter = targetFileWriters.get(i);
       if (isDeviceExistedInTargetFiles[i]) {
         // update resource
-        CompactionUtils.updateResource(targetResources.get(i), targetFileWriter, deviceId);
+        CompactionUtils.updateResource(targetResources.get(i), targetFileWriter);
         targetFileWriter.endChunkGroup();
       } else {
         targetFileWriter.truncate(targetFileWriter.getPos() - chunkGroupHeaderSize);
@@ -227,10 +239,17 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
     int fileIndex = 0;
     while (fileIndex < seqTsFileResources.size()) {
-      ITimeIndex timeIndex = seqTsFileResources.get(fileIndex).getTimeIndex();
+      TsFileResource tsFileResource = seqTsFileResources.get(fileIndex);
+      EvolvedSchema evolvedSchema = tsFileResource.getMergedEvolvedSchema(maxTsFileVersion);
+      IDeviceID originalDeviceId = deviceId;
+      if (evolvedSchema != null) {
+        originalDeviceId = evolvedSchema.rewriteToOriginal(deviceId);
+      }
+
+      ITimeIndex timeIndex = tsFileResource.getTimeIndex();
       if (timeIndex.getTimeIndexType() != ITimeIndex.FILE_TIME_INDEX_TYPE) {
         // the timeIndexType of resource is deviceTimeIndex
-        Optional<Long> endTime = timeIndex.getEndTime(deviceId);
+        Optional<Long> endTime = timeIndex.getEndTime(originalDeviceId);
         currentDeviceEndTime[fileIndex] = endTime.orElse(Long.MIN_VALUE);
         isCurrentDeviceExistedInSourceSeqFiles[fileIndex] = endTime.isPresent();
       } else {
@@ -239,7 +258,7 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
         // Fast compaction get reader from cache map, while read point compaction get reader from
         // FileReaderManager
         Map<String, TimeseriesMetadata> deviceMetadataMap =
-            getFileReader(seqTsFileResources.get(fileIndex)).readDeviceMetadata(deviceId);
+            getFileReader(tsFileResource).readDeviceMetadata(originalDeviceId);
         for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
           long tmpStartTime = entry.getValue().getStatistics().getStartTime();
           long tmpEndTime = entry.getValue().getStatistics().getEndTime();
@@ -266,9 +285,25 @@ public abstract class AbstractCrossCompactionWriter extends AbstractCompactionWr
   }
 
   @Override
-  public void setSchemaForAllTargetFile(List<Schema> schemas) {
+  public void setSchemaForAllTargetFile(
+      List<Schema> schemas, Pair<Long, TsFileResource> maxTsFileVersionAndMinResource) {
     for (int i = 0; i < targetFileWriters.size(); i++) {
-      targetFileWriters.get(i).setSchema(schemas.get(i));
+      CompactionTsFileWriter compactionTsFileWriter = targetFileWriters.get(i);
+      Schema schema = schemas.get(i);
+      TsFileResource targetResource = compactionTsFileWriter.getTsFileResource();
+      if (maxTsFileVersionAndMinResource.right != null) {
+        long maxTsFileVersion = maxTsFileVersionAndMinResource.left;
+        TsFileResource minVersionResource = maxTsFileVersionAndMinResource.getRight();
+        targetResource.setTsFileManager(minVersionResource.getTsFileManager());
+        EvolvedSchema evolvedSchema = targetResource.getMergedEvolvedSchema(maxTsFileVersion);
+
+        if (evolvedSchema != null) {
+          schema = evolvedSchema.rewriteToOriginal(schema, CompactionTableSchema::new);
+        }
+        compactionTsFileWriter.setSchema(schema);
+      } else {
+        compactionTsFileWriter.setSchema(schema);
+      }
     }
   }
 

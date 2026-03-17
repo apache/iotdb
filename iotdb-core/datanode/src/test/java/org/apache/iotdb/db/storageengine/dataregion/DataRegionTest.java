@@ -30,6 +30,10 @@ import org.apache.iotdb.commons.path.IFullPath;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.NonAlignedFullPath;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.schema.table.TsTable;
+import org.apache.iotdb.commons.schema.table.column.FieldColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TagColumnSchema;
+import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
@@ -44,6 +48,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.DeleteDataNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
+import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDeleteDataNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils;
@@ -58,11 +63,18 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant
 import org.apache.iotdb.db.storageengine.dataregion.compaction.selector.constant.InnerUnsequenceCompactionSelector;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushManager;
-import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.storageengine.dataregion.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.ReadOnlyMemChunk;
 import org.apache.iotdb.db.storageengine.dataregion.memtable.TsFileProcessor;
+import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TagPredicate.NOP;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource.ModIterator;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.ColumnRename;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.TableRename;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
 import org.apache.iotdb.db.storageengine.rescon.memory.MemTableManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
@@ -71,10 +83,13 @@ import org.apache.iotdb.db.utils.constant.TestConstant;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
+import org.apache.tsfile.file.metadata.IDeviceID.Factory;
 import org.apache.tsfile.file.metadata.enums.CompressionType;
 import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.TimeValuePair;
+import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.read.reader.IPointReader;
+import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.BitMap;
 import org.apache.tsfile.write.record.TSRecord;
 import org.apache.tsfile.write.record.datapoint.DataPoint;
@@ -89,6 +104,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -99,6 +115,8 @@ import java.util.concurrent.Future;
 
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertRowNode;
 import static org.apache.iotdb.db.queryengine.plan.statement.StatementTestUtils.genInsertTabletNode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class DataRegionTest {
@@ -110,7 +128,7 @@ public class DataRegionTest {
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
 
-  private IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId);
+  private IDeviceID device = Factory.DEFAULT_FACTORY.create(deviceId);
   private String measurementId = "s0";
 
   private NonAlignedFullPath nonAlignedFullPath =
@@ -138,9 +156,13 @@ public class DataRegionTest {
     config.setInnerUnsequenceCompactionSelector(
         InnerUnsequenceCompactionSelector.SIZE_TIERED_SINGLE_TARGET);
     DataNodeTableCache.getInstance()
-        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(), null);
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(1), null, null);
     DataNodeTableCache.getInstance()
-        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(), null);
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(1), null);
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.genTsTable(2), null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), StatementTestUtils.tableName(2), null);
   }
 
   @After
@@ -235,7 +257,7 @@ public class DataRegionTest {
           null);
     }
 
-    Assert.assertEquals(1, tsfileResourcesForQuery.size());
+    assertEquals(1, tsfileResourcesForQuery.size());
     List<ReadOnlyMemChunk> memChunks =
         tsfileResourcesForQuery.get(0).getReadOnlyMemChunk(IFullPath.convertToIFullPath(fullPath));
     long time = 16;
@@ -243,7 +265,7 @@ public class DataRegionTest {
       IPointReader iterator = memChunk.getPointReader();
       while (iterator.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = iterator.nextTimeValuePair();
-        Assert.assertEquals(time++, timeValuePair.getTimestamp());
+        assertEquals(time++, timeValuePair.getTimestamp());
       }
     }
   }
@@ -258,7 +280,7 @@ public class DataRegionTest {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
-    IDeviceID device = IDeviceID.Factory.DEFAULT_FACTORY.create(deviceId);
+    IDeviceID device = Factory.DEFAULT_FACTORY.create(deviceId);
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(
@@ -268,7 +290,7 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
+    assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -301,8 +323,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(1, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
 
     queryDataSource =
         dataRegion.query(
@@ -315,8 +337,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(1, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -349,8 +371,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(1, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
 
     queryDataSource =
         dataRegion.query(
@@ -363,8 +385,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(1, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -422,8 +444,8 @@ public class DataRegionTest {
     int hashCode2 = Arrays.hashCode((long[]) columns[1]);
     dataRegion.insertTablet(insertTabletNode1);
     // the hashCode should not be changed when insert
-    Assert.assertEquals(hashCode1, Arrays.hashCode((int[]) columns[0]));
-    Assert.assertEquals(hashCode2, Arrays.hashCode((long[]) columns[1]));
+    assertEquals(hashCode1, Arrays.hashCode((int[]) columns[0]));
+    assertEquals(hashCode2, Arrays.hashCode((long[]) columns[1]));
     dataRegion.syncCloseAllWorkingTsFileProcessors();
 
     for (int r = 50; r < 149; r++) {
@@ -452,8 +474,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
+    assertEquals(2, queryDataSource.getSeqResources().size());
+    assertEquals(1, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -524,14 +546,14 @@ public class DataRegionTest {
     dataRegion.insertTablet(insertTabletNode2);
     assertTrue(SystemInfo.getInstance().getTotalMemTableSize() > 0);
     dataRegion.syncDeleteDataFiles();
-    Assert.assertEquals(0, SystemInfo.getInstance().getTotalMemTableSize());
+    assertEquals(0, SystemInfo.getInstance().getTotalMemTableSize());
 
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
   @Test
@@ -604,8 +626,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -680,8 +702,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -707,8 +729,8 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
+    assertEquals(10, queryDataSource.getSeqResources().size());
+    assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -741,8 +763,8 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -774,8 +796,8 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(20, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(20, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -856,8 +878,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -936,8 +958,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -1016,8 +1038,8 @@ public class DataRegionTest {
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
 
-    Assert.assertEquals(0, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(2, queryDataSource.getUnseqResources().size());
+    assertEquals(0, queryDataSource.getSeqResources().size());
+    assertEquals(2, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -1046,7 +1068,7 @@ public class DataRegionTest {
     InsertRowsNode insertRowsNode = new InsertRowsNode(new PlanNodeId(""), indexList, nodes);
     dataRegion1.insert(insertRowsNode);
     dataRegion1.syncCloseAllWorkingTsFileProcessors();
-    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.Rows");
+    IDeviceID tmpDeviceId = Factory.DEFAULT_FACTORY.create("root.Rows");
     QueryDataSource queryDataSource =
         dataRegion1.query(
             Collections.singletonList(
@@ -1056,8 +1078,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(1, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(1, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -1083,7 +1105,7 @@ public class DataRegionTest {
       dataRegion1.syncCloseAllWorkingTsFileProcessors();
     }
     dataRegion1.syncCloseAllWorkingTsFileProcessors();
-    IDeviceID tmpDeviceId = IDeviceID.Factory.DEFAULT_FACTORY.create("root.ln22");
+    IDeviceID tmpDeviceId = Factory.DEFAULT_FACTORY.create("root.ln22");
     QueryDataSource queryDataSource =
         dataRegion1.query(
             Collections.singletonList(
@@ -1093,8 +1115,8 @@ public class DataRegionTest {
             context,
             null,
             null);
-    Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
+    assertEquals(10, queryDataSource.getSeqResources().size());
+    assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -1162,7 +1184,7 @@ public class DataRegionTest {
     QueryDataSource queryDataSource =
         dataRegion.query(
             Collections.singletonList(nonAlignedFullPath), device, context, null, null);
-    Assert.assertEquals(2, queryDataSource.getSeqResources().size());
+    assertEquals(2, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       assertTrue(resource.isClosed());
     }
@@ -1249,7 +1271,7 @@ public class DataRegionTest {
     TSRecord record = new TSRecord(deviceId, 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // change config & reboot timed service
     boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
@@ -1260,7 +1282,7 @@ public class DataRegionTest {
 
     Thread.sleep(500);
 
-    Assert.assertEquals(1, dataRegion.getWorkSequenceTsFileProcessors().size());
+    assertEquals(1, dataRegion.getWorkSequenceTsFileProcessors().size());
     TsFileProcessor tsFileProcessor =
         dataRegion.getWorkSequenceTsFileProcessors().iterator().next();
     FlushManager flushManager = FlushManager.getInstance();
@@ -1285,7 +1307,7 @@ public class DataRegionTest {
       }
     }
 
-    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
     config.setSeqMemtableFlushInterval(preFLushInterval);
@@ -1298,15 +1320,15 @@ public class DataRegionTest {
     TSRecord record = new TSRecord(deviceId, 10000);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
     dataRegion.syncCloseAllWorkingTsFileProcessors();
-    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // create one unsequence memtable
     record = new TSRecord(deviceId, 1);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     dataRegion.insert(buildInsertRowNodeByTSRecord(record));
-    Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // change config & reboot timed service
     boolean prevEnableTimedFlushUnseqMemtable = config.isEnableTimedFlushUnseqMemtable();
@@ -1317,7 +1339,7 @@ public class DataRegionTest {
 
     Thread.sleep(500);
 
-    Assert.assertEquals(1, dataRegion.getWorkUnsequenceTsFileProcessors().size());
+    assertEquals(1, dataRegion.getWorkUnsequenceTsFileProcessors().size());
     TsFileProcessor tsFileProcessor =
         dataRegion.getWorkUnsequenceTsFileProcessors().iterator().next();
     FlushManager flushManager = FlushManager.getInstance();
@@ -1342,7 +1364,7 @@ public class DataRegionTest {
       }
     }
 
-    Assert.assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
+    assertEquals(0, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     config.setEnableTimedFlushUnseqMemtable(prevEnableTimedFlushUnseqMemtable);
     config.setUnseqMemtableFlushInterval(preFLushInterval);
@@ -1629,9 +1651,7 @@ public class DataRegionTest {
     dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertFalse(tsFileResource.anyModFileExists());
     Assert.assertFalse(
-        tsFileResource
-            .getDevices()
-            .contains(IDeviceID.Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
+        tsFileResource.getDevices().contains(Factory.DEFAULT_FACTORY.create("root.vehicle.d199")));
   }
 
   @Test
@@ -1663,7 +1683,7 @@ public class DataRegionTest {
 
     public DummyDataRegion(String systemInfoDir, String storageGroupName)
         throws DataRegionException {
-      super(systemInfoDir, "0", new TsFileFlushPolicy.DirectFlushPolicy(), storageGroupName);
+      super(systemInfoDir, "0", new DirectFlushPolicy(), storageGroupName);
     }
   }
 
@@ -1792,5 +1812,331 @@ public class DataRegionTest {
 
     future.get();
     assertTrue(tsFileResourceSeq.isClosed());
+  }
+
+  @Test
+  public void testSchemaEvolution()
+      throws WriteProcessException, QueryProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    String[] measurements = {"tag1", "s1", "s2"};
+    MeasurementSchema[] measurementSchemas = {
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
+    };
+    RelationalInsertRowNode insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {tsTable.getTableName()}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
+    dataRegion.insert(insertRowNode);
+
+    // table1 -> table2
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(new TableRename(tsTable.getTableName(), "sevo2")));
+
+    tsTable = new TsTable("sevo2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    // cannot query with the old name
+    IDeviceID deviceID1 = Factory.DEFAULT_FACTORY.create(new String[] {"sevo", "tag1"});
+    List<IFullPath> fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    QueryDataSource dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID1,
+            new QueryContext(false),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
+    assertTrue(dataSource.getSeqResources().isEmpty());
+
+    // can query with the new name
+    IDeviceID deviceID2 = Factory.DEFAULT_FACTORY.create(new String[] {"sevo2", "tag1"});
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID2,
+            new QueryContext(false),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
+    assertEquals(1, dataSource.getSeqResources().size());
+
+    tsTable = new TsTable("sevo");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    // write again with table1
+    insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"sevo"}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
+    dataRegion.insert(insertRowNode);
+
+    // can query with table1
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID1, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID1,
+            new QueryContext(false),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
+    assertEquals(1, dataSource.getSeqResources().size());
+
+    // can query with table2
+    fullPaths =
+        Arrays.asList(
+            new AlignedFullPath(
+                deviceID2, Arrays.asList(measurements), Arrays.asList(measurementSchemas)));
+    dataSource =
+        dataRegion.query(
+            fullPaths,
+            deviceID2,
+            new QueryContext(false),
+            null,
+            Collections.singletonList(0L),
+            Long.MAX_VALUE);
+    assertEquals(1, dataSource.getSeqResources().size());
+  }
+
+  @Test
+  public void testSchemaEvolutionWithPartialDeletion() throws WriteProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo_with_partial_deletion");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    String[] measurements = {"tag1", "s1", "s2"};
+    MeasurementSchema[] measurementSchemas = {
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
+    };
+    RelationalInsertRowNode insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {tsTable.getTableName()}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
+    dataRegion.insert(insertRowNode);
+    insertRowNode.setTime(20);
+    dataRegion.insert(insertRowNode);
+
+    // table1 -> table2
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(
+            new TableRename("sevo_with_partial_deletion", "sevo_with_partial_deletion2")));
+    // s1 -> s3
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(
+            new ColumnRename("sevo_with_partial_deletion2", "s1", "s3", null)));
+
+    DataNodeTableCache.getInstance().invalid(dataRegion.getDatabaseName());
+    tsTable = new TsTable("sevo_with_partial_deletion2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s3", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    // delete with table2
+    TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_partial_deletion2"), new TimeRange(0, 15));
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+    // delete with s3
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "sevo_with_partial_deletion2", new NOP(), Collections.singletonList("s3")),
+            new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+    // delete with table1
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_partial_deletion"), new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+    // delete with s1
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate(
+                "sevo_with_partial_deletion2", new NOP(), Collections.singletonList("s1")),
+            new TimeRange(0, 15));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+
+    List<TsFileResource> sequenceFileList = dataRegion.getSequenceFileList();
+    assertEquals(1, sequenceFileList.size());
+    ModIterator modEntryIterator = sequenceFileList.get(0).getModEntryIterator();
+    ModEntry next = modEntryIterator.next();
+    // the table2 modification should be rewritten to table1
+    assertEquals("sevo_with_partial_deletion", ((TableDeletionEntry) next).getTableName());
+    next = modEntryIterator.next();
+    // the s3 modification should be rewritten to s1
+    assertEquals(
+        Collections.singletonList("s1"),
+        ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
+    next = modEntryIterator.next();
+    // the table1 modification should be skipped
+    // the s1 modification should be rewritten to empty
+    assertEquals(
+        Collections.singletonList(""),
+        ((TableDeletionEntry) next).getPredicate().getMeasurementNames());
+    assertFalse(modEntryIterator.hasNext());
+  }
+
+  @Test
+  public void testSchemaEvolutionWithFullDeletion() throws WriteProcessException, IOException {
+    TsTable tsTable = new TsTable("sevo_with_full_deletion");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s1", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    String[] measurements = {"tag1", "s1", "s2"};
+    MeasurementSchema[] measurementSchemas = {
+      new MeasurementSchema("tag1", TSDataType.STRING),
+      new MeasurementSchema("s1", TSDataType.INT64),
+      new MeasurementSchema("s2", TSDataType.DOUBLE)
+    };
+    RelationalInsertRowNode insertRowNode =
+        new RelationalInsertRowNode(
+            new PlanNodeId(""),
+            new PartialPath(new String[] {"sevo_with_full_deletion"}),
+            true,
+            measurements,
+            new TSDataType[] {TSDataType.STRING, TSDataType.INT64, TSDataType.DOUBLE},
+            measurementSchemas,
+            10,
+            new Object[] {new Binary("tag1".getBytes(StandardCharsets.UTF_8)), 1L, 1.0},
+            false,
+            new TsTableColumnCategory[] {
+              TsTableColumnCategory.TAG, TsTableColumnCategory.FIELD, TsTableColumnCategory.FIELD
+            });
+    dataRegion.insert(insertRowNode);
+    insertRowNode.setTime(20);
+    dataRegion.insert(insertRowNode);
+
+    // table1 -> table2
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(
+            new TableRename("sevo_with_full_deletion", "sevo_with_full_deletion2")));
+    // s1 -> s3
+    dataRegion.applySchemaEvolution(
+        Collections.singletonList(new ColumnRename("sevo_with_full_deletion2", "s1", "s3", null)));
+
+    tsTable = new TsTable("sevo_with_full_deletion2");
+    tsTable.addColumnSchema(new TagColumnSchema("tag1", TSDataType.STRING));
+    tsTable.addColumnSchema(new FieldColumnSchema("s3", TSDataType.INT64));
+    tsTable.addColumnSchema(new FieldColumnSchema("s2", TSDataType.DOUBLE));
+    DataNodeTableCache.getInstance()
+        .preUpdateTable(dataRegion.getDatabaseName(), tsTable, null, null);
+    DataNodeTableCache.getInstance()
+        .commitUpdateTable(dataRegion.getDatabaseName(), tsTable.getTableName(), null);
+
+    // delete with table1
+    TableDeletionEntry tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_full_deletion"), new TimeRange(0, 30));
+    RelationalDeleteDataNode relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+    // nothing should be deleted
+    List<TsFileResource> sequenceFileList = dataRegion.getSequenceFileList();
+    assertEquals(1, sequenceFileList.size());
+    ModIterator modEntryIterator = sequenceFileList.get(0).getModEntryIterator();
+    assertFalse(modEntryIterator.hasNext());
+
+    // delete with table2
+    tableDeletionEntry =
+        new TableDeletionEntry(
+            new DeletionPredicate("sevo_with_full_deletion2"), new TimeRange(0, 30));
+    relationalDeleteDataNode =
+        new RelationalDeleteDataNode(
+            new PlanNodeId(""), tableDeletionEntry, dataRegion.getDatabaseName());
+    dataRegion.deleteByTable(relationalDeleteDataNode);
+    // the file should be deleted
+    sequenceFileList = dataRegion.getSequenceFileList();
+    assertEquals(0, sequenceFileList.size());
   }
 }

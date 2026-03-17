@@ -261,6 +261,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
                   eventsHadBeenAddedToRetryQueue,
                   sealedFile.right,
                   null,
+                  null,
                   false,
                   sealedFile.left));
         }
@@ -417,6 +418,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
               new AtomicBoolean(false),
               pipeTsFileInsertionEvent.getTsFile(),
               pipeTsFileInsertionEvent.getModFile(),
+              pipeTsFileInsertionEvent.getResource(),
               pipeTsFileInsertionEvent.isWithMod()
                   && clientManager.supportModsIfIsDataNodeReceiver(),
               pipeTsFileInsertionEvent.isTableModelEvent()

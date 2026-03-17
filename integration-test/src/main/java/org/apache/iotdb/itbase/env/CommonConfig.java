@@ -152,6 +152,8 @@ public interface CommonConfig {
 
   CommonConfig setIsPipeEnableMemoryCheck(boolean isPipeEnableMemoryCheck);
 
+  CommonConfig setPipeInsertNodeQueueMemory(long pipeInsertNodeQueueMemory);
+
   CommonConfig setPipeAirGapReceiverEnabled(boolean isPipeAirGapReceiverEnabled);
 
   CommonConfig setDriverTaskExecutionTimeSliceInMs(long driverTaskExecutionTimeSliceInMs);

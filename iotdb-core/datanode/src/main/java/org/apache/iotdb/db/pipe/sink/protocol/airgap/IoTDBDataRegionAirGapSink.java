@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.pipe.sink.protocol.airgap;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.event.EnrichedEvent;
 import org.apache.iotdb.commons.pipe.sink.limiter.TsFileSendRateLimiter;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -30,14 +31,17 @@ import org.apache.iotdb.db.pipe.event.common.terminate.PipeTerminateEvent;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.metric.overview.PipeResourceMetrics;
 import org.apache.iotdb.db.pipe.metric.sink.PipeDataRegionSinkMetrics;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletBinaryReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletInsertNodeReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.EvolvedSchema;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.evolution.SchemaEvolutionFile;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALPipeException;
 import org.apache.iotdb.pipe.api.annotation.TableModel;
 import org.apache.iotdb.pipe.api.annotation.TreeModel;
@@ -55,6 +59,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -329,55 +334,79 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
     final String pipeName = pipeTsFileInsertionEvent.getPipeName();
     final long creationTime = pipeTsFileInsertionEvent.getCreationTime();
     final File tsFile = pipeTsFileInsertionEvent.getTsFile();
+    final TsFileResource resource = pipeTsFileInsertionEvent.getResource();
     final String errorMessage = String.format("Seal file %s error. Socket %s.", tsFile, socket);
 
     // 1. Transfer file piece by piece, and mod if needed
-    if (pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver) {
-      final File modFile = pipeTsFileInsertionEvent.getModFile();
-      transferFilePieces(pipeName, creationTime, modFile, socket, true);
+    final boolean withMod = pipeTsFileInsertionEvent.isWithMod() && supportModsIfIsDataNodeReceiver;
+    final File modFile = pipeTsFileInsertionEvent.getModFile();
+    transferFilePieces(pipeName, creationTime, modFile, socket, true);
+    if (withMod) {
       transferFilePieces(pipeName, creationTime, tsFile, socket, true);
-      // 2. Transfer file seal signal with mod, which means the file is transferred completely
-      if (!send(
-          pipeName,
-          creationTime,
-          socket,
-          PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              modFile.getName(),
-              modFile.length(),
-              tsFile.getName(),
-              tsFile.length(),
-              pipeTsFileInsertionEvent.isTableModelEvent()
-                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
-        receiverStatusHandler.handle(
-            new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                .setMessage(errorMessage),
-            errorMessage,
-            pipeTsFileInsertionEvent.toString());
-      } else {
-        LOGGER.info("Successfully transferred file {}.", tsFile);
+    }
+
+    // 2. Transfer schema evolution file if exists
+    EvolvedSchema evolvedSchema = null;
+    ByteBuffer fileBuffer = null;
+    if (resource != null) {
+      evolvedSchema = resource.getMergedEvolvedSchema();
+      if (evolvedSchema != null) {
+        fileBuffer = evolvedSchema.toSchemaEvolutionFileBuffer();
+        final String sevoName =
+            SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile);
+
+        while (fileBuffer.remaining() > 0) {
+          final int length =
+              Math.min(
+                  PipeConfig.getInstance().getPipeSinkReadFileBufferSize(), fileBuffer.remaining());
+          mayLimitRateAndRecordIO(length);
+
+          if (!send(
+              pipeName,
+              creationTime,
+              socket,
+              PipeTransferMultiFilePieceReq.toTPipeTransferBytes(sevoName, fileBuffer, length))) {
+            final String sevoMessage =
+                String.format("Transfer file %s error. Socket %s.", sevoName, socket);
+            if (mayNeedHandshakeWhenFail()) {
+              // Send handshake because we don't know whether the receiver side configNode
+              // has set up a new one
+              sendHandshakeReq(socket);
+            }
+            receiverStatusHandler.handle(
+                new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+                    .setMessage(sevoMessage),
+                sevoMessage,
+                tsFile.getName());
+          }
+        }
       }
+    }
+
+    // 3. Transfer file seal signal with mod, which means the file is transferred completely
+    if (!send(
+        pipeName,
+        creationTime,
+        socket,
+        PipeTransferMultiFileSealReq.toTPipeTransferBytes(
+            withMod ? modFile.getName() : null,
+            withMod ? modFile.length() : 0L,
+            Objects.nonNull(evolvedSchema)
+                ? SchemaEvolutionFile.getTsFileAssociatedSchemaEvolutionFileName(tsFile)
+                : null,
+            Objects.nonNull(evolvedSchema) ? fileBuffer.limit() : 0L,
+            tsFile.getName(),
+            tsFile.length(),
+            pipeTsFileInsertionEvent.isTableModelEvent()
+                ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
+                : null))) {
+      receiverStatusHandler.handle(
+          new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
+              .setMessage(errorMessage),
+          errorMessage,
+          pipeTsFileInsertionEvent.toString());
     } else {
-      transferFilePieces(pipeName, creationTime, tsFile, socket, false);
-      // 2. Transfer file seal signal without mod, which means the file is transferred completely
-      if (!send(
-          pipeName,
-          creationTime,
-          socket,
-          PipeTransferTsFileSealWithModReq.toTPipeTransferBytes(
-              tsFile.getName(),
-              tsFile.length(),
-              pipeTsFileInsertionEvent.isTableModelEvent()
-                  ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
-                  : null))) {
-        receiverStatusHandler.handle(
-            new TSStatus(TSStatusCode.PIPE_RECEIVER_USER_CONFLICT_EXCEPTION.getStatusCode())
-                .setMessage(errorMessage),
-            errorMessage,
-            pipeTsFileInsertionEvent.toString());
-      } else {
-        LOGGER.info("Successfully transferred file {}.", tsFile);
-      }
+      LOGGER.info("Successfully transferred file {}.", tsFile);
     }
   }
 
@@ -398,7 +427,7 @@ public class IoTDBDataRegionAirGapSink extends IoTDBDataNodeAirGapSink {
   @Override
   protected byte[] getTransferMultiFilePieceBytes(
       final String fileName, final long position, final byte[] payLoad) throws IOException {
-    return PipeTransferTsFilePieceWithModReq.toTPipeTransferBytes(fileName, position, payLoad);
+    return PipeTransferMultiFilePieceReq.toTPipeTransferBytes(fileName, position, payLoad);
   }
 
   @Override

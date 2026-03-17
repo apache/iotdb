@@ -23,5 +23,6 @@ public enum RenameTableColumnState {
   COLUMN_CHECK,
   PRE_RELEASE,
   RENAME_COLUMN,
+  EXECUTE_ON_REGIONS,
   COMMIT_RELEASE
 }

@@ -61,6 +61,8 @@ import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryBlock;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV2Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFileSealReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -73,9 +75,7 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealWithModReq;
 import org.apache.iotdb.db.protocol.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.protocol.session.IClientSession;
 import org.apache.iotdb.db.protocol.session.SessionManager;
@@ -113,10 +113,12 @@ import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferResp;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.common.constant.TsFileConstant;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -345,11 +347,11 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
                     .recordTransferTsFileSealTimer(System.nanoTime() - startTime);
               }
             }
-          case TRANSFER_TS_FILE_PIECE_WITH_MOD:
+          case TRANSFER_MULTI_FILE_PIECE:
             {
               try {
                 return handleTransferFilePiece(
-                    PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req),
+                    PipeTransferMultiFilePieceReq.fromTPipeTransferReq(req),
                     req instanceof AirGapPseudoTPipeTransferRequest,
                     false);
 
@@ -362,7 +364,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
             {
               try {
                 return handleTransferFileSealV2(
-                    PipeTransferTsFileSealWithModReq.fromTPipeTransferReq(req));
+                    PipeTransferMultiFileSealReq.fromTPipeTransferReq(req));
               } finally {
                 PipeDataNodeReceiverMetrics.getInstance()
                     .recordTransferTsFileSealWithModTimer(System.nanoTime() - startTime);
@@ -555,14 +557,14 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
   protected TSStatus loadFileV2(
       final PipeTransferFileSealReqV2 req, final List<String> fileAbsolutePaths)
       throws IOException, IllegalPathException {
-    return req instanceof PipeTransferTsFileSealWithModReq
+    return req instanceof PipeTransferMultiFileSealReq
         // TsFile's absolute path will be the second element
         ? (isUsingAsyncLoadTsFileStrategy.get()
             ? loadTsFileAsync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
+                ((PipeTransferMultiFileSealReq) req).getDatabaseNameByTsFileName(),
                 fileAbsolutePaths)
             : loadTsFileSync(
-                ((PipeTransferTsFileSealWithModReq) req).getDatabaseNameByTsFileName(),
+                ((PipeTransferMultiFileSealReq) req).getDatabaseNameByTsFileName(),
                 fileAbsolutePaths.get(req.getFileNames().size() - 1)))
         : loadSchemaSnapShot(req.getParameters(), fileAbsolutePaths);
   }
@@ -586,6 +588,10 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
 
   private TSStatus loadTsFileSync(final String dataBaseName, final String fileAbsolutePath)
       throws FileNotFoundException {
+    LOGGER.info(
+        "DataNode Receiver starts to load TsFile: {} for database {}",
+        fileAbsolutePath,
+        dataBaseName);
     final LoadTsFileStatement statement = new LoadTsFileStatement(fileAbsolutePath);
     statement.setDeleteAfterLoad(true);
     statement.setConvertOnTypeMismatch(true);
@@ -593,6 +599,16 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
     statement.setAutoCreateDatabase(
         IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled());
     statement.setDatabase(dataBaseName);
+
+    // add associated sevo file path if exists
+    String sevoFilePath =
+        fileAbsolutePath.replace(
+            TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.SCHEMA_EVOLUTION_FILE_SUFFIX);
+    File sevoFile = new File(sevoFilePath);
+    if (sevoFile.exists()) {
+      LOGGER.info("Loading a tsfile with schema evolution, sevo file path: {}", sevoFilePath);
+      statement.setSchemaEvolutionFile(sevoFile);
+    }
 
     return executeStatementAndClassifyExceptions(statement);
   }
@@ -865,6 +881,7 @@ public class IoTDBDataNodeReceiver extends IoTDBFileReceiver {
           TSStatusCode.PIPE_TRANSFER_EXECUTE_STATEMENT_ERROR, "Execute null statement.");
     }
 
+    LOGGER.debug("Receiver id = {}: executing {}", receiverId.get(), statement);
     // Judge which model the statement belongs to
     final boolean isTableModelStatement;
     final String databaseName;

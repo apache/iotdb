@@ -73,6 +73,31 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
     return this;
   }
 
+  protected final PipeTransferFilePieceReq convertToTPipeTransferReq(
+      final String snapshotName, final ByteBuffer snapshotPiece, final int transferSize)
+      throws IOException {
+
+    this.fileName = snapshotName;
+    this.startWritingOffset = snapshotPiece.position();
+    this.filePiece = snapshotPiece.array();
+
+    this.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
+    this.type = getPlanType().getType();
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      final int size = Math.min(transferSize, snapshotPiece.remaining());
+      ReadWriteIOUtils.write(snapshotName, outputStream);
+      ReadWriteIOUtils.write(startWritingOffset, outputStream);
+      ReadWriteIOUtils.write(size, outputStream);
+      ReadWriteIOUtils.writeWithoutSize(
+          snapshotPiece, snapshotPiece.position(), size, outputStream);
+      snapshotPiece.position(snapshotPiece.position() + size);
+      body = ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    }
+
+    return this;
+  }
+
   protected final PipeTransferFilePieceReq translateFromTPipeTransferReq(
       TPipeTransferReq transferReq) {
 
@@ -97,6 +122,24 @@ public abstract class PipeTransferFilePieceReq extends TPipeTransferReq {
       ReadWriteIOUtils.write(snapshotName, outputStream);
       ReadWriteIOUtils.write(startWritingOffset, outputStream);
       ReadWriteIOUtils.write(new Binary(snapshotPiece), outputStream);
+      return byteArrayOutputStream.toByteArray();
+    }
+  }
+
+  protected final byte[] convertToTPipeTransferBytes(
+      final String snapshotName, final ByteBuffer snapshotPiece, final int transferSize)
+      throws IOException {
+    try (final PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        final DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      ReadWriteIOUtils.write(IoTDBSinkRequestVersion.VERSION_1.getVersion(), outputStream);
+      ReadWriteIOUtils.write(getPlanType().getType(), outputStream);
+      final int size = Math.min(transferSize, snapshotPiece.remaining());
+      ReadWriteIOUtils.write(snapshotName, outputStream);
+      ReadWriteIOUtils.write(snapshotPiece.position(), outputStream);
+      ReadWriteIOUtils.write(size, outputStream);
+      ReadWriteIOUtils.writeWithoutSize(
+          snapshotPiece, snapshotPiece.position(), size, outputStream);
+      snapshotPiece.position(snapshotPiece.position() + size);
       return byteArrayOutputStream.toByteArray();
     }
   }

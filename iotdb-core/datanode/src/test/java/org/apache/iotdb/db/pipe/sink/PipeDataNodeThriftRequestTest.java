@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.sink.payload.thrift.response.PipeTransferFilePieceResp;
 import org.apache.iotdb.commons.schema.SchemaConstant;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferDataNodeHandshakeV1Req;
+import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferMultiFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferPlanNodeReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotPieceReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferSchemaSnapshotSealReq;
@@ -35,7 +36,6 @@ import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTable
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTabletRawReqV2;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceReq;
-import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFilePieceWithModReq;
 import org.apache.iotdb.db.pipe.sink.payload.evolvable.request.PipeTransferTsFileSealReq;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.metadata.write.CreateAlignedTimeSeriesNode;
@@ -489,10 +489,10 @@ public class PipeDataNodeThriftRequestTest {
     final byte[] body = "testPipeTransferFilePieceWithModReq".getBytes();
     final String fileName = "1.tsfile.mod";
 
-    final PipeTransferTsFilePieceWithModReq req =
-        PipeTransferTsFilePieceWithModReq.toTPipeTransferReq(fileName, 0, body);
-    final PipeTransferTsFilePieceWithModReq deserializeReq =
-        PipeTransferTsFilePieceWithModReq.fromTPipeTransferReq(req);
+    final PipeTransferMultiFilePieceReq req =
+        PipeTransferMultiFilePieceReq.toTPipeTransferReq(fileName, 0, body);
+    final PipeTransferMultiFilePieceReq deserializeReq =
+        PipeTransferMultiFilePieceReq.fromTPipeTransferReq(req);
 
     Assert.assertEquals(req.getVersion(), deserializeReq.getVersion());
     Assert.assertEquals(req.getType(), deserializeReq.getType());

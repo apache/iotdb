@@ -24,46 +24,64 @@ import org.apache.iotdb.commons.pipe.sink.payload.thrift.request.PipeTransferFil
 import org.apache.iotdb.service.rpc.thrift.TPipeTransferReq;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
-public class PipeTransferTsFilePieceWithModReq extends PipeTransferFilePieceReq {
+public class PipeTransferMultiFilePieceReq extends PipeTransferFilePieceReq {
 
-  private PipeTransferTsFilePieceWithModReq() {
+  private PipeTransferMultiFilePieceReq() {
     // Empty constructor
   }
 
   @Override
   protected PipeRequestType getPlanType() {
-    return PipeRequestType.TRANSFER_TS_FILE_PIECE_WITH_MOD;
+    return PipeRequestType.TRANSFER_MULTI_FILE_PIECE;
   }
 
   /////////////////////////////// Thrift ///////////////////////////////
 
-  public static PipeTransferTsFilePieceWithModReq toTPipeTransferReq(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    return (PipeTransferTsFilePieceWithModReq)
-        new PipeTransferTsFilePieceWithModReq()
+  public static PipeTransferMultiFilePieceReq toTPipeTransferReq(
+      final String fileName, final long startWritingOffset, final byte[] filePiece)
+      throws IOException {
+    return (PipeTransferMultiFilePieceReq)
+        new PipeTransferMultiFilePieceReq()
             .convertToTPipeTransferReq(fileName, startWritingOffset, filePiece);
   }
 
-  public static PipeTransferTsFilePieceWithModReq fromTPipeTransferReq(
-      TPipeTransferReq transferReq) {
-    return (PipeTransferTsFilePieceWithModReq)
-        new PipeTransferTsFilePieceWithModReq().translateFromTPipeTransferReq(transferReq);
+  public static PipeTransferMultiFilePieceReq toTPipeTransferReq(
+      final String fileName, final ByteBuffer filePiece, final int transferSize)
+      throws IOException {
+    return (PipeTransferMultiFilePieceReq)
+        new PipeTransferMultiFilePieceReq()
+            .convertToTPipeTransferReq(fileName, filePiece, transferSize);
+  }
+
+  public static PipeTransferMultiFilePieceReq fromTPipeTransferReq(
+      final TPipeTransferReq transferReq) {
+    return (PipeTransferMultiFilePieceReq)
+        new PipeTransferMultiFilePieceReq().translateFromTPipeTransferReq(transferReq);
   }
 
   /////////////////////////////// Air Gap ///////////////////////////////
 
   public static byte[] toTPipeTransferBytes(
-      String fileName, long startWritingOffset, byte[] filePiece) throws IOException {
-    return new PipeTransferTsFilePieceWithModReq()
+      final String fileName, final long startWritingOffset, final byte[] filePiece)
+      throws IOException {
+    return new PipeTransferMultiFilePieceReq()
         .convertToTPipeTransferBytes(fileName, startWritingOffset, filePiece);
+  }
+
+  public static byte[] toTPipeTransferBytes(
+      final String fileName, final ByteBuffer filePiece, final int transferSize)
+      throws IOException {
+    return new PipeTransferMultiFilePieceReq()
+        .convertToTPipeTransferBytes(fileName, filePiece, transferSize);
   }
 
   /////////////////////////////// Object ///////////////////////////////
 
   @Override
-  public boolean equals(Object obj) {
-    return obj instanceof PipeTransferTsFilePieceWithModReq && super.equals(obj);
+  public boolean equals(final Object obj) {
+    return obj instanceof PipeTransferMultiFilePieceReq && super.equals(obj);
   }
 
   @Override
