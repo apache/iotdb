@@ -92,10 +92,12 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
         1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
   }
 
   @Test
-  public void testCompactAlignedSeriesWithReadChunkCompactionPerformer()
+  public void testCompactAlignedSeries()
       throws IOException, WriteProcessException, IllegalPathException {
     generateDataTypeNotMatchFilesWithAlignedSeries();
     InnerSpaceCompactionTask task =
@@ -105,6 +107,8 @@ public class CompactionDataTypeNotMatchAlterableDataTypeTest
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
         1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
   }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()

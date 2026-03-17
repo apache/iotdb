@@ -92,6 +92,31 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
         2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
+  }
+
+  @Test
+  public void testCompactNonAlignedSeries2()
+      throws IOException, WriteProcessException, IllegalPathException {
+    MeasurementSchema measurementSchema1 = new MeasurementSchema("s1", TSDataType.INT32);
+    TsFileResource resource1 = generateInt32NonAlignedSeriesFile(new TimeRange(1, 1), true);
+    seqResources.add(resource1);
+    TsFileResource resource2 = generateDoubleNonAlignedSeriesFile(new TimeRange(2, 2), true);
+    seqResources.add(resource2);
+    schemaFetcher
+        .getSchemaTree()
+        .appendSingleMeasurementPath(new MeasurementPath(device, "s1", measurementSchema1));
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
+    Assert.assertTrue(task.start());
+    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(
+        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        1, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
   }
 
   @Test
@@ -105,6 +130,35 @@ public class CompactionDataTypeNotMatchTest extends AbstractCompactionAlterDataT
     TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
     Assert.assertEquals(
         2, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        2, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
+  }
+
+  @Test
+  public void testCompactAlignedSeries2()
+      throws IOException, WriteProcessException, IllegalPathException {
+    TsFileResource resource1 = generateInt32AlignedSeriesFile(new TimeRange(1, 1), true);
+    seqResources.add(resource1);
+    TsFileResource resource2 = generateDoubleAlignedSeriesFile(new TimeRange(2, 2), true);
+    seqResources.add(resource2);
+    MeasurementPath s1Path =
+        new MeasurementPath(device, "s1", new MeasurementSchema("s1", TSDataType.INT32));
+    s1Path.setUnderAlignedEntity(true);
+    MeasurementPath s2Path =
+        new MeasurementPath(device, "s2", new MeasurementSchema("s2", TSDataType.INT32));
+    s2Path.setUnderAlignedEntity(true);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s1Path);
+    schemaFetcher.getSchemaTree().appendSingleMeasurementPath(s2Path);
+
+    InnerSpaceCompactionTask task =
+        new InnerSpaceCompactionTask(
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
+    Assert.assertTrue(task.start());
+    TsFileResourceUtils.validateTsFileDataCorrectness(tsFileManager.getTsFileList(true).get(0));
+    Assert.assertEquals(
+        1, ((long) tsFileManager.getTsFileList(true).get(0).getStartTime(device).get()));
+    Assert.assertEquals(
+        1, ((long) tsFileManager.getTsFileList(true).get(0).getEndTime(device).get()));
   }
 
   private void generateDataTypeNotMatchFilesWithNonAlignedSeries()

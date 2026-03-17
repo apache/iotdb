@@ -386,14 +386,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
         continue;
       }
       TsFileSequenceReader reader = readerMap.get(resource);
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
           ((CompactionTsFileReader) reader)
               .getTimeseriesMetadataAndOffsetByDevice(
                   iterator.getFirstMeasurementNodeOfCurrentDevice(), Collections.emptySet(), false)
               .entrySet()) {
-        String measurementId = entrySet.getKey();
-        TimeseriesMetadata timeseriesMetadata = entrySet.getValue().left;
-        Pair<Long, Long> offset = entrySet.getValue().right;
+        String measurementId = entry.getKey();
+        TimeseriesMetadata timeseriesMetadata = entry.getValue().left;
+        Pair<Long, Long> offset = entry.getValue().right;
         TSDataType dataTypeOfCurrentFile = timeseriesMetadata.getTsDataType();
 
         CompactionSeriesContext compactionSeriesContext =
@@ -460,26 +460,26 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       CompactionTsFileReader reader = (CompactionTsFileReader) readerMap.get(resource);
 
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
           reader
               .getTimeseriesMetadataAndOffsetByDevice(
                   iterator.getFirstMeasurementNodeOfCurrentDevice(),
                   timeseriesMetadataOffsetMap.keySet(),
                   true)
               .entrySet()) {
-        String measurementId = entrySet.getKey();
+        String measurementId = entry.getKey();
         Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>> existedPair =
             timeseriesMetadataOffsetMap.get(measurementId);
         if (existedPair == null) {
           MeasurementSchema schema =
-              reader.getMeasurementSchema(entrySet.getValue().left.getChunkMetadataList());
+              reader.getMeasurementSchema(entry.getValue().left.getChunkMetadataList());
           existedPair = new Pair<>(schema, new HashMap<>());
           timeseriesMetadataOffsetMap.put(measurementId, existedPair);
         } else if (!seriesNeedToUpdateDataType.contains(existedPair.getLeft())
-            && existedPair.left.getType() != entrySet.getValue().getLeft().getTsDataType()) {
+            && existedPair.left.getType() != entry.getValue().getLeft().getTsDataType()) {
           seriesNeedToUpdateDataType.add(existedPair.getLeft());
         }
-        existedPair.right.put(resource, entrySet.getValue().right);
+        existedPair.right.put(resource, entry.getValue().right);
       }
     }
     List<IMeasurementSchema> correctMeasurementSchemas =
@@ -522,14 +522,14 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
       CompactionTsFileReader reader = (CompactionTsFileReader) readerMap.get(resource);
 
-      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entrySet :
+      for (Map.Entry<String, Pair<TimeseriesMetadata, Pair<Long, Long>>> entry :
           reader
               .getTimeseriesMetadataAndOffsetByDevice(
                   iterator.getFirstMeasurementNodeOfCurrentDevice(),
                   timeseriesMetadataOffsetMap.keySet(),
                   true)
               .entrySet()) {
-        String measurementId = entrySet.getKey();
+        String measurementId = entry.getKey();
         Pair<MeasurementSchema, Map<TsFileResource, Pair<Long, Long>>> existedPair =
             timeseriesMetadataOffsetMap.get(measurementId);
         if (existedPair == null) {
@@ -541,7 +541,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
             }
           }
           if (schema == null) {
-            schema = reader.getMeasurementSchema(entrySet.getValue().left.getChunkMetadataList());
+            schema = reader.getMeasurementSchema(entry.getValue().left.getChunkMetadataList());
           }
           if (schema == null) {
             continue;
@@ -549,7 +549,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
           existedPair = new Pair<>(schema, new HashMap<>());
           timeseriesMetadataOffsetMap.put(measurementId, existedPair);
         }
-        existedPair.right.put(resource, entrySet.getValue().right);
+        existedPair.right.put(resource, entry.getValue().right);
       }
     }
     return timeseriesMetadataOffsetMap;

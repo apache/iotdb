@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.performer.impl.ReadChunkCompactionPerformer;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.execute.task.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
@@ -222,7 +221,10 @@ public class CompactionDataTypeAlterTest extends AbstractCompactionAlterDataType
 
     InnerSpaceCompactionTask task =
         new InnerSpaceCompactionTask(
-            0, tsFileManager, seqResources, true, new ReadChunkCompactionPerformer(), 0);
+            0, tsFileManager, seqResources, true, getPerformer(performerType), 0);
     Assert.assertTrue(task.start());
+    TsFileResource target = tsFileManager.getTsFileList(true).get(0);
+    Assert.assertEquals(41L, (long) target.getStartTime(device).get());
+    Assert.assertEquals(200L, (long) target.getEndTime(device).get());
   }
 }
