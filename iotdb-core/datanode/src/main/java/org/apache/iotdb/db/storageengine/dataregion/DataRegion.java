@@ -3597,7 +3597,8 @@ public class DataRegion implements IDataRegionForQuery {
   }
 
   public int executeCompaction() throws InterruptedException {
-    CompactionUtils.getLatestMeasurementSchemasForTreeModel(new StringArrayDeviceID("root.test1.d10"), Arrays.asList("s1"));
+    CompactionUtils.getLatestMeasurementSchemasForTreeModel(
+        new StringArrayDeviceID("root.test1.d10"), Arrays.asList("s1"));
     if (!isCompactionSelecting.compareAndSet(false, true)) {
       return 0;
     }
