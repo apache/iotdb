@@ -141,7 +141,9 @@ class PoolController:
             model_id (str): The ID of the model to be loaded.
             device_id_list (list[torch.device]): List of device_ids where the model should be loaded.
         """
-        self._task_queue.put((self._load_model_task, (model_id, device_id_list), {}))
+        self._task_queue.put(
+            (self._load_one_model_task, (model_id, device_id_list), {})
+        )
 
     def unload_model(self, model_id: str, device_id_list: list[torch.device]):
         """
@@ -150,7 +152,9 @@ class PoolController:
             model_id (str): The ID of the model to be unloaded.
             device_id_list (list[torch.device]): List of device_ids where the model should be unloaded.
         """
-        self._task_queue.put((self._unload_model_task, (model_id, device_id_list), {}))
+        self._task_queue.put(
+            (self._unload_one_model_task, (model_id, device_id_list), {})
+        )
 
     def show_loaded_models(
         self, device_id_list: list[torch.device]
@@ -196,59 +200,91 @@ class PoolController:
             finally:
                 self._task_queue.task_done()
 
-    def _load_model_task(self, model_id: str, device_id_list: list[torch.device]):
-        def _load_model_on_device_task(device_id: torch.device):
-            if not self.has_request_pools(model_id, device_id):
-                actions = self._pool_scheduler.schedule_load_model_to_device(
-                    self._model_manager.get_model_info(model_id), device_id
-                )
-                for action in actions:
-                    if action.action == ScaleActionType.SCALE_UP:
-                        self._expand_pools_on_device(
-                            action.model_id, device_id, action.amount
-                        )
-                    elif action.action == ScaleActionType.SCALE_DOWN:
-                        self._shrink_pools_on_device(
-                            action.model_id, device_id, action.amount
-                        )
+    def _load_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
+        def _load_one_model_on_device_task(device_id: torch.device):
+            if not self.has_pool_on_device(device_id):
+                self._expand_pools_on_device(model_id, device_id, 1)
             else:
                 logger.info(
-                    f"[Inference][{device_id}] Model {model_id} is already installed."
+                    f"[Inference][{device_id}] There are already pools on this device."
                 )
 
         load_model_futures = self._executor.submit_batch(
-            device_id_list, _load_model_on_device_task
+            device_id_list, _load_one_model_on_device_task
         )
         concurrent.futures.wait(
             load_model_futures, return_when=concurrent.futures.ALL_COMPLETED
         )
 
-    def _unload_model_task(self, model_id: str, device_id_list: list[torch.device]):
-        def _unload_model_on_device_task(device_id: torch.device):
+    def _unload_one_model_task(self, model_id: str, device_id_list: list[torch.device]):
+        def _unload_one_model_on_device_task(device_id: torch.device):
             if self.has_request_pools(model_id, device_id):
-                actions = self._pool_scheduler.schedule_unload_model_from_device(
-                    self._model_manager.get_model_info(model_id), device_id
-                )
-                for action in actions:
-                    if action.action == ScaleActionType.SCALE_DOWN:
-                        self._shrink_pools_on_device(
-                            action.model_id, device_id, action.amount
-                        )
-                    elif action.action == ScaleActionType.SCALE_UP:
-                        self._expand_pools_on_device(
-                            action.model_id, device_id, action.amount
-                        )
+                self._shrink_pools_on_device(model_id, device_id, 1)
             else:
                 logger.info(
                     f"[Inference][{device_id}] Model {model_id} is not installed."
                 )
 
         unload_model_futures = self._executor.submit_batch(
-            device_id_list, _unload_model_on_device_task
+            device_id_list, _unload_one_model_on_device_task
         )
         concurrent.futures.wait(
             unload_model_futures, return_when=concurrent.futures.ALL_COMPLETED
         )
+
+    # def _load_model_task(self, model_id: str, device_id_list: list[torch.device]):
+    #     def _load_model_on_device_task(device_id: torch.device):
+    #         if not self.has_request_pools(model_id, device_id):
+    #             actions = self._pool_scheduler.schedule_load_model_to_device(
+    #                 self._model_manager.get_model_info(model_id), device_id
+    #             )
+    #             for action in actions:
+    #                 if action.action == ScaleActionType.SCALE_UP:
+    #                     self._expand_pools_on_device(
+    #                         action.model_id, device_id, action.amount
+    #                     )
+    #                 elif action.action == ScaleActionType.SCALE_DOWN:
+    #                     self._shrink_pools_on_device(
+    #                         action.model_id, device_id, action.amount
+    #                     )
+    #         else:
+    #             logger.info(
+    #                 f"[Inference][{device_id}] Model {model_id} is already installed."
+    #             )
+    #
+    #     load_model_futures = self._executor.submit_batch(
+    #         device_id_list, _load_model_on_device_task
+    #     )
+    #     concurrent.futures.wait(
+    #         load_model_futures, return_when=concurrent.futures.ALL_COMPLETED
+    #     )
+    #
+    # def _unload_model_task(self, model_id: str, device_id_list: list[torch.device]):
+    #     def _unload_model_on_device_task(device_id: torch.device):
+    #         if self.has_request_pools(model_id, device_id):
+    #             actions = self._pool_scheduler.schedule_unload_model_from_device(
+    #                 self._model_manager.get_model_info(model_id), device_id
+    #             )
+    #             for action in actions:
+    #                 if action.action == ScaleActionType.SCALE_DOWN:
+    #                     self._shrink_pools_on_device(
+    #                         action.model_id, device_id, action.amount
+    #                     )
+    #                 elif action.action == ScaleActionType.SCALE_UP:
+    #                     self._expand_pools_on_device(
+    #                         action.model_id, device_id, action.amount
+    #                     )
+    #         else:
+    #             logger.info(
+    #                 f"[Inference][{device_id}] Model {model_id} is not installed."
+    #             )
+    #
+    #     unload_model_futures = self._executor.submit_batch(
+    #         device_id_list, _unload_model_on_device_task
+    #     )
+    #     concurrent.futures.wait(
+    #         unload_model_futures, return_when=concurrent.futures.ALL_COMPLETED
+    #     )
 
     def _expand_pools_on_device(
         self, model_id: str, device_id: torch.device, count: int
@@ -461,6 +497,12 @@ class PoolController:
             if pool_group.get_running_pool_count():
                 return True
         return False
+
+    def has_pool_on_device(self, device_id: torch.device) -> bool:
+        """
+        Check if there are pools on the given device_id.
+        """
+        return any(device_id in pools for pools in self._request_pool_map.values())
 
     def get_request_pools_group(
         self, model_id: str, device_id: torch.device
