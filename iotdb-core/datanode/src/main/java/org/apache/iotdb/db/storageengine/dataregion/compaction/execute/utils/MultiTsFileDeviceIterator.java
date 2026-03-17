@@ -276,7 +276,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
    * @throws IOException if io errors occurred
    */
   public Map<String, MeasurementSchema> getAllSchemasOfCurrentDeviceForTree() throws IOException {
-    Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    Map<String, MeasurementSchema> schemaMap = new HashMap<>();
     Set<String> seriesNeedToUpdateDataType = new HashSet<>();
     // get schemas from the newest file to the oldest file
     for (TsFileResource resource : tsFileResourcesSortedByDesc) {
@@ -323,7 +323,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   private Map<String, MeasurementSchema> getAllSchemasOfCurrentDeviceForTable() throws IOException {
-    Map<String, MeasurementSchema> schemaMap = new ConcurrentHashMap<>();
+    Map<String, MeasurementSchema> schemaMap = new HashMap<>();
     TsTable tsTable =
         DataNodeTableCache.getInstance()
             .getTable(databaseName, currentDevice.left.getTableName(), false);
