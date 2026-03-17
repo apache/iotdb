@@ -41,11 +41,6 @@
             <version>${tsfile.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>pipe-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.apache.tsfile</groupId>
             <artifactId>tsfile</artifactId>
             <version>${tsfile.version}</version>
