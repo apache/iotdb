@@ -24,6 +24,7 @@ import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -187,7 +188,7 @@ public class ModelInformation {
     ReadWriteIOUtils.write(attribute, stream);
   }
 
-  public void serialize(FileOutputSecltream stream) throws IOException {
+  public void serialize(FileOutputStream stream) throws IOException {
     ReadWriteIOUtils.write(status.ordinal(), stream);
     ReadWriteIOUtils.write(modelId, stream);
     if (status == ModelStatus.UNAVAILABLE) {
