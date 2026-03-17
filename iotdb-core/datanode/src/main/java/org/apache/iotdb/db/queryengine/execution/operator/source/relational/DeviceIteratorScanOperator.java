@@ -30,6 +30,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.block.TsBlock;
+import org.apache.tsfile.utils.Accountable;
 import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 
@@ -185,7 +186,9 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     return INSTANCE_SIZE
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(operatorContext)
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(currentDeviceRootOperator)
-        + RamUsageEstimator.sizeOfCollection(deviceEntries);
+        + RamUsageEstimator.sizeOfCollection(deviceEntries)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(
+            deviceChildOperatorTreeGenerator);
   }
 
   public DeviceChildOperatorTreeGenerator getDeviceChildOperatorTreeGenerator() {
@@ -216,7 +219,7 @@ public class DeviceIteratorScanOperator extends AbstractDataSourceOperator {
     }
   }
 
-  public interface DeviceChildOperatorTreeGenerator {
+  public interface DeviceChildOperatorTreeGenerator extends Accountable {
     // Do the offset and limit operator need to keep after the device iterator
     boolean keepOffsetAndLimitOperatorAfterDeviceIterator();
 

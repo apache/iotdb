@@ -124,6 +124,11 @@ public class DeviceIteratorScanOperatorTest {
       DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator generator =
           new DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator() {
 
+            @Override
+            public long ramBytesUsed() {
+              return 0L;
+            }
+
             private Operator currentDeviceRootOperator;
 
             @Override

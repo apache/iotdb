@@ -286,6 +286,7 @@ import org.apache.tsfile.read.common.type.TypeFactory;
 import org.apache.tsfile.read.filter.basic.Filter;
 import org.apache.tsfile.utils.Binary;
 import org.apache.tsfile.utils.Pair;
+import org.apache.tsfile.utils.RamUsageEstimator;
 import org.apache.tsfile.utils.TsPrimitiveType;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
@@ -587,6 +588,19 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
 
           private List<Expression> cannotPushDownConjuncts;
           private boolean removeUpperOffsetAndLimitOperator;
+
+          private final long INSTANCE_SIZE =
+              RamUsageEstimator.shallowSizeOfInstance(this.getClass());
+
+          @Override
+          public long ramBytesUsed() {
+            return INSTANCE_SIZE
+                + (seriesScanOptionsList == null
+                    ? 0L
+                    : seriesScanOptionsList.stream()
+                        .mapToLong(seriesScanOption -> seriesScanOption.ramBytesUsed())
+                        .sum());
+          }
 
           @Override
           public boolean keepOffsetAndLimitOperatorAfterDeviceIterator() {
@@ -2831,6 +2845,13 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
   }
 
   @Override
+  public Operator visitAggregationTreeDeviceViewScan(
+      AggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
+    throw new UnsupportedOperationException(
+        "The AggregationTreeDeviceViewScanNode should has been transferred to its child class node");
+  }
+
+  @Override
   public Operator visitAlignedAggregationTreeDeviceViewScan(
       AlignedAggregationTreeDeviceViewScanNode node, LocalExecutionPlanContext context) {
     QualifiedObjectName qualifiedObjectName = node.getQualifiedObjectName();
@@ -2858,7 +2879,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
         parameter.getMeasurementColumnNames(),
         parameter.getMeasurementSchemas(),
         parameter.getAllSensors(),
-        AggregationTreeDeviceViewScanNode.class.getSimpleName());
+        AlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
     return treeAlignedDeviceViewAggregationScanOperator;
   }
 
@@ -2918,7 +2939,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           parameter.getMeasurementColumnNames(),
           parameter.getMeasurementSchemas(),
           parameter.getAllSensors(),
-          TreeNonAlignedDeviceViewAggregationScanOperator.class.getSimpleName());
+          NonAlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
       return aggTableScanOperator;
     } else {
       checkState(sourceOperator instanceof EmptyDataOperator, "");

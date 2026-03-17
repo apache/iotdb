@@ -66,68 +66,63 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   }
 
   @Override
+  public void close() throws Exception {
+    if (child != null) {
+      child.close();
+    }
+  }
+
+  @Override
   String getNthIdColumnValue(DeviceEntry deviceEntry, int idColumnIndex) {
     return (String) extractor.extract(deviceEntry.getDeviceID(), idColumnIndex);
   }
 
   @Override
-  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() {
-    try {
-      // Try to calculate from cached data
-      if (calcFromCachedData()) {
-        updateResultTsBlock();
-        checkIfAllAggregatorHasFinalResult();
-        return Optional.of(true);
-      }
-
-      // Read from child operator
-      if (readAndCalcFromChild()) {
-        updateResultTsBlock();
-        checkIfAllAggregatorHasFinalResult();
-        return Optional.of(true);
-      }
-
-      // No more data from child, finish the current device
-      if (!child.hasNext()) {
-        updateResultTsBlock();
-        timeIterator.resetCurTimeRange();
-        nextDevice();
-
-        if (currentDeviceIndex >= deviceCount) {
-          // All devices consumed
-          timeIterator.setFinished();
-          return Optional.of(true);
-        } else {
-          // More devices to process, child should provide next device's data
-          return Optional.of(false);
-        }
-      }
-
-      return Optional.of(false);
-    } catch (Exception e) {
-      throw new RuntimeException("Error while processing aggregation from child operator", e);
+  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() throws Exception {
+    // Try to calculate from cached data
+    if (calcFromCachedData()) {
+      updateResultTsBlock();
+      checkIfAllAggregatorHasFinalResult();
+      return Optional.of(true);
     }
+
+    // Read from child operator
+    if (readAndCalcFromChild()) {
+      updateResultTsBlock();
+      checkIfAllAggregatorHasFinalResult();
+      return Optional.of(true);
+    }
+
+    // No more data from child, finish the current device
+    if (!child.hasNext()) {
+      updateResultTsBlock();
+      timeIterator.resetCurTimeRange();
+      nextDevice();
+
+      if (currentDeviceIndex >= deviceCount) {
+        // All devices consumed
+        timeIterator.setFinished();
+        return Optional.of(true);
+      } else {
+        // More devices to process, child should provide next device's data
+        return Optional.of(false);
+      }
+    }
+
+    return Optional.of(false);
   }
 
   /** Read data from child operator and calculate aggregation. */
   private boolean readAndCalcFromChild() throws Exception {
-    long start = System.nanoTime();
-
-    while (System.nanoTime() - start < leftRuntimeOfOneNextCall && child.hasNext()) {
+    if (child.hasNext()) {
       // Get next TsBlock from child
       TsBlock tsBlock = child.nextWithTimer();
       if (tsBlock == null || tsBlock.isEmpty()) {
-        continue;
+        return false;
       }
-
       // Calculate aggregation from raw data
-      if (calcUsingRawData(tsBlock)) {
-        return true;
-      }
-
-      // If not finished, continue reading from child
+      return calcUsingRawData(tsBlock);
     }
-
     return false;
   }
 
@@ -218,6 +213,7 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
         + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(sourceId)
         + (resultTsBlockBuilder == null ? 0 : resultTsBlockBuilder.getRetainedSizeInBytes())
         + RamUsageEstimator.sizeOfCollection(deviceEntries)
-        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child);
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(child)
+        + MemoryEstimationHelper.getEstimatedSizeOfAccountableObject(childOperatorGenerator);
   }
 }
