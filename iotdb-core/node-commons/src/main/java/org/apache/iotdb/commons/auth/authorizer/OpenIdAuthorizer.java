@@ -55,6 +55,7 @@ import java.util.UUID;
 public class OpenIdAuthorizer extends BasicAuthorizer {
 
   private static final Logger logger = LoggerFactory.getLogger(OpenIdAuthorizer.class);
+  private static final long MAX_CLOCK_SKEW_SECONDS = 300;
   public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
   public static final String OPENID_USER_PREFIX = "openid-";
 
@@ -194,8 +195,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
   private Claims validateToken(String token) {
     return Jwts.parser()
-        // Basically ignore the Expiration Date, if there is any???
-        .clockSkewSeconds(Long.MAX_VALUE / 1000)
+        .clockSkewSeconds(MAX_CLOCK_SKEW_SECONDS)
         .verifyWith(providerKey)
         .build()
         .parseSignedClaims(token)
