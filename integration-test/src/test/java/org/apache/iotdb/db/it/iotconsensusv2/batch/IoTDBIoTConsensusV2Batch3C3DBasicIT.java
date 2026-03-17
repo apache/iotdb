@@ -46,6 +46,24 @@ public class IoTDBIoTConsensusV2Batch3C3DBasicIT extends IoTDBIoTConsensusV23C3D
 
   @Override
   @Test
+  public void testFollowerCanReadConsistentDataAfterCatchUp() throws Exception {
+    super.testFollowerCanReadConsistentDataAfterCatchUp();
+  }
+
+  @Override
+  @Test
+  public void testReplicaConsistencyAfterDeleteAndLeaderStop() throws Exception {
+    super.testReplicaConsistencyAfterDeleteAndLeaderStop();
+  }
+
+  @Override
+  @Test
+  public void testReplicaConsistencyRepairAfterFollowerLosesSealedTsFile() throws Exception {
+    super.testReplicaConsistencyRepairAfterFollowerLosesSealedTsFile();
+  }
+
+  @Override
+  @Test
   public void test3C3DWriteFlushAndQuery() throws Exception {
     super.test3C3DWriteFlushAndQuery();
   }

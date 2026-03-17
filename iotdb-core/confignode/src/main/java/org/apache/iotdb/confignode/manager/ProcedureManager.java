@@ -62,6 +62,7 @@ import org.apache.iotdb.confignode.procedure.ProcedureMetrics;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
+import org.apache.iotdb.confignode.procedure.impl.consistency.LiveDataRegionRepairExecutionContext;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -84,6 +85,7 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
+import org.apache.iotdb.confignode.procedure.impl.consistency.RepairRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterTimeSeriesDataTypeProcedure;
@@ -1371,6 +1373,41 @@ public class ProcedureManager {
     } else {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(status.getMessage());
+    }
+  }
+
+  public TSStatus triggerRegionConsistencyRepair(final TConsensusGroupId consensusGroupId) {
+    if (consensusGroupId == null || consensusGroupId.getType() != TConsensusGroupType.DataRegion) {
+      return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
+          .setMessage("Replica consistency repair currently only supports DataRegion");
+    }
+
+    synchronized (this) {
+      for (Procedure<?> procedure : executor.getProcedures().values()) {
+        if (procedure instanceof RepairRegionProcedure
+            && !procedure.isFinished()
+            && consensusGroupId.equals(((RepairRegionProcedure) procedure).getConsensusGroupId())) {
+          return new TSStatus(TSStatusCode.OVERLAP_WITH_EXISTING_TASK.getStatusCode())
+              .setMessage(
+                  "Replica consistency repair is already running for region " + consensusGroupId);
+        }
+      }
+
+      try {
+        RepairRegionProcedure procedure =
+            new RepairRegionProcedure(
+                consensusGroupId,
+                new LiveDataRegionRepairExecutionContext(configManager, consensusGroupId));
+        executor.submitProcedure(procedure);
+        return waitingProcedureFinished(procedure);
+      } catch (Exception e) {
+        LOGGER.warn(
+            "Failed to trigger replica consistency repair for region {}",
+            consensusGroupId,
+            e);
+        return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(e.getMessage());
+      }
     }
   }
 

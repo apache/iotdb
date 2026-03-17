@@ -19,12 +19,20 @@
 
 package org.apache.iotdb.db.it.iotconsensusv2;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -33,15 +41,21 @@ import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
@@ -76,6 +90,10 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(102, 5, 6)";
   protected static final String FLUSH_COMMAND = "flush on cluster";
   protected static final String COUNT_QUERY = "select count(*) from root.sg.**";
+  protected static final String DELETE_SPEED_UP_TO_101 =
+      "DELETE FROM root.sg.d1.speed WHERE time <= 101";
+  protected static final String COUNT_AFTER_DELETE_QUERY =
+      "select count(speed), count(temperature) from root.sg.d1";
   protected static final String SELECT_ALL_QUERY = "select speed, temperature from root.sg.d1";
 
   /**
@@ -108,17 +126,32 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
-      LOGGER.info("Writing data to 3C3D cluster (mode: {})...", getIoTConsensusV2Mode());
-      statement.execute(INSERTION1);
-      statement.execute(INSERTION2);
-      statement.execute(INSERTION3);
-
-      LOGGER.info("Executing flush on cluster...");
-      statement.execute(FLUSH_COMMAND);
-
+      insertAndFlushTestData(statement);
       verifyDataConsistency(statement);
 
       LOGGER.info("3C3D IoTConsensusV2 {} basic test passed", getIoTConsensusV2Mode());
+    }
+  }
+
+  /**
+   * Test that a follower can observe the same logical view after the leader reports replication
+   * catch-up.
+   */
+  public void testFollowerCanReadConsistentDataAfterCatchUp() throws Exception {
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+
+      insertAndFlushTestData(statement);
+      verifyDataConsistency(statement);
+
+      RegionReplicaSelection regionReplicaSelection = selectReplicatedDataRegion(statement);
+      waitForReplicationComplete(regionReplicaSelection.leaderNode);
+
+      LOGGER.info(
+          "Verifying logical view from follower DataNode {} for region {} after catch-up",
+          regionReplicaSelection.followerDataNodeId,
+          regionReplicaSelection.regionId);
+      verifyDataConsistencyOnNode(regionReplicaSelection.followerNode);
     }
   }
 
@@ -127,86 +160,205 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
    * follower serves the same data.
    */
   public void testReplicaConsistencyAfterLeaderStop() throws Exception {
+    RegionReplicaSelection regionReplicaSelection;
     try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
         Statement statement = makeItCloseQuietly(connection.createStatement())) {
 
-      LOGGER.info("Writing data to 3C3D cluster (mode: {})...", getIoTConsensusV2Mode());
-      statement.execute(INSERTION1);
-      statement.execute(INSERTION2);
-      statement.execute(INSERTION3);
-      statement.execute(FLUSH_COMMAND);
-
+      insertAndFlushTestData(statement);
       verifyDataConsistency(statement);
 
-      Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap =
-          getDataRegionMapWithLeader(statement);
+      regionReplicaSelection = selectReplicatedDataRegion(statement);
+      waitForReplicationComplete(regionReplicaSelection.leaderNode);
+    }
 
-      int targetRegionId = -1;
-      int leaderDataNodeId = -1;
-      int followerDataNodeId = -1;
-      for (Map.Entry<Integer, Pair<Integer, Set<Integer>>> entry : dataRegionMap.entrySet()) {
-        Pair<Integer, Set<Integer>> leaderAndReplicas = entry.getValue();
-        if (leaderAndReplicas.getRight().size() > 1
-            && leaderAndReplicas.getRight().size() <= DATA_REPLICATION_FACTOR
-            && leaderAndReplicas.getLeft() > 0) {
-          targetRegionId = entry.getKey();
-          leaderDataNodeId = leaderAndReplicas.getLeft();
-          final int lambdaLeaderDataNodeId = leaderDataNodeId;
-          followerDataNodeId =
-              leaderAndReplicas.getRight().stream()
-                  .filter(i -> i != lambdaLeaderDataNodeId)
-                  .findAny()
-                  .orElse(-1);
-          break;
-        }
+    LOGGER.info(
+        "Stopping leader DataNode {} (region {}) for replica consistency test",
+        regionReplicaSelection.leaderDataNodeId,
+        regionReplicaSelection.regionId);
+
+    regionReplicaSelection.leaderNode.stopForcibly();
+    Assert.assertFalse("Leader should be stopped", regionReplicaSelection.leaderNode.isAlive());
+
+    LOGGER.info(
+        "Waiting for follower DataNode {} to be elected as new leader and verifying replica consistency...",
+        regionReplicaSelection.followerDataNodeId);
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(() -> verifyDataConsistencyOnNode(regionReplicaSelection.followerNode));
+
+    LOGGER.info(
+        "Replica consistency verified: follower has same data as former leader after failover");
+  }
+
+  /**
+   * Test replica consistency for a delete path: after deletion is replicated, stopping the leader
+   * must not change the surviving logical view.
+   */
+  public void testReplicaConsistencyAfterDeleteAndLeaderStop() throws Exception {
+    RegionReplicaSelection regionReplicaSelection;
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+
+      insertAndFlushTestData(statement);
+      regionReplicaSelection = selectReplicatedDataRegion(statement);
+
+      LOGGER.info(
+          "Deleting replicated data on leader DataNode {} for region {}",
+          regionReplicaSelection.leaderDataNodeId,
+          regionReplicaSelection.regionId);
+      statement.execute(DELETE_SPEED_UP_TO_101);
+      statement.execute(FLUSH_COMMAND);
+
+      verifyPostDeleteConsistency(statement);
+      waitForReplicationComplete(regionReplicaSelection.leaderNode);
+      verifyPostDeleteConsistencyOnNode(regionReplicaSelection.followerNode);
+    }
+
+    LOGGER.info(
+        "Stopping leader DataNode {} after replicated delete",
+        regionReplicaSelection.leaderDataNodeId);
+    regionReplicaSelection.leaderNode.stopForcibly();
+    Assert.assertFalse("Leader should be stopped", regionReplicaSelection.leaderNode.isAlive());
+
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(() -> verifyPostDeleteConsistencyOnNode(regionReplicaSelection.followerNode));
+
+    LOGGER.info(
+        "Replica consistency verified after delete and failover on follower DataNode {}",
+        regionReplicaSelection.followerDataNodeId);
+  }
+
+  /**
+   * Simulate a follower missing a sealed TsFile, trigger replica consistency repair through
+   * ConfigNode, and verify the repaired follower still serves the correct data after the leader is
+   * stopped.
+   */
+  public void testReplicaConsistencyRepairAfterFollowerLosesSealedTsFile() throws Exception {
+    RegionReplicaSelection regionReplicaSelection;
+    Path deletedTsFile;
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      insertAndFlushTestData(statement);
+      verifyDataConsistency(statement);
+
+      regionReplicaSelection = selectReplicatedDataRegion(statement);
+      waitForReplicationComplete(regionReplicaSelection.leaderNode);
+      deletedTsFile =
+          findLatestSealedTsFile(regionReplicaSelection.followerNode, regionReplicaSelection.regionId);
+    }
+
+    LOGGER.info(
+        "Stopping follower DataNode {} and deleting sealed TsFile {} for region {}",
+        regionReplicaSelection.followerDataNodeId,
+        deletedTsFile,
+        regionReplicaSelection.regionId);
+    regionReplicaSelection.followerNode.stopForcibly();
+    Assert.assertFalse("Follower should be stopped", regionReplicaSelection.followerNode.isAlive());
+    deleteTsFileArtifacts(deletedTsFile);
+
+    regionReplicaSelection.followerNode.start();
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(() -> assertDataInconsistentOnNode(regionReplicaSelection.followerNode));
+
+    triggerRegionConsistencyRepair(regionReplicaSelection.regionId);
+
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(() -> verifyDataConsistencyOnNode(regionReplicaSelection.followerNode));
+
+    LOGGER.info(
+        "Stopping leader DataNode {} after repair to verify repaired follower serves local data",
+        regionReplicaSelection.leaderDataNodeId);
+    regionReplicaSelection.leaderNode.stopForcibly();
+    Assert.assertFalse("Leader should be stopped", regionReplicaSelection.leaderNode.isAlive());
+
+    Awaitility.await()
+        .pollDelay(2, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(() -> verifyDataConsistencyOnNode(regionReplicaSelection.followerNode));
+  }
+
+  protected void insertAndFlushTestData(Statement statement) throws Exception {
+    LOGGER.info("Writing data to 3C3D cluster (mode: {})...", getIoTConsensusV2Mode());
+    statement.execute(INSERTION1);
+    statement.execute(INSERTION2);
+    statement.execute(INSERTION3);
+
+    LOGGER.info("Executing flush on cluster...");
+    statement.execute(FLUSH_COMMAND);
+  }
+
+  protected RegionReplicaSelection selectReplicatedDataRegion(Statement statement) throws Exception {
+    Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap = getDataRegionMapWithLeader(statement);
+
+    for (Map.Entry<Integer, Pair<Integer, Set<Integer>>> entry : dataRegionMap.entrySet()) {
+      Pair<Integer, Set<Integer>> leaderAndReplicas = entry.getValue();
+      if (leaderAndReplicas.getLeft() <= 0 || leaderAndReplicas.getRight().size() <= 1) {
+        continue;
       }
 
-      Assert.assertTrue(
-          "Should find a data region with leader for root.sg",
-          targetRegionId > 0 && leaderDataNodeId > 0 && followerDataNodeId > 0);
+      int leaderDataNodeId = leaderAndReplicas.getLeft();
+      int followerDataNodeId =
+          leaderAndReplicas.getRight().stream()
+              .filter(dataNodeId -> dataNodeId != leaderDataNodeId)
+              .findFirst()
+              .orElse(-1);
+      if (followerDataNodeId <= 0) {
+        continue;
+      }
 
       DataNodeWrapper leaderNode =
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(leaderDataNodeId)
-              .orElseThrow(() -> new AssertionError("DataNode not found in cluster"));
-
-      waitForReplicationComplete(leaderNode);
-
-      LOGGER.info(
-          "Stopping leader DataNode {} (region {}) for replica consistency test",
-          leaderDataNodeId,
-          targetRegionId);
-
-      leaderNode.stopForcibly();
-      Assert.assertFalse("Leader should be stopped", leaderNode.isAlive());
-
+              .orElseThrow(() -> new AssertionError("Leader DataNode not found in cluster"));
       DataNodeWrapper followerNode =
           EnvFactory.getEnv()
               .dataNodeIdToWrapper(followerDataNodeId)
               .orElseThrow(() -> new AssertionError("Follower DataNode not found in cluster"));
-      LOGGER.info(
-          "Waiting for follower DataNode {} to be elected as new leader and verifying replica consistency...",
-          followerDataNodeId);
-      Awaitility.await()
-          .pollDelay(2, TimeUnit.SECONDS)
-          .atMost(2, TimeUnit.MINUTES)
-          .untilAsserted(
-              () -> {
-                try (Connection followerConn =
-                        makeItCloseQuietly(
-                            EnvFactory.getEnv()
-                                .getConnection(
-                                    followerNode,
-                                    SessionConfig.DEFAULT_USER,
-                                    SessionConfig.DEFAULT_PASSWORD,
-                                    BaseEnv.TREE_SQL_DIALECT));
-                    Statement followerStmt = makeItCloseQuietly(followerConn.createStatement())) {
-                  verifyDataConsistency(followerStmt);
-                }
-              });
+      return new RegionReplicaSelection(
+          entry.getKey(),
+          leaderDataNodeId,
+          followerDataNodeId,
+          leaderNode,
+          followerNode);
+    }
 
-      LOGGER.info(
-          "Replica consistency verified: follower has same data as former leader after failover");
+    Assert.fail("Should find a replicated data region with a leader for root.sg");
+    throw new AssertionError("unreachable");
+  }
+
+  protected void verifyDataConsistencyOnNode(DataNodeWrapper targetNode) throws Exception {
+    try (Connection targetConnection =
+            makeItCloseQuietly(
+                EnvFactory.getEnv()
+                    .getConnection(
+                        targetNode,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD,
+                        BaseEnv.TREE_SQL_DIALECT));
+        Statement targetStatement = makeItCloseQuietly(targetConnection.createStatement())) {
+      verifyDataConsistency(targetStatement);
+    }
+  }
+
+  protected void verifyPostDeleteConsistencyOnNode(DataNodeWrapper targetNode) throws Exception {
+    try (Connection targetConnection =
+            makeItCloseQuietly(
+                EnvFactory.getEnv()
+                    .getConnection(
+                        targetNode,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD,
+                        BaseEnv.TREE_SQL_DIALECT));
+        Statement targetStatement = makeItCloseQuietly(targetConnection.createStatement())) {
+      verifyPostDeleteConsistency(targetStatement);
     }
   }
 
@@ -284,6 +436,69 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     Assert.assertEquals("Expected 3 rows from select *", 3, rowCount);
   }
 
+  protected void verifyPostDeleteConsistency(Statement statement) throws Exception {
+    LOGGER.info("Querying data to verify replicated delete success...");
+    try (ResultSet countResult = statement.executeQuery(COUNT_AFTER_DELETE_QUERY)) {
+      Assert.assertTrue("Delete count query should return results", countResult.next());
+      Assert.assertEquals(
+          "Expected only one surviving speed value after delete",
+          1,
+          parseLongFromString(countResult.getString(1)));
+      Assert.assertEquals(
+          "Expected all temperature values to remain after delete",
+          3,
+          parseLongFromString(countResult.getString(2)));
+    }
+
+    int rowCount = 0;
+    try (ResultSet selectResult = statement.executeQuery(SELECT_ALL_QUERY)) {
+      while (selectResult.next()) {
+        rowCount++;
+        long timestamp = parseLongFromString(selectResult.getString(1));
+        String speed = selectResult.getString(2);
+        long temperature = parseLongFromString(selectResult.getString(3));
+        if (timestamp == 100) {
+          assertNullValue(speed);
+          Assert.assertEquals(2, temperature);
+        } else if (timestamp == 101) {
+          assertNullValue(speed);
+          Assert.assertEquals(4, temperature);
+        } else if (timestamp == 102) {
+          Assert.assertEquals(5, parseLongFromString(speed));
+          Assert.assertEquals(6, temperature);
+        } else {
+          Assert.fail("Unexpected timestamp after delete: " + timestamp);
+        }
+      }
+    }
+    Assert.assertEquals("Expected 3 logical rows from select after delete", 3, rowCount);
+  }
+
+  protected void assertDataInconsistentOnNode(DataNodeWrapper targetNode) throws Exception {
+    try (Connection targetConnection =
+            makeItCloseQuietly(
+                EnvFactory.getEnv()
+                    .getConnection(
+                        targetNode,
+                        SessionConfig.DEFAULT_USER,
+                        SessionConfig.DEFAULT_PASSWORD,
+                        BaseEnv.TREE_SQL_DIALECT));
+        Statement targetStatement = makeItCloseQuietly(targetConnection.createStatement())) {
+      try {
+        verifyDataConsistency(targetStatement);
+        Assert.fail("Expected inconsistent data on DataNode " + targetNode.getId());
+      } catch (AssertionError expected) {
+        LOGGER.info("Observed expected inconsistency on DataNode {}", targetNode.getId());
+      }
+    }
+  }
+
+  protected static void assertNullValue(String value) {
+    Assert.assertTrue(
+        "Expected deleted value to be null, but was " + value,
+        value == null || "null".equalsIgnoreCase(value));
+  }
+
   /** Parse long from IoTDB result string (handles both "1" and "1.0" formats). */
   protected static long parseLongFromString(String s) {
     if (s == null || s.isEmpty()) {
@@ -293,6 +508,74 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       return Long.parseLong(s);
     } catch (NumberFormatException e) {
       return (long) Double.parseDouble(s);
+    }
+  }
+
+  protected static final class RegionReplicaSelection {
+    private final int regionId;
+    private final int leaderDataNodeId;
+    private final int followerDataNodeId;
+    private final DataNodeWrapper leaderNode;
+    private final DataNodeWrapper followerNode;
+
+    private RegionReplicaSelection(
+        int regionId,
+        int leaderDataNodeId,
+        int followerDataNodeId,
+        DataNodeWrapper leaderNode,
+        DataNodeWrapper followerNode) {
+      this.regionId = regionId;
+      this.leaderDataNodeId = leaderDataNodeId;
+      this.followerDataNodeId = followerDataNodeId;
+      this.leaderNode = leaderNode;
+      this.followerNode = followerNode;
+    }
+  }
+
+  private Path findLatestSealedTsFile(DataNodeWrapper dataNodeWrapper, int regionId)
+      throws Exception {
+    try (Stream<Path> tsFiles = Files.walk(Paths.get(dataNodeWrapper.getDataPath()))) {
+      Optional<Path> candidate =
+          tsFiles
+              .filter(Files::isRegularFile)
+              .filter(path -> path.getFileName().toString().endsWith(".tsfile"))
+              .filter(path -> path.toString().contains(File.separator + "root.sg" + File.separator))
+              .filter(path -> belongsToRegion(path, regionId))
+              .max((left, right) -> Long.compare(left.toFile().lastModified(), right.toFile().lastModified()));
+      if (candidate.isPresent()) {
+        return candidate.get();
+      }
+    }
+    throw new AssertionError("No sealed TsFile found for region " + regionId);
+  }
+
+  private boolean belongsToRegion(Path tsFile, int regionId) {
+    Path timePartitionDir = tsFile.getParent();
+    Path regionDir = timePartitionDir == null ? null : timePartitionDir.getParent();
+    return regionDir != null && String.valueOf(regionId).equals(regionDir.getFileName().toString());
+  }
+
+  private void deleteTsFileArtifacts(Path tsFile) throws Exception {
+    Files.deleteIfExists(tsFile);
+    Files.deleteIfExists(Paths.get(tsFile.toString() + TsFileResource.RESOURCE_SUFFIX));
+    Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFile.FILE_SUFFIX));
+    Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFile.COMPACTION_FILE_SUFFIX));
+    Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFileV1.FILE_SUFFIX));
+    Files.deleteIfExists(
+        Paths.get(tsFile.toString() + ModificationFileV1.COMPACTION_FILE_SUFFIX));
+  }
+
+  private void triggerRegionConsistencyRepair(int regionId) throws Exception {
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
+    try (SyncConfigNodeIServiceClient client =
+        (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
+      TSStatus status =
+          client.triggerRegionConsistencyRepair(
+              new TTriggerRegionConsistencyRepairReq(consensusGroupId));
+      Assert.assertEquals(
+          "Replica consistency repair should succeed",
+          200,
+          status.getCode());
     }
   }
 }

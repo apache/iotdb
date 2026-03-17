@@ -168,6 +168,9 @@ public enum ProcedureType {
   TOPIC_META_SYNC_PROCEDURE((short) 1508),
   CONSUMER_GROUP_META_SYNC_PROCEDURE((short) 1509),
 
+  /** Consistency */
+  REPAIR_REGION_PROCEDURE((short) 1600),
+
   /** Other */
   @TestOnly
   NEVER_FINISH_PROCEDURE((short) 30000),

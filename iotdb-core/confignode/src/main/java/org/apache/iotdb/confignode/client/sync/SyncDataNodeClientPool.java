@@ -32,6 +32,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRepairTransferTsFileReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
@@ -99,6 +101,10 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.DELETE_REGION,
         (req, client) -> client.deleteRegion((TConsensusGroupId) req));
     actionMapBuilder.put(
+        CnToDnSyncRequestType.GET_DATA_REGION_CONSISTENCY_SNAPSHOT,
+        (req, client) ->
+            client.getDataRegionConsistencySnapshot((TDataRegionConsistencySnapshotReq) req));
+    actionMapBuilder.put(
         CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE,
         (req, client) -> client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req));
     actionMapBuilder.put(
@@ -134,6 +140,9 @@ public class SyncDataNodeClientPool {
     actionMapBuilder.put(
         CnToDnSyncRequestType.RESET_PEER_LIST,
         (req, client) -> client.resetPeerList((TResetPeerListReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.REPAIR_TRANSFER_TSFILE,
+        (req, client) -> client.repairTransferTsFile((TRepairTransferTsFileReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.SHOW_CONFIGURATION, (req, client) -> client.showConfiguration());
     actionMapBuilder.put(

@@ -173,6 +173,10 @@ struct TSetDataNodeStatusReq {
   2: required string status
 }
 
+struct TTriggerRegionConsistencyRepairReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
 // Database
 struct TDeleteDatabaseReq {
   1: required string prefixPath
@@ -1753,6 +1757,9 @@ service IConfigNodeRPCService {
 
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
+  /** Trigger replica consistency check and repair for a single DataRegion */
+  common.TSStatus triggerRegionConsistencyRepair(TTriggerRegionConsistencyRepairReq req)
+
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
@@ -2055,4 +2062,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

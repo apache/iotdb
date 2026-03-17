@@ -17,39 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.commons.consensus.iotv2.consistency.repair;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
-  SHOW_APPLIED_CONFIGURATIONS,
-
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
-  GET_DATA_REGION_CONSISTENCY_SNAPSHOT,
-  REPAIR_TRANSFER_TSFILE,
-
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+/** Actions that the RepairConflictResolver can determine for a single diff entry. */
+public enum RepairAction {
+  /** Send the Leader's data to the Follower (insert/update). */
+  SEND_TO_FOLLOWER,
+  /** Send the Follower's data to the Leader (insert/update). */
+  SEND_TO_LEADER,
+  /** Delete the data on the Follower. */
+  DELETE_ON_FOLLOWER,
+  /** Delete the data on the Leader. */
+  DELETE_ON_LEADER,
+  /** Keep the Follower's version (it's newer or more authoritative). */
+  KEEP_FOLLOWER,
+  /** Skip this entry (no action needed, e.g., Follower's deletion is newer). */
+  SKIP,
+  /** Skip and raise an alert (anomalous state, e.g., data exists on Follower with no deletion). */
+  SKIP_AND_ALERT
 }

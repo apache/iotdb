@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.procedure.impl.consistency.RepairRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -395,6 +396,9 @@ public class ProcedureFactory implements IProcedureFactory {
       case CONSUMER_GROUP_META_SYNC_PROCEDURE:
         procedure = new ConsumerGroupMetaSyncProcedure();
         break;
+      case REPAIR_REGION_PROCEDURE:
+        procedure = new RepairRegionProcedure();
+        break;
       case CREATE_MANY_DATABASES_PROCEDURE:
         procedure = new CreateManyDatabasesProcedure();
         break;
@@ -540,6 +544,8 @@ public class ProcedureFactory implements IProcedureFactory {
       return ProcedureType.ALTER_CONSUMER_GROUP_PROCEDURE;
     } else if (procedure instanceof ConsumerGroupMetaSyncProcedure) {
       return ProcedureType.CONSUMER_GROUP_META_SYNC_PROCEDURE;
+    } else if (procedure instanceof RepairRegionProcedure) {
+      return ProcedureType.REPAIR_REGION_PROCEDURE;
     } else if (procedure instanceof DeleteLogicalViewProcedure) {
       return ProcedureType.DELETE_LOGICAL_VIEW_PROCEDURE;
     } else if (procedure instanceof AlterLogicalViewProcedure) {

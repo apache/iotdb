@@ -193,6 +193,7 @@ import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.consistency.DataRegionConsistencyRepairService;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -238,6 +239,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
@@ -286,6 +289,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TPushSingleTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaResp;
 import org.apache.iotdb.mpp.rpc.thrift.TPushTopicMetaRespExceptionMessage;
+import org.apache.iotdb.mpp.rpc.thrift.TRepairTransferTsFileReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
@@ -384,6 +388,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngine storageEngine = StorageEngine.getInstance();
+  private final DataRegionConsistencyRepairService consistencyRepairService =
+      new DataRegionConsistencyRepairService();
 
   private final TableDeviceSchemaCache tableDeviceSchemaCache =
       TableDeviceSchemaCache.getInstance();
@@ -588,6 +594,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                 req.uuid,
                 req.isSetIsGeneratedByPipe() && req.isGeneratedByPipe,
                 timePartitionProgressIndexMap));
+  }
+
+  @Override
+  public TDataRegionConsistencySnapshotResp getDataRegionConsistencySnapshot(
+      TDataRegionConsistencySnapshotReq req) {
+    return consistencyRepairService.getSnapshot(req);
+  }
+
+  @Override
+  public TSStatus repairTransferTsFile(TRepairTransferTsFileReq req) {
+    return consistencyRepairService.repairTransferTsFile(req);
   }
 
   @Override

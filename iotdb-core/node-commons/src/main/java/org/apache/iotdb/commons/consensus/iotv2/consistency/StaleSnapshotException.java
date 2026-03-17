@@ -17,39 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.commons.consensus.iotv2.consistency;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
-  SHOW_APPLIED_CONFIGURATIONS,
+/**
+ * Thrown when a partition is modified (by flush, compaction, or deletion) during consistency view
+ * construction, indicating the snapshot is stale and the operation should be retried.
+ */
+public class StaleSnapshotException extends Exception {
 
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
-  GET_DATA_REGION_CONSISTENCY_SNAPSHOT,
-  REPAIR_TRANSFER_TSFILE,
-
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+  public StaleSnapshotException(String message) {
+    super(message);
+  }
 }

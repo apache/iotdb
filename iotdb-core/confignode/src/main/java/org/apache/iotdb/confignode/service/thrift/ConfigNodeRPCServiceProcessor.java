@@ -223,6 +223,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.confignode.service.ConfigNode;
@@ -1351,6 +1352,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus removeRegion(TRemoveRegionReq req) throws TException {
     return configManager.removeRegion(req);
+  }
+
+  @Override
+  public TSStatus triggerRegionConsistencyRepair(TTriggerRegionConsistencyRepairReq req)
+      throws TException {
+    return configManager.triggerRegionConsistencyRepair(req);
   }
 
   @Override

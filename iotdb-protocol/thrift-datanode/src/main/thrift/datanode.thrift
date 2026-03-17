@@ -428,6 +428,33 @@ struct TLoadResp {
   3: optional common.TSStatus status
 }
 
+struct TConsistencyMerkleFile {
+  1: required string sourceTsFilePath
+  2: required i64 tsFileSize
+  3: required i64 fileXorHash
+  4: required i64 fileAddHash
+}
+
+struct TTimePartitionConsistencyView {
+  1: required i64 timePartitionId
+  2: required list<TConsistencyMerkleFile> merkleFiles
+}
+
+struct TDataRegionConsistencySnapshotReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TDataRegionConsistencySnapshotResp {
+  1: required common.TSStatus status
+  2: optional list<TTimePartitionConsistencyView> timePartitionViews
+}
+
+struct TRepairTransferTsFileReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string sourceTsFilePath
+  3: required list<common.TDataNodeLocation> targetDataNodes
+}
+
 struct TConstructSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
@@ -814,6 +841,11 @@ service IDataNodeRPCService {
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);
+
+  TDataRegionConsistencySnapshotResp getDataRegionConsistencySnapshot(
+      TDataRegionConsistencySnapshotReq req);
+
+  common.TSStatus repairTransferTsFile(TRepairTransferTsFileReq req);
 
   common.TSStatus updateAttribute(TAttributeUpdateReq req);
 
