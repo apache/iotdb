@@ -30,20 +30,25 @@ import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.Disruptor;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.EventHandler;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.disruptor.RingBuffer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.function.Consumer;
 
 import static org.apache.iotdb.commons.concurrent.ThreadName.PIPE_EXTRACTOR_DISRUPTOR;
 
 public class DisruptorQueue {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(DisruptorQueue.class);
   private static final IoTDBDaemonThreadFactory THREAD_FACTORY =
       new IoTDBDaemonThreadFactory(PIPE_EXTRACTOR_DISRUPTOR.getName());
 
   private final PipeMemoryBlock allocatedMemoryBlock;
   private final Disruptor<EventContainer> disruptor;
   private final RingBuffer<EventContainer> ringBuffer;
-
   private volatile boolean isClosed = false;
+
+  private volatile long lastLogTime = Long.MIN_VALUE;
 
   public DisruptorQueue(
       final EventHandler<PipeRealtimeEvent> eventHandler,
@@ -84,6 +89,7 @@ public class DisruptorQueue {
       ((PipeHeartbeatEvent) innerEvent).recordDisruptorSize(ringBuffer);
     }
     ringBuffer.publishEvent((container, sequence, o) -> container.setEvent(event), event);
+    mayPrintExceedingLog();
   }
 
   public void shutdown() {
@@ -95,6 +101,20 @@ public class DisruptorQueue {
 
   public boolean isClosed() {
     return isClosed;
+  }
+
+  private void mayPrintExceedingLog() {
+    final long capacity = ringBuffer.remainingCapacity();
+    final long bufferSize = ringBuffer.getBufferSize();
+    if ((double) capacity / bufferSize >= 0.5
+        && System.currentTimeMillis() - lastLogTime
+            >= PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds()) {
+      LOGGER.warn(
+          "The assigner queue content has exceeded half, it may be stuck and may block insertion. capacity: {}, bufferSize: {}",
+          capacity,
+          bufferSize);
+      lastLogTime = System.currentTimeMillis();
+    }
   }
 
   private static class EventContainer {
