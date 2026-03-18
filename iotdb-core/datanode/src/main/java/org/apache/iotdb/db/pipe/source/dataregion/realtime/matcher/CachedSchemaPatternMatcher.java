@@ -19,15 +19,12 @@
 
 package org.apache.iotdb.db.pipe.source.dataregion.realtime.matcher;
 
-import org.apache.iotdb.commons.pipe.config.PipeConfig;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.PipePattern;
 import org.apache.iotdb.db.pipe.event.common.heartbeat.PipeHeartbeatEvent;
 import org.apache.iotdb.db.pipe.event.common.schema.PipeSchemaRegionWritePlanEvent;
 import org.apache.iotdb.db.pipe.event.realtime.PipeRealtimeEvent;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.PipeRealtimeDataRegionSource;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import org.apache.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +34,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -47,7 +45,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
   protected final ReentrantReadWriteLock lock;
 
   protected final Set<PipeRealtimeDataRegionSource> sources;
-  protected final Cache<String, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
+  protected final Map<String, Set<PipeRealtimeDataRegionSource>> deviceToSourcesCache;
 
   public CachedSchemaPatternMatcher() {
     this.lock = new ReentrantReadWriteLock();
@@ -55,10 +53,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     // iterated by {@link #assignToSource}, at the same time the sources may be added or
     // removed by {@link #register} and {@link #deregister}.
     this.sources = new CopyOnWriteArraySet<>();
-    this.deviceToSourcesCache =
-        Caffeine.newBuilder()
-            .maximumSize(PipeConfig.getInstance().getPipeSourceMatcherCacheSize())
-            .build();
+    this.deviceToSourcesCache = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -66,7 +61,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.add(source);
-      deviceToSourcesCache.invalidateAll();
+      deviceToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -77,7 +72,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.remove(source);
-      deviceToSourcesCache.invalidateAll();
+      deviceToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }
@@ -123,7 +118,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
 
         // 1. try to get matched sources from cache, if not success, match them by device
         final Set<PipeRealtimeDataRegionSource> sourcesFilteredByDevice =
-            deviceToSourcesCache.get(device, this::filterSourcesByDevice);
+            deviceToSourcesCache.computeIfAbsent(device, this::filterSourcesByDevice);
         // this would not happen
         if (sourcesFilteredByDevice == null) {
           LOGGER.warn("Match result NPE when handle device {}", device);
@@ -213,8 +208,7 @@ public class CachedSchemaPatternMatcher implements PipeDataRegionMatcher {
     lock.writeLock().lock();
     try {
       sources.clear();
-      deviceToSourcesCache.invalidateAll();
-      deviceToSourcesCache.cleanUp();
+      deviceToSourcesCache.clear();
     } finally {
       lock.writeLock().unlock();
     }

@@ -93,6 +93,11 @@ public class WithExclusionIoTDBPipePattern extends IoTDBPipePatternOperations {
   }
 
   @Override
+  public boolean overlapWithDevice(final String device) {
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
   public boolean matchesMeasurement(final String device, final String measurement) {
     return inclusionPattern.matchesMeasurement(device, measurement)
         && !exclusionPattern.matchesMeasurement(device, measurement);
