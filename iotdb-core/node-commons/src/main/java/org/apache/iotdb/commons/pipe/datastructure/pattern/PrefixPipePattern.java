@@ -134,7 +134,6 @@ public class PrefixPipePattern extends PipePattern {
 
   @Override
   public boolean matchesMeasurement(final String device, String measurement) {
-    final String deviceStr = device.toString();
     // We assume that the device is already matched.
     if (pattern.length() <= device.length()) {
       return true;
