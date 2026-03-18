@@ -45,7 +45,8 @@ public class RepairSession {
   }
 
   public interface RepairSessionApplier {
-    void apply(String sessionId, long partitionId, List<RepairRecord> inserts, List<RepairRecord> deletes)
+    void apply(
+        String sessionId, long partitionId, List<RepairRecord> inserts, List<RepairRecord> deletes)
         throws Exception;
   }
 
@@ -57,7 +58,8 @@ public class RepairSession {
     void delete(String sessionId);
   }
 
-  private static final RepairSessionApplier NO_OP_APPLIER = (sessionId, partitionId, inserts, deletes) -> {};
+  private static final RepairSessionApplier NO_OP_APPLIER =
+      (sessionId, partitionId, inserts, deletes) -> {};
 
   private static final RepairSessionJournal NO_OP_JOURNAL =
       new RepairSessionJournal() {

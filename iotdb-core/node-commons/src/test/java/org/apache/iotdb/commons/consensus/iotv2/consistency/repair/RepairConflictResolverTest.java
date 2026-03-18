@@ -43,8 +43,7 @@ public class RepairConflictResolverTest {
     RepairConflictResolver resolver =
         new RepairConflictResolver(
             Collections.emptyList(),
-            Collections.singletonList(
-                new ModEntrySummary("root.sg.d1", "s1", 0L, 200L, 20L)));
+            Collections.singletonList(new ModEntrySummary("root.sg.d1", "s1", 0L, 200L, 20L)));
 
     Assert.assertEquals(
         RepairAction.DELETE_ON_LEADER,
@@ -65,8 +64,7 @@ public class RepairConflictResolverTest {
   public void followerHasWithNewerLeaderDeletionShouldDeleteOnFollower() {
     RepairConflictResolver resolver =
         new RepairConflictResolver(
-            Collections.singletonList(
-                new ModEntrySummary("root.sg.d1", "s1", 0L, 200L, 20L)),
+            Collections.singletonList(new ModEntrySummary("root.sg.d1", "s1", 0L, 200L, 20L)),
             Collections.emptyList());
 
     Assert.assertEquals(

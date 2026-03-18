@@ -63,6 +63,7 @@ import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.env.RegionMaintainHandler;
 import org.apache.iotdb.confignode.procedure.env.RemoveDataNodeHandler;
 import org.apache.iotdb.confignode.procedure.impl.consistency.LiveDataRegionRepairExecutionContext;
+import org.apache.iotdb.confignode.procedure.impl.consistency.RepairRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.cq.CreateCQProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
@@ -85,7 +86,6 @@ import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionMigrationPlan;
 import org.apache.iotdb.confignode.procedure.impl.region.RegionOperationProcedure;
 import org.apache.iotdb.confignode.procedure.impl.region.RemoveRegionPeerProcedure;
-import org.apache.iotdb.confignode.procedure.impl.consistency.RepairRegionProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterEncodingCompressorProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterLogicalViewProcedure;
 import org.apache.iotdb.confignode.procedure.impl.schema.AlterTimeSeriesDataTypeProcedure;
@@ -1402,9 +1402,7 @@ public class ProcedureManager {
         return waitingProcedureFinished(procedure);
       } catch (Exception e) {
         LOGGER.warn(
-            "Failed to trigger replica consistency repair for region {}",
-            consensusGroupId,
-            e);
+            "Failed to trigger replica consistency repair for region {}", consensusGroupId, e);
         return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
             .setMessage(e.getMessage());
       }

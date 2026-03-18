@@ -810,7 +810,8 @@ public class RepairRegionProcedure
     if (repairProgressTable == null) {
       RepairExecutionContext context = getExecutionContextIfPresent();
       if (context != null) {
-        repairProgressTable = context.loadRepairProgressTable(toConsensusGroupKey(consensusGroupId));
+        repairProgressTable =
+            context.loadRepairProgressTable(toConsensusGroupKey(consensusGroupId));
       }
       if (repairProgressTable == null) {
         repairProgressTable = new RepairProgressTable(toConsensusGroupKey(consensusGroupId));

@@ -28,9 +28,9 @@ import org.apache.iotdb.commons.consensus.iotv2.consistency.ibf.DiffEntry;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.ibf.RowRefIndex;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.merkle.MerkleEntry;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.merkle.MerkleFileContent;
+import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.ModEntrySummary;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairAction;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairConflictResolver;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.ModEntrySummary;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairPlan;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairRecord;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairSession;
@@ -62,8 +62,7 @@ public class RepairRegionProcedureTest {
     TConsensusGroupId groupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 10);
     RepairRegionProcedure procedure =
         new RepairRegionProcedure(
-            groupId,
-            new TestExecutionContext(Collections.emptyMap(), new SimulatedReplicaState()));
+            groupId, new TestExecutionContext(Collections.emptyMap(), new SimulatedReplicaState()));
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
       procedure.serialize(outputStream);
@@ -165,7 +164,8 @@ public class RepairRegionProcedureTest {
   }
 
   @Test
-  public void executeRepairFlowDeletesFollowerOnlyDataWhenLeaderDeletionWinsTest() throws Exception {
+  public void executeRepairFlowDeletesFollowerOnlyDataWhenLeaderDeletionWinsTest()
+      throws Exception {
     TConsensusGroupId groupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
     RowRefIndex rowRefIndex =
         new RowRefIndex.Builder()
@@ -735,15 +735,13 @@ public class RepairRegionProcedureTest {
       for (RepairRecord record : inserts) {
         if (record.getTargetReplica() == RepairRecord.TargetReplica.LEADER) {
           SimulatedPoint followerPoint = followerPoints.get(record.getLocator());
-          String tsFilePath = followerPoint == null ? "stream.tsfile" : followerPoint.getTsFilePath();
+          String tsFilePath =
+              followerPoint == null ? "stream.tsfile" : followerPoint.getTsFilePath();
           leaderTsFiles.add(tsFilePath);
           leaderPoints.put(
               record.getLocator(),
               new SimulatedPoint(
-                  tsFilePath,
-                  record.getLocator(),
-                  record.getProgressIndex(),
-                  record.getValue()));
+                  tsFilePath, record.getLocator(), record.getProgressIndex(), record.getValue()));
         } else {
           SimulatedPoint leaderPoint = leaderPoints.get(record.getLocator());
           String tsFilePath = leaderPoint == null ? "stream.tsfile" : leaderPoint.getTsFilePath();
@@ -751,10 +749,7 @@ public class RepairRegionProcedureTest {
           followerPoints.put(
               record.getLocator(),
               new SimulatedPoint(
-                  tsFilePath,
-                  record.getLocator(),
-                  record.getProgressIndex(),
-                  record.getValue()));
+                  tsFilePath, record.getLocator(), record.getProgressIndex(), record.getValue()));
         }
       }
     }

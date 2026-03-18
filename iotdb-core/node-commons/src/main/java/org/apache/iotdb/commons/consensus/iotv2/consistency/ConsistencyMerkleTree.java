@@ -101,7 +101,9 @@ public class ConsistencyMerkleTree {
       long partitionId, List<Long> sourceFileRootHashes, long targetFileRootHash) {
     onCompaction(
         partitionId,
-        sourceFileRootHashes.stream().map(DualDigest::fromSingleHash).collect(java.util.stream.Collectors.toList()),
+        sourceFileRootHashes.stream()
+            .map(DualDigest::fromSingleHash)
+            .collect(java.util.stream.Collectors.toList()),
         Collections.singletonList(DualDigest.fromSingleHash(targetFileRootHash)));
   }
 
@@ -127,7 +129,9 @@ public class ConsistencyMerkleTree {
   public void onCompaction(List<Long> sourceHashes, long targetCombinedHash, long partitionId) {
     onCompaction(
         partitionId,
-        sourceHashes.stream().map(DualDigest::fromSingleHash).collect(java.util.stream.Collectors.toList()),
+        sourceHashes.stream()
+            .map(DualDigest::fromSingleHash)
+            .collect(java.util.stream.Collectors.toList()),
         Collections.singletonList(DualDigest.fromSingleHash(targetCombinedHash)));
   }
 

@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.load.LoadFileException;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.queryengine.plan.scheduler.load.LoadTsFileScheduler;
@@ -75,11 +76,10 @@ public class DataRegionConsistencyRepairService {
 
   private final StorageEngine storageEngine = StorageEngine.getInstance();
 
-  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
-      clientManager =
-          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
-              .createClientManager(
-                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager =
+      new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+          .createClientManager(
+              new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
 
   public TDataRegionConsistencySnapshotResp getSnapshot(TDataRegionConsistencySnapshotReq req) {
     DataRegion dataRegion = getDataRegion(req.getConsensusGroupId());
@@ -105,9 +105,7 @@ public class DataRegionConsistencyRepairService {
           .setTimePartitionViews(partitionViews);
     } catch (Exception e) {
       LOGGER.warn(
-          "Failed to build consistency snapshot for region {}",
-          req.getConsensusGroupId(),
-          e);
+          "Failed to build consistency snapshot for region {}", req.getConsensusGroupId(), e);
       return new TDataRegionConsistencySnapshotResp(
           RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage()));
     }
@@ -145,7 +143,8 @@ public class DataRegionConsistencyRepairService {
     }
 
     for (TDataNodeLocation targetDataNode : req.getTargetDataNodes()) {
-      TSStatus status = transferOneTarget(req.getConsensusGroupId(), tsFileResource, targetDataNode);
+      TSStatus status =
+          transferOneTarget(req.getConsensusGroupId(), tsFileResource, targetDataNode);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }
@@ -212,16 +211,26 @@ public class DataRegionConsistencyRepairService {
           targetDataNode.getDataNodeId(),
           e);
       if (tracker.hasSentPieces) {
-        TSStatus rollbackStatus =
-            sendLoadCommand(
-                targetDataNode.getInternalEndPoint(),
-                buildLoadCommandReq(uuid, tsFileResource, LoadTsFileScheduler.LoadCommand.ROLLBACK));
-        if (rollbackStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          rollbackStatus.setMessage(
-              rollbackStatus.getMessage()
+        try {
+          TSStatus rollbackStatus =
+              sendLoadCommand(
+                  targetDataNode.getInternalEndPoint(),
+                  buildLoadCommandReq(
+                      uuid, tsFileResource, LoadTsFileScheduler.LoadCommand.ROLLBACK));
+          if (rollbackStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            rollbackStatus.setMessage(
+                rollbackStatus.getMessage() + ", original transfer failure: " + e.getMessage());
+            return rollbackStatus;
+          }
+        } catch (IOException rollbackBuildException) {
+          return RpcUtils.getStatus(
+              TSStatusCode.LOAD_FILE_ERROR,
+              "Failed to build rollback command for TsFile "
+                  + tsFileResource.getTsFilePath()
+                  + ": "
+                  + rollbackBuildException.getMessage()
                   + ", original transfer failure: "
                   + e.getMessage());
-          return rollbackStatus;
         }
       }
       return RpcUtils.getStatus(
@@ -241,7 +250,7 @@ public class DataRegionConsistencyRepairService {
       TConsensusGroupId consensusGroupId,
       TEndPoint targetEndPoint,
       TransferTracker tracker)
-      throws Exception {
+      throws IOException, LoadFileException {
     final LoadTsFilePieceNode[] pieceHolder = {
       new LoadTsFilePieceNode(new PlanNodeId("repair-tsfile-piece"), tsFile)
     };
@@ -271,20 +280,24 @@ public class DataRegionConsistencyRepairService {
       String uuid,
       TConsensusGroupId consensusGroupId,
       LoadTsFilePieceNode pieceNode)
-      throws Exception {
+      throws LoadFileException {
     TTsFilePieceReq request =
         new TTsFilePieceReq(pieceNode.serializeToByteBuffer(), uuid, consensusGroupId);
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(targetEndPoint)) {
       TLoadResp response = client.sendTsFilePieceNode(request);
       if (!response.isAccepted()) {
-        throw new IllegalStateException(
+        throw new LoadFileException(
             response.isSetStatus() ? response.getStatus().getMessage() : response.getMessage());
       }
+    } catch (LoadFileException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new LoadFileException(
+          "Failed to dispatch TsFile piece to DataNode " + targetEndPoint, e);
     }
   }
 
-  private TSStatus sendLoadCommand(
-      TEndPoint targetEndPoint, TLoadCommandReq request) {
+  private TSStatus sendLoadCommand(TEndPoint targetEndPoint, TLoadCommandReq request) {
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(targetEndPoint)) {
       TLoadResp response = client.sendLoadCommand(request);
       if (response.isAccepted()) {

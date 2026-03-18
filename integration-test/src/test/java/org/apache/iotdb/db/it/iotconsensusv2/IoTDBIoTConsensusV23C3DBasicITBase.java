@@ -26,13 +26,13 @@ import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
 import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
+import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
+import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
-import org.apache.iotdb.db.storageengine.dataregion.modification.ModificationFile;
-import org.apache.iotdb.db.storageengine.dataregion.modification.v1.ModificationFileV1;
-import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -42,12 +42,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -224,7 +225,8 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     Awaitility.await()
         .pollDelay(2, TimeUnit.SECONDS)
         .atMost(2, TimeUnit.MINUTES)
-        .untilAsserted(() -> verifyPostDeleteConsistencyOnNode(regionReplicaSelection.followerNode));
+        .untilAsserted(
+            () -> verifyPostDeleteConsistencyOnNode(regionReplicaSelection.followerNode));
 
     LOGGER.info(
         "Replica consistency verified after delete and failover on follower DataNode {}",
@@ -248,7 +250,8 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
       regionReplicaSelection = selectReplicatedDataRegion(statement);
       waitForReplicationComplete(regionReplicaSelection.leaderNode);
       deletedTsFile =
-          findLatestSealedTsFile(regionReplicaSelection.followerNode, regionReplicaSelection.regionId);
+          findLatestSealedTsFile(
+              regionReplicaSelection.followerNode, regionReplicaSelection.regionId);
     }
 
     LOGGER.info(
@@ -261,6 +264,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     deleteTsFileArtifacts(deletedTsFile);
 
     regionReplicaSelection.followerNode.start();
+    waitForNodeConnectionReady(regionReplicaSelection.followerNode);
     Awaitility.await()
         .pollDelay(2, TimeUnit.SECONDS)
         .atMost(2, TimeUnit.MINUTES)
@@ -295,7 +299,8 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     statement.execute(FLUSH_COMMAND);
   }
 
-  protected RegionReplicaSelection selectReplicatedDataRegion(Statement statement) throws Exception {
+  protected RegionReplicaSelection selectReplicatedDataRegion(Statement statement)
+      throws Exception {
     Map<Integer, Pair<Integer, Set<Integer>>> dataRegionMap = getDataRegionMapWithLeader(statement);
 
     for (Map.Entry<Integer, Pair<Integer, Set<Integer>>> entry : dataRegionMap.entrySet()) {
@@ -323,11 +328,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
               .dataNodeIdToWrapper(followerDataNodeId)
               .orElseThrow(() -> new AssertionError("Follower DataNode not found in cluster"));
       return new RegionReplicaSelection(
-          entry.getKey(),
-          leaderDataNodeId,
-          followerDataNodeId,
-          leaderNode,
-          followerNode);
+          entry.getKey(), leaderDataNodeId, followerDataNodeId, leaderNode, followerNode);
     }
 
     Assert.fail("Should find a replicated data region with a leader for root.sg");
@@ -493,6 +494,30 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     }
   }
 
+  protected void waitForNodeConnectionReady(DataNodeWrapper targetNode) {
+    Awaitility.await()
+        .pollDelay(1, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try (Connection ignored =
+                  makeItCloseQuietly(
+                      EnvFactory.getEnv()
+                          .getConnection(
+                              targetNode,
+                              SessionConfig.DEFAULT_USER,
+                              SessionConfig.DEFAULT_PASSWORD,
+                              BaseEnv.TREE_SQL_DIALECT))) {
+                Assert.assertNotNull(
+                    "Expected a JDBC connection for DataNode " + targetNode.getId(), ignored);
+              } catch (SQLException e) {
+                throw new AssertionError(
+                    "DataNode " + targetNode.getId() + " is not accepting JDBC connections yet", e);
+              }
+            });
+  }
+
   protected static void assertNullValue(String value) {
     Assert.assertTrue(
         "Expected deleted value to be null, but was " + value,
@@ -541,7 +566,9 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
               .filter(path -> path.getFileName().toString().endsWith(".tsfile"))
               .filter(path -> path.toString().contains(File.separator + "root.sg" + File.separator))
               .filter(path -> belongsToRegion(path, regionId))
-              .max((left, right) -> Long.compare(left.toFile().lastModified(), right.toFile().lastModified()));
+              .max(
+                  (left, right) ->
+                      Long.compare(left.toFile().lastModified(), right.toFile().lastModified()));
       if (candidate.isPresent()) {
         return candidate.get();
       }
@@ -561,21 +588,18 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
     Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFile.FILE_SUFFIX));
     Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFile.COMPACTION_FILE_SUFFIX));
     Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFileV1.FILE_SUFFIX));
-    Files.deleteIfExists(
-        Paths.get(tsFile.toString() + ModificationFileV1.COMPACTION_FILE_SUFFIX));
+    Files.deleteIfExists(Paths.get(tsFile.toString() + ModificationFileV1.COMPACTION_FILE_SUFFIX));
   }
 
   private void triggerRegionConsistencyRepair(int regionId) throws Exception {
-    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
+    TConsensusGroupId consensusGroupId =
+        new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId);
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getLeaderConfigNodeConnection()) {
       TSStatus status =
           client.triggerRegionConsistencyRepair(
               new TTriggerRegionConsistencyRepairReq(consensusGroupId));
-      Assert.assertEquals(
-          "Replica consistency repair should succeed",
-          200,
-          status.getCode());
+      Assert.assertEquals("Replica consistency repair should succeed", 200, status.getCode());
     }
   }
 }

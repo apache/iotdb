@@ -36,7 +36,8 @@ public class ConsistencyMerkleTreeTest {
     merkleTree.onTsFileFlushed(1L, first);
     merkleTree.onTsFileFlushed(1L, second);
 
-    Assert.assertEquals(new DualDigest(0x03L, 0x30L), merkleTree.getPartitionNode(1L).getPartitionDigest());
+    Assert.assertEquals(
+        new DualDigest(0x03L, 0x30L), merkleTree.getPartitionNode(1L).getPartitionDigest());
     Assert.assertEquals(new DualDigest(0x03L, 0x30L), merkleTree.getRegionDigest());
   }
 
@@ -50,7 +51,8 @@ public class ConsistencyMerkleTreeTest {
 
     merkleTree.onTsFileFlushed(7L, sourceOne);
     merkleTree.onTsFileFlushed(7L, sourceTwo);
-    merkleTree.onCompaction(Collections.singletonList(sourceOne), Arrays.asList(targetOne, targetTwo), 7L);
+    merkleTree.onCompaction(
+        Collections.singletonList(sourceOne), Arrays.asList(targetOne, targetTwo), 7L);
 
     Assert.assertEquals(
         new DualDigest(0x0EL, 0xE0L), merkleTree.getPartitionNode(7L).getPartitionDigest());
