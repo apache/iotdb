@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static com.timecho.iotdb.dataregion.compaction.execute.task.SharedStorageCompactionTask.REMOTE_TMP_FILE_SUFFIX;
@@ -201,7 +202,7 @@ public class SharedStorageCompactionTaskTest {
     // do compaction
     for (TsFileResource resource : sourceFiles) {
       resource.setLastValues(Collections.emptyMap());
-      dataRegion.loadNewTsFile(resource, false, true, true);
+      dataRegion.loadNewTsFile(resource, false, true, true, Optional.empty());
     }
     assertEquals(0, dataRegion.getTsFileManager().getTsFileListSnapshot(0, true).size());
     assertEquals(2, dataRegion.getTsFileManager().getTsFileListSnapshot(0, false).size());
@@ -403,7 +404,7 @@ public class SharedStorageCompactionTaskTest {
         .thenReturn(pulledResources);
     // do compaction
     sourceFiles.get(1).setLastValues(Collections.emptyMap());
-    dataRegion.loadNewTsFile(sourceFiles.get(1), false, true, true);
+    dataRegion.loadNewTsFile(sourceFiles.get(1), false, true, true, Optional.empty());
     assertEquals(0, dataRegion.getTsFileManager().getTsFileListSnapshot(0, true).size());
     assertEquals(1, dataRegion.getTsFileManager().getTsFileListSnapshot(0, false).size());
     SharedStorageCompactionTaskResource taskResource =
@@ -494,7 +495,7 @@ public class SharedStorageCompactionTaskTest {
     // do compaction
     for (TsFileResource resource : sourceFiles) {
       resource.setLastValues(Collections.emptyMap());
-      dataRegion.loadNewTsFile(resource, false, true, true);
+      dataRegion.loadNewTsFile(resource, false, true, true, Optional.empty());
     }
     assertEquals(0, dataRegion.getTsFileManager().getTsFileListSnapshot(0, true).size());
     assertEquals(2, dataRegion.getTsFileManager().getTsFileListSnapshot(0, false).size());

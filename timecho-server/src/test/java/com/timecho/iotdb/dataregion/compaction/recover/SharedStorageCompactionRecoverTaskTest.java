@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.storageengine.dataregion.compaction.execute.utils.log.CompactionLogger.STR_DELETED_TARGET_FILES;
 import static org.apache.tsfile.utils.FSUtils.OS_FILE_SEPARATOR;
@@ -150,7 +151,7 @@ public class SharedStorageCompactionRecoverTaskTest {
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
       compactionLogger.logSourceFiles(sourceFiles);
       compactionLogger.logTargetFiles(targetFiles);
-      dataRegion.loadNewTsFile(targetFiles.get(0), false, true, true);
+      dataRegion.loadNewTsFile(targetFiles.get(0), false, true, true, Optional.empty());
       compactionLogger.logTargetFile(targetFiles.get(0));
       compactionLogger.logFiles(Collections.emptyList(), STR_DELETED_TARGET_FILES);
     }
@@ -205,7 +206,7 @@ public class SharedStorageCompactionRecoverTaskTest {
     try (SimpleCompactionLogger compactionLogger = new SimpleCompactionLogger(logFile)) {
       compactionLogger.logSourceFiles(sourceFiles);
       compactionLogger.logTargetFiles(targetFiles);
-      dataRegion.loadNewTsFile(targetFiles.get(0), false, true, true);
+      dataRegion.loadNewTsFile(targetFiles.get(0), false, true, true, Optional.empty());
       compactionLogger.logTargetFile(targetFiles.get(0));
       compactionLogger.logFiles(
           Collections.singletonList(targetFiles.get(0)), STR_DELETED_TARGET_FILES);
@@ -260,7 +261,7 @@ public class SharedStorageCompactionRecoverTaskTest {
       compactionLogger.logSourceFiles(sourceFiles);
       compactionLogger.logTargetFiles(targetFiles);
       for (TsFileResource targetFile : targetFiles) {
-        dataRegion.loadNewTsFile(targetFile, false, true, true);
+        dataRegion.loadNewTsFile(targetFile, false, true, true, Optional.empty());
         compactionLogger.logTargetFile(targetFile);
       }
       compactionLogger.logFiles(Collections.emptyList(), STR_DELETED_TARGET_FILES);
@@ -320,7 +321,7 @@ public class SharedStorageCompactionRecoverTaskTest {
       compactionLogger.logSourceFiles(sourceFiles);
       compactionLogger.logTargetFiles(targetFiles);
       for (TsFileResource targetFile : targetFiles) {
-        dataRegion.loadNewTsFile(targetFile, false, true, true);
+        dataRegion.loadNewTsFile(targetFile, false, true, true, Optional.empty());
         compactionLogger.logTargetFile(targetFile);
       }
       compactionLogger.logFiles(sourceFiles.subList(0, 1), STR_DELETED_TARGET_FILES);

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -156,7 +157,7 @@ public class SharedStorageCompactionTask extends AbstractCompactionTask {
           remoteResource.setStatus(TsFileResourceStatus.COMPACTING);
           File oldFile = remoteResource.getTsFile();
           remoteResource.setLastValues(Collections.emptyMap());
-          dataRegion.loadNewTsFile(remoteResource, true, true, true);
+          dataRegion.loadNewTsFile(remoteResource, true, true, true, Optional.empty());
           HybridFileInputFactoryDecorator.putRemotePathInfo(
               remoteResource.getTsFile(),
               HybridFileInputFactoryDecorator.removeRemotePathInfo(oldFile));
