@@ -119,30 +119,17 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean overlapWithDevice(final String device) {
+    return mayOverlapWithDevice(device);
+  }
+
+  @Override
   public boolean mayOverlapWithDb(final String db) {
     return
     // for example, pattern is root.a.b and db is root.a.b.c
     (pattern.length() <= db.length() && db.startsWith(pattern))
         // for example, pattern is root.a.b.c and db is root.a.b
         || (pattern.length() > db.length() && pattern.startsWith(db));
-  }
-
-  @Override
-  public boolean mayOverlapWithDevice(final String device) {
-    final String deviceStr = device.toString();
-    return
-    // for example, pattern is root.a.b and device is root.a.b.c
-    // in this case, the extractor can be matched without checking the measurements
-    (pattern.length() <= deviceStr.length() && deviceStr.startsWith(pattern))
-        // for example, pattern is root.a.b.c and device is root.a.b
-        // in this case, the extractor can be selected as candidate, but the measurements should
-        // be checked further
-        || (pattern.length() > deviceStr.length() && pattern.startsWith(deviceStr));
-  }
-
-  @Override
-  public boolean overlapWithDevice(final String device) {
-    return mayOverlapWithDevice(device);
   }
 
   @Override
