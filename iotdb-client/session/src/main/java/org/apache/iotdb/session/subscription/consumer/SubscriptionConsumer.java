@@ -724,7 +724,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(commitContext, file.getAbsolutePath(), null)));
+              new SubscriptionMessage(commitContext, file.getAbsolutePath())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -874,8 +874,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
 
             // generate subscription message
             inFlightFilesCommitContextSet.remove(commitContext);
-            return Optional.of(
-                new SubscriptionMessage(commitContext, file.getAbsolutePath(), null));
+            return Optional.of(new SubscriptionMessage(commitContext, file.getAbsolutePath()));
           }
         case ERROR:
           {
@@ -925,7 +924,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
       // construct temporary message to nack
       nack(
           Collections.singletonList(
-              new SubscriptionMessage(response.getCommitContext(), Collections.emptyMap())));
+              new SubscriptionMessage(response.getCommitContext(), Collections.emptyList())));
       throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
     }
   }
@@ -946,8 +945,7 @@ abstract class SubscriptionConsumer implements AutoCloseable {
           LOGGER.warn(errorMessage);
           throw new SubscriptionRuntimeNonCriticalException(errorMessage);
         }
-        return Optional.of(
-            new SubscriptionMessage(commitContext, Collections.singletonMap(null, tablets)));
+        return Optional.of(new SubscriptionMessage(commitContext, tablets));
       }
 
       timer.update();

@@ -21,7 +21,6 @@ package org.apache.iotdb.session.subscription.payload;
 
 import org.apache.iotdb.isession.ISessionDataSet;
 
-import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.common.Field;
 import org.apache.tsfile.read.common.RowRecord;
@@ -36,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -46,20 +44,13 @@ public class SubscriptionRecordHandler
 
   private final List<SubscriptionResultSet> resultSets;
 
-  public SubscriptionRecordHandler(final Map<String, List<Tablet>> tablets) {
+  public SubscriptionRecordHandler(final List<Tablet> tablets) {
     final List<SubscriptionResultSet> resultSets = new ArrayList<>();
-    for (final Map.Entry<String, List<Tablet>> entry : tablets.entrySet()) {
-      final String databaseName = entry.getKey();
-      final List<Tablet> tabletList = entry.getValue();
-      if (Objects.isNull(tabletList)) {
+    for (final Tablet tablet : tablets) {
+      if (Objects.isNull(tablet)) {
         continue;
       }
-      for (final Tablet tablet : tabletList) {
-        if (Objects.isNull(tablet)) {
-          continue;
-        }
-        resultSets.add(new SubscriptionResultSet(tablet, databaseName));
-      }
+      resultSets.add(new SubscriptionResultSet(tablet));
     }
     this.resultSets = Collections.unmodifiableList(resultSets);
   }
@@ -77,8 +68,6 @@ public class SubscriptionRecordHandler
 
     private Tablet tablet;
 
-    @Nullable private final String databaseName;
-
     private final List<RowPosition> sortedRowPositions;
 
     private int rowIndex = -1;
@@ -87,18 +76,13 @@ public class SubscriptionRecordHandler
 
     private List<String> columnTypeList;
 
-    private SubscriptionResultSet(final Tablet tablet, @Nullable final String databaseName) {
+    private SubscriptionResultSet(final Tablet tablet) {
       this.tablet = tablet;
-      this.databaseName = databaseName;
       this.sortedRowPositions = generateSortedRowPositions(tablet);
     }
 
     public Tablet getTablet() {
       return tablet;
-    }
-
-    public String getDatabaseName() {
-      return databaseName;
     }
 
     @Override
@@ -111,12 +95,6 @@ public class SubscriptionRecordHandler
       columnNameList.add("Time");
 
       final List<MeasurementSchema> schemas = tablet.getSchemas();
-      if (Objects.nonNull(databaseName)) {
-        columnNameList.addAll(
-            schemas.stream().map(MeasurementSchema::getMeasurementId).collect(Collectors.toList()));
-        return columnNameList;
-      }
-
       final String deviceId = tablet.deviceId;
       columnNameList.addAll(
           schemas.stream()

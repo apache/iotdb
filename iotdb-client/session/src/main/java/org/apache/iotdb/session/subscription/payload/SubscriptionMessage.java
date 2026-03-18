@@ -22,12 +22,10 @@ package org.apache.iotdb.session.subscription.payload;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionIncompatibleHandlerException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 
-import org.apache.thrift.annotation.Nullable;
 import org.apache.tsfile.write.record.Tablet;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
@@ -39,19 +37,17 @@ public class SubscriptionMessage implements Comparable<SubscriptionMessage> {
   private final SubscriptionMessageHandler handler;
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext, final Map<String, List<Tablet>> tablets) {
+      final SubscriptionCommitContext commitContext, final List<Tablet> tablets) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.RECORD_HANDLER.getType();
     this.handler = new SubscriptionRecordHandler(tablets);
   }
 
   public SubscriptionMessage(
-      final SubscriptionCommitContext commitContext,
-      final String absolutePath,
-      @Nullable final String databaseName) {
+      final SubscriptionCommitContext commitContext, final String absolutePath) {
     this.commitContext = commitContext;
     this.messageType = SubscriptionMessageType.TS_FILE.getType();
-    this.handler = new SubscriptionTsFileHandler(absolutePath, databaseName);
+    this.handler = new SubscriptionTsFileHandler(absolutePath);
   }
 
   public SubscriptionCommitContext getCommitContext() {
