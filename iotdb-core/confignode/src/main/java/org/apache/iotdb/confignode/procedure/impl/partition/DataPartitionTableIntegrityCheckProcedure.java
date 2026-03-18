@@ -81,8 +81,14 @@ public class DataPartitionTableIntegrityCheckProcedure
   private static final Logger LOG =
       LoggerFactory.getLogger(DataPartitionTableIntegrityCheckProcedure.class);
 
+  // how many times will retry after rpc request failed
   private static final int MAX_RETRY_COUNT = 3;
-  private static final long HEART_BEAT_REQUEST_RATE = 10000;
+
+  // how long to start a heartbeat request, the unit is ms
+  private static final long HEART_BEAT_REQUEST_INTERVAL = 10000;
+
+  // how long to check all datanode are alive, the unit is ms
+  private static final long CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL = 10000;
 
   NodeManager dataNodeManager;
   private List<TDataNodeConfiguration> allDataNodes = new ArrayList<>();
@@ -91,13 +97,20 @@ public class DataPartitionTableIntegrityCheckProcedure
   /** Collected earliest timeslots from DataNodes: database -> earliest timeslot */
   private Map<String, Long> earliestTimeslots = new ConcurrentHashMap<>();
 
-  /** DataPartitionTables collected from DataNodes: dataNodeId -> DataPartitionTable */
+  /** DataPartitionTables collected from DataNodes: dataNodeId -> <database, DataPartitionTable> */
   private Map<Integer, List<DatabaseScopedDataPartitionTable>> dataPartitionTables =
       new ConcurrentHashMap<>();
 
-  private Set<String> lostDataPartitionsOfDatabases = new HashSet<>();
+  /**
+   * Collect all database names that those database lost data partition, the string in the Set
+   * collection is database name
+   */
+  private Set<String> databasesWithLostDataPartition = new HashSet<>();
 
-  /** Final merged DataPartitionTable */
+  /**
+   * Final merged DataPartitionTable for every database Map<String, DataPartitionTable> key(String):
+   * database name
+   */
   private Map<String, DataPartitionTable> finalDataPartitionTables;
 
   private static Set<TDataNodeConfiguration> skipDataNodes =
@@ -125,7 +138,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           failedDataNodes = new HashSet<>();
           return collectEarliestTimeslots();
         case ANALYZE_MISSING_PARTITIONS:
-          lostDataPartitionsOfDatabases = new HashSet<>();
+          databasesWithLostDataPartition = new HashSet<>();
           return analyzeMissingPartitions(env);
         case REQUEST_PARTITION_TABLES:
           return requestPartitionTables();
@@ -134,8 +147,8 @@ public class DataPartitionTableIntegrityCheckProcedure
         case MERGE_PARTITION_TABLES:
           finalDataPartitionTables = new HashMap<>();
           return mergePartitionTables(env);
-        case WRITE_PARTITION_TABLE_TO_RAFT:
-          return writePartitionTableToRaft(env);
+        case WRITE_PARTITION_TABLE_TO_CONSENSUS:
+          return writePartitionTableToConsensus(env);
         default:
           throw new ProcedureException("Unknown state: " + state);
       }
@@ -156,7 +169,7 @@ public class DataPartitionTableIntegrityCheckProcedure
         earliestTimeslots.clear();
         break;
       case ANALYZE_MISSING_PARTITIONS:
-        lostDataPartitionsOfDatabases.clear();
+        databasesWithLostDataPartition.clear();
         break;
       case REQUEST_PARTITION_TABLES:
       case REQUEST_PARTITION_TABLES_HEART_BEAT:
@@ -203,6 +216,9 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (allDataNodes.isEmpty()) {
       LOG.error(
           "[DataPartitionIntegrity] No DataNodes registered, no way to collect earliest timeslots, waiting for them to go up");
+      sleep(
+          CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
+          "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -296,7 +312,7 @@ public class DataPartitionTableIntegrityCheckProcedure
           || localDataPartitionTable.isEmpty()
           || localDataPartitionTable.get(database) == null
           || localDataPartitionTable.get(database).isEmpty()) {
-        lostDataPartitionsOfDatabases.add(database);
+        databasesWithLostDataPartition.add(database);
         LOG.warn(
             "[DataPartitionIntegrity] No data partition table related to database {} was found from the ConfigNode, and this issue needs to be repaired",
             database);
@@ -321,7 +337,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
         if (localEarliestSlot.getStartTime()
             > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
-          lostDataPartitionsOfDatabases.add(database);
+          databasesWithLostDataPartition.add(database);
           LOG.warn(
               "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
               database,
@@ -330,7 +346,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
     }
 
-    if (lostDataPartitionsOfDatabases.isEmpty()) {
+    if (databasesWithLostDataPartition.isEmpty()) {
       LOG.info(
           "[DataPartitionIntegrity] No databases have lost data partitions, terminating procedure");
       return Flow.NO_MORE_STATE;
@@ -338,7 +354,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     LOG.info(
         "[DataPartitionIntegrity] Identified {} databases have lost data partitions, will request DataPartitionTable generation from {} DataNodes",
-        lostDataPartitionsOfDatabases.size(),
+        databasesWithLostDataPartition.size(),
         allDataNodes.size() - failedDataNodes.size());
     setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
     return Flow.HAS_MORE_STATE;
@@ -381,6 +397,9 @@ public class DataPartitionTableIntegrityCheckProcedure
     if (allDataNodes.isEmpty()) {
       LOG.error(
           "[DataPartitionIntegrity] No DataNodes registered, no way to requested DataPartitionTable generation, terminating procedure");
+      sleep(
+          CHECK_ALL_DATANODE_IS_ALIVE_INTERVAL,
+          "[DataPartitionIntegrity] Error waiting for DataNode startup due to thread interruption.");
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -392,7 +411,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       if (!dataPartitionTables.containsKey(dataNodeId)) {
         try {
           TGenerateDataPartitionTableReq req = new TGenerateDataPartitionTableReq();
-          req.setDatabases(lostDataPartitionsOfDatabases);
+          req.setDatabases(databasesWithLostDataPartition);
           TGenerateDataPartitionTableResp resp =
               (TGenerateDataPartitionTableResp)
                   SyncDataNodeClientPool.getInstance()
@@ -502,16 +521,21 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    try {
-      Thread.sleep(HEART_BEAT_REQUEST_RATE);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.error(
-          "[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread interruption.");
-    }
+    sleep(
+        HEART_BEAT_REQUEST_INTERVAL,
+        "[DataPartitionIntegrity] Error checking DataPartitionTable status due to thread interruption.");
     setNextState(
         DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES_HEART_BEAT);
     return Flow.HAS_MORE_STATE;
+  }
+
+  private static void sleep(long intervalTime, String logMessage) {
+    try {
+      Thread.sleep(intervalTime);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.error(logMessage);
+    }
   }
 
   /** Merge DataPartitionTables from all DataNodes into a final table. */
@@ -529,7 +553,7 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
 
-    for (String database : lostDataPartitionsOfDatabases) {
+    for (String database : databasesWithLostDataPartition) {
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
@@ -576,54 +600,56 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     LOG.info("[DataPartitionIntegrity] DataPartitionTables merge completed successfully");
-    setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_RAFT);
+    setNextState(DataPartitionTableIntegrityCheckProcedureState.WRITE_PARTITION_TABLE_TO_CONSENSUS);
     return Flow.HAS_MORE_STATE;
   }
 
-  /** Write the final DataPartitionTable to raft log. */
-  private Flow writePartitionTableToRaft(final ConfigNodeProcedureEnv env) {
+  /** Write the final DataPartitionTable to consensus log. */
+  private Flow writePartitionTableToConsensus(final ConfigNodeProcedureEnv env) {
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Writing DataPartitionTable to raft log...");
+      LOG.debug("Writing DataPartitionTable to consensus log...");
     }
 
-    if (lostDataPartitionsOfDatabases.isEmpty()) {
+    if (databasesWithLostDataPartition.isEmpty()) {
       LOG.error("[DataPartitionIntegrity] No database lost data partition table");
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
-          new ProcedureException("No database lost data partition table for raft write"));
+          new ProcedureException("No database lost data partition table for consensus write"));
       return getFlow();
     }
 
     if (finalDataPartitionTables.isEmpty()) {
-      LOG.error("[DataPartitionIntegrity] DataPartitionTable to write to raft");
+      LOG.error("[DataPartitionIntegrity] DataPartitionTable to write to consensus");
       setFailure(
           "DataPartitionTableIntegrityCheckProcedure",
-          new ProcedureException("No DataPartitionTable available for raft write"));
+          new ProcedureException("No DataPartitionTable available for consensus write"));
       return getFlow();
     }
 
     int failedCnt = 0;
-    while (failedCnt < MAX_RETRY_COUNT) {
+    final int MAX_RETRY_COUNT_FOR_CONSENSUS = 3;
+    while (failedCnt < MAX_RETRY_COUNT_FOR_CONSENSUS) {
       try {
         CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
         Map<String, DataPartitionTable> assignedDataPartition = new HashMap<>();
-        for (String database : lostDataPartitionsOfDatabases) {
+        for (String database : databasesWithLostDataPartition) {
           assignedDataPartition.put(database, finalDataPartitionTables.get(database));
         }
         createPlan.setAssignedDataPartition(assignedDataPartition);
         TSStatus tsStatus = env.getConfigManager().getConsensusManager().write(createPlan);
 
         if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOG.info("[DataPartitionIntegrity] DataPartitionTable successfully written to raft log");
+          LOG.info(
+              "[DataPartitionIntegrity] DataPartitionTable successfully written to consensus log");
           break;
         } else {
-          LOG.error("[DataPartitionIntegrity] Failed to write DataPartitionTable to raft log");
+          LOG.error("[DataPartitionIntegrity] Failed to write DataPartitionTable to consensus log");
           setFailure(
               "DataPartitionTableIntegrityCheckProcedure",
-              new ProcedureException("Failed to write DataPartitionTable to raft log"));
+              new ProcedureException("Failed to write DataPartitionTable to consensus log"));
         }
       } catch (Exception e) {
-        LOG.error("[DataPartitionIntegrity] Error writing DataPartitionTable to raft log", e);
+        LOG.error("[DataPartitionIntegrity] Error writing DataPartitionTable to consensus log", e);
         setFailure("DataPartitionTableIntegrityCheckProcedure", e);
       }
       failedCnt++;
@@ -695,8 +721,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
     }
 
-    stream.writeInt(lostDataPartitionsOfDatabases.size());
-    for (String database : lostDataPartitionsOfDatabases) {
+    stream.writeInt(databasesWithLostDataPartition.size());
+    for (String database : databasesWithLostDataPartition) {
       ReadWriteIOUtils.write(database, stream);
     }
 
@@ -812,10 +838,10 @@ public class DataPartitionTableIntegrityCheckProcedure
       dataPartitionTables.put(dataNodeId, tableList);
     }
 
-    int lostDataPartitionsOfDatabasesSize = byteBuffer.getInt();
-    for (int i = 0; i < lostDataPartitionsOfDatabasesSize; i++) {
+    int databasesWithLostDataPartitionSize = byteBuffer.getInt();
+    for (int i = 0; i < databasesWithLostDataPartitionSize; i++) {
       String database = ReadWriteIOUtils.readString(byteBuffer);
-      lostDataPartitionsOfDatabases.add(database);
+      databasesWithLostDataPartition.add(database);
     }
 
     // Deserialize finalDataPartitionTable size

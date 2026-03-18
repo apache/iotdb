@@ -227,7 +227,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
             dataPartitionTableCheckExecutor.submit(
                 () -> {
                   LOGGER.info(
-                      "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes are started up");
+                      "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
                   Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
 
                   while (true) {

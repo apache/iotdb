@@ -31,5 +31,5 @@ public enum DataPartitionTableIntegrityCheckProcedureState {
   /** Merge DataPartitionTables from all DataNodes */
   MERGE_PARTITION_TABLES,
   /** Write final DataPartitionTable to raft log */
-  WRITE_PARTITION_TABLE_TO_RAFT
+  WRITE_PARTITION_TABLE_TO_CONSENSUS
 }
