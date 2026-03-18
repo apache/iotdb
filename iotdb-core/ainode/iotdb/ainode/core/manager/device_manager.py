@@ -53,14 +53,19 @@ class DeviceManager:
 
     # ==================== selection ====================
     def _auto_select_backend(self) -> BackendAdapter:
-        for name in [BackendType.CUDA]:
+        for name in BackendType:
+            if name == BackendType.CPU:
+                # Defer CPU selection to the fallback below.
+                continue
             backend = self.backends.get(name)
             if backend is not None and backend.is_available():
                 self.type = backend.type
-                LOGGER.info(f"AINode selects backend: {name}")
+                LOGGER.info(f"AINode selects backend: {backend.type.value}")
                 return backend
-        LOGGER.info("No GPU/TPU backend available, AINode falling back to CPU backend.")
-        return self.backends[BackendType.CPU]
+        LOGGER.info("No GPU backend available, AINode falling back to CPU backend.")
+        backend = self.backends[BackendType.CPU]
+        self.type = backend.type
+        return backend
 
     # ==================== public API ====================
     def device_ids(self) -> list[int]:
