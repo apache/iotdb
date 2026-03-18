@@ -48,11 +48,14 @@ public class DisruptorQueue {
   private final RingBuffer<EventContainer> ringBuffer;
   private volatile boolean isClosed = false;
 
+  private final int dataRegionId;
   private volatile long lastLogTime = Long.MIN_VALUE;
 
   public DisruptorQueue(
+      final int dataRegionId,
       final EventHandler<PipeRealtimeEvent> eventHandler,
       final Consumer<PipeRealtimeEvent> onAssignedHook) {
+    this.dataRegionId = dataRegionId;
     final PipeConfig config = PipeConfig.getInstance();
     final int ringBufferSize = config.getPipeSourceAssignerDisruptorRingBufferSize();
     final long ringBufferEntrySizeInBytes =
@@ -110,7 +113,8 @@ public class DisruptorQueue {
         && System.currentTimeMillis() - lastLogTime
             >= PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds()) {
       LOGGER.warn(
-          "The assigner queue content has exceeded half, it may be stuck and may block insertion. capacity: {}, bufferSize: {}",
+          "The assigner queue content has exceeded half, it may be stuck and may block insertion. regionId: {}, capacity: {}, bufferSize: {}",
+          dataRegionId,
           capacity,
           bufferSize);
       lastLogTime = System.currentTimeMillis();
