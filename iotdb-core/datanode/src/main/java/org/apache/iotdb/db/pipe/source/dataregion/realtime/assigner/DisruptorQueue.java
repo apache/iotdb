@@ -110,8 +110,9 @@ public class DisruptorQueue {
     final long remainingCapacity = ringBuffer.remainingCapacity();
     final long bufferSize = ringBuffer.getBufferSize();
     if ((double) remainingCapacity / bufferSize >= 0.5
-        && System.currentTimeMillis() - lastLogTime
-            >= PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds()) {
+        && System.currentTimeMillis()
+                - PipeConfig.getInstance().getPipePeriodicalLogMinIntervalSeconds()
+            >= lastLogTime) {
       LOGGER.warn(
           "The assigner queue content has exceeded half, it may be stuck and may block insertion. regionId: {}, capacity: {}, bufferSize: {}",
           dataRegionId,
