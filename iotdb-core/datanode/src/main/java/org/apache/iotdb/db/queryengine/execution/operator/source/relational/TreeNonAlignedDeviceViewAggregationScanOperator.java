@@ -62,7 +62,9 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
+    // Don't call isBlocked of child if the device has been consumed up, because the child operator
+    // may have been closed
+    return currentDeviceIndex >= deviceEntries.size() ? NOT_BLOCKED : child.isBlocked();
   }
 
   @Override

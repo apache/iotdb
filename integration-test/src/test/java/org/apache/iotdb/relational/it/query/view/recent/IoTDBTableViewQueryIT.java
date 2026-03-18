@@ -422,6 +422,12 @@ public class IoTDBTableViewQueryIT {
           "select count(current) from view1 group by battery,date_bin(2ms,time)",
           "select count(current) from table1 group by battery,date_bin(2ms,time)",
           true);
+
+      compareQueryResults(
+          session,
+          "select last(columns(*)) from view1 group by battery,date_bin(2ms,time)",
+          "select last(columns(*)) from table1 group by battery,date_bin(2ms,time)",
+          true);
     }
   }
 
