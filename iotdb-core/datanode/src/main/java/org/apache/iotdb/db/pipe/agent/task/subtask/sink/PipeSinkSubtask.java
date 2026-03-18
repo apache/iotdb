@@ -56,7 +56,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
 
   // Record these variables to provide corresponding value to tag key of monitoring metrics
   private final String attributeSortedString;
-  private final int connectorIndex;
+  private final int sinkIndex;
 
   // Now parallel connectors run the same time, thus the heartbeat events are not sure
   // to trigger the general event transfer function, causing potentially such as
@@ -68,12 +68,12 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
       final String taskID,
       final long creationTime,
       final String attributeSortedString,
-      final int connectorIndex,
+      final int sinkIndex,
       final UnboundedBlockingPendingQueue<Event> inputPendingQueue,
       final PipeConnector outputPipeConnector) {
     super(taskID, creationTime, outputPipeConnector);
     this.attributeSortedString = attributeSortedString;
-    this.connectorIndex = connectorIndex;
+    this.sinkIndex = sinkIndex;
     this.inputPendingQueue = inputPendingQueue;
 
     if (!attributeSortedString.startsWith("schema_")) {
@@ -256,8 +256,8 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
     return attributeSortedString;
   }
 
-  public int getConnectorIndex() {
-    return connectorIndex;
+  public int getSinkIndex() {
+    return sinkIndex;
   }
 
   public int getTsFileInsertionEventCount() {
@@ -275,7 +275,7 @@ public class PipeSinkSubtask extends PipeAbstractSinkSubtask {
         + (lastEvent instanceof PipeHeartbeatEvent ? 1 : 0);
   }
 
-  public int getAsyncConnectorRetryEventQueueSize() {
+  public int getAsyncSinkRetryEventQueueSize() {
     return outputPipeSink instanceof IoTDBDataRegionAsyncSink
         ? ((IoTDBDataRegionAsyncSink) outputPipeSink).getRetryEventQueueSize()
         : 0;
