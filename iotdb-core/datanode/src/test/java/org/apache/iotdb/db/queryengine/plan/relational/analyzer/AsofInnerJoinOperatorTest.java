@@ -332,7 +332,8 @@ public class AsofInnerJoinOperatorTest {
     DriverContext driverContext = Mockito.mock(DriverContext.class);
     Mockito.when(driverContext.getFragmentInstanceContext()).thenReturn(fragmentInstanceContext);
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
     Mockito.when(operatorContext.getDriverContext()).thenReturn(driverContext);
 
     Operator leftChild =

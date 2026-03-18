@@ -67,7 +67,11 @@ public class OrderByComponent extends StatementNode {
       case OrderByKey.DATANODEID:
       case OrderByKey.ELAPSEDTIME:
       case OrderByKey.STATEMENT:
-        // show queries statement
+      case OrderByKey.DATABASE:
+      case OrderByKey.REGIONID:
+      case OrderByKey.TIMEPARTITION:
+      case OrderByKey.SIZEINBYTES:
+        // show queries statement or show disk usage statement
         break;
       default:
         throw new IllegalArgumentException(

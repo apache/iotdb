@@ -207,6 +207,7 @@ public enum ThreadName {
   MIGRATION("Migration-Executor-Pool"),
 
   FILE_TIME_INDEX_RECORD("FileTimeIndexRecord"),
+  TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
   BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
 

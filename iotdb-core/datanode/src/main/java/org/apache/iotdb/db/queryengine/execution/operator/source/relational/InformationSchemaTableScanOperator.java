@@ -28,15 +28,14 @@ import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
-import java.util.Iterator;
-
 public class InformationSchemaTableScanOperator implements SourceOperator {
 
   private final OperatorContext operatorContext;
 
   private final PlanNodeId sourceId;
 
-  private final Iterator<TsBlock> contentSupplier;
+  private final InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier
+      contentSupplier;
 
   private static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
       TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
@@ -45,7 +44,9 @@ public class InformationSchemaTableScanOperator implements SourceOperator {
       RamUsageEstimator.shallowSizeOfInstance(InformationSchemaTableScanOperator.class);
 
   public InformationSchemaTableScanOperator(
-      OperatorContext operatorContext, PlanNodeId sourceId, Iterator<TsBlock> contentSupplier) {
+      OperatorContext operatorContext,
+      PlanNodeId sourceId,
+      InformationSchemaContentSupplierFactory.IInformationSchemaContentSupplier contentSupplier) {
     this.operatorContext = operatorContext;
     this.sourceId = sourceId;
     this.contentSupplier = contentSupplier;
@@ -73,7 +74,9 @@ public class InformationSchemaTableScanOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    // do nothing
+    if (contentSupplier != null) {
+      contentSupplier.close();
+    }
   }
 
   @Override

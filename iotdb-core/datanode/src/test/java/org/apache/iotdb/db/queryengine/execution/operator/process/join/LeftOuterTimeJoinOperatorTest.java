@@ -85,7 +85,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 25     25    null
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -374,7 +375,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 3     3       4       30.0    false
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
@@ -702,7 +704,8 @@ public class LeftOuterTimeJoinOperatorTest {
     // 111   111    null
 
     OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
-    Mockito.when(operatorContext.getMaxRunTime()).thenReturn(new Duration(1, TimeUnit.SECONDS));
+    Mockito.when(operatorContext.getMaxRunTimeForTest())
+        .thenReturn(new Duration(1, TimeUnit.SECONDS));
 
     Operator leftChild =
         new Operator() {
