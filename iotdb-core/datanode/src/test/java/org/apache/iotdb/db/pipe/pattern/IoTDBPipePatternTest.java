@@ -93,8 +93,8 @@ public class IoTDBPipePatternTest {
       Assert.assertFalse(new IoTDBPipePattern(t).mayOverlapWithDevice(device));
     }
     for (final String t : patternsFalsePositiveOverLap) {
-      Assert.assertTrue(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
-      Assert.assertFalse(new IoTDBTreePattern(t).overlapWithDevice(device));
+      Assert.assertTrue(new IoTDBPipePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new IoTDBPipePattern(t).overlapWithDevice(device));
     }
 
     // Test pattern match measurement
