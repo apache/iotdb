@@ -112,14 +112,6 @@ public class TimePartitionUtils {
         : time / timePartitionInterval - 1;
   }
 
-  public static long getTime(long partitionId) {
-    long time = partitionId * timePartitionInterval;
-    if (time > 0 || time % timePartitionInterval == 0) {
-      return time + timePartitionOrigin;
-    }
-    return ((partitionId + 1) * timePartitionInterval) + timePartitionOrigin;
-  }
-
   public static long getTimePartitionIdWithoutOverflow(long time) {
     BigInteger bigTime = BigInteger.valueOf(time).subtract(bigTimePartitionOrigin);
     BigInteger partitionId =
@@ -130,20 +122,8 @@ public class TimePartitionUtils {
     return partitionId.longValue();
   }
 
-  /**
-   * Since bigTimePartitionInterval.multiply(partitionId) is always an exact multiple of
-   * bigTimePartitionInterval, the previous conditional logic was redundant and the else branch was
-   * unreachable. We directly compute the time without risk of overflow here.
-   */
-  public static long getTimeWithoutOverflow(long partitionId) {
-    return bigTimePartitionInterval
-        .multiply(BigInteger.valueOf(partitionId))
-        .add(bigTimePartitionOrigin)
-        .longValue();
-  }
-
-  public static long getTimeByPartitionId(long partitionId) {
-    return originMayCauseOverflow ? getTimeWithoutOverflow(partitionId) : getTime(partitionId);
+  public static long getStartTimeByPartitionId(long partitionId) {
+    return (partitionId * timePartitionInterval) + timePartitionOrigin;
   }
 
   public static boolean satisfyPartitionId(long startTime, long endTime, long partitionId) {

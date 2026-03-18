@@ -320,7 +320,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                 .orElse(null);
 
         if (localEarliestSlot.getStartTime()
-            > TimePartitionUtils.getTimeByPartitionId(earliestTimeslot)) {
+            > TimePartitionUtils.getStartTimeByPartitionId(earliestTimeslot)) {
           lostDataPartitionsOfDatabases.add(database);
           LOG.warn(
               "[DataPartitionIntegrity] Database {} has lost timeslot {} in its data table partition, and this issue needs to be repaired",
@@ -657,7 +657,7 @@ public class DataPartitionTableIntegrityCheckProcedure
     // Serialize earliestTimeslots
     stream.writeInt(earliestTimeslots.size());
     for (Map.Entry<String, Long> entry : earliestTimeslots.entrySet()) {
-      stream.writeUTF(entry.getKey());
+      ReadWriteIOUtils.write(entry.getKey(), stream);
       stream.writeLong(entry.getValue());
     }
 
@@ -697,14 +697,14 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     stream.writeInt(lostDataPartitionsOfDatabases.size());
     for (String database : lostDataPartitionsOfDatabases) {
-      stream.writeUTF(database);
+      ReadWriteIOUtils.write(database, stream);
     }
 
     if (finalDataPartitionTables != null && !finalDataPartitionTables.isEmpty()) {
       stream.writeInt(finalDataPartitionTables.size());
 
       for (Map.Entry<String, DataPartitionTable> entry : finalDataPartitionTables.entrySet()) {
-        stream.writeUTF(entry.getKey());
+        ReadWriteIOUtils.write(entry.getKey(), stream);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
             DataOutputStream dos = new DataOutputStream(baos)) {

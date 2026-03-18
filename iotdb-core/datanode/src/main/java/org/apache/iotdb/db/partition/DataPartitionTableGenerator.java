@@ -217,7 +217,7 @@ public class DataPartitionTableGenerator {
           TSeriesPartitionSlot seriesSlotId =
               seriesPartitionExecutor.getSeriesPartitionSlot(deviceId);
           TTimePartitionSlot timePartitionSlot =
-              new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+              new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId));
           dataPartitionMap
               .computeIfAbsent(
                   seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId))
@@ -235,7 +235,7 @@ public class DataPartitionTableGenerator {
       TConsensusGroupId consensusGroupId, long timeSlotId) {
     SeriesPartitionTable seriesPartitionTable = new SeriesPartitionTable();
     TTimePartitionSlot timePartitionSlot =
-        new TTimePartitionSlot(TimePartitionUtils.getTimeByPartitionId(timeSlotId));
+        new TTimePartitionSlot(TimePartitionUtils.getStartTimeByPartitionId(timeSlotId));
     seriesPartitionTable.putDataPartition(timePartitionSlot, consensusGroupId);
     return seriesPartitionTable;
   }
