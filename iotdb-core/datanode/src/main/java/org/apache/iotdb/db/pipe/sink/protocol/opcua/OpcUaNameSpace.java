@@ -156,6 +156,26 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
       final TSDataType type = measurementSchema.getType();
       final NodeId nodeId = newNodeId(currentFolder + name);
       final UaVariableNode measurementNode;
+
+      int lastNonnullIndex = -1;
+      for (int j = tablet.rowSize - 1; j >= 0; --j) {
+        if (!tablet.bitMaps[i].isMarked(j)) {
+          lastNonnullIndex = j;
+          break;
+        }
+      }
+
+      if (lastNonnullIndex == -1) {
+        continue;
+      }
+
+      final long utcTimestamp = timestampToUtc(tablet.timestamps[lastNonnullIndex]);
+      final DataValue value =
+          new DataValue(
+              new Variant(getTabletObjectValue4Opc(tablet.values[i], lastNonnullIndex, type)),
+              StatusCode.GOOD,
+              new DateTime(utcTimestamp),
+              new DateTime());
       if (!getNodeManager().containsNode(nodeId)) {
         measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
@@ -166,6 +186,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .setDisplayName(LocalizedText.english(name))
                 .setDataType(convertToOpcDataType(type))
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .setValue(value)
                 .build();
         getNodeManager().addNode(measurementNode);
         folderNode.addOrganizes(measurementNode);
@@ -181,26 +202,15 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                                 String.format("The Node %s does not exist.", nodeId)));
       }
 
-      int lastNonnullIndex = -1;
-      for (int j = tablet.rowSize - 1; j >= 0; --j) {
-        if (!tablet.bitMaps[i].isMarked(j)) {
-          lastNonnullIndex = j;
-          break;
-        }
-      }
-
-      if (lastNonnullIndex != -1) {
-        final long utcTimestamp = timestampToUtc(tablet.timestamps[lastNonnullIndex]);
-        if (Objects.isNull(measurementNode.getValue())
-            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-                < utcTimestamp) {
-          measurementNode.setValue(
-              new DataValue(
-                  new Variant(getTabletObjectValue4Opc(tablet.values[i], lastNonnullIndex, type)),
-                  StatusCode.GOOD,
-                  new DateTime(utcTimestamp),
-                  new DateTime()));
-        }
+      if (Objects.isNull(measurementNode.getValue())
+          || Objects.isNull(measurementNode.getValue().getSourceTime())
+          || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
+        measurementNode.setValue(
+            new DataValue(
+                new Variant(getTabletObjectValue4Opc(tablet.values[i], lastNonnullIndex, type)),
+                StatusCode.GOOD,
+                new DateTime(utcTimestamp),
+                new DateTime()));
       }
     }
   }
