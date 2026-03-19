@@ -1748,15 +1748,9 @@ compressor=LZ4
 ####################
 
 # which class to serve for authorization. By default, it is LocalFileAuthorizer.
-# Another choice is org.apache.iotdb.commons.auth.authorizer.OpenIdAuthorizer
 # effectiveMode: restart
 # Privilege: SECURITY
 authorizer_provider_class=org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer
-
-# If OpenIdAuthorizer is enabled, then openID_url must be set.
-# effectiveMode: restart
-# Privilege: SECURITY
-openID_url=
 
 # encryption provider class
 # effectiveMode: first_start

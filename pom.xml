@@ -107,10 +107,8 @@
         <jersey.version>2.40</jersey.version>
         <!-- This was the last version to support Java 8 -->
         <jetty.version>9.4.58.v20250814</jetty.version>
-        <jjwt.version>0.12.7</jjwt.version>
         <jline.version>3.26.2</jline.version>
         <jna.version>5.14.0</jna.version>
-        <json-smart.version>2.5.2</json-smart.version>
         <jtransforms.version>3.1</jtransforms.version>
         <junit.version>4.13.2</junit.version>
         <!-- This was the last version to support Java 8 -->
@@ -127,8 +125,6 @@
         <!--mockito.version>4.11.0</mockito.version-->
         <moquette.version>0.18.0</moquette.version>
         <netty.version>4.1.126.Final</netty.version>
-        <nimbus-jose-jwt.version>9.37.4</nimbus-jose-jwt.version>
-        <oauth2-oidc-sdk.version>10.15</oauth2-oidc-sdk.version>
         <!-- This was the last version to support Java 8 -->
         <openapi.generator.version>6.6.0</openapi.generator.version>
         <osgi.version>7.0.0</osgi.version>
@@ -378,11 +374,6 @@
                 <version>${airlift-units.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-api</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.eclipse.milo</groupId>
                 <artifactId>stack-core</artifactId>
                 <version>${milo.version}</version>
@@ -459,21 +450,6 @@
                 <version>${h2.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-impl</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt-jackson</artifactId>
-                <version>${jjwt.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>oauth2-oidc-sdk</artifactId>
-                <version>${oauth2-oidc-sdk.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpclient</artifactId>
                 <version>${httpclient.version}</version>
@@ -492,11 +468,6 @@
                 <groupId>org.powermock</groupId>
                 <artifactId>powermock-api-mockito2</artifactId>
                 <version>${powermock.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.nimbusds</groupId>
-                <artifactId>nimbus-jose-jwt</artifactId>
-                <version>${nimbus-jose-jwt.version}</version>
             </dependency>
             <dependency>
                 <groupId>cglib</groupId>
@@ -635,11 +606,6 @@
                 <version>${caffeine.version}</version>
             </dependency>
             <dependency>
-                <groupId>net.minidev</groupId>
-                <artifactId>json-smart</artifactId>
-                <version>${json-smart.version}</version>
-            </dependency>
-            <dependency>
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
                 <version>${httpcore.version}</version>
@@ -719,10 +685,7 @@
                 <artifactId>jersey-hk2</artifactId>
                 <version>${jersey.version}</version>
             </dependency>
-            <!-- Conflict:
-        json-smart (pulls in 9.3),
-        cglib (pulls in 7.1)
-      -->
+            <!-- Conflict: cglib pulls in 7.1 -->
             <dependency>
                 <groupId>org.ow2.asm</groupId>
                 <artifactId>asm</artifactId>
