@@ -750,12 +750,12 @@ partition_table_recover_worker_num=10
 # Limit the number of bytes read per second from a file, the unit is MB
 # effectiveMode: restart
 # Datatype: Integer
-partition_table_recover_max_read_bytes_per_second=10
+partition_table_recover_max_read_megabytes_per_second=10
 
 # Set a timeout to wait for all datanodes complete startup, the unit is ms
 # effectiveMode: restart
 # Datatype: Integer
-partition_table_recover_wait_all_dn_up_timeout=60000
+partition_table_recover_wait_all_dn_up_timeout_ms=60000
 
 ####################
 ### Memory Control Configuration

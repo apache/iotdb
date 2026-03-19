@@ -223,33 +223,38 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         loadSecretKey();
         loadHardwareCode();
 
-        dataPartitionTableCheckFuture =
-            dataPartitionTableCheckExecutor.submit(
-                () -> {
-                  LOGGER.info(
-                      "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
-                  Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
+        if (configManager.getConsensusManager().isLeader()) {
+          dataPartitionTableCheckFuture =
+              dataPartitionTableCheckExecutor.submit(
+                  () -> {
+                    LOGGER.info(
+                        "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
+                    Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
 
-                  while (true) {
-                    List<Integer> dnList =
-                        configManager
-                            .getLoadManager()
-                            .filterDataNodeThroughStatus(NodeStatus.Running);
-                    if (dnList != null && !dnList.isEmpty()) {
-                      LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
-                      TSStatus status =
-                          configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
-                      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                        LOGGER.error("Data partition table integrity check failed!");
+                    while (true) {
+                      List<Integer> dnList =
+                          configManager
+                              .getLoadManager()
+                              .filterDataNodeThroughStatus(NodeStatus.Running);
+                      if (dnList != null && !dnList.isEmpty()) {
+                        LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
+                        TSStatus status =
+                            configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
+                        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                          LOGGER.error(
+                              "Data partition table integrity check failed! Current status code is {}, status message is {}",
+                              status.getCode(),
+                              status.getMessage());
+                        }
+                        break;
+                      } else {
+                        LOGGER.info("No running datanodes found, waiting...");
+                        Thread.sleep(5000);
                       }
-                      break;
-                    } else {
-                      LOGGER.info("No running datanodes found, waiting...");
-                      Thread.sleep(5000);
                     }
-                  }
-                  return null;
-                });
+                    return null;
+                  });
+        }
         return;
       } else {
         saveSecretKey();

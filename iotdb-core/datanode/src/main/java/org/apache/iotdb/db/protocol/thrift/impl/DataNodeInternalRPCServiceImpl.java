@@ -3187,7 +3187,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       if (currentGenerator != null
           && currentGenerator.getStatus() == DataPartitionTableGenerator.TaskStatus.IN_PROGRESS) {
         resp.setErrorCode(DataPartitionTableGeneratorState.IN_PROGRESS.getCode());
-        resp.setMessage("DataPartitionTable generation is already in the progress");
+        resp.setMessage(
+            String.format(
+                "DataPartitionTable generation is already in the progress: %.1f%%",
+                currentGenerator.getProgress() * 100));
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         return resp;
       }
@@ -3305,7 +3308,9 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private <T> void updateResponse(T resp) {
-    if (currentGenerator == null) return;
+    if (currentGenerator == null) {
+      return;
+    }
 
     switch (currentGenerator.getStatus()) {
       case IN_PROGRESS:

@@ -551,9 +551,9 @@ public class DataPartitionTableIntegrityCheckProcedure
       return Flow.HAS_MORE_STATE;
     }
 
-    Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
-
     for (String database : databasesWithLostDataPartition) {
+      Map<TSeriesPartitionSlot, SeriesPartitionTable> finalDataPartitionMap = new HashMap<>();
+
       // Get current DataPartitionTable from ConfigManager
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           localDataPartitionTableMap = getLocalDataPartitionTable(env, database);
@@ -627,8 +627,8 @@ public class DataPartitionTableIntegrityCheckProcedure
     }
 
     int failedCnt = 0;
-    final int MAX_RETRY_COUNT_FOR_CONSENSUS = 3;
-    while (failedCnt < MAX_RETRY_COUNT_FOR_CONSENSUS) {
+    final int maxRetryCountForConsensus = 3;
+    while (failedCnt < maxRetryCountForConsensus) {
       try {
         CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
         Map<String, DataPartitionTable> assignedDataPartition = new HashMap<>();
@@ -931,13 +931,8 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
 
       try {
-        ByteBuffer dataBuffer = data.duplicate();
-
-        DatabaseScopedDataPartitionTable table =
-            DatabaseScopedDataPartitionTable.deserialize(dataBuffer);
-
+        DatabaseScopedDataPartitionTable table = DatabaseScopedDataPartitionTable.deserialize(data);
         result.add(table);
-
       } catch (Exception e) {
         LOG.error(
             "[DataPartitionIntegrity] Failed to deserialize DatabaseScopedDataPartitionTable", e);

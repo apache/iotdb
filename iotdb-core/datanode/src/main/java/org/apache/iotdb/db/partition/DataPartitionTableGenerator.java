@@ -125,7 +125,6 @@ public class DataPartitionTableGenerator {
   }
 
   private void generateDataPartitionTableByMemory() {
-    Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap = new ConcurrentHashMap<>();
     List<CompletableFuture<Void>> futures = new ArrayList<>();
 
     SeriesPartitionExecutor seriesPartitionExecutor =
@@ -144,6 +143,9 @@ public class DataPartitionTableGenerator {
                         || IGNORE_DATABASE.contains(databaseName)) {
                       return;
                     }
+
+                    Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap =
+                        new ConcurrentHashMap<>();
 
                     tsFileManager.readLock();
                     List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
@@ -224,8 +226,10 @@ public class DataPartitionTableGenerator {
               .putDataPartition(timePartitionSlot, consensusGroupId);
         }
         processedFiles.incrementAndGet();
+        totalFiles.incrementAndGet();
       } catch (Exception e) {
         failedFiles.incrementAndGet();
+        totalFiles.incrementAndGet();
         LOG.error("Failed to process tsfile {}, {}", tsFileResource.getTsFileID(), e.getMessage());
       }
     }
