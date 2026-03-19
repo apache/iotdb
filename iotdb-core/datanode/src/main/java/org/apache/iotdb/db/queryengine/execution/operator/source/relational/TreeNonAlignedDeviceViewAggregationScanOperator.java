@@ -28,15 +28,18 @@ import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.tsfile.block.column.Column;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.read.common.block.TsBlock;
 import org.apache.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.tsfile.utils.RamUsageEstimator;
 
 import java.util.List;
 import java.util.Optional;
 
 import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.CURRENT_DEVICE_INDEX_STRING;
+import static org.apache.iotdb.db.queryengine.execution.operator.source.relational.AbstractTableScanOperator.TIME_COLUMN_TEMPLATE;
 
 public class TreeNonAlignedDeviceViewAggregationScanOperator
     extends AbstractDefaultAggTableScanOperator {
@@ -64,7 +67,42 @@ public class TreeNonAlignedDeviceViewAggregationScanOperator
   public ListenableFuture<?> isBlocked() {
     // Don't call isBlocked of child if the device has been consumed up, because the child operator
     // may have been closed
-    return currentDeviceIndex >= deviceEntries.size() ? NOT_BLOCKED : child.isBlocked();
+    return currentDeviceIndex >= deviceCount ? NOT_BLOCKED : child.isBlocked();
+  }
+
+  @Override
+  public TsBlock next() throws Exception {
+    if (retainedTsBlock != null) {
+      return getResultFromRetainedTsBlock();
+    }
+
+    // optimize for sql: select count(*) from (select count(s1), sum(s1) from table)
+    if (tableAggregators.isEmpty()
+        && timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
+        && resultTsBlockBuilder.getValueColumnBuilders().length == 0) {
+      resultTsBlockBuilder.reset();
+      currentDeviceIndex = deviceCount;
+      timeIterator.setFinished();
+      Column[] valueColumns = new Column[0];
+      return new TsBlock(1, new RunLengthEncodedColumn(TIME_COLUMN_TEMPLATE, 1), valueColumns);
+    }
+
+    // calculate aggregation result on current time window
+    // return true if current time window is calc finished
+    Optional<Boolean> b = calculateAggregationResultForCurrentTimeRange();
+    if (b.isPresent() && b.get()) {
+      timeIterator.resetCurTimeRange();
+      buildResultTsBlock();
+    }
+
+    if (resultTsBlockBuilder.isFull()) {
+      buildResultTsBlock();
+    }
+
+    if (resultTsBlock == null) {
+      return null;
+    }
+    return checkTsBlockSizeAndGetResult();
   }
 
   @Override
