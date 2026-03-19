@@ -315,7 +315,6 @@ import java.util.stream.IntStream;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static java.util.Objects.requireNonNull;
@@ -2923,7 +2922,7 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
             node.getMeasurementColumnNameMap());
 
     Operator sourceOperator = visitTreeNonAlignedDeviceViewScan(scanNode, context);
-    if (sourceOperator instanceof DeviceIteratorScanOperator) {
+    if (!(sourceOperator instanceof EmptyDataOperator)) {
       // Use deviceChildOperatorTreeGenerator directly, we will control switch of devices in
       // TreeNonAlignedDeviceViewAggregationScanOperator
       TreeNonAlignedDeviceViewAggregationScanOperator aggTableScanOperator =
@@ -2942,7 +2941,6 @@ public class TableOperatorGenerator extends PlanVisitor<Operator, LocalExecution
           NonAlignedAggregationTreeDeviceViewScanNode.class.getSimpleName());
       return aggTableScanOperator;
     } else {
-      checkState(sourceOperator instanceof EmptyDataOperator, "");
       // source data is empty, return directly
       return sourceOperator;
     }
