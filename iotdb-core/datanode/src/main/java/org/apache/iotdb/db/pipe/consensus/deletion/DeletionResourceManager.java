@@ -23,7 +23,7 @@ import org.apache.iotdb.commons.consensus.index.ProgressIndex;
 import org.apache.iotdb.commons.consensus.index.impl.SimpleProgressIndex;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.pipe.PipeConsensus;
+import org.apache.iotdb.consensus.pipe.IoTConsensusV2;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
@@ -89,9 +89,9 @@ public class DeletionResourceManager implements AutoCloseable {
       if (!storageDir.exists()) {
         // Init
         if (!storageDir.mkdirs()) {
-          LOGGER.warn("Unable to create pipeConsensus deletion dir at {}", storageDir);
+          LOGGER.warn("Unable to create iotConsensusV2 deletion dir at {}", storageDir);
           throw new IOException(
-              String.format("Unable to create pipeConsensus deletion dir at %s", storageDir));
+              String.format("Unable to create iotConsensusV2 deletion dir at %s", storageDir));
         }
       }
       try (Stream<Path> pathStream = Files.walk(Paths.get(storageDir.getPath()), 1)) {
@@ -281,7 +281,7 @@ public class DeletionResourceManager implements AutoCloseable {
   }
 
   public static DeletionResourceManager getInstance(int groupId) {
-    // If consensusImpl is not PipeConsensus.
+    // If consensusImpl is not IoTConsensusV2.
     if (DeletionResourceManagerHolder.CONSENSUS_GROUP_ID_2_INSTANCE_MAP == null) {
       return null;
     }
@@ -297,9 +297,9 @@ public class DeletionResourceManager implements AutoCloseable {
         });
   }
 
-  // Only when consensus protocol is PipeConsensus, will this class be initialized.
+  // Only when consensus protocol is IoTConsensusV2, will this class be initialized.
   public static void build() {
-    if (DataRegionConsensusImpl.getInstance() instanceof PipeConsensus) {
+    if (DataRegionConsensusImpl.getInstance() instanceof IoTConsensusV2) {
       DeletionResourceManagerHolder.build();
     }
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.Rule;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.DeviceTableScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationSchemaTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.TableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.matching.Capture;
@@ -54,9 +55,10 @@ public class PushDownOffsetIntoTableScan implements Rule<OffsetNode> {
   @Override
   public Result apply(OffsetNode parent, Captures captures, Context context) {
     TableScanNode tableScanNode = captures.get(CHILD);
-    if ((tableScanNode instanceof DeviceTableScanNode
-            && !(tableScanNode instanceof AggregationTableScanNode))
-        && !((DeviceTableScanNode) tableScanNode).isPushLimitToEachDevice()) {
+    if (tableScanNode instanceof InformationSchemaTableScanNode
+        || ((tableScanNode instanceof DeviceTableScanNode
+                && !(tableScanNode instanceof AggregationTableScanNode))
+            && !((DeviceTableScanNode) tableScanNode).isPushLimitToEachDevice())) {
       tableScanNode.setPushDownOffset(parent.getCount());
       // consider case that there is no limit
       tableScanNode.setPushDownLimit(

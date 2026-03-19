@@ -98,6 +98,7 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   private static final Logger LOGGER = LoggerFactory.getLogger(SubscriptionReceiverV1.class);
 
   private static final double POLL_PAYLOAD_SIZE_EXCEED_THRESHOLD = 0.9;
+  private static final long HEARTBEAT_TIMEOUT_MULTIPLIER = 3L;
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
@@ -112,43 +113,55 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
   private final ThreadLocal<ConsumerConfig> consumerConfigThreadLocal = new ThreadLocal<>();
   private final ThreadLocal<PollTimer> pollTimerThreadLocal = new ThreadLocal<>();
+  private volatile ConsumerConfig sharedConsumerConfig;
+  private volatile boolean consumerInvalidated;
+  private volatile long lastActivityTimeMs = System.currentTimeMillis();
+  private final AtomicLong inFlightRequestCount = new AtomicLong(0);
 
   private static final String SQL_DIALECT_TABLE_VALUE = "table";
 
   @Override
   public final TPipeSubscribeResp handle(final TPipeSubscribeReq req) {
     final short reqType = req.getType();
-    if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
-      switch (PipeSubscribeRequestType.valueOf(reqType)) {
-        case HANDSHAKE:
-          return handlePipeSubscribeHandshake(PipeSubscribeHandshakeReq.fromTPipeSubscribeReq(req));
-        case HEARTBEAT:
-          return handlePipeSubscribeHeartbeat(PipeSubscribeHeartbeatReq.fromTPipeSubscribeReq(req));
-        case SUBSCRIBE:
-          return handlePipeSubscribeSubscribe(PipeSubscribeSubscribeReq.fromTPipeSubscribeReq(req));
-        case UNSUBSCRIBE:
-          return handlePipeSubscribeUnsubscribe(
-              PipeSubscribeUnsubscribeReq.fromTPipeSubscribeReq(req));
-        case POLL:
-          return handlePipeSubscribePoll(PipeSubscribePollReq.fromTPipeSubscribeReq(req));
-        case COMMIT:
-          return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
-        case CLOSE:
-          return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
-        default:
-          break;
+    beforeHandle(reqType);
+    try {
+      if (PipeSubscribeRequestType.isValidatedRequestType(reqType)) {
+        switch (PipeSubscribeRequestType.valueOf(reqType)) {
+          case HANDSHAKE:
+            return handlePipeSubscribeHandshake(
+                PipeSubscribeHandshakeReq.fromTPipeSubscribeReq(req));
+          case HEARTBEAT:
+            return handlePipeSubscribeHeartbeat(
+                PipeSubscribeHeartbeatReq.fromTPipeSubscribeReq(req));
+          case SUBSCRIBE:
+            return handlePipeSubscribeSubscribe(
+                PipeSubscribeSubscribeReq.fromTPipeSubscribeReq(req));
+          case UNSUBSCRIBE:
+            return handlePipeSubscribeUnsubscribe(
+                PipeSubscribeUnsubscribeReq.fromTPipeSubscribeReq(req));
+          case POLL:
+            return handlePipeSubscribePoll(PipeSubscribePollReq.fromTPipeSubscribeReq(req));
+          case COMMIT:
+            return handlePipeSubscribeCommit(PipeSubscribeCommitReq.fromTPipeSubscribeReq(req));
+          case CLOSE:
+            return handlePipeSubscribeClose(PipeSubscribeCloseReq.fromTPipeSubscribeReq(req));
+          default:
+            break;
+        }
       }
-    }
 
-    final TSStatus status =
-        RpcUtils.getStatus(
-            TSStatusCode.SUBSCRIPTION_TYPE_ERROR,
-            String.format("Unknown PipeSubscribeRequestType %s.", reqType));
-    LOGGER.warn("Subscription: Unknown PipeSubscribeRequestType, response status = {}.", status);
-    return new TPipeSubscribeResp(
-        status,
-        PipeSubscribeResponseVersion.VERSION_1.getVersion(),
-        PipeSubscribeResponseType.ACK.getType());
+      final TSStatus status =
+          RpcUtils.getStatus(
+              TSStatusCode.SUBSCRIPTION_TYPE_ERROR,
+              String.format("Unknown PipeSubscribeRequestType %s.", reqType));
+      LOGGER.warn("Subscription: Unknown PipeSubscribeRequestType, response status = {}.", status);
+      return new TPipeSubscribeResp(
+          status,
+          PipeSubscribeResponseVersion.VERSION_1.getVersion(),
+          PipeSubscribeResponseType.ACK.getType());
+    } finally {
+      inFlightRequestCount.decrementAndGet();
+    }
   }
 
   @Override
@@ -170,6 +183,41 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
       // possible to release some resources (such as the underlying pipe) in a timely manner
       unsubscribeCompleteTopics(consumerConfig);
       consumerConfigThreadLocal.remove();
+    }
+    clearSharedConsumerState();
+  }
+
+  @Override
+  public void handleTimeout() {
+    final ConsumerConfig consumerConfig;
+    final long inactiveMs;
+    final long timeoutMs;
+    synchronized (this) {
+      consumerConfig = sharedConsumerConfig;
+      if (Objects.isNull(consumerConfig) || inFlightRequestCount.get() > 0) {
+        return;
+      }
+      timeoutMs = calculateConsumerInactivityTimeoutMs(consumerConfig);
+      inactiveMs = System.currentTimeMillis() - lastActivityTimeMs;
+      if (inactiveMs <= timeoutMs) {
+        return;
+      }
+      clearSharedConsumerState();
+    }
+
+    LOGGER.info(
+        "Subscription: consumer {} is inactive for {} ms, exceeding timeout {} ms, close it on server side.",
+        consumerConfig,
+        inactiveMs,
+        timeoutMs);
+    try {
+      closeConsumer(consumerConfig);
+    } catch (final Exception e) {
+      LOGGER.warn(
+          "Subscription: failed to close timed out consumer {} after {} ms inactivity",
+          consumerConfig,
+          inactiveMs,
+          e);
     }
   }
 
@@ -240,6 +288,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
           "Subscription: The consumer {} has already existed when handshaking, skip creating consumer.",
           consumerConfig);
     }
+
+    activateConsumer(consumerConfig);
 
     final int dataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
     LOGGER.info(
@@ -659,6 +709,9 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     }
 
     closeConsumer(consumerConfig);
+    consumerConfigThreadLocal.remove();
+    pollTimerThreadLocal.remove();
+    clearSharedConsumerState();
     return PipeSubscribeCloseResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
 
@@ -865,5 +918,38 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
               topicNames, consumerConfig, e);
       throw new SubscriptionException(exceptionMessage);
     }
+  }
+
+  private void beforeHandle(final short reqType) {
+    synchronized (this) {
+      if (consumerInvalidated) {
+        consumerConfigThreadLocal.remove();
+        pollTimerThreadLocal.remove();
+        if (PipeSubscribeRequestType.HANDSHAKE.getType() == reqType) {
+          consumerInvalidated = false;
+        }
+      }
+      inFlightRequestCount.incrementAndGet();
+      lastActivityTimeMs = System.currentTimeMillis();
+    }
+  }
+
+  private void activateConsumer(final ConsumerConfig consumerConfig) {
+    synchronized (this) {
+      sharedConsumerConfig = consumerConfig;
+      consumerInvalidated = false;
+      lastActivityTimeMs = System.currentTimeMillis();
+    }
+  }
+
+  private void clearSharedConsumerState() {
+    sharedConsumerConfig = null;
+    consumerInvalidated = true;
+  }
+
+  private long calculateConsumerInactivityTimeoutMs(final ConsumerConfig consumerConfig) {
+    return Math.max(
+        SubscriptionConfig.getInstance().getSubscriptionDefaultTimeoutInMs(),
+        consumerConfig.getHeartbeatIntervalMs() * HEARTBEAT_TIMEOUT_MULTIPLIER);
   }
 }

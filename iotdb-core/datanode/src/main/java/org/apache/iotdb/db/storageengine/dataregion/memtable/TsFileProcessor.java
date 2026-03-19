@@ -66,6 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.UnclosedF
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -177,7 +178,9 @@ public class TsFileProcessor {
 
   public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
 
-  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  /**
+   * Point count when the memtable is flushed. Used for metrics on IoTConsensusV2' receiver side.
+   */
   private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
 
   /** Wal node. */
@@ -1712,6 +1715,11 @@ public class TsFileProcessor {
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
+    TableDiskUsageIndex.getInstance()
+        .write(
+            tsFileResource.getDatabaseName(),
+            tsFileResource.getTsFileID(),
+            writer.getTableSizeMap());
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }

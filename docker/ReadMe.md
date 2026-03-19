@@ -53,6 +53,9 @@ e.g.
 ./do-docker-build.sh -t standalone -v 1.0.0
 # for ainode, start from 2.0.5
 ./do-docker-build.sh -t ainode -v 2.0.5-SNAPSHOT
+# for ainode, start from 2.0.8
+cd src/main
+./build-ainode.sh -v 2.0.8-SNAPSHOT -d /data/ainode
 ```
 Notice:
 Make directory of src/main/target and put the zip file downloading from the official download page. 
@@ -89,6 +92,23 @@ Since 1.0.0, see [offical documents.](https://iotdb.apache.org/UserGuide/latest/
 Please download `docker-compose-ainode.yml` in `docker/src/main/DockerCompose` first. After replace the correct IoTDB cluster configurations, run
 ```shell
 docker compose -f docker-compose-ainode.yml up -d
+```
+
+Start from v2.0.7, run
+```shell
+docker run -d \
+  --name iotdb-ainode \
+  --network host \
+  -p 10810:10810 \
+  -p 8080:8080 \
+  -e AIN_SEED_CONFIG_NODE=127.0.0.1:10710 \
+  -e AIN_RPC_ADDRESS=127.0.0.1 \
+  -e AIN_RPC_PORT=10810 \
+  -e AIN_CLUSTER_INGRESS_ADDRESS=127.0.0.1 \
+  -e AIN_CLUSTER_INGRESS_PORT=6667 \
+  -e AIN_CLUSTER_INGRESS_USERNAME=root \
+  -e AIN_CLUSTER_INGRESS_PASSWORD=root \
+  apache/iotdb:2.0.7-SNAPSHOT-ainode
 ```
 
 ## Quick start

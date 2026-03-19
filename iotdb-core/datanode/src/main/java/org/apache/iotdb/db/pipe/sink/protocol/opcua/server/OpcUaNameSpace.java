@@ -278,6 +278,14 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
           Objects.isNull(sink.getValueName()) ? name : segments[segments.length - 1];
       final NodeId nodeId = newNodeId(currentFolder + nodeName);
       final UaVariableNode measurementNode;
+      final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
+      final DataValue dataValue =
+          new DataValue(
+              new Variant(values.get(i)),
+              currentQuality,
+              new DateTime(utcTimestamp),
+              new DateTime());
+
       if (!getNodeManager().containsNode(nodeId)) {
         measurementNode =
             new UaVariableNode.UaVariableNodeBuilder(getNodeContext())
@@ -288,6 +296,7 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                 .setDisplayName(LocalizedText.english(nodeName))
                 .setDataType(convertToOpcDataType(type))
                 .setTypeDefinition(Identifiers.BaseDataVariableType)
+                .setValue(dataValue)
                 .build();
         getNodeManager().addNode(measurementNode);
         if (Objects.nonNull(folderNode)) {
@@ -311,17 +320,11 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
                                 String.format("The Node %s does not exist.", nodeId)));
       }
 
-      final long utcTimestamp = timestampToUtc(timestamps.get(timestamps.size() > 1 ? i : 0));
       if (Objects.isNull(sink.getValueName())) {
         if (Objects.isNull(measurementNode.getValue())
-            || Objects.requireNonNull(measurementNode.getValue().getSourceTime()).getUtcTime()
-                < utcTimestamp) {
-          measurementNode.setValue(
-              new DataValue(
-                  new Variant(values.get(i)),
-                  currentQuality,
-                  new DateTime(utcTimestamp),
-                  new DateTime()));
+            || Objects.isNull(measurementNode.getValue().getSourceTime())
+            || measurementNode.getValue().getSourceTime().getUtcTime() < utcTimestamp) {
+          measurementNode.setValue(dataValue);
         }
       } else {
         valueNode = measurementNode;
@@ -331,8 +334,8 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
     }
     if (Objects.nonNull(valueNode)) {
       if (Objects.isNull(valueNode.getValue())
-          || Objects.requireNonNull(valueNode.getValue().getSourceTime()).getUtcTime()
-              < timestamp) {
+          || Objects.isNull(valueNode.getValue().getSourceTime())
+          || valueNode.getValue().getSourceTime().getUtcTime() < timestamp) {
         valueNode.setValue(
             new DataValue(
                 new Variant(value), currentQuality, new DateTime(timestamp), new DateTime()));

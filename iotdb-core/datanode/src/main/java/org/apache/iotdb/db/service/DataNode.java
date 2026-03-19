@@ -185,6 +185,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
   private boolean schemaRegionConsensusStarted = false;
   private boolean dataRegionConsensusStarted = false;
+  private static Thread watcherThread;
 
   public DataNode() {
     super("DataNode");
@@ -204,13 +205,38 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     return DataNodeHolder.INSTANCE;
   }
 
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
+    final Thread hookThread = Thread.currentThread();
+    watcherThread =
+        new Thread(
+            () -> {
+              while (!Thread.interrupted() && hookThread.isAlive()) {
+                try {
+                  Thread.sleep(10000);
+                  final StackTraceElement[] stackTrace = hookThread.getStackTrace();
+                  final StringBuilder stackTraceBuilder =
+                      new StringBuilder("Stack trace of main thread:\n");
+                  for (final StackTraceElement traceElement : stackTrace) {
+                    stackTraceBuilder.append(traceElement.toString()).append("\n");
+                  }
+                  logger.info(stackTraceBuilder.toString());
+                } catch (final InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  return;
+                }
+              }
+            },
+            "DataNodeStartWatcher");
+    watcherThread.setDaemon(true);
+    watcherThread.start();
+
     logger.info("IoTDB-DataNode environment variables: {}", IoTDBConfig.getEnvironmentVariables());
     logger.info("IoTDB-DataNode default charset is: {}", Charset.defaultCharset().displayName());
     // let IoTDB handle the exception instead of ratis
     ExitUtils.disableSystemExit();
     DataNode dataNode = new DataNode();
     int returnCode = dataNode.run(args);
+    watcherThread.interrupt();
     if (returnCode != 0) {
       System.exit(returnCode);
     }
@@ -768,7 +794,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
           "SchemaRegion consensus start successfully, which takes {} ms.",
           (schemaRegionEndTime - startTime));
       schemaRegionConsensusStarted = true;
-      if (!isUsingPipeConsensus()) {
+      if (!isUsingIoTConsensusV2()) {
         DataRegionConsensusImpl.getInstance().start();
         long dataRegionEndTime = System.currentTimeMillis();
         logger.info(
@@ -843,11 +869,11 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
 
     registerManager.register(CompactionTaskManager.getInstance());
 
-    // Start PipeConsensus (DataRegionConsensus) before Internal RPC Service and Pipe Agent
+    // Start IoTConsensusV2 (DataRegionConsensus) before Internal RPC Service and Pipe Agent
     // recovery.
     // This ensures consensus groups are registered so that deleteLocalPeer() can succeed when
     // DELETE_OLD_REGION_PEER requests arrive during the pipe recovery phase.
-    if (isUsingPipeConsensus()) {
+    if (isUsingIoTConsensusV2()) {
       long dataRegionStartTime = System.currentTimeMillis();
       while (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
         try {
@@ -952,7 +978,7 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     return new TDataNodeConfiguration(location, resource);
   }
 
-  private boolean isUsingPipeConsensus() {
+  private boolean isUsingIoTConsensusV2() {
     return config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.IOT_CONSENSUS_V2);
   }
 

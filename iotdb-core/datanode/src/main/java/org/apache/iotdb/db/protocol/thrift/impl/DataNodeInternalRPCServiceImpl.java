@@ -3411,7 +3411,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       List<TsFileResource> seqTsFileList, long earliestTimeSlotId) {
     for (TsFileResource tsFileResource : seqTsFileList) {
       long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
-      earliestTimeSlotId = Math.min(earliestTimeSlotId, timeSlotId);
+      earliestTimeSlotId =
+          earliestTimeSlotId == Long.MIN_VALUE
+              ? timeSlotId
+              : Math.min(earliestTimeSlotId, timeSlotId);
     }
 
     return earliestTimeSlotId;
