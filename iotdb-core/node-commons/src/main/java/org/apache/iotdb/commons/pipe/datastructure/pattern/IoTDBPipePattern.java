@@ -99,7 +99,7 @@ public class IoTDBPipePattern extends IoTDBPipePatternOperations {
   public boolean coversDevice(final String device) {
     try {
       return patternPartialPath.include(
-          new PartialPath(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }
@@ -111,6 +111,16 @@ public class IoTDBPipePattern extends IoTDBPipePatternOperations {
       // Another way is to use patternPath.overlapWith("device.*"),
       // there will be no false positives but time cost may be higher.
       return patternPartialPath.matchPrefixPath(devicePathGetter.apply(device));
+    } catch (final IllegalPathException e) {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean overlapWithDevice(final String device) {
+    try {
+      return patternPartialPath.overlapWith(
+          measurementPathGetter.apply(device, IoTDBConstant.ONE_LEVEL_PATH_WILDCARD));
     } catch (final IllegalPathException e) {
       return false;
     }

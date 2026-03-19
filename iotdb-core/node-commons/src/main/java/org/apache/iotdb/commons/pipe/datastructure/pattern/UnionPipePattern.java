@@ -78,6 +78,11 @@ public class UnionPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean overlapWithDevice(final String device) {
+    return patterns.stream().anyMatch(p -> p.overlapWithDevice(device));
+  }
+
+  @Override
   public boolean matchesMeasurement(final String device, final String measurement) {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
   }

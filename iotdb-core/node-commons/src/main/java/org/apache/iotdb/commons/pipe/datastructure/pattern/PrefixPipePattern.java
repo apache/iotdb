@@ -119,6 +119,11 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
+  public boolean overlapWithDevice(final String device) {
+    return mayOverlapWithDevice(device);
+  }
+
+  @Override
   public boolean mayOverlapWithDb(final String db) {
     return
     // for example, pattern is root.a.b and db is root.a.b.c
@@ -128,7 +133,7 @@ public class PrefixPipePattern extends PipePattern {
   }
 
   @Override
-  public boolean matchesMeasurement(final String device, final String measurement) {
+  public boolean matchesMeasurement(final String device, String measurement) {
     // We assume that the device is already matched.
     if (pattern.length() <= device.length()) {
       return true;

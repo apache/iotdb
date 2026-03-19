@@ -82,12 +82,21 @@ public abstract class PipePattern {
   /**
    * Check if a device may have some measurements matched by the pattern.
    *
-   * <p>NOTE1: this is only called when {@link PipePattern#coversDevice} is false.
-   *
-   * <p>NOTE2: this is just a loose check and may have false positives. To further check if a
+   * <p>NOTE: this is just a loose check and may have false positives. To further check if a
    * measurement matches the pattern, please use {@link PipePattern#matchesMeasurement} after this.
    */
   public abstract boolean mayOverlapWithDevice(final String device);
+
+  /**
+   * Check if a device has some measurements matched by the pattern.
+   *
+   * <p>NOTE: this is a precise check and will not have false positives. It means that, you can
+   * always find a measurement(existing or non-existing) to match the pattern with the device.
+   * However, it may not be precise now if there are any exclusions (e.g. Inclusion: root.**.d*.*s,
+   * exclusion: root.**.device.*s, device: root.a.b.device). It may be supported by incoming
+   * versions.
+   */
+  public abstract boolean overlapWithDevice(final String device);
 
   /**
    * Check if a full path with device and measurement can be matched by pattern.
