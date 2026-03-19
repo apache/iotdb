@@ -858,7 +858,7 @@ public abstract class TVList implements WALEntryValue {
         if (searchTimestamp > outer.getMaxTime()) {
           // all satisfied data has been consumed
           // the data with same timestamp could exist multi times, which means filter multi times
-          if (this.getQueryContext().isVerbose()) {
+          if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
             this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(rows - index);
           }
           index = rows;
@@ -878,7 +878,7 @@ public abstract class TVList implements WALEntryValue {
         }
         if (searchTimestamp < outer.getMinTime()) {
           // all satisfied data has been consumed
-          if (this.getQueryContext().isVerbose()) {
+          if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
             this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(rows - index);
           }
           index = rows;
@@ -895,7 +895,7 @@ public abstract class TVList implements WALEntryValue {
       int newIndex = getScanOrderIndex(indexInTVList);
       if (newIndex > index) {
         // count the data rows skipped by binary search
-        if (this.getQueryContext().isVerbose()) {
+        if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
           this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(newIndex - index);
         }
         index = newIndex;
@@ -949,8 +949,6 @@ public abstract class TVList implements WALEntryValue {
     /**
      * The data row that is not deleted and not satisfied by timeFilter has the qualification to be
      * recorded
-     *
-     * @param isRecord
      */
     protected void skipDeletedOrTimeNotSatisfiedRows() {
       long filteredRows = 0;
@@ -970,7 +968,7 @@ public abstract class TVList implements WALEntryValue {
         }
         index++;
       }
-      if (this.getQueryContext().isVerbose()) {
+      if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
         this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
       }
     }
@@ -1038,7 +1036,10 @@ public abstract class TVList implements WALEntryValue {
       TsBlockBuilder builder =
           new TsBlockBuilder(maxRowCountOfCurrentBatch, Collections.singletonList(dataType));
 
-      long[] filteredRowsByTimeFilter = this.getQueryContext().isVerbose() ? new long[] {0} : null;
+      long[] filteredRowsByTimeFilter =
+          this.getQueryContext() != null && this.getQueryContext().isVerbose()
+              ? new long[] {0}
+              : null;
       long filteredRowsByPushDownFilter = 0;
 
       switch (dataType) {
@@ -1225,7 +1226,7 @@ public abstract class TVList implements WALEntryValue {
       }
 
       // count the filtered row from time filter and other filter
-      if (this.getQueryContext().isVerbose()) {
+      if (this.getQueryContext() != null && this.getQueryContext().isVerbose()) {
         if (filteredRowsByTimeFilter != null && filteredRowsByTimeFilter[0] > 0) {
           this.getQueryContext()
               .getQueryStatistics()

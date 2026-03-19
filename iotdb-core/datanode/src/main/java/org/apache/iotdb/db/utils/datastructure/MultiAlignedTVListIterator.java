@@ -275,7 +275,7 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     TsBlock tsBlock = builder.build();
     if (pushDownFilter != null) {
       LongConsumer filterRowsRecorder =
-          this.getQueryContext().isVerbose()
+          this.getQueryContext() != null && this.getQueryContext().isVerbose()
               ? this.getQueryContext().getQueryStatistics()::addFilteredRowsOfRowLevel
               : null;
       tsBlock =

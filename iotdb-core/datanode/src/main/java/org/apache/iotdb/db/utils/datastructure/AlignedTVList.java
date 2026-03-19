@@ -1824,7 +1824,7 @@ public abstract class AlignedTVList extends TVList {
       // find the first row that is neither deleted nor empty (all NULL values)
       findValidRow = false;
       long filteredRows = 0;
-      boolean isVerbose = this.getQueryContext().isVerbose();
+      boolean isRecord = this.getQueryContext() != null && this.getQueryContext().isVerbose();
 
       while (index < rows && !findValidRow) {
         // all columns values are deleted
@@ -1849,7 +1849,7 @@ public abstract class AlignedTVList extends TVList {
         // does not find any valid row
         if (index >= rows) {
           probeNext = true;
-          if (isVerbose) {
+          if (isRecord) {
             this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
           }
           return;
@@ -1920,7 +1920,7 @@ public abstract class AlignedTVList extends TVList {
         }
       }
       probeNext = true;
-      if (isVerbose) {
+      if (isRecord) {
         this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
       }
     }
