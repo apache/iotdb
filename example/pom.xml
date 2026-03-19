@@ -38,6 +38,7 @@
         <module>rest-java-example</module>
         <module>schema</module>
         <module>session</module>
+        <module>subscription</module>
         <module>trigger</module>
         <module>udf</module>
     </modules>
