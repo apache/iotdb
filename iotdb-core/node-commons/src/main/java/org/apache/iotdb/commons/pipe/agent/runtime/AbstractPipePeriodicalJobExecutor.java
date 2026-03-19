@@ -110,6 +110,10 @@ public abstract class AbstractPipePeriodicalJobExecutor {
     }
   }
 
+  public void runDirectly(final Runnable command) {
+    executorService.execute(command);
+  }
+
   @TestOnly
   public void clear() {
     periodicalJobs.clear();

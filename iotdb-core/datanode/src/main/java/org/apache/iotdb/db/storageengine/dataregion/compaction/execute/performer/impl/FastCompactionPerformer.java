@@ -52,7 +52,6 @@ import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 
 import org.apache.tsfile.common.conf.TSFileDescriptor;
 import org.apache.tsfile.encrypt.EncryptParameter;
-import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.exception.StopReadTsFileByInterruptException;
 import org.apache.tsfile.exception.write.PageException;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -165,6 +164,7 @@ public class FastCompactionPerformer
                 ? new FastCrossCompactionWriter(
                     targetFiles, seqFiles, readerCacheMap, encryptParameter)
                 : new FastInnerCompactionWriter(targetFiles, encryptParameter)) {
+      compactionWriter.setCompactionTaskSummary(subTaskSummary);
       List<Schema> schemas =
           CompactionTableSchemaCollector.collectSchema(
               seqFiles, unseqFiles, readerCacheMap, deviceIterator.getDeprecatedTableSchemaMap());
@@ -281,21 +281,9 @@ public class FastCompactionPerformer
     // timeseries metadata, in order to facilitate the reading of chunkMetadata directly by this
     // offset later. Here we don't need to deserialize chunk metadata, we can deserialize them and
     // get their schema later.
-    Map<String, Map<TsFileResource, Pair<Long, Long>>> timeseriesMetadataOffsetMap =
-        new LinkedHashMap<>();
-
-    Map<String, TSDataType> measurementDataTypeMap = new LinkedHashMap<>();
-
     Map<String, CompactionSeriesContext> compactionSeriesContextMap =
         deviceIterator.getCompactionSeriesContextOfCurrentDevice();
-
-    for (Map.Entry<String, CompactionSeriesContext> entry : compactionSeriesContextMap.entrySet()) {
-      timeseriesMetadataOffsetMap.put(
-          entry.getKey(), entry.getValue().getFileTimeseriesMetdataOffsetMap());
-      measurementDataTypeMap.put(entry.getKey(), entry.getValue().getFinalType());
-    }
-
-    List<String> allMeasurements = new ArrayList<>(timeseriesMetadataOffsetMap.keySet());
+    List<String> allMeasurements = new ArrayList<>(compactionSeriesContextMap.keySet());
     allMeasurements.sort((String::compareTo));
 
     int subTaskNums = Math.min(allMeasurements.size(), SUB_TASK_NUM);
