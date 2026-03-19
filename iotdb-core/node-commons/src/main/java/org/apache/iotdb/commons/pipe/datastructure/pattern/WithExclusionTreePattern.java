@@ -97,6 +97,12 @@ public class WithExclusionTreePattern extends TreePattern {
   }
 
   @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    // May overlap if inclusion overlaps AND exclusion doesn't fully cover it.
+    return inclusionPattern.overlapWithDevice(device) && !exclusionPattern.coversDevice(device);
+  }
+
+  @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     // The core logic: Must match inclusion AND NOT match exclusion.
     return inclusionPattern.matchesMeasurement(device, measurement)

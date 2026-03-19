@@ -104,6 +104,11 @@ public class UnionIoTDBTreePattern extends IoTDBTreePatternOperations {
   }
 
   @Override
+  public boolean overlapWithDevice(final IDeviceID device) {
+    return patterns.stream().anyMatch(p -> p.overlapWithDevice(device));
+  }
+
+  @Override
   public boolean matchesMeasurement(final IDeviceID device, final String measurement) {
     return patterns.stream().anyMatch(p -> p.matchesMeasurement(device, measurement));
   }

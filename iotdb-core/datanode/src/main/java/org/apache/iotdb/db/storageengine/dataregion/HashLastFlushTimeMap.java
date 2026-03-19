@@ -19,18 +19,12 @@
 
 package org.apache.iotdb.db.storageengine.dataregion;
 
-import org.apache.iotdb.db.storageengine.StorageEngine;
-
 import org.apache.tsfile.file.metadata.IDeviceID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class HashLastFlushTimeMap implements ILastFlushTimeMap {
-
-  private static final Logger logger = LoggerFactory.getLogger(HashLastFlushTimeMap.class);
 
   long LONG_SIZE = 24;
 
@@ -46,17 +40,6 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
    * <p>It is used to separate sequence and unsequence data.
    */
   private final Map<Long, ILastFlushTime> partitionLatestFlushedTime = new ConcurrentHashMap<>();
-
-  /**
-   * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
-   * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
-   * latestFlushedTime of devices and will be updated along with
-   * partitionLatestFlushedTimeForEachDevice
-   *
-   * <p>It is used to update last cache.
-   */
-  private final Map<IDeviceID, Long> globalLatestFlushedTimeForEachDevice =
-      new ConcurrentHashMap<>();
 
   /** record memory cost of map for each partitionId */
   private final Map<Long, Long> memCostForEachPartition = new ConcurrentHashMap<>();
@@ -138,13 +121,6 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
   }
 
   @Override
-  public void updateMultiDeviceGlobalFlushedTime(Map<IDeviceID, Long> globalFlushedTimeMap) {
-    for (Map.Entry<IDeviceID, Long> entry : globalFlushedTimeMap.entrySet()) {
-      globalLatestFlushedTimeForEachDevice.merge(entry.getKey(), entry.getValue(), Math::max);
-    }
-  }
-
-  @Override
   public boolean checkAndCreateFlushedTimePartition(
       long timePartitionId, boolean usingDeviceFlushTime) {
     if (!partitionLatestFlushedTime.containsKey(timePartitionId)) {
@@ -165,10 +141,6 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
       partitionLatestFlushedTime
           .computeIfAbsent(partitionId, id -> new DeviceLastFlushTime())
           .updateLastFlushTime(entry.getKey(), entry.getValue());
-      if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
-          < entry.getValue()) {
-        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-      }
     }
   }
 
@@ -177,25 +149,9 @@ public class HashLastFlushTimeMap implements ILastFlushTimeMap {
     return partitionLatestFlushedTime.get(timePartitionId).getLastFlushTime(deviceId);
   }
 
-  // This method is for creating last cache entry when insert
-  @Override
-  public long getGlobalFlushedTime(IDeviceID path) {
-    // If TsFileResource is not fully recovered, we should return Long.MAX_VALUE
-    // to avoid create Last cache entry
-    if (!StorageEngine.getInstance().isReadyForNonReadWriteFunctions()) {
-      return Long.MAX_VALUE;
-    }
-    return globalLatestFlushedTimeForEachDevice.getOrDefault(path, Long.MIN_VALUE);
-  }
-
   @Override
   public void clearFlushedTime() {
     partitionLatestFlushedTime.clear();
-  }
-
-  @Override
-  public void clearGlobalFlushedTime() {
-    globalLatestFlushedTimeForEachDevice.clear();
   }
 
   @Override
