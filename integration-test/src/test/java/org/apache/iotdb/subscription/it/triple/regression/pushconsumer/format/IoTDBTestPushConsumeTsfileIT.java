@@ -136,7 +136,7 @@ public class IoTDBTestPushConsumeTsfileIT extends AbstractSubscriptionRegression
                 message -> {
                   onReceiveCount.incrementAndGet();
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     Path path = new Path(device, "s_0", true);
                     QueryDataSet dataset =
                         reader.query(QueryExpression.create(Collections.singletonList(path), null));

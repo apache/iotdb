@@ -30,7 +30,7 @@ import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.session.subscription.payload.SubscriptionTsFileHandler;
 
 import org.apache.tsfile.read.TsFileReader;
@@ -148,7 +148,8 @@ public class SubscriptionSessionExample {
           }
         }
         for (final SubscriptionMessage message : messages) {
-          for (final SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+          for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+              message.getResultSets()) {
             System.out.println(dataSet.getColumnNames());
             System.out.println(dataSet.getColumnTypes());
             while (dataSet.hasNext()) {
@@ -177,7 +178,7 @@ public class SubscriptionSessionExample {
       final Properties config = new Properties();
       config.put(TopicConstant.START_TIME_KEY, CURRENT_TIME + 33);
       config.put(TopicConstant.END_TIME_KEY, CURRENT_TIME + 66);
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       subscriptionSession.createTopic(TOPIC_2, config);
     }
 
@@ -207,7 +208,7 @@ public class SubscriptionSessionExample {
                       }
                     }
                     for (final SubscriptionMessage message : messages) {
-                      try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                      try (final TsFileReader reader = message.getTsFile().openReader()) {
                         final QueryDataSet dataSet =
                             reader.query(
                                 QueryExpression.create(
@@ -241,7 +242,7 @@ public class SubscriptionSessionExample {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_3, config);
     }
@@ -261,8 +262,7 @@ public class SubscriptionSessionExample {
                         .consumeListener(
                             message -> {
                               // do something for SubscriptionTsFileHandler
-                              System.out.println(
-                                  message.getTsFileHandler().getFile().getAbsolutePath());
+                              System.out.println(message.getTsFile().getFile().getAbsolutePath());
                               return ConsumeResult.SUCCESS;
                             })
                         .buildPushConsumer()) {
@@ -287,7 +287,7 @@ public class SubscriptionSessionExample {
     try (final SubscriptionSession subscriptionSession = new SubscriptionSession(HOST, PORT)) {
       subscriptionSession.open();
       final Properties config = new Properties();
-      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_HANDLER_VALUE);
+      config.put(TopicConstant.FORMAT_KEY, TopicConstant.FORMAT_TS_FILE_VALUE);
       config.put(TopicConstant.MODE_KEY, TopicConstant.MODE_SNAPSHOT_VALUE);
       subscriptionSession.createTopic(TOPIC_4, config);
     }
@@ -311,7 +311,7 @@ public class SubscriptionSessionExample {
                   consumer4.subscribe(TOPIC_4);
                   while (!consumer4.allTopicMessagesHaveBeenConsumed()) {
                     for (final SubscriptionMessage message : consumer4.poll(POLL_TIMEOUT_MS)) {
-                      final SubscriptionTsFileHandler handler = message.getTsFileHandler();
+                      final SubscriptionTsFileHandler handler = message.getTsFile();
                       handler.moveFile(
                           Paths.get(System.getProperty("user.dir"), "exported-tsfiles")
                               .resolve(

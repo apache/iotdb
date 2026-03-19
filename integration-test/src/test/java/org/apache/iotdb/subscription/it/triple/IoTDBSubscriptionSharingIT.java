@@ -31,7 +31,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.read.TsFileReader;
@@ -199,7 +199,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumeListener(
                 message -> {
                   try {
-                    try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                    try (final TsFileReader reader = message.getTsFile().openReader()) {
                       final QueryDataSet dataset =
                           reader.query(
                               QueryExpression.create(
@@ -226,7 +226,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumeListener(
                 message -> {
                   try {
-                    try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                    try (final TsFileReader reader = message.getTsFile().openReader()) {
                       final QueryDataSet dataset =
                           reader.query(
                               QueryExpression.create(
@@ -252,8 +252,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_1")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       receiver1.getSessionConnection().insertTablet(dataSet.getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -271,8 +271,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_1")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       receiver2.getSessionConnection().insertTablet(dataSet.getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -290,8 +290,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       receiver1.getSessionConnection().insertTablet(dataSet.getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -309,8 +309,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       receiver2.getSessionConnection().insertTablet(dataSet.getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -328,8 +328,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_2")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       receiver1.getSessionConnection().insertTablet(dataSet.getTablet());
                     } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -350,9 +350,9 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           try {
                             receiver1.getSessionConnection().insertTablet(dataSet.getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -360,8 +360,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
-                        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                      case TS_FILE:
+                        try (final TsFileReader reader = message.getTsFile().openReader()) {
                           final QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
@@ -389,7 +389,7 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
             .consumerGroupId("push_group_id_3")
             .consumeListener(
                 message -> {
-                  try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                  try (final TsFileReader reader = message.getTsFile().openReader()) {
                     final QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -417,9 +417,9 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           try {
                             receiver2.getSessionConnection().insertTablet(dataSet.getTablet());
                           } catch (final StatementExecutionException | IoTDBConnectionException e) {
@@ -427,8 +427,8 @@ public class IoTDBSubscriptionSharingIT extends AbstractSubscriptionTripleIT {
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
-                        try (final TsFileReader reader = message.getTsFileHandler().openReader()) {
+                      case TS_FILE:
+                        try (final TsFileReader reader = message.getTsFile().openReader()) {
                           final QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(

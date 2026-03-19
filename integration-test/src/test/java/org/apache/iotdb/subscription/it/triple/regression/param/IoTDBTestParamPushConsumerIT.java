@@ -30,7 +30,7 @@ import org.apache.iotdb.rpc.subscription.exception.SubscriptionRuntimeCriticalEx
 import org.apache.iotdb.session.subscription.consumer.AckStrategy;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -143,8 +143,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
             .ackStrategy(AckStrategy.BEFORE_CONSUME)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       // System.out.println("#### " + dataSet.getTablet().rowSize);
                       session_dest.insertTablet(dataSet.getTablet());
@@ -181,8 +181,8 @@ public class IoTDBTestParamPushConsumerIT extends AbstractSubscriptionRegression
             .autoPollIntervalMs(10)
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {

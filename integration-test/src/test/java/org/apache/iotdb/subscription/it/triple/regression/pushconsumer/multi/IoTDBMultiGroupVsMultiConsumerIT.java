@@ -26,7 +26,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.subscription.consumer.ConsumeResult;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPushConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 import org.apache.iotdb.subscription.it.triple.regression.AbstractSubscriptionRegressionIT;
 
@@ -210,7 +210,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -241,7 +241,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -272,8 +272,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {
@@ -294,8 +294,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest2.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {
@@ -316,8 +316,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {
@@ -338,8 +338,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest2.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {
@@ -360,8 +360,8 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .fileSaveDir("target/push-subscription")
             .consumeListener(
                 message -> {
-                  for (final SubscriptionSessionDataSet dataSet :
-                      message.getSessionDataSetsHandler()) {
+                  for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                      message.getResultSets()) {
                     try {
                       session_dest.insertTablet(dataSet.getTablet());
                     } catch (StatementExecutionException e) {
@@ -385,9 +385,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           try {
                             session_dest.insertTablet(dataSet.getTablet());
                           } catch (StatementExecutionException e) {
@@ -397,9 +397,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(
@@ -432,7 +432,7 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
             .consumeListener(
                 message -> {
                   try {
-                    TsFileReader reader = message.getTsFileHandler().openReader();
+                    TsFileReader reader = message.getTsFile().openReader();
                     QueryDataSet dataset =
                         reader.query(
                             QueryExpression.create(
@@ -465,9 +465,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                   final short messageType = message.getMessageType();
                   if (SubscriptionMessageType.isValidatedMessageType(messageType)) {
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           try {
                             session_dest2.insertTablet(dataSet.getTablet());
                           } catch (StatementExecutionException e) {
@@ -477,9 +477,9 @@ public class IoTDBMultiGroupVsMultiConsumerIT extends AbstractSubscriptionRegres
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
+                      case TS_FILE:
                         try {
-                          TsFileReader reader = message.getTsFileHandler().openReader();
+                          TsFileReader reader = message.getTsFile().openReader();
                           QueryDataSet dataset =
                               reader.query(
                                   QueryExpression.create(

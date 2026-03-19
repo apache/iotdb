@@ -28,7 +28,7 @@ import org.apache.iotdb.session.subscription.SubscriptionSession;
 import org.apache.iotdb.session.subscription.consumer.SubscriptionPullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessageType;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
 import org.apache.tsfile.common.conf.TSFileConfig;
@@ -308,9 +308,9 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                       continue;
                     }
                     switch (SubscriptionMessageType.valueOf(messageType)) {
-                      case SESSION_DATA_SETS_HANDLER:
-                        for (final SubscriptionSessionDataSet dataSet :
-                            message.getSessionDataSetsHandler()) {
+                      case RECORD_HANDLER:
+                        for (final SubscriptionRecordHandler.SubscriptionResultSet dataSet :
+                            message.getResultSets()) {
                           while (dataSet.hasNext()) {
                             final RowRecord record = dataSet.next();
                             Assert.assertEquals(type.toString(), dataSet.getColumnTypes().get(1));
@@ -322,9 +322,8 @@ public class IoTDBSubscriptionDataTypeIT extends AbstractSubscriptionLocalIT {
                           }
                         }
                         break;
-                      case TS_FILE_HANDLER:
-                        try (final TsFileReader tsFileReader =
-                            message.getTsFileHandler().openReader()) {
+                      case TS_FILE:
+                        try (final TsFileReader tsFileReader = message.getTsFile().openReader()) {
                           final QueryDataSet dataSet =
                               tsFileReader.query(
                                   QueryExpression.create(
