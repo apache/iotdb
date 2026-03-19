@@ -35,28 +35,28 @@
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>com.timecho.iotdb</groupId>
             <artifactId>isession</artifactId>
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>com.timecho.iotdb</groupId>
             <artifactId>iotdb-session</artifactId>
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>com.timecho.iotdb</groupId>
             <artifactId>service-rpc</artifactId>
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
+            <groupId>com.timecho.iotdb</groupId>
             <artifactId>iotdb-thrift-commons</artifactId>
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-thrift</artifactId>
+            <groupId>com.timecho.iotdb</groupId>
+            <artifactId>timechodb-thrift</artifactId>
             <version>2.0.8-SNAPSHOT</version>
         </dependency>
         <dependency>
