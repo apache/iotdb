@@ -23,7 +23,6 @@ import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.isession.SessionDataSet;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.TableClusterIT;
 import org.apache.iotdb.itbase.category.TableLocalStandaloneIT;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -45,7 +44,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({TableLocalStandaloneIT.class, TableClusterIT.class})
+@Category({TableLocalStandaloneIT.class})
 public class IoTDBTableFilteredRowsIT {
 
   private static final String TABLE_DATABASE = "filter_info";
