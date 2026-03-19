@@ -45,6 +45,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.Dat
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.DistributedOptimizeFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations.PlanOptimizer;
 import org.apache.iotdb.db.queryengine.plan.relational.type.InternalTypeManager;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ParallelHint;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -130,8 +131,14 @@ public class TableDistributedPlanner {
 
   public PlanNode generateDistributedPlanWithOptimize(
       TableDistributedPlanGenerator.PlanContext planContext) {
-    // generate table model distributed plan
+    // set parallel hint
+    ParallelHint parallelHint =
+        (ParallelHint) planContext.hintMap.getOrDefault(ParallelHint.category, null);
+    if (parallelHint != null) {
+      mppQueryContext.setParallelism(parallelHint.getParallelism());
+    }
 
+    // generate table model distributed plan
     List<PlanNode> distributedPlanResult =
         new TableDistributedPlanGenerator(
                 mppQueryContext, analysis, symbolAllocator, dataNodeLocationSupplier)

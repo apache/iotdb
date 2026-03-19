@@ -162,6 +162,9 @@ public class FragmentInstanceContext extends QueryContext {
   private long closedSeqFileNum = 0;
   private long closedUnseqFileNum = 0;
 
+  // parallel hint
+  private int parallelism = 0;
+
   public static FragmentInstanceContext createFragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine, SessionInfo sessionInfo) {
     FragmentInstanceContext instanceContext =
@@ -1160,5 +1163,13 @@ public class FragmentInstanceContext extends QueryContext {
 
   public boolean isSingleSourcePath() {
     return singleSourcePath;
+  }
+
+  public int getParallelism() {
+    return parallelism;
+  }
+
+  public void setParallelism(int parallelism) {
+    this.parallelism = parallelism;
   }
 }

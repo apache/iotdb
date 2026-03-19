@@ -32,6 +32,10 @@ public class ParallelHint extends Hint {
     this.parallelism = parallelism;
   }
 
+  public int getParallelism() {
+    return parallelism;
+  }
+
   @Override
   public String getKey() {
     return category;

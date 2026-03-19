@@ -33,7 +33,7 @@ public class FollowerHintItem extends Node {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(FollowerHintItem.class);
 
-  private static final String hintName = "FOLLOWER";
+  private static final String hintItemName = "follower";
   private final List<String> tables;
   private final List<List<Integer>> nodeIds;
 
@@ -80,7 +80,7 @@ public class FollowerHintItem extends Node {
 
   @Override
   public String toString() {
-    return hintName
+    return hintItemName
         + "("
         + IntStream.range(0, tables.size())
             .mapToObj(

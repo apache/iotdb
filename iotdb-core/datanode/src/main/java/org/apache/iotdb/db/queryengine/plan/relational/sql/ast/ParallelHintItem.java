@@ -31,7 +31,7 @@ public class ParallelHintItem extends Node {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(ParallelHintItem.class);
 
-  private static final String hintName = "PARALLEL";
+  private static final String hintItemName = "parallel";
   private final int parallelism;
 
   public ParallelHintItem(int parallelism) {
@@ -72,7 +72,7 @@ public class ParallelHintItem extends Node {
 
   @Override
   public String toString() {
-    return hintName + "(" + parallelism + ")";
+    return hintItemName + "(" + parallelism + ")";
   }
 
   @Override

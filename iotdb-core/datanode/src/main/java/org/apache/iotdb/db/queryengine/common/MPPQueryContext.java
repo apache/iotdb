@@ -37,7 +37,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.analyzer.NodeRef;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Identifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Query;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Table;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
 import org.apache.iotdb.db.queryengine.statistics.QueryPlanStatistics;
 import org.apache.iotdb.db.utils.cte.CteDataStore;
 
@@ -126,8 +125,6 @@ public class MPPQueryContext implements IAuditEntity {
 
   private boolean userQuery = false;
 
-  private Map<String, Hint> hintMap = new HashMap<>();
-
   private Map<NodeRef<Table>, Query> cteQueries = new HashMap<>();
 
   // Stores the EXPLAIN/EXPLAIN ANALYZE results for Common Table Expressions (CTEs)
@@ -147,6 +144,9 @@ public class MPPQueryContext implements IAuditEntity {
 
   // Tables in the subquery
   private final Map<NodeRef<Query>, Set<Identifier>> subQueryTables = new HashMap<>();
+
+  // parallel hint
+  private int parallelism = 0;
 
   public MPPQueryContext(QueryId queryId) {
     this.queryId = queryId;
@@ -660,6 +660,14 @@ public class MPPQueryContext implements IAuditEntity {
   public IAuditEntity setSqlString(String sqlString) {
     // Do nothing
     return this;
+  }
+
+  public int getParallelism() {
+    return parallelism;
+  }
+
+  public void setParallelism(int parallelism) {
+    this.parallelism = parallelism;
   }
 
   // ================= Authentication Interfaces =========================

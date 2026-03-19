@@ -161,6 +161,9 @@ public class FragmentInstanceManager {
                                 instance.getGlobalTimePredicate(),
                                 dataNodeQueryContextMap));
 
+                // set parallelism from fragment instance
+                context.setParallelism(instance.getParallelism());
+
                 try {
                   List<PipelineDriverFactory> driverFactories =
                       planner.plan(

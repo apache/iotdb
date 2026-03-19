@@ -70,6 +70,9 @@ public class FragmentInstance implements IConsensusRequest {
   // The num of all FI on the dispatched DataNode in this query
   private int dataNodeFINum;
 
+  // parallel hint
+  private int parallelism = 0;
+
   private boolean isHighestPriority;
 
   // indicate which index we are retrying
@@ -96,6 +99,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeOut = timeOut > 0 ? timeOut : CONFIG.getQueryTimeoutThreshold();
     this.isRoot = false;
     this.sessionInfo = sessionInfo;
+    this.parallelism = 0;
   }
 
   public FragmentInstance(
@@ -200,6 +204,14 @@ public class FragmentInstance implements IConsensusRequest {
     this.dataNodeFINum = dataNodeFINum;
   }
 
+  public int getParallelism() {
+    return parallelism;
+  }
+
+  public void setParallelism(int parallelism) {
+    this.parallelism = parallelism;
+  }
+
   public String toString() {
     StringBuilder ret = new StringBuilder();
     ret.append(String.format("FragmentInstance-%s:", getId()));
@@ -229,9 +241,11 @@ public class FragmentInstance implements IConsensusRequest {
     TimePredicate globalTimePredicate = hasTimePredicate ? TimePredicate.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
     int dataNodeFINum = ReadWriteIOUtils.readInt(buffer);
+    int parallelism = ReadWriteIOUtils.readInt(buffer);
     FragmentInstance fragmentInstance =
         new FragmentInstance(
             planFragment, id, globalTimePredicate, queryType, timeOut, sessionInfo, dataNodeFINum);
+    fragmentInstance.setParallelism(parallelism);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
@@ -255,6 +269,7 @@ public class FragmentInstance implements IConsensusRequest {
       }
       ReadWriteIOUtils.write(type.ordinal(), outputStream);
       ReadWriteIOUtils.write(dataNodeFINum, outputStream);
+      ReadWriteIOUtils.write(parallelism, outputStream);
       ReadWriteIOUtils.write(hostDataNode != null, outputStream);
       if (hostDataNode != null) {
         ThriftCommonsSerDeUtils.serializeTDataNodeLocation(hostDataNode, outputStream);
