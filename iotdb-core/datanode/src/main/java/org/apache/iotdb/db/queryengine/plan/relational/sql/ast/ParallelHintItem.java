@@ -27,26 +27,25 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Objects;
 
-/** Represents a parameterized hint, e.g., "LEADER(table1)" or "FOLLOWER(table2)". */
-public class ParameterizedHintItem extends Node {
+public class ParallelHintItem extends Node {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(ParameterizedHintItem.class);
+      RamUsageEstimator.shallowSizeOfInstance(ParallelHintItem.class);
 
-  private final String hintName;
-  private final List<String> parameters;
+  private static final String hintName = "PARALLEL";
+  private final int parallelism;
 
-  public ParameterizedHintItem(String hintName, List<String> parameters) {
+  public ParallelHintItem(int parallelism) {
     super(null);
-    this.hintName = hintName.toUpperCase();
-    this.parameters = ImmutableList.copyOf(parameters);
+    this.parallelism = parallelism;
   }
 
-  public String getHintName() {
-    return hintName;
+  public int getParallelism() {
+    return parallelism;
   }
 
-  public List<String> getParameters() {
-    return parameters;
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitParallelHintItem(this, context);
   }
 
   @Override
@@ -55,13 +54,8 @@ public class ParameterizedHintItem extends Node {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitParameterizedHintItem(this, context);
-  }
-
-  @Override
   public int hashCode() {
-    return Objects.hash(hintName, parameters);
+    return Objects.hash(parallelism);
   }
 
   @Override
@@ -72,22 +66,19 @@ public class ParameterizedHintItem extends Node {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    ParameterizedHintItem other = (ParameterizedHintItem) obj;
-    return Objects.equals(this.hintName, other.hintName)
-        && Objects.equals(this.parameters, other.parameters);
+    ParallelHintItem other = (ParallelHintItem) obj;
+    return this.parallelism == other.parallelism;
   }
 
   @Override
   public String toString() {
-    return hintName + "(" + String.join(", ", parameters) + ")";
+    return hintName + "(" + parallelism + ")";
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(parameters);
-    size += RamUsageEstimator.sizeOf(hintName);
     return size;
   }
 }
