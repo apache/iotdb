@@ -165,11 +165,10 @@ public class DistributionPlanner {
   private boolean needShuffleSinkNode(Statement statement, NodeGroupContext nodeGroupContext) {
 
     QueryStatement queryStatement = null;
-    if ((statement instanceof ExplainAnalyzeStatement)) {
-      queryStatement = ((ExplainAnalyzeStatement) statement).getQueryStatement();
-    }
     if (statement instanceof QueryStatement) {
       queryStatement = (QueryStatement) statement;
+    } else if (statement instanceof ExplainAnalyzeStatement) {
+      queryStatement = ((ExplainAnalyzeStatement) statement).getQueryStatement();
     }
     if (queryStatement == null) {
       return false;
