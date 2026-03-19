@@ -91,9 +91,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
-    PipeAgentLauncher.launchPipeTaskAgent();
-
     pipePeriodicalJobExecutor.start();
+    pipePeriodicalJobExecutor.runDirectly(PipeAgentLauncher::launchPipeTaskAgent);
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
       pipePeriodicalPhantomReferenceCleaner.start();
