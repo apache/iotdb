@@ -1352,7 +1352,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       tsStatus = warningTsStatus;
     }
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      future.set(new ConfigTaskResult(tsStatus));
     } else {
       future.setException(new IoTDBException(tsStatus));
     }

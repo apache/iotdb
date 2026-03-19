@@ -323,6 +323,36 @@ public class TimechoConfigManager extends org.apache.iotdb.confignode.manager.Co
     return super.setConfiguration(req);
   }
 
+  private static final String DN_RPC_MAX_CONCURRENT_CLIENT_NUM = "dn_rpc_max_concurrent_client_num";
+
+  @Override
+  protected TSStatus validateConfigurationBeforeSet(TSetConfigurationReq req) {
+    String value = req.getConfigs().get(DN_RPC_MAX_CONCURRENT_CLIENT_NUM);
+    if (value == null) {
+      return null;
+    }
+    int n;
+    try {
+      n = Integer.parseInt(value.trim());
+    } catch (NumberFormatException e) {
+      return RpcUtils.getStatus(
+          TSStatusCode.EXECUTE_STATEMENT_ERROR,
+          "Invalid value for " + DN_RPC_MAX_CONCURRENT_CLIENT_NUM + ": " + value);
+    }
+    TCheckMaxClientNumResp resp = checkMaxClientNumValid(n);
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      int minSum = resp.getMinSessionsSum();
+      return RpcUtils.getStatus(
+          TSStatusCode.SESSION_NUMS_EXCEEDED,
+          String.format(
+              "dn_rpc_max_concurrent_client_num (%d) cannot be less than "
+                  + "the sum of all users' MIN_SESSION_PER_USER (%d). "
+                  + "Please set it to at least %d.",
+              n, minSum, minSum));
+    }
+    return null;
+  }
+
   public TSStatus checkSessionNumOnConnect(
       Map<String, Integer> currentSessionInfo, int rpcMaxConcurrentClientNum) {
     TSStatus status = confirmLeader();

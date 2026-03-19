@@ -326,14 +326,14 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
       // Active DataNode
       active();
 
+      // Check the validity of system parameters
+      checkParameterValid();
+
       // Setup metric service
       setUpMetricService();
 
       // Setup rpc service
       setUpRPCService();
-
-      // Check the validity of system parameters
-      checkParameterValid();
 
       // Serialize mutable system properties
       IoTDBStartCheck.getInstance().serializeMutableSystemPropertiesIfNecessary();

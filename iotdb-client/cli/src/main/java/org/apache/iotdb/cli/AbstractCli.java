@@ -609,7 +609,14 @@ public abstract class AbstractCli {
           }
         }
       } else {
-        ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
+        // For non-query statements, prefer server-side message (TSStatus.message) if present
+        String serverMsg = null;
+        serverMsg = connection.getLastStatementMessage();
+        if (serverMsg != null && !serverMsg.isEmpty()) {
+          ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE + serverMsg);
+        } else {
+          ctx.getPrinter().println("Msg: " + SUCCESS_MESSAGE);
+        }
       }
     } catch (Exception e) {
       ctx.getPrinter().println("Msg: " + e);

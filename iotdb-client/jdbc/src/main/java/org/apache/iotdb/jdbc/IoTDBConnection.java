@@ -121,6 +121,9 @@ public class IoTDBConnection implements Connection {
   // ms is 1_000, us is 1_000_000, ns is 1_000_000_000
   private int timeFactor = 1_000;
 
+  // Last statement-level server message (TSStatus.message), used by CLI to display details.
+  private volatile String lastStatementMessage;
+
   public IoTDBConnection() {
     // allowed to create an instance without parameter input.
   }
@@ -154,6 +157,14 @@ public class IoTDBConnection implements Connection {
 
   public IoTDBConnectionParams getParams() {
     return params;
+  }
+
+  public void setLastStatementMessage(String msg) {
+    this.lastStatementMessage = msg;
+  }
+
+  public String getLastStatementMessage() {
+    return lastStatementMessage;
   }
 
   @Override

@@ -381,6 +381,13 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
 
+    // record server-side message for the last executed statement (used by CLI)
+    if (execResp.getStatus() != null) {
+      connection.setLastStatementMessage(execResp.getStatus().getMessage());
+    } else {
+      connection.setLastStatementMessage(null);
+    }
+
     if (execResp.isSetDatabase()) {
       connection.changeDefaultDatabase(execResp.getDatabase());
     }

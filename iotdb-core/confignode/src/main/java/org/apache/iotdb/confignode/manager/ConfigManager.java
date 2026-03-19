@@ -1768,6 +1768,11 @@ public class ConfigManager implements IManager {
       TrimProperties properties = new TrimProperties();
       properties.putAll(req.getConfigs());
 
+      TSStatus validationStatus = validateConfigurationBeforeSet(req);
+      if (validationStatus != null) {
+        return validationStatus;
+      }
+
       if (configurationFileFound) {
         File file = new File(url.getFile());
         try {
@@ -1779,6 +1784,29 @@ public class ConfigManager implements IManager {
               });
         } catch (Exception e) {
           tsStatus = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+        }
+        if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          try {
+            List<String> restartRequiredKeys = new ArrayList<>();
+
+            for (String key : req.getConfigs().keySet()) {
+              if (ConfigurationFileUtils.EffectiveModeType.RESTART
+                  == ConfigurationFileUtils.getConfigurationEffectiveMode(key)) {
+                restartRequiredKeys.add(key);
+              }
+            }
+
+            if (!restartRequiredKeys.isEmpty()) {
+              tsStatus.setMessage(
+                  "Configuration has been set successfully, but restart is required "
+                      + "for the following parameters to take effect: "
+                      + String.join(", ", restartRequiredKeys)
+                      + ".");
+            }
+          } catch (IOException ignored) {
+            // when template is not available
+            LOGGER.warn("An error occurred when accessing iotdb-system.properties.template.");
+          }
         }
       } else {
         String msg =
@@ -1799,7 +1827,27 @@ public class ConfigManager implements IManager {
     List<TSStatus> statusList = new ArrayList<>(statusListOfOtherNodes.size() + 1);
     statusList.add(tsStatus);
     statusList.addAll(statusListOfOtherNodes);
-    return RpcUtils.squashResponseStatusList(statusList);
+    TSStatus status = RpcUtils.squashResponseStatusList(statusList);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      status.setMessage(tsStatus.getMessage());
+    }
+    return status;
+  }
+
+  /**
+   * Validates configuration values before applying them.
+   *
+   * <p>The default implementation performs no additional validation and returns a success {@link
+   * TSStatus}. Subclasses may override this method to provide custom validation logic (e.g.,
+   * ensuring dn_rpc_max_concurrent_client_num is greater than or equal to the sum of minimum
+   * sessions per user).
+   *
+   * @param req configuration request to validate
+   * @return a success {@link TSStatus} if validation passes; otherwise, an error {@link TSStatus}
+   *     used to abort the configuration update
+   */
+  protected TSStatus validateConfigurationBeforeSet(TSetConfigurationReq req) {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override

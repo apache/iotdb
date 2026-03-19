@@ -305,6 +305,26 @@ public class ConfigurationFileUtils {
     return defaultConfigurationItem == null ? null : defaultConfigurationItem.privilege;
   }
 
+  /**
+   * Returns the effective mode of a configuration item from the template (e.g. restart,
+   * hot_reload). Used to decide whether to prompt that restart is required after setting
+   * configuration.
+   *
+   * @param parameterName configuration parameter name
+   * @return the effective mode of the configuration item
+   * @throws IOException if an I/O error occurs while reading the configuration template
+   */
+  public static EffectiveModeType getConfigurationEffectiveMode(String parameterName)
+      throws IOException {
+    parameterName = parameterName.trim();
+    if (configuration2DefaultValue == null) {
+      loadConfigurationDefaultValueFromTemplate();
+    }
+    DefaultConfigurationItem defaultConfigurationItem =
+        configuration2DefaultValue.get(parameterName);
+    return defaultConfigurationItem == null ? null : defaultConfigurationItem.effectiveMode;
+  }
+
   public static boolean parameterNeedKeepConsistentInCluster(String key) {
     if (IoTDBConstant.ENABLE_SEPARATION_OF_ADMIN_POWERS.equals(key)) {
       return true;
