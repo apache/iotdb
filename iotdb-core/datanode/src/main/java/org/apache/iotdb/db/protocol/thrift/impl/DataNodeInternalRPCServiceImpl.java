@@ -3383,10 +3383,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
                 long earliestTimeSlotId = Long.MIN_VALUE;
 
+                earliestTimeSlotId = findEarliestTimeslotInFiles(seqTsFileList, earliestTimeSlotId);
                 earliestTimeSlotId =
-                    findEarliestTimeslotInDatabase(seqTsFileList, earliestTimeSlotId);
-                earliestTimeSlotId =
-                    findEarliestTimeslotInDatabase(unseqTsFileList, earliestTimeSlotId);
+                    findEarliestTimeslotInFiles(unseqTsFileList, earliestTimeSlotId);
+
+                if (earliestTimeSlotId == Long.MIN_VALUE) {
+                  LOGGER.info("No time slot info is found in the seq and unseq directory");
+                  return;
+                }
 
                 long finalEarliestTimeSlotId = earliestTimeSlotId;
                 earliestTimeslots.compute(
@@ -3403,7 +3407,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     LOGGER.info("Process data directory for earliestTimeslots completed successfully");
   }
 
-  private long findEarliestTimeslotInDatabase(
+  private long findEarliestTimeslotInFiles(
       List<TsFileResource> seqTsFileList, long earliestTimeSlotId) {
     for (TsFileResource tsFileResource : seqTsFileList) {
       long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
