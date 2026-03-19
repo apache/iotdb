@@ -31,7 +31,7 @@ public class LeaderHintItem extends Node {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(LeaderHintItem.class);
 
-  private static final String hintName = "LEADER";
+  private static final String hintItemName = "leader";
   private final List<String> tables;
 
   public LeaderHintItem(List<String> tables) {
@@ -72,7 +72,7 @@ public class LeaderHintItem extends Node {
 
   @Override
   public String toString() {
-    return hintName + "(" + String.join(", ", tables) + ")";
+    return hintItemName + "(" + String.join(", ", tables) + ")";
   }
 
   @Override

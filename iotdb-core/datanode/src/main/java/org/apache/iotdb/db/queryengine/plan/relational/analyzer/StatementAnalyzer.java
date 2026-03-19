@@ -1532,8 +1532,10 @@ public class StatementAnalyzer {
         } else if (hintItem instanceof ParallelHintItem) {
           ParallelHintItem parallelHintItem = (ParallelHintItem) hintItem;
           int parallelism = parallelHintItem.getParallelism();
-          Hint hint = new ParallelHint(parallelism);
-          hintMap.putIfAbsent(hint.getKey(), hint);
+          if (parallelism > 0) {
+            Hint hint = new ParallelHint(parallelism);
+            hintMap.putIfAbsent(hint.getKey(), hint);
+          }
         }
       }
       analysis.setHintMap(hintMap);
