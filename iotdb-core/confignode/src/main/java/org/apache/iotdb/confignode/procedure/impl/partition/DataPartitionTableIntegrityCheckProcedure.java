@@ -438,8 +438,7 @@ public class DataPartitionTableIntegrityCheckProcedure
       }
     }
 
-    if (failedDataNodes.size() == allDataNodes.size()
-        && new HashSet<>(allDataNodes).containsAll(failedDataNodes)) {
+    if (failedDataNodes.size() == allDataNodes.size()) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.COLLECT_EARLIEST_TIMESLOTS);
       return Flow.HAS_MORE_STATE;
     }
@@ -497,6 +496,7 @@ public class DataPartitionTableIntegrityCheckProcedure
                   dataNodeId);
               break;
             default:
+              failedDataNodes.add(dataNode);
               LOG.error(
                   "[DataPartitionIntegrity] DataNode {} returned unknown error code: {}",
                   dataNodeId,
@@ -518,6 +518,13 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     if (completeCount >= allDataNodes.size()) {
       setNextState(DataPartitionTableIntegrityCheckProcedureState.MERGE_PARTITION_TABLES);
+      return Flow.HAS_MORE_STATE;
+    }
+
+    // Don't find any one data partition table generation task on all registered DataNodes, go back
+    // to the REQUEST_PARTITION_TABLES step and re-execute
+    if (failedDataNodes.size() == allDataNodes.size()) {
+      setNextState(DataPartitionTableIntegrityCheckProcedureState.REQUEST_PARTITION_TABLES);
       return Flow.HAS_MORE_STATE;
     }
 

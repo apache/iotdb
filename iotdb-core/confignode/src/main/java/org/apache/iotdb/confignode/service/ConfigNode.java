@@ -194,7 +194,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
         upgrade();
-        waitForLeaderElected();
+        TConfigNodeLocation leaderNodeLocation = waitForLeaderElected();
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -223,7 +223,8 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         loadSecretKey();
         loadHardwareCode();
 
-        if (configManager.getConsensusManager().isLeader()) {
+        /* After the ConfigNode leader election, a leader switch may occur, which could cause the procedure not to be created. This can happen if the original leader has not yet executed the procedure creation, while the other followers have already finished starting up. Therefore, having the original leader (before the leader switch) initiate the process ensures that only one procedure will be created. */
+        if (leaderNodeLocation.getConfigNodeId() == configNodeId) {
           dataPartitionTableCheckFuture =
               dataPartitionTableCheckExecutor.submit(
                   () -> {
@@ -521,7 +522,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
-  private void waitForLeaderElected() {
+  private TConfigNodeLocation waitForLeaderElected() {
     while (!configManager.getConsensusManager().isLeaderExist()) {
       LOGGER.info("Leader has not been elected yet, wait for 1 second");
       try {
@@ -531,6 +532,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         LOGGER.warn("Unexpected interruption during waiting for leader election.");
       }
     }
+    return configManager.getConsensusManager().getLeaderLocation();
   }
 
   /**

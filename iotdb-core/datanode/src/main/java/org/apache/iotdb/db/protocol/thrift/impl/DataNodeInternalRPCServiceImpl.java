@@ -197,6 +197,7 @@ import org.apache.iotdb.db.service.RegionMigrateService;
 import org.apache.iotdb.db.service.externalservice.ExternalServiceManagementService;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.StorageEngine;
+import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.repair.RepairTaskStatus;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
@@ -205,6 +206,8 @@ import org.apache.iotdb.db.storageengine.dataregion.flush.CompressionRatio;
 import org.apache.iotdb.db.storageengine.dataregion.modification.DeletionPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.IDPredicate;
 import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEntry;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
+import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeSpaceQuotaManager;
 import org.apache.iotdb.db.storageengine.rescon.quotas.DataNodeThrottleQuotaManager;
 import org.apache.iotdb.db.subscription.agent.SubscriptionAgent;
@@ -344,13 +347,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -3148,23 +3147,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TGetEarliestTimeslotsResp resp = new TGetEarliestTimeslotsResp();
 
     try {
-      Map<String, Long> earliestTimeslots = new HashMap<>();
-
-      // Get data directories from configuration
-      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-
-      for (String dataDir : dataDirs) {
-        File dir = new File(dataDir);
-        if (dir.exists() && dir.isDirectory()) {
-          processDataDirectoryForEarliestTimeslots(dir, earliestTimeslots);
-        }
-      }
+      Map<String, Long> earliestTimeslots = new ConcurrentHashMap<>();
+      processDataDirectoryForEarliestTimeslots(earliestTimeslots);
 
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setDatabaseToEarliestTimeslot(earliestTimeslots);
 
       LOGGER.info("Retrieved earliest timeslots for {} databases", earliestTimeslots.size());
-
     } catch (Exception e) {
       LOGGER.error("Failed to get earliest timeslots", e);
       resp.setStatus(
@@ -3243,13 +3232,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     // Set default value
     resp.setDatabaseScopedDataPartitionTables(Collections.emptyList());
     try {
-      currentGeneratorFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
-      if (currentGenerator == null) {
+      // To resolve this situation that the DataNode is registered and didn't request
+      // generateDataPartitionTable interface yet.
+      if (currentGeneratorFuture == null || currentGenerator == null) {
         resp.setErrorCode(DataPartitionTableGeneratorState.UNKNOWN.getCode());
         resp.setMessage("No DataPartitionTable generation task found");
         resp.setStatus(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
         return resp;
       }
+
+      currentGeneratorFuture.get(timeoutMs, TimeUnit.MILLISECONDS);
 
       parseGenerationStatus(resp);
       if (currentGenerator.getStatus().equals(DataPartitionTableGenerator.TaskStatus.COMPLETED)) {
@@ -3291,23 +3283,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return resp;
   }
 
-  private <T> void parseGenerationStatus(T resp) {
-    if (resp instanceof TGenerateDataPartitionTableResp) {
-      handleResponse((TGenerateDataPartitionTableResp) resp);
-    } else {
-      handleResponse((TGenerateDataPartitionTableHeartbeatResp) resp);
-    }
-  }
-
-  private void handleResponse(TGenerateDataPartitionTableResp resp) {
-    updateResponse(resp);
-  }
-
-  private void handleResponse(TGenerateDataPartitionTableHeartbeatResp resp) {
-    updateResponse(resp);
-  }
-
-  private <T> void updateResponse(T resp) {
+  private void parseGenerationStatus(Object resp) {
     if (currentGenerator == null) {
       return;
     }
@@ -3353,69 +3329,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
   }
 
-  private <T> void setResponseFields(T resp, int errorCode, String message, TSStatus status) {
-    try {
-      Method setErrorCode = resp.getClass().getMethod("setErrorCode", int.class);
-      Method setMessage = resp.getClass().getMethod("setMessage", String.class);
-      Method setStatus = resp.getClass().getMethod("setStatus", TSStatus.class);
-
-      setErrorCode.invoke(resp, errorCode);
-      setMessage.invoke(resp, message);
-      setStatus.invoke(resp, status);
-    } catch (Exception e) {
-      LOGGER.error("Failed to set response fields", e);
+  private void setResponseFields(Object resp, int errorCode, String message, TSStatus status) {
+    if (resp instanceof TGenerateDataPartitionTableResp) {
+      ((TGenerateDataPartitionTableResp) resp).setErrorCode(errorCode);
+      ((TGenerateDataPartitionTableResp) resp).setMessage(message);
+      ((TGenerateDataPartitionTableResp) resp).setStatus(status);
+    } else if (resp instanceof TGenerateDataPartitionTableHeartbeatResp) {
+      ((TGenerateDataPartitionTableHeartbeatResp) resp).setErrorCode(errorCode);
+      ((TGenerateDataPartitionTableHeartbeatResp) resp).setMessage(message);
+      ((TGenerateDataPartitionTableHeartbeatResp) resp).setStatus(status);
     }
   }
 
   /**
-   * Process data directory to find the earliest timeslots for each database. Map<String, Long>
-   * earliestTimeslots key(String): database name value(Long): the earliest time slot id of the
-   * database
+   * Scan the seq and unseq directory on every data region, then compute the earliest time slot id
+   * of database
    */
-  private void processDataDirectoryForEarliestTimeslots(
-      File dataDir, Map<String, Long> earliestTimeslots) {
-    Map<String, Long> databaseEarliestRegionMap = new ConcurrentHashMap<>();
-    try (Stream<Path> sequenceTypePaths = Files.list(dataDir.toPath())) {
-      sequenceTypePaths
-          .filter(Files::isDirectory)
-          .forEach(
-              sequenceTypePath -> {
-                try (Stream<Path> dbPaths = Files.list(sequenceTypePath)) {
-                  dbPaths
-                      .filter(Files::isDirectory)
-                      .forEach(
-                          dbPath -> {
-                            String databaseName = dbPath.getFileName().toString();
-                            if (DataPartitionTableGenerator.IGNORE_DATABASE.contains(
-                                databaseName)) {
-                              return;
-                            }
-                            databaseEarliestRegionMap.computeIfAbsent(
-                                databaseName, key -> Long.MAX_VALUE);
-                            long earliestTimeslot =
-                                findEarliestTimeslotInDatabase(
-                                    dbPath.toFile(), databaseEarliestRegionMap);
-
-                            if (earliestTimeslot != Long.MAX_VALUE) {
-                              earliestTimeslots.merge(databaseName, earliestTimeslot, Math::min);
-                            }
-                          });
-                } catch (IOException e) {
-                  LOGGER.error(
-                      "Failed to process data directory: {}", sequenceTypePath.toFile(), e);
-                }
-              });
-    } catch (IOException e) {
-      LOGGER.error("Failed to process data directory: {}", dataDir, e);
-    }
-  }
-
-  /** Find the earliest timeslot in a database directory. */
-  private long findEarliestTimeslotInDatabase(
-      File databaseDir, Map<String, Long> databaseEarliestRegionMap) {
-    String databaseName = databaseDir.getName();
-    List<Future<?>> futureList = new ArrayList<>();
-
+  private void processDataDirectoryForEarliestTimeslots(Map<String, Long> earliestTimeslots) {
+    final Set<String> ignoreDatabase =
+        new HashSet<String>() {
+          {
+            add("root.__audit");
+            add("root.__system");
+          }
+        };
+    List<CompletableFuture<Void>> futures = new ArrayList<>();
     final ExecutorService findEarliestTimeSlotExecutor =
         new WrappedThreadPoolExecutor(
             0,
@@ -3428,67 +3366,51 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
             ThreadName.FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL.getName(),
             new ThreadPoolExecutor.CallerRunsPolicy());
 
-    try (Stream<Path> databasePaths = Files.list(databaseDir.toPath())) {
-      databasePaths
-          .filter(Files::isDirectory)
-          .forEach(
-              regionPath -> {
-                Future<?> future =
-                    findEarliestTimeSlotExecutor.submit(
-                        () -> {
-                          try (Stream<Path> regionPaths = Files.list(regionPath)) {
-                            regionPaths
-                                .filter(Files::isDirectory)
-                                .forEach(
-                                    timeSlotPath -> {
-                                      try {
-                                        Optional<Path> matchedFile =
-                                            Files.find(
-                                                    timeSlotPath,
-                                                    1,
-                                                    (path, attrs) ->
-                                                        attrs.isRegularFile()
-                                                            && path.toString()
-                                                                .endsWith(
-                                                                    DataPartitionTableGenerator
-                                                                        .SCAN_FILE_SUFFIX_NAME))
-                                                .findFirst();
-                                        if (!matchedFile.isPresent()) {
-                                          return;
-                                        }
-                                        String timeSlotName = timeSlotPath.getFileName().toString();
-                                        long timeslot = Long.parseLong(timeSlotName);
-                                        databaseEarliestRegionMap.compute(
-                                            databaseName,
-                                            (k, v) -> v == null ? timeslot : Math.min(v, timeslot));
-                                      } catch (IOException e) {
-                                        LOGGER.error(
-                                            "Failed to find any {} files in the {} directory",
-                                            DataPartitionTableGenerator.SCAN_FILE_SUFFIX_NAME,
-                                            timeSlotPath,
-                                            e);
-                                      }
-                                    });
-                          } catch (IOException e) {
-                            LOGGER.error("Failed to scan {}", regionPath, e);
-                          }
-                        });
-                futureList.add(future);
-              });
-    } catch (IOException e) {
-      LOGGER.error("Failed to walk database directory: {}", databaseDir, e);
+    for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
+      CompletableFuture<Void> regionFuture =
+          CompletableFuture.runAsync(
+              () -> {
+                TsFileManager tsFileManager = dataRegion.getTsFileManager();
+                String databaseName = dataRegion.getDatabaseName();
+                if (ignoreDatabase.contains(databaseName)) {
+                  return;
+                }
+
+                tsFileManager.readLock();
+                List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
+                List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
+                tsFileManager.readUnlock();
+
+                long earliestTimeSlotId = Long.MIN_VALUE;
+
+                earliestTimeSlotId =
+                    findEarliestTimeslotInDatabase(seqTsFileList, earliestTimeSlotId);
+                earliestTimeSlotId =
+                    findEarliestTimeslotInDatabase(unseqTsFileList, earliestTimeSlotId);
+
+                long finalEarliestTimeSlotId = earliestTimeSlotId;
+                earliestTimeslots.compute(
+                    databaseName,
+                    (k, v) ->
+                        v == null ? finalEarliestTimeSlotId : Math.min(finalEarliestTimeSlotId, v));
+              },
+              findEarliestTimeSlotExecutor);
+      futures.add(regionFuture);
     }
 
-    for (Future<?> future : futureList) {
-      try {
-        future.get();
-      } catch (InterruptedException | ExecutionException e) {
-        LOGGER.error("Failed to wait for task completion", e);
-        Thread.currentThread().interrupt();
-      }
+    // Wait for all tasks to complete
+    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+    LOGGER.info("Process data directory for earliestTimeslots completed successfully");
+  }
+
+  private long findEarliestTimeslotInDatabase(
+      List<TsFileResource> seqTsFileList, long earliestTimeSlotId) {
+    for (TsFileResource tsFileResource : seqTsFileList) {
+      long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
+      earliestTimeSlotId = Math.min(earliestTimeSlotId, timeSlotId);
     }
-    findEarliestTimeSlotExecutor.shutdownNow();
-    return databaseEarliestRegionMap.get(databaseName);
+
+    return earliestTimeSlotId;
   }
 
   private List<ByteBuffer> serializeDatabaseScopedTableList(
@@ -3502,14 +3424,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     for (DatabaseScopedDataPartitionTable table : list) {
       try (PublicBAOS baos = new PublicBAOS();
           DataOutputStream oos = new DataOutputStream(baos)) {
-
         TTransport transport = new TIOStreamTransport(oos);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
-
         table.serialize(oos, protocol);
-
-        result.add(ByteBuffer.wrap(baos.toByteArray()));
-
+        result.add(ByteBuffer.wrap(baos.getBuf(), 0, baos.size()));
       } catch (IOException | TException e) {
         LOGGER.error(
             "Failed to serialize DatabaseScopedDataPartitionTable for database: {}",
