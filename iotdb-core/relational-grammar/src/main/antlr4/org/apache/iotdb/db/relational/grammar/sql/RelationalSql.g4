@@ -1121,14 +1121,28 @@ selectHint
     ;
 
 hintItem
-    : identifier '(' hintParameter+ ')'                     #parameterizedHint
-    | identifier                                            #simpleHint
+    : leaderHint
+    | followerHint
+    | parallelHint
     ;
 
-hintParameter
+leaderHint
+    : LEADER
+    | LEADER '(' identifier (',' identifier)* ')'
+    ;
+
+followerHint
+    : FOLLOWER
+    | FOLLOWER '(' followerParameter (',' followerParameter)* ')'
+    ;
+
+followerParameter
     : identifier
-    | '{'
-    | '}'
+    | identifier '(' number (',' number)* ')'
+    ;
+
+parallelHint
+    : PARALLEL '(' number ')'
     ;
 
 patternRecognition
@@ -1936,6 +1950,9 @@ WRITE: 'WRITE';
 YEAR: 'YEAR' | 'Y';
 ZONE: 'ZONE';
 AUDIT: 'AUDIT';
+LEADER: 'LEADER';
+FOLLOWER: 'FOLLOWER';
+PARALLEL: 'PARALLEL';
 
 AT_SIGN: '@';
 EQ: '=';

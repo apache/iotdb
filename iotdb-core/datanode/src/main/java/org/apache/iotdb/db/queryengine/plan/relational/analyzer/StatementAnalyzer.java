@@ -100,6 +100,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FetchDevice;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FieldReference;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FollowerHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GroupBy;
@@ -120,6 +121,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Join;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LeaderHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -133,8 +135,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NotExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NullIfExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParallelHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParameterizedHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternRecognitionRelation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PipeEnriched;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Property;
@@ -163,7 +165,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowTopics;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -200,8 +201,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.type.CompatibleResolver;
 import org.apache.iotdb.db.queryengine.plan.relational.type.TypeManager;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.FollowerHint;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.Hint;
-import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.HintFactory;
 import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.LeaderHint;
+import org.apache.iotdb.db.queryengine.plan.relational.utils.hint.ParallelHint;
 import org.apache.iotdb.db.queryengine.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.InsertBaseStatement;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
@@ -368,14 +369,6 @@ public class StatementAnalyzer {
     UPDATE,
     MERGE,
   }
-
-  // Hint definition and processing methods
-  private static final Map<String, HintFactory> HINT_DEFINITIONS =
-      ImmutableMap.of(
-          "LEADER",
-          new HintFactory(LeaderHint.hintName, LeaderHint::new, true),
-          "FOLLOWER",
-          new HintFactory(FollowerHint.hintName, FollowerHint::new, true));
 
   /**
    * Visitor context represents local query scope (if exists). The invariant is that the local query
@@ -1527,60 +1520,70 @@ public class StatementAnalyzer {
     public Scope visitSelectHint(SelectHint node, final Optional<Scope> context) {
       Map<String, Hint> hintMap = new HashMap<>();
       for (Node hintItem : node.getHintItems()) {
-        if (hintItem instanceof ParameterizedHintItem) {
-          ParameterizedHintItem paramHint = (ParameterizedHintItem) hintItem;
-          String hintName = paramHint.getHintName();
-          List<String> params = paramHint.getParameters();
-          addHint(hintName, params, hintMap);
-        } else if (hintItem instanceof SimpleHintItem) {
-          SimpleHintItem simpleHint = (SimpleHintItem) hintItem;
-          String hintName = simpleHint.getHintName();
-          addHint(hintName, null, hintMap);
+        if (hintItem instanceof LeaderHintItem) {
+          LeaderHintItem leaderHintItem = (LeaderHintItem) hintItem;
+          List<String> tables = leaderHintItem.getTables();
+          addLeaderHints(tables, hintMap);
+        } else if (hintItem instanceof FollowerHintItem) {
+          FollowerHintItem followerHintItem = (FollowerHintItem) hintItem;
+          List<String> tables = followerHintItem.getTables();
+          List<List<Integer>> nodeIds = followerHintItem.getNodeIds();
+          addFollowerHints(tables, nodeIds, hintMap);
+        } else if (hintItem instanceof ParallelHintItem) {
+          ParallelHintItem parallelHintItem = (ParallelHintItem) hintItem;
+          int parallelism = parallelHintItem.getParallelism();
+          Hint hint = new ParallelHint(parallelism);
+          hintMap.putIfAbsent(hint.getKey(), hint);
         }
       }
       analysis.setHintMap(hintMap);
       return createAndAssignScope(node, context);
     }
 
-    private List<String> intersect(List<String> a, List<String> b) {
-      return a.stream().filter(b::contains).collect(toImmutableList());
+    private void addLeaderHints(List<String> tables, Map<String, Hint> hintMap) {
+      List<String> existingTables =
+          analysis.getRelationNames().values().stream()
+              .map(QualifiedName::getSuffix)
+              .collect(toImmutableList());
+
+      if (tables == null || tables.isEmpty()) {
+        existingTables.forEach(
+            table -> {
+              Hint hint = new LeaderHint(table);
+              hintMap.putIfAbsent(hint.getKey(), hint);
+            });
+      } else {
+        for (String table : tables) {
+          if (!existingTables.contains(table)) {
+            continue;
+          }
+          Hint hint = new LeaderHint(table);
+          hintMap.putIfAbsent(hint.getKey(), hint);
+        }
+      }
     }
 
-    private void addHint(String hintName, List<String> parameters, Map<String, Hint> hintMap) {
-      HintFactory definition = HINT_DEFINITIONS.get(hintName);
-      if (definition != null) {
-        List<String> existingTables =
-            analysis.getRelationNames().values().stream()
-                .map(QualifiedName::getSuffix)
-                .collect(toImmutableList());
+    private void addFollowerHints(
+        List<String> tables, List<List<Integer>> nodeIds, Map<String, Hint> hintMap) {
+      List<String> existingTables =
+          analysis.getRelationNames().values().stream()
+              .map(QualifiedName::getSuffix)
+              .collect(toImmutableList());
 
-        if (definition.shouldExpandParameters()) {
-          List<String> tablesToProcess = parameters == null ? existingTables : parameters;
-          tablesToProcess.stream()
-              .filter(table -> parameters == null || existingTables.contains(table))
-              .forEach(
-                  table -> {
-                    Hint hint = definition.createHint(ImmutableList.of(table), queryContext);
-                    String hintKey = hint.getKey();
-                    hintMap.putIfAbsent(hintKey, hint);
-                  });
-        } else {
-          // Skip if parameters contain tables that don't exist in the query
-          if (parameters != null) {
-            boolean hasInvalidTable =
-                parameters.stream()
-                    .filter(table -> !table.equals("{") && !table.equals("}"))
-                    .anyMatch(table -> !existingTables.contains(table));
-            if (hasInvalidTable) {
-              return;
-            }
+      if (tables == null || tables.isEmpty()) {
+        existingTables.forEach(
+            table -> {
+              Hint hint = new FollowerHint(table, ImmutableList.of());
+              hintMap.putIfAbsent(hint.getKey(), hint);
+            });
+      } else {
+        for (int i = 0; i < tables.size(); i++) {
+          String table = tables.get(i);
+          if (!existingTables.contains(table)) {
+            continue;
           }
-
-          Hint hint = definition.createHint(parameters, queryContext);
-          String hintKey = hint.getKey();
-          if (!hintMap.containsKey(hintKey)) {
-            hintMap.put(hintKey, hint);
-          }
+          Hint hint = new FollowerHint(table, nodeIds.get(i));
+          hintMap.putIfAbsent(hint.getKey(), hint);
         }
       }
     }

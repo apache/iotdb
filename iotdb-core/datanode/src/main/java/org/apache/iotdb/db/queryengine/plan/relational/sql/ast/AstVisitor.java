@@ -141,11 +141,15 @@ public abstract class AstVisitor<R, C> {
     return visitNode(node, context);
   }
 
-  protected R visitSimpleHintItem(SimpleHintItem node, C context) {
+  protected R visitLeaderHintItem(LeaderHintItem node, C context) {
     return visitNode(node, context);
   }
 
-  protected R visitParameterizedHintItem(ParameterizedHintItem node, C context) {
+  protected R visitFollowerHintItem(FollowerHintItem node, C context) {
+    return visitNode(node, context);
+  }
+
+  protected R visitParallelHintItem(ParallelHintItem node, C context) {
     return visitNode(node, context);
   }
 

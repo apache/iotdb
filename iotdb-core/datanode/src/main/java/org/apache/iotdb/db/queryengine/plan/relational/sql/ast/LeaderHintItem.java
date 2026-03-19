@@ -27,20 +27,25 @@ import org.apache.tsfile.utils.RamUsageEstimator;
 import java.util.List;
 import java.util.Objects;
 
-/** Represents a simple hint without parameters, e.g., "LEADER". */
-public class SimpleHintItem extends Node {
+public class LeaderHintItem extends Node {
   private static final long INSTANCE_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(SimpleHintItem.class);
+      RamUsageEstimator.shallowSizeOfInstance(LeaderHintItem.class);
 
-  private final String hintName;
+  private static final String hintName = "LEADER";
+  private final List<String> tables;
 
-  public SimpleHintItem(String hintName) {
+  public LeaderHintItem(List<String> tables) {
     super(null);
-    this.hintName = hintName.toUpperCase();
+    this.tables = ImmutableList.copyOf(tables);
   }
 
-  public String getHintName() {
-    return hintName;
+  public List<String> getTables() {
+    return tables;
+  }
+
+  @Override
+  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
+    return visitor.visitLeaderHintItem(this, context);
   }
 
   @Override
@@ -49,13 +54,8 @@ public class SimpleHintItem extends Node {
   }
 
   @Override
-  public <R, C> R accept(AstVisitor<R, C> visitor, C context) {
-    return visitor.visitSimpleHintItem(this, context);
-  }
-
-  @Override
   public int hashCode() {
-    return Objects.hash(hintName);
+    return Objects.hash(tables);
   }
 
   @Override
@@ -66,20 +66,20 @@ public class SimpleHintItem extends Node {
     if (obj == null || getClass() != obj.getClass()) {
       return false;
     }
-    SimpleHintItem other = (SimpleHintItem) obj;
-    return Objects.equals(this.hintName, other.hintName);
+    LeaderHintItem other = (LeaderHintItem) obj;
+    return Objects.equals(this.tables, other.tables);
   }
 
   @Override
   public String toString() {
-    return hintName;
+    return hintName + "(" + String.join(", ", tables) + ")";
   }
 
   @Override
   public long ramBytesUsed() {
     long size = INSTANCE_SIZE;
     size += AstMemoryEstimationHelper.getEstimatedSizeOfNodeLocation(getLocationInternal());
-    size += RamUsageEstimator.sizeOf(hintName);
+    size += AstMemoryEstimationHelper.getEstimatedSizeOfStringList(tables);
     return size;
   }
 }

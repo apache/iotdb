@@ -103,6 +103,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ExtendRegion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Extract;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Fill;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Flush;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FollowerHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FrameBound;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.FunctionCall;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.GenericDataType;
@@ -123,6 +124,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinCriteria;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinOn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.JoinUsing;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.KillQuery;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LeaderHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.LikePredicate;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Limit;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Literal;
@@ -143,8 +145,8 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.NumericParameter;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Offset;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OneOrMoreQuantifier;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.OrderBy;
+import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParallelHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Parameter;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ParameterizedHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternAlternation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternConcatenation;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.PatternPermutation;
@@ -214,7 +216,6 @@ import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVariables;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.ShowVersion;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleCaseExpression;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleGroupBy;
-import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SimpleHintItem;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SingleColumn;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SkipTo;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.SortItem;
@@ -2563,18 +2564,33 @@ public class AstBuilder extends RelationalSqlBaseVisitor<Node> {
   }
 
   @Override
-  public Node visitParameterizedHint(RelationalSqlParser.ParameterizedHintContext ctx) {
-    String hintName = ctx.identifier().getText();
-    List<RelationalSqlParser.HintParameterContext> identifiers = ctx.hintParameter();
-    List<String> params =
+  public Node visitLeaderHint(RelationalSqlParser.LeaderHintContext ctx) {
+    List<RelationalSqlParser.IdentifierContext> identifiers = ctx.identifier();
+    List<String> tables =
         identifiers.stream().map(x -> x.getText().toLowerCase()).collect(Collectors.toList());
-    return new ParameterizedHintItem(hintName, params);
+    return new LeaderHintItem(tables);
   }
 
   @Override
-  public Node visitSimpleHint(RelationalSqlParser.SimpleHintContext ctx) {
-    String hintName = ctx.identifier().getText();
-    return new SimpleHintItem(hintName);
+  public Node visitFollowerHint(RelationalSqlParser.FollowerHintContext ctx) {
+    List<RelationalSqlParser.FollowerParameterContext> followerParameters = ctx.followerParameter();
+    List<String> tables =
+        followerParameters.stream().map(x -> x.identifier().getText()).collect(Collectors.toList());
+    List<List<Integer>> nodeIds =
+        followerParameters.stream()
+            .map(
+                x ->
+                    x.number().stream()
+                        .map(y -> Integer.parseInt(y.getText()))
+                        .collect(Collectors.toList()))
+            .collect(Collectors.toList());
+    return new FollowerHintItem(tables, nodeIds);
+  }
+
+  @Override
+  public Node visitParallelHint(RelationalSqlParser.ParallelHintContext ctx) {
+    int parallelism = Integer.parseInt(ctx.number().getText());
+    return new ParallelHintItem(parallelism);
   }
 
   @Override

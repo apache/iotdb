@@ -22,20 +22,21 @@
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.db.queryengine.common.MPPQueryContext;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class FollowerHint extends ReplicaHint {
   public static String hintName = "follower";
   private final String table;
+  private final List<Integer> nodeIds;
 
-  public FollowerHint(List<String> tables, MPPQueryContext queryContext) {
+  public FollowerHint(String table, List<Integer> nodeIds) {
     super(hintName);
-    if (tables == null || tables.size() != 1) {
-      throw new IllegalArgumentException("FollowerHint accepts exactly one table");
-    }
-    table = tables.get(0);
+    this.table = table;
+    this.nodeIds = nodeIds;
   }
 
   @Override
@@ -53,7 +54,28 @@ public class FollowerHint extends ReplicaHint {
     if (dataNodeLocations == null || dataNodeLocations.size() <= 1) {
       return dataNodeLocations;
     }
-    // Return only followers (all locations except the first/leader)
-    return dataNodeLocations.subList(1, dataNodeLocations.size());
+
+    List<TDataNodeLocation> followerLocations =
+        dataNodeLocations.subList(1, dataNodeLocations.size());
+    if (nodeIds == null || nodeIds.isEmpty()) {
+      return followerLocations;
+    }
+
+    // nodeId -> Location for O(1) lookup
+    Map<Integer, TDataNodeLocation> followerLocationMap = new HashMap<>();
+    for (TDataNodeLocation location : followerLocations) {
+      followerLocationMap.put(location.getDataNodeId(), location);
+    }
+
+    // Find the first nodeId that exists in followerLocations and return its location
+    for (Integer nodeId : nodeIds) {
+      TDataNodeLocation location = followerLocationMap.get(nodeId);
+      if (location != null) {
+        return Collections.singletonList(location);
+      }
+    }
+
+    // If no matching nodeId found, return all follower locations
+    return followerLocations;
   }
 }

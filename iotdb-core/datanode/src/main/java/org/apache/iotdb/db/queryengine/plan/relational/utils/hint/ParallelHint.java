@@ -21,36 +21,24 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.utils.hint;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+public class ParallelHint extends Hint {
+  public static String category = "parallel";
+  public static String hintName = "parallel";
 
-import java.util.Collections;
-import java.util.List;
+  private final int parallelism;
 
-public class LeaderHint extends ReplicaHint {
-  public static String hintName = "leader";
-  private final String table;
-
-  public LeaderHint(String table) {
-    super(hintName);
-    this.table = table;
+  public ParallelHint(int parallelism) {
+    super(hintName, category);
+    this.parallelism = parallelism;
   }
 
   @Override
   public String getKey() {
-    return category + "-" + table;
+    return category;
   }
 
   @Override
   public String toString() {
-    return hintName + "-" + table;
-  }
-
-  @Override
-  public List<TDataNodeLocation> selectLocations(List<TDataNodeLocation> dataNodeLocations) {
-    if (dataNodeLocations == null || dataNodeLocations.size() <= 1) {
-      return dataNodeLocations;
-    }
-    // Return only the leader (first location)
-    return Collections.singletonList(dataNodeLocations.get(0));
+    return hintName + "(" + parallelism + ")";
   }
 }
