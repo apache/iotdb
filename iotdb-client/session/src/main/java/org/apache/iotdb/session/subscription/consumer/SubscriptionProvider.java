@@ -83,6 +83,8 @@ final class SubscriptionProvider extends SubscriptionSession {
   private final AtomicBoolean isAvailable = new AtomicBoolean(false);
 
   private final TEndPoint endPoint;
+  private final long heartbeatIntervalMs;
+  private final int connectionTimeoutInMs;
   private int dataNodeId;
 
   SubscriptionProvider(
@@ -91,12 +93,16 @@ final class SubscriptionProvider extends SubscriptionSession {
       final String password,
       final String consumerId,
       final String consumerGroupId,
-      final int thriftMaxFrameSize) {
+      final int thriftMaxFrameSize,
+      final long heartbeatIntervalMs,
+      final int connectionTimeoutInMs) {
     super(endPoint.ip, endPoint.port, username, password, thriftMaxFrameSize);
 
     this.endPoint = endPoint;
     this.consumerId = consumerId;
     this.consumerGroupId = consumerGroupId;
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
   }
 
   boolean isAvailable() {
@@ -138,12 +144,15 @@ final class SubscriptionProvider extends SubscriptionSession {
       return;
     }
 
-    super.open(); // throw IoTDBConnectionException
+    super.open(false, connectionTimeoutInMs); // throw IoTDBConnectionException
 
-    // TODO: pass the complete consumer parameter configuration to the server
     final Map<String, String> consumerAttributes = new HashMap<>();
     consumerAttributes.put(ConsumerConstant.CONSUMER_GROUP_ID_KEY, consumerGroupId);
     consumerAttributes.put(ConsumerConstant.CONSUMER_ID_KEY, consumerId);
+    consumerAttributes.put(
+        ConsumerConstant.HEARTBEAT_INTERVAL_MS_KEY, String.valueOf(heartbeatIntervalMs));
+    consumerAttributes.put(
+        ConsumerConstant.CONNECTION_TIMEOUT_MS_KEY, String.valueOf(connectionTimeoutInMs));
 
     final PipeSubscribeHandshakeResp resp =
         handshake(new ConsumerConfig(consumerAttributes)); // throw SubscriptionException

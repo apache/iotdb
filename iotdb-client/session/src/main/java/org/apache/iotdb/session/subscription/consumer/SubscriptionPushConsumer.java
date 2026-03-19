@@ -300,6 +300,12 @@ public class SubscriptionPushConsumer extends SubscriptionConsumer {
     }
 
     @Override
+    public Builder connectionTimeoutInMs(final int connectionTimeoutInMs) {
+      super.connectionTimeoutInMs(connectionTimeoutInMs);
+      return this;
+    }
+
+    @Override
     public Builder maxPollParallelism(final int maxPollParallelism) {
       super.maxPollParallelism(maxPollParallelism);
       return this;
