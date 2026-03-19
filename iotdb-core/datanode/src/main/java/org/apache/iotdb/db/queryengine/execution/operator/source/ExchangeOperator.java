@@ -87,7 +87,9 @@ public class ExchangeOperator implements SourceOperator {
   @Override
   public TsBlock next() throws Exception {
     TsBlock receiveBlock = sourceHandle.receive();
-    receivedSizeInBytes.addAndGet(receiveBlock.getRetainedSizeInBytes());
+    if (receiveBlock != null) {
+      receivedSizeInBytes.addAndGet(receiveBlock.getSizeInBytes());
+    }
     return receiveBlock;
   }
 
