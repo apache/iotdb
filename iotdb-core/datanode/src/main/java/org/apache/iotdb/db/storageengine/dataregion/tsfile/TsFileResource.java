@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.timecho.iotdb.os.HybridFileInputFactoryDecorator;
 import com.timecho.iotdb.os.utils.RemoteStorageBlock;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
@@ -705,6 +706,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   public Set<IDeviceID> getDevices() {
     return timeIndex.getDevices(file.getPath(), this);
+  }
+
+  public Set<IDeviceID> getDevices(RateLimiter limiter) {
+    return timeIndex.getDevices(file.getPath(), this, limiter);
   }
 
   public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)

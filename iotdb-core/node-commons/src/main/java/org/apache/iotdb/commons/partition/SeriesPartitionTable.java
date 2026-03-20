@@ -73,7 +73,13 @@ public class SeriesPartitionTable {
   }
 
   public void putDataPartition(TTimePartitionSlot timePartitionSlot, TConsensusGroupId groupId) {
-    seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>()).add(groupId);
+    List<TConsensusGroupId> groupList =
+        seriesPartitionMap.computeIfAbsent(timePartitionSlot, empty -> new Vector<>());
+    synchronized (groupList) {
+      if (!groupList.contains(groupId)) {
+        groupList.add(groupId);
+      }
+    }
   }
 
   /**
@@ -268,6 +274,14 @@ public class SeriesPartitionTable {
       }
     }
     return removedTimePartitions;
+  }
+
+  public void merge(SeriesPartitionTable sourceMap) {
+    if (sourceMap == null) return;
+    sourceMap.seriesPartitionMap.forEach(
+        (timeSlot, groups) -> {
+          this.seriesPartitionMap.computeIfAbsent(timeSlot, k -> new ArrayList<>()).addAll(groups);
+        });
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

@@ -321,6 +321,8 @@ public class ConfigNodeConfig {
 
   private boolean enableSeparationOfPowers = false;
 
+  private long partitionTableRecoverWaitAllDnUpTimeoutInMs = 60000;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1295,5 +1297,14 @@ public class ConfigNodeConfig {
 
   public void setEnableSeparationOfPowers(boolean enableSeparationOfPowers) {
     this.enableSeparationOfPowers = enableSeparationOfPowers;
+  }
+
+  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
+    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  }
+
+  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
+      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
+    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
   }
 }

@@ -210,6 +210,8 @@ public enum ThreadName {
   TABLE_SIZE_INDEX_RECORD("TableSizeIndexRecord"),
   BINARY_ALLOCATOR_SAMPLE_EVICTOR("BinaryAllocator-SampleEvictor"),
   BINARY_ALLOCATOR_AUTO_RELEASER("BinaryAllocator-Auto-Releaser"),
+  FIND_EARLIEST_TIME_SLOT_PARALLEL_POOL("FindEarliestTimeSlot-Parallel-Pool"),
+  DATA_PARTITION_RECOVER_PARALLEL_POOL("DataPartitionRecover-Parallel-Pool"),
 
   ASYNC_BATCH_WRITE_DATA("async-batch-write"),
   ASYNC_BATCH_WRITE_SCHEDULER_IN_TIME("async-batch-write-scheduler-in-time"),
