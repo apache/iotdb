@@ -139,24 +139,8 @@
             <artifactId>jsr305</artifactId>
         </dependency>
         <dependency>
-            <groupId>net.minidev</groupId>
-            <artifactId>json-smart</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>nimbus-jose-jwt</artifactId>
-        </dependency>
-        <dependency>
             <groupId>cglib</groupId>
             <artifactId>cglib</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>oauth2-oidc-sdk</artifactId>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>

@@ -216,7 +216,6 @@ following license. See licenses/ for text of these licenses.
 Apache License 2.0
 --------------------------------------
 commons-cli:commons-cli:1.5.0
-com.nimbusds:content-type:2.2
 com.google.code.gson:gson:2.13.1
 com.google.guava.guava:32.1.2-jre
 com.fasterxml.jackson.core:jackson-annotations:2.16.2
@@ -224,7 +223,6 @@ com.fasterxml.jackson.core:jackson-core:2.16.2
 com.fasterxml.jackson.core:jackson-databind:2.16.2
 jakarta.inject:jakarta.inject:2.6.1
 at.yawk.lz4:lz4-java:1.10.0
-com.github.stephenc.jcip:jcip-annotations:1.0-1
 com.github.ben-manes.caffeine:caffeine:2.9.3
 org.eclipse.jetty:jetty-http:9.4.58.v20250814
 org.eclipse.jetty:jetty-io:9.4.58.v20250814
@@ -232,12 +230,7 @@ org.eclipse.jetty:jetty-security:9.4.58.v20250814
 org.eclipse.jetty:jetty-server:9.4.58.v20250814
 org.eclipse.jetty:jetty-servlet:9.4.58.v20250814
 org.eclipse.jetty:jetty-util:9.4.58.v20250814
-io.jsonwebtoken:jjwt-api:0.12.7
-io.jsonwebtoken:jjwt-impl:0.12.7
-io.jsonwebtoken:jjwt-jackson:0.12.7
-net.minidev:json-smart:2.5.2
 com.google.code.findbugs:jsr305:3.0.2
-com.nimbusds:lang-tag:1.7
 com.librato.metrics:librato-java:2.1.0
 org.apache.thrift:libthrift:0.14.1
 io.dropwizard.metrics:metrics-core:4.2.19
@@ -255,14 +248,11 @@ io.netty:netty-transport:4.1.126.Final
 io.netty:netty-transport-native-epoll:4.1.126.Final:linux-aarch_64
 io.netty:netty-transport-native-epoll:4.1.126.Final:linux-x86_64
 io.netty:netty-transport-native-unix-common:4.1.126.Final
-com.nimbusds:nimbus-jose-jwt:9.37.4
-com.nimbusds:oauth2-oidc-sdk:10.15
 org.osgi:org.osgi.core:7.0.0
 org.osgi:osgi.cmpn:7.0.0
 org.ops4j.pax.jdbc:pax-jdbc-common:1.5.6
 org.xerial.snappy:snappy-java:1.1.10.5
 io.airlift.airline:0.9
-net.minidev:accessors-smart:2.5.0
 
 
 BSD 3-Clause
