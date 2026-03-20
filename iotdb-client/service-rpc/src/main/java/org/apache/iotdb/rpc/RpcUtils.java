@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Proxy;
+import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -218,6 +219,38 @@ public class RpcUtils {
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
     status.setMessage(message);
+    return status;
+  }
+
+  /**
+   * Build a {@link TSStatus} with code, optional message and optional binary payload (Thrift {@code
+   * binary} maps to {@link ByteBuffer}).
+   *
+   * @param tsStatusCode status code
+   * @param message optional message; if null, message field is left unset
+   * @param responseData optional serialized payload; if null, responseData field is left unset
+   */
+  public static TSStatus getStatus(
+      final TSStatusCode tsStatusCode, final String message, final ByteBuffer responseData) {
+    return getStatus(tsStatusCode.getStatusCode(), message, responseData);
+  }
+
+  /**
+   * Build a {@link TSStatus} with code, optional message and optional binary payload.
+   *
+   * @param code status code
+   * @param message optional message; if null, message field is left unset
+   * @param responseData optional serialized payload; if null, responseData field is left unset
+   */
+  public static TSStatus getStatus(
+      final int code, final String message, final ByteBuffer responseData) {
+    final TSStatus status = new TSStatus(code);
+    if (message != null) {
+      status.setMessage(message);
+    }
+    if (responseData != null) {
+      status.setResponseData(responseData);
+    }
     return status;
   }
 

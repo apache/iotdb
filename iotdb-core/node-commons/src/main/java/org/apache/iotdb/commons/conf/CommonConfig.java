@@ -58,9 +58,6 @@ public class CommonConfig {
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
 
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
       "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
@@ -533,14 +530,6 @@ public class CommonConfig {
 
   public String getUserEncryptTokenHint() {
     return userEncryptTokenHint;
-  }
-
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
   }
 
   public String getAuthorizerProvider() {
