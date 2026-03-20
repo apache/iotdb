@@ -1034,7 +1034,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
             endTime);
         return false;
       }
-
+      // we cannot count the filtered rows in tsfile due to the lack of related info about the
+      // tsfile
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(

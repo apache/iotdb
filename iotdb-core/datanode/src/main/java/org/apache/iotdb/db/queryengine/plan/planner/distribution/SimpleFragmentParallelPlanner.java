@@ -146,7 +146,8 @@ public class SimpleFragmentParallelPlanner extends AbstractFragmentParallelPlann
             queryContext.getSession(),
             queryContext.isExplainAnalyze(),
             queryContext.isDebug(),
-            fragment.isRoot());
+            fragment.isRoot(),
+            queryContext.isVerbose());
 
     selectExecutorAndHost(
         fragment,

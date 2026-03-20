@@ -37,6 +37,7 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongConsumer;
 
 /**
  * The {@link AlignedSinglePageWholeChunkReader} is used to read a whole single page aligned chunk
@@ -58,9 +59,10 @@ public class AlignedSinglePageWholeChunkReader extends AbstractChunkReader {
   // deleted intervals of all the sub sensors
   private final List<List<TimeRange>> valueDeleteIntervalsList = new ArrayList<>();
 
-  public AlignedSinglePageWholeChunkReader(Chunk timeChunk, List<Chunk> valueChunkList)
+  public AlignedSinglePageWholeChunkReader(
+      Chunk timeChunk, List<Chunk> valueChunkList, LongConsumer filteredRowsRecord)
       throws IOException {
-    super(Long.MIN_VALUE, null);
+    super(Long.MIN_VALUE, null, filteredRowsRecord);
     this.timeChunkHeader = timeChunk.getHeader();
     this.timeChunkDataBuffer = timeChunk.getData();
     this.encryptParam = timeChunk.getEncryptParam();

@@ -154,7 +154,8 @@ public class PredicateWithUncorrelatedScalarSubqueryReconstructor {
               ExplainType.NONE,
               context.getTimeOut(),
               false,
-              q.isDebug());
+              q.isDebug(),
+              context.isVerbose());
 
       // This may occur when the subquery cannot be executed in advance (for example, with
       // correlated scalar subqueries).

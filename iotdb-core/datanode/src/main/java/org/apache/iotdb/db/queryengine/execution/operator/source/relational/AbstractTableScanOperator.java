@@ -57,7 +57,6 @@ public abstract class AbstractTableScanOperator extends AbstractSeriesScanOperat
       RamUsageEstimator.shallowSizeOfInstance(TableScanOperator.class);
 
   public static final String CURRENT_DEVICE_INDEX_STRING = "CurrentDeviceIndex";
-
   public static final LongColumn TIME_COLUMN_TEMPLATE =
       new LongColumn(1, Optional.empty(), new long[] {0});
 

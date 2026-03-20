@@ -160,7 +160,8 @@ public class FragmentInstanceManager {
                                 dataRegion,
                                 instance.getGlobalTimePredicate(),
                                 dataNodeQueryContextMap,
-                                instance.isDebug()));
+                                instance.isDebug(),
+                                instance.isVerbose()));
 
                 try {
                   List<PipelineDriverFactory> driverFactories =
@@ -273,7 +274,8 @@ public class FragmentInstanceManager {
                               fragmentInstanceId,
                               stateMachine,
                               instance.getSessionInfo(),
-                              instance.isDebug()));
+                              instance.isDebug(),
+                              instance.isVerbose()));
 
               try {
                 List<PipelineDriverFactory> driverFactories =
