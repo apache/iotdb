@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.consistency;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -150,6 +152,47 @@ public class LogicalRepairSessionJournalTest {
           recovered.loadStagedBatches("DataRegion-9", 9L, repairEpoch, "session-c").isEmpty());
     } finally {
       deleteRecursively(journalDir);
+    }
+  }
+
+  @Test
+  public void defaultJournalShouldResolveSystemDirLazily() throws Exception {
+    String originalSystemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    Path initialSystemDir = Files.createTempDirectory("logical-repair-journal-initial");
+    Path effectiveSystemDir = Files.createTempDirectory("logical-repair-journal-effective");
+    try {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(initialSystemDir.toString());
+      LogicalRepairSessionJournal journal = new LogicalRepairSessionJournal();
+
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(effectiveSystemDir.toString());
+      String repairEpoch = "1:10:1000:2000:2000:1-1_2_3";
+      journal.stageBatch(
+          "DataRegion-10",
+          10L,
+          repairEpoch,
+          "session-d",
+          "LIVE",
+          "leaf:4:0",
+          0,
+          "RESET_LEAF",
+          ByteBuffer.allocate(0));
+
+      Assert.assertTrue(
+          Files.exists(
+              effectiveSystemDir
+                  .resolve("consistency-repair")
+                  .resolve("sessions")
+                  .resolve("session-d.session")));
+      Assert.assertFalse(
+          Files.exists(
+              initialSystemDir
+                  .resolve("consistency-repair")
+                  .resolve("sessions")
+                  .resolve("session-d.session")));
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setSystemDir(originalSystemDir);
+      deleteRecursively(initialSystemDir);
+      deleteRecursively(effectiveSystemDir);
     }
   }
 

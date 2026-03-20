@@ -4000,6 +4000,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
+      DataRegionConsistencyManager.getInstance()
+          .onPartitionMutation(dataRegionId.convertToTConsensusGroupId(), newFilePartitionId);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(

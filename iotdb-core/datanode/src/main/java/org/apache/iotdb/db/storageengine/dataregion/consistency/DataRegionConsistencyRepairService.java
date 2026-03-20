@@ -67,7 +67,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /** DataNode-side logical snapshot and logical repair primitives for replica consistency repair. */
@@ -105,12 +107,14 @@ public class DataRegionConsistencyRepairService {
               : dataRegion.getDelayAnalyzer().getSafeWatermark(System.currentTimeMillis());
       List<TConsistencyDeletionSummary> regionDeletionSummaries =
           collectDeletionSummaries(req.getConsensusGroupId());
-      List<Long> timePartitions = new ArrayList<>(dataRegion.getTimePartitions());
-      augmentTimePartitionsWithDeletionRanges(timePartitions, regionDeletionSummaries);
-      timePartitions.sort(Long::compareTo);
+      Set<Long> timePartitions = new LinkedHashSet<>(dataRegion.getTimePartitions());
+      timePartitions.addAll(consistencyManager.getKnownPartitions(req.getConsensusGroupId()));
+      List<Long> orderedTimePartitions = new ArrayList<>(timePartitions);
+      augmentTimePartitionsWithDeletionRanges(orderedTimePartitions, regionDeletionSummaries);
+      orderedTimePartitions.sort(Long::compareTo);
 
       List<TPartitionConsistencyEligibility> partitions = new ArrayList<>();
-      for (Long timePartition : timePartitions) {
+      for (Long timePartition : orderedTimePartitions) {
         // Eligibility must expose follower partitions even when the follower-local DelayAnalyzer
         // has
         // not warmed up yet. ConfigNode applies cold-partition pruning from the leader view; if we

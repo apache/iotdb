@@ -98,6 +98,15 @@ public class DataRegionConsistencyManager {
 
   private final ConcurrentHashMap<String, RegionState> regionStates = new ConcurrentHashMap<>();
   private final ThreadLocal<RepairMutationContext> repairMutationContext = new ThreadLocal<>();
+  private final LogicalConsistencyPartitionStateStore partitionStateStore;
+
+  DataRegionConsistencyManager() {
+    this(new LogicalConsistencyPartitionStateStore());
+  }
+
+  DataRegionConsistencyManager(LogicalConsistencyPartitionStateStore partitionStateStore) {
+    this.partitionStateStore = partitionStateStore;
+  }
 
   public static DataRegionConsistencyManager getInstance() {
     return INSTANCE;
@@ -108,9 +117,11 @@ public class DataRegionConsistencyManager {
       DataRegion dataRegion,
       long partitionId,
       List<TConsistencyDeletionSummary> partitionDeletionSummaries) {
+    String consensusGroupKey = consensusGroupId.toString();
     RegionState regionState = getOrCreateRegionState(consensusGroupId);
     PartitionState partitionState =
         regionState.partitions.computeIfAbsent(partitionId, PartitionState::new);
+    PartitionInspection inspection;
     synchronized (partitionState) {
       if (partitionState.snapshotState != RepairProgressTable.SnapshotState.READY
           || partitionState.snapshotEpoch != partitionState.partitionMutationEpoch) {
@@ -126,8 +137,17 @@ public class DataRegionConsistencyManager {
               e);
         }
       }
-      return partitionState.toInspection(partitionId);
+      inspection = partitionState.toInspection(partitionId);
     }
+    persistKnownPartitionsIfNeeded(consensusGroupKey, regionState);
+    return inspection;
+  }
+
+  public List<Long> getKnownPartitions(TConsensusGroupId consensusGroupId) {
+    List<Long> partitions =
+        new ArrayList<>(getOrCreateRegionState(consensusGroupId).partitions.keySet());
+    partitions.sort(Long::compareTo);
+    return partitions;
   }
 
   public SnapshotSubtreeResult getSnapshotSubtree(
@@ -463,10 +483,11 @@ public class DataRegionConsistencyManager {
   }
 
   public void onPartitionMutation(TConsensusGroupId consensusGroupId, long partitionId) {
-    PartitionState state =
-        getOrCreateRegionState(consensusGroupId)
-            .partitions
-            .computeIfAbsent(partitionId, PartitionState::new);
+    String consensusGroupKey = consensusGroupId.toString();
+    RegionState regionState = getOrCreateRegionState(consensusGroupId);
+    PartitionState newState = new PartitionState(partitionId);
+    PartitionState existingState = regionState.partitions.putIfAbsent(partitionId, newState);
+    PartitionState state = existingState == null ? newState : existingState;
     synchronized (state) {
       if (isRepairMutation(consensusGroupId, partitionId)) {
         state.snapshotState = RepairProgressTable.SnapshotState.DIRTY;
@@ -481,10 +502,88 @@ public class DataRegionConsistencyManager {
       state.tombstoneTree = SnapshotTree.empty();
       state.lastError = null;
     }
+    if (existingState == null) {
+      persistKnownPartitionsIfNeeded(consensusGroupKey, regionState);
+    }
   }
 
   private RegionState getOrCreateRegionState(TConsensusGroupId consensusGroupId) {
-    return regionStates.computeIfAbsent(consensusGroupId.toString(), ignored -> new RegionState());
+    return regionStates.computeIfAbsent(
+        consensusGroupId.toString(), ignored -> loadRegionState(consensusGroupId.toString()));
+  }
+
+  private RegionState loadRegionState(String consensusGroupKey) {
+    RegionState regionState = new RegionState();
+    try {
+      Map<Long, Long> persistedMutationEpochs = partitionStateStore.load(consensusGroupKey);
+      for (Map.Entry<Long, Long> entry : persistedMutationEpochs.entrySet()) {
+        PartitionState partitionState = new PartitionState(entry.getKey());
+        partitionState.partitionMutationEpoch = entry.getValue();
+        regionState.partitions.put(entry.getKey(), partitionState);
+      }
+      regionState.lastPersistedMutationEpochs = new TreeMap<>(persistedMutationEpochs);
+    } catch (IOException e) {
+      LOGGER.warn(
+          "Failed to restore logical consistency partition state for region {}",
+          consensusGroupKey,
+          e);
+    }
+    return regionState;
+  }
+
+  private void persistKnownPartitionsIfNeeded(String consensusGroupKey, RegionState regionState) {
+    Map<Long, Long> snapshotToPersist = snapshotPartitionMutationEpochs(regionState);
+    synchronized (regionState.persistMonitor) {
+      if (snapshotToPersist.equals(regionState.lastPersistedMutationEpochs)
+          || snapshotToPersist.equals(regionState.pendingPersistMutationEpochs)) {
+        return;
+      }
+      if (regionState.persistInFlight) {
+        regionState.pendingPersistMutationEpochs = snapshotToPersist;
+        return;
+      }
+      regionState.persistInFlight = true;
+    }
+
+    while (true) {
+      boolean persistSucceeded = false;
+      try {
+        partitionStateStore.persist(consensusGroupKey, snapshotToPersist);
+        persistSucceeded = true;
+      } catch (IOException e) {
+        LOGGER.warn(
+            "Failed to persist logical consistency partition state for region {}",
+            consensusGroupKey,
+            e);
+      }
+
+      synchronized (regionState.persistMonitor) {
+        if (persistSucceeded) {
+          regionState.lastPersistedMutationEpochs = snapshotToPersist;
+        }
+        if (regionState.pendingPersistMutationEpochs == null
+            || regionState.pendingPersistMutationEpochs.equals(
+                regionState.lastPersistedMutationEpochs)
+            || (!persistSucceeded
+                && regionState.pendingPersistMutationEpochs.equals(snapshotToPersist))) {
+          regionState.pendingPersistMutationEpochs = null;
+          regionState.persistInFlight = false;
+          return;
+        }
+        snapshotToPersist = regionState.pendingPersistMutationEpochs;
+        regionState.pendingPersistMutationEpochs = null;
+      }
+    }
+  }
+
+  private Map<Long, Long> snapshotPartitionMutationEpochs(RegionState regionState) {
+    Map<Long, Long> mutationEpochs = new TreeMap<>();
+    for (Map.Entry<Long, PartitionState> entry : regionState.partitions.entrySet()) {
+      synchronized (entry.getValue()) {
+        mutationEpochs.put(entry.getKey(), entry.getValue().partitionMutationEpoch);
+      }
+    }
+    return mutationEpochs;
   }
 
   private boolean ensureReadySnapshot(
@@ -1399,6 +1498,10 @@ public class DataRegionConsistencyManager {
 
   private static class RegionState {
     private final ConcurrentHashMap<Long, PartitionState> partitions = new ConcurrentHashMap<>();
+    private final Object persistMonitor = new Object();
+    private Map<Long, Long> lastPersistedMutationEpochs = Collections.emptyMap();
+    private Map<Long, Long> pendingPersistMutationEpochs = null;
+    private boolean persistInFlight = false;
   }
 
   private static class RepairMutationContext {

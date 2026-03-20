@@ -42,18 +42,21 @@ import org.apache.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.tsfile.read.common.TimeRange;
 import org.apache.tsfile.write.schema.IMeasurementSchema;
 import org.apache.tsfile.write.schema.MeasurementSchema;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.channels.ClosedChannelException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.Comparator;
@@ -62,12 +65,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DataRegionConsistencyManagerTest {
 
+  private final List<Path> tempStateDirs = new ArrayList<>();
+
+  @After
+  public void tearDown() throws IOException {
+    for (Path tempStateDir : tempStateDirs) {
+      deleteRecursively(tempStateDir);
+    }
+    tempStateDirs.clear();
+  }
+
   @Test
   public void compactionShouldNotAdvancePartitionMutationEpoch() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 901);
 
     consistencyManager.onPartitionMutation(consensusGroupId, 7L);
@@ -89,7 +105,7 @@ public class DataRegionConsistencyManagerTest {
 
   @Test
   public void deletionShouldMarkAffectedPartitionDirty() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 902);
 
     consistencyManager.onDeletion(consensusGroupId, 0L, 0L);
@@ -102,7 +118,7 @@ public class DataRegionConsistencyManagerTest {
 
   @Test
   public void logicalRepairMutationShouldNotAdvancePartitionMutationEpoch() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 903);
 
     consistencyManager.onPartitionMutation(consensusGroupId, 11L);
@@ -233,7 +249,7 @@ public class DataRegionConsistencyManagerTest {
 
   @Test
   public void memTableSeriesDiscoveryShouldIncludeUnsealedMeasurements() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
 
     IMeasurementSchema alignedS1 = new MeasurementSchema("s1", TSDataType.INT64);
     IMeasurementSchema alignedS2 = new MeasurementSchema("s2", TSDataType.DOUBLE);
@@ -266,7 +282,7 @@ public class DataRegionConsistencyManagerTest {
 
   @Test
   public void closedChannelFailuresShouldBeClassifiedAsRetryable() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     Method method =
         DataRegionConsistencyManager.class.getDeclaredMethod(
             "isRetryableSnapshotReadFailure", Throwable.class);
@@ -284,27 +300,9 @@ public class DataRegionConsistencyManagerTest {
   @Test
   public void inspectPartitionShouldRebuildSnapshotEvenWhenWorkingProcessorsExist()
       throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 904);
-
-    DataRegion dataRegion = Mockito.mock(DataRegion.class);
-    TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
-    Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
-    Mockito.when(tsFileManager.getTsFileListSnapshot(1L, true)).thenReturn(Collections.emptyList());
-    Mockito.when(tsFileManager.getTsFileListSnapshot(1L, false))
-        .thenReturn(Collections.emptyList());
-    TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
-    IMemTable emptyMemTable = Mockito.mock(IMemTable.class);
-    Mockito.when(processor.getTimeRangeId()).thenReturn(1L);
-    Mockito.when(processor.tryReadLock(1_000L)).thenReturn(true);
-    Mockito.when(processor.getWorkMemTable()).thenReturn(emptyMemTable);
-    Mockito.when(processor.getFlushingMemTable()).thenReturn(new ConcurrentLinkedDeque<>());
-    Mockito.doNothing().when(processor).readUnLock();
-    Mockito.when(emptyMemTable.getMemTableMap()).thenReturn(Collections.emptyMap());
-    Mockito.when(dataRegion.getWorkSequenceTsFileProcessors())
-        .thenReturn(Collections.singletonList(processor));
-    Mockito.when(dataRegion.getWorkUnsequenceTsFileProcessors())
-        .thenReturn(Collections.emptyList());
+    DataRegion dataRegion = createDataRegionWithEmptySnapshotInputs(1L, true);
 
     DataRegionConsistencyManager.PartitionInspection inspection =
         consistencyManager.inspectPartition(
@@ -317,8 +315,71 @@ public class DataRegionConsistencyManagerTest {
   }
 
   @Test
+  public void knownPartitionsShouldRecoverFromPersistedPartitionState() throws Exception {
+    Path stateDir = Files.createTempDirectory("logical-consistency-partition-state");
+    try {
+      LogicalConsistencyPartitionStateStore store =
+          new LogicalConsistencyPartitionStateStore(stateDir);
+      DataRegionConsistencyManager writer = new DataRegionConsistencyManager(store);
+      TConsensusGroupId consensusGroupId =
+          new TConsensusGroupId(TConsensusGroupType.DataRegion, 905);
+
+      writer.onPartitionMutation(consensusGroupId, 2L);
+
+      DataRegionConsistencyManager recovered = new DataRegionConsistencyManager(store);
+      Assert.assertEquals(
+          Collections.singletonList(2L), recovered.getKnownPartitions(consensusGroupId));
+      Assert.assertEquals(1L, getPartitionMutationEpoch(recovered, consensusGroupId, 2L));
+    } finally {
+      deleteRecursively(stateDir);
+    }
+  }
+
+  @Test
+  public void persistKnownPartitionsShouldNotBlockConcurrentMutation() throws Exception {
+    BlockingPartitionStateStore store = new BlockingPartitionStateStore();
+    DataRegionConsistencyManager consistencyManager = new DataRegionConsistencyManager(store);
+    TConsensusGroupId consensusGroupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 906);
+    DataRegion dataRegion = createDataRegionWithEmptySnapshotInputs(1L, true);
+    AtomicReference<Throwable> inspectionFailure = new AtomicReference<>();
+
+    Thread inspectionThread =
+        new Thread(
+            () -> {
+              try {
+                consistencyManager.inspectPartition(
+                    consensusGroupId, dataRegion, 1L, Collections.emptyList());
+              } catch (Throwable t) {
+                inspectionFailure.set(t);
+              }
+            });
+    inspectionThread.start();
+
+    Assert.assertTrue(
+        "The initial persistence should start", store.awaitPersistStarted(5, TimeUnit.SECONDS));
+
+    long mutationStartNanos = System.nanoTime();
+    consistencyManager.onPartitionMutation(consensusGroupId, 2L);
+    long mutationElapsedMillis =
+        TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - mutationStartNanos);
+    Assert.assertTrue(
+        "Concurrent partition mutation should not wait on slow persistence",
+        mutationElapsedMillis < 1_000L);
+
+    store.releasePersist();
+    inspectionThread.join(TimeUnit.SECONDS.toMillis(5));
+    if (inspectionFailure.get() != null) {
+      throw new AssertionError("Inspection thread should succeed", inspectionFailure.get());
+    }
+
+    Map<Long, Long> persistedState = store.load(consensusGroupId.toString());
+    Assert.assertEquals(Long.valueOf(0L), persistedState.get(1L));
+    Assert.assertEquals(Long.valueOf(1L), persistedState.get(2L));
+  }
+
+  @Test
   public void collectLogicalSeriesContextsShouldNotPoisonSharedReaders() throws Exception {
-    DataRegionConsistencyManager consistencyManager = DataRegionConsistencyManager.getInstance();
+    DataRegionConsistencyManager consistencyManager = newTestConsistencyManager();
     Path tempDir = Files.createTempDirectory("consistency-manager-reader-regression");
     TsFileResource resource = null;
     MultiTsFileDeviceIterator verificationIterator = null;
@@ -376,6 +437,64 @@ public class DataRegionConsistencyManagerTest {
     return Base64.getUrlEncoder()
         .withoutPadding()
         .encodeToString(value.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private DataRegion createDataRegionWithEmptySnapshotInputs(
+      long partitionId, boolean includeWorkingProcessor) throws Exception {
+    DataRegion dataRegion = Mockito.mock(DataRegion.class);
+    TsFileManager tsFileManager = Mockito.mock(TsFileManager.class);
+    Mockito.when(dataRegion.getTsFileManager()).thenReturn(tsFileManager);
+    Mockito.when(tsFileManager.getTsFileListSnapshot(partitionId, true))
+        .thenReturn(Collections.emptyList());
+    Mockito.when(tsFileManager.getTsFileListSnapshot(partitionId, false))
+        .thenReturn(Collections.emptyList());
+    Mockito.when(dataRegion.getWorkUnsequenceTsFileProcessors())
+        .thenReturn(Collections.emptyList());
+
+    if (!includeWorkingProcessor) {
+      Mockito.when(dataRegion.getWorkSequenceTsFileProcessors())
+          .thenReturn(Collections.emptyList());
+      return dataRegion;
+    }
+
+    TsFileProcessor processor = Mockito.mock(TsFileProcessor.class);
+    IMemTable emptyMemTable = Mockito.mock(IMemTable.class);
+    Mockito.when(processor.getTimeRangeId()).thenReturn(partitionId);
+    Mockito.when(processor.tryReadLock(1_000L)).thenReturn(true);
+    Mockito.when(processor.getWorkMemTable()).thenReturn(emptyMemTable);
+    Mockito.when(processor.getFlushingMemTable()).thenReturn(new ConcurrentLinkedDeque<>());
+    Mockito.doNothing().when(processor).readUnLock();
+    Mockito.when(emptyMemTable.getMemTableMap()).thenReturn(Collections.emptyMap());
+    Mockito.when(dataRegion.getWorkSequenceTsFileProcessors())
+        .thenReturn(Collections.singletonList(processor));
+    return dataRegion;
+  }
+
+  private DataRegionConsistencyManager newTestConsistencyManager() throws IOException {
+    Path tempStateDir = Files.createTempDirectory("logical-consistency-test-state");
+    tempStateDirs.add(tempStateDir);
+    return new DataRegionConsistencyManager(
+        new LogicalConsistencyPartitionStateStore(tempStateDir));
+  }
+
+  private void deleteRecursively(Path root) throws IOException {
+    if (root == null || !Files.exists(root)) {
+      return;
+    }
+    try {
+      Files.walk(root)
+          .sorted(Comparator.reverseOrder())
+          .forEach(
+              path -> {
+                try {
+                  Files.deleteIfExists(path);
+                } catch (IOException e) {
+                  throw new UncheckedIOException(e);
+                }
+              });
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -440,5 +559,37 @@ public class DataRegionConsistencyManagerTest {
     Field snapshotStateField = partitionState.getClass().getDeclaredField("snapshotState");
     snapshotStateField.setAccessible(true);
     return (RepairProgressTable.SnapshotState) snapshotStateField.get(partitionState);
+  }
+
+  private static class BlockingPartitionStateStore extends LogicalConsistencyPartitionStateStore {
+    private final CountDownLatch persistStarted = new CountDownLatch(1);
+    private final CountDownLatch allowPersist = new CountDownLatch(1);
+    private final ConcurrentHashMap<String, Map<Long, Long>> persisted = new ConcurrentHashMap<>();
+
+    @Override
+    public void persist(String consensusGroupKey, Map<Long, Long> mutationEpochs)
+        throws IOException {
+      persistStarted.countDown();
+      try {
+        allowPersist.await();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted while blocking persist", e);
+      }
+      persisted.put(consensusGroupKey, new HashMap<>(mutationEpochs));
+    }
+
+    @Override
+    public Map<Long, Long> load(String consensusGroupKey) {
+      return persisted.getOrDefault(consensusGroupKey, Collections.emptyMap());
+    }
+
+    private boolean awaitPersistStarted(long timeout, TimeUnit unit) throws InterruptedException {
+      return persistStarted.await(timeout, unit);
+    }
+
+    private void releasePersist() {
+      allowPersist.countDown();
+    }
   }
 }

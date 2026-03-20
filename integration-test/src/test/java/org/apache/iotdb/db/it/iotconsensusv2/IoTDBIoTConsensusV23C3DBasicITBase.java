@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.property.ThriftClientProperty;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework;
@@ -37,9 +38,19 @@ import org.apache.iotdb.isession.SessionConfig;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.cluster.node.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
+import org.apache.iotdb.mpp.rpc.thrift.TApplyLogicalRepairBatchReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFinishLogicalRepairSessionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGetConsistencyEligibilityReq;
 import org.apache.iotdb.mpp.rpc.thrift.TGetConsistencyEligibilityResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetSnapshotSubtreeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetSnapshotSubtreeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLogicalRepairBatch;
+import org.apache.iotdb.mpp.rpc.thrift.TLogicalRepairLeafSelector;
 import org.apache.iotdb.mpp.rpc.thrift.TPartitionConsistencyEligibility;
+import org.apache.iotdb.mpp.rpc.thrift.TSnapshotSubtreeNode;
+import org.apache.iotdb.mpp.rpc.thrift.TStreamLogicalRepairReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStreamLogicalRepairResp;
 
 import org.apache.tsfile.utils.Pair;
 import org.awaitility.Awaitility;
@@ -529,6 +540,107 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
         .untilAsserted(() -> assertDataPointCountOnNode(regionReplicaSelection.followerNode, 12L));
   }
 
+  /**
+   * The follower-side staged logical repair journal should survive a DataNode restart. This covers
+   * the data-plane recovery path where batches are durably staged first and only applied during the
+   * later finish step. The test uses an idempotent logical repair stream derived from the leader's
+   * current logical snapshot so the assertion stays focused on repair-session durability rather
+   * than on mismatch injection mechanics.
+   */
+  public void testLogicalRepairSessionSurvivesFollowerRestart() throws Exception {
+    RegionReplicaSelection regionReplicaSelection;
+    long firstPartitionId = timePartitionId(100L);
+    long partitionId = timePartitionId(200L);
+
+    try (Connection connection = makeItCloseQuietly(EnvFactory.getEnv().getConnection());
+        Statement statement = makeItCloseQuietly(connection.createStatement())) {
+      insertAndFlushPartitionData(statement, 100L);
+      insertAndFlushPartitionData(statement, 200L);
+
+      regionReplicaSelection = selectReplicatedDataRegion(statement);
+      waitForReplicationComplete(
+          regionReplicaSelection.leaderNode, regionReplicaSelection.regionId);
+      waitForCheckState(regionReplicaSelection.regionId, firstPartitionId, "VERIFIED");
+      waitForCheckState(regionReplicaSelection.regionId, partitionId, "VERIFIED");
+    }
+
+    TPartitionConsistencyEligibility leaderPartition =
+        getPartitionEligibility(
+            regionReplicaSelection.leaderNode, regionReplicaSelection.regionId, partitionId);
+    Assert.assertEquals("READY", leaderPartition.getSnapshotState());
+
+    List<TLogicalRepairLeafSelector> leafSelectors =
+        getPartitionLeafSelectors(
+            regionReplicaSelection.leaderNode,
+            regionReplicaSelection.regionId,
+            partitionId,
+            leaderPartition.getSnapshotEpoch(),
+            "LIVE");
+    Assert.assertFalse(
+        "Idempotent logical repair should still stream at least one live leaf",
+        leafSelectors.isEmpty());
+    leafSelectors = Collections.singletonList(leafSelectors.get(0));
+
+    String repairEpoch =
+        buildManualRepairEpoch(
+            regionReplicaSelection.leaderDataNodeId, partitionId, leaderPartition);
+    TStreamLogicalRepairResp repairResp =
+        streamLogicalRepair(
+            regionReplicaSelection.leaderNode,
+            regionReplicaSelection.regionId,
+            partitionId,
+            repairEpoch,
+            leafSelectors);
+    Assert.assertEquals(
+        "Streaming logical repair should succeed", 200, repairResp.getStatus().getCode());
+    Assert.assertFalse("Logical repair stream should not be stale", repairResp.isStale());
+    Assert.assertTrue(
+        "Logical repair stream should contain batches",
+        repairResp.isSetBatches() && !repairResp.getBatches().isEmpty());
+
+    String sessionId =
+        stageLogicalRepairBatches(
+            regionReplicaSelection.followerNode,
+            regionReplicaSelection.regionId,
+            partitionId,
+            repairEpoch,
+            repairResp.getBatches());
+    Path sessionJournalPath =
+        logicalRepairSessionPath(regionReplicaSelection.followerNode, sessionId);
+    Assert.assertTrue(
+        "Staged logical repair session should be persisted before restart",
+        Files.exists(sessionJournalPath));
+
+    regionReplicaSelection.followerNode.stopForcibly();
+    Assert.assertFalse(
+        "Follower should stop between stage and finish",
+        regionReplicaSelection.followerNode.isAlive());
+    regionReplicaSelection.followerNode.start();
+    waitForNodeConnectionReady(regionReplicaSelection.followerNode);
+    waitForReplicationComplete(regionReplicaSelection.leaderNode, regionReplicaSelection.regionId);
+    Assert.assertTrue(
+        "Staged logical repair session should survive follower restart",
+        Files.exists(sessionJournalPath));
+
+    finishLogicalRepairSession(
+        regionReplicaSelection.followerNode,
+        regionReplicaSelection.regionId,
+        partitionId,
+        repairEpoch,
+        sessionId);
+    Awaitility.await()
+        .pollDelay(1, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(1, TimeUnit.MINUTES)
+        .until(() -> !Files.exists(sessionJournalPath));
+
+    assertDataPointCountOnNode(regionReplicaSelection.followerNode, 12L);
+    Assert.assertEquals(
+        "Logical repair should not regress the already-verified partition state",
+        "VERIFIED",
+        getRepairProgressRow(regionReplicaSelection.regionId, partitionId).checkState);
+  }
+
   protected void insertAndFlushTestData(Statement statement) throws Exception {
     insertAndFlushPartitionData(statement, 100L);
   }
@@ -828,6 +940,37 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                     "DataNode " + targetNode.getId() + " is not accepting JDBC connections yet", e);
               }
             });
+    waitForInternalRpcReady(targetNode);
+  }
+
+  private void waitForInternalRpcReady(DataNodeWrapper targetNode) {
+    Awaitility.await()
+        .pollDelay(1, TimeUnit.SECONDS)
+        .pollInterval(1, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.MINUTES)
+        .untilAsserted(
+            () -> {
+              try (SyncDataNodeInternalServiceClient client =
+                  DATA_NODE_INTERNAL_CLIENT_MANAGER.borrowClient(
+                      new TEndPoint(
+                          targetNode.getInternalAddress(), targetNode.getInternalPort()))) {
+                TDataNodeHeartbeatReq heartbeatReq = new TDataNodeHeartbeatReq();
+                heartbeatReq.setHeartbeatTimestamp(System.nanoTime());
+                heartbeatReq.setNeedJudgeLeader(false);
+                heartbeatReq.setNeedSamplingLoad(false);
+                heartbeatReq.setTimeSeriesQuotaRemain(0L);
+                heartbeatReq.setLogicalClock(0L);
+                Assert.assertNotNull(
+                    "Expected an internal heartbeat response for DataNode " + targetNode.getId(),
+                    client.getDataNodeHeartBeat(heartbeatReq));
+              } catch (Exception e) {
+                throw new AssertionError(
+                    "DataNode "
+                        + targetNode.getId()
+                        + " is not accepting internal RPC connections yet",
+                    e);
+              }
+            });
   }
 
   protected static void assertNullValue(String value) {
@@ -955,6 +1098,11 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                 regionReplicaSelection.followerNode, regionReplicaSelection.regionId)));
   }
 
+  private Path logicalRepairSessionPath(DataNodeWrapper dataNodeWrapper, String sessionId) {
+    return Paths.get(
+        dataNodeWrapper.getSystemDir(), "consistency-repair", "sessions", sessionId + ".session");
+  }
+
   private TGetConsistencyEligibilityResp getConsistencyEligibility(
       DataNodeWrapper dataNodeWrapper, int regionId) throws Exception {
     try (SyncDataNodeInternalServiceClient client =
@@ -970,6 +1118,193 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
           200,
           response.getStatus().getCode());
       return response;
+    }
+  }
+
+  private TStreamLogicalRepairResp streamLogicalRepair(
+      DataNodeWrapper dataNodeWrapper,
+      int regionId,
+      long timePartitionId,
+      String repairEpoch,
+      List<TLogicalRepairLeafSelector> leafSelectors)
+      throws Exception {
+    try (SyncDataNodeInternalServiceClient client =
+        DATA_NODE_INTERNAL_CLIENT_MANAGER.borrowClient(
+            new TEndPoint(
+                dataNodeWrapper.getInternalAddress(), dataNodeWrapper.getInternalPort()))) {
+      return client.streamLogicalRepair(
+          new TStreamLogicalRepairReq(
+              new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId),
+              timePartitionId,
+              repairEpoch,
+              leafSelectors));
+    }
+  }
+
+  private TPartitionConsistencyEligibility getPartitionEligibility(
+      DataNodeWrapper dataNodeWrapper, int regionId, long timePartitionId) throws Exception {
+    return getConsistencyEligibility(dataNodeWrapper, regionId).getPartitions().stream()
+        .filter(partition -> partition.getTimePartitionId() == timePartitionId)
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new AssertionError(
+                    "Partition "
+                        + timePartitionId
+                        + " is missing from consistency eligibility on DataNode "
+                        + dataNodeWrapper.getId()));
+  }
+
+  private List<TLogicalRepairLeafSelector> getPartitionLeafSelectors(
+      DataNodeWrapper dataNodeWrapper,
+      int regionId,
+      long timePartitionId,
+      long snapshotEpoch,
+      String treeKind)
+      throws Exception {
+    List<TSnapshotSubtreeNode> shardNodes =
+        getSnapshotSubtreeNodes(
+            dataNodeWrapper,
+            regionId,
+            timePartitionId,
+            snapshotEpoch,
+            treeKind,
+            Collections.singletonList("root"));
+    List<String> shardHandles = new ArrayList<>();
+    for (TSnapshotSubtreeNode shardNode : shardNodes) {
+      if (!shardNode.isLeaf()) {
+        shardHandles.add(shardNode.getNodeHandle());
+      }
+    }
+    if (shardHandles.isEmpty()) {
+      return Collections.emptyList();
+    }
+
+    List<TSnapshotSubtreeNode> leafNodes =
+        getSnapshotSubtreeNodes(
+            dataNodeWrapper, regionId, timePartitionId, snapshotEpoch, treeKind, shardHandles);
+    leafNodes.sort(Comparator.comparing(TSnapshotSubtreeNode::getLeafId));
+    List<TLogicalRepairLeafSelector> selectors = new ArrayList<>();
+    for (TSnapshotSubtreeNode leafNode : leafNodes) {
+      if (!leafNode.isLeaf()) {
+        continue;
+      }
+      selectors.add(new TLogicalRepairLeafSelector(treeKind, leafNode.getLeafId()));
+    }
+    return selectors;
+  }
+
+  private List<TSnapshotSubtreeNode> getSnapshotSubtreeNodes(
+      DataNodeWrapper dataNodeWrapper,
+      int regionId,
+      long timePartitionId,
+      long snapshotEpoch,
+      String treeKind,
+      List<String> nodeHandles)
+      throws Exception {
+    try (SyncDataNodeInternalServiceClient client =
+        DATA_NODE_INTERNAL_CLIENT_MANAGER.borrowClient(
+            new TEndPoint(
+                dataNodeWrapper.getInternalAddress(), dataNodeWrapper.getInternalPort()))) {
+      TGetSnapshotSubtreeResp response =
+          client.getSnapshotSubtree(
+              new TGetSnapshotSubtreeReq(
+                  new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId),
+                  timePartitionId,
+                  snapshotEpoch,
+                  treeKind,
+                  nodeHandles));
+      Assert.assertEquals(
+          "Snapshot subtree RPC should succeed on DataNode " + dataNodeWrapper.getId(),
+          200,
+          response.getStatus().getCode());
+      Assert.assertFalse(
+          "Snapshot subtree should stay valid for partition " + timePartitionId,
+          response.isStale());
+      return response.isSetNodes() ? response.getNodes() : Collections.emptyList();
+    }
+  }
+
+  private String buildManualRepairEpoch(
+      int leaderDataNodeId,
+      long timePartitionId,
+      TPartitionConsistencyEligibility partitionEligibility) {
+    return leaderDataNodeId
+        + ":"
+        + timePartitionId
+        + ":0:"
+        + partitionEligibility.getSnapshotEpoch()
+        + ":"
+        + partitionEligibility.getPartitionMutationEpoch()
+        + ":manual-it";
+  }
+
+  private String stageLogicalRepairBatches(
+      DataNodeWrapper followerNode,
+      int regionId,
+      long timePartitionId,
+      String repairEpoch,
+      List<TLogicalRepairBatch> batches)
+      throws Exception {
+    String sessionId = null;
+    for (TLogicalRepairBatch batch : batches) {
+      if (sessionId == null) {
+        sessionId = batch.getSessionId();
+      } else {
+        Assert.assertEquals(
+            "All staged batches should belong to one repair session",
+            sessionId,
+            batch.getSessionId());
+      }
+      try (SyncDataNodeInternalServiceClient client =
+          DATA_NODE_INTERNAL_CLIENT_MANAGER.borrowClient(
+              new TEndPoint(followerNode.getInternalAddress(), followerNode.getInternalPort()))) {
+        TSStatus status =
+            client.applyLogicalRepairBatch(
+                new TApplyLogicalRepairBatchReq(
+                    new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId),
+                    timePartitionId,
+                    repairEpoch,
+                    batch.getSessionId(),
+                    batch.getTreeKind(),
+                    batch.getLeafId(),
+                    batch.getSeqNo(),
+                    batch.getBatchKind(),
+                    batch.bufferForPayload()));
+        Assert.assertEquals("Staging logical repair batch should succeed", 200, status.getCode());
+      }
+    }
+    Assert.assertNotNull("Repair stream should have a session id", sessionId);
+    return sessionId;
+  }
+
+  private void finishLogicalRepairSession(
+      DataNodeWrapper followerNode,
+      int regionId,
+      long timePartitionId,
+      String repairEpoch,
+      String sessionId)
+      throws Exception {
+    TEndPoint endPoint =
+        new TEndPoint(followerNode.getInternalAddress(), followerNode.getInternalPort());
+    SyncDataNodeInternalServiceClient client =
+        new SyncDataNodeInternalServiceClient(
+            new ThriftClientProperty.Builder()
+                .setConnectionTimeoutMs((int) TimeUnit.MINUTES.toMillis(5))
+                .build(),
+            endPoint,
+            null);
+    try {
+      TSStatus status =
+          client.finishLogicalRepairSession(
+              new TFinishLogicalRepairSessionReq(
+                  new TConsensusGroupId(TConsensusGroupType.DataRegion, regionId),
+                  timePartitionId,
+                  repairEpoch,
+                  sessionId));
+      Assert.assertEquals("Finishing logical repair session should succeed", 200, status.getCode());
+    } finally {
+      client.getInputProtocol().getTransport().close();
     }
   }
 
@@ -1061,41 +1396,7 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
   }
 
   private List<RepairProgressRow> getRepairProgressRows(int regionId) throws Exception {
-    try (Connection connection =
-            makeItCloseQuietly(EnvFactory.getEnv().getConnection(BaseEnv.TABLE_SQL_DIALECT));
-        Statement statement = makeItCloseQuietly(connection.createStatement());
-        ResultSet resultSet =
-            statement.executeQuery(
-                "select region_id, time_partition, check_state, repair_state, last_checked_at, "
-                    + "last_safe_watermark, partition_mutation_epoch, snapshot_epoch, snapshot_state, "
-                    + "last_mismatch_at, mismatch_scope_ref, mismatch_leaf_count, repair_epoch, "
-                    + "last_error_code, last_error_message from information_schema.repair_progress "
-                    + "where region_id = "
-                    + regionId
-                    + " order by time_partition")) {
-      List<RepairProgressRow> rows = new ArrayList<>();
-      while (resultSet.next()) {
-        rows.add(
-            new RepairProgressRow(
-                resultSet.getInt(1),
-                resultSet.getLong(2),
-                resultSet.getString(3),
-                resultSet.getString(4),
-                resultSet.getLong(5),
-                resultSet.getLong(6),
-                resultSet.getLong(7),
-                resultSet.getLong(8),
-                resultSet.getString(9),
-                resultSet.getLong(10),
-                resultSet.getString(11),
-                resultSet.getInt(12),
-                resultSet.getString(13),
-                resultSet.getString(14),
-                resultSet.getString(15)));
-      }
-      rows.sort(Comparator.comparingLong(row -> row.timePartition));
-      return rows;
-    }
+    return getRepairProgressRows(selectReadableDataNode(), regionId);
   }
 
   private List<RepairProgressRow> getRepairProgressRows(DataNodeWrapper targetNode, int regionId)
@@ -1138,8 +1439,16 @@ public abstract class IoTDBIoTConsensusV23C3DBasicITBase
                 resultSet.getString(14),
                 resultSet.getString(15)));
       }
+      rows.sort(Comparator.comparingLong(row -> row.timePartition));
       return rows;
     }
+  }
+
+  private DataNodeWrapper selectReadableDataNode() {
+    return EnvFactory.getEnv().getDataNodeWrapperList().stream()
+        .filter(DataNodeWrapper::isAlive)
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No alive DataNode is available for query"));
   }
 
   private long timePartitionId(long timestamp) {

@@ -48,19 +48,15 @@ class LogicalRepairSessionJournal {
 
   private static final int FORMAT_VERSION = 1;
 
-  private final Path journalDir;
+  private final Path journalDirOverride;
   private final ConcurrentHashMap<String, SessionState> sessions = new ConcurrentHashMap<>();
 
   LogicalRepairSessionJournal() {
-    this(
-        Paths.get(
-            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
-            "consistency-repair",
-            "sessions"));
+    this(null);
   }
 
   LogicalRepairSessionJournal(Path journalDir) {
-    this.journalDir = journalDir;
+    this.journalDirOverride = journalDir;
   }
 
   public synchronized void stageBatch(
@@ -151,6 +147,7 @@ class LogicalRepairSessionJournal {
   }
 
   private void persist(SessionState sessionState) throws IOException {
+    Path journalDir = getJournalDir();
     Files.createDirectories(journalDir);
     Path sessionPath = sessionPath(sessionState.sessionId);
     Path tmpPath = sessionPath.resolveSibling(sessionPath.getFileName() + ".tmp");
@@ -172,7 +169,15 @@ class LogicalRepairSessionJournal {
   }
 
   private Path sessionPath(String sessionId) {
-    return journalDir.resolve(sessionId + ".session");
+    return getJournalDir().resolve(sessionId + ".session");
+  }
+
+  private Path getJournalDir() {
+    if (journalDirOverride != null) {
+      return journalDirOverride;
+    }
+    return Paths.get(
+        IoTDBDescriptor.getInstance().getConfig().getSystemDir(), "consistency-repair", "sessions");
   }
 
   private static byte[] duplicatePayload(ByteBuffer payload) {

@@ -64,6 +64,12 @@ public class IoTDBIoTConsensusV2Stream3C3DBasicIT extends IoTDBIoTConsensusV23C3
 
   @Override
   @Test
+  public void testLogicalRepairSessionSurvivesFollowerRestart() throws Exception {
+    super.testLogicalRepairSessionSurvivesFollowerRestart();
+  }
+
+  @Override
+  @Test
   public void testBackgroundConsistencyCheckOnlyRunsOnColdPartitions() throws Exception {
     super.testBackgroundConsistencyCheckOnlyRunsOnColdPartitions();
   }
