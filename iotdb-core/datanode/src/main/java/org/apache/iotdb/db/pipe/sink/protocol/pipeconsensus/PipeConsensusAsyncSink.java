@@ -236,7 +236,15 @@ public class PipeConsensusAsyncSink extends IoTDBSink implements ConsensusPipeSi
     while (!current.equalsInPipeConsensus(event) && iterator.hasNext()) {
       current = iterator.next();
     }
-    iterator.remove();
+    if (current.equalsInIoTConsensusV2(event)) {
+      iterator.remove();
+    } else {
+      LOGGER.warn(
+          "IoTConsensusV2-ConsensusGroup-{}: event-{} not found in transferBuffer, skip removing. queue size = {}",
+          consensusGroupId,
+          event,
+          transferBuffer.size());
+    }
     // update replicate progress
     currentReplicateProgress =
         Math.max(currentReplicateProgress, event.getReplicateIndexForIoTV2());
