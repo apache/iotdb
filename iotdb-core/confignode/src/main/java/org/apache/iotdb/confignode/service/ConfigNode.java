@@ -24,6 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.ServerCommandLine;
 import org.apache.iotdb.commons.client.ClientManagerMetrics;
+import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadModule;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.concurrent.ThreadPoolMetrics;
@@ -77,6 +79,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
@@ -105,6 +110,13 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
   protected final RegisterManager registerManager = new RegisterManager();
 
   protected ConfigManager configManager;
+
+  private int exitStatusCode = 0;
+
+  private Future<Void> dataPartitionTableCheckFuture;
+
+  private ExecutorService dataPartitionTableCheckExecutor =
+      IoTDBThreadPoolFactory.newSingleThreadExecutor("DATA_PARTITION_TABLE_CHECK");
 
   public ConfigNode() {
     super("ConfigNode");
@@ -140,6 +152,16 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
       throw new IoTDBException("Error starting", -1);
     }
     active();
+    LOGGER.info("IoTDB started");
+    if (dataPartitionTableCheckFuture != null) {
+      try {
+        dataPartitionTableCheckFuture.get();
+      } catch (ExecutionException | InterruptedException e) {
+        LOGGER.error("Data partition table check task execute failed", e);
+      } finally {
+        dataPartitionTableCheckExecutor.shutdownNow();
+      }
+    }
   }
 
   @Override
@@ -168,7 +190,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         int configNodeId = CONF.getConfigNodeId();
         configManager.initConsensusManager();
         upgrade();
-        waitForLeaderElected();
+        TConfigNodeLocation leaderNodeLocation = waitForLeaderElected();
         setUpMetricService();
         // Notice: We always set up Seed-ConfigNode's RPC service lastly to ensure
         // that the external service is not provided until ConfigNode is fully available
@@ -193,6 +215,42 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
           } else {
             startUpSleep("restart ConfigNode failed! ");
           }
+        }
+        loadSecretKey();
+        loadHardwareCode();
+
+        /* After the ConfigNode leader election, a leader switch may occur, which could cause the procedure not to be created. This can happen if the original leader has not yet executed the procedure creation, while the other followers have already finished starting up. Therefore, having the original leader (before the leader switch) initiate the process ensures that only one procedure will be created. */
+        if (leaderNodeLocation.getConfigNodeId() == configNodeId) {
+          dataPartitionTableCheckFuture =
+              dataPartitionTableCheckExecutor.submit(
+                  () -> {
+                    LOGGER.info(
+                        "[DataPartitionIntegrity] Prepare to start dataPartitionTableIntegrityCheck after all datanodes started up");
+                    Thread.sleep(CONF.getPartitionTableRecoverWaitAllDnUpTimeoutInMs());
+
+                    while (true) {
+                      List<Integer> dnList =
+                          configManager
+                              .getLoadManager()
+                              .filterDataNodeThroughStatus(NodeStatus.Running);
+                      if (dnList != null && !dnList.isEmpty()) {
+                        LOGGER.info("Starting dataPartitionTableIntegrityCheck...");
+                        TSStatus status =
+                            configManager.getProcedureManager().dataPartitionTableIntegrityCheck();
+                        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                          LOGGER.error(
+                              "Data partition table integrity check failed! Current status code is {}, status message is {}",
+                              status.getCode(),
+                              status.getMessage());
+                        }
+                        break;
+                      } else {
+                        LOGGER.info("No running datanodes found, waiting...");
+                        Thread.sleep(5000);
+                      }
+                    }
+                    return null;
+                  });
         }
         return;
       }
@@ -434,7 +492,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
     return new ConfigNodeRPCServiceProcessor(configManager);
   }
 
-  private void waitForLeaderElected() {
+  private TConfigNodeLocation waitForLeaderElected() {
     while (!configManager.getConsensusManager().isLeaderExist()) {
       LOGGER.info("Leader has not been elected yet, wait for 1 second");
       try {
@@ -444,6 +502,7 @@ public class ConfigNode extends ServerCommandLine implements ConfigNodeMBean {
         LOGGER.warn("Unexpected interruption during waiting for leader election.");
       }
     }
+    return configManager.getConsensusManager().getLeaderLocation();
   }
 
   /**

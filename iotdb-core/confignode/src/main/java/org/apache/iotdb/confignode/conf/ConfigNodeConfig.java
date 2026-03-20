@@ -320,6 +320,8 @@ public class ConfigNodeConfig {
 
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
+  private long partitionTableRecoverWaitAllDnUpTimeoutInMs = 60000;
+
   public ConfigNodeConfig() {
     // empty constructor
   }
@@ -1287,5 +1289,14 @@ public class ConfigNodeConfig {
 
   public void setFailureDetectorPhiAcceptablePauseInMs(long failureDetectorPhiAcceptablePauseInMs) {
     this.failureDetectorPhiAcceptablePauseInMs = failureDetectorPhiAcceptablePauseInMs;
+  }
+
+  public long getPartitionTableRecoverWaitAllDnUpTimeoutInMs() {
+    return partitionTableRecoverWaitAllDnUpTimeoutInMs;
+  }
+
+  public void setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
+      long partitionTableRecoverWaitAllDnUpTimeoutInMs) {
+    this.partitionTableRecoverWaitAllDnUpTimeoutInMs = partitionTableRecoverWaitAllDnUpTimeoutInMs;
   }
 }

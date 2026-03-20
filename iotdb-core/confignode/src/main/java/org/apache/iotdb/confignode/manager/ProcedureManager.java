@@ -65,6 +65,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.AbstractOperatePipeProcedureV2;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -1231,6 +1232,16 @@ public class ProcedureManager {
       return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
           .setMessage(status.getMessage());
     }
+  }
+
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    DataPartitionTableIntegrityCheckProcedure procedure;
+    synchronized (this) {
+      procedure = new DataPartitionTableIntegrityCheckProcedure();
+      executor.submitProcedure(procedure);
+    }
+    return waitingProcedureFinished(procedure);
   }
 
   /**
