@@ -129,7 +129,7 @@ statement
     | showTimeSlotListStatement
     | countTimeSlotListStatement
     | showSeriesSlotListStatement
-    | loadBalanceStatement
+//    | loadBalanceStatement
     | migrateRegionStatement
     | reconstructRegionStatement
     | extendRegionStatement
@@ -628,9 +628,9 @@ showSeriesSlotListStatement
     : SHOW (DATA | SCHEMA) SERIESSLOTID WHERE DATABASE EQ database=identifier
     ;
 
-loadBalanceStatement
-    : LOAD BALANCE (TO DATANODE targetNodeIds+=INTEGER_VALUE (',' targetNodeIds+=INTEGER_VALUE)*)?
-    ;
+//loadBalanceStatement
+//    : LOAD BALANCE (TO DATANODE targetNodeIds+=INTEGER_VALUE (',' targetNodeIds+=INTEGER_VALUE)*)?
+//    ;
 
 migrateRegionStatement
     : MIGRATE REGION regionId=INTEGER_VALUE FROM fromId=INTEGER_VALUE TO toId=INTEGER_VALUE

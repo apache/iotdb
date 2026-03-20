@@ -165,7 +165,6 @@ import org.apache.iotdb.db.queryengine.plan.statement.metadata.DropTriggerStatem
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetRegionIdStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetSeriesSlotListStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.GetTimeSlotListStatement;
-import org.apache.iotdb.db.queryengine.plan.statement.metadata.LoadBalanceStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveAINodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveConfigNodeStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.metadata.RemoveDataNodeStatement;
@@ -4632,18 +4631,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         Integer.parseInt(ctx.toId.getText()));
   }
 
-  @Override
-  public Statement visitLoadBalance(IoTDBSqlParser.LoadBalanceContext ctx) {
-    List<Integer> targetNodeIds = null;
-    if (ctx.targetNodeIds != null && !ctx.targetNodeIds.isEmpty()) {
-      targetNodeIds =
-          ctx.targetNodeIds.stream()
-              .map(Token::getText)
-              .map(Integer::parseInt)
-              .collect(Collectors.toList());
-    }
-    return new LoadBalanceStatement(targetNodeIds);
-  }
+  //  @Override
+  //  public Statement visitLoadBalance(IoTDBSqlParser.LoadBalanceContext ctx) {
+  //    List<Integer> targetNodeIds = null;
+  //    if (ctx.targetNodeIds != null && !ctx.targetNodeIds.isEmpty()) {
+  //      targetNodeIds =
+  //          ctx.targetNodeIds.stream()
+  //              .map(Token::getText)
+  //              .map(Integer::parseInt)
+  //              .collect(Collectors.toList());
+  //    }
+  //    return new LoadBalanceStatement(targetNodeIds);
+  //  }
 
   @Override
   public Statement visitReconstructRegion(IoTDBSqlParser.ReconstructRegionContext ctx) {
