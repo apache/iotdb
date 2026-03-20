@@ -47,7 +47,6 @@ import java.util.UUID;
 @Provider
 public class AuthorizationFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
-  private final UserCache userCache = UserCache.getInstance();
   IoTDBRestServiceConfig config = IoTDBRestServiceDescriptor.getInstance().getConfig();
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
@@ -85,14 +84,9 @@ public class AuthorizationFilter implements ContainerRequestFilter, ContainerRes
       containerRequestContext.abortWith(resp);
       return;
     }
-    User user = userCache.getUser(authorizationHeader);
+    User user = checkLogin(containerRequestContext, authorizationHeader);
     if (user == null) {
-      user = checkLogin(containerRequestContext, authorizationHeader);
-      if (user == null) {
-        return;
-      } else {
-        userCache.setUser(authorizationHeader, user);
-      }
+      return;
     }
     String sessionid = UUID.randomUUID().toString();
     if (SESSION_MANAGER.getCurrSession() == null) {
