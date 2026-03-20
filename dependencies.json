@@ -17,7 +17,6 @@
     "com.fasterxml.jackson.module:jackson-module-jaxb-annotations",
     "com.github.ben-manes.caffeine:caffeine",
     "com.github.luben:zstd-jni",
-    "com.github.stephenc.jcip:jcip-annotations",
     "com.github.wendykierp:JTransforms",
     "com.google.code.findbugs:jsr305",
     "com.google.code.gson:gson",
