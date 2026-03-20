@@ -31,6 +31,7 @@ import org.apache.iotdb.db.queryengine.plan.Coordinator;
 import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.service.metrics.FileMetrics;
 import org.apache.iotdb.db.storageengine.dataregion.IObjectPath;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectReq;
 import org.apache.iotdb.mpp.rpc.thrift.TReadObjectResp;
@@ -304,20 +305,25 @@ public class ObjectTypeUtils {
     }
   }
 
-  public static void deleteObjectPath(File file) {
+  public static void deleteObjectPath(
+      String database, int regionId, long timePartition, String table, File file) {
     File tmpFile = new File(file.getPath() + ".tmp");
     File bakFile = new File(file.getPath() + ".back");
     for (int i = 0; i < 2; i++) {
-      if (file.exists()) {
-        FileMetrics.getInstance().decreaseObjectFileNum(1);
-        FileMetrics.getInstance().decreaseObjectFileSize(file.length());
-      }
+      boolean fileExistsBeforeDelete = file.exists();
+      long length = file.length();
       try {
         deleteObjectFile(file);
         deleteObjectFile(tmpFile);
         deleteObjectFile(bakFile);
       } catch (IOException e) {
         logger.error("Failed to remove object file {}", file.getAbsolutePath(), e);
+      }
+      if (fileExistsBeforeDelete && !file.exists()) {
+        FileMetrics.getInstance().decreaseObjectFileNum(1);
+        FileMetrics.getInstance().decreaseObjectFileSize(length);
+        TableDiskUsageIndex.getInstance()
+            .writeObjectDelta(database, regionId, timePartition, table, -length, -1);
       }
     }
     deleteEmptyParentDir(file);

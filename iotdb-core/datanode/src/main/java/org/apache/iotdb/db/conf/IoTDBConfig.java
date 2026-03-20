@@ -106,6 +106,8 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
+  public static final long startTimeInMills = System.currentTimeMillis();
+
   private Runnable onWhiteListUpdated = () -> {};
   private Runnable onBlackListUpdated = () -> {};
 

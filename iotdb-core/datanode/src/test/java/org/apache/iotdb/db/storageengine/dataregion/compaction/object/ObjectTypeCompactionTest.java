@@ -154,7 +154,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
-    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+        regionDir, COMPACTION_TEST_SG, 0, false);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
   }
@@ -179,7 +180,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
-    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+        regionDir, COMPACTION_TEST_SG, 0, false);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -203,7 +205,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
     Assert.assertTrue(task.start());
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
-    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+        regionDir, COMPACTION_TEST_SG, 0, false);
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertFalse(pair2.getRight().exists());
   }
@@ -229,7 +232,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
-    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+        regionDir, COMPACTION_TEST_SG, 0, false);
     Assert.assertFalse(pair2.getRight().exists());
     Assert.assertTrue(pair1.getRight().exists());
   }
@@ -255,7 +259,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
 
     Assert.assertTrue(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
-    CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+    CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+        regionDir, COMPACTION_TEST_SG, 0, false);
     Assert.assertFalse(pair1.getRight().exists());
     Assert.assertTrue(pair2.getRight().exists());
   }
@@ -276,7 +281,8 @@ public class ObjectTypeCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(file2.exists());
       Assert.assertTrue(file3.exists());
       Assert.assertTrue(file4.exists());
-      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionDir, COMPACTION_TEST_SG);
+      CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+          regionDir, COMPACTION_TEST_SG, 0, false);
       Assert.assertTrue(file1.exists());
       Assert.assertTrue(file2.exists());
       Assert.assertFalse(file3.exists());

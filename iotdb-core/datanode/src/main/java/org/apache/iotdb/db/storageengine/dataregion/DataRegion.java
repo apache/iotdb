@@ -384,6 +384,7 @@ public class DataRegion implements IDataRegionForQuery {
   private ILoadDiskSelector ordinaryLoadDiskSelector;
   private ILoadDiskSelector pipeAndIoTV2LoadDiskSelector;
 
+  private final AtomicBoolean isFirstCheckObjectFileDirsAfterRestart = new AtomicBoolean(true);
   private final boolean isTableModel;
 
   /** Delay analyzer for tracking data arrival delays and calculating safe watermarks */
@@ -2238,6 +2239,8 @@ public class DataRegion implements IDataRegionForQuery {
                 path -> {
                   count.incrementAndGet();
                   totalSize.addAndGet(path.toFile().length());
+                  // we don't need to update table disk usage cache because the cache file of this
+                  // region will be deleted later
                 });
       } catch (IOException e) {
         logger.error("Failed to check Object Files: {}", e.getMessage());
@@ -3018,8 +3021,27 @@ public class DataRegion implements IDataRegionForQuery {
                         })
                     .forEach(
                         path -> {
-                          count.incrementAndGet();
-                          totalSize.addAndGet(path.toFile().length());
+                          try {
+                            if (Files.deleteIfExists(path)) {
+                              String name = path.getFileName().toString();
+                              long fileSize = path.toFile().length();
+                              count.incrementAndGet();
+                              totalSize.addAndGet(fileSize);
+                              long timePartition =
+                                  TimePartitionUtils.getTimePartitionId(
+                                      Long.parseLong(name.substring(0, name.length() - 4)));
+                              TableDiskUsageIndex.getInstance()
+                                  .writeObjectDelta(
+                                      databaseName,
+                                      dataRegionId.getId(),
+                                      timePartition,
+                                      tableName,
+                                      -fileSize,
+                                      -1);
+                            }
+                          } catch (IOException e) {
+                            logger.error("Failed to delete Object File: {}", path, e);
+                          }
                         });
               } catch (IOException e) {
                 logger.error("Failed to check Object Files: {}", e.getMessage());
@@ -3237,7 +3259,13 @@ public class DataRegion implements IDataRegionForQuery {
               for (TableDeletionEntry modEntry : modEntries) {
                 if (modEntry.affects(iDeviceID, timestamp, timestamp)
                     && modEntry.affects(measurementId)) {
-                  ObjectTypeUtils.deleteObjectPath(path.toFile());
+                  ObjectTypeUtils.deleteObjectPath(
+                      databaseName,
+                      dataRegionId.getId(),
+                      TimePartitionUtils.getTimePartitionId(timestamp),
+                      modEntry.getTableName(),
+                      path.toFile());
+                  break;
                 }
               }
             });
@@ -3778,7 +3806,11 @@ public class DataRegion implements IDataRegionForQuery {
       if (!regionObjectDir.isDirectory()) {
         continue;
       }
-      CompactionUtils.executeTTLCheckObjectFilesForTableModel(regionObjectDir, databaseName);
+      CompactionUtils.executeTTLCheckObjectFilesForTableModel(
+          regionObjectDir,
+          databaseName,
+          dataRegionId.getId(),
+          isFirstCheckObjectFileDirsAfterRestart.compareAndSet(true, false));
     }
     CompactionMetrics.getInstance()
         .updateTTLCheckForObjectFileCost(System.currentTimeMillis() - startTime);
@@ -3968,6 +4000,9 @@ public class DataRegion implements IDataRegionForQuery {
       if (objectNode.isEOF()) {
         File objectFile =
             FSFactoryProducer.getFSFactory().getFile(objectFileDir, objectNode.getFilePathString());
+        long timePartition =
+            TimePartitionUtils.getTimePartitionId(
+                Long.parseLong(objectFile.getName().split("\\.")[0]));
         if (objectFile.exists()) {
           String relativeBackPathString = objectNode.getFilePathString() + ".back";
           File objectBackFile =
@@ -3976,8 +4011,17 @@ public class DataRegion implements IDataRegionForQuery {
               objectFile.toPath(), objectBackFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
           Files.move(
               objectTmpFile.toPath(), objectFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          long objectBackFileLength = objectBackFile.length();
           FileMetrics.getInstance().decreaseObjectFileNum(1);
-          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFile.length());
+          FileMetrics.getInstance().decreaseObjectFileSize(objectBackFileLength);
+          TableDiskUsageIndex.getInstance()
+              .writeObjectDelta(
+                  databaseName,
+                  Integer.parseInt(dataRegionIdString),
+                  timePartition,
+                  objectNode.getFilePath().getDeviceID().getTableName(),
+                  -objectBackFileLength,
+                  -1);
           Files.delete(objectBackFile.toPath());
         } else {
           Files.move(
@@ -3985,8 +4029,17 @@ public class DataRegion implements IDataRegionForQuery {
         }
         RelationalInsertRowNode valueNode = objectNode.genValueInsertRowNode();
         insert(valueNode);
+        long fileLength = objectFile.length();
         FileMetrics.getInstance().increaseObjectFileNum(1);
-        FileMetrics.getInstance().increaseObjectFileSize(objectFile.length());
+        FileMetrics.getInstance().increaseObjectFileSize(fileLength);
+        TableDiskUsageIndex.getInstance()
+            .writeObjectDelta(
+                databaseName,
+                Integer.parseInt(dataRegionIdString),
+                timePartition,
+                objectNode.getFilePath().getDeviceID().getTableName(),
+                fileLength,
+                1);
       }
       getWALNode()
           .ifPresent(walNode -> walNode.log(TsFileProcessor.MEMTABLE_NOT_EXIST, objectNode));

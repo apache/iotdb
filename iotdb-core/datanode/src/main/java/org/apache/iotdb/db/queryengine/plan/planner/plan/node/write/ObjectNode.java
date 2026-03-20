@@ -108,6 +108,10 @@ public class ObjectNode extends SearchNode implements WALEntryValue {
     this.filePath = filePath;
   }
 
+  public IObjectPath getFilePath() {
+    return filePath;
+  }
+
   public String getFilePathString() {
     return filePath.toString();
   }

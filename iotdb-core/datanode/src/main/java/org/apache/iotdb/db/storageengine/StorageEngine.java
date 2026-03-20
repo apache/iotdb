@@ -78,7 +78,6 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.recover.WALRecoverManager;
 import org.apache.iotdb.db.storageengine.load.LoadTsFileManager;
 import org.apache.iotdb.db.storageengine.load.limiter.LoadTsFileRateLimiter;
-import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -99,8 +98,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -242,8 +239,6 @@ public class StorageEngine implements IService {
   }
 
   private void asyncRecover(List<Future<Void>> futures) {
-    checkObjectFiles();
-
     Map<String, List<DataRegionId>> localDataRegionInfo = getLocalDataRegionInfo();
     localDataRegionInfo.values().forEach(list -> recoverDataRegionNum += list.size());
     readyDataRegionNum = new AtomicInteger(0);
@@ -1106,41 +1101,6 @@ public class StorageEngine implements IService {
   public static File getDataRegionSystemDir(String dataBaseName, String dataRegionId) {
     return SystemFileFactory.INSTANCE.getFile(
         systemDir + File.separator + dataBaseName, dataRegionId);
-  }
-
-  private void checkObjectFiles() {
-    List<String> folders = TierManager.getInstance().getAllObjectFileFolders();
-    for (String baseDir : folders) {
-      File fileFolder = fsFactory.getFile(baseDir);
-      if (!fileFolder.exists()) {
-        continue;
-      }
-      try (Stream<Path> paths = Files.walk(fileFolder.toPath())) {
-        paths
-            .filter(Files::isRegularFile)
-            .filter(
-                path -> {
-                  String name = path.getFileName().toString();
-                  return name.endsWith(".bin.back") || name.endsWith(".bin");
-                })
-            .forEach(
-                path -> {
-                  String name = path.getFileName().toString();
-                  if (name.endsWith(".bin.back")) {
-                    try {
-                      Files.delete(path);
-                    } catch (IOException e) {
-                      LOGGER.error("Failed to delete: {} -> {}", path, e.getMessage());
-                    }
-                  } else if (name.endsWith(".bin")) {
-                    FileMetrics.getInstance().increaseObjectFileNum(1);
-                    FileMetrics.getInstance().increaseObjectFileSize(path.toFile().length());
-                  }
-                });
-      } catch (IOException e) {
-        LOGGER.error("Failed to check Object Files: {}", e.getMessage());
-      }
-    }
   }
 
   public Runnable executeCompactFileTimeIndexCache() {

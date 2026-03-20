@@ -31,6 +31,8 @@ import org.apache.iotdb.commons.service.metric.MetricService;
 import org.apache.iotdb.commons.service.metric.enums.Tag;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.commons.utils.TimePartitionUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.queryengine.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.queryengine.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.queryengine.plan.analyze.schema.ClusterSchemaFetcher;
@@ -49,6 +51,7 @@ import org.apache.iotdb.db.storageengine.dataregion.modification.TableDeletionEn
 import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.ArrayDeviceTimeIndex;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.utils.ModificationUtils;
 import org.apache.iotdb.db.utils.datastructure.PatternTreeMapFactory;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -73,6 +76,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -527,7 +531,7 @@ public class CompactionUtils {
   }
 
   public static void executeTTLCheckObjectFilesForTableModel(
-      File regionObjectDir, String databaseName) {
+      File regionObjectDir, String databaseName, int regionId, boolean isFirstCheckAfterRestart) {
     File[] tableDirs = regionObjectDir.listFiles();
     if (tableDirs == null) {
       return;
@@ -553,14 +557,22 @@ public class CompactionUtils {
         continue;
       }
       long ttlInMS = CommonDateTimeUtils.convertIoTDBTimeToMillis(tsTable.getCachedTableTTL());
-      if (ttlInMS == Long.MAX_VALUE) {
+      if (ttlInMS == Long.MAX_VALUE && !isFirstCheckAfterRestart) {
         continue;
       }
       // buffer 60s to avoid concurrent issues with querying
       final long timeLowerBoundInMS = CommonDateTimeUtils.currentTime() - ttlInMS - 60 * 1000;
       try {
         recursiveTTLCheckForTableDir(
-            tableDir, 0, tsTable.getTagNum() + 1, !restrictObjectLimit, timeLowerBoundInMS);
+            databaseName,
+            regionId,
+            tableName,
+            tableDir,
+            0,
+            tsTable.getTagNum() + 1,
+            !restrictObjectLimit,
+            timeLowerBoundInMS,
+            isFirstCheckAfterRestart);
       } catch (Exception e) {
         logger.warn(
             "Meet exception when checking for object files for table {}.{} in region {}",
@@ -575,27 +587,51 @@ public class CompactionUtils {
   // We try to avoid expensive 'stat' system calls by first checking file name and only performing
   // Files.readAttributes when the file may be expired
   private static void recursiveTTLCheckForTableDir(
+      String database,
+      int regionId,
+      String table,
       File currentFile,
       int depth,
       int maxObjectFileDepth,
       boolean canDistinguishDirectoryByFileName,
-      long lowerBoundInMS) {
+      long lowerBoundInMS,
+      boolean isFirstCheckAfterRestart) {
     canDistinguishDirectoryByFileName |= depth > maxObjectFileDepth;
     String fileName = currentFile.getName();
     boolean maybeObjectFile = fileName.endsWith(".bin");
     if (maybeObjectFile) {
       if (canDistinguishDirectoryByFileName) {
-        checkTTLAndDeleteExpiredObjectFile(currentFile, null, lowerBoundInMS);
+        checkTTLAndDeleteExpiredObjectFile(
+            database, regionId, table, currentFile, null, lowerBoundInMS);
         return;
       }
       try {
         BasicFileAttributes basicFileAttributes =
             Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
         if (!basicFileAttributes.isDirectory()) {
-          checkTTLAndDeleteExpiredObjectFile(currentFile, basicFileAttributes, lowerBoundInMS);
+          checkTTLAndDeleteExpiredObjectFile(
+              database, regionId, table, currentFile, basicFileAttributes, lowerBoundInMS);
           return;
         }
       } catch (IOException ignored) {
+      }
+    }
+    if (isFirstCheckAfterRestart) {
+      boolean isBackFile = currentFile.getName().endsWith(".back");
+      if (isBackFile) {
+        try {
+          BasicFileAttributes basicFileAttributes =
+              Files.readAttributes(currentFile.toPath(), BasicFileAttributes.class);
+          FileTime lastModifiedTime = basicFileAttributes.lastModifiedTime();
+          if (basicFileAttributes.isRegularFile()
+              && lastModifiedTime.toMillis() > 0
+              && lastModifiedTime.toMillis() < IoTDBConfig.startTimeInMills) {
+            Files.deleteIfExists(currentFile.toPath());
+            return;
+          }
+        } catch (IOException e) {
+          logger.error("Failed to remove object file {}", currentFile.getPath(), e);
+        }
       }
     }
     File[] children = currentFile.listFiles();
@@ -607,12 +643,25 @@ public class CompactionUtils {
     acquireCompactionReadRate(currentFile.length());
     for (File child : children) {
       recursiveTTLCheckForTableDir(
-          child, depth + 1, maxObjectFileDepth, canDistinguishDirectoryByFileName, lowerBoundInMS);
+          database,
+          regionId,
+          table,
+          child,
+          depth + 1,
+          maxObjectFileDepth,
+          canDistinguishDirectoryByFileName,
+          lowerBoundInMS,
+          isFirstCheckAfterRestart);
     }
   }
 
   private static void checkTTLAndDeleteExpiredObjectFile(
-      File file, @Nullable BasicFileAttributes attributes, long timeLowerBoundInMS) {
+      String database,
+      int regionId,
+      String table,
+      File file,
+      @Nullable BasicFileAttributes attributes,
+      long timeLowerBoundInMS) {
     String fileName = file.getName();
     long fileTimestampInMS;
     try {
@@ -636,8 +685,17 @@ public class CompactionUtils {
       Files.delete(file.toPath());
       FileMetrics.getInstance().decreaseObjectFileNum(1);
       FileMetrics.getInstance().decreaseObjectFileSize(attributes.size());
+      TableDiskUsageIndex.getInstance()
+          .writeObjectDelta(
+              database,
+              regionId,
+              TimePartitionUtils.getTimePartitionId(fileTimestampInMS),
+              table,
+              -attributes.size(),
+              -1);
       logger.info("Remove object file {}, size is {}(byte)", file.getPath(), attributes.size());
-    } catch (Exception ignored) {
+    } catch (Exception e) {
+      logger.error("Failed to remove object file {}", file.getPath(), e);
     }
   }
 
