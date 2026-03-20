@@ -55,7 +55,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -705,19 +704,18 @@ public class DataPartitionTableIntegrityCheckProcedure
       stream.writeInt(tableList.size());
 
       for (DatabaseScopedDataPartitionTable table : tableList) {
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos)) {
+        try (final PublicBAOS publicBAOS = new PublicBAOS();
+            final DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
 
-          TTransport transport = new TIOStreamTransport(dos);
+          TTransport transport = new TIOStreamTransport(outputStream);
           TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-          table.serialize(dos, protocol);
+          table.serialize(outputStream, protocol);
 
-          byte[] data = baos.toByteArray();
-          // Length of data written for a single object
-          stream.writeInt(data.length);
-          // data written for a single object
-          stream.write(data);
+          byte[] buf = publicBAOS.getBuf();
+          int size = publicBAOS.size();
+          ReadWriteIOUtils.write(size, outputStream);
+          stream.write(buf, 0, size);
         } catch (IOException | TException e) {
           LOG.error(
               "[DataPartitionIntegrity] {} serialize failed for dataNodeId: {}",
@@ -747,9 +745,10 @@ public class DataPartitionTableIntegrityCheckProcedure
 
           entry.getValue().serialize(outputStream, protocol);
 
-          byte[] data = publicBAOS.getBuf();
-          stream.writeInt(data.length);
-          stream.write(data);
+          byte[] buf = publicBAOS.getBuf();
+          int size = publicBAOS.size();
+          ReadWriteIOUtils.write(size, outputStream);
+          stream.write(buf, 0, size);
         } catch (IOException | TException e) {
           LOG.error(
               "[DataPartitionIntegrity] {} serialize finalDataPartitionTables failed",
@@ -764,14 +763,16 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     stream.writeInt(skipDataNodes.size());
     for (TDataNodeConfiguration skipDataNode : skipDataNodes) {
-      try (final PublicBAOS publicBAOS = new PublicBAOS()) {
-        TTransport transport = new TIOStreamTransport(publicBAOS);
+      try (final PublicBAOS publicBAOS = new PublicBAOS();
+          final DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+        TTransport transport = new TIOStreamTransport(outputStream);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         skipDataNode.write(protocol);
 
-        byte[] data = publicBAOS.getBuf();
-        stream.writeInt(data.length);
-        stream.write(data);
+        byte[] buf = publicBAOS.getBuf();
+        int size = publicBAOS.size();
+        ReadWriteIOUtils.write(size, outputStream);
+        stream.write(buf, 0, size);
       } catch (TException e) {
         LOG.error("[DataPartitionIntegrity] Failed to serialize skipDataNode", e);
         throw new IOException("Failed to serialize skipDataNode", e);
@@ -780,14 +781,16 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     stream.writeInt(failedDataNodes.size());
     for (TDataNodeConfiguration failedDataNode : failedDataNodes) {
-      try (final PublicBAOS publicBAOS = new PublicBAOS()) {
-        TTransport transport = new TIOStreamTransport(publicBAOS);
+      try (final PublicBAOS publicBAOS = new PublicBAOS();
+          final DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+        TTransport transport = new TIOStreamTransport(outputStream);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         failedDataNode.write(protocol);
 
-        byte[] data = publicBAOS.getBuf();
-        stream.writeInt(data.length);
-        stream.write(data);
+        byte[] buf = publicBAOS.getBuf();
+        int size = publicBAOS.size();
+        ReadWriteIOUtils.write(size, outputStream);
+        stream.write(buf, 0, size);
       } catch (TException e) {
         LOG.error("[DataPartitionIntegrity] Failed to serialize failedDataNode", e);
         throw new IOException("Failed to serialize failedDataNode", e);
