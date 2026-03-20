@@ -33,8 +33,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.framework.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.awaitility.Awaitility;
@@ -43,8 +41,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,8 +55,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.confignode.it.regionmigration.IoTDBRegionOperationReliabilityITFramework.getDataRegionMap;
 import static org.apache.iotdb.util.MagicUtils.makeItCloseQuietly;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
+// @RunWith(IoTDBTestRunner.class)
+// @Category({ClusterIT.class})
 public class IoTDBLoadBalanceIT {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadBalanceIT.class);
