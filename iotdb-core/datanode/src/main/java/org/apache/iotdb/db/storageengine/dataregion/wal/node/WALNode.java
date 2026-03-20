@@ -52,6 +52,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointType;
 import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALByteBufReader;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -82,6 +83,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -112,6 +114,8 @@ public class WALNode implements IWALNode {
   private final Map<Long, Integer> memTableSnapshotCount = new ConcurrentHashMap<>();
   // insert nodes whose search index are before this value can be deleted safely
   private volatile long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
+  // WAL files with versionId >= this value are retained for subscription consumers
+  private volatile long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
 
   private volatile boolean deleted = false;
 
@@ -572,6 +576,7 @@ public class WALNode implements IWALNode {
     private boolean canDeleteFile(long fileArrIdx, WALFileStatus walFileStatus, long versionId) {
       return (fileArrIdx < fileIndexAfterFilterSafelyDeleteIndex
               || walFileStatus == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX)
+          && versionId < subscriptionRetainedMinVersionId
           && !isContainsActiveOrPinnedMemTable(versionId);
     }
   }
@@ -582,6 +587,11 @@ public class WALNode implements IWALNode {
   @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
+  }
+
+  @Override
+  public void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    this.subscriptionRetainedMinVersionId = minVersionId;
   }
 
   /** This iterator is not concurrency-safe, cannot read the current-writing wal file. */
@@ -654,6 +664,9 @@ public class WALNode implements IWALNode {
       AtomicReference<List<IConsensusRequest>> tmpNodes = new AtomicReference<>(new ArrayList<>());
       AtomicBoolean notFirstFile = new AtomicBoolean(false);
       AtomicBoolean hasCollectedSufficientData = new AtomicBoolean(false);
+      // V3: track epoch and syncIndex for current entry group
+      AtomicLong currentEntryEpoch = new AtomicLong(0);
+      AtomicLong currentEntrySyncIndex = new AtomicLong(-1);
 
       long memorySize = 0;
 
@@ -662,7 +675,13 @@ public class WALNode implements IWALNode {
       Runnable tryToCollectInsertNodeAndBumpIndex =
           () -> {
             if (!tmpNodes.get().isEmpty()) {
-              insertNodes.add(new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get()));
+              long syncIdx = currentEntrySyncIndex.get();
+              IndexedConsensusRequest req =
+                  (syncIdx >= 0)
+                      ? new IndexedConsensusRequest(nextSearchIndex, syncIdx, tmpNodes.get())
+                      : new IndexedConsensusRequest(nextSearchIndex, tmpNodes.get());
+              req.setEpoch(currentEntryEpoch.get());
+              insertNodes.add(req);
               tmpNodes.set(new ArrayList<>());
               nextSearchIndex++;
               if (notFirstFile.get()) {
@@ -695,6 +714,8 @@ public class WALNode implements IWALNode {
               } else if (currentWalEntryIndex < nextSearchIndex) {
                 // WAL entry is outdated, do nothing, continue to see next WAL entry
               } else if (currentWalEntryIndex == nextSearchIndex) {
+                currentEntryEpoch.set(walByteBufReader.getCurrentEntryEpoch());
+                currentEntrySyncIndex.set(walByteBufReader.getCurrentEntrySyncIndex());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -723,6 +744,8 @@ public class WALNode implements IWALNode {
                       currentWalEntryIndex);
                   nextSearchIndex = currentWalEntryIndex;
                 }
+                currentEntryEpoch.set(walByteBufReader.getCurrentEntryEpoch());
+                currentEntrySyncIndex.set(walByteBufReader.getCurrentEntrySyncIndex());
                 if (type == WALEntryType.OBJECT_FILE_NODE) {
                   WALEntry walEntry =
                       WALEntry.deserialize(
@@ -898,6 +921,10 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentWALFileVersion();
   }
 
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    return buffer.getCurrentWALMetaDataSnapshot();
+  }
+
   @Override
   public long getTotalSize() {
     return WALManager.getInstance().getTotalDiskUsage();
@@ -932,6 +959,30 @@ public class WALNode implements IWALNode {
       }
     }
     // Could not free enough even by deleting all non-current files — allow deleting all
+    return Long.MAX_VALUE;
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    if (bytesToFree <= 0) {
+      return 0;
+    }
+    File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
+    if (walFiles == null || walFiles.length <= 1) {
+      return 0;
+    }
+    WALFileUtils.ascSortByVersionId(walFiles);
+    long accumulated = 0;
+    for (int i = 0; i < walFiles.length - 1; i++) {
+      accumulated += walFiles[i].length();
+      if (accumulated >= bytesToFree) {
+        // Return the versionId of the next file — files before it can be freed
+        if (i + 1 < walFiles.length) {
+          return WALFileUtils.parseVersionId(walFiles[i + 1].getName());
+        }
+        break;
+      }
+    }
     return Long.MAX_VALUE;
   }
 

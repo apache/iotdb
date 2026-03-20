@@ -304,6 +304,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TSyncSubscriptionProgressReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
@@ -1550,6 +1551,23 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       LOGGER.warn("Error occurred when pulling commit progress", e);
       return new TPullCommitProgressResp(
           new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+    }
+  }
+
+  @Override
+  public TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req) {
+    try {
+      SubscriptionAgent.broker()
+          .receiveSubscriptionProgress(
+              req.getConsumerGroupId(),
+              req.getTopicName(),
+              req.getRegionId(),
+              req.getEpoch(),
+              req.getSyncIndex());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred when receiving subscription progress broadcast", e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
     }
   }
 

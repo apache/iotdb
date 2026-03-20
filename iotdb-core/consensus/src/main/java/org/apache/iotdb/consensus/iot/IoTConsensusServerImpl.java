@@ -135,6 +135,19 @@ public class IoTConsensusServerImpl {
   private final List<BlockingQueue<IndexedConsensusRequest>> subscriptionQueues =
       new CopyOnWriteArrayList<>();
 
+  /** Current routing epoch for ordered consensus subscription. Set by external routing changes. */
+  private volatile long currentEpoch = 0;
+
+  /**
+   * Records completed epochs received via SYNC_COMPLETE markers from the old leader. Key: epoch,
+   * Value: maxSyncIndex at the time of epoch completion. Used by subscription sortBuffer to release
+   * buffered events without timeout.
+   */
+  private final ConcurrentHashMap<Long, Long> completedEpochMaxIndex = new ConcurrentHashMap<>();
+
+  /** Highest epoch for which SYNC_COMPLETE has been received. Monotonically increasing. */
+  private volatile long maxCompletedEpoch = 0;
+
   public IoTConsensusServerImpl(
       String storageDir,
       Peer thisNode,
@@ -216,6 +229,7 @@ public class IoTConsensusServerImpl {
           writeToStateMachineStartTime - getStateMachineLockTime);
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      indexedConsensusRequest.setEpoch(currentEpoch);
       lastConsensusRequest = indexedConsensusRequest;
       if (indexedConsensusRequest.getSearchIndex() % 100000 == 0) {
         logger.info(
@@ -772,9 +786,11 @@ public class IoTConsensusServerImpl {
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      long syncIndex, List<IConsensusRequest> requests) {
-    return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
+      long syncIndex, long epoch, List<IConsensusRequest> requests) {
+    IndexedConsensusRequest req =
+        new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
+    req.setEpoch(epoch);
+    return req;
   }
 
   /**
@@ -838,6 +854,79 @@ public class IoTConsensusServerImpl {
         "Unregistered subscription queue for group {}, remaining subscription queues: {}",
         consensusGroupId,
         subscriptionQueues.size());
+  }
+
+  public long getCurrentEpoch() {
+    return currentEpoch;
+  }
+
+  public void setCurrentEpoch(long epoch) {
+    this.currentEpoch = epoch;
+  }
+
+  /**
+   * Notifies LogDispatcher to send SYNC_COMPLETE marker for the old epoch. Called when this node is
+   * no longer the preferred writer (old Leader).
+   *
+   * <p>Important: does NOT update currentEpoch. The old Leader keeps its old epoch so that any
+   * late-arriving writes (from clients with stale routing) are correctly stamped with the old
+   * epoch. This avoids dual-write within the same epoch across two nodes (which would make
+   * intra-epoch ordering by searchIndex meaningless).
+   *
+   * <p>The epoch will be updated later when this node becomes a new leader via {@link
+   * #setCurrentEpoch(long)}.
+   *
+   * @param newEpoch the new routing epoch (used to determine the old epoch)
+   */
+  public void setCurrentEpochWithSyncComplete(long newEpoch) {
+    stateMachineLock.lock();
+    try {
+      long oldEpoch = this.currentEpoch;
+      if (newEpoch > oldEpoch && oldEpoch > 0) {
+        logDispatcher.notifySyncComplete(oldEpoch, searchIndex.get());
+        logger.info(
+            "Notified SYNC_COMPLETE for epoch {} at searchIndex {}, new epoch {} "
+                + "(currentEpoch kept at {} to correctly stamp late-arriving writes)",
+            oldEpoch,
+            searchIndex.get(),
+            newEpoch,
+            oldEpoch);
+      }
+      // Do NOT update currentEpoch here. Late writes should keep the old epoch
+      // rather than creating dual-write within the new epoch across two nodes.
+    } finally {
+      stateMachineLock.unlock();
+    }
+  }
+
+  /**
+   * Called on Follower when a SYNC_COMPLETE marker is received from the old Leader. Records that
+   * the given epoch has completed with the specified max syncIndex.
+   */
+  public void onEpochSyncComplete(long epoch, long maxSyncIndex) {
+    completedEpochMaxIndex.put(epoch, maxSyncIndex);
+    // Monotonically update maxCompletedEpoch so isEpochComplete can use a fast check
+    if (epoch > maxCompletedEpoch) {
+      maxCompletedEpoch = epoch;
+    }
+    logger.info(
+        "Received SYNC_COMPLETE for epoch {} with maxSyncIndex {}, group={}",
+        epoch,
+        maxSyncIndex,
+        consensusGroupId);
+  }
+
+  /**
+   * Returns true if the given epoch is known to be complete (all its entries have been dispatched).
+   * Leverages monotonic property: if a higher epoch is complete, all lower epochs are implicitly
+   * complete.
+   */
+  public boolean isEpochComplete(long epoch) {
+    return epoch > 0 && epoch <= maxCompletedEpoch;
+  }
+
+  public ConcurrentHashMap<Long, Long> getCompletedEpochMaxIndex() {
+    return completedEpochMaxIndex;
   }
 
   public long getSyncLag() {
@@ -976,6 +1065,7 @@ public class IoTConsensusServerImpl {
     if (configuration.size() == 1 && !hasSubscriptions) {
       // Single replica, no subscription consumers => delete all WAL freely
       consensusReqReader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+      consensusReqReader.setSubscriptionRetainedMinVersionId(Long.MAX_VALUE);
     } else {
       final long replicationIndex =
           configuration.size() > 1 ? getMinFlushedSyncIndex() : Long.MAX_VALUE;
@@ -983,6 +1073,7 @@ public class IoTConsensusServerImpl {
       // Subscription WAL retention: if subscriptions exist and retention is configured,
       // use this region's own WAL size to decide how much to retain.
       long subscriptionRetentionBound = Long.MAX_VALUE;
+      long subscriptionRetainedMinVersionId = Long.MAX_VALUE;
       if (hasSubscriptions && retentionSizeLimit > 0) {
         final long regionWalSize = consensusReqReader.getRegionDiskUsage();
         if (regionWalSize <= retentionSizeLimit) {
@@ -993,15 +1084,19 @@ public class IoTConsensusServerImpl {
           // intent here. Long.MIN_VALUE + 1 avoids the special case and is still less than any
           // real searchIndex (>= 0), so no WAL files will pass the searchIndex filter.
           subscriptionRetentionBound = Long.MIN_VALUE + 1;
+          // Retain all WAL files for subscription
+          subscriptionRetainedMinVersionId = 0;
         } else {
           // Region WAL exceeds retention limit — free just enough to bring it back within limit
           final long excess = regionWalSize - retentionSizeLimit;
           subscriptionRetentionBound = consensusReqReader.getSearchIndexToFreeAtLeast(excess);
+          subscriptionRetainedMinVersionId = consensusReqReader.getVersionIdToFreeAtLeast(excess);
         }
       }
 
       consensusReqReader.setSafelyDeletedSearchIndex(
           Math.min(replicationIndex, subscriptionRetentionBound));
+      consensusReqReader.setSubscriptionRetainedMinVersionId(subscriptionRetainedMinVersionId);
     }
   }
 

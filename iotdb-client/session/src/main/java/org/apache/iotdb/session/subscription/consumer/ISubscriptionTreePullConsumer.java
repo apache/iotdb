@@ -20,10 +20,12 @@
 package org.apache.iotdb.session.subscription.consumer;
 
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
@@ -178,6 +180,25 @@ public interface ISubscriptionTreePullConsumer extends AutoCloseable {
    */
   void commitAsync(
       final Iterable<SubscriptionMessage> messages, final AsyncCommitCallback callback);
+
+  void seekToBeginning(final String topicName) throws SubscriptionException;
+
+  void seekToEnd(final String topicName) throws SubscriptionException;
+
+  void seek(final String topicName, final long targetTimestamp) throws SubscriptionException;
+
+  Map<String, SubscriptionRegionPosition> positions(final String topicName)
+      throws SubscriptionException;
+
+  Map<String, SubscriptionRegionPosition> committedPositions(final String topicName)
+      throws SubscriptionException;
+
+  void seek(final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException;
+
+  void seekAfter(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException;
 
   /**
    * Retrieves the unique identifier of this consumer. If no consumer ID was provided at the time of

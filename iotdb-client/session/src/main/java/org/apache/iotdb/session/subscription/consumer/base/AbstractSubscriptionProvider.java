@@ -37,6 +37,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequest;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollRequestType;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCloseReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeCommitReq;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeHandshakeReq;
@@ -60,6 +61,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -345,14 +347,83 @@ public abstract class AbstractSubscriptionProvider {
     verifyPipeSubscribeSuccess(resp.status);
   }
 
+  void seekToRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req =
+          PipeSubscribeSeekReq.toTPipeSubscribeReq(
+              topicName, PipeSubscribeSeekReq.SEEK_TO_REGION_POSITIONS, 0, regionPositions);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seek(regionPositions) for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seek(regionPositions) for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
+  void seekAfterRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    final PipeSubscribeSeekReq req;
+    try {
+      req = PipeSubscribeSeekReq.toTPipeSubscribeSeekAfterReq(topicName, regionPositions);
+    } catch (final IOException e) {
+      LOGGER.warn(
+          "IOException occurred when SubscriptionProvider {} serialize seekAfter(regionPositions) for topic {}",
+          this,
+          topicName,
+          e);
+      throw new SubscriptionRuntimeNonCriticalException(e.getMessage(), e);
+    }
+    final TPipeSubscribeResp resp;
+    try {
+      resp = getSessionConnection().pipeSubscribe(req);
+    } catch (final TException | IoTDBConnectionException e) {
+      LOGGER.warn(
+          "TException/IoTDBConnectionException occurred when SubscriptionProvider {} seekAfter(regionPositions) for topic {}, set SubscriptionProvider unavailable",
+          this,
+          topicName,
+          e);
+      setUnavailable();
+      throw new SubscriptionConnectionException(e.getMessage(), e);
+    }
+    verifyPipeSubscribeSuccess(resp.status);
+  }
+
   List<SubscriptionPollResponse> poll(final Set<String> topicNames, final long timeoutMs)
+      throws SubscriptionException {
+    return poll(topicNames, timeoutMs, Collections.emptyMap());
+  }
+
+  List<SubscriptionPollResponse> poll(
+      final Set<String> topicNames,
+      final long timeoutMs,
+      final Map<String, long[]> lastConsumedByRegion)
       throws SubscriptionException {
     return poll(
         new SubscriptionPollRequest(
             SubscriptionPollRequestType.POLL.getType(),
             new PollPayload(topicNames),
             timeoutMs,
-            session.getThriftMaxFrameSize()));
+            session.getThriftMaxFrameSize(),
+            lastConsumedByRegion));
   }
 
   List<SubscriptionPollResponse> pollFile(

@@ -31,37 +31,67 @@ import java.util.concurrent.atomic.AtomicLong;
  * Tracks consensus subscription consumption progress for a single (consumerGroup, topic, region)
  * combination.
  *
- * <p>Since searchIndex is region-local (each DataRegion has its own independent WAL and searchIndex
- * namespace), progress is tracked <b>per-region</b>:
+ * <p>Progress is tracked using (epoch, syncIndex) instead of local searchIndex, ensuring
+ * consistency across leader migrations. The syncIndex is the original writer's searchIndex, which
+ * is identical across all replicas for the same write operation.
  *
  * <ul>
- *   <li><b>searchIndex</b>: The committed WAL search index — the highest position where all prior
- *       dispatched events have been acknowledged. Used as the recovery start point after crash.
+ *   <li><b>epoch</b>: The epoch of the latest committed entry.
+ *   <li><b>syncIndex</b>: The syncIndex (original writer's searchIndex) of the latest committed
+ *       entry within that epoch.
  *   <li><b>commitIndex</b>: Monotonically increasing count of committed events. Used for
  *       persistence throttling and diagnostics.
  * </ul>
  */
 public class SubscriptionConsensusProgress {
 
-  private final AtomicLong searchIndex;
+  private final AtomicLong epoch;
+
+  private final AtomicLong syncIndex;
 
   private final AtomicLong commitIndex;
 
   public SubscriptionConsensusProgress() {
-    this(0L, 0L);
+    this(0L, 0L, 0L);
   }
 
-  public SubscriptionConsensusProgress(final long searchIndex, final long commitIndex) {
-    this.searchIndex = new AtomicLong(searchIndex);
+  public SubscriptionConsensusProgress(
+      final long epoch, final long syncIndex, final long commitIndex) {
+    this.epoch = new AtomicLong(epoch);
+    this.syncIndex = new AtomicLong(syncIndex);
     this.commitIndex = new AtomicLong(commitIndex);
   }
 
-  public long getSearchIndex() {
-    return searchIndex.get();
+  public long getEpoch() {
+    return epoch.get();
   }
 
+  public void setEpoch(final long epoch) {
+    this.epoch.set(epoch);
+  }
+
+  public long getSyncIndex() {
+    return syncIndex.get();
+  }
+
+  public void setSyncIndex(final long syncIndex) {
+    this.syncIndex.set(syncIndex);
+  }
+
+  /**
+   * @deprecated Use {@link #getSyncIndex()} instead. Kept for backward compatibility.
+   */
+  @Deprecated
+  public long getSearchIndex() {
+    return syncIndex.get();
+  }
+
+  /**
+   * @deprecated Use {@link #setSyncIndex(long)} instead. Kept for backward compatibility.
+   */
+  @Deprecated
   public void setSearchIndex(final long searchIndex) {
-    this.searchIndex.set(searchIndex);
+    this.syncIndex.set(searchIndex);
   }
 
   public long getCommitIndex() {
@@ -77,14 +107,16 @@ public class SubscriptionConsensusProgress {
   }
 
   public void serialize(final DataOutputStream stream) throws IOException {
-    ReadWriteIOUtils.write(searchIndex.get(), stream);
+    ReadWriteIOUtils.write(epoch.get(), stream);
+    ReadWriteIOUtils.write(syncIndex.get(), stream);
     ReadWriteIOUtils.write(commitIndex.get(), stream);
   }
 
   public static SubscriptionConsensusProgress deserialize(final ByteBuffer buffer) {
-    final long searchIndex = ReadWriteIOUtils.readLong(buffer);
+    final long epoch = ReadWriteIOUtils.readLong(buffer);
+    final long syncIndex = ReadWriteIOUtils.readLong(buffer);
     final long commitIndex = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionConsensusProgress(searchIndex, commitIndex);
+    return new SubscriptionConsensusProgress(epoch, syncIndex, commitIndex);
   }
 
   @Override
@@ -96,20 +128,23 @@ public class SubscriptionConsensusProgress {
       return false;
     }
     final SubscriptionConsensusProgress that = (SubscriptionConsensusProgress) o;
-    return searchIndex.get() == that.searchIndex.get()
+    return epoch.get() == that.epoch.get()
+        && syncIndex.get() == that.syncIndex.get()
         && commitIndex.get() == that.commitIndex.get();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex.get(), commitIndex.get());
+    return Objects.hash(epoch.get(), syncIndex.get(), commitIndex.get());
   }
 
   @Override
   public String toString() {
     return "SubscriptionConsensusProgress{"
-        + "searchIndex="
-        + searchIndex.get()
+        + "epoch="
+        + epoch.get()
+        + ", syncIndex="
+        + syncIndex.get()
         + ", commitIndex="
         + commitIndex.get()
         + '}';

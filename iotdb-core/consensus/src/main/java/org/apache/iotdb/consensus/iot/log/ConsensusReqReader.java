@@ -111,4 +111,27 @@ public interface ConsensusReqReader {
     // Default implementation: if any freeing is needed, allow deleting everything.
     return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
   }
+
+  /**
+   * Set the minimum WAL file versionId that must be retained for subscription consumers. Files with
+   * versionId >= this value will not be deleted, regardless of their WALFileStatus. This protects
+   * Follower WAL files (CONTAINS_NONE_SEARCH_INDEX) from being deleted while subscriptions need
+   * them.
+   *
+   * @param minVersionId the minimum versionId to retain; Long.MAX_VALUE means no retention
+   */
+  default void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    // no-op by default
+  }
+
+  /**
+   * Calculate the minimum WAL file versionId to retain such that freeing all files with versionId
+   * below that value would release at least {@code bytesToFree} bytes.
+   *
+   * @param bytesToFree the minimum number of bytes to free
+   * @return the versionId boundary; files with versionId < this can be freed
+   */
+  default long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : 0;
+  }
 }

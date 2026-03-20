@@ -27,6 +27,9 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SubscriptionPollRequest {
 
@@ -41,15 +44,33 @@ public class SubscriptionPollRequest {
   /** The maximum size, in bytes, for the response payload. */
   private final transient long maxBytes;
 
+  /**
+   * Per-region last consumed progress. Key: regionId (String). Value: [epoch, syncIndex]. Used by
+   * Consumer-Guided Positioning: consumer sends its last consumed (epoch, syncIndex) per region so
+   * the server can position the WAL reader precisely after leader migration.
+   */
+  private final transient Map<String, long[]> lastConsumedByRegion;
+
   public SubscriptionPollRequest(
       final short requestType,
       final SubscriptionPollPayload payload,
       final long timeoutMs,
       final long maxBytes) {
+    this(requestType, payload, timeoutMs, maxBytes, Collections.emptyMap());
+  }
+
+  public SubscriptionPollRequest(
+      final short requestType,
+      final SubscriptionPollPayload payload,
+      final long timeoutMs,
+      final long maxBytes,
+      final Map<String, long[]> lastConsumedByRegion) {
     this.requestType = requestType;
     this.payload = payload;
     this.timeoutMs = timeoutMs;
     this.maxBytes = maxBytes;
+    this.lastConsumedByRegion =
+        lastConsumedByRegion != null ? lastConsumedByRegion : Collections.emptyMap();
   }
 
   public short getRequestType() {
@@ -68,6 +89,10 @@ public class SubscriptionPollRequest {
     return maxBytes;
   }
 
+  public Map<String, long[]> getLastConsumedByRegion() {
+    return lastConsumedByRegion;
+  }
+
   //////////////////////////// serialization ////////////////////////////
 
   public static ByteBuffer serialize(final SubscriptionPollRequest request) throws IOException {
@@ -83,6 +108,13 @@ public class SubscriptionPollRequest {
     payload.serialize(stream);
     ReadWriteIOUtils.write(timeoutMs, stream);
     ReadWriteIOUtils.write(maxBytes, stream);
+    // V2 extension: lastConsumedByRegion map (backward compatible — old server ignores extra bytes)
+    ReadWriteIOUtils.write(lastConsumedByRegion.size(), stream);
+    for (final Map.Entry<String, long[]> entry : lastConsumedByRegion.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue()[0], stream); // epoch
+      ReadWriteIOUtils.write(entry.getValue()[1], stream); // syncIndex
+    }
   }
 
   public static SubscriptionPollRequest deserialize(final ByteBuffer buffer) {
@@ -109,7 +141,24 @@ public class SubscriptionPollRequest {
 
     final long timeoutMs = ReadWriteIOUtils.readLong(buffer);
     final long maxBytes = ReadWriteIOUtils.readLong(buffer);
-    return new SubscriptionPollRequest(requestType, payload, timeoutMs, maxBytes);
+
+    // V2 extension: lastConsumedByRegion (backward compatible — old client sends no extra bytes)
+    Map<String, long[]> lastConsumedByRegion = Collections.emptyMap();
+    if (buffer.hasRemaining()) {
+      final int mapSize = ReadWriteIOUtils.readInt(buffer);
+      if (mapSize > 0) {
+        lastConsumedByRegion = new HashMap<>(mapSize);
+        for (int i = 0; i < mapSize; i++) {
+          final String regionId = ReadWriteIOUtils.readString(buffer);
+          final long epoch = ReadWriteIOUtils.readLong(buffer);
+          final long syncIndex = ReadWriteIOUtils.readLong(buffer);
+          lastConsumedByRegion.put(regionId, new long[] {epoch, syncIndex});
+        }
+      }
+    }
+
+    return new SubscriptionPollRequest(
+        requestType, payload, timeoutMs, maxBytes, lastConsumedByRegion);
   }
 
   /////////////////////////////// object ///////////////////////////////
@@ -124,6 +173,8 @@ public class SubscriptionPollRequest {
         + timeoutMs
         + ", maxBytes="
         + maxBytes
+        + ", lastConsumedByRegion.size="
+        + lastConsumedByRegion.size()
         + "}";
   }
 }

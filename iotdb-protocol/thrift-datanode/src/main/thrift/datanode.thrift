@@ -605,6 +605,14 @@ struct TPullCommitProgressResp {
   2: optional map<string, i64> commitProgress
 }
 
+struct TSyncSubscriptionProgressReq {
+  1: required string consumerGroupId
+  2: required string topicName
+  3: required string regionId
+  4: required i64 epoch
+  5: required i64 syncIndex
+}
+
 struct TConstructViewSchemaBlackListReq {
     1: required list<common.TConsensusGroupId> schemaRegionIdList
     2: required binary pathPatternTree
@@ -1188,6 +1196,11 @@ service IDataNodeRPCService {
   * Pull commit progress from DataNode for subscription consensus persistence
   */
   TPullCommitProgressResp pullCommitProgress(TPullCommitProgressReq req)
+
+ /**
+  * Sync subscription committed progress from Leader to Follower (fire-and-forget)
+  */
+  common.TSStatus syncSubscriptionProgress(TSyncSubscriptionProgressReq req)
 
   /**
   * ConfigNode will ask DataNode for pipe meta in every few seconds

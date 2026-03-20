@@ -32,6 +32,7 @@ import org.apache.iotdb.db.subscription.task.subtask.SubscriptionSinkSubtask;
 import org.apache.iotdb.rpc.subscription.config.ConsumerConfig;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,14 @@ public class SubscriptionBrokerAgent {
 
   public List<SubscriptionEvent> poll(
       final ConsumerConfig consumerConfig, final Set<String> topicNames, final long maxBytes) {
+    return poll(consumerConfig, topicNames, maxBytes, Collections.emptyMap());
+  }
+
+  public List<SubscriptionEvent> poll(
+      final ConsumerConfig consumerConfig,
+      final Set<String> topicNames,
+      final long maxBytes,
+      final Map<String, long[]> lastConsumedByRegion) {
     final String consumerGroupId = consumerConfig.getConsumerGroupId();
     final String consumerId = consumerConfig.getConsumerId();
     final List<SubscriptionEvent> allEvents = new ArrayList<>();
@@ -97,7 +106,8 @@ public class SubscriptionBrokerAgent {
             consumerGroupId,
             topicNames,
             remainingBytes);
-        allEvents.addAll(consensusBroker.poll(consumerId, topicNames, remainingBytes));
+        allEvents.addAll(
+            consensusBroker.poll(consumerId, topicNames, remainingBytes, lastConsumedByRegion));
       } else {
         LOGGER.debug(
             "SubscriptionBrokerAgent: no consensus broker for consumer group [{}]",
@@ -225,6 +235,50 @@ public class SubscriptionBrokerAgent {
     final String errorMessage =
         String.format(
             "Subscription: seek is only supported for consensus-based subscriptions, "
+                + "consumerGroup=%s, topic=%s",
+            consumerGroupId, topicName);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
+  }
+
+  public void seekToRegionPositions(
+      final ConsumerConfig consumerConfig,
+      final String topicName,
+      final Map<String, SubscriptionRegionPosition> regionPositions) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+
+    final ConsensusSubscriptionBroker consensusBroker =
+        consumerGroupIdToConsensusBroker.get(consumerGroupId);
+    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      consensusBroker.seek(topicName, regionPositions);
+      return;
+    }
+
+    final String errorMessage =
+        String.format(
+            "Subscription: seek(regionPositions) is only supported for consensus-based subscriptions, "
+                + "consumerGroup=%s, topic=%s",
+            consumerGroupId, topicName);
+    LOGGER.warn(errorMessage);
+    throw new SubscriptionException(errorMessage);
+  }
+
+  public void seekAfterRegionPositions(
+      final ConsumerConfig consumerConfig,
+      final String topicName,
+      final Map<String, SubscriptionRegionPosition> regionPositions) {
+    final String consumerGroupId = consumerConfig.getConsumerGroupId();
+
+    final ConsensusSubscriptionBroker consensusBroker =
+        consumerGroupIdToConsensusBroker.get(consumerGroupId);
+    if (Objects.nonNull(consensusBroker) && consensusBroker.hasQueue(topicName)) {
+      consensusBroker.seekAfter(topicName, regionPositions);
+      return;
+    }
+
+    final String errorMessage =
+        String.format(
+            "Subscription: seekAfter(regionPositions) is only supported for consensus-based subscriptions, "
                 + "consumerGroup=%s, topic=%s",
             consumerGroupId, topicName);
     LOGGER.warn(errorMessage);
@@ -364,7 +418,11 @@ public class SubscriptionBrokerAgent {
       final IoTConsensusServerImpl serverImpl,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
-      final long startSearchIndex) {
+      final long fallbackCommittedEpoch,
+      final long fallbackCommittedSyncIndex,
+      final long tailStartSearchIndex,
+      final long initialEpoch,
+      final boolean initialActive) {
     consumerGroupIdToConsensusBroker
         .compute(
             consumerGroupId,
@@ -378,7 +436,16 @@ public class SubscriptionBrokerAgent {
               return broker;
             })
         .bindConsensusPrefetchingQueue(
-            topicName, consensusGroupId, serverImpl, converter, commitManager, startSearchIndex);
+            topicName,
+            consensusGroupId,
+            serverImpl,
+            converter,
+            commitManager,
+            fallbackCommittedEpoch,
+            fallbackCommittedSyncIndex,
+            tailStartSearchIndex,
+            initialEpoch,
+            initialActive);
     prefetchingQueueCount.invalidate();
   }
 
@@ -427,6 +494,19 @@ public class SubscriptionBrokerAgent {
         newEpoch);
     for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
       broker.setEpochForRegion(regionId, newEpoch);
+    }
+  }
+
+  /**
+   * Activates or deactivates all consensus prefetching queues bound to {@code regionId} across all
+   * consumer groups. Called on leader migration to ensure only the preferred writer serves
+   * subscription data.
+   */
+  public void setActiveForRegion(final ConsensusGroupId regionId, final boolean active) {
+    LOGGER.info(
+        "SubscriptionBrokerAgent: setActiveForRegion regionId={}, active={}", regionId, active);
+    for (final ConsensusSubscriptionBroker broker : consumerGroupIdToConsensusBroker.values()) {
+      broker.setActiveForRegion(regionId, active);
     }
   }
 
@@ -551,6 +631,20 @@ public class SubscriptionBrokerAgent {
 
   public Map<String, Long> collectAllCommitProgress(final int dataNodeId) {
     return ConsensusSubscriptionCommitManager.getInstance().collectAllProgress(dataNodeId);
+  }
+
+  /**
+   * Receives a committed progress broadcast from another DataNode (Leader → Follower). Delegates to
+   * CommitManager to update local progress state.
+   */
+  public void receiveSubscriptionProgress(
+      final String consumerGroupId,
+      final String topicName,
+      final String regionId,
+      final long epoch,
+      final long syncIndex) {
+    ConsensusSubscriptionCommitManager.getInstance()
+        .receiveProgressBroadcast(consumerGroupId, topicName, regionId, epoch, syncIndex);
   }
 
   /////////////////////////////// Cache ///////////////////////////////

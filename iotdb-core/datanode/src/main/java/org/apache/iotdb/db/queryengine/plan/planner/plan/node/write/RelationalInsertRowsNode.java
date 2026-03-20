@@ -184,6 +184,8 @@ public class RelationalInsertRowsNode extends InsertRowsNode {
       } else {
         tmpNode = new RelationalInsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.setEpoch(getEpoch());
+        tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }

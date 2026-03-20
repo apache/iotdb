@@ -106,6 +106,20 @@ public class InsertRowsOfOneDeviceNode extends InsertNode {
     return this;
   }
 
+  @Override
+  public SearchNode setEpoch(long epoch) {
+    this.epoch = epoch;
+    insertRowNodeList.forEach(plan -> plan.setEpoch(epoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, insertRowNodeList.size());
   }

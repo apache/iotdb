@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -204,6 +205,16 @@ public class LogDispatcher {
     }
   }
 
+  /**
+   * Notifies all dispatcher threads that the given epoch has completed. Each thread will send a
+   * SYNC_COMPLETE marker to its peer after all entries up to maxSearchIndex have been dispatched.
+   */
+  public synchronized void notifySyncComplete(long epoch, long maxSearchIndex) {
+    for (LogDispatcherThread thread : threads) {
+      thread.notifySyncComplete(epoch, maxSearchIndex);
+    }
+  }
+
   public long getLogEntriesFromWAL() {
     return logEntriesFromWAL.get();
   }
@@ -231,6 +242,11 @@ public class LogDispatcher {
     private final IoTConsensusMemoryManager iotConsensusMemoryManager =
         IoTConsensusMemoryManager.getInstance();
     private volatile boolean stopped = false;
+
+    /** Pending SYNC_COMPLETE epoch; -1 means none pending. */
+    private volatile long pendingSyncCompleteEpoch = -1;
+
+    private volatile long pendingSyncCompleteMaxSearchIndex = 0;
 
     private final ConsensusReqReader.ReqIterator walEntryIterator;
 
@@ -343,6 +359,11 @@ public class LogDispatcher {
       return stopped;
     }
 
+    public void notifySyncComplete(long epoch, long maxSearchIndex) {
+      this.pendingSyncCompleteEpoch = epoch;
+      this.pendingSyncCompleteMaxSearchIndex = maxSearchIndex;
+    }
+
     public IoTConsensusServerImpl getImpl() {
       return impl;
     }
@@ -408,6 +429,28 @@ public class LogDispatcher {
     }
 
     public Batch getBatch() {
+      // Check if a SYNC_COMPLETE marker is pending and all old-epoch entries have been dispatched
+      long syncEpoch = pendingSyncCompleteEpoch;
+      if (syncEpoch > 0) {
+        long nextIdx = syncStatus.getNextSendingIndex();
+        if (nextIdx > pendingSyncCompleteMaxSearchIndex) {
+          pendingSyncCompleteEpoch = -1;
+          Batch markerBatch = new Batch(config);
+          TLogEntry marker =
+              new TLogEntry(Collections.emptyList(), pendingSyncCompleteMaxSearchIndex, false, 0);
+          marker.setEpoch(syncEpoch);
+          markerBatch.addTLogEntry(marker);
+          markerBatch.buildIndex();
+          logger.info(
+              "{}: Sending SYNC_COMPLETE for epoch {} (maxSearchIndex={}) to {}",
+              impl.getThisNode().getGroupId(),
+              syncEpoch,
+              pendingSyncCompleteMaxSearchIndex,
+              peer);
+          return markerBatch;
+        }
+      }
+
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex;
       synchronized (impl.getIndexObject()) {
@@ -567,9 +610,11 @@ public class LogDispatcher {
         targetIndex = data.getSearchIndex() + 1;
         data.buildSerializedRequests();
         // construct request from wal
-        logBatches.addTLogEntry(
+        TLogEntry logEntry =
             new TLogEntry(
-                data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize()));
+                data.getSerializedRequests(), data.getSearchIndex(), true, data.getMemorySize());
+        logEntry.setEpoch(data.getEpoch());
+        logBatches.addTLogEntry(logEntry);
       }
       // In the case of corrupt Data, we return true so that we can send a batch as soon as
       // possible, avoiding potential duplication
@@ -578,12 +623,14 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, Batch logBatches) {
-      logBatches.addTLogEntry(
+      TLogEntry logEntry =
           new TLogEntry(
               request.getSerializedRequests(),
               request.getSearchIndex(),
               false,
-              request.getMemorySize()));
+              request.getMemorySize());
+      logEntry.setEpoch(request.getEpoch());
+      logBatches.addTLogEntry(logEntry);
     }
   }
 

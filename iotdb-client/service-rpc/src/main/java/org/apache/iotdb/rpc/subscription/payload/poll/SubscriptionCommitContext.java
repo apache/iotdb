@@ -237,14 +237,16 @@ public class SubscriptionCommitContext implements Comparable<SubscriptionCommitC
 
   @Override
   public int compareTo(final SubscriptionCommitContext that) {
+    // epoch before commitId: ensures (epoch, syncIndex) causal ordering in PriorityBlockingQueue.
+    // For non-consensus subscriptions (epoch always 0), this change is a no-op.
     return Comparator.comparingInt(SubscriptionCommitContext::getDataNodeId)
         .thenComparingInt(SubscriptionCommitContext::getRebootTimes)
         .thenComparing(SubscriptionCommitContext::getTopicName)
         .thenComparing(SubscriptionCommitContext::getConsumerGroupId)
-        .thenComparingLong(SubscriptionCommitContext::getCommitId)
         .thenComparingLong(SubscriptionCommitContext::getSeekGeneration)
         .thenComparing(SubscriptionCommitContext::getRegionId)
         .thenComparingLong(SubscriptionCommitContext::getEpoch)
+        .thenComparingLong(SubscriptionCommitContext::getCommitId)
         .compare(this, that);
   }
 }

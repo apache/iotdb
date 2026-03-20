@@ -21,6 +21,8 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.isession.ITableSession;
 import org.apache.iotdb.rpc.subscription.config.TopicConstant;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 import org.apache.iotdb.session.TableSessionBuilder;
 import org.apache.iotdb.session.subscription.ISubscriptionTableSession;
 import org.apache.iotdb.session.subscription.SubscriptionTableSessionBuilder;
@@ -77,8 +79,10 @@ public class ConsensusSubscriptionTableTest {
     if (targetTest == null || "testDataTypes".equals(targetTest)) {
       runTest("testDataTypes", ConsensusSubscriptionTableTest::testDataTypes);
     }
-    if (targetTest == null || "testPathFiltering".equals(targetTest)) {
-      runTest("testPathFiltering", ConsensusSubscriptionTableTest::testPathFiltering);
+    if (targetTest == null || "testFilteringAndTopicSelection".equals(targetTest)) {
+      runTest(
+          "testFilteringAndTopicSelection",
+          ConsensusSubscriptionTableTest::testFilteringAndTopicSelection);
     }
     if (targetTest == null || "testSubscribeBeforeRegion".equals(targetTest)) {
       runTest(
@@ -87,19 +91,30 @@ public class ConsensusSubscriptionTableTest {
     if (targetTest == null || "testMultiEntityIsolation".equals(targetTest)) {
       runTest("testMultiEntityIsolation", ConsensusSubscriptionTableTest::testMultiEntityIsolation);
     }
-    if (targetTest == null || "testBurstWriteGapRecovery".equals(targetTest)) {
+    if (targetTest == null || "testWalCatchUpAndGapRecovery".equals(targetTest)) {
       runTest(
-          "testBurstWriteGapRecovery", ConsensusSubscriptionTableTest::testBurstWriteGapRecovery);
+          "testWalCatchUpAndGapRecovery",
+          ConsensusSubscriptionTableTest::testWalCatchUpAndGapRecovery);
     }
-    if (targetTest == null || "testCommitAfterUnsubscribe".equals(targetTest)) {
+    if (targetTest == null || "testSeekAndPositionSemantics".equals(targetTest)) {
       runTest(
-          "testCommitAfterUnsubscribe", ConsensusSubscriptionTableTest::testCommitAfterUnsubscribe);
+          "testSeekAndPositionSemantics",
+          ConsensusSubscriptionTableTest::testSeekAndPositionSemantics);
     }
-    if (targetTest == null || "testSeek".equals(targetTest)) {
-      runTest("testSeek", ConsensusSubscriptionTableTest::testSeek);
+    if (targetTest == null || "testConsumerRestartRecovery".equals(targetTest)) {
+      runTest(
+          "testConsumerRestartRecovery",
+          ConsensusSubscriptionTableTest::testConsumerRestartRecovery);
     }
-    if (targetTest == null || "testProcessorFramework".equals(targetTest)) {
-      runTest("testProcessorFramework", ConsensusSubscriptionTableTest::testProcessorFramework);
+    if (targetTest == null || "testAckNackAndPoisonSemantics".equals(targetTest)) {
+      runTest(
+          "testAckNackAndPoisonSemantics",
+          ConsensusSubscriptionTableTest::testAckNackAndPoisonSemantics);
+    }
+    if (targetTest == null || "testProcessorWatermarkAndMetadata".equals(targetTest)) {
+      runTest(
+          "testProcessorWatermarkAndMetadata",
+          ConsensusSubscriptionTableTest::testProcessorWatermarkAndMetadata);
     }
 
     // Summary
@@ -440,6 +455,12 @@ public class ConsensusSubscriptionTableTest {
     }
   }
 
+  private static void assertEquals(String msg, String expected, String actual) {
+    if (expected == null ? actual != null : !expected.equals(actual)) {
+      throw new AssertionError(msg + ": expected=" + expected + ", actual=" + actual);
+    }
+  }
+
   private static void assertTrue(String msg, boolean condition) {
     if (!condition) {
       throw new AssertionError(msg);
@@ -449,6 +470,230 @@ public class ConsensusSubscriptionTableTest {
   private static void assertAtLeast(String msg, int min, int actual) {
     if (actual < min) {
       throw new AssertionError(msg + ": expected at least " + min + ", actual=" + actual);
+    }
+  }
+
+  private static int countRows(SubscriptionMessage message) {
+    int rows = 0;
+    for (SubscriptionSessionDataSet dataSet : message.getSessionDataSetsHandler()) {
+      while (dataSet.hasNext()) {
+        dataSet.next();
+        rows++;
+      }
+    }
+    return rows;
+  }
+
+  // ======================================================================
+  // High-signal 10-test suite wrappers
+  // ======================================================================
+
+  private static void testFilteringAndTopicSelection() throws Exception {
+    testPathFiltering();
+    testPollWithInfoTopicFilter();
+  }
+
+  private static void testWalCatchUpAndGapRecovery() throws Exception {
+    testBurstWriteGapRecovery();
+  }
+
+  private static void testSeekAndPositionSemantics() throws Exception {
+    testSeek();
+  }
+
+  private static void testAckNackAndPoisonSemantics() throws Exception {
+    testCommitAfterUnsubscribe();
+    testPoisonMessageDrop();
+  }
+
+  private static void testProcessorWatermarkAndMetadata() throws Exception {
+    testProcessorFramework();
+    testSerializationV2Fields();
+  }
+
+  // ======================================================================
+  // Topic filter subcase for table model
+  // ======================================================================
+  private static void testPollWithInfoTopicFilter() throws Exception {
+    String database = nextDatabase();
+    String topicName1 = "topic_tbl_filter_" + testCounter + "_a";
+    String topicName2 = "topic_tbl_filter_" + testCounter + "_b";
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
+        session.executeNonQueryStatement("USE " + database);
+        session.executeNonQueryStatement("CREATE TABLE t2 (tag1 STRING TAG, s1 INT64 FIELD)");
+      }
+      Thread.sleep(2000);
+
+      createTopicTable(topicName1, database, "t1");
+      createTopicTable(topicName2, database, "t2");
+      Thread.sleep(1000);
+
+      consumer = (SubscriptionTablePullConsumer) createConsumer(consumerId, consumerGroupId);
+      consumer.subscribe(topicName1, topicName2);
+      Thread.sleep(3000);
+
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 1; i <= 40; i++) {
+          if (i <= 30) {
+            session.executeNonQueryStatement(
+                String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+          }
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO t2 (tag1, s1, time) VALUES ('d2', %d, %d)", i * 20, i));
+        }
+      }
+      Thread.sleep(3000);
+
+      int t1Rows = 0;
+      Set<String> topic1Only = new HashSet<>(Arrays.asList(topicName1));
+      for (int attempt = 0; attempt < 40; attempt++) {
+        org.apache.iotdb.session.subscription.payload.PollResult pollResult =
+            consumer.pollWithInfo(topic1Only, 2000);
+        List<SubscriptionMessage> msgs = pollResult.getMessages();
+        if (msgs.isEmpty()) {
+          if (t1Rows > 0) {
+            break;
+          }
+          Thread.sleep(1000);
+          continue;
+        }
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              t1Rows++;
+              assertEquals("Topic1-only poll should stay on t1", "t1", ds.getTableName());
+            }
+          }
+          consumer.commitSync(msg);
+        }
+      }
+      assertEquals("Topic1 should deliver exactly 30 rows from t1", 30, t1Rows);
+
+      int t2Rows = 0;
+      Set<String> topic2Only = new HashSet<>(Arrays.asList(topicName2));
+      for (int attempt = 0; attempt < 40; attempt++) {
+        org.apache.iotdb.session.subscription.payload.PollResult pollResult =
+            consumer.pollWithInfo(topic2Only, 2000);
+        List<SubscriptionMessage> msgs = pollResult.getMessages();
+        if (msgs.isEmpty()) {
+          if (t2Rows > 0) {
+            break;
+          }
+          Thread.sleep(1000);
+          continue;
+        }
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              t2Rows++;
+              assertEquals("Topic2-only poll should stay on t2", "t2", ds.getTableName());
+            }
+          }
+          consumer.commitSync(msg);
+        }
+      }
+      assertEquals("Topic2 should deliver exactly 40 rows from t2", 40, t2Rows);
+    } finally {
+      if (consumer != null) {
+        try {
+          consumer.unsubscribe(topicName1, topicName2);
+        } catch (Exception e) {
+          // ignore
+        }
+        try {
+          consumer.close();
+        } catch (Exception e) {
+          // ignore
+        }
+      }
+      dropTopicTable(topicName1);
+      dropTopicTable(topicName2);
+      deleteDatabase(database);
+    }
+  }
+
+  // ======================================================================
+  // Test 8: Consumer Restart Recovery
+  // ======================================================================
+  private static void testConsumerRestartRecovery() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId1 = nextConsumerId();
+    String consumerId2 = consumerId1 + "_restart";
+    SubscriptionTablePullConsumer consumer1 = null;
+    SubscriptionTablePullConsumer consumer2 = null;
+
+    try {
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
+      }
+      Thread.sleep(2000);
+
+      createTopicTable(topicName, database, "t1");
+      Thread.sleep(1000);
+
+      consumer1 = (SubscriptionTablePullConsumer) createConsumer(consumerId1, consumerGroupId);
+      consumer1.subscribe(topicName);
+      Thread.sleep(3000);
+
+      final int totalRows = 257;
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 1; i <= totalRows; i++) {
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+        }
+        session.executeNonQueryStatement("FLUSH");
+      }
+      Thread.sleep(3000);
+
+      int committedRows = 0;
+      for (int attempt = 1; attempt <= 30; attempt++) {
+        List<SubscriptionMessage> messages = consumer1.poll(Duration.ofMillis(2000));
+        if (messages.isEmpty()) {
+          Thread.sleep(1000);
+          continue;
+        }
+        SubscriptionMessage firstMessage = messages.get(0);
+        committedRows = countRows(firstMessage);
+        consumer1.commitSync(firstMessage);
+        break;
+      }
+
+      assertAtLeast("First consumer should commit some rows before restart", 1, committedRows);
+      Map<String, SubscriptionRegionPosition> checkpoint =
+          new HashMap<>(consumer1.committedPositions(topicName));
+      assertTrue("Committed checkpoint should not be empty", !checkpoint.isEmpty());
+      int remainingRows = totalRows - committedRows;
+      assertAtLeast("Restart scenario should leave rows after the first commit", 1, remainingRows);
+
+      consumer1.close();
+      consumer1 = null;
+
+      consumer2 = (SubscriptionTablePullConsumer) createConsumer(consumerId2, consumerGroupId);
+      consumer2.subscribe(topicName);
+      Thread.sleep(3000);
+      consumer2.seekAfter(topicName, checkpoint);
+      Thread.sleep(1000);
+
+      PollResult resumed = pollUntilComplete(consumer2, remainingRows, 120);
+      assertEquals(
+          "Restarted consumer should resume from the committed checkpoint without replay",
+          remainingRows,
+          resumed.totalRows);
+    } finally {
+      cleanup(consumer1, topicName, database);
+      cleanup(consumer2, topicName, database);
     }
   }
 
@@ -840,21 +1085,18 @@ public class ConsensusSubscriptionTableTest {
   // testRedelivery removed — will be re-added with proper timeout-based nack testing
 
   // ======================================================================
-  // Test 6: Multi-Entity Isolation (merged: MultiConsumerGroup + MultiTopic)
+  // Test 6: Multi-Entity Isolation
   // ======================================================================
   /**
    * Verifies:
    *
    * <ul>
-   *   <li>Two consumer groups on same topic: each group gets ALL data independently
-   *   <li>One consumer subscribes to two topics with different TABLE_KEY filters: each topic
-   *       delivers only matching data
+   *   <li>Two consumer groups on the same topic each receive the full data stream independently
    * </ul>
    */
   private static void testMultiEntityIsolation() throws Exception {
     String database = nextDatabase();
-    String topicName1 = "topic_tbl_multi_" + testCounter + "_a";
-    String topicName2 = "topic_tbl_multi_" + testCounter + "_b";
+    String topicName = "topic_tbl_multi_" + testCounter;
     String consumerGroupId1 = "cg_tbl_multi_" + testCounter + "_a";
     String consumerId1 = "consumer_tbl_multi_" + testCounter + "_a";
     String consumerGroupId2 = "cg_tbl_multi_" + testCounter + "_b";
@@ -863,47 +1105,35 @@ public class ConsensusSubscriptionTableTest {
     ISubscriptionTablePullConsumer consumer2 = null;
 
     try {
-      // Setup: database with t1 and t2
+      // Setup: database with a single table to isolate the multi-group semantics.
       try (ITableSession session = openTableSession()) {
         createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
         session.executeNonQueryStatement("USE " + database);
-        session.executeNonQueryStatement("CREATE TABLE t2 (tag1 STRING TAG, s1 INT64 FIELD)");
         session.executeNonQueryStatement("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', 0, 0)");
-        session.executeNonQueryStatement("INSERT INTO t2 (tag1, s1, time) VALUES ('d1', 0, 0)");
         session.executeNonQueryStatement("flush");
       }
       Thread.sleep(2000);
 
-      // Topic 1: covers t1 only, Topic 2: covers t2 only
-      createTopicTable(topicName1, database, "t1");
-      createTopicTable(topicName2, database, "t2");
+      createTopicTable(topicName, database, "t1");
       Thread.sleep(1000);
 
-      // Consumer 1 (group A): subscribes to BOTH topics
       consumer1 = createConsumer(consumerId1, consumerGroupId1);
-      consumer1.subscribe(topicName1, topicName2);
-      // Consumer 2 (group B): subscribes to BOTH topics
+      consumer1.subscribe(topicName);
       consumer2 = createConsumer(consumerId2, consumerGroupId2);
-      consumer2.subscribe(topicName1, topicName2);
+      consumer2.subscribe(topicName);
       Thread.sleep(3000);
 
-      // Write 30 rows to t1, 40 rows to t2
-      System.out.println("  Writing 30 rows to t1, 40 rows to t2");
+      System.out.println("  Writing 70 rows to t1");
       try (ITableSession session = openTableSession()) {
         session.executeNonQueryStatement("USE " + database);
-        for (int i = 1; i <= 40; i++) {
-          if (i <= 30) {
-            session.executeNonQueryStatement(
-                String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
-          }
+        for (int i = 1; i <= 70; i++) {
           session.executeNonQueryStatement(
-              String.format("INSERT INTO t2 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 20, i));
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
         }
       }
       Thread.sleep(2000);
 
-      // Part A: Both groups should get 70 rows independently
-      System.out.println("  Part A: Multi-group isolation");
+      System.out.println("  Multi-group isolation");
       System.out.println("  Polling from group 1...");
       PollResult result1 = pollUntilComplete(consumer1, 70, 80);
       System.out.println("  Group 1 result: " + result1);
@@ -914,15 +1144,8 @@ public class ConsensusSubscriptionTableTest {
 
       assertEquals("Group 1 should receive all 70 rows", 70, result1.totalRows);
       assertEquals("Group 2 should receive all 70 rows", 70, result2.totalRows);
-
-      // Part B: Verify per-topic table isolation
-      if (!result1.rowsPerTable.isEmpty()) {
-        Integer t1Rows = result1.rowsPerTable.get("t1");
-        Integer t2Rows = result1.rowsPerTable.get("t2");
-        assertEquals("Expected 30 rows from t1 (topic1)", 30, t1Rows != null ? t1Rows : 0);
-        assertEquals("Expected 40 rows from t2 (topic2)", 40, t2Rows != null ? t2Rows : 0);
-        System.out.println("  Multi-topic isolation verified: t1=" + t1Rows + ", t2=" + t2Rows);
-      }
+      assertEquals("Expected 70 rows from t1", 70, result1.rowsPerTable.getOrDefault("t1", 0));
+      assertEquals("Expected 70 rows from t1", 70, result2.rowsPerTable.getOrDefault("t1", 0));
       System.out.println(
           "  Multi-group isolation verified: group1="
               + result1.totalRows
@@ -931,7 +1154,7 @@ public class ConsensusSubscriptionTableTest {
     } finally {
       if (consumer1 != null) {
         try {
-          consumer1.unsubscribe(topicName1, topicName2);
+          consumer1.unsubscribe(topicName);
         } catch (Exception e) {
           /* ignore */
         }
@@ -943,7 +1166,7 @@ public class ConsensusSubscriptionTableTest {
       }
       if (consumer2 != null) {
         try {
-          consumer2.unsubscribe(topicName1, topicName2);
+          consumer2.unsubscribe(topicName);
         } catch (Exception e) {
           /* ignore */
         }
@@ -953,8 +1176,7 @@ public class ConsensusSubscriptionTableTest {
           /* ignore */
         }
       }
-      dropTopicTable(topicName1);
-      dropTopicTable(topicName2);
+      dropTopicTable(topicName);
       deleteDatabase(database);
     }
   }
@@ -1349,6 +1571,87 @@ public class ConsensusSubscriptionTableTest {
       assertTrue(
           "seek(future) should yield at most 1 row (race tolerance)", futurePoll.totalRows <= 1);
 
+      // ------------------------------------------------------------------
+      // Step 7: seek(regionPositions) — seek by per-region consensus ordering key
+      // ------------------------------------------------------------------
+      System.out.println(
+          "  Step 7: seekToBeginning first, then poll to collect per-region positions");
+      consumer.seekToBeginning(topicName);
+      Thread.sleep(2000);
+
+      List<Map<String, SubscriptionRegionPosition>> positionSnapshots = new ArrayList<>();
+      List<Integer> rowsPerMsg = new ArrayList<>();
+      int totalRowsCollected = 0;
+      consecutiveEmpty = 0;
+
+      for (int attempt = 0; attempt < 60; attempt++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
+        if (msgs.isEmpty()) {
+          consecutiveEmpty++;
+          if (consecutiveEmpty >= 5 && totalRowsCollected > 0) break;
+          Thread.sleep(500);
+          continue;
+        }
+        consecutiveEmpty = 0;
+        for (SubscriptionMessage msg : msgs) {
+          int msgRows = 0;
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              msgRows++;
+            }
+          }
+          consumer.commitSync(msg);
+          rowsPerMsg.add(msgRows);
+          totalRowsCollected += msgRows;
+          positionSnapshots.add(new HashMap<>(consumer.committedPositions(topicName)));
+        }
+      }
+      System.out.println(
+          "  Collected "
+              + totalRowsCollected
+              + " rows in "
+              + positionSnapshots.size()
+              + " messages");
+
+      if (positionSnapshots.size() >= 2) {
+        int midIdx = positionSnapshots.size() / 2;
+        Map<String, SubscriptionRegionPosition> seekPositions = positionSnapshots.get(midIdx);
+        System.out.println(
+            "  seekAfter(regionPositions.size="
+                + seekPositions.size()
+                + ") [msg "
+                + midIdx
+                + "/"
+                + positionSnapshots.size()
+                + "]");
+
+        int expectedFromMid = 0;
+        for (int i = midIdx; i < rowsPerMsg.size(); i++) {
+          expectedFromMid += rowsPerMsg.get(i);
+        }
+
+        consumer.seekAfter(topicName, seekPositions);
+        Thread.sleep(2000);
+
+        PollResult afterSeekEpoch = pollUntilComplete(consumer, expectedFromMid, 60);
+        System.out.println(
+            "  After seekAfter(regionPositions): "
+                + afterSeekEpoch.totalRows
+                + " rows (expected ~"
+                + expectedFromMid
+                + ")");
+        assertAtLeast(
+            "seekAfter(regionPositions) should deliver at least half the tail data",
+            expectedFromMid / 2,
+            afterSeekEpoch.totalRows);
+      } else {
+        System.out.println(
+            "  SKIP seekAfter(regionPositions) sub-test: only "
+                + positionSnapshots.size()
+                + " messages");
+      }
+
       System.out.println("  testSeek passed all sub-tests!");
     } finally {
       cleanup(consumer, topicName, database);
@@ -1584,6 +1887,226 @@ public class ConsensusSubscriptionTableTest {
     } finally {
       cleanup(consumer, topicName, database);
       cleanup(consumer2, topicName, database);
+    }
+  }
+
+  // ======================================================================
+  // Test 10: Poison Message Drop — messages nacked beyond threshold
+  //          are force-acked (dropped) and don't block new data.
+  // ======================================================================
+  /**
+   * Verifies:
+   *
+   * <ul>
+   *   <li>A message nacked more than POISON_MESSAGE_NACK_THRESHOLD (10) times is dropped
+   *   <li>After drop, new data can still be received
+   *   <li>The consumer is not permanently blocked by a single unprocessable message
+   * </ul>
+   */
+  private static void testPoisonMessageDrop() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      // Step 0: Create DataRegion
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
+      }
+      Thread.sleep(2000);
+
+      // Step 1: Create topic and subscribe
+      System.out.println("  Step 1: Creating topic and subscribing");
+      createTopicTable(topicName, database, "t1");
+      Thread.sleep(1000);
+
+      consumer = (SubscriptionTablePullConsumer) createConsumer(consumerId, consumerGroupId);
+      consumer.subscribe(topicName);
+      Thread.sleep(3000);
+
+      // Step 2: Write initial data that will become the "poison" message
+      System.out.println("  Step 2: Writing 10 rows (the initial batch)");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 1; i <= 10; i++) {
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+        }
+      }
+      Thread.sleep(2000);
+
+      // Step 3: Poll without commit — repeatedly. Each poll-then-timeout cycle
+      // causes the server to nack the in-flight event and re-enqueue it.
+      System.out.println(
+          "  Step 3: Polling without commit for 15 rounds (threshold=10, need >10 nacks)");
+      int totalPoisonPolled = 0;
+      for (int round = 1; round <= 15; round++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(3000));
+        int roundRows = 0;
+        for (SubscriptionMessage msg : msgs) {
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              roundRows++;
+              totalPoisonPolled++;
+            }
+          }
+          // Deliberately NOT committing — this is the "nack" behavior
+        }
+        System.out.println(
+            "    Round " + round + ": received " + roundRows + " rows (NOT committing)");
+        if (msgs.isEmpty() && round > 11) {
+          System.out.println("    No messages — poison message may have been force-acked");
+          break;
+        }
+        Thread.sleep(1000);
+      }
+      System.out.println("  Total rows polled across all rounds: " + totalPoisonPolled);
+
+      // Step 4: Write NEW data and verify it can be received (consumer not blocked)
+      System.out.println("  Step 4: Writing 50 NEW rows and polling WITH commit");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 1000; i < 1050; i++) {
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+        }
+      }
+      Thread.sleep(2000);
+
+      PollResult newResult = pollUntilComplete(consumer, 50, 60);
+      System.out.println("  New data poll result: " + newResult);
+
+      assertAtLeast(
+          "Consumer must not be permanently blocked by poison message — new data should arrive",
+          1,
+          newResult.totalRows);
+      System.out.println(
+          "  testPoisonMessageDrop passed: consumer received "
+              + newResult.totalRows
+              + " new rows after poison message handling");
+    } finally {
+      cleanup(consumer, topicName, database);
+    }
+  }
+
+  // ======================================================================
+  // Test 11: Serialization V2 Fields — regionId, epoch, dataNodeId
+  //          are properly populated in polled messages' SubscriptionCommitContext.
+  // ======================================================================
+  /**
+   * Verifies:
+   *
+   * <ul>
+   *   <li>SubscriptionCommitContext.getRegionId() is non-null and non-empty
+   *   <li>SubscriptionCommitContext.getEpoch() is >= 0
+   *   <li>SubscriptionCommitContext.getDataNodeId() is > 0
+   * </ul>
+   */
+  private static void testSerializationV2Fields() throws Exception {
+    String database = nextDatabase();
+    String topicName = nextTopic();
+    String consumerGroupId = nextConsumerGroup();
+    String consumerId = nextConsumerId();
+    SubscriptionTablePullConsumer consumer = null;
+
+    try {
+      // Step 0: Create DataRegion
+      try (ITableSession session = openTableSession()) {
+        createDatabaseAndTable(session, database, "t1", "tag1 STRING TAG, s1 INT64 FIELD");
+      }
+      Thread.sleep(2000);
+
+      // Step 1: Create topic and subscribe
+      System.out.println("  Step 1: Creating topic and subscribing");
+      createTopicTable(topicName, database, "t1");
+      Thread.sleep(1000);
+
+      consumer = (SubscriptionTablePullConsumer) createConsumer(consumerId, consumerGroupId);
+      consumer.subscribe(topicName);
+      Thread.sleep(3000);
+
+      // Step 2: Write data
+      System.out.println("  Step 2: Writing 20 rows");
+      try (ITableSession session = openTableSession()) {
+        session.executeNonQueryStatement("USE " + database);
+        for (int i = 1; i <= 20; i++) {
+          session.executeNonQueryStatement(
+              String.format("INSERT INTO t1 (tag1, s1, time) VALUES ('d1', %d, %d)", i * 10, i));
+        }
+      }
+      Thread.sleep(2000);
+
+      // Step 3: Poll and check V2 fields in SubscriptionCommitContext
+      System.out.println("  Step 3: Polling and verifying V2 fields in CommitContext");
+      int totalRows = 0;
+      int messagesChecked = 0;
+      boolean foundRegionId = false;
+
+      for (int attempt = 0; attempt < 30; attempt++) {
+        List<SubscriptionMessage> msgs = consumer.poll(Duration.ofMillis(2000));
+        if (msgs.isEmpty()) {
+          if (totalRows > 0) break;
+          Thread.sleep(1000);
+          continue;
+        }
+
+        for (SubscriptionMessage msg : msgs) {
+          SubscriptionCommitContext ctx = msg.getCommitContext();
+          messagesChecked++;
+
+          // Check V2 fields
+          String regionId = ctx.getRegionId();
+          long epoch = ctx.getEpoch();
+          int dataNodeId = ctx.getDataNodeId();
+
+          System.out.println(
+              "    Message "
+                  + messagesChecked
+                  + ": regionId="
+                  + regionId
+                  + ", epoch="
+                  + epoch
+                  + ", dataNodeId="
+                  + dataNodeId
+                  + ", topicName="
+                  + ctx.getTopicName()
+                  + ", consumerGroupId="
+                  + ctx.getConsumerGroupId());
+
+          assertTrue(
+              "regionId should be non-null for consensus message",
+              regionId != null && !regionId.isEmpty());
+          foundRegionId = true;
+
+          assertTrue("epoch should be >= 0, got " + epoch, epoch >= 0);
+
+          assertTrue("dataNodeId should be > 0, got " + dataNodeId, dataNodeId > 0);
+
+          for (SubscriptionSessionDataSet ds : msg.getSessionDataSetsHandler()) {
+            while (ds.hasNext()) {
+              ds.next();
+              totalRows++;
+            }
+          }
+          consumer.commitSync(msg);
+        }
+      }
+
+      System.out.println(
+          "  Checked "
+              + messagesChecked
+              + " messages, "
+              + totalRows
+              + " rows. foundRegionId="
+              + foundRegionId);
+      assertAtLeast("Should have received data rows", 1, totalRows);
+      assertTrue("Should have found non-empty regionId in at least one message", foundRegionId);
+      System.out.println("  testSerializationV2Fields passed!");
+    } finally {
+      cleanup(consumer, topicName, database);
     }
   }
 }

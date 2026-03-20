@@ -19,11 +19,20 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.wal.utils;
 
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.channels.FileChannel;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +44,9 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_STATUS_CODE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.WAL_VERSION_ID;
 
 public class WALFileUtils {
+
+  private static final Logger logger = LoggerFactory.getLogger(WALFileUtils.class);
+
   /**
    * versionId is a self-incremented id number, helping to maintain the order of wal files.
    * startSearchIndex is the valid search index of last flushed wal entry. statusCode is the. For
@@ -181,5 +193,267 @@ public class WALFileUtils {
   public static String getTsFileRelativePath(String absolutePath) {
     Path path = new File(absolutePath).toPath();
     return path.subpath(path.getNameCount() - 5, path.getNameCount()).toString();
+  }
+
+  /**
+   * Find the local searchIndex corresponding to the given (epoch, syncIndex) pair. Scans WAL files
+   * in version order, reading only V3 metadata footers for efficiency.
+   *
+   * @param logDir the WAL directory for a specific data region
+   * @param epoch the target epoch
+   * @param syncIndex the target syncIndex within that epoch
+   * @return the local searchIndex, or -1 if not found
+   */
+  public static long findSearchIndexByEpochAndSyncIndex(File logDir, long epoch, long syncIndex) {
+    final long[] located = locateByEpochAndSyncIndex(logDir, epoch, syncIndex);
+    return located != null && located[3] == 1L ? located[0] : -1L;
+  }
+
+  /**
+   * Find the local searchIndex of the first entry strictly after the given (epoch, syncIndex).
+   * Comparison order: epoch first, then syncIndex. Used for consumer-guided positioning to resume
+   * from the entry after lastConsumed.
+   *
+   * @param logDir the WAL directory for a specific data region
+   * @param epoch the last consumed epoch
+   * @param syncIndex the last consumed syncIndex
+   * @return the local searchIndex of the next entry, or -1 if no such entry exists
+   */
+  public static long findSearchIndexAfterEpochAndSyncIndex(
+      File logDir, long epoch, long syncIndex) {
+    final long[] located = locateByEpochAndSyncIndex(logDir, epoch, syncIndex);
+    if (located == null) {
+      return -1L;
+    }
+    if (located[3] == 0L) {
+      return located[0];
+    }
+    return findNextSearchIndexAfter(logDir, epoch, syncIndex);
+  }
+
+  /**
+   * Find the (epoch, syncIndex) pair for the given local WAL searchIndex. For V2 WAL files, epoch
+   * is treated as 0 and syncIndex equals searchIndex.
+   *
+   * @param logDir the WAL directory for a specific data region
+   * @param searchIndex the local searchIndex to look up
+   * @return a two-element array [epoch, syncIndex], or null if not found
+   */
+  public static long[] findEpochAndSyncIndexBySearchIndex(File logDir, long searchIndex) {
+    File[] walFiles = listSealedWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return null;
+    }
+
+    for (File walFile : walFiles) {
+      try (RandomAccessFile raf = new RandomAccessFile(walFile, "r");
+          FileChannel channel = raf.getChannel()) {
+        final WALMetaData metaData = WALMetaData.readFromWALFile(walFile, channel);
+        if (metaData.hasLogicalEntries()) {
+          final List<Long> logicalSearchIndices = metaData.getLogicalSearchIndices();
+          for (int i = 0; i < logicalSearchIndices.size(); i++) {
+            if (logicalSearchIndices.get(i) == searchIndex) {
+              return new long[] {
+                metaData.getLogicalEpochs().get(i), metaData.getLogicalSyncIndices().get(i)
+              };
+            }
+          }
+        }
+
+        final List<Long> epochs = metaData.getEpochs();
+        final List<Long> syncIndices = metaData.getSyncIndices();
+        if (!syncIndices.isEmpty()) {
+          for (int i = 0; i < syncIndices.size(); i++) {
+            if (syncIndices.get(i) == searchIndex) {
+              final long entryEpoch = i < epochs.size() ? epochs.get(i) : 0L;
+              return new long[] {entryEpoch, syncIndices.get(i)};
+            }
+          }
+        }
+        final long firstSearchIndex = metaData.getFirstSearchIndex();
+        final int entryCount = metaData.getBuffersSize().size();
+        final long lastSearchIndex = firstSearchIndex + entryCount - 1L;
+        if (searchIndex < firstSearchIndex || searchIndex > lastSearchIndex) {
+          continue;
+        }
+        if (epochFallbackSupported(metaData)) {
+          return new long[] {0L, searchIndex};
+        }
+      } catch (IOException e) {
+        logger.warn("Failed to read WAL metadata from {}", walFile, e);
+      }
+    }
+    return null;
+  }
+
+  public static long[] locateByEpochAndSyncIndex(File logDir, long epoch, long syncIndex) {
+    File[] walFiles = listSealedWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return null;
+    }
+
+    long previousEpoch = 0L;
+    long previousSyncIndex = -1L;
+    for (File walFile : walFiles) {
+      try (RandomAccessFile raf = new RandomAccessFile(walFile, "r");
+          FileChannel channel = raf.getChannel()) {
+        final WALMetaData metaData = WALMetaData.readFromWALFile(walFile, channel);
+        if (!metaData.hasLogicalEntries()) {
+          if (epochFallbackSupported(metaData) && epoch == 0L) {
+            final long firstSearchIndex = metaData.getFirstSearchIndex();
+            final long lastSearchIndex = firstSearchIndex + metaData.getBuffersSize().size() - 1L;
+            if (syncIndex < firstSearchIndex) {
+              return new long[] {firstSearchIndex, previousEpoch, previousSyncIndex, 0L};
+            }
+            if (syncIndex <= lastSearchIndex) {
+              return new long[] {syncIndex, previousEpoch, syncIndex - 1L, 1L};
+            }
+            previousEpoch = 0L;
+            previousSyncIndex = lastSearchIndex;
+          }
+          continue;
+        }
+
+        if (compareLogicalKey(
+                metaData.getLastLogicalEpoch(),
+                metaData.getLastLogicalSyncIndex(),
+                epoch,
+                syncIndex)
+            < 0) {
+          previousEpoch = metaData.getLastLogicalEpoch();
+          previousSyncIndex = metaData.getLastLogicalSyncIndex();
+          continue;
+        }
+
+        if (compareLogicalKey(
+                metaData.getFirstLogicalEpoch(),
+                metaData.getFirstLogicalSyncIndex(),
+                epoch,
+                syncIndex)
+            > 0) {
+          return new long[] {
+            metaData.getFirstLogicalSearchIndex(), previousEpoch, previousSyncIndex, 0L
+          };
+        }
+
+        final List<Long> logicalSearchIndices = metaData.getLogicalSearchIndices();
+        final List<Long> logicalEpochs = metaData.getLogicalEpochs();
+        final List<Long> logicalSyncIndices = metaData.getLogicalSyncIndices();
+        long legacyExactSearchIndex = -1L;
+        long legacyFirstAfterSearchIndex = -1L;
+        for (int i = 0; i < logicalSearchIndices.size(); i++) {
+          final long currentEpoch = logicalEpochs.get(i);
+          final long currentSyncIndex = logicalSyncIndices.get(i);
+          if (currentEpoch == 0L) {
+            if (currentSyncIndex == syncIndex && legacyExactSearchIndex < 0L) {
+              legacyExactSearchIndex = logicalSearchIndices.get(i);
+            } else if (currentSyncIndex > syncIndex && legacyFirstAfterSearchIndex < 0L) {
+              legacyFirstAfterSearchIndex = logicalSearchIndices.get(i);
+            }
+          }
+          final int cmp = compareLogicalKey(currentEpoch, currentSyncIndex, epoch, syncIndex);
+          if (cmp == 0) {
+            return new long[] {logicalSearchIndices.get(i), previousEpoch, previousSyncIndex, 1L};
+          }
+          if (cmp > 0) {
+            return new long[] {logicalSearchIndices.get(i), previousEpoch, previousSyncIndex, 0L};
+          }
+          previousEpoch = currentEpoch;
+          previousSyncIndex = currentSyncIndex;
+        }
+        if (legacyExactSearchIndex >= 0L) {
+          return new long[] {legacyExactSearchIndex, previousEpoch, previousSyncIndex, 1L};
+        }
+        if (legacyFirstAfterSearchIndex >= 0L) {
+          return new long[] {legacyFirstAfterSearchIndex, previousEpoch, previousSyncIndex, 0L};
+        }
+      } catch (IOException e) {
+        logger.warn("Failed to read WAL metadata from {}", walFile, e);
+      }
+    }
+    return null;
+  }
+
+  private static long findNextSearchIndexAfter(File logDir, long epoch, long syncIndex) {
+    File[] walFiles = listSealedWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return -1L;
+    }
+
+    for (File walFile : walFiles) {
+      try (RandomAccessFile raf = new RandomAccessFile(walFile, "r");
+          FileChannel channel = raf.getChannel()) {
+        final WALMetaData metaData = WALMetaData.readFromWALFile(walFile, channel);
+        if (!metaData.hasLogicalEntries()) {
+          if (epochFallbackSupported(metaData) && epoch == 0L) {
+            final long firstSearchIndex = metaData.getFirstSearchIndex();
+            final long lastSearchIndex = firstSearchIndex + metaData.getBuffersSize().size() - 1L;
+            if (syncIndex < firstSearchIndex) {
+              return firstSearchIndex;
+            }
+            if (syncIndex < lastSearchIndex) {
+              return syncIndex + 1L;
+            }
+          }
+          continue;
+        }
+        if (compareLogicalKey(
+                metaData.getLastLogicalEpoch(),
+                metaData.getLastLogicalSyncIndex(),
+                epoch,
+                syncIndex)
+            <= 0) {
+          continue;
+        }
+        final List<Long> logicalSearchIndices = metaData.getLogicalSearchIndices();
+        final List<Long> logicalEpochs = metaData.getLogicalEpochs();
+        final List<Long> logicalSyncIndices = metaData.getLogicalSyncIndices();
+        long legacyFirstAfterSearchIndex = -1L;
+        for (int i = 0; i < logicalSearchIndices.size(); i++) {
+          if (logicalEpochs.get(i) == 0L
+              && logicalSyncIndices.get(i) > syncIndex
+              && legacyFirstAfterSearchIndex < 0L) {
+            legacyFirstAfterSearchIndex = logicalSearchIndices.get(i);
+          }
+          if (compareLogicalKey(logicalEpochs.get(i), logicalSyncIndices.get(i), epoch, syncIndex)
+              > 0) {
+            return logicalSearchIndices.get(i);
+          }
+        }
+        if (legacyFirstAfterSearchIndex >= 0L) {
+          return legacyFirstAfterSearchIndex;
+        }
+      } catch (IOException e) {
+        logger.warn("Failed to read WAL metadata from {}", walFile, e);
+      }
+    }
+    return -1L;
+  }
+
+  private static boolean epochFallbackSupported(final WALMetaData metaData) {
+    return metaData.getEpochs().isEmpty() && metaData.getSyncIndices().isEmpty();
+  }
+
+  private static int compareLogicalKey(
+      final long leftEpoch,
+      final long leftSyncIndex,
+      final long rightEpoch,
+      final long rightSyncIndex) {
+    if (leftEpoch != rightEpoch) {
+      return Long.compare(leftEpoch, rightEpoch);
+    }
+    return Long.compare(leftSyncIndex, rightSyncIndex);
+  }
+
+  private static File[] listSealedWALFiles(final File logDir) {
+    final File[] walFiles = listAllWALFiles(logDir);
+    if (walFiles == null || walFiles.length == 0) {
+      return walFiles;
+    }
+    ascSortByVersionId(walFiles);
+    if (walFiles.length == 1) {
+      return new File[0];
+    }
+    return Arrays.copyOf(walFiles, walFiles.length - 1);
   }
 }

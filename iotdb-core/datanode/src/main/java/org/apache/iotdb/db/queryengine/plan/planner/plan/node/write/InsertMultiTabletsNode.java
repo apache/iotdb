@@ -143,6 +143,20 @@ public class InsertMultiTabletsNode extends InsertNode {
   }
 
   @Override
+  public SearchNode setEpoch(long epoch) {
+    this.epoch = epoch;
+    insertTabletNodeList.forEach(plan -> plan.setEpoch(epoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertTabletNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
+  @Override
   public List<WritePlanNode> splitByPartition(IAnalysis analysis) {
     Map<TRegionReplicaSet, InsertMultiTabletsNode> splitMap = new HashMap<>();
     for (int i = 0; i < insertTabletNodeList.size(); i++) {
@@ -156,6 +170,8 @@ public class InsertMultiTabletsNode extends InsertNode {
         } else {
           tmpNode = new InsertMultiTabletsNode(this.getPlanNodeId());
           tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+          tmpNode.setEpoch(getEpoch());
+          tmpNode.setSyncIndex(getSyncIndex());
           tmpNode.addInsertTabletNode((InsertTabletNode) subNode, i);
           splitMap.put(dataRegionReplicaSet, tmpNode);
         }

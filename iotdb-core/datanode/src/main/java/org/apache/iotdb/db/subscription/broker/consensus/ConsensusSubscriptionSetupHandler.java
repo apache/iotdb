@@ -160,24 +160,36 @@ public class ConsensusSubscriptionSetupHandler {
           final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
           final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-          // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
-          // for brand-new regions that have no prior subscription progress.
-          final long persistedIndex =
-              commitManager
-                  .getOrCreateState(consumerGroupId, topicName, groupId)
-                  .getCommittedSearchIndex();
-          final long startSearchIndex =
-              (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
+          // Recover from persisted global consensus progress when available. The queue will
+          // translate (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+          final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState commitState =
+              commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+          final boolean hasLocalPersistedState =
+              commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
+          final long committedEpoch = hasLocalPersistedState ? commitState.getCommittedEpoch() : 0L;
+          final long committedSyncIndex =
+              hasLocalPersistedState ? commitState.getCommittedSyncIndex() : -1L;
+          final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
+          final long initialEpoch =
+              regionEpoch.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+          final boolean initialActive =
+              lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
+                  == IOTDB_CONFIG.getDataNodeId();
 
           LOGGER.info(
               "Auto-binding consensus queue for topic [{}] in group [{}] to new region {} "
-                  + "(database={}, startSearchIndex={}, persistedIndex={})",
+                  + "(database={}, tailStartSearchIndex={}, hasLocalPersistedState={}, "
+                  + "committedEpoch={}, committedSyncIndex={}, initialEpoch={}, initialActive={})",
               topicName,
               consumerGroupId,
               groupId,
               dbTableModel,
-              startSearchIndex,
-              persistedIndex);
+              tailStartSearchIndex,
+              hasLocalPersistedState,
+              committedEpoch,
+              committedSyncIndex,
+              initialEpoch,
+              initialActive);
 
           SubscriptionAgent.broker()
               .bindConsensusPrefetchingQueue(
@@ -187,7 +199,11 @@ public class ConsensusSubscriptionSetupHandler {
                   serverImpl,
                   converter,
                   commitManager,
-                  startSearchIndex);
+                  committedEpoch,
+                  committedSyncIndex,
+                  tailStartSearchIndex,
+                  initialEpoch,
+                  initialActive);
         } catch (final Exception e) {
           LOGGER.error(
               "Failed to auto-bind topic [{}] in group [{}] to new region {}",
@@ -297,6 +313,7 @@ public class ConsensusSubscriptionSetupHandler {
       final String topicName,
       final IoTConsensus ioTConsensus,
       final ConsensusSubscriptionCommitManager commitManager) {
+    final int myNodeId = IOTDB_CONFIG.getDataNodeId();
 
     // Get topic config for building the converter
     final Map<String, TopicConfig> topicConfigs =
@@ -366,25 +383,36 @@ public class ConsensusSubscriptionSetupHandler {
       final String actualDbName = topicConfig.isTableTopic() ? dbTableModel : null;
       final ConsensusLogToTabletConverter converter = buildConverter(topicConfig, actualDbName);
 
-      // Use persisted committedSearchIndex for restart recovery; fall back to WAL tail
-      // for brand-new regions that have no prior subscription progress.
-      final long persistedIndex =
-          commitManager
-              .getOrCreateState(consumerGroupId, topicName, groupId)
-              .getCommittedSearchIndex();
-      final long startSearchIndex =
-          (persistedIndex > 0) ? persistedIndex + 1 : serverImpl.getSearchIndex() + 1;
+      // Recover from persisted global consensus progress when available. The queue will
+      // translate (epoch, syncIndex) back to the local WAL searchIndex on first poll.
+      final ConsensusSubscriptionCommitManager.ConsensusSubscriptionCommitState commitState =
+          commitManager.getOrCreateState(consumerGroupId, topicName, groupId);
+      final boolean hasLocalPersistedState =
+          commitManager.hasPersistedState(consumerGroupId, topicName, groupId);
+      final long committedEpoch = hasLocalPersistedState ? commitState.getCommittedEpoch() : 0L;
+      final long committedSyncIndex =
+          hasLocalPersistedState ? commitState.getCommittedSyncIndex() : -1L;
+      final long tailStartSearchIndex = serverImpl.getSearchIndex() + 1;
+      final long initialEpoch = regionEpoch.getOrDefault(groupId.convertToTConsensusGroupId(), 0L);
+      final boolean initialActive =
+          lastKnownPreferredWriter.getOrDefault(groupId.convertToTConsensusGroupId(), -1)
+              == myNodeId;
 
       LOGGER.info(
           "Binding consensus prefetching queue for topic [{}] in consumer group [{}] "
-              + "to data region consensus group [{}] (database={}, startSearchIndex={}, "
-              + "persistedIndex={})",
+              + "to data region consensus group [{}] (database={}, tailStartSearchIndex={}, "
+              + "hasLocalPersistedState={}, committedEpoch={}, committedSyncIndex={}, "
+              + "initialEpoch={}, initialActive={})",
           topicName,
           consumerGroupId,
           groupId,
           dbTableModel,
-          startSearchIndex,
-          persistedIndex);
+          tailStartSearchIndex,
+          hasLocalPersistedState,
+          committedEpoch,
+          committedSyncIndex,
+          initialEpoch,
+          initialActive);
 
       SubscriptionAgent.broker()
           .bindConsensusPrefetchingQueue(
@@ -394,7 +422,11 @@ public class ConsensusSubscriptionSetupHandler {
               serverImpl,
               converter,
               commitManager,
-              startSearchIndex);
+              committedEpoch,
+              committedSyncIndex,
+              tailStartSearchIndex,
+              initialEpoch,
+              initialActive);
 
       bound = true;
     }
@@ -529,14 +561,44 @@ public class ConsensusSubscriptionSetupHandler {
               myNodeId,
               e);
         }
+        // Deactivate queues on old leader: stop serving subscription data
+        SubscriptionAgent.broker().setActiveForRegion(regionId, false);
+        // Notify LogDispatcher to send SYNC_COMPLETE marker to Followers so they can
+        // release buffered events of the completed epoch without waiting for timeout.
+        try {
+          final IConsensus consensus = DataRegionConsensusImpl.getInstance();
+          if (consensus instanceof IoTConsensus) {
+            final IoTConsensusServerImpl serverImpl = ((IoTConsensus) consensus).getImpl(regionId);
+            if (serverImpl != null) {
+              serverImpl.setCurrentEpochWithSyncComplete(newEpoch);
+            }
+          }
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to send SYNC_COMPLETE for region {} (oldLeader={})", regionId, myNodeId, e);
+        }
       }
 
       if (newPreferredNodeId == myNodeId) {
-        // This node is the new preferred writer: update epoch on queues
+        // This node is the new preferred writer: update epoch on queues and consensus server
         try {
           SubscriptionAgent.broker().onNewLeaderRegionChanged(regionId, newEpoch);
         } catch (final Exception e) {
           LOGGER.warn("Failed to set epoch for region {} (newLeader={})", regionId, myNodeId, e);
+        }
+        // Activate queues on new leader: start serving subscription data
+        SubscriptionAgent.broker().setActiveForRegion(regionId, true);
+        try {
+          final IConsensus consensus = DataRegionConsensusImpl.getInstance();
+          if (consensus instanceof IoTConsensus) {
+            final IoTConsensusServerImpl serverImpl = ((IoTConsensus) consensus).getImpl(regionId);
+            if (serverImpl != null) {
+              serverImpl.setCurrentEpoch(newEpoch);
+            }
+          }
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to set consensus epoch for region {} (newLeader={})", regionId, myNodeId, e);
         }
       }
     }

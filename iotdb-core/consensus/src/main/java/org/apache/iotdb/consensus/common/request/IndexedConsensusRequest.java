@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,6 +33,10 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long searchIndex;
 
   private final long syncIndex;
+
+  /** routing epoch from ConfigNode broadcast for ordered consensus subscription */
+  private long epoch = 0;
+
   private final List<IConsensusRequest> requests;
   private final List<ByteBuffer> serializedRequests;
   private long memorySize = 0;
@@ -86,6 +91,15 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return syncIndex;
   }
 
+  public long getEpoch() {
+    return epoch;
+  }
+
+  public IndexedConsensusRequest setEpoch(long epoch) {
+    this.epoch = epoch;
+    return this;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -109,5 +123,25 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long decRef() {
     return referenceCnt.getAndDecrement();
+  }
+
+  /**
+   * Creates a SYNC_COMPLETE marker indicating that the given epoch has finished all writes. Encoded
+   * with empty requests list (normal entries always have ≥1 request).
+   *
+   * @param completedEpoch the epoch that has completed
+   * @param maxSearchIndex the searchIndex at the time of epoch completion
+   */
+  public static IndexedConsensusRequest createSyncCompleteMarker(
+      long completedEpoch, long maxSearchIndex) {
+    IndexedConsensusRequest marker =
+        new IndexedConsensusRequest(maxSearchIndex, Collections.emptyList());
+    marker.setEpoch(completedEpoch);
+    return marker;
+  }
+
+  /** Returns true if this request is a SYNC_COMPLETE marker (empty requests list). */
+  public boolean isSyncCompleteMarker() {
+    return requests.isEmpty();
   }
 }

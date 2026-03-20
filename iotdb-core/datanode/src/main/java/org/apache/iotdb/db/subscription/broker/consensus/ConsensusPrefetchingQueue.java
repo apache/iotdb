@@ -39,7 +39,9 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertRowsOf
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.SearchNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.WALEntry;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.WALNode;
+import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.subscription.event.SubscriptionEvent;
 import org.apache.iotdb.db.subscription.metric.ConsensusSubscriptionPrefetchingQueueMetrics;
 import org.apache.iotdb.rpc.subscription.payload.poll.EpochChangePayload;
@@ -54,6 +56,8 @@ import org.apache.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -179,6 +184,14 @@ public class ConsensusPrefetchingQueue {
 
   private volatile boolean isClosed = false;
 
+  /**
+   * Whether this queue is active (serving data). Only the preferred-writer (leader) node's queue is
+   * active; non-leader queues are dormant. Toggled by {@link
+   * ConsensusSubscriptionSetupHandler#onRegionRouteChanged} on leader migration, analogous to
+   * Pipe's leader-only task creation.
+   */
+  private volatile boolean isActive = true;
+
   // ======================== Epoch Ordering ========================
 
   /**
@@ -191,6 +204,32 @@ public class ConsensusPrefetchingQueue {
   /** Counter of epoch changes (setEpoch + injectEpochSentinel calls) for monitoring. */
   private final AtomicLong epochChangeCount = new AtomicLong(0);
 
+  // ======================== Three-Phase PrefetchLoop State ========================
+
+  /** Last released entry's epoch. Phase detection: Phase A when lastReleasedEpoch < epoch. */
+  private volatile long lastReleasedEpoch = 0;
+
+  /** Last released entry's syncIndex (original writer's searchIndex). */
+  private volatile long lastReleasedSyncIndex = -1;
+
+  /**
+   * Phase A sort buffer: entries keyed by (epoch, syncIndex), released in causal order. Only used
+   * during Phase A (old epoch catch-up after seek or leader change).
+   */
+  private final TreeMap<OrderingKey, SortableEntry> sortBuffer = new TreeMap<>();
+
+  /**
+   * V3-based WAL iterator for Phase A. Reads ALL entries (Leader + Follower) using V3 metadata
+   * (epoch, syncIndex) instead of searchIndex-based PlanNodeIterator.
+   */
+  private volatile SubscriptionWALIterator subscriptionWALIterator;
+
+  /** Maximum number of entries in sortBuffer before pausing WAL reads. */
+  private static final int SORT_BUFFER_MAX_SIZE = 1000;
+
+  /** Timeout (ms) for canRelease fallback when no SYNC_COMPLETE received. */
+  private static final long EPOCH_TIMEOUT_MS = 30_000;
+
   // ======================== Watermark ========================
 
   /** Maximum data timestamp observed across all InsertNodes processed by this queue. */
@@ -201,6 +240,26 @@ public class ConsensusPrefetchingQueue {
 
   private final Thread prefetchThread;
 
+  /**
+   * Whether the prefetch loop has been initialized. Starts as false (dormant). Set to true on the
+   * first poll with lastConsumed (Consumer-Guided Positioning) or when prefetch is explicitly
+   * triggered. This enables lazy initialization: the queue captures pending entries from creation
+   * but defers WAL reader setup and prefetch thread start until the consumer provides its position.
+   */
+  private volatile boolean prefetchInitialized = false;
+
+  /**
+   * Fallback committed progress from local persisted state, used when the consumer does not provide
+   * lastConsumed. This stores the global consensus ordering key and is translated back to the local
+   * WAL position on first poll.
+   */
+  private final long fallbackCommittedEpoch;
+
+  private final long fallbackCommittedSyncIndex;
+
+  /** Fallback local tail position used when no precise global progress is available. */
+  private final long fallbackTailSearchIndex;
+
   public ConsensusPrefetchingQueue(
       final String brokerId,
       final String topicName,
@@ -208,7 +267,11 @@ public class ConsensusPrefetchingQueue {
       final IoTConsensusServerImpl serverImpl,
       final ConsensusLogToTabletConverter converter,
       final ConsensusSubscriptionCommitManager commitManager,
-      final long startSearchIndex) {
+      final long fallbackCommittedEpoch,
+      final long fallbackCommittedSyncIndex,
+      final long tailStartSearchIndex,
+      final long initialEpoch,
+      final boolean initialActive) {
     this.brokerId = brokerId;
     this.topicName = topicName;
     this.consensusGroupId = consensusGroupId;
@@ -216,31 +279,41 @@ public class ConsensusPrefetchingQueue {
     this.consensusReqReader = serverImpl.getConsensusReqReader();
     this.converter = converter;
     this.commitManager = commitManager;
+    this.fallbackCommittedEpoch = fallbackCommittedEpoch;
+    this.fallbackCommittedSyncIndex = fallbackCommittedSyncIndex;
+    this.fallbackTailSearchIndex = tailStartSearchIndex;
+    this.epoch = initialEpoch;
+    this.isActive = initialActive;
 
     this.seekGeneration = new AtomicLong(0);
-    this.nextExpectedSearchIndex = new AtomicLong(startSearchIndex);
-    this.reqIterator = consensusReqReader.getReqIterator(startSearchIndex);
+    this.nextExpectedSearchIndex = new AtomicLong(tailStartSearchIndex);
+    // Defer reqIterator creation until first poll (Consumer-Guided Positioning)
+    this.reqIterator = null;
 
     this.prefetchingQueue = new PriorityBlockingQueue<>();
     this.inFlightEvents = new ConcurrentHashMap<>();
 
-    // Create and register the in-memory pending queue with IoTConsensusServerImpl.
+    // Register pending queue early so we don't miss real-time writes
     this.pendingEntries = new ArrayBlockingQueue<>(PENDING_QUEUE_CAPACITY);
     serverImpl.registerSubscriptionQueue(pendingEntries);
 
-    // Start background prefetch thread
+    // Prefetch thread is created but NOT started until first poll (lazy init)
     this.prefetchThread =
         new Thread(this::prefetchLoop, "ConsensusPrefetch-" + brokerId + "-" + topicName);
     this.prefetchThread.setDaemon(true);
-    this.prefetchThread.start();
 
     LOGGER.info(
-        "ConsensusPrefetchingQueue created: brokerId={}, topicName={}, consensusGroupId={}, "
-            + "startSearchIndex={}",
+        "ConsensusPrefetchingQueue created (dormant): brokerId={}, topicName={}, "
+            + "consensusGroupId={}, fallbackCommittedEpoch={}, fallbackCommittedSyncIndex={}, "
+            + "fallbackTailSearchIndex={}, initialEpoch={}, initialActive={}",
         brokerId,
         topicName,
         consensusGroupId,
-        startSearchIndex);
+        fallbackCommittedEpoch,
+        fallbackCommittedSyncIndex,
+        tailStartSearchIndex,
+        initialEpoch,
+        initialActive);
 
     // Register metrics
     ConsensusSubscriptionPrefetchingQueueMetrics.getInstance().register(this);
@@ -267,12 +340,102 @@ public class ConsensusPrefetchingQueue {
   // ======================== Poll ========================
 
   public SubscriptionEvent poll(final String consumerId) {
+    return poll(consumerId, null);
+  }
+
+  /**
+   * Poll with Consumer-Guided Positioning. On first poll, uses lastConsumed to position the WAL
+   * reader precisely, then starts the prefetch thread.
+   *
+   * @param consumerId the consumer ID
+   * @param lastConsumed [epoch, syncIndex] from the consumer, or null if not available
+   */
+  public SubscriptionEvent poll(final String consumerId, final long[] lastConsumed) {
     acquireReadLock();
     try {
-      return isClosed ? null : pollInternal(consumerId);
+      if (isClosed || !isActive) {
+        return null;
+      }
+      if (!prefetchInitialized) {
+        initPrefetch(lastConsumed);
+      }
+      return pollInternal(consumerId);
     } finally {
       releaseReadLock();
     }
+  }
+
+  /**
+   * Initialize the prefetch loop on first poll. Uses consumer's lastConsumed for precise WAL
+   * positioning, falling back to committed progress if unavailable.
+   */
+  private synchronized void initPrefetch(final long[] lastConsumed) {
+    if (prefetchInitialized) {
+      return; // double-check under synchronization
+    }
+
+    long startSearchIndex = fallbackTailSearchIndex;
+    String progressSource = "tail fallback";
+    long progressEpoch = 0L;
+    long progressSyncIndex = -1L;
+    boolean hasProgress = false;
+
+    if (lastConsumed != null && lastConsumed.length == 2) {
+      progressEpoch = lastConsumed[0];
+      progressSyncIndex = lastConsumed[1];
+      progressSource = "consumer lastConsumed";
+      hasProgress = true;
+    } else if (fallbackCommittedSyncIndex >= 0) {
+      progressEpoch = fallbackCommittedEpoch;
+      progressSyncIndex = fallbackCommittedSyncIndex;
+      progressSource = "local persisted progress";
+      hasProgress = true;
+    }
+
+    if (hasProgress && consensusReqReader instanceof WALNode) {
+      final File logDir = ((WALNode) consensusReqReader).getLogDirectory();
+      final long foundIndex =
+          WALFileUtils.findSearchIndexAfterEpochAndSyncIndex(
+              logDir, progressEpoch, progressSyncIndex);
+      if (foundIndex >= 0) {
+        startSearchIndex = foundIndex;
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: {}=({}, {}) -> startSearchIndex={}",
+            this,
+            progressSource,
+            progressEpoch,
+            progressSyncIndex,
+            startSearchIndex);
+      } else {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: {}=({}, {}) not found in WAL, using fallback tailStartSearchIndex={}",
+            this,
+            progressSource,
+            progressEpoch,
+            progressSyncIndex,
+            startSearchIndex);
+      }
+    }
+
+    // Initialize WAL reader and iterators
+    this.nextExpectedSearchIndex.set(startSearchIndex);
+    this.reqIterator = consensusReqReader.getReqIterator(startSearchIndex);
+
+    // Initialize V3-based WAL iterator for Phase A
+    if (consensusReqReader instanceof WALNode) {
+      this.subscriptionWALIterator =
+          new SubscriptionWALIterator(
+              ((WALNode) consensusReqReader).getLogDirectory(), startSearchIndex);
+    }
+
+    // Start prefetch thread
+    this.prefetchThread.start();
+    this.prefetchInitialized = true;
+
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: prefetch initialized, startSearchIndex={}",
+        this,
+        startSearchIndex);
   }
 
   private SubscriptionEvent pollInternal(final String consumerId) {
@@ -410,16 +573,43 @@ public class ConsensusPrefetchingQueue {
     long lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
     long lingerBatchEndSearchIndex = lingerBatchStartSearchIndex;
     long lingerFirstTabletTimeMs = 0; // 0 means no tablets accumulated yet
+    long observedSeekGeneration = seekGeneration.get();
 
     try {
       while (!isClosed && !Thread.currentThread().isInterrupted()) {
         try {
+          final long currentSeekGeneration = seekGeneration.get();
+          if (currentSeekGeneration != observedSeekGeneration) {
+            lingerTablets.clear();
+            lingerEstimatedBytes = 0;
+            lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+            lingerBatchEndSearchIndex = lingerBatchStartSearchIndex;
+            lingerFirstTabletTimeMs = 0;
+            observedSeekGeneration = currentSeekGeneration;
+          }
+
+          // Dormant when not the preferred writer (leader); sleep to avoid busy-waiting
+          if (!isActive) {
+            Thread.sleep(200);
+            continue;
+          }
+
           // Back-pressure: wait if prefetchingQueue is full
           if (prefetchingQueue.size() >= MAX_PREFETCHING_QUEUE_SIZE) {
             Thread.sleep(50);
             continue;
           }
 
+          // Phase A: old epoch catch-up with sort buffer.
+          // When lastReleasedEpoch < current epoch, WAL may contain interleaved
+          // entries from multiple epochs that must be sorted before delivery.
+          if (epoch > 0 && lastReleasedEpoch < epoch) {
+            handlePhaseA(observedSeekGeneration);
+            maybeInjectWatermark();
+            continue;
+          }
+
+          // Phase B + C: existing logic (WAL catch-up + steady-state pendingEntries)
           final SubscriptionConfig config = SubscriptionConfig.getInstance();
           final int maxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
           final int batchMaxDelayMs = config.getSubscriptionConsensusBatchMaxDelayInMs();
@@ -464,10 +654,23 @@ public class ConsensusPrefetchingQueue {
 
             // Flush sub-batches that exceeded thresholds during accumulation
             while (lingerTablets.size() >= maxTablets || lingerEstimatedBytes >= maxBatchBytes) {
+              if (seekGeneration.get() != observedSeekGeneration) {
+                lingerTablets.clear();
+                lingerEstimatedBytes = 0;
+                lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+                lingerBatchEndSearchIndex = lingerBatchStartSearchIndex;
+                lingerFirstTabletTimeMs = 0;
+                observedSeekGeneration = seekGeneration.get();
+                break;
+              }
               final int flushCount = Math.min(lingerTablets.size(), maxTablets);
               final List<Tablet> toFlush = new ArrayList<>(lingerTablets.subList(0, flushCount));
               createAndEnqueueEvent(
-                  toFlush, lingerBatchStartSearchIndex, lingerBatchEndSearchIndex);
+                  toFlush,
+                  lingerBatchStartSearchIndex,
+                  lingerBatchEndSearchIndex,
+                  epoch,
+                  observedSeekGeneration);
               lingerTablets.subList(0, flushCount).clear();
               // Recalculate byte estimate for remaining tablets
               lingerEstimatedBytes = 0;
@@ -484,7 +687,7 @@ public class ConsensusPrefetchingQueue {
             }
           } else if (lingerTablets.isEmpty()) {
             // Pending queue was empty and no lingering tablets — try catch-up from WAL
-            tryCatchUpFromWAL();
+            tryCatchUpFromWAL(observedSeekGeneration);
             // Idle watermark: even without new data, periodically emit watermark
             maybeInjectWatermark();
           }
@@ -494,6 +697,15 @@ public class ConsensusPrefetchingQueue {
           if (!lingerTablets.isEmpty()
               && lingerFirstTabletTimeMs > 0
               && (System.currentTimeMillis() - lingerFirstTabletTimeMs) >= batchMaxDelayMs) {
+            if (seekGeneration.get() != observedSeekGeneration) {
+              lingerTablets.clear();
+              lingerEstimatedBytes = 0;
+              lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
+              lingerBatchEndSearchIndex = lingerBatchStartSearchIndex;
+              lingerFirstTabletTimeMs = 0;
+              observedSeekGeneration = seekGeneration.get();
+              continue;
+            }
             LOGGER.debug(
                 "ConsensusPrefetchingQueue {}: time-based flush, {} tablets lingered for {}ms "
                     + "(threshold={}ms)",
@@ -504,7 +716,9 @@ public class ConsensusPrefetchingQueue {
             createAndEnqueueEvent(
                 new ArrayList<>(lingerTablets),
                 lingerBatchStartSearchIndex,
-                lingerBatchEndSearchIndex);
+                lingerBatchEndSearchIndex,
+                epoch,
+                observedSeekGeneration);
             lingerTablets.clear();
             lingerEstimatedBytes = 0;
             lingerBatchStartSearchIndex = nextExpectedSearchIndex.get();
@@ -545,7 +759,11 @@ public class ConsensusPrefetchingQueue {
             this,
             lingerTablets.size());
         createAndEnqueueEvent(
-            lingerTablets, lingerBatchStartSearchIndex, lingerBatchEndSearchIndex);
+            lingerTablets,
+            lingerBatchStartSearchIndex,
+            lingerBatchEndSearchIndex,
+            epoch,
+            observedSeekGeneration);
       }
     } catch (final Throwable fatal) {
       LOGGER.error(
@@ -782,7 +1000,7 @@ public class ConsensusPrefetchingQueue {
    * Try catch-up from WAL when the pending queue was empty. This handles cold-start or scenarios
    * where the subscription started after data was already written.
    */
-  private void tryCatchUpFromWAL() {
+  private void tryCatchUpFromWAL(final long expectedSeekGeneration) {
     // Re-position WAL reader
     syncReqIteratorPosition();
 
@@ -869,7 +1087,11 @@ public class ConsensusPrefetchingQueue {
 
         if (batchedTablets.size() >= maxTablets || estimatedBatchBytes >= maxBatchBytes) {
           createAndEnqueueEvent(
-              new ArrayList<>(batchedTablets), batchStartSearchIndex, batchEndSearchIndex);
+              new ArrayList<>(batchedTablets),
+              batchStartSearchIndex,
+              batchEndSearchIndex,
+              epoch,
+              expectedSeekGeneration);
           batchedTablets.clear();
           estimatedBatchBytes = 0;
           // Reset start index for the next sub-batch
@@ -882,7 +1104,12 @@ public class ConsensusPrefetchingQueue {
     }
 
     if (!batchedTablets.isEmpty()) {
-      createAndEnqueueEvent(batchedTablets, batchStartSearchIndex, batchEndSearchIndex);
+      createAndEnqueueEvent(
+          batchedTablets,
+          batchStartSearchIndex,
+          batchEndSearchIndex,
+          epoch,
+          expectedSeekGeneration);
     }
 
     if (entriesRead > 0) {
@@ -901,6 +1128,224 @@ public class ConsensusPrefetchingQueue {
    */
   private void syncReqIteratorPosition() {
     reqIterator = consensusReqReader.getReqIterator(nextExpectedSearchIndex.get());
+  }
+
+  // ======================== Phase A: Old Epoch Catch-up ========================
+
+  /**
+   * Phase A handler: reads from WAL, sorts entries by (epoch, syncIndex) in sortBuffer, and
+   * releases entries in causal order when safe. Called when lastReleasedEpoch < currentEpoch,
+   * meaning we're catching up through old epochs after seek or leader change.
+   *
+   * <p>During Phase A, pendingEntries are cleared (their data is also in WAL) to prevent unbounded
+   * accumulation. The sortBuffer ensures cross-epoch entries are delivered in (epoch, syncIndex)
+   * order even when WAL contains interleaved data from different epochs.
+   */
+  private void handlePhaseA(final long expectedSeekGeneration) throws InterruptedException {
+    // Discard pending entries — their data is also in WAL, no loss
+    pendingEntries.clear();
+
+    if (subscriptionWALIterator == null) {
+      // Fallback: no WALNode available, skip Phase A
+      lastReleasedEpoch = epoch;
+      return;
+    }
+
+    // Refresh file list to pick up newly sealed WAL files
+    subscriptionWALIterator.refresh();
+
+    final int batchSize =
+        SubscriptionConfig.getInstance().getSubscriptionConsensusBatchMaxWalEntries();
+    int readCount = 0;
+
+    while (readCount < batchSize
+        && subscriptionWALIterator.hasNext()
+        && sortBuffer.size() < SORT_BUFFER_MAX_SIZE
+        && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      try {
+        final IndexedConsensusRequest walEntry = subscriptionWALIterator.next();
+        final long entryEpoch = walEntry.getEpoch();
+        final long entrySyncIndex = walEntry.getSyncIndex();
+
+        final InsertNode insertNode = deserializeToInsertNode(walEntry);
+        if (insertNode != null) {
+          final long walIndex = walEntry.getSearchIndex();
+          recordTimestampSample(insertNode, walIndex >= 0 ? walIndex : entrySyncIndex);
+          final long maxTs = extractMaxTime(insertNode);
+          if (maxTs > maxObservedTimestamp) {
+            maxObservedTimestamp = maxTs;
+          }
+          final List<Tablet> tablets = converter.convert(insertNode);
+          if (!tablets.isEmpty()) {
+            final OrderingKey key = new OrderingKey(entryEpoch, entrySyncIndex);
+            sortBuffer.put(
+                key, new SortableEntry(key, tablets, walIndex >= 0 ? walIndex : entrySyncIndex));
+          }
+        }
+        readCount++;
+      } catch (final Exception e) {
+        LOGGER.warn("ConsensusPrefetchingQueue {}: error reading WAL in Phase A", this, e);
+        break;
+      }
+    }
+
+    // Try to release entries from sortBuffer in causal order
+    final boolean releasedAny = releaseSortBuffer(expectedSeekGeneration);
+
+    // Phase A → Phase B/C transition: sortBuffer empty and WAL exhausted
+    if (sortBuffer.isEmpty() && !subscriptionWALIterator.hasNext()) {
+      lastReleasedEpoch = epoch;
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: Phase A complete, transitioning to Phase B/C, epoch={}",
+          this,
+          epoch);
+    }
+
+    // Avoid busy-waiting if nothing happened
+    if (readCount == 0 && !releasedAny) {
+      Thread.sleep(50);
+    }
+  }
+
+  /**
+   * Releases entries from sortBuffer in (epoch, syncIndex) order, creating subscription events.
+   * Only releases entries for which {@link #canRelease} returns true.
+   *
+   * @return true if at least one entry was released
+   */
+  private boolean releaseSortBuffer(final long expectedSeekGeneration) {
+    boolean released = false;
+    final SubscriptionConfig config = SubscriptionConfig.getInstance();
+    final int maxWalEntries = config.getSubscriptionConsensusBatchMaxWalEntries();
+    final int maxTablets = config.getSubscriptionConsensusBatchMaxTabletCount();
+    final long maxBatchBytes = config.getSubscriptionConsensusBatchMaxSizeInBytes();
+
+    while (!sortBuffer.isEmpty() && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+      final List<Tablet> batchedTablets = new ArrayList<>();
+      long batchStartSearchIndex = -1L;
+      long batchEndSearchIndex = -1L;
+      long batchEpoch = -1L;
+      long batchLastSyncIndex = -1L;
+      long estimatedBatchBytes = 0L;
+      int batchedEntries = 0;
+
+      while (!sortBuffer.isEmpty() && prefetchingQueue.size() < MAX_PREFETCHING_QUEUE_SIZE) {
+        final Map.Entry<OrderingKey, SortableEntry> first = sortBuffer.firstEntry();
+        final SortableEntry entry = first.getValue();
+        if (!canRelease(entry)) {
+          break;
+        }
+
+        long entryEstimatedBytes = 0L;
+        for (final Tablet tablet : entry.tablets) {
+          entryEstimatedBytes += estimateTabletSize(tablet);
+        }
+
+        final boolean wouldExceedEntryLimit = batchedEntries >= maxWalEntries;
+        final boolean wouldExceedTabletLimit =
+            !batchedTablets.isEmpty() && batchedTablets.size() + entry.tablets.size() > maxTablets;
+        final boolean wouldExceedByteLimit =
+            !batchedTablets.isEmpty() && estimatedBatchBytes + entryEstimatedBytes > maxBatchBytes;
+        final boolean epochChanged = !batchedTablets.isEmpty() && batchEpoch != entry.key.epoch;
+
+        if (wouldExceedEntryLimit
+            || wouldExceedTabletLimit
+            || wouldExceedByteLimit
+            || epochChanged) {
+          break;
+        }
+
+        sortBuffer.pollFirstEntry();
+        if (batchedTablets.isEmpty()) {
+          batchStartSearchIndex = entry.searchIndex;
+          batchEpoch = entry.key.epoch;
+        }
+        batchedTablets.addAll(entry.tablets);
+        estimatedBatchBytes += entryEstimatedBytes;
+        batchEndSearchIndex = entry.searchIndex;
+        batchLastSyncIndex = entry.key.syncIndex;
+        batchedEntries++;
+      }
+
+      if (batchedTablets.isEmpty()) {
+        break;
+      }
+
+      if (!createAndEnqueueEvent(
+          batchedTablets,
+          batchStartSearchIndex,
+          batchEndSearchIndex,
+          batchEpoch,
+          expectedSeekGeneration)) {
+        break;
+      }
+      // Phase A replays historical WAL entries through subscriptionWALIterator instead of the
+      // normal reqIterator/pendingEntries path. After releasing a batch, we must advance the
+      // steady-state read cursor as well, otherwise Phase B/C may re-read the same WAL range and
+      // enqueue duplicate events for the same topic/region.
+      nextExpectedSearchIndex.accumulateAndGet(batchEndSearchIndex + 1, Math::max);
+      lastReleasedEpoch = batchEpoch;
+      lastReleasedSyncIndex = batchLastSyncIndex;
+      released = true;
+    }
+    return released;
+  }
+
+  /**
+   * Determines whether a sortBuffer entry can be safely released (dequeued and delivered).
+   *
+   * <p>An entry can be released when we are confident no earlier entries will arrive:
+   *
+   * <ol>
+   *   <li>Current-epoch entries: always releasable (FIFO within same epoch in WAL)
+   *   <li>SYNC_COMPLETE received for that epoch or a higher epoch (monotonic property: if epoch N
+   *       is complete, all epochs &le; N are also complete)
+   *   <li>SortBuffer contains entries from a strictly newer epoch (implies old epoch is done)
+   *   <li>Timeout fallback: entry has been in buffer longer than {@link #EPOCH_TIMEOUT_MS}
+   * </ol>
+   *
+   * <p>Note: After a SYNC_COMPLETE, late entries from the same epoch may still arrive (because the
+   * old Leader keeps its old epoch for late writes). These entries are immediately releasable since
+   * the epoch is already marked complete.
+   */
+  private boolean canRelease(final SortableEntry entry) {
+    // Compatibility fallback: some historical/relational WAL entries may still carry epoch=0
+    // even though the queue has already learned the region's current routing epoch. In that case
+    // treat them as releasable legacy entries instead of blocking Phase A forever.
+    if (entry.key.epoch == 0 && epoch > 0) {
+      return true;
+    }
+    // Current or future epoch entries can always be released immediately
+    if (entry.key.epoch >= epoch) {
+      return true;
+    }
+    // SYNC_COMPLETE received for this epoch (or a higher epoch, via monotonic check)
+    if (serverImpl.isEpochComplete(entry.key.epoch)) {
+      return true;
+    }
+    // SortBuffer has entries from a newer epoch (implies old epoch data is complete in WAL)
+    if (!sortBuffer.isEmpty()) {
+      final OrderingKey lastKey = sortBuffer.lastKey();
+      if (lastKey.epoch > entry.key.epoch) {
+        return true;
+      }
+    }
+    // Timeout fallback
+    return System.currentTimeMillis() - entry.insertTimestamp > EPOCH_TIMEOUT_MS;
+  }
+
+  /**
+   * @deprecated Use {@link IoTConsensusServerImpl#isEpochComplete(long)} via serverImpl instead.
+   *     Kept temporarily as a no-op for any external callers.
+   */
+  @Deprecated
+  public void onEpochSyncComplete(final long completedEpoch) {
+    // No-op: epoch completion is now tracked in IoTConsensusServerImpl.maxCompletedEpoch
+    // and queried via serverImpl.isEpochComplete() in canRelease().
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: SYNC_COMPLETE for epoch={} (handled by serverImpl)",
+        this,
+        completedEpoch);
   }
 
   /**
@@ -984,12 +1429,43 @@ public class ConsensusPrefetchingQueue {
 
   private void createAndEnqueueEvent(
       final List<Tablet> tablets, final long startSearchIndex, final long endSearchIndex) {
+    createAndEnqueueEvent(tablets, startSearchIndex, endSearchIndex, epoch);
+  }
+
+  private void createAndEnqueueEvent(
+      final List<Tablet> tablets,
+      final long startSearchIndex,
+      final long endSearchIndex,
+      final long entryEpoch) {
+    createAndEnqueueEvent(
+        tablets, startSearchIndex, endSearchIndex, entryEpoch, seekGeneration.get());
+  }
+
+  private boolean createAndEnqueueEvent(
+      final List<Tablet> tablets,
+      final long startSearchIndex,
+      final long endSearchIndex,
+      final long entryEpoch,
+      final long expectedSeekGeneration) {
     if (tablets.isEmpty()) {
-      return;
+      return true;
     }
 
-    // endSearchIndex IS the event identity — no intermediate commitId mapping needed
-    commitManager.recordMapping(brokerId, topicName, consensusGroupId, endSearchIndex);
+    if (seekGeneration.get() != expectedSeekGeneration) {
+      LOGGER.debug(
+          "ConsensusPrefetchingQueue {}: skip stale event with searchIndex range [{}, {}], "
+              + "expectedSeekGeneration={}, currentSeekGeneration={}",
+          this,
+          startSearchIndex,
+          endSearchIndex,
+          expectedSeekGeneration,
+          seekGeneration.get());
+      return false;
+    }
+
+    // Use (epoch, syncIndex) for commit tracking. On the leader, syncIndex == searchIndex.
+    // commitId in SubscriptionCommitContext carries the syncIndex for cross-node consistency.
+    commitManager.recordMapping(brokerId, topicName, consensusGroupId, entryEpoch, endSearchIndex);
 
     final SubscriptionCommitContext commitContext =
         new SubscriptionCommitContext(
@@ -997,10 +1473,10 @@ public class ConsensusPrefetchingQueue {
             PipeDataNodeAgent.runtime().getRebootTimes(),
             topicName,
             brokerId,
-            endSearchIndex,
+            endSearchIndex, // commitId = syncIndex (on leader, searchIndex == syncIndex)
             seekGeneration.get(),
             consensusGroupId.toString(),
-            epoch);
+            entryEpoch);
 
     // nextOffset <= 0 means all tablets delivered in single batch
     // -tablets.size() indicates total count
@@ -1026,6 +1502,7 @@ public class ConsensusPrefetchingQueue {
 
     // After enqueuing the data event, no automatic sentinel injection in 方案B.
     // Sentinel injection is triggered externally by ConsensusSubscriptionSetupHandler.
+    return true;
   }
 
   /**
@@ -1075,7 +1552,8 @@ public class ConsensusPrefetchingQueue {
   private boolean ackInternal(
       final String consumerId, final SubscriptionCommitContext commitContext) {
     final AtomicBoolean acked = new AtomicBoolean(false);
-    final long endSearchIndex = commitContext.getCommitId();
+    final long syncIndex = commitContext.getCommitId();
+    final long commitEpoch = commitContext.getEpoch();
     inFlightEvents.compute(
         new Pair<>(consumerId, commitContext),
         (key, ev) -> {
@@ -1103,7 +1581,7 @@ public class ConsensusPrefetchingQueue {
         });
 
     if (acked.get()) {
-      commitManager.commit(brokerId, topicName, consensusGroupId, endSearchIndex);
+      commitManager.commit(brokerId, topicName, consensusGroupId, commitEpoch, syncIndex);
     }
 
     return acked.get();
@@ -1129,7 +1607,8 @@ public class ConsensusPrefetchingQueue {
         return false;
       }
       final AtomicBoolean acked = new AtomicBoolean(false);
-      final long endSearchIndex = commitContext.getCommitId();
+      final long syncIndex = commitContext.getCommitId();
+      final long commitEpoch = commitContext.getEpoch();
       inFlightEvents.compute(
           new Pair<>(consumerId, commitContext),
           (key, ev) -> {
@@ -1147,7 +1626,7 @@ public class ConsensusPrefetchingQueue {
             return null;
           });
       if (acked.get()) {
-        commitManager.commit(brokerId, topicName, consensusGroupId, endSearchIndex);
+        commitManager.commit(brokerId, topicName, consensusGroupId, commitEpoch, syncIndex);
       }
       return acked.get();
     } finally {
@@ -1284,6 +1763,18 @@ public class ConsensusPrefetchingQueue {
       inFlightEvents.values().forEach(event -> event.cleanUp(true));
       inFlightEvents.clear();
 
+      sortBuffer.clear();
+
+      // Close V3 WAL iterator
+      if (subscriptionWALIterator != null) {
+        try {
+          subscriptionWALIterator.close();
+        } catch (final IOException e) {
+          LOGGER.warn("ConsensusPrefetchingQueue {}: error closing WAL iterator", this, e);
+        }
+        subscriptionWALIterator = null;
+      }
+
       intervalMaxTimestampIndex.clear();
       currentIntervalStart = -1;
       currentIntervalMaxTimestamp = Long.MIN_VALUE;
@@ -1321,7 +1812,27 @@ public class ConsensusPrefetchingQueue {
       // 3. Discard stale pending entries from in-memory queue
       pendingEntries.clear();
 
-      // 3.5. Keep timestamp interval index across seek operations.
+      // 3.5. Clear Phase A state — seek resets ordering context
+      sortBuffer.clear();
+      lastReleasedEpoch = 0;
+      lastReleasedSyncIndex = -1;
+
+      // 3.7. Recreate V3 WAL iterator aligned with the new local searchIndex.
+      if (subscriptionWALIterator != null) {
+        try {
+          subscriptionWALIterator.close();
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "ConsensusPrefetchingQueue {}: error closing WAL iterator during seek", this, e);
+        }
+      }
+      if (consensusReqReader instanceof WALNode) {
+        subscriptionWALIterator =
+            new SubscriptionWALIterator(
+                ((WALNode) consensusReqReader).getLogDirectory(), targetSearchIndex);
+      }
+
+      // 3.6. Keep timestamp interval index across seek operations.
       // This preserves historical timestamp->searchIndex hints so a later
       // seekToTimestamp() after seekToEnd/seekToBeginning does not only rely
       // on newly observed post-seek data.
@@ -1330,8 +1841,15 @@ public class ConsensusPrefetchingQueue {
       nextExpectedSearchIndex.set(targetSearchIndex);
       reqIterator = consensusReqReader.getReqIterator(targetSearchIndex);
 
-      // 5. Reset commit state in CommitManager
-      commitManager.resetState(brokerId, topicName, consensusGroupId, targetSearchIndex);
+      // 5. Reset commit state in CommitManager. For searchIndex-based seek, keep the existing
+      // legacy behavior; precise (epoch, syncIndex) seek uses a dedicated path below.
+      commitManager.resetState(brokerId, topicName, consensusGroupId, 0L, targetSearchIndex);
+
+      // If prefetch was not yet initialized (seek before first poll), start it now
+      if (!prefetchInitialized) {
+        prefetchInitialized = true;
+        prefetchThread.start();
+      }
 
       LOGGER.info(
           "ConsensusPrefetchingQueue {}: seek to searchIndex={}, seekGeneration={}",
@@ -1358,6 +1876,263 @@ public class ConsensusPrefetchingQueue {
    */
   public void seekToEnd() {
     seekToSearchIndex(consensusReqReader.getCurrentSearchIndex());
+  }
+
+  /**
+   * Seeks to the exact (epoch, syncIndex) position. Uses WAL V3 logical metadata to translate the
+   * global (epoch, syncIndex) key to a local searchIndex, then resets the queue from that point.
+   *
+   * <p>If the exact position is not found (e.g., WAL already reclaimed), falls back to seeking to
+   * the first entry after the target position. If neither is found, seeks to beginning.
+   */
+  public void seekToEpochSyncIndex(final long epoch, final long syncIndex) {
+    if (!(consensusReqReader instanceof WALNode)) {
+      LOGGER.warn(
+          "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex not supported (no WAL directory)",
+          this);
+      seekToBeginning();
+      return;
+    }
+    final WALNode walNode = (WALNode) consensusReqReader;
+
+    if (syncIndex >= 0L) {
+      final long currentSearchIndex = consensusReqReader.getCurrentSearchIndex();
+      if (currentSearchIndex >= syncIndex) {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) maps directly to searchIndex={}, rolling active WAL once before exact lookup",
+            this,
+            epoch,
+            syncIndex,
+            syncIndex);
+        walNode.rollWALFile();
+        final long[] previousLogicalProgress =
+            syncIndex > 1L
+                ? WALFileUtils.findEpochAndSyncIndexBySearchIndex(
+                    walNode.getLogDirectory(), syncIndex - 1L)
+                : null;
+        final long previousEpoch =
+            previousLogicalProgress == null ? epoch : previousLogicalProgress[0];
+        final long previousSyncIndex =
+            previousLogicalProgress == null ? syncIndex - 1L : previousLogicalProgress[1];
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) -> direct local searchIndex seek at {}, resetProgress=({}, {})",
+            this,
+            epoch,
+            syncIndex,
+            syncIndex,
+            previousEpoch,
+            previousSyncIndex);
+        seekToSearchIndexWithProgress(syncIndex, previousEpoch, previousSyncIndex);
+        return;
+      }
+
+      if (currentSearchIndex < syncIndex) {
+        LOGGER.info(
+            "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) is beyond local tail {}, seek to end",
+            this,
+            epoch,
+            syncIndex,
+            currentSearchIndex);
+        seekToEnd();
+        return;
+      }
+    }
+
+    final long[] located = locateSearchIndexByLogicalOrder(walNode, epoch, syncIndex);
+    if (located != null && located[3] == 1L) {
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) -> exact match at searchIndex={}, resetProgress=({}, {})",
+          this,
+          epoch,
+          syncIndex,
+          located[0],
+          located[1],
+          located[2]);
+      seekToSearchIndexWithProgress(located[0], located[1], located[2]);
+      return;
+    }
+
+    if (located != null) {
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) -> first-after at searchIndex={}, resetProgress=({}, {})",
+          this,
+          epoch,
+          syncIndex,
+          located[0],
+          located[1],
+          located[2]);
+      seekToSearchIndexWithProgress(located[0], located[1], located[2]);
+      return;
+    }
+
+    // Neither found — WAL may have been fully reclaimed
+    LOGGER.warn(
+        "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) -> not found, falling back to beginning",
+        this,
+        epoch,
+        syncIndex);
+    seekToBeginning();
+  }
+
+  /**
+   * Seeks to the first entry strictly after the supplied logical frontier. This is intended for
+   * resume/checkpoint recovery where the caller has already fully processed the supplied
+   * (epoch,syncIndex).
+   */
+  public void seekAfterEpochSyncIndex(final long epoch, final long syncIndex) {
+    if (!(consensusReqReader instanceof WALNode)) {
+      LOGGER.warn(
+          "ConsensusPrefetchingQueue {}: seekAfterEpochSyncIndex not supported (no WAL directory)",
+          this);
+      seekToEnd();
+      return;
+    }
+    final WALNode walNode = (WALNode) consensusReqReader;
+
+    final WALMetaData activeMetaData = walNode.getCurrentWALMetaDataSnapshot();
+    if (activeMetaData.hasLogicalEntries()
+        && compareLogicalKey(
+                epoch,
+                syncIndex,
+                activeMetaData.getLastLogicalEpoch(),
+                activeMetaData.getLastLogicalSyncIndex())
+            < 0) {
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seekAfterEpochSyncIndex (epoch={}, syncIndex={}) may hit active WAL, rolling once before metadata lookup",
+          this,
+          epoch,
+          syncIndex);
+      walNode.rollWALFile();
+    }
+
+    final long targetSearchIndex =
+        WALFileUtils.findSearchIndexAfterEpochAndSyncIndex(
+            walNode.getLogDirectory(), epoch, syncIndex);
+    if (targetSearchIndex >= 0L) {
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seekAfterEpochSyncIndex (epoch={}, syncIndex={}) -> searchIndex={}, progress=({}, {})",
+          this,
+          epoch,
+          syncIndex,
+          targetSearchIndex,
+          epoch,
+          syncIndex);
+      seekToSearchIndexWithProgress(targetSearchIndex, epoch, syncIndex);
+      return;
+    }
+
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: seekAfterEpochSyncIndex (epoch={}, syncIndex={}) -> no later entry, seek to end",
+        this,
+        epoch,
+        syncIndex);
+    seekToEnd();
+  }
+
+  /**
+   * Locate the first local searchIndex whose logical ordering key is equal to or strictly greater
+   * than the given (epoch, syncIndex). Returns [targetSearchIndex, previousEpoch,
+   * previousSyncIndex, exactMatchFlag].
+   *
+   * <p>If the target may still live in the current active WAL, roll once first so the file becomes
+   * sealed and its logical metadata footer can be read safely.
+   */
+  private long[] locateSearchIndexByLogicalOrder(
+      final WALNode walNode, final long epoch, final long syncIndex) {
+    final WALMetaData activeMetaData = walNode.getCurrentWALMetaDataSnapshot();
+    if (activeMetaData.hasLogicalEntries()
+        && compareLogicalKey(
+                epoch,
+                syncIndex,
+                activeMetaData.getLastLogicalEpoch(),
+                activeMetaData.getLastLogicalSyncIndex())
+            <= 0) {
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seekToEpochSyncIndex (epoch={}, syncIndex={}) may hit active WAL, rolling once before metadata lookup",
+          this,
+          epoch,
+          syncIndex);
+      walNode.rollWALFile();
+    }
+
+    return WALFileUtils.locateByEpochAndSyncIndex(walNode.getLogDirectory(), epoch, syncIndex);
+  }
+
+  private int compareLogicalKey(
+      final long leftEpoch,
+      final long leftSyncIndex,
+      final long rightEpoch,
+      final long rightSyncIndex) {
+    if (leftEpoch != rightEpoch) {
+      return Long.compare(leftEpoch, rightEpoch);
+    }
+    return Long.compare(leftSyncIndex, rightSyncIndex);
+  }
+
+  private void seekToSearchIndexWithProgress(
+      final long targetSearchIndex, final long progressEpoch, final long progressSyncIndex) {
+    acquireWriteLock();
+    try {
+      if (isClosed) {
+        return;
+      }
+
+      // 1. Invalidate all pre-seek commit contexts via fencing token
+      seekGeneration.incrementAndGet();
+
+      // 2. Clean up all queued and in-flight events
+      prefetchingQueue.forEach(event -> event.cleanUp(true));
+      prefetchingQueue.clear();
+      inFlightEvents.values().forEach(event -> event.cleanUp(true));
+      inFlightEvents.clear();
+
+      // 3. Discard stale pending entries from in-memory queue
+      pendingEntries.clear();
+
+      // 3.5. Clear Phase A state - seek resets ordering context
+      sortBuffer.clear();
+      lastReleasedEpoch = 0;
+      lastReleasedSyncIndex = -1;
+
+      // 3.7. Recreate V3 WAL iterator aligned with the new local searchIndex.
+      if (subscriptionWALIterator != null) {
+        try {
+          subscriptionWALIterator.close();
+        } catch (final IOException e) {
+          LOGGER.warn(
+              "ConsensusPrefetchingQueue {}: error closing WAL iterator during seek", this, e);
+        }
+      }
+      if (consensusReqReader instanceof WALNode) {
+        subscriptionWALIterator =
+            new SubscriptionWALIterator(
+                ((WALNode) consensusReqReader).getLogDirectory(), targetSearchIndex);
+      }
+
+      // 4. Reset WAL read position
+      nextExpectedSearchIndex.set(targetSearchIndex);
+      reqIterator = consensusReqReader.getReqIterator(targetSearchIndex);
+
+      // 5. Reset commit state to the logical progress immediately before the first re-delivered
+      // entry, preserving exact (epoch, syncIndex) seek semantics across restart and rebind.
+      commitManager.resetState(
+          brokerId, topicName, consensusGroupId, progressEpoch, progressSyncIndex);
+
+      if (!prefetchInitialized) {
+        prefetchInitialized = true;
+        prefetchThread.start();
+      }
+
+      LOGGER.info(
+          "ConsensusPrefetchingQueue {}: seek to searchIndex={}, progress=({}, {}), seekGeneration={}",
+          this,
+          targetSearchIndex,
+          progressEpoch,
+          progressSyncIndex,
+          seekGeneration.get());
+    } finally {
+      releaseWriteLock();
+    }
   }
 
   /**
@@ -1623,6 +2398,25 @@ public class ConsensusPrefetchingQueue {
     return epochChangeCount.get();
   }
 
+  // ======================== Leader Activation ========================
+
+  /**
+   * Activates or deactivates this queue. Only the preferred-writer (leader) node's queue should be
+   * active. Inactive queues skip prefetching and return null on poll.
+   */
+  public void setActive(final boolean active) {
+    this.isActive = active;
+    LOGGER.info(
+        "ConsensusPrefetchingQueue {}: isActive set to {} (region={})",
+        this,
+        active,
+        consensusGroupId);
+  }
+
+  public boolean isActive() {
+    return isActive;
+  }
+
   public String getPrefetchingQueueId() {
     return brokerId + "_" + topicName;
   }
@@ -1662,7 +2456,7 @@ public class ConsensusPrefetchingQueue {
   public long getLag() {
     final long currentWalIndex = consensusReqReader.getCurrentSearchIndex();
     final long committed =
-        commitManager.getCommittedSearchIndex(brokerId, topicName, consensusGroupId);
+        commitManager.getCommittedSyncIndex(brokerId, topicName, consensusGroupId);
     return Math.max(0, currentWalIndex - Math.max(committed, 0));
   }
 
@@ -1681,11 +2475,70 @@ public class ConsensusPrefetchingQueue {
     result.put("walGapSkippedEntries", String.valueOf(walGapSkippedEntries.get()));
     result.put("lag", String.valueOf(getLag()));
     result.put("isClosed", String.valueOf(isClosed));
+    result.put("sortBufferSize", String.valueOf(sortBuffer.size()));
+    result.put("lastReleasedEpoch", String.valueOf(lastReleasedEpoch));
+    result.put("lastReleasedSyncIndex", String.valueOf(lastReleasedSyncIndex));
     return result;
   }
 
   @Override
   public String toString() {
     return "ConsensusPrefetchingQueue" + coreReportMessage();
+  }
+
+  // ======================== Inner Classes ========================
+
+  /** Composite ordering key (epoch, syncIndex) for causal ordering in sortBuffer. */
+  private static final class OrderingKey implements Comparable<OrderingKey> {
+    final long epoch;
+    final long syncIndex;
+
+    OrderingKey(final long epoch, final long syncIndex) {
+      this.epoch = epoch;
+      this.syncIndex = syncIndex;
+    }
+
+    @Override
+    public int compareTo(final OrderingKey o) {
+      final int cmp = Long.compare(epoch, o.epoch);
+      return cmp != 0 ? cmp : Long.compare(syncIndex, o.syncIndex);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof OrderingKey)) {
+        return false;
+      }
+      final OrderingKey that = (OrderingKey) o;
+      return epoch == that.epoch && syncIndex == that.syncIndex;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(epoch, syncIndex);
+    }
+
+    @Override
+    public String toString() {
+      return "(" + epoch + "," + syncIndex + ")";
+    }
+  }
+
+  /** Entry in sortBuffer, holding pre-converted tablets keyed by ordering position. */
+  private static final class SortableEntry {
+    final OrderingKey key;
+    final List<Tablet> tablets;
+    final long searchIndex;
+    final long insertTimestamp;
+
+    SortableEntry(final OrderingKey key, final List<Tablet> tablets, final long searchIndex) {
+      this.key = key;
+      this.tablets = tablets;
+      this.searchIndex = searchIndex;
+      this.insertTimestamp = System.currentTimeMillis();
+    }
   }
 }

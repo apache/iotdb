@@ -109,15 +109,28 @@ public class IoTConsensusRPCServiceProcessor implements IoTConsensusIService.Ifa
         new BatchIndexedConsensusRequest(req.peerId);
     // We use synchronized to ensure atomicity of executing multiple logs
     for (TLogEntry entry : req.getLogEntries()) {
+      // Detect SYNC_COMPLETE marker: empty data list (normal entries always have ≥1 buffer)
+      if (entry.getData().isEmpty()) {
+        long epoch = entry.isSetEpoch() ? entry.getEpoch() : 0L;
+        impl.onEpochSyncComplete(epoch, entry.getSearchIndex());
+        continue;
+      }
+      long epoch = entry.isSetEpoch() ? entry.getEpoch() : 0L;
       logEntriesInThisBatch.add(
           impl.buildIndexedConsensusRequestForRemoteRequest(
               entry.getSearchIndex(),
+              epoch,
               entry.getData().stream()
                   .map(
                       entry.isFromWAL()
                           ? IoTConsensusRequest::new
                           : ByteBufferConsensusRequest::new)
                   .collect(Collectors.toList())));
+    }
+    // If all entries were SYNC_COMPLETE markers, skip deserialize/syncLog
+    if (logEntriesInThisBatch.getRequests().isEmpty()) {
+      return new TSyncLogEntriesRes(
+          Collections.singletonList(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())));
     }
     long buildRequestTime = System.nanoTime();
     IConsensusRequest deserializedRequest =

@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * This reader returns {@link WALEntry} as {@link ByteBuffer}, the usage of WALByteBufReader is like
@@ -36,6 +37,8 @@ public class WALByteBufReader implements Closeable {
   private WALMetaData metaData;
   private DataInputStream logStream;
   private Iterator<Integer> sizeIterator;
+  // V3: track current entry index to provide per-entry epoch/syncIndex
+  private int currentEntryIndex = -1;
 
   public WALByteBufReader(File logFile) throws IOException {
     WALInputStream walInputStream = new WALInputStream(logFile);
@@ -60,6 +63,7 @@ public class WALByteBufReader implements Closeable {
    * @throws IOException when failing to read from channel.
    */
   public ByteBuffer next() throws IOException {
+    currentEntryIndex++;
     int size = sizeIterator.next();
     // TODO: Reuse this buffer
     ByteBuffer buffer = ByteBuffer.allocate(size);
@@ -83,5 +87,28 @@ public class WALByteBufReader implements Closeable {
 
   public long getFirstSearchIndex() {
     return metaData.getFirstSearchIndex();
+  }
+
+  /** Returns the epoch of the current entry (last returned by next()). V3 only. */
+  public long getCurrentEntryEpoch() {
+    List<Long> epochs = metaData.getEpochs();
+    if (currentEntryIndex >= 0 && currentEntryIndex < epochs.size()) {
+      return epochs.get(currentEntryIndex);
+    }
+    return 0L;
+  }
+
+  /** Returns the syncIndex of the current entry (last returned by next()). V3 only. */
+  public long getCurrentEntrySyncIndex() {
+    List<Long> syncIndices = metaData.getSyncIndices();
+    if (currentEntryIndex >= 0 && currentEntryIndex < syncIndices.size()) {
+      return syncIndices.get(currentEntryIndex);
+    }
+    return metaData.getFirstSearchIndex() + currentEntryIndex;
+  }
+
+  /** Returns the current entry index (0-based). */
+  public int getCurrentEntryIndex() {
+    return currentEntryIndex;
   }
 }

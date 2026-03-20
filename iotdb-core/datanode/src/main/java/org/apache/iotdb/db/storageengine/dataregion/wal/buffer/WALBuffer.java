@@ -35,6 +35,7 @@ import org.apache.iotdb.db.storageengine.dataregion.wal.checkpoint.CheckpointMan
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.BrokenWALFileException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.exception.WALNodeClosedException;
 import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALMetaData;
+import org.apache.iotdb.db.storageengine.dataregion.wal.io.WALWriter;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.MemoryControlledWALEntryQueue;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALFileUtils;
@@ -326,26 +327,39 @@ public class WALBuffer extends AbstractWALBuffer {
         walEntry.getWalFlushListener().fail(e);
         return;
       }
-      // parse search index
+      // parse search index, epoch, and syncIndex
       long searchIndex = DEFAULT_SEARCH_INDEX;
+      long epoch = 0;
+      long syncIndex = DEFAULT_SEARCH_INDEX;
       if (walEntry.getType().needSearch()) {
         if (walEntry.getType() == WALEntryType.DELETE_DATA_NODE) {
           searchIndex = ((DeleteDataNode) walEntry.getValue()).getSearchIndex();
+          epoch = ((DeleteDataNode) walEntry.getValue()).getEpoch();
+          syncIndex = ((DeleteDataNode) walEntry.getValue()).getSyncIndex();
         } else if (walEntry.getType() == WALEntryType.RELATIONAL_DELETE_DATA_NODE) {
           searchIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSearchIndex();
+          epoch = ((RelationalDeleteDataNode) walEntry.getValue()).getEpoch();
+          syncIndex = ((RelationalDeleteDataNode) walEntry.getValue()).getSyncIndex();
         } else if (walEntry.getType() == WALEntryType.OBJECT_FILE_NODE) {
           searchIndex = ((ObjectNode) walEntry.getValue()).getSearchIndex();
+          epoch = ((ObjectNode) walEntry.getValue()).getEpoch();
+          syncIndex = ((ObjectNode) walEntry.getValue()).getSyncIndex();
         } else {
           searchIndex = ((InsertNode) walEntry.getValue()).getSearchIndex();
+          epoch = ((InsertNode) walEntry.getValue()).getEpoch();
+          syncIndex = ((InsertNode) walEntry.getValue()).getSyncIndex();
         }
         if (searchIndex != DEFAULT_SEARCH_INDEX) {
           currentSearchIndex = searchIndex;
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
         }
       }
+      // For Leader writes: syncIndex stays -1, use searchIndex as the ordering key
+      // For Follower writes: searchIndex is -1, syncIndex carries source's searchIndex
+      long effectiveSyncIndex = (syncIndex >= 0) ? syncIndex : searchIndex;
       // update related info
       totalSize += size;
-      info.metaData.add(size, searchIndex, walEntry.getMemTableId());
+      info.metaData.add(size, searchIndex, walEntry.getMemTableId(), epoch, effectiveSyncIndex);
       info.memTableId2WalDiskUsage.compute(
           walEntry.getMemTableId(), (k, v) -> v == null ? size : v + size);
       info.fsyncListeners.add(walEntry.getWalFlushListener());
@@ -746,6 +760,11 @@ public class WALBuffer extends AbstractWALBuffer {
     } finally {
       buffersLock.unlock();
     }
+  }
+
+  public WALMetaData getCurrentWALMetaDataSnapshot() {
+    final WALWriter writer = currentWALFileWriter;
+    return writer == null ? new WALMetaData() : writer.snapshotMetaData();
   }
 
   public CheckpointManager getCheckpointManager() {

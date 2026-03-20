@@ -21,6 +21,7 @@ package org.apache.iotdb.session.subscription.consumer.base;
 
 import org.apache.iotdb.rpc.subscription.config.ConsumerConstant;
 import org.apache.iotdb.rpc.subscription.exception.SubscriptionException;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 import org.apache.iotdb.session.subscription.consumer.AsyncCommitCallback;
 import org.apache.iotdb.session.subscription.payload.PollResult;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
@@ -382,6 +383,26 @@ public abstract class AbstractSubscriptionPullConsumer extends AbstractSubscript
   public void seek(final String topicName, final long targetTimestamp)
       throws SubscriptionException {
     super.seek(topicName, targetTimestamp);
+    if (autoCommit) {
+      uncommittedMessages.clear();
+    }
+  }
+
+  @Override
+  public void seek(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    super.seek(topicName, regionPositions);
+    if (autoCommit) {
+      uncommittedMessages.clear();
+    }
+  }
+
+  @Override
+  public void seekAfter(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    super.seekAfter(topicName, regionPositions);
     if (autoCommit) {
       uncommittedMessages.clear();
     }

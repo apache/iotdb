@@ -19,8 +19,13 @@
 
 package org.apache.iotdb.db.subscription.broker.consensus;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConfigRegionId;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.subscription.config.SubscriptionConfig;
@@ -30,6 +35,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClient;
 import org.apache.iotdb.db.protocol.client.ConfigNodeClientManager;
 import org.apache.iotdb.db.protocol.client.ConfigNodeInfo;
+import org.apache.iotdb.db.queryengine.plan.analyze.ClusterPartitionFetcher;
+import org.apache.iotdb.mpp.rpc.thrift.TSyncSubscriptionProgressReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -45,10 +52,14 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Manages commit state for consensus-based subscriptions.
@@ -79,6 +90,28 @@ public class ConsensusSubscriptionCommitManager {
 
   private static final IClientManager<ConfigRegionId, ConfigNodeClient> CONFIG_NODE_CLIENT_MANAGER =
       ConfigNodeClientManager.getInstance();
+
+  /** Client manager for DataNode-to-DataNode RPC (progress broadcast). */
+  private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      SYNC_DN_CLIENT_MANAGER =
+          new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
+              .createClientManager(
+                  new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+
+  /** Minimum interval (ms) between broadcasts for the same (consumerGroup, topic, region). */
+  private static final long MIN_BROADCAST_INTERVAL_MS = 5000;
+
+  /** Rate-limiting: last broadcast timestamp per key. */
+  private final Map<String, Long> lastBroadcastTime = new ConcurrentHashMap<>();
+
+  /** Single-threaded executor for fire-and-forget broadcasts. */
+  private final ExecutorService broadcastExecutor =
+      Executors.newSingleThreadExecutor(
+          r -> {
+            final Thread t = new Thread(r, "SubscriptionProgressBroadcast");
+            t.setDaemon(true);
+            return t;
+          });
 
   /** Key: "consumerGroupId##topicName##regionId" -> progress tracking state */
   private final Map<String, ConsensusSubscriptionCommitState> commitStates =
@@ -122,59 +155,77 @@ public class ConsensusSubscriptionCommitManager {
           final long fallbackSearchIndex =
               queryCommitProgressFromConfigNode(consumerGroupId, topicName, regionId);
           return new ConsensusSubscriptionCommitState(
-              new SubscriptionConsensusProgress(fallbackSearchIndex, 0L));
+              new SubscriptionConsensusProgress(0L, fallbackSearchIndex, 0L));
         });
   }
 
+  public boolean hasPersistedState(
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
+    return getProgressFile(generateKey(consumerGroupId, topicName, regionId)).exists();
+  }
+
   /**
-   * Records a dispatched event's search index for commit tracking.
+   * Records a dispatched event's (epoch, syncIndex) for commit tracking.
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
    * @param regionId the consensus group / data region ID
-   * @param searchIndex the WAL search index corresponding to this event
+   * @param epoch the epoch of the dispatched event
+   * @param syncIndex the syncIndex of the dispatched event
    */
   public void recordMapping(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
-      final long searchIndex) {
+      final long epoch,
+      final long syncIndex) {
     final ConsensusSubscriptionCommitState state =
         getOrCreateState(consumerGroupId, topicName, regionId);
-    state.recordMapping(searchIndex);
+    state.recordMapping(epoch, syncIndex);
   }
 
   /**
    * Handles commit (ack) for an event. Updates the progress and potentially advances the committed
-   * search index.
+   * position.
    *
    * @param consumerGroupId the consumer group ID
    * @param topicName the topic name
    * @param regionId the consensus group / data region ID
-   * @param searchIndex the end search index of the committed event
+   * @param epoch the epoch of the committed event
+   * @param syncIndex the syncIndex of the committed event
    * @return true if commit handled successfully
    */
   public boolean commit(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
-      final long searchIndex) {
+      final long epoch,
+      final long syncIndex) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
     if (state == null) {
       LOGGER.warn(
           "ConsensusSubscriptionCommitManager: Cannot commit for unknown state, "
-              + "consumerGroupId={}, topicName={}, regionId={}, searchIndex={}",
+              + "consumerGroupId={}, topicName={}, regionId={}, epoch={}, syncIndex={}",
           consumerGroupId,
           topicName,
           regionId,
-          searchIndex);
+          epoch,
+          syncIndex);
       return false;
     }
-    final boolean success = state.commit(searchIndex);
+    final boolean success = state.commit(epoch, syncIndex);
     if (success) {
       // Periodically persist progress
       persistProgressIfNeeded(key, state);
+      // Broadcast to followers (rate-limited, async, fire-and-forget)
+      maybeBroadcast(
+          key,
+          consumerGroupId,
+          topicName,
+          regionId,
+          state.getCommittedEpoch(),
+          state.getCommittedSyncIndex());
     }
     return success;
   }
@@ -182,11 +233,10 @@ public class ConsensusSubscriptionCommitManager {
   /**
    * Gets the current committed search index for a specific region's state.
    *
-   * @param consumerGroupId the consumer group ID
-   * @param topicName the topic name
-   * @param regionId the consensus group / data region ID
-   * @return the committed search index, or -1 if no state exists
+   * @deprecated Use {@link #getCommittedEpoch} and {@link #getCommittedSyncIndex} instead.
+   * @return the committed sync index, or -1 if no state exists
    */
+  @Deprecated
   public long getCommittedSearchIndex(
       final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
@@ -194,7 +244,21 @@ public class ConsensusSubscriptionCommitManager {
     if (state == null) {
       return -1;
     }
-    return state.getCommittedSearchIndex();
+    return state.getCommittedSyncIndex();
+  }
+
+  public long getCommittedEpoch(
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
+    final String key = generateKey(consumerGroupId, topicName, regionId);
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    return state != null ? state.getCommittedEpoch() : 0;
+  }
+
+  public long getCommittedSyncIndex(
+      final String consumerGroupId, final String topicName, final ConsensusGroupId regionId) {
+    final String key = generateKey(consumerGroupId, topicName, regionId);
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    return state != null ? state.getCommittedSyncIndex() : -1;
   }
 
   /**
@@ -239,15 +303,15 @@ public class ConsensusSubscriptionCommitManager {
   }
 
   /**
-   * Resets the commit state for a specific (consumerGroup, topic, region) triple to a new search
-   * index. Used by seek operations to discard all outstanding commit tracking and restart from the
-   * specified position.
+   * Resets the commit state for a specific (consumerGroup, topic, region) triple. Used by seek
+   * operations to discard all outstanding commit tracking and restart from the specified position.
    */
   public void resetState(
       final String consumerGroupId,
       final String topicName,
       final ConsensusGroupId regionId,
-      final long newSearchIndex) {
+      final long epoch,
+      final long syncIndex) {
     final String key = generateKey(consumerGroupId, topicName, regionId);
     final ConsensusSubscriptionCommitState state = commitStates.get(key);
     if (state == null) {
@@ -259,7 +323,7 @@ public class ConsensusSubscriptionCommitManager {
           regionId);
       return;
     }
-    state.resetForSeek(newSearchIndex);
+    state.resetForSeek(epoch, syncIndex);
     persistProgress(key, state);
   }
 
@@ -271,15 +335,122 @@ public class ConsensusSubscriptionCommitManager {
     }
   }
 
-  /** Collects all current committedSearchIndex values for reporting to ConfigNode. */
+  /**
+   * Collects all current committed progress for reporting to ConfigNode. Returns syncIndex values
+   * for backward compatibility; epoch information is available via the state objects directly.
+   */
   public Map<String, Long> collectAllProgress(final int dataNodeId) {
     final Map<String, Long> result = new ConcurrentHashMap<>();
     final String suffix = KEY_SEPARATOR + dataNodeId;
     for (final Map.Entry<String, ConsensusSubscriptionCommitState> entry :
         commitStates.entrySet()) {
-      result.put(entry.getKey() + suffix, entry.getValue().getCommittedSearchIndex());
+      result.put(entry.getKey() + suffix, entry.getValue().getCommittedSyncIndex());
     }
     return result;
+  }
+
+  // ======================== Progress Broadcast (Leader → Follower) ========================
+
+  /**
+   * Broadcasts committed progress to followers if enough time has elapsed since the last broadcast
+   * for this key. The broadcast is async and fire-and-forget.
+   */
+  private void maybeBroadcast(
+      final String key,
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final long committedEpoch,
+      final long committedSyncIndex) {
+    final long now = System.currentTimeMillis();
+    final Long last = lastBroadcastTime.get(key);
+    if (last != null && now - last < MIN_BROADCAST_INTERVAL_MS) {
+      return;
+    }
+    lastBroadcastTime.put(key, now);
+    broadcastExecutor.submit(
+        () ->
+            doBroadcast(consumerGroupId, topicName, regionId, committedEpoch, committedSyncIndex));
+  }
+
+  /**
+   * Sends committed progress to all follower replicas of the given region. Uses the partition cache
+   * to discover replica endpoints and skips the local DataNode.
+   */
+  private void doBroadcast(
+      final String consumerGroupId,
+      final String topicName,
+      final ConsensusGroupId regionId,
+      final long epoch,
+      final long syncIndex) {
+    final int localDataNodeId = IoTDBDescriptor.getInstance().getConfig().getDataNodeId();
+    try {
+      final List<TRegionReplicaSet> replicaSets =
+          ClusterPartitionFetcher.getInstance()
+              .getRegionReplicaSet(
+                  Collections.singletonList(regionId.convertToTConsensusGroupId()));
+      if (replicaSets.isEmpty()) {
+        return;
+      }
+      final String regionIdStr = regionId.toString();
+      final TSyncSubscriptionProgressReq req =
+          new TSyncSubscriptionProgressReq(
+              consumerGroupId, topicName, regionIdStr, epoch, syncIndex);
+
+      for (final TDataNodeLocation location : replicaSets.get(0).getDataNodeLocations()) {
+        if (location.getDataNodeId() == localDataNodeId) {
+          continue; // skip self
+        }
+        final TEndPoint endpoint = location.getInternalEndPoint();
+        try (final SyncDataNodeInternalServiceClient client =
+            SYNC_DN_CLIENT_MANAGER.borrowClient(endpoint)) {
+          client.syncSubscriptionProgress(req);
+        } catch (final ClientManagerException | TException e) {
+          LOGGER.debug(
+              "Failed to broadcast subscription progress to DataNode {} at {}: {}",
+              location.getDataNodeId(),
+              endpoint,
+              e.getMessage());
+        }
+      }
+    } catch (final Exception e) {
+      LOGGER.debug(
+          "Failed to broadcast subscription progress for region {}: {}", regionId, e.getMessage());
+    }
+  }
+
+  /**
+   * Receives a committed progress broadcast from another DataNode (Leader). Updates local state if
+   * the broadcast progress is ahead of the current local progress.
+   */
+  public void receiveProgressBroadcast(
+      final String consumerGroupId,
+      final String topicName,
+      final String regionIdStr,
+      final long epoch,
+      final long syncIndex) {
+    final String key = consumerGroupId + KEY_SEPARATOR + topicName + KEY_SEPARATOR + regionIdStr;
+    final ConsensusSubscriptionCommitState state = commitStates.get(key);
+    if (state != null) {
+      // Update only if broadcast is ahead
+      state.updateFromBroadcast(epoch, syncIndex);
+      persistProgressIfNeeded(key, state);
+    } else {
+      // Create a new state from the broadcast progress
+      final ConsensusSubscriptionCommitState newState =
+          new ConsensusSubscriptionCommitState(
+              new SubscriptionConsensusProgress(epoch, syncIndex, 0L));
+      commitStates.putIfAbsent(key, newState);
+      persistProgress(key, commitStates.get(key));
+    }
+    LOGGER.debug(
+        "Received subscription progress broadcast: consumerGroupId={}, topicName={}, "
+            + "regionId={}, epoch={}, syncIndex={}",
+        consumerGroupId,
+        topicName,
+        regionIdStr,
+        epoch,
+        syncIndex);
   }
 
   // ======================== Helper Methods ========================
@@ -373,123 +544,144 @@ public class ConsensusSubscriptionCommitManager {
   // ======================== Inner State Class ========================
 
   /**
-   * Tracks commit state for a single (consumerGroup, topic, region) triple. Tracks outstanding and
-   * committed search indices within one region's WAL.
+   * Tracks commit state for a single (consumerGroup, topic, region) triple using (epoch, syncIndex)
+   * pairs for cross-leader-migration consistency. Outstanding and committed positions are tracked
+   * as ProgressKey objects (epoch, syncIndex) rather than raw searchIndex values.
    */
   public static class ConsensusSubscriptionCommitState {
 
     private final SubscriptionConsensusProgress progress;
 
-    /** LRU set of recently committed search indices for idempotent re-commit detection. */
+    /** LRU set of recently committed keys for idempotent re-commit detection. */
     private static final int RECENTLY_COMMITTED_CAPACITY = 1024;
 
-    private final Set<Long> recentlyCommittedSearchIndices =
+    private final Set<ProgressKey> recentlyCommittedKeys =
         Collections.newSetFromMap(
-            new LinkedHashMap<Long, Boolean>() {
+            new LinkedHashMap<ProgressKey, Boolean>() {
               @Override
-              protected boolean removeEldestEntry(final Map.Entry<Long, Boolean> eldest) {
+              protected boolean removeEldestEntry(final Map.Entry<ProgressKey, Boolean> eldest) {
                 return size() > RECENTLY_COMMITTED_CAPACITY;
               }
             });
 
     /**
-     * Tracks the safe recovery position: the highest search index where all prior dispatched events
-     * have been committed. Only advances contiguously — never jumps over uncommitted gaps.
+     * Tracks the safe recovery position as (epoch, syncIndex). Only advances contiguously — never
+     * jumps over uncommitted gaps.
      */
-    private volatile long committedSearchIndex;
+    private volatile long committedEpoch;
+
+    private volatile long committedSyncIndex;
 
     /**
-     * Tracks the maximum search index among all committed events (may be ahead of
-     * committedSearchIndex when out-of-order commits exist). Used to update committedSearchIndex
-     * once all outstanding events are committed.
+     * Tracks the maximum committed position (may be ahead of committed when out-of-order commits
+     * exist).
      */
-    private long maxCommittedSearchIndex;
+    private ProgressKey maxCommittedKey;
 
     /**
-     * Tracks search indices of dispatched but not-yet-committed events. Used to prevent
-     * committedSearchIndex from jumping over uncommitted gaps. On commit, the frontier advances to
-     * min(outstanding) - 1 (or maxCommittedSearchIndex if empty).
-     *
-     * <p>Since state is now per-region, searchIndex values within this set are guaranteed unique
-     * (they come from a single region's monotonically increasing WAL searchIndex).
+     * Tracks (epoch, syncIndex) pairs of dispatched but not-yet-committed events. On commit, the
+     * frontier advances to just before the earliest uncommitted entry.
      */
-    private final TreeSet<Long> outstandingSearchIndices = new TreeSet<>();
+    private final TreeSet<ProgressKey> outstandingKeys = new TreeSet<>();
 
     public ConsensusSubscriptionCommitState(final SubscriptionConsensusProgress progress) {
       this.progress = progress;
-      this.committedSearchIndex = progress.getSearchIndex();
-      this.maxCommittedSearchIndex = progress.getSearchIndex();
+      this.committedEpoch = progress.getEpoch();
+      this.committedSyncIndex = progress.getSyncIndex();
+      this.maxCommittedKey = new ProgressKey(committedEpoch, committedSyncIndex);
     }
 
     public SubscriptionConsensusProgress getProgress() {
       return progress;
     }
 
-    public long getCommittedSearchIndex() {
-      return committedSearchIndex;
+    public long getCommittedEpoch() {
+      return committedEpoch;
     }
 
-    /** Threshold for warning about outstanding (uncommitted) search indices accumulation. */
+    public long getCommittedSyncIndex() {
+      return committedSyncIndex;
+    }
+
+    /**
+     * @deprecated Use {@link #getCommittedSyncIndex()} instead.
+     */
+    @Deprecated
+    public long getCommittedSearchIndex() {
+      return committedSyncIndex;
+    }
+
+    /** Threshold for warning about outstanding (uncommitted) entries accumulation. */
     private static final int OUTSTANDING_SIZE_WARN_THRESHOLD = 10000;
 
-    public void recordMapping(final long searchIndex) {
+    public void recordMapping(final long epoch, final long syncIndex) {
       synchronized (this) {
-        outstandingSearchIndices.add(searchIndex);
-        final int size = outstandingSearchIndices.size();
+        outstandingKeys.add(new ProgressKey(epoch, syncIndex));
+        final int size = outstandingKeys.size();
         if (size > OUTSTANDING_SIZE_WARN_THRESHOLD && size % OUTSTANDING_SIZE_WARN_THRESHOLD == 1) {
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: outstandingSearchIndices size ({}) exceeds "
-                  + "threshold ({}), consumers may not be committing. committedSearchIndex={}, "
-                  + "maxCommittedSearchIndex={}",
+              "ConsensusSubscriptionCommitState: outstanding size ({}) exceeds threshold ({}), "
+                  + "consumers may not be committing. committed=({},{}), maxCommitted={}",
               size,
               OUTSTANDING_SIZE_WARN_THRESHOLD,
-              committedSearchIndex,
-              maxCommittedSearchIndex);
+              committedEpoch,
+              committedSyncIndex,
+              maxCommittedKey);
         }
       }
     }
 
     /**
-     * Commits the specified event and advances the committed search index contiguously.
+     * Commits the specified event and advances the committed position contiguously.
      *
-     * <p>The committed search index only advances to a position where all prior dispatched events
-     * have been committed. This prevents the recovery position from jumping over uncommitted gaps,
-     * ensuring at-least-once delivery even after crash recovery.
-     *
-     * @param searchIndex the end search index of the event to commit
+     * @param epoch the epoch of the event to commit
+     * @param syncIndex the syncIndex of the event to commit
      * @return true if successfully committed
      */
-    public boolean commit(final long searchIndex) {
+    public boolean commit(final long epoch, final long syncIndex) {
       progress.incrementCommitIndex();
+      final ProgressKey key = new ProgressKey(epoch, syncIndex);
 
       synchronized (this) {
-        if (!outstandingSearchIndices.remove(searchIndex)) {
-          // Check if this is an idempotent re-commit
-          if (recentlyCommittedSearchIndices.contains(searchIndex)) {
+        if (!outstandingKeys.remove(key)) {
+          if (recentlyCommittedKeys.contains(key)) {
             LOGGER.debug(
-                "ConsensusSubscriptionCommitState: idempotent re-commit for searchIndex {}",
-                searchIndex);
+                "ConsensusSubscriptionCommitState: idempotent re-commit for ({},{})",
+                epoch,
+                syncIndex);
             return true;
           }
           LOGGER.warn(
-              "ConsensusSubscriptionCommitState: unknown searchIndex {} for commit", searchIndex);
+              "ConsensusSubscriptionCommitState: unknown key ({},{}) for commit", epoch, syncIndex);
           return false;
         }
-        recentlyCommittedSearchIndices.add(searchIndex);
-        if (searchIndex > maxCommittedSearchIndex) {
-          maxCommittedSearchIndex = searchIndex;
+        recentlyCommittedKeys.add(key);
+        if (key.compareTo(maxCommittedKey) > 0) {
+          maxCommittedKey = key;
         }
 
-        if (outstandingSearchIndices.isEmpty()) {
-          // All dispatched events have been committed — advance to the max
-          committedSearchIndex = maxCommittedSearchIndex;
+        if (outstandingKeys.isEmpty()) {
+          committedEpoch = maxCommittedKey.epoch;
+          committedSyncIndex = maxCommittedKey.syncIndex;
         } else {
-          // Advance to just below the earliest uncommitted event
-          // (never go backward)
-          committedSearchIndex =
-              Math.max(committedSearchIndex, outstandingSearchIndices.first() - 1);
+          // Can only advance to just before the earliest outstanding entry.
+          // Within the same epoch, syncIndex is contiguous, so (epoch, syncIndex-1) is valid.
+          // Across epochs, we cannot advance past the epoch boundary.
+          final ProgressKey firstOutstanding = outstandingKeys.first();
+          final ProgressKey candidate;
+          if (firstOutstanding.syncIndex > 0) {
+            candidate = new ProgressKey(firstOutstanding.epoch, firstOutstanding.syncIndex - 1);
+          } else {
+            // Edge case: syncIndex=0 means beginning of an epoch; committed stays at current
+            candidate = new ProgressKey(committedEpoch, committedSyncIndex);
+          }
+          if (candidate.compareTo(new ProgressKey(committedEpoch, committedSyncIndex)) > 0) {
+            committedEpoch = candidate.epoch;
+            committedSyncIndex = candidate.syncIndex;
+          }
         }
-        progress.setSearchIndex(committedSearchIndex);
+        progress.setEpoch(committedEpoch);
+        progress.setSyncIndex(committedSyncIndex);
       }
 
       return true;
@@ -497,31 +689,95 @@ public class ConsensusSubscriptionCommitManager {
 
     /**
      * Resets all commit tracking state for a seek operation. Clears all outstanding mappings and
-     * resets progress to the new search index position.
+     * resets progress to the new position.
      */
-    public void resetForSeek(final long newSearchIndex) {
+    public void resetForSeek(final long epoch, final long syncIndex) {
       synchronized (this) {
-        outstandingSearchIndices.clear();
-        recentlyCommittedSearchIndices.clear();
-        final long baseIndex = newSearchIndex - 1;
-        committedSearchIndex = baseIndex;
-        maxCommittedSearchIndex = baseIndex;
-        progress.setSearchIndex(baseIndex);
+        outstandingKeys.clear();
+        recentlyCommittedKeys.clear();
+        committedEpoch = epoch;
+        committedSyncIndex = syncIndex;
+        maxCommittedKey = new ProgressKey(epoch, syncIndex);
+        progress.setEpoch(epoch);
+        progress.setSyncIndex(syncIndex);
+      }
+    }
+
+    /**
+     * Updates committed progress from a Leader broadcast. Only advances if the broadcast position
+     * is ahead of the current local position.
+     */
+    public void updateFromBroadcast(final long epoch, final long syncIndex) {
+      synchronized (this) {
+        final ProgressKey incoming = new ProgressKey(epoch, syncIndex);
+        if (incoming.compareTo(maxCommittedKey) > 0) {
+          committedEpoch = epoch;
+          committedSyncIndex = syncIndex;
+          maxCommittedKey = incoming;
+          progress.setEpoch(epoch);
+          progress.setSyncIndex(syncIndex);
+        }
       }
     }
 
     public void serialize(final DataOutputStream stream) throws IOException {
       progress.serialize(stream);
-      stream.writeLong(committedSearchIndex);
+      stream.writeLong(committedEpoch);
+      stream.writeLong(committedSyncIndex);
     }
 
     public static ConsensusSubscriptionCommitState deserialize(final ByteBuffer buffer) {
       final SubscriptionConsensusProgress progress =
           SubscriptionConsensusProgress.deserialize(buffer);
       final ConsensusSubscriptionCommitState state = new ConsensusSubscriptionCommitState(progress);
-      state.committedSearchIndex = buffer.getLong();
-      state.maxCommittedSearchIndex = state.committedSearchIndex;
+      state.committedEpoch = buffer.getLong();
+      state.committedSyncIndex = buffer.getLong();
+      state.maxCommittedKey = new ProgressKey(state.committedEpoch, state.committedSyncIndex);
       return state;
+    }
+  }
+
+  // ======================== ProgressKey ========================
+
+  /**
+   * Comparable key for tracking commit progress: (epoch, syncIndex). Epoch takes priority; within
+   * the same epoch, syncIndex determines order.
+   */
+  static final class ProgressKey implements Comparable<ProgressKey> {
+    final long epoch;
+    final long syncIndex;
+
+    ProgressKey(final long epoch, final long syncIndex) {
+      this.epoch = epoch;
+      this.syncIndex = syncIndex;
+    }
+
+    @Override
+    public int compareTo(final ProgressKey o) {
+      final int cmp = Long.compare(epoch, o.epoch);
+      return cmp != 0 ? cmp : Long.compare(syncIndex, o.syncIndex);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (!(o instanceof ProgressKey)) {
+        return false;
+      }
+      final ProgressKey that = (ProgressKey) o;
+      return epoch == that.epoch && syncIndex == that.syncIndex;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(epoch, syncIndex);
+    }
+
+    @Override
+    public String toString() {
+      return "(" + epoch + "," + syncIndex + ")";
     }
   }
 

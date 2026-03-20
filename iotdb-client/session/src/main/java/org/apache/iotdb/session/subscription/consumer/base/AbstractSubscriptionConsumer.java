@@ -38,6 +38,7 @@ import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionCommitContext;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponse;
 import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionPollResponseType;
+import org.apache.iotdb.rpc.subscription.payload.poll.SubscriptionRegionPosition;
 import org.apache.iotdb.rpc.subscription.payload.poll.TabletsPayload;
 import org.apache.iotdb.rpc.subscription.payload.poll.WatermarkPayload;
 import org.apache.iotdb.rpc.subscription.payload.request.PipeSubscribeSeekReq;
@@ -79,6 +80,7 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
@@ -129,6 +131,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
    * processed and stripped. Consumer users can query this to check timestamp progress.
    */
   protected volatile long latestWatermarkTimestamp = Long.MIN_VALUE;
+
+  /** Per-topic current positions used as the consumer-guided positioning hint in poll requests. */
+  private final Map<String, Map<String, SubscriptionRegionPosition>> currentPositionsByTopic =
+      new ConcurrentHashMap<>();
+
+  /** Per-topic committed positions used as durable recovery points for explicit seek/checkpoint. */
+  private final Map<String, Map<String, SubscriptionRegionPosition>> committedPositionsByTopic =
+      new ConcurrentHashMap<>();
 
   @SuppressWarnings("java:S3077")
   protected volatile Map<String, TopicConfig> subscribedTopics = new HashMap<>();
@@ -393,12 +403,14 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
   public void seekToBeginning(final String topicName) throws SubscriptionException {
     checkIfOpened();
     seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_BEGINNING, 0);
+    clearCurrentPositions(topicName);
   }
 
   /** Seeks to the current WAL tail. Only newly written data will be consumed after this. */
   public void seekToEnd(final String topicName) throws SubscriptionException {
     checkIfOpened();
     seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_END, 0);
+    clearCurrentPositions(topicName);
   }
 
   /**
@@ -409,6 +421,66 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       throws SubscriptionException {
     checkIfOpened();
     seekInternal(topicName, PipeSubscribeSeekReq.SEEK_TO_TIMESTAMP, targetTimestamp);
+    clearCurrentPositions(topicName);
+  }
+
+  /**
+   * Returns the latest observed per-region positions for the given topic. This is the consumer's
+   * current fetch position hint and is sent back to the server on subsequent poll requests.
+   */
+  public Map<String, SubscriptionRegionPosition> positions(final String topicName)
+      throws SubscriptionException {
+    checkIfOpened();
+    final Map<String, SubscriptionRegionPosition> positions =
+        currentPositionsByTopic.get(topicName);
+    if (Objects.isNull(positions) || positions.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return new HashMap<>(positions);
+  }
+
+  /**
+   * Returns the latest committed per-region positions for the given topic. This is the recoverable
+   * checkpoint position that should be persisted by callers.
+   */
+  public Map<String, SubscriptionRegionPosition> committedPositions(final String topicName)
+      throws SubscriptionException {
+    checkIfOpened();
+    final Map<String, SubscriptionRegionPosition> positions =
+        committedPositionsByTopic.get(topicName);
+    if (Objects.isNull(positions) || positions.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    return new HashMap<>(positions);
+  }
+
+  /**
+   * Seeks to the exact per-region consensus positions. Used for checkpoint recovery to resume
+   * consumption from a precise consensus log vector, similar to Kafka's per-partition seek.
+   */
+  public void seek(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    checkIfOpened();
+    final Map<String, SubscriptionRegionPosition> safePositions =
+        regionPositions != null ? regionPositions : Collections.emptyMap();
+    seekInternalRegionPositions(topicName, safePositions);
+    setCurrentPositions(topicName, safePositions);
+  }
+
+  /**
+   * Seeks to the first per-region consensus position strictly after the supplied frontier. This is
+   * intended for restart/checkpoint recovery where the recorded positions have already been fully
+   * processed and committed.
+   */
+  public void seekAfter(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    checkIfOpened();
+    final Map<String, SubscriptionRegionPosition> safePositions =
+        regionPositions != null ? regionPositions : Collections.emptyMap();
+    seekAfterInternalRegionPositions(topicName, safePositions);
+    setCurrentPositions(topicName, safePositions);
   }
 
   private void seekInternal(final String topicName, final short seekType, final long timestamp)
@@ -416,6 +488,28 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     providers.acquireReadLock();
     try {
       seekWithRedirection(topicName, seekType, timestamp);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private void seekInternalRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekWithRedirectionRegionPositions(topicName, regionPositions);
+    } finally {
+      providers.releaseReadLock();
+    }
+  }
+
+  private void seekAfterInternalRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    providers.acquireReadLock();
+    try {
+      seekAfterWithRedirectionRegionPositions(topicName, regionPositions);
     } finally {
       providers.releaseReadLock();
     }
@@ -773,6 +867,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
 
         // add all current messages to result messages
         messages.addAll(currentMessages);
+        advanceCurrentPositions(currentMessages);
 
         // TODO: maybe we can poll a few more times
         if (!messages.isEmpty()) {
@@ -1167,7 +1262,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       }
       // ignore SubscriptionConnectionException to improve poll auto retry
       try {
-        return provider.poll(topicNames, timeoutMs);
+        return provider.poll(topicNames, timeoutMs, buildLastConsumedByRegion(topicNames));
       } catch (final SubscriptionConnectionException ignored) {
         return Collections.emptyList();
       }
@@ -1243,6 +1338,7 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
     for (final Entry<Integer, List<SubscriptionCommitContext>> entry :
         dataNodeIdToSubscriptionCommitContexts.entrySet()) {
       commitInternal(entry.getKey(), entry.getValue(), false);
+      advanceCommittedPositions(entry.getValue());
     }
   }
 
@@ -1508,6 +1604,169 @@ abstract class AbstractSubscriptionConsumer implements AutoCloseable {
       LOGGER.warn(errorMessage);
       throw new SubscriptionRuntimeCriticalException(errorMessage);
     }
+  }
+
+  private void seekWithRedirectionRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    final Map<String, SubscriptionRegionPosition> safePositions =
+        regionPositions != null ? regionPositions : Collections.emptyMap();
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seek topic %s",
+              this, topicName));
+    }
+    boolean anySuccess = false;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seekToRegionPositions(topicName, safePositions);
+        anySuccess = true;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "{} failed to seek topic {} to regionPositions(size={}) from provider {}, continuing...",
+            this,
+            topicName,
+            safePositions.size(),
+            provider,
+            e);
+      }
+    }
+    if (!anySuccess) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seek topic %s to regionPositions(size=%d) from all providers %s",
+              this, topicName, safePositions.size(), providers);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage);
+    }
+  }
+
+  private void seekAfterWithRedirectionRegionPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions)
+      throws SubscriptionException {
+    final Map<String, SubscriptionRegionPosition> safePositions =
+        regionPositions != null ? regionPositions : Collections.emptyMap();
+    final List<AbstractSubscriptionProvider> providers = this.providers.getAllAvailableProviders();
+    if (providers.isEmpty()) {
+      throw new SubscriptionConnectionException(
+          String.format(
+              "Cluster has no available subscription providers when %s seekAfter topic %s",
+              this, topicName));
+    }
+    boolean anySuccess = false;
+    for (final AbstractSubscriptionProvider provider : providers) {
+      try {
+        provider.seekAfterRegionPositions(topicName, safePositions);
+        anySuccess = true;
+      } catch (final Exception e) {
+        LOGGER.warn(
+            "{} failed to seekAfter topic {} to regionPositions(size={}) from provider {}, continuing...",
+            this,
+            topicName,
+            safePositions.size(),
+            provider,
+            e);
+      }
+    }
+    if (!anySuccess) {
+      final String errorMessage =
+          String.format(
+              "%s failed to seekAfter topic %s to regionPositions(size=%d) from all providers %s",
+              this, topicName, safePositions.size(), providers);
+      LOGGER.warn(errorMessage);
+      throw new SubscriptionRuntimeCriticalException(errorMessage);
+    }
+  }
+
+  private Map<String, long[]> buildLastConsumedByRegion(final Set<String> topicNames) {
+    final Map<String, long[]> result = new HashMap<>();
+    for (final String topicName : topicNames) {
+      final Map<String, SubscriptionRegionPosition> positions =
+          currentPositionsByTopic.get(topicName);
+      if (Objects.isNull(positions) || positions.isEmpty()) {
+        continue;
+      }
+      for (final Entry<String, SubscriptionRegionPosition> entry : positions.entrySet()) {
+        final long[] newVal =
+            new long[] {entry.getValue().getEpoch(), entry.getValue().getSyncIndex()};
+        result.merge(
+            entry.getKey(),
+            newVal,
+            (oldVal, mergedVal) ->
+                isNewerPosition(mergedVal[0], mergedVal[1], oldVal[0], oldVal[1])
+                    ? mergedVal
+                    : oldVal);
+      }
+    }
+    return result;
+  }
+
+  private void advanceCurrentPositions(final List<SubscriptionMessage> messages) {
+    for (final SubscriptionMessage message : messages) {
+      final SubscriptionCommitContext commitContext = message.getCommitContext();
+      if (Objects.isNull(commitContext)
+          || Objects.isNull(commitContext.getTopicName())
+          || Objects.isNull(commitContext.getRegionId())
+          || commitContext.getRegionId().isEmpty()
+          || commitContext.getCommitId() < 0) {
+        continue;
+      }
+      currentPositionsByTopic
+          .computeIfAbsent(commitContext.getTopicName(), key -> new ConcurrentHashMap<>())
+          .merge(
+              commitContext.getRegionId(),
+              new SubscriptionRegionPosition(commitContext.getEpoch(), commitContext.getCommitId()),
+              (oldVal, newVal) ->
+                  isNewerPosition(
+                          newVal.getEpoch(),
+                          newVal.getSyncIndex(),
+                          oldVal.getEpoch(),
+                          oldVal.getSyncIndex())
+                      ? newVal
+                      : oldVal);
+    }
+  }
+
+  private void advanceCommittedPositions(
+      final List<SubscriptionCommitContext> subscriptionCommitContexts) {
+    for (final SubscriptionCommitContext commitContext : subscriptionCommitContexts) {
+      if (Objects.isNull(commitContext)
+          || Objects.isNull(commitContext.getTopicName())
+          || Objects.isNull(commitContext.getRegionId())
+          || commitContext.getRegionId().isEmpty()
+          || commitContext.getCommitId() < 0) {
+        continue;
+      }
+      committedPositionsByTopic
+          .computeIfAbsent(commitContext.getTopicName(), key -> new ConcurrentHashMap<>())
+          // Committed position records the committed frontier itself. Recovery that should resume
+          // strictly after this frontier must use seekAfter(...), because (epoch, syncIndex) is
+          // not always safely incrementable on the client side across epoch boundaries.
+          .put(
+              commitContext.getRegionId(),
+              new SubscriptionRegionPosition(
+                  commitContext.getEpoch(), commitContext.getCommitId()));
+    }
+  }
+
+  private boolean isNewerPosition(
+      final long newEpoch, final long newSyncIndex, final long oldEpoch, final long oldSyncIndex) {
+    return newEpoch > oldEpoch || (newEpoch == oldEpoch && newSyncIndex > oldSyncIndex);
+  }
+
+  private void clearCurrentPositions(final String topicName) {
+    currentPositionsByTopic.remove(topicName);
+  }
+
+  private void setCurrentPositions(
+      final String topicName, final Map<String, SubscriptionRegionPosition> regionPositions) {
+    if (Objects.isNull(regionPositions) || regionPositions.isEmpty()) {
+      currentPositionsByTopic.remove(topicName);
+      return;
+    }
+    currentPositionsByTopic.put(topicName, new ConcurrentHashMap<>(regionPositions));
   }
 
   Map<Integer, TEndPoint> fetchAllEndPointsWithRedirection() throws SubscriptionException {

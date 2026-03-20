@@ -1724,6 +1724,8 @@ public class DataRegion implements IDataRegionForQuery {
             if (v == null) {
               v = insertRowsNode.emptyClone();
               v.setSearchIndex(insertRowNode.getSearchIndex());
+              v.setEpoch(insertRowsNode.getEpoch());
+              v.setSyncIndex(insertRowsNode.getSyncIndex());
               v.setAligned(insertRowNode.isAligned());
               if (insertRowNode.isGeneratedByPipe()) {
                 v.markAsGeneratedByPipe();
@@ -4486,6 +4488,8 @@ public class DataRegion implements IDataRegionForQuery {
               if (v == null) {
                 v = new InsertRowsNode(insertRowsOfOneDeviceNode.getPlanNodeId());
                 v.setSearchIndex(insertRowNode.getSearchIndex());
+                v.setEpoch(insertRowsOfOneDeviceNode.getEpoch());
+                v.setSyncIndex(insertRowsOfOneDeviceNode.getSyncIndex());
                 v.setAligned(insertRowNode.isAligned());
                 if (insertRowNode.isGeneratedByPipe()) {
                   v.markAsGeneratedByPipe();

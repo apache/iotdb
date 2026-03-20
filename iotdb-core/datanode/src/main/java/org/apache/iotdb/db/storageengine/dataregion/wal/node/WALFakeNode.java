@@ -153,6 +153,16 @@ public class WALFakeNode implements IWALNode {
     return bytesToFree > 0 ? Long.MAX_VALUE : DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
   }
 
+  @Override
+  public void setSubscriptionRetainedMinVersionId(long minVersionId) {
+    // do nothing
+  }
+
+  @Override
+  public long getVersionIdToFreeAtLeast(long bytesToFree) {
+    return bytesToFree > 0 ? Long.MAX_VALUE : 0;
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
         Status.FAILURE, new WALException("Cannot write wal into a fake node. ", e));

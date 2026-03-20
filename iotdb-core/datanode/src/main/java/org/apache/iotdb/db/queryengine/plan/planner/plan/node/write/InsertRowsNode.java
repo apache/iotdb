@@ -136,6 +136,20 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
     return this;
   }
 
+  @Override
+  public SearchNode setEpoch(long epoch) {
+    this.epoch = epoch;
+    insertRowNodeList.forEach(plan -> plan.setEpoch(epoch));
+    return this;
+  }
+
+  @Override
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
+    insertRowNodeList.forEach(plan -> plan.setSyncIndex(syncIndex));
+    return this;
+  }
+
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -287,6 +301,8 @@ public class InsertRowsNode extends InsertNode implements WALEntryValue {
       } else {
         tmpNode = new InsertRowsNode(this.getPlanNodeId());
         tmpNode.setDataRegionReplicaSet(dataRegionReplicaSet);
+        tmpNode.setEpoch(getEpoch());
+        tmpNode.setSyncIndex(getSyncIndex());
         tmpNode.addOneInsertRowNode(insertRowNode, i);
         splitMap.put(dataRegionReplicaSet, tmpNode);
       }

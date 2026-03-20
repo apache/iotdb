@@ -37,6 +37,16 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
 
+  /** routing epoch from ConfigNode broadcast, used for ordered consensus subscription */
+  protected long epoch = 0;
+
+  /**
+   * syncIndex carries the source Leader's searchIndex for replicated (Follower) writes. On Leader
+   * nodes this stays at NO_CONSENSUS_INDEX (-1). Only stored in WALMetaData V3, never changes the
+   * WAL entry's own searchIndex.
+   */
+  protected long syncIndex = NO_CONSENSUS_INDEX;
+
   protected SearchNode(PlanNodeId id) {
     super(id);
   }
@@ -48,6 +58,24 @@ public abstract class SearchNode extends WritePlanNode implements ComparableCons
   /** Search index should start from 1 */
   public SearchNode setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
+    return this;
+  }
+
+  public long getEpoch() {
+    return epoch;
+  }
+
+  public SearchNode setEpoch(long epoch) {
+    this.epoch = epoch;
+    return this;
+  }
+
+  public long getSyncIndex() {
+    return syncIndex;
+  }
+
+  public SearchNode setSyncIndex(long syncIndex) {
+    this.syncIndex = syncIndex;
     return this;
   }
 

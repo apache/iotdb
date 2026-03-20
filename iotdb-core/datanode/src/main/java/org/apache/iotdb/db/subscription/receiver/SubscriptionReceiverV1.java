@@ -452,7 +452,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
         case POLL:
           events =
               handlePipeSubscribePollRequest(
-                  consumerConfig, (PollPayload) request.getPayload(), maxBytes);
+                  consumerConfig,
+                  (PollPayload) request.getPayload(),
+                  maxBytes,
+                  request.getLastConsumedByRegion());
           break;
         case POLL_FILE:
           events =
@@ -564,7 +567,10 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollRequest(
-      final ConsumerConfig consumerConfig, final PollPayload messagePayload, final long maxBytes) {
+      final ConsumerConfig consumerConfig,
+      final PollPayload messagePayload,
+      final long maxBytes,
+      final Map<String, long[]> lastConsumedByRegion) {
     final Set<String> subscribedTopicNames =
         SubscriptionAgent.consumer()
             .getTopicNamesSubscribedByConsumer(
@@ -576,7 +582,8 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
 
     // filter unsubscribed topics
     topicNames.removeIf((topicName) -> !subscribedTopicNames.contains(topicName));
-    return SubscriptionAgent.broker().poll(consumerConfig, topicNames, maxBytes);
+    return SubscriptionAgent.broker()
+        .poll(consumerConfig, topicNames, maxBytes, lastConsumedByRegion);
   }
 
   private List<SubscriptionEvent> handlePipeSubscribePollTsFileRequest(
@@ -692,14 +699,31 @@ public class SubscriptionReceiverV1 implements SubscriptionReceiver {
     final String topicName = req.getTopicName();
     final short seekType = req.getSeekType();
 
-    SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType, req.getTimestamp());
-
-    LOGGER.info(
-        "Subscription: consumer {} seek topic {} with seekType={}, timestamp={}",
-        consumerConfig,
-        topicName,
-        seekType,
-        req.getTimestamp());
+    if (seekType == PipeSubscribeSeekReq.SEEK_TO_REGION_POSITIONS) {
+      SubscriptionAgent.broker()
+          .seekToRegionPositions(consumerConfig, topicName, req.getRegionPositions());
+      LOGGER.info(
+          "Subscription: consumer {} seek topic {} to regionPositions(size={})",
+          consumerConfig,
+          topicName,
+          req.getRegionPositions().size());
+    } else if (seekType == PipeSubscribeSeekReq.SEEK_AFTER_REGION_POSITIONS) {
+      SubscriptionAgent.broker()
+          .seekAfterRegionPositions(consumerConfig, topicName, req.getRegionPositions());
+      LOGGER.info(
+          "Subscription: consumer {} seekAfter topic {} to regionPositions(size={})",
+          consumerConfig,
+          topicName,
+          req.getRegionPositions().size());
+    } else {
+      SubscriptionAgent.broker().seek(consumerConfig, topicName, seekType, req.getTimestamp());
+      LOGGER.info(
+          "Subscription: consumer {} seek topic {} with seekType={}, timestamp={}",
+          consumerConfig,
+          topicName,
+          seekType,
+          req.getTimestamp());
+    }
 
     return PipeSubscribeSeekResp.toTPipeSubscribeResp(RpcUtils.SUCCESS_STATUS);
   }
