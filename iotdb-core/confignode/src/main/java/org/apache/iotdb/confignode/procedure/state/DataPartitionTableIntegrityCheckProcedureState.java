@@ -17,42 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.sync;
+package org.apache.iotdb.confignode.procedure.state;
 
-public enum CnToDnSyncRequestType {
-  // Node Maintenance
-  CLEAN_DATA_NODE_CACHE,
-  STOP_AND_CLEAR_DATA_NODE,
-  SET_SYSTEM_STATUS,
-  SHOW_CONFIGURATION,
-  SHOW_APPLIED_CONFIGURATIONS,
-
-  // Region Maintenance
-  CREATE_DATA_REGION,
-  CREATE_SCHEMA_REGION,
-  DELETE_REGION,
-  CREATE_NEW_REGION_PEER,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  DELETE_OLD_REGION_PEER,
-  RESET_PEER_LIST,
-
-  // Data Partition Table Maintenance
+public enum DataPartitionTableIntegrityCheckProcedureState {
+  /** Collect earliest timeslot information from all DataNodes */
   COLLECT_EARLIEST_TIMESLOTS,
-  GENERATE_DATA_PARTITION_TABLE,
-  GENERATE_DATA_PARTITION_TABLE_HEART_BEAT,
-
-  // PartitionCache
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-
-  // Template
-  UPDATE_TEMPLATE,
-
-  // Schema
-  KILL_QUERY_INSTANCE,
-
-  // Table
-  UPDATE_TABLE,
+  /** Analyze missing data partitions */
+  ANALYZE_MISSING_PARTITIONS,
+  /** Request DataPartitionTable generation from DataNodes */
+  REQUEST_PARTITION_TABLES,
+  /** Round robin get DataPartitionTable generation result from DataNodes */
+  REQUEST_PARTITION_TABLES_HEART_BEAT,
+  /** Merge DataPartitionTables from all DataNodes */
+  MERGE_PARTITION_TABLES,
+  /** Write final DataPartitionTable to raft log */
+  WRITE_PARTITION_TABLE_TO_CONSENSUS
 }
