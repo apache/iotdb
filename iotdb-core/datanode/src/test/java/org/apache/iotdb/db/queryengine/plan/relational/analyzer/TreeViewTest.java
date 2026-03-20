@@ -140,7 +140,7 @@ public class TreeViewTest {
   public void aggregationQueryTest() {
     PlanTester planTester = new PlanTester();
 
-    // has non-aligned DeviceEntry, no push-down
+    // has non-aligned DeviceEntry
     LogicalQueryPlan logicalQueryPlan =
         planTester.createPlan(
             "select tag1, count(s1) from "
@@ -149,14 +149,83 @@ public class TreeViewTest {
     PlanMatchPattern expectedPlanPattern =
         output(
             aggregation(
-                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("s1"))),
-                treeDeviceViewTableScan(
+                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+                aggregationTreeDeviceViewTableScan(
+                    singleGroupingSet("tag1"),
+                    ImmutableList.of("tag1"),
+                    Optional.empty(),
+                    PARTIAL,
                     DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
-                    ImmutableList.of("tag1", "s1"),
+                    ImmutableList.of("tag1", "count_0"),
                     ImmutableSet.of("tag1", "s1"))));
     assertPlan(logicalQueryPlan, expectedPlanPattern);
 
-    // only aligned DeviceEntry, do push-down
+    assertPlan(
+        planTester.getFragmentPlan(0),
+        output(
+            aggregation(
+                ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_1"))),
+                FINAL,
+                mergeSort(exchange(), exchange(), exchange(), exchange()))));
+
+    assertPlan(
+        planTester.getFragmentPlan(1),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                true)));
+    assertPlan(
+        planTester.getFragmentPlan(2),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                false)));
+    assertPlan(
+        planTester.getFragmentPlan(3),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                true)));
+    assertPlan(
+        planTester.getFragmentPlan(4),
+        aggregation(
+            ImmutableMap.of("count", aggregationFunction("count", ImmutableList.of("count_0"))),
+            INTERMEDIATE,
+            aggregationTreeDeviceViewTableScan(
+                singleGroupingSet("tag1"),
+                ImmutableList.of("tag1"),
+                Optional.empty(),
+                PARTIAL,
+                DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
+                ImmutableList.of("tag1", "count_0"),
+                ImmutableSet.of("tag1", "s1"),
+                false)));
+
+    // only aligned DeviceEntry
     logicalQueryPlan =
         planTester.createPlan(
             "select tag1, count(s1) from "
@@ -199,7 +268,8 @@ public class TreeViewTest {
                   PARTIAL,
                   DEFAULT_TREE_DEVICE_VIEW_TABLE_FULL_NAME,
                   ImmutableList.of("tag1", "count_0"),
-                  ImmutableSet.of("tag1", "s1"))));
+                  ImmutableSet.of("tag1", "s1"),
+                  true)));
     }
   }
 }

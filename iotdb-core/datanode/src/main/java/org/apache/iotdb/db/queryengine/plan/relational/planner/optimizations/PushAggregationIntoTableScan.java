@@ -105,10 +105,6 @@ public class PushAggregationIntoTableScan implements PlanOptimizer {
         return node;
       }
 
-      if (tableScanNode.containsNonAlignedDevice()) {
-        return node;
-      }
-
       PushDownLevel pushDownLevel =
           calculatePushDownLevel(
               node.getAggregations().values(),

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.iterative.GroupRe
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTableScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CollectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.CteScanNode;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.JoinNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LimitNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MergeSortNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OffsetNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.OutputNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ProjectNode;
@@ -410,6 +412,38 @@ public final class PlanMatchPattern {
       List<String> outputSymbols,
       Set<String> assignmentsKeys) {
     PlanMatchPattern result = node(AggregationTreeDeviceViewScanNode.class);
+
+    result.with(
+        new AggregationDeviceTableScanMatcher(
+            groupingSets,
+            preGroupedSymbols,
+            ImmutableList.of(),
+            groupId,
+            step,
+            expectedTableName,
+            Optional.empty(),
+            outputSymbols,
+            assignmentsKeys));
+
+    outputSymbols.forEach(
+        outputSymbol ->
+            result.withAlias(outputSymbol, new ColumnReference(expectedTableName, outputSymbol)));
+    return result;
+  }
+
+  public static PlanMatchPattern aggregationTreeDeviceViewTableScan(
+      GroupingSetDescriptor groupingSets,
+      List<String> preGroupedSymbols,
+      Optional<Symbol> groupId,
+      AggregationNode.Step step,
+      String expectedTableName,
+      List<String> outputSymbols,
+      Set<String> assignmentsKeys,
+      boolean aligned) {
+    PlanMatchPattern result =
+        aligned
+            ? node(AlignedAggregationTreeDeviceViewScanNode.class)
+            : node(NonAlignedAggregationTreeDeviceViewScanNode.class);
 
     result.with(
         new AggregationDeviceTableScanMatcher(

@@ -30,22 +30,14 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.Expression;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
-import org.apache.tsfile.utils.ReadWriteIOUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
-public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode {
-  private String treeDBName;
-  private Map<String, String> measurementColumnNameMap;
+public class NonAlignedAggregationTreeDeviceViewScanNode extends AggregationTreeDeviceViewScanNode {
 
-  public AggregationTreeDeviceViewScanNode(
+  public NonAlignedAggregationTreeDeviceViewScanNode(
       PlanNodeId id,
       QualifiedObjectName qualifiedObjectName,
       List<Symbol> outputSymbols,
@@ -86,56 +78,22 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         groupingSets,
         preGroupedSymbols,
         step,
-        groupIdSymbol);
-    this.treeDBName = treeDBName;
-    this.measurementColumnNameMap = measurementColumnNameMap;
+        groupIdSymbol,
+        treeDBName,
+        measurementColumnNameMap);
   }
 
-  protected AggregationTreeDeviceViewScanNode() {}
-
-  public String getTreeDBName() {
-    return treeDBName;
-  }
-
-  public Map<String, String> getMeasurementColumnNameMap() {
-    return measurementColumnNameMap;
-  }
+  private NonAlignedAggregationTreeDeviceViewScanNode() {}
 
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitAggregationTreeDeviceViewScan(this, context);
+    return visitor.visitNonAlignedAggregationTreeDeviceViewScan(this, context);
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    if (!super.equals(o)) {
-      return false;
-    }
-    AggregationTreeDeviceViewScanNode that = (AggregationTreeDeviceViewScanNode) o;
-    return Objects.equals(treeDBName, that.treeDBName)
-        && Objects.equals(measurementColumnNameMap, that.measurementColumnNameMap);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(super.hashCode(), treeDBName, measurementColumnNameMap);
-  }
-
-  @Override
-  public String toString() {
-    return "AggregationTreeDeviceViewTableScanNode-" + this.getPlanNodeId();
-  }
-
-  @Override
-  public AggregationTreeDeviceViewScanNode clone() {
-    return new AggregationTreeDeviceViewScanNode(
-        id,
+  public NonAlignedAggregationTreeDeviceViewScanNode clone() {
+    return new NonAlignedAggregationTreeDeviceViewScanNode(
+        getPlanNodeId(),
         qualifiedObjectName,
         outputSymbols,
         assignments,
@@ -154,57 +112,21 @@ public class AggregationTreeDeviceViewScanNode extends AggregationTableScanNode 
         preGroupedSymbols,
         step,
         groupIdSymbol,
-        treeDBName,
-        measurementColumnNameMap);
+        getTreeDBName(),
+        getMeasurementColumnNameMap());
   }
 
   protected PlanNodeType getPlanNodeType() {
-    // This node is not supported to serde
-    throw new UnsupportedOperationException("Not supported yet.");
+    return PlanNodeType.NON_ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE;
+  }
+
+  public static AggregationTreeDeviceViewScanNode deserialize(ByteBuffer byteBuffer) {
+    return AggregationTreeDeviceViewScanNode.deserialize(
+        byteBuffer, new NonAlignedAggregationTreeDeviceViewScanNode());
   }
 
   @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    getPlanNodeType().serialize(byteBuffer);
-
-    AggregationTableScanNode.serializeMemberVariables(this, byteBuffer);
-
-    ReadWriteIOUtils.write(treeDBName, byteBuffer);
-    ReadWriteIOUtils.write(measurementColumnNameMap.size(), byteBuffer);
-    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
-      ReadWriteIOUtils.write(entry.getValue(), byteBuffer);
-    }
-  }
-
-  @Override
-  protected void serializeAttributes(DataOutputStream stream) throws IOException {
-    getPlanNodeType().serialize(stream);
-
-    AggregationTableScanNode.serializeMemberVariables(this, stream);
-
-    ReadWriteIOUtils.write(treeDBName, stream);
-    ReadWriteIOUtils.write(measurementColumnNameMap.size(), stream);
-    for (Map.Entry<String, String> entry : measurementColumnNameMap.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), stream);
-      ReadWriteIOUtils.write(entry.getValue(), stream);
-    }
-  }
-
-  protected static AggregationTreeDeviceViewScanNode deserialize(
-      ByteBuffer byteBuffer, AggregationTreeDeviceViewScanNode node) {
-    AggregationTableScanNode.deserializeMemberVariables(byteBuffer, node);
-
-    node.treeDBName = ReadWriteIOUtils.readString(byteBuffer);
-    int size = ReadWriteIOUtils.readInt(byteBuffer);
-    Map<String, String> measurementColumnNameMap = new HashMap<>(size);
-    for (int i = 0; i < size; i++) {
-      measurementColumnNameMap.put(
-          ReadWriteIOUtils.readString(byteBuffer), ReadWriteIOUtils.readString(byteBuffer));
-    }
-    node.measurementColumnNameMap = measurementColumnNameMap;
-
-    node.setPlanNodeId(PlanNodeId.deserialize(byteBuffer));
-    return node;
+  public String toString() {
+    return "NonAlignedAggregationTreeDeviceViewScanNode-" + this.getPlanNodeId();
   }
 }

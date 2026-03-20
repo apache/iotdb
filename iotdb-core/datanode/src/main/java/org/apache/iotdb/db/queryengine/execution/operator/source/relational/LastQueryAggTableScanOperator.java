@@ -156,7 +156,7 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   }
 
   /** Main process logic, calc the last aggregation results of current device. */
-  private void processCurrentDevice() {
+  private void processCurrentDevice() throws Exception {
     if (currentHitCacheIndex < hitCachesIndexes.size()
         && outputDeviceIndex == hitCachesIndexes.get(currentHitCacheIndex)) {
       currentDeviceEntry = cachedDeviceEntries.get(currentHitCacheIndex);

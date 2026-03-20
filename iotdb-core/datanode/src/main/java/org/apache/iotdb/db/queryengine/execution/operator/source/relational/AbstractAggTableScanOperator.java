@@ -34,6 +34,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.parameter.SeriesScanOpt
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.AlignedDeviceEntry;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.ColumnSchema;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.DeviceEntry;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.Symbol;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.read.IQueryDataSource;
 import org.apache.iotdb.db.storageengine.dataregion.read.QueryDataSource;
@@ -71,7 +72,7 @@ import static org.apache.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTim
 public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOperator {
 
   private boolean finished = false;
-  private TsBlock inputTsBlock;
+  protected TsBlock inputTsBlock;
 
   protected List<TableAggregator> tableAggregators;
   protected final List<ColumnSchema> groupingKeySchemas;
@@ -104,11 +105,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   // e.g. for aggregation `last(s1), count(s2), count(s1)`, the inputChannels should be [0, 1, 0]
   protected List<Integer> aggregatorInputChannels;
 
-  private QueryDataSource queryDataSource;
+  protected QueryDataSource queryDataSource;
 
   protected ITableTimeRangeIterator timeIterator;
 
-  private boolean allAggregatorsHasFinalResult = false;
+  protected boolean allAggregatorsHasFinalResult = false;
 
   protected AbstractAggTableScanOperator(AbstractAggTableScanOperatorParameter parameter) {
 
@@ -193,7 +194,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
   }
 
   /** Return true if we have the result of this timeRange. */
-  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() {
+  protected Optional<Boolean> calculateAggregationResultForCurrentTimeRange() throws Exception {
     try {
       if (calcFromCachedData()) {
         updateResultTsBlock();
@@ -706,7 +707,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     return true;
   }
 
-  private void checkIfAllAggregatorHasFinalResult() {
+  protected void checkIfAllAggregatorHasFinalResult() throws Exception {
     if (allAggregatorsHasFinalResult
         && (timeIterator.getType() == ITableTimeRangeIterator.TimeIteratorType.SINGLE_TIME_ITERATOR
             || tableAggregators.isEmpty())) {
@@ -729,7 +730,7 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     }
   }
 
-  private void nextDevice() {
+  protected void nextDevice() throws Exception {
     currentDeviceIndex++;
     this.operatorContext.recordSpecifiedInfo(
         CURRENT_DEVICE_INDEX_STRING, Integer.toString(currentDeviceIndex));
@@ -812,6 +813,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
     protected List<DeviceEntry> deviceEntries;
     protected int deviceCount;
 
+    private List<Symbol> outputSymbols;
+
     public AbstractAggTableScanOperatorParameter(
         PlanNodeId sourceId,
         OperatorContext context,
@@ -830,7 +833,8 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
         boolean ascending,
         boolean canUseStatistics,
         List<Integer> aggregatorInputChannels,
-        String timeColumnName) {
+        String timeColumnName,
+        List<Symbol> outputSymbols) {
       this.sourceId = sourceId;
       this.context = context;
       this.aggColumnSchemas = aggColumnSchemas;
@@ -849,6 +853,11 @@ public abstract class AbstractAggTableScanOperator extends AbstractDataSourceOpe
       this.canUseStatistics = canUseStatistics;
       this.aggregatorInputChannels = aggregatorInputChannels;
       this.timeColumnName = timeColumnName;
+      this.outputSymbols = outputSymbols;
+    }
+
+    public List<Symbol> getOutputSymbols() {
+      return outputSymbols;
     }
 
     public OperatorContext getOperatorContext() {

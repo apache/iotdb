@@ -124,6 +124,11 @@ public class DeviceIteratorScanOperatorTest {
       DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator generator =
           new DeviceIteratorScanOperator.DeviceChildOperatorTreeGenerator() {
 
+            @Override
+            public long ramBytesUsed() {
+              return 0L;
+            }
+
             private Operator currentDeviceRootOperator;
 
             @Override
@@ -132,7 +137,8 @@ public class DeviceIteratorScanOperatorTest {
             }
 
             @Override
-            public void generateCurrentDeviceOperatorTree(DeviceEntry deviceEntry) {
+            public void generateCurrentDeviceOperatorTree(
+                DeviceEntry deviceEntry, boolean needAdaptor) {
               AlignedFullPath alignedPath =
                   new AlignedFullPath(
                       deviceEntry.getDeviceID(),

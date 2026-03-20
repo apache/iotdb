@@ -126,7 +126,7 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalDe
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertRowsNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.write.RelationalInsertTabletNode;
-import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AggregationTreeDeviceViewScanNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.AssignUniqueId;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.EnforceSingleRowNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.ExceptNode;
@@ -136,6 +136,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.planner.node.InformationS
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.IntersectNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.LinearFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.MarkDistinctNode;
+import org.apache.iotdb.db.queryengine.plan.relational.planner.node.NonAlignedAggregationTreeDeviceViewScanNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PatternRecognitionNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.PreviousFillNode;
 import org.apache.iotdb.db.queryengine.plan.relational.planner.node.RowNumberNode;
@@ -325,6 +326,7 @@ public enum PlanNodeType {
   TABLE_EXPLAIN_ANALYZE_NODE((short) 1019),
   TABLE_ENFORCE_SINGLE_ROW_NODE((short) 1020),
   INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1021),
+  @Deprecated
   AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1022),
   TREE_ALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1023),
   TREE_NONALIGNED_DEVICE_VIEW_SCAN_NODE((short) 1024),
@@ -344,6 +346,8 @@ public enum PlanNodeType {
   TABLE_ROW_NUMBER_NODE((short) 1038),
   TABLE_VALUES_NODE((short) 1039),
   TABLE_DISK_USAGE_INFORMATION_SCHEMA_TABLE_SCAN_NODE((short) 1040),
+  ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1041),
+  NON_ALIGNED_AGGREGATION_TREE_DEVICE_VIEW_SCAN_NODE((short) 1042),
 
   RELATIONAL_INSERT_TABLET((short) 2000),
   RELATIONAL_INSERT_ROW((short) 2001),
@@ -731,7 +735,8 @@ public enum PlanNodeType {
       case 1021:
         return InformationSchemaTableScanNode.deserialize(buffer);
       case 1022:
-        return AggregationTreeDeviceViewScanNode.deserialize(buffer);
+        throw new UnsupportedOperationException(
+            "AggregationTreeDeviceViewScanNode should not be deserialized");
       case 1023:
         return TreeAlignedDeviceViewScanNode.deserialize(buffer);
       case 1024:
@@ -769,6 +774,10 @@ public enum PlanNodeType {
         return ValuesNode.deserialize(buffer);
       case 1040:
         return TableDiskUsageInformationSchemaTableScanNode.deserialize(buffer);
+      case 1041:
+        return AlignedAggregationTreeDeviceViewScanNode.deserialize(buffer);
+      case 1042:
+        return NonAlignedAggregationTreeDeviceViewScanNode.deserialize(buffer);
       case 2000:
         return RelationalInsertTabletNode.deserialize(buffer);
       case 2001:
