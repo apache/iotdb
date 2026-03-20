@@ -3148,7 +3148,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     try {
       Map<String, Long> earliestTimeslots = new ConcurrentHashMap<>();
-      processDataDirectoryForEarliestTimeslots(earliestTimeslots);
+      processDataRegionForEarliestTimeslots(earliestTimeslots);
 
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       resp.setDatabaseToEarliestTimeslot(earliestTimeslots);
@@ -3345,7 +3345,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
    * Scan the seq and unseq directory on every data region, then compute the earliest time slot id
    * of database
    */
-  private void processDataDirectoryForEarliestTimeslots(Map<String, Long> earliestTimeslots) {
+  private void processDataRegionForEarliestTimeslots(Map<String, Long> earliestTimeslots) {
     final Set<String> ignoreDatabase =
         new HashSet<String>() {
           {
@@ -3376,27 +3376,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   return;
                 }
 
-                tsFileManager.readLock();
-                List<TsFileResource> seqTsFileList = tsFileManager.getTsFileList(true);
-                List<TsFileResource> unseqTsFileList = tsFileManager.getTsFileList(false);
-                tsFileManager.readUnlock();
-
-                long earliestTimeSlotId = Long.MIN_VALUE;
-
-                earliestTimeSlotId = findEarliestTimeslotInFiles(seqTsFileList, earliestTimeSlotId);
-                earliestTimeSlotId =
-                    findEarliestTimeslotInFiles(unseqTsFileList, earliestTimeSlotId);
-
-                if (earliestTimeSlotId == Long.MIN_VALUE) {
-                  LOGGER.info("No time slot info is found in the seq and unseq directory");
-                  return;
-                }
-
-                long finalEarliestTimeSlotId = earliestTimeSlotId;
+                Set<Long> timePartitionIds = tsFileManager.getTimePartitions();
+                final long earliestTimeSlotId = Collections.min(timePartitionIds);
                 earliestTimeslots.compute(
                     databaseName,
-                    (k, v) ->
-                        v == null ? finalEarliestTimeSlotId : Math.min(finalEarliestTimeSlotId, v));
+                    (k, v) -> v == null ? earliestTimeSlotId : Math.min(earliestTimeSlotId, v));
               },
               findEarliestTimeSlotExecutor);
       futures.add(regionFuture);

@@ -742,16 +742,19 @@ failure_detector_phi_acceptable_pause_in_ms=10000
 # Datatype: double(percentage)
 disk_space_warning_threshold=0.05
 
+# Purpose: for data partition repair
 # The number of threads used for parallel scanning in the partition table recovery
 # effectiveMode: restart
 # Datatype: Integer
 partition_table_recover_worker_num=10
 
+# Purpose: for data partition repair
 # Limit the number of bytes read per second from a file, the unit is MB
 # effectiveMode: restart
 # Datatype: Integer
 partition_table_recover_max_read_megabytes_per_second=10
 
+# Purpose: for data partition repair
 # Set a timeout to wait for all datanodes complete startup, the unit is ms
 # effectiveMode: restart
 # Datatype: Integer

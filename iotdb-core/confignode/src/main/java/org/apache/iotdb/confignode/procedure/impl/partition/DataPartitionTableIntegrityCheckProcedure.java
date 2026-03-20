@@ -49,6 +49,7 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransport;
+import org.apache.tsfile.utils.PublicBAOS;
 import org.apache.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -739,15 +740,14 @@ public class DataPartitionTableIntegrityCheckProcedure
       for (Map.Entry<String, DataPartitionTable> entry : finalDataPartitionTables.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), stream);
 
-        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            DataOutputStream dos = new DataOutputStream(baos)) {
-
-          TTransport transport = new TIOStreamTransport(dos);
+        try (final PublicBAOS publicBAOS = new PublicBAOS();
+            final DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+          TTransport transport = new TIOStreamTransport(outputStream);
           TBinaryProtocol protocol = new TBinaryProtocol(transport);
 
-          entry.getValue().serialize(dos, protocol);
+          entry.getValue().serialize(outputStream, protocol);
 
-          byte[] data = baos.toByteArray();
+          byte[] data = publicBAOS.getBuf();
           stream.writeInt(data.length);
           stream.write(data);
         } catch (IOException | TException e) {
@@ -764,12 +764,12 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     stream.writeInt(skipDataNodes.size());
     for (TDataNodeConfiguration skipDataNode : skipDataNodes) {
-      try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        TTransport transport = new TIOStreamTransport(baos);
+      try (final PublicBAOS publicBAOS = new PublicBAOS()) {
+        TTransport transport = new TIOStreamTransport(publicBAOS);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         skipDataNode.write(protocol);
 
-        byte[] data = baos.toByteArray();
+        byte[] data = publicBAOS.getBuf();
         stream.writeInt(data.length);
         stream.write(data);
       } catch (TException e) {
@@ -780,12 +780,12 @@ public class DataPartitionTableIntegrityCheckProcedure
 
     stream.writeInt(failedDataNodes.size());
     for (TDataNodeConfiguration failedDataNode : failedDataNodes) {
-      try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-        TTransport transport = new TIOStreamTransport(baos);
+      try (final PublicBAOS publicBAOS = new PublicBAOS()) {
+        TTransport transport = new TIOStreamTransport(publicBAOS);
         TBinaryProtocol protocol = new TBinaryProtocol(transport);
         failedDataNode.write(protocol);
 
-        byte[] data = baos.toByteArray();
+        byte[] data = publicBAOS.getBuf();
         stream.writeInt(data.length);
         stream.write(data);
       } catch (TException e) {
