@@ -332,23 +332,6 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- Possibly these need to move into the compile or provided scope -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-impl</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- Possibly these need to move into the compile or provided scope -->
-        <dependency>
-            <groupId>io.jsonwebtoken</groupId>
-            <artifactId>jjwt-jackson</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.minidev</groupId>
-            <artifactId>json-smart</artifactId>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpcore</artifactId>
@@ -358,11 +341,6 @@
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-thirdparty-misc</artifactId>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>oauth2-oidc-sdk</artifactId>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -554,9 +532,6 @@
                         <ignoredDependency>org.apache.iotdb:isession</ignoredDependency>
                     </ignoredDependencies>
                     <usedDependencies>
-                        <!-- These are used at runtime in tests -->
-                        <usedDependency>io.jsonwebtoken:jjwt-impl</usedDependency>
-                        <usedDependency>io.jsonwebtoken:jjwt-jackson</usedDependency>
                         <!-- This dependency is required at runtime, when enabling the rest service -->
                         <usedDependency>org.glassfish.jersey.inject:jersey-hk2</usedDependency>
                     </usedDependencies>
