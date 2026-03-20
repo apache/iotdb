@@ -118,11 +118,11 @@ joblib = ">=1.4.2"
 urllib3 = "2.6.3"
 jaxtyping = ">=0.2.24"
 
-[tool.poetry.group.npu]
-optional = true
-
-[tool.poetry.group.npu.dependencies]
-torch_npu = { version = "^2.8.0, <2.9.0" }
+#[tool.poetry.group.npu]
+#optional = true
+#
+#[tool.poetry.group.npu.dependencies]
+#torch_npu = { version = "^2.8.0, <2.9.0" }
 
 [tool.poetry.scripts]
 ainode = "iotdb.ainode.core.script:main"
