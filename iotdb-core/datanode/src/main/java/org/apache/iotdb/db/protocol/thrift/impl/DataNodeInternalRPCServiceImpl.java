@@ -726,7 +726,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                       .getStatus();
               if (status.code == TSStatusCode.SUCCESS_STATUS.getStatusCode()
                   || status.code == TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
-                preDeletedNum.getAndAdd(Long.parseLong(status.getMessage()));
+                if (status.isSetResponseData()) {
+                  final ConstructSchemaBlackListResult result =
+                      ConstructSchemaBlackListResult.deserialize(
+                          ByteBuffer.wrap(status.getResponseData()));
+                  preDeletedNum.getAndAdd(result.getPreDeletedNum());
+                }
               }
               return status;
             });
@@ -790,10 +795,26 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     }
 
     try {
-      final ISchemaRegion schemaRegion =
-          schemaEngine.getSchemaRegion(new SchemaRegionId(consensusGroupId.getId()));
+      final RegionWriteExecutor executor = new RegionWriteExecutor();
+      final TSStatus status =
+          executor
+              .execute(
+                  new SchemaRegionId(consensusGroupId.getId()),
+                  new ConstructSchemaBlackListNode(new PlanNodeId(""), filteredPatternTree))
+              .getStatus();
+
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && status.code != TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode()) {
+        return status;
+      }
+
+      if (!status.isSetResponseData()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(),
+            "Missing TSStatus.responseData for ConstructSchemaBlackListResult");
+      }
       final ConstructSchemaBlackListResult result =
-          schemaRegion.constructSchemaBlackListWithAliasInfo(filteredPatternTree);
+          ConstructSchemaBlackListResult.deserialize(ByteBuffer.wrap(status.getResponseData()));
 
       updateAggregatedResults(
           result, preDeletedNum, isAllLogicalView, hasInvalidSeries, isAllInvalidSeries);
@@ -804,9 +825,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return isAllLogicalView.get()
           ? new TSStatus(TSStatusCode.ONLY_LOGICAL_VIEW.getStatusCode())
           : RpcUtils.SUCCESS_STATUS;
-    } catch (final MetadataException e) {
-      LOGGER.error("Failed to construct schema black list with alias info", e);
-      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (final Exception e) {
       LOGGER.error("Failed to construct schema black list with alias info", e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), e.getMessage());

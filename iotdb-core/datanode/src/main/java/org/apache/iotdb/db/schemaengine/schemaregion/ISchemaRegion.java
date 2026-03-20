@@ -63,6 +63,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IPreDeactivateTem
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.IRollbackPreDeactivateTemplatePlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IAlterLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogicalViewPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult;
 
 import org.apache.tsfile.enums.TSDataType;
 import org.apache.tsfile.file.metadata.IDeviceID;
@@ -207,9 +208,8 @@ public interface ISchemaRegion {
    *     are logical views, and disabled series information list. Disabled series don't need
    *     pre-delete because they are already disabled.
    */
-  org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult
-      constructSchemaBlackListWithAliasInfo(final PathPatternTree patternTree)
-          throws MetadataException;
+  ConstructSchemaBlackListResult constructSchemaBlackListWithAliasInfo(
+      final PathPatternTree patternTree) throws MetadataException;
 
   /**
    * Rollback schema black list via setting matched timeseries to not pre deleted.

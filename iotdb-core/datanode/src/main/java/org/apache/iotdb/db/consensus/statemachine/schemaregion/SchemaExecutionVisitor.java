@@ -83,6 +83,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.ICreateTimeSeries
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.SchemaRegionWritePlanFactory;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateAlignedTimeSeriesPlanImpl;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.impl.CreateTimeSeriesPlanImpl;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult;
 import org.apache.iotdb.db.schemaengine.template.ClusterTemplateManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -97,6 +98,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nonnull;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -555,14 +557,13 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
   public TSStatus visitConstructSchemaBlackList(
       final ConstructSchemaBlackListNode node, final ISchemaRegion schemaRegion) {
     try {
-      final org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult
-          result = schemaRegion.constructSchemaBlackListWithAliasInfo(node.getPatternTree());
+      final ConstructSchemaBlackListResult result =
+          schemaRegion.constructSchemaBlackListWithAliasInfo(node.getPatternTree());
+      final ByteBuffer responseData = result.serialize();
       if (result.isAllLogicalView()) {
-        return RpcUtils.getStatus(
-            TSStatusCode.ONLY_LOGICAL_VIEW, String.valueOf(result.getPreDeletedNum()));
+        return RpcUtils.getStatus(TSStatusCode.ONLY_LOGICAL_VIEW, null, responseData);
       }
-      return RpcUtils.getStatus(
-          TSStatusCode.SUCCESS_STATUS, String.valueOf(result.getPreDeletedNum()));
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, null, responseData);
     } catch (final MetadataException e) {
       logMetaDataException(e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());

@@ -134,6 +134,7 @@ import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.ICreateLogic
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IPreDeleteLogicalViewPlan;
 import org.apache.iotdb.db.schemaengine.schemaregion.write.req.view.IRollbackPreDeleteLogicalViewPlan;
+import org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult;
 import org.apache.iotdb.db.schemaengine.table.DataNodeTableCache;
 import org.apache.iotdb.db.storageengine.rescon.memory.SystemInfo;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -938,18 +939,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult
-      constructSchemaBlackListWithAliasInfo(final PathPatternTree patternTree)
-          throws MetadataException {
+  public ConstructSchemaBlackListResult constructSchemaBlackListWithAliasInfo(
+      final PathPatternTree patternTree) throws MetadataException {
     long preDeletedNum = 0;
     final AtomicBoolean isAllLogicalView = new AtomicBoolean(true);
     final AtomicBoolean isAllInvalidSeries = new AtomicBoolean(true);
     final AtomicBoolean hasInvalidSeries = new AtomicBoolean(false);
     final AtomicBoolean hasNonInvalidSeries = new AtomicBoolean(false);
-    final List<
-            org.apache.iotdb.db.schemaengine.schemaregion.write.resp.ConstructSchemaBlackListResult
-                .ReferencedInvalidPathInfo>
-        referencedInvalidPaths = new ArrayList<>();
+    final List<ConstructSchemaBlackListResult.ReferencedInvalidPathInfo> referencedInvalidPaths =
+        new ArrayList<>();
     final List<PartialPath> preDeletedPaths = new ArrayList<>();
 
     for (final PartialPath pathPattern : patternTree.getAllPathPatterns()) {
