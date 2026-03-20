@@ -29,6 +29,11 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.metrics.utils.SystemType;
 
+import com.sun.jna.Library;
+import com.sun.jna.Native;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinNT;
+import com.sun.jna.ptr.IntByReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +57,9 @@ public class SystemRelatedFileMetrics implements IMetricSet {
 
   @Override
   public void bindTo(AbstractMetricService metricService) {
-    if ((CONFIG.getSystemType() == SystemType.LINUX || CONFIG.getSystemType() == SystemType.MAC)
+    if ((CONFIG.getSystemType() == SystemType.LINUX
+            || CONFIG.getSystemType() == SystemType.MAC
+            || CONFIG.getSystemType() == SystemType.WINDOWS)
         && !CONFIG.getPid().isEmpty()) {
       this.getOpenFileNumberCommand =
           new String[] {"/bin/sh", "-c", String.format("lsof -p %s | wc -l", CONFIG.getPid())};
@@ -88,6 +95,11 @@ public class SystemRelatedFileMetrics implements IMetricSet {
           }
         }
         fdCount = Long.parseLong(result.toString().trim());
+      } else if (CONFIG.getSystemType() == SystemType.WINDOWS) {
+        WinNT.HANDLE hProcess = Kernel32.INSTANCE.GetCurrentProcess();
+        IntByReference handleCount = new IntByReference();
+        boolean success = Kernel32Ext.INSTANCE.GetProcessHandleCount(hProcess, handleCount);
+        return success ? handleCount.getValue() : 0L;
       }
     } catch (IOException e) {
       LOGGER.warn("Failed to get open file number, because ", e);
@@ -97,7 +109,9 @@ public class SystemRelatedFileMetrics implements IMetricSet {
 
   @Override
   public void unbindFrom(AbstractMetricService metricService) {
-    if ((CONFIG.getSystemType() == SystemType.LINUX || CONFIG.getSystemType() == SystemType.MAC)
+    if ((CONFIG.getSystemType() == SystemType.LINUX
+            || CONFIG.getSystemType() == SystemType.MAC
+            || CONFIG.getSystemType() == SystemType.WINDOWS)
         && !CONFIG.getPid().isEmpty()) {
       metricService.remove(
           MetricType.AUTO_GAUGE,
@@ -105,5 +119,11 @@ public class SystemRelatedFileMetrics implements IMetricSet {
           Tag.NAME.toString(),
           "open_file_handlers");
     }
+  }
+
+  public interface Kernel32Ext extends Library {
+    Kernel32Ext INSTANCE = Native.load("kernel32", Kernel32Ext.class);
+
+    boolean GetProcessHandleCount(WinNT.HANDLE hProcess, IntByReference pdwHandleCount);
   }
 }
