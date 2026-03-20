@@ -219,6 +219,11 @@ public class AINodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  public void stopForcibly() {
+    this.stop();
+  }
+
+  @Override
   public int getMetricPort() {
     // no metric currently
     return -1;
