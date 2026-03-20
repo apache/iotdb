@@ -227,7 +227,9 @@ public class OperatorMemoryTest {
 
   @Test
   public void exchangeOperatorTest() {
-    ExchangeOperator exchangeOperator = new ExchangeOperator(null, null, null);
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getSpecifiedInfo()).thenReturn(new java.util.HashMap<>());
+    ExchangeOperator exchangeOperator = new ExchangeOperator(operatorContext, null, null);
 
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxReturnSize());
@@ -241,8 +243,10 @@ public class OperatorMemoryTest {
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
     Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
+    OperatorContext operatorContext = Mockito.mock(OperatorContext.class);
+    Mockito.when(operatorContext.getSpecifiedInfo()).thenReturn(new java.util.HashMap<>());
     ExchangeOperator exchangeOperator =
-        new ExchangeOperator(null, null, null, child.calculateMaxReturnSize());
+        new ExchangeOperator(operatorContext, null, null, child.calculateMaxReturnSize());
 
     assertEquals(1024L, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(1024L, exchangeOperator.calculateMaxReturnSize());

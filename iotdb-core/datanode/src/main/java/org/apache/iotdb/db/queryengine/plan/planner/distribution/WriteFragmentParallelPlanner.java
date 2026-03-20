@@ -82,6 +82,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               // Never timeout for write
               Long.MAX_VALUE,
               queryContext.getSession(),
+              false,
               false);
       if (split.getRegionReplicaSet() != null) {
         final TRegionReplicaSet validSet =

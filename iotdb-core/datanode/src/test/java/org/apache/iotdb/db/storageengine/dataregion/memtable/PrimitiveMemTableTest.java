@@ -142,7 +142,13 @@ public class PrimitiveMemTableTest {
     tvListQueryMap.put(series.getWorkingTVList(), series.getWorkingTVList().rowCount());
     ReadOnlyMemChunk readableChunk =
         new ReadOnlyMemChunk(
-            new QueryContext(false), "s1", dataType, TSEncoding.PLAIN, tvListQueryMap, null, null);
+            new QueryContext(false, false),
+            "s1",
+            dataType,
+            TSEncoding.PLAIN,
+            tvListQueryMap,
+            null,
+            null);
     IPointReader it = readableChunk.getPointReader();
     int i = 0;
     while (it.hasNextTimeValuePair()) {
@@ -307,7 +313,8 @@ public class PrimitiveMemTableTest {
     }
 
     ReadOnlyMemChunk memChunk =
-        memTable.query(new QueryContext(false), nonAlignedFullPath, Long.MIN_VALUE, null, null);
+        memTable.query(
+            new QueryContext(false, false), nonAlignedFullPath, Long.MIN_VALUE, null, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -403,7 +410,11 @@ public class PrimitiveMemTableTest {
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(
-            new QueryContext(false), nonAlignedFullPath, Long.MIN_VALUE, modsToMemtable, null);
+            new QueryContext(false, false),
+            nonAlignedFullPath,
+            Long.MIN_VALUE,
+            modsToMemtable,
+            null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -449,7 +460,7 @@ public class PrimitiveMemTableTest {
     modsToMemtable.add(new Pair<>(deletion, memTable));
     ReadOnlyMemChunk memChunk =
         memTable.query(
-            new QueryContext(false), alignedFullPath, Long.MIN_VALUE, modsToMemtable, null);
+            new QueryContext(false, false), alignedFullPath, Long.MIN_VALUE, modsToMemtable, null);
     IPointReader iterator = memChunk.getPointReader();
     int cnt = 0;
     while (iterator.hasNextTimeValuePair()) {
@@ -489,7 +500,7 @@ public class PrimitiveMemTableTest {
                 Collections.emptyMap()));
     IPointReader tvPair =
         memTable
-            .query(new QueryContext(false), fullPath, Long.MIN_VALUE, null, null)
+            .query(new QueryContext(false, false), fullPath, Long.MIN_VALUE, null, null)
             .getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
@@ -539,7 +550,7 @@ public class PrimitiveMemTableTest {
                     Collections.emptyMap())));
     IPointReader tvPair =
         memTable
-            .query(new QueryContext(false), tmpAlignedFullPath, Long.MIN_VALUE, null, null)
+            .query(new QueryContext(false, false), tmpAlignedFullPath, Long.MIN_VALUE, null, null)
             .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
@@ -568,7 +579,7 @@ public class PrimitiveMemTableTest {
 
     tvPair =
         memTable
-            .query(new QueryContext(false), tmpAlignedFullPath, Long.MIN_VALUE, null, null)
+            .query(new QueryContext(false, false), tmpAlignedFullPath, Long.MIN_VALUE, null, null)
             .getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();

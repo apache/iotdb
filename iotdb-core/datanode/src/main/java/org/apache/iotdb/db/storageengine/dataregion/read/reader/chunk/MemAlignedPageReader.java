@@ -44,6 +44,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import static org.apache.tsfile.read.reader.series.PaginationController.UNLIMITED_PAGINATION_CONTROLLER;
@@ -90,7 +91,7 @@ public class MemAlignedPageReader implements IPageReader {
 
     BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
 
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(null);
 
     for (int rowIndex = 0; rowIndex < tsBlock.getPositionCount(); rowIndex++) {
       if (satisfyInfo[rowIndex]) {
@@ -109,11 +110,16 @@ public class MemAlignedPageReader implements IPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() {
+    return getAllSatisfiedData(null);
+  }
+
+  @Override
+  public TsBlock getAllSatisfiedData(LongConsumer filterRowsRecorder) {
     getTsBlock();
 
     builder.reset();
 
-    boolean[] satisfyInfo = buildSatisfyInfoArray();
+    boolean[] satisfyInfo = buildSatisfyInfoArray(filterRowsRecorder);
 
     // build time column
     int readEndIndex = buildTimeColumn(satisfyInfo);
@@ -128,13 +134,19 @@ public class MemAlignedPageReader implements IPageReader {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MemAlignedPageReader.class);
 
-  private boolean[] buildSatisfyInfoArray() {
+  private boolean[] buildSatisfyInfoArray(LongConsumer filterRowsRecorder) {
     if (recordFilter == null || recordFilter.allSatisfy(this)) {
       boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
       Arrays.fill(satisfyInfo, true);
       return satisfyInfo;
     }
-    return recordFilter.satisfyTsBlock(tsBlock);
+    if (filterRowsRecorder == null) {
+      return recordFilter.satisfyTsBlock(tsBlock);
+    } else {
+      boolean[] selection = new boolean[tsBlock.getPositionCount()];
+      Arrays.fill(selection, true);
+      return recordFilter.satisfyTsBlock(selection, tsBlock, filterRowsRecorder);
+    }
   }
 
   private int buildTimeColumn(boolean[] satisfyInfo) {

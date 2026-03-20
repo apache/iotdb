@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.block.column.ColumnBuilder;
@@ -38,6 +39,7 @@ import org.apache.tsfile.write.UnSupportedDataTypeException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongConsumer;
 
 public abstract class MultiAlignedTVListIterator extends MemPointIterator {
   protected List<TSDataType> tsDataTypeList;
@@ -69,8 +71,9 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
-    super(scanOrder);
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
+    super(scanOrder, queryContext);
     this.tsDataTypeList = tsDataTypeList;
     this.columnIndexList = columnIndexList;
     this.alignedTvListIterators = new ArrayList<>(alignedTvLists.size());
@@ -89,7 +92,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
                 floatPrecision,
                 encodingList,
                 ignoreAllNullRows,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         alignedTvListIterators.add(iterator);
       }
     } else {
@@ -107,7 +111,8 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
                 floatPrecision,
                 encodingList,
                 ignoreAllNullRows,
-                maxNumberOfPointsInPage);
+                maxNumberOfPointsInPage,
+                queryContext);
         alignedTvListIterators.add(iterator);
       }
     }
@@ -269,13 +274,18 @@ public abstract class MultiAlignedTVListIterator extends MemPointIterator {
     }
     TsBlock tsBlock = builder.build();
     if (pushDownFilter != null) {
+      LongConsumer filterRowsRecorder =
+          this.getQueryContext() != null && this.getQueryContext().isVerbose()
+              ? this.getQueryContext().getQueryStatistics()::addFilteredRowsOfRowLevel
+              : null;
       tsBlock =
           TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
               tsBlock,
               new TsBlockBuilder(
                   Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()), tsDataTypeList),
               pushDownFilter,
-              paginationController);
+              paginationController,
+              filterRowsRecorder);
     } else {
       tsBlock = paginationController.applyTsBlock(tsBlock);
     }

@@ -103,7 +103,11 @@ public class DiskChunkLoader implements IChunkLoader {
       }
 
       long t2 = System.nanoTime();
-      IChunkReader chunkReader = new ChunkReader(chunk, globalTimeFilter);
+      IChunkReader chunkReader =
+          new ChunkReader(
+              chunk,
+              globalTimeFilter,
+              this.context.getQueryStatistics()::addFilteredRowsOfPageLevel);
       SeriesScanCostMetricSet.getInstance()
           .recordSeriesScanCost(INIT_CHUNK_READER_NONALIGNED_DISK, System.nanoTime() - t2);
 

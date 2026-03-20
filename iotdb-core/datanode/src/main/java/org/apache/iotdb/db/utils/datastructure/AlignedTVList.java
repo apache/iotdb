@@ -21,6 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.schema.table.column.TsTableColumnCategory;
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 import org.apache.iotdb.db.storageengine.dataregion.wal.buffer.IWALByteBufferView;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.WALWriteUtils;
@@ -1733,7 +1734,8 @@ public abstract class AlignedTVList extends TVList {
       Integer floatPrecision,
       List<TSEncoding> encodingList,
       boolean ignoreAllNullRows,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     return new AlignedTVListIterator(
         scanOrder,
         rowCount,
@@ -1745,7 +1747,8 @@ public abstract class AlignedTVList extends TVList {
         floatPrecision,
         encodingList,
         ignoreAllNullRows,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
   }
 
   /* AlignedTVList Iterator */
@@ -1777,8 +1780,17 @@ public abstract class AlignedTVList extends TVList {
         Integer floatPrecision,
         List<TSEncoding> encodingList,
         boolean ignoreAllNullRows,
-        int maxNumberOfPointsInPage) {
-      super(scanOrder, rowCount, globalTimeFilter, null, null, null, maxNumberOfPointsInPage);
+        int maxNumberOfPointsInPage,
+        QueryContext queryContext) {
+      super(
+          scanOrder,
+          rowCount,
+          globalTimeFilter,
+          null,
+          null,
+          null,
+          maxNumberOfPointsInPage,
+          queryContext);
       this.dataTypeList = dataTypeList;
       this.columnIndexList =
           (columnIndexList == null)
@@ -1811,6 +1823,9 @@ public abstract class AlignedTVList extends TVList {
     protected void prepareNext() {
       // find the first row that is neither deleted nor empty (all NULL values)
       findValidRow = false;
+      long filteredRows = 0;
+      boolean isRecord = this.getQueryContext() != null && this.getQueryContext().isVerbose();
+
       while (index < rows && !findValidRow) {
         // all columns values are deleted
         int convertedScanOrderValueIndex = getValueIndex(getScanOrderIndex(index));
@@ -1821,15 +1836,22 @@ public abstract class AlignedTVList extends TVList {
           continue;
         }
         long time = getTime(getScanOrderIndex(index));
-        if (isPointDeleted(time, timeColumnDeletion, timeDeleteCursor, scanOrder)
-            || !isTimeSatisfied(time)) {
+        if (isPointDeleted(time, timeColumnDeletion, timeDeleteCursor, scanOrder)) {
           index++;
+          continue;
+        }
+        if (!isTimeSatisfied(time)) {
+          index++;
+          filteredRows++;
           continue;
         }
 
         // does not find any valid row
         if (index >= rows) {
           probeNext = true;
+          if (isRecord) {
+            this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
+          }
           return;
         }
         // When traversing in ASC order, we only need to overwrite the previous non-null value
@@ -1898,6 +1920,9 @@ public abstract class AlignedTVList extends TVList {
         }
       }
       probeNext = true;
+      if (isRecord) {
+        this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(filteredRows);
+      }
     }
 
     // When used as a point reader, we should not apply a pagination controller or push down filter
@@ -2001,6 +2026,34 @@ public abstract class AlignedTVList extends TVList {
       return index < rows && !isCurrentTimeExceedTimeRange(getTime(getScanOrderIndex(index)));
     }
 
+    private boolean isRowInvalid(
+        int rowIndex, long time, int[] deleteCursor, long[] filteredRowsByTimeFilter) {
+      if ((allValueColDeletedMap != null
+              && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(rowIndex))))
+          || isTimeDeleted(getScanOrderIndex(rowIndex))
+          || isPointDeleted(time, timeColumnDeletion, deleteCursor, scanOrder)) {
+        return true;
+      }
+
+      // only count the filtered rows when data is filtered only by Time filter
+      if (!isTimeSatisfied(time)) {
+        if (filteredRowsByTimeFilter != null) {
+          filteredRowsByTimeFilter[0]++;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    private LazyBitMap markRowAsInvalid(
+        LazyBitMap timeInvalidInfo, int rowIndex, int maxRowCountOfCurrentBatch) {
+      if (timeInvalidInfo == null) {
+        timeInvalidInfo = new LazyBitMap(rowIndex, maxRowCountOfCurrentBatch, rows - 1);
+      }
+      timeInvalidInfo.mark(rowIndex);
+      return timeInvalidInfo;
+    }
+
     @Override
     public TsBlock nextBatch() {
       int maxRowCountOfCurrentBatch = Math.min(rows - index, maxNumberOfPointsInPage);
@@ -2016,6 +2069,10 @@ public abstract class AlignedTVList extends TVList {
 
       int[] deleteCursor = {0};
       int startIndex = index;
+
+      boolean isVerbose = this.getQueryContext().isVerbose();
+      long[] filteredRowsByTimeFilter = this.getQueryContext().isVerbose() ? new long[] {0} : null;
+
       // time column
       for (; index < rows; index++) {
         long time = getTime(getScanOrderIndex(index));
@@ -2023,33 +2080,19 @@ public abstract class AlignedTVList extends TVList {
           break;
         }
         // skip invalid row
-        if ((allValueColDeletedMap != null
-                && allValueColDeletedMap.isMarked(getValueIndex(getScanOrderIndex(index))))
-            || isTimeDeleted(getScanOrderIndex(index))
-            || !isTimeSatisfied(time)
-            || isPointDeleted(time, timeColumnDeletion, deleteCursor, scanOrder)) {
-          timeInvalidInfo =
-              timeInvalidInfo == null
-                  ? new LazyBitMap(index, maxRowCountOfCurrentBatch, rows - 1)
-                  : timeInvalidInfo;
-          timeInvalidInfo.mark(index);
+        if (isRowInvalid(index, time, deleteCursor, filteredRowsByTimeFilter)) {
+          timeInvalidInfo = markRowAsInvalid(timeInvalidInfo, index, maxRowCountOfCurrentBatch);
           continue;
         }
         int nextRowIndex = index + 1;
-        long timeOfNextRowIndex;
         while (nextRowIndex < rows
-            && ((allValueColDeletedMap != null
-                    && allValueColDeletedMap.isMarked(
-                        getValueIndex(getScanOrderIndex(nextRowIndex))))
-                || isTimeDeleted(getScanOrderIndex(nextRowIndex))
-                || !isTimeSatisfied((timeOfNextRowIndex = getTime(getScanOrderIndex(nextRowIndex))))
-                || isPointDeleted(
-                    timeOfNextRowIndex, timeColumnDeletion, deleteCursor, scanOrder))) {
+            && (isRowInvalid(
+                nextRowIndex,
+                getTime(getScanOrderIndex(nextRowIndex)),
+                deleteCursor,
+                filteredRowsByTimeFilter))) {
           timeInvalidInfo =
-              timeInvalidInfo == null
-                  ? new LazyBitMap(nextRowIndex, maxRowCountOfCurrentBatch, rows - 1)
-                  : timeInvalidInfo;
-          timeInvalidInfo.mark(nextRowIndex);
+              markRowAsInvalid(timeInvalidInfo, nextRowIndex, maxRowCountOfCurrentBatch);
           nextRowIndex++;
         }
         if ((nextRowIndex == rows || time != getTime(getScanOrderIndex(nextRowIndex)))) {
@@ -2065,6 +2108,12 @@ public abstract class AlignedTVList extends TVList {
           timeDuplicatedInfo.mark(index);
         }
         index = nextRowIndex - 1;
+      }
+      // record the filtered rows by time filter
+      if (isVerbose && filteredRowsByTimeFilter != null && filteredRowsByTimeFilter[0] > 0) {
+        this.getQueryContext()
+            .getQueryStatistics()
+            .addFilteredRowsOfRowLevel(filteredRowsByTimeFilter[0]);
       }
 
       boolean[] hasAnyNonNullValue = new boolean[validRowCount];
@@ -2163,15 +2212,25 @@ public abstract class AlignedTVList extends TVList {
       if (ignoreAllNullRows && needRebuildTsBlock(hasAnyNonNullValue)) {
         // if exist all null rows, at most have validRowCount - 1 valid rows
         // When rebuilding TsBlock, pushDownFilter and paginationController are also processed.
-        tsBlock = reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock);
-      } else if (pushDownFilter != null) {
         tsBlock =
-            TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
-                tsBlock,
-                new TsBlockBuilder(
-                    Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()), dataTypeList),
-                pushDownFilter,
-                paginationController);
+            reBuildTsBlock(hasAnyNonNullValue, validRowCount, dataTypeList, tsBlock, isVerbose);
+      } else if (pushDownFilter != null) {
+        TsBlockBuilder tsBlockBuilder =
+            new TsBlockBuilder(
+                Math.min(maxNumberOfPointsInPage, tsBlock.getPositionCount()), dataTypeList);
+
+        // record the filtered rows if verbose is specified
+        tsBlock =
+            isVerbose
+                ? TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+                    tsBlock,
+                    tsBlockBuilder,
+                    pushDownFilter,
+                    paginationController,
+                    s -> this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(s))
+                : TsBlockUtil.applyFilterAndLimitOffsetToTsBlock(
+                    tsBlock, tsBlockBuilder, pushDownFilter, paginationController);
+
       } else {
         tsBlock = paginationController.applyTsBlock(tsBlock);
       }
@@ -2233,10 +2292,18 @@ public abstract class AlignedTVList extends TVList {
         boolean[] hasAnyNonNullValue,
         int previousValidRowCount,
         List<TSDataType> tsDataTypeList,
-        TsBlock previousTsBlock) {
+        TsBlock previousTsBlock,
+        boolean isVerbose) {
       boolean[] selection = hasAnyNonNullValue;
       if (pushDownFilter != null) {
-        selection = pushDownFilter.satisfyTsBlock(hasAnyNonNullValue, previousTsBlock);
+        // record the filtered rows if verbose is specified
+        selection =
+            isVerbose
+                ? pushDownFilter.satisfyTsBlock(
+                    hasAnyNonNullValue,
+                    previousTsBlock,
+                    s -> this.getQueryContext().getQueryStatistics().addFilteredRowsOfRowLevel(s))
+                : pushDownFilter.satisfyTsBlock(hasAnyNonNullValue, previousTsBlock);
       }
       TsBlockBuilder builder = new TsBlockBuilder(previousValidRowCount - 1, tsDataTypeList);
       TimeColumnBuilder timeColumnBuilder = builder.getTimeColumnBuilder();

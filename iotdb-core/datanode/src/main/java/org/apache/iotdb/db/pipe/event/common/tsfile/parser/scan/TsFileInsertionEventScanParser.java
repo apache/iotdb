@@ -709,7 +709,7 @@ public class TsFileInsertionEventScanParser extends TsFileInsertionEventParser {
       chunkReader =
           currentIsMultiPage
               ? new AlignedChunkReader(timeChunk, valueChunkList, filter)
-              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList);
+              : new AlignedSinglePageWholeChunkReader(timeChunk, valueChunkList, null);
       currentIsAligned = true;
       lastMarker = marker;
       return true;

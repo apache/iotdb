@@ -64,6 +64,7 @@ public class QueryContext {
   protected long queryId;
 
   private final boolean debug;
+  private boolean verbose;
 
   private long startTime;
   private long timeout;
@@ -79,8 +80,9 @@ public class QueryContext {
 
   protected Set<String> tables;
 
-  public QueryContext(boolean debug) {
+  public QueryContext(boolean debug, boolean verbose) {
     this.debug = debug;
+    this.verbose = verbose;
   }
 
   public QueryContext(long queryId, boolean debug) {
@@ -219,6 +221,10 @@ public class QueryContext {
     return debug;
   }
 
+  public boolean isVerbose() {
+    return verbose;
+  }
+
   public long getStartTime() {
     return startTime;
   }
@@ -263,5 +269,10 @@ public class QueryContext {
 
   public void addTVListToSet(Map<TVList, Integer> tvListMap) {
     tvListSet.addAll(tvListMap.keySet());
+  }
+
+  public void addRowLevelFilteredCount(long count) {
+    throw new UnsupportedOperationException(
+        "the QueryContext does not support row level filtering");
   }
 }

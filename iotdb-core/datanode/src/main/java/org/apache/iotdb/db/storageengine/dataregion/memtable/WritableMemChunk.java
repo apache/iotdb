@@ -487,7 +487,7 @@ public class WritableMemChunk extends AbstractWritableMemChunk {
     tvLists.add(workingListForFlush);
     MemPointIterator timeValuePairIterator =
         MemPointIteratorFactory.create(
-            schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage);
+            schema.getType(), tvLists, encodeInfo.maxNumberOfPointsInPage, null);
 
     while (timeValuePairIterator.hasNextBatch()) {
       timeValuePairIterator.encodeBatch(chunkWriterImpl, encodeInfo, times);

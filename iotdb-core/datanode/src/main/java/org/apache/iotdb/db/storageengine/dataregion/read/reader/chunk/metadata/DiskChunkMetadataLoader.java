@@ -79,8 +79,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
         final long t2 = System.nanoTime();
         chunkMetadataList.removeIf(
             chunkMetaData ->
-                (globalTimeFilter != null && globalTimeFilter.canSkip(chunkMetaData))
-                    || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
+                ChunkMetadataLoaderUtils.shouldSkipAndRecord(
+                    chunkMetaData, globalTimeFilter, context));
 
         if (context.isDebug()) {
           DEBUG_LOGGER.info("After removed by filter Chunk meta data list is: ");

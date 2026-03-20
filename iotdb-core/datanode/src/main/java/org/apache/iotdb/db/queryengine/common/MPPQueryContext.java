@@ -104,7 +104,7 @@ public class MPPQueryContext implements IAuditEntity {
   // - EXPLAIN: Show the logical and physical query plan without execution
   // - EXPLAIN_ANALYZE: Execute the query and collect detailed execution statistics
   private ExplainType explainType = ExplainType.NONE;
-  private boolean isVerbose = false;
+  private boolean verbose = false;
 
   private QueryPlanStatistics queryPlanStatistics = null;
 
@@ -353,11 +353,11 @@ public class MPPQueryContext implements IAuditEntity {
   }
 
   public void setVerbose(boolean verbose) {
-    isVerbose = verbose;
+    this.verbose = verbose;
   }
 
   public boolean isVerbose() {
-    return isVerbose;
+    return verbose;
   }
 
   public long getAnalyzeCost() {

@@ -800,7 +800,8 @@ public class AlignedWritableMemChunk extends AbstractWritableMemChunk {
             columnIndexList,
             alignedTvLists,
             ignoreAllNullRows,
-            encodeInfo.maxNumberOfPointsInPage);
+            encodeInfo.maxNumberOfPointsInPage,
+            null);
 
     while (timeValuePairIterator.hasNextBatch()) {
       timeValuePairIterator.encodeBatch(alignedChunkWriter, encodeInfo, times);

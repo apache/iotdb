@@ -517,6 +517,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         floatPrecision,
         encodingList,
         context.isIgnoreAllNullRows(),
-        MAX_NUMBER_OF_POINTS_IN_PAGE);
+        MAX_NUMBER_OF_POINTS_IN_PAGE,
+        context);
   }
 }

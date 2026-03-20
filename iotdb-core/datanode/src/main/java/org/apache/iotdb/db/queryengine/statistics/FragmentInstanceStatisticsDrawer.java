@@ -151,9 +151,8 @@ public class FragmentInstanceStatisticsDrawer {
               "ready queued time: %.3f ms, blocked queued time: %.3f ms",
               statistics.getReadyQueuedTime() * NS_TO_MS_FACTOR,
               statistics.getBlockQueuedTime() * NS_TO_MS_FACTOR));
-      if (verbose) {
-        renderQueryStatistics(statistics.getQueryStatistics(), singleFragmentInstanceArea);
-      }
+      renderQueryStatistics(statistics.getQueryStatistics(), singleFragmentInstanceArea, verbose);
+
       // render operator
       PlanNode planNodeTree = instance.getFragment().getPlanNodeTree();
       renderOperator(
@@ -193,258 +192,288 @@ public class FragmentInstanceStatisticsDrawer {
   }
 
   private void renderQueryStatistics(
-      TQueryStatistics queryStatistics, List<StatisticLine> singleFragmentInstanceArea) {
+      TQueryStatistics queryStatistics,
+      List<StatisticLine> singleFragmentInstanceArea,
+      boolean verbose) {
     addLine(singleFragmentInstanceArea, 1, "Query Statistics:");
 
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadBloomFilterFromCacheCount",
-        queryStatistics.loadBloomFilterFromCacheCount);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadBloomFilterFromDiskCount",
-        queryStatistics.loadBloomFilterFromDiskCount);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadBloomFilterActualIOSize",
-        queryStatistics.loadBloomFilterActualIOSize);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadBloomFilterTime",
-        queryStatistics.loadBloomFilterTime * NS_TO_MS_FACTOR);
+    if (verbose) {
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadBloomFilterFromCacheCount",
+          queryStatistics.loadBloomFilterFromCacheCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadBloomFilterFromDiskCount",
+          queryStatistics.loadBloomFilterFromDiskCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadBloomFilterActualIOSize",
+          queryStatistics.loadBloomFilterActualIOSize);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadBloomFilterTime",
+          queryStatistics.loadBloomFilterTime * NS_TO_MS_FACTOR);
 
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataDiskSeqCount",
-        queryStatistics.loadTimeSeriesMetadataDiskSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataDiskUnSeqCount",
-        queryStatistics.loadTimeSeriesMetadataDiskUnSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataMemSeqCount",
-        queryStatistics.loadTimeSeriesMetadataMemSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataMemUnSeqCount",
-        queryStatistics.loadTimeSeriesMetadataMemUnSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedDiskSeqCount",
-        queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedDiskUnSeqCount",
-        queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedMemSeqCount",
-        queryStatistics.loadTimeSeriesMetadataAlignedMemSeqCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedMemUnSeqCount",
-        queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataDiskSeqCount",
+          queryStatistics.loadTimeSeriesMetadataDiskSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataDiskUnSeqCount",
+          queryStatistics.loadTimeSeriesMetadataDiskUnSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataMemSeqCount",
+          queryStatistics.loadTimeSeriesMetadataMemSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataMemUnSeqCount",
+          queryStatistics.loadTimeSeriesMetadataMemUnSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedDiskSeqCount",
+          queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedDiskUnSeqCount",
+          queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedMemSeqCount",
+          queryStatistics.loadTimeSeriesMetadataAlignedMemSeqCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedMemUnSeqCount",
+          queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqCount);
 
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataDiskSeqTime",
-        queryStatistics.loadTimeSeriesMetadataDiskSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataDiskUnSeqTime",
-        queryStatistics.loadTimeSeriesMetadataDiskUnSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataMemSeqTime",
-        queryStatistics.loadTimeSeriesMetadataMemSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataMemUnSeqTime",
-        queryStatistics.loadTimeSeriesMetadataMemUnSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedDiskSeqTime",
-        queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedDiskUnSeqTime",
-        queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedMemSeqTime",
-        queryStatistics.loadTimeSeriesMetadataAlignedMemSeqTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataAlignedMemUnSeqTime",
-        queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataDiskSeqTime",
+          queryStatistics.loadTimeSeriesMetadataDiskSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataDiskUnSeqTime",
+          queryStatistics.loadTimeSeriesMetadataDiskUnSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataMemSeqTime",
+          queryStatistics.loadTimeSeriesMetadataMemSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataMemUnSeqTime",
+          queryStatistics.loadTimeSeriesMetadataMemUnSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedDiskSeqTime",
+          queryStatistics.loadTimeSeriesMetadataAlignedDiskSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedDiskUnSeqTime",
+          queryStatistics.loadTimeSeriesMetadataAlignedDiskUnSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedMemSeqTime",
+          queryStatistics.loadTimeSeriesMetadataAlignedMemSeqTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataAlignedMemUnSeqTime",
+          queryStatistics.loadTimeSeriesMetadataAlignedMemUnSeqTime * NS_TO_MS_FACTOR);
+
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataFromCacheCount",
+          queryStatistics.loadTimeSeriesMetadataFromCacheCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataFromDiskCount",
+          queryStatistics.loadTimeSeriesMetadataFromDiskCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadTimeSeriesMetadataActualIOSize",
+          queryStatistics.loadTimeSeriesMetadataActualIOSize);
+
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "alignedTimeSeriesMetadataModificationCount",
+          queryStatistics.getAlignedTimeSeriesMetadataModificationCount());
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "alignedTimeSeriesMetadataModificationTime",
+          queryStatistics.getAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "nonAlignedTimeSeriesMetadataModificationCount",
+          queryStatistics.getNonAlignedTimeSeriesMetadataModificationCount());
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "nonAlignedTimeSeriesMetadataModificationTime",
+          queryStatistics.getNonAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
+
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructNonAlignedChunkReadersDiskCount",
+          queryStatistics.constructNonAlignedChunkReadersDiskCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructNonAlignedChunkReadersMemCount",
+          queryStatistics.constructNonAlignedChunkReadersMemCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructAlignedChunkReadersDiskCount",
+          queryStatistics.constructAlignedChunkReadersDiskCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructAlignedChunkReadersMemCount",
+          queryStatistics.constructAlignedChunkReadersMemCount);
+
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructNonAlignedChunkReadersDiskTime",
+          queryStatistics.constructNonAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructNonAlignedChunkReadersMemTime",
+          queryStatistics.constructNonAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructAlignedChunkReadersDiskTime",
+          queryStatistics.constructAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "constructAlignedChunkReadersMemTime",
+          queryStatistics.constructAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadChunkFromCacheCount",
+          queryStatistics.loadChunkFromCacheCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadChunkFromDiskCount",
+          queryStatistics.loadChunkFromDiskCount);
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "loadChunkActualIOSize",
+          queryStatistics.loadChunkActualIOSize);
+
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeAlignedDiskCount",
+          queryStatistics.pageReadersDecodeAlignedDiskCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeAlignedDiskTime",
+          queryStatistics.pageReadersDecodeAlignedDiskTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeAlignedMemCount",
+          queryStatistics.pageReadersDecodeAlignedMemCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeAlignedMemTime",
+          queryStatistics.pageReadersDecodeAlignedMemTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeNonAlignedDiskCount",
+          queryStatistics.pageReadersDecodeNonAlignedDiskCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeNonAlignedDiskTime",
+          queryStatistics.pageReadersDecodeNonAlignedDiskTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeNonAlignedMemCount",
+          queryStatistics.pageReadersDecodeNonAlignedMemCount);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReadersDecodeNonAlignedMemTime",
+          queryStatistics.pageReadersDecodeNonAlignedMemTime * NS_TO_MS_FACTOR);
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "pageReaderMaxUsedMemorySize",
+          queryStatistics.pageReaderMaxUsedMemorySize);
+
+      addLineWithValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "chunkWithMetadataErrorsCount",
+          queryStatistics.chunkWithMetadataErrorsCount);
+    }
 
     addLineWithoutValueCheck(
         singleFragmentInstanceArea,
         2,
-        "loadTimeSeriesMetadataFromCacheCount",
-        queryStatistics.loadTimeSeriesMetadataFromCacheCount);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataFromDiskCount",
-        queryStatistics.loadTimeSeriesMetadataFromDiskCount);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadTimeSeriesMetadataActualIOSize",
-        queryStatistics.loadTimeSeriesMetadataActualIOSize);
-
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "alignedTimeSeriesMetadataModificationCount",
-        queryStatistics.getAlignedTimeSeriesMetadataModificationCount());
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "alignedTimeSeriesMetadataModificationTime",
-        queryStatistics.getAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "nonAlignedTimeSeriesMetadataModificationCount",
-        queryStatistics.getNonAlignedTimeSeriesMetadataModificationCount());
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "nonAlignedTimeSeriesMetadataModificationTime",
-        queryStatistics.getNonAlignedTimeSeriesMetadataModificationTime() * NS_TO_MS_FACTOR);
-
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructNonAlignedChunkReadersDiskCount",
-        queryStatistics.constructNonAlignedChunkReadersDiskCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructNonAlignedChunkReadersMemCount",
-        queryStatistics.constructNonAlignedChunkReadersMemCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructAlignedChunkReadersDiskCount",
-        queryStatistics.constructAlignedChunkReadersDiskCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructAlignedChunkReadersMemCount",
-        queryStatistics.constructAlignedChunkReadersMemCount);
-
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructNonAlignedChunkReadersDiskTime",
-        queryStatistics.constructNonAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructNonAlignedChunkReadersMemTime",
-        queryStatistics.constructNonAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructAlignedChunkReadersDiskTime",
-        queryStatistics.constructAlignedChunkReadersDiskTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "constructAlignedChunkReadersMemTime",
-        queryStatistics.constructAlignedChunkReadersMemTime * NS_TO_MS_FACTOR);
+        "timeSeriesIndexFilteredRows",
+        queryStatistics.timeSeriesIndexFilteredRows);
 
     addLineWithoutValueCheck(
         singleFragmentInstanceArea,
         2,
-        "loadChunkFromCacheCount",
-        queryStatistics.loadChunkFromCacheCount);
+        "chunkIndexFilteredRows",
+        queryStatistics.chunkIndexFilteredRows);
+
     addLineWithoutValueCheck(
         singleFragmentInstanceArea,
         2,
-        "loadChunkFromDiskCount",
-        queryStatistics.loadChunkFromDiskCount);
-    addLineWithoutValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "loadChunkActualIOSize",
-        queryStatistics.loadChunkActualIOSize);
+        "pageIndexFilteredRows",
+        queryStatistics.pageIndexFilteredRows);
 
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeAlignedDiskCount",
-        queryStatistics.pageReadersDecodeAlignedDiskCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeAlignedDiskTime",
-        queryStatistics.pageReadersDecodeAlignedDiskTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeAlignedMemCount",
-        queryStatistics.pageReadersDecodeAlignedMemCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeAlignedMemTime",
-        queryStatistics.pageReadersDecodeAlignedMemTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeNonAlignedDiskCount",
-        queryStatistics.pageReadersDecodeNonAlignedDiskCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeNonAlignedDiskTime",
-        queryStatistics.pageReadersDecodeNonAlignedDiskTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeNonAlignedMemCount",
-        queryStatistics.pageReadersDecodeNonAlignedMemCount);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReadersDecodeNonAlignedMemTime",
-        queryStatistics.pageReadersDecodeNonAlignedMemTime * NS_TO_MS_FACTOR);
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "pageReaderMaxUsedMemorySize",
-        queryStatistics.pageReaderMaxUsedMemorySize);
-
-    addLineWithValueCheck(
-        singleFragmentInstanceArea,
-        2,
-        "chunkWithMetadataErrorsCount",
-        queryStatistics.chunkWithMetadataErrorsCount);
+    if (verbose) {
+      addLineWithoutValueCheck(
+          singleFragmentInstanceArea,
+          2,
+          "rowScanFilteredRows",
+          queryStatistics.rowScanFilteredRows);
+    }
   }
 
   private void addLine(List<StatisticLine> resultForSingleInstance, int level, String value) {

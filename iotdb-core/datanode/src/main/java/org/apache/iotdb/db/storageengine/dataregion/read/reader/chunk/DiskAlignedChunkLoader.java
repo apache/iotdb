@@ -40,6 +40,7 @@ import org.apache.tsfile.read.reader.chunk.TableChunkReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.LongConsumer;
 
 import static org.apache.iotdb.db.queryengine.metric.SeriesScanCostMetricSet.INIT_CHUNK_READER_ALIGNED_DISK;
 
@@ -118,12 +119,15 @@ public class DiskAlignedChunkLoader implements IChunkLoader {
         }
         valueChunkList.add(chunk);
       }
-
+      LongConsumer filterRowsRecorder =
+          this.context.getQueryStatistics()::addFilteredRowsOfPageLevel;
       long t2 = System.nanoTime();
       IChunkReader chunkReader =
           ignoreAllNullRows
-              ? new AlignedChunkReader(timeChunk, valueChunkList, globalTimeFilter)
-              : new TableChunkReader(timeChunk, valueChunkList, globalTimeFilter);
+              ? new AlignedChunkReader(
+                  timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder)
+              : new TableChunkReader(
+                  timeChunk, valueChunkList, globalTimeFilter, filterRowsRecorder);
       SERIES_SCAN_COST_METRIC_SET.recordSeriesScanCost(
           INIT_CHUNK_READER_ALIGNED_DISK, System.nanoTime() - t2);
 

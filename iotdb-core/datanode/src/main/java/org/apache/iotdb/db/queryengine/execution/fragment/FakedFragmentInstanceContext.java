@@ -35,7 +35,7 @@ import java.util.List;
 public class FakedFragmentInstanceContext extends FragmentInstanceContext {
 
   public FakedFragmentInstanceContext(Filter timeFilter, DataRegion dataRegion) {
-    super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion, false);
+    super(0, new FakedMemoryReservationManager(), timeFilter, dataRegion, false, false);
   }
 
   public QueryDataSource getSharedQueryDataSource(IFullPath sourcePath)

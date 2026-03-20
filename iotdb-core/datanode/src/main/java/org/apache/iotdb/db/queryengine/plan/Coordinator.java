@@ -451,7 +451,8 @@ public class Coordinator {
       ExplainType explainType,
       long timeOut,
       boolean userQuery,
-      boolean debug) {
+      boolean debug,
+      boolean isVerbose) {
     return execution(
         queryId,
         session,
@@ -462,6 +463,7 @@ public class Coordinator {
           queryContext.setInnerTriggeredQuery(true);
           queryContext.setCteQueries(cteQueries);
           queryContext.setExplainType(explainType);
+          queryContext.setVerbose(isVerbose);
           return createQueryExecutionForTableModel(
               statement,
               sqlParser,

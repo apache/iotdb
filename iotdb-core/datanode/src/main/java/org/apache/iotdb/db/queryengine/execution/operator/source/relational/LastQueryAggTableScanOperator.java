@@ -136,7 +136,6 @@ public class LastQueryAggTableScanOperator extends AbstractAggTableScanOperator 
   public TsBlock next() throws Exception {
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
-
     if (retainedTsBlock != null) {
       return getResultFromRetainedTsBlock();
     }
