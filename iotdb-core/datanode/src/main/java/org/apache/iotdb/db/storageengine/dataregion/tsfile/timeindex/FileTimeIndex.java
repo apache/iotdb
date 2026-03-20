@@ -21,11 +21,12 @@ package org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
+import org.apache.iotdb.commons.utils.IOUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -123,14 +124,14 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public Set<IDeviceID> getDevices(
-      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
     tsFileResource.readLock();
     try {
-      limiter.acquire(tsFileResource.getTsFileSize());
-
-      try (InputStream inputStream =
-          FSFactoryProducer.getFSFactory()
-              .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX)) {
+      try (IOUtils.RatelimitedInputStream inputStream =
+          new IOUtils.RatelimitedInputStream(
+              FSFactoryProducer.getFSFactory()
+                  .getBufferedInputStream(tsFilePath + TsFileResource.RESOURCE_SUFFIX),
+              limiter)) {
         // The first byte is VERSION_NUMBER, second byte is timeIndexType.
         byte[] bytes = ReadWriteIOUtils.readBytes(inputStream, 2);
 

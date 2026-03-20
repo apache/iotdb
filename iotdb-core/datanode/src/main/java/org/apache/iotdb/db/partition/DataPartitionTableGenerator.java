@@ -27,18 +27,19 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.storageengine.StorageEngine;
 import org.apache.iotdb.db.storageengine.dataregion.DataRegion;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Generator for DataPartitionTable by scanning tsfile resources. This class scans the data
@@ -63,9 +63,9 @@ public class DataPartitionTableGenerator {
   private Map<String, DataPartitionTable> databasePartitionTableMap = new ConcurrentHashMap<>();
 
   // Progress tracking
-  private final AtomicInteger processedFiles = new AtomicInteger(0);
-  private final AtomicInteger failedFiles = new AtomicInteger(0);
-  private final AtomicLong totalFiles = new AtomicLong(0);
+  private final AtomicInteger processedTimePartitions = new AtomicInteger(0);
+  private final AtomicInteger failedTimePartitions = new AtomicInteger(0);
+  private long totalTimePartitions = 0;
 
   // Configuration
   private final ExecutorService executor;
@@ -73,14 +73,12 @@ public class DataPartitionTableGenerator {
   private final int seriesSlotNum;
   private final String seriesPartitionExecutorClass;
 
-  private final LeakyBucketRateLimiter limiter =
-      new LeakyBucketRateLimiter(
+  private final RateLimiter limiter =
+      RateLimiter.create(
           (long)
-                  IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getPartitionTableRecoverMaxReadMBsPerSecond()
-              * 1024
-              * 1024);
+              IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getPartitionTableRecoverMaxReadMBsPerSecond());
 
   public static final Set<String> IGNORE_DATABASE =
       new HashSet<String>() {
@@ -89,8 +87,6 @@ public class DataPartitionTableGenerator {
           add("root.__system");
         }
       };
-
-  public static final String SCAN_FILE_SUFFIX_NAME = ".tsfile";
 
   public DataPartitionTableGenerator(
       ExecutorService executor,
@@ -132,6 +128,14 @@ public class DataPartitionTableGenerator {
             seriesPartitionExecutorClass, seriesSlotNum);
 
     try {
+      totalTimePartitions =
+          StorageEngine.getInstance().getAllDataRegions().stream()
+              .mapToLong(
+                  dataRegion ->
+                      (dataRegion == null)
+                          ? 0
+                          : dataRegion.getTsFileManager().getTimePartitions().size())
+              .sum();
       for (DataRegion dataRegion : StorageEngine.getInstance().getAllDataRegions()) {
         CompletableFuture<Void> regionFuture =
             CompletableFuture.runAsync(
@@ -178,7 +182,7 @@ public class DataPartitionTableGenerator {
                         });
                   } catch (Exception e) {
                     LOG.error("Error processing data region: {}", dataRegion.getDatabaseName(), e);
-                    failedFiles.incrementAndGet();
+                    failedTimePartitions.incrementAndGet();
                     errorMessage = "Failed to process data region: " + e.getMessage();
                   }
                 },
@@ -192,8 +196,8 @@ public class DataPartitionTableGenerator {
       status = TaskStatus.COMPLETED;
       LOG.info(
           "DataPartitionTable generation completed successfully. Processed: {}, Failed: {}",
-          processedFiles.get(),
-          failedFiles.get());
+          processedTimePartitions.get(),
+          failedTimePartitions.get());
     } catch (Exception e) {
       LOG.error("Failed to generate DataPartitionTable", e);
       status = TaskStatus.FAILED;
@@ -205,10 +209,12 @@ public class DataPartitionTableGenerator {
       List<TsFileResource> seqTsFileList,
       SeriesPartitionExecutor seriesPartitionExecutor,
       Map<TSeriesPartitionSlot, SeriesPartitionTable> dataPartitionMap) {
+    Set<Long> timeSlotIds = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
     for (TsFileResource tsFileResource : seqTsFileList) {
+      long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
       try {
         Set<IDeviceID> devices = tsFileResource.getDevices(limiter);
-        long timeSlotId = tsFileResource.getTsFileID().timePartitionId;
         int regionId = tsFileResource.getTsFileID().regionId;
 
         TConsensusGroupId consensusGroupId = new TConsensusGroupId();
@@ -225,14 +231,20 @@ public class DataPartitionTableGenerator {
                   seriesSlotId, empty -> newSeriesPartitionTable(consensusGroupId, timeSlotId))
               .putDataPartition(timePartitionSlot, consensusGroupId);
         }
-        processedFiles.incrementAndGet();
-        totalFiles.incrementAndGet();
+        if (!timeSlotIds.contains(timeSlotId)) {
+          timeSlotIds.add(timeSlotId);
+          processedTimePartitions.incrementAndGet();
+        }
       } catch (Exception e) {
-        failedFiles.incrementAndGet();
-        totalFiles.incrementAndGet();
+        if (!timeSlotIds.contains(timeSlotId)) {
+          timeSlotIds.add(timeSlotId);
+          failedTimePartitions.incrementAndGet();
+        }
         LOG.error("Failed to process tsfile {}, {}", tsFileResource.getTsFileID(), e.getMessage());
       }
     }
+
+    timeSlotIds.clear();
   }
 
   private static SeriesPartitionTable newSeriesPartitionTable(
@@ -254,9 +266,10 @@ public class DataPartitionTableGenerator {
   }
 
   public double getProgress() {
-    if (totalFiles.get() == 0) {
+    if (totalTimePartitions == 0) {
       return 0.0;
     }
-    return (double) (processedFiles.get() + failedFiles.get()) / totalFiles.get();
+    return (double) (processedTimePartitions.get() + failedTimePartitions.get())
+        / totalTimePartitions;
   }
 }

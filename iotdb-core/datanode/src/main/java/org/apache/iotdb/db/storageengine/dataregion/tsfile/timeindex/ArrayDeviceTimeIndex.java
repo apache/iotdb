@@ -23,10 +23,10 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
-import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.IDeviceID.Deserializer;
 import org.apache.tsfile.utils.FilePathUtils;
@@ -174,7 +174,7 @@ public class ArrayDeviceTimeIndex implements ITimeIndex {
 
   @Override
   public Set<IDeviceID> getDevices(
-      String tsFilePath, TsFileResource tsFileResource, LeakyBucketRateLimiter limiter) {
+      String tsFilePath, TsFileResource tsFileResource, RateLimiter limiter) {
     return deviceToIndex.keySet();
   }
 

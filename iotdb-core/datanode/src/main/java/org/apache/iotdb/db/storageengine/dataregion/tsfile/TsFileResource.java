@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.resource.PersistentResource;
 import org.apache.iotdb.commons.utils.CommonDateTimeUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.commons.utils.rateLimiter.LeakyBucketRateLimiter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.load.PartitionViolationException;
@@ -51,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -678,7 +678,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
-  public Set<IDeviceID> getDevices(LeakyBucketRateLimiter limiter) {
+  public Set<IDeviceID> getDevices(RateLimiter limiter) {
     return timeIndex.getDevices(file.getPath(), this, limiter);
   }
 
