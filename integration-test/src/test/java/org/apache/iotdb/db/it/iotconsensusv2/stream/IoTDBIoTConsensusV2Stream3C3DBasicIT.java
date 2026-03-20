@@ -64,6 +64,31 @@ public class IoTDBIoTConsensusV2Stream3C3DBasicIT extends IoTDBIoTConsensusV23C3
 
   @Override
   @Test
+  public void testBackgroundConsistencyCheckOnlyRunsOnColdPartitions() throws Exception {
+    super.testBackgroundConsistencyCheckOnlyRunsOnColdPartitions();
+  }
+
+  @Override
+  @Test
+  public void testBackgroundConsistencyCheckRebuildsLogicalSnapshotAfterFollowerRestart()
+      throws Exception {
+    super.testBackgroundConsistencyCheckRebuildsLogicalSnapshotAfterFollowerRestart();
+  }
+
+  @Override
+  @Test
+  public void testBackgroundConsistencyCheckWaitsForSyncLagToClear() throws Exception {
+    super.testBackgroundConsistencyCheckWaitsForSyncLagToClear();
+  }
+
+  @Override
+  @Test
+  public void testRepairProgressSurvivesConfigNodeLeaderRestart() throws Exception {
+    super.testRepairProgressSurvivesConfigNodeLeaderRestart();
+  }
+
+  @Override
+  @Test
   public void test3C3DWriteFlushAndQuery() throws Exception {
     super.test3C3DWriteFlushAndQuery();
   }

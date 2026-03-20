@@ -348,6 +348,18 @@ public class ConfigNodeDescriptor {
                 "enable_auto_leader_balance_for_iot_consensus",
                 String.valueOf(conf.isEnableAutoLeaderBalanceForIoTConsensus()))));
 
+    conf.setConsistencyCheckSchedulerInitialDelayInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "consistency_check_scheduler_initial_delay_in_ms",
+                String.valueOf(conf.getConsistencyCheckSchedulerInitialDelayInMs()))));
+
+    conf.setConsistencyCheckSchedulerIntervalInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "consistency_check_scheduler_interval_in_ms",
+                String.valueOf(conf.getConsistencyCheckSchedulerIntervalInMs()))));
+
     String routePriorityPolicy =
         properties.getProperty("route_priority_policy", conf.getRoutePriorityPolicy());
     if (IPriorityBalancer.GREEDY_POLICY.equals(routePriorityPolicy)

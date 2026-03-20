@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetDatabaseReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetUdfTableReq;
 import org.apache.iotdb.confignode.rpc.thrift.TNodeVersionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRepairProgressInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
@@ -153,6 +154,8 @@ public class InformationSchemaContentSupplierFactory {
           return new ColumnSupplier(dataTypes, userEntity);
         case InformationSchema.REGIONS:
           return new RegionSupplier(dataTypes, userEntity);
+        case InformationSchema.REPAIR_PROGRESS:
+          return new RepairProgressSupplier(dataTypes, userEntity);
         case InformationSchema.PIPES:
           return new PipeSupplier(dataTypes, userEntity.getUsername());
         case InformationSchema.PIPE_PLUGINS:
@@ -551,6 +554,67 @@ public class InformationSchemaContentSupplierFactory {
       } else {
         columnBuilders[12].appendNull();
         columnBuilders[13].appendNull();
+      }
+      resultBuilder.declarePosition();
+    }
+
+    @Override
+    public boolean hasNext() {
+      return iterator.hasNext();
+    }
+  }
+
+  private static class RepairProgressSupplier extends TsBlockSupplier {
+    private final Iterator<TRepairProgressInfo> iterator;
+
+    private RepairProgressSupplier(final List<TSDataType> dataTypes, final UserEntity userEntity)
+        throws Exception {
+      super(dataTypes);
+      accessControl.checkUserGlobalSysPrivilege(userEntity);
+      try (final ConfigNodeClient client =
+          ConfigNodeClientManager.getInstance().borrowClient(ConfigNodeInfo.CONFIG_REGION_ID)) {
+        final org.apache.iotdb.confignode.rpc.thrift.TShowRepairProgressResp resp =
+            client.showRepairProgress();
+        iterator =
+            resp == null || !resp.isSetRepairProgressInfoList()
+                ? Collections.<TRepairProgressInfo>emptyList().iterator()
+                : resp.getRepairProgressInfoListIterator();
+      }
+    }
+
+    @Override
+    protected void constructLine() {
+      final TRepairProgressInfo progressInfo = iterator.next();
+      columnBuilders[0].writeInt(progressInfo.getRegionId());
+      columnBuilders[1].writeLong(progressInfo.getTimePartition());
+      columnBuilders[2].writeBinary(BytesUtils.valueOf(progressInfo.getCheckState()));
+      columnBuilders[3].writeBinary(BytesUtils.valueOf(progressInfo.getRepairState()));
+      columnBuilders[4].writeLong(progressInfo.getLastCheckedAt());
+      columnBuilders[5].writeLong(progressInfo.getLastSafeWatermark());
+      columnBuilders[6].writeLong(progressInfo.getPartitionMutationEpoch());
+      columnBuilders[7].writeLong(progressInfo.getSnapshotEpoch());
+      columnBuilders[8].writeBinary(BytesUtils.valueOf(progressInfo.getSnapshotState()));
+      columnBuilders[9].writeLong(progressInfo.getLastMismatchAt());
+      if (progressInfo.isSetMismatchScopeRef()) {
+        columnBuilders[10].writeBinary(BytesUtils.valueOf(progressInfo.getMismatchScopeRef()));
+      } else {
+        columnBuilders[10].appendNull();
+      }
+      columnBuilders[11].writeInt(progressInfo.getMismatchLeafCount());
+      if (progressInfo.isSetRepairEpoch()) {
+        columnBuilders[12].writeBinary(BytesUtils.valueOf(progressInfo.getRepairEpoch()));
+      } else {
+        columnBuilders[12].appendNull();
+      }
+      if (progressInfo.isSetLastErrorCode()) {
+        columnBuilders[13].writeBinary(BytesUtils.valueOf(progressInfo.getLastErrorCode()));
+      } else {
+        columnBuilders[13].appendNull();
+      }
+      if (progressInfo.isSetLastErrorMessage()) {
+        columnBuilders[14].writeBinary(BytesUtils.valueOf(progressInfo.getLastErrorMessage()));
+      } else {
+        columnBuilders[14].appendNull();
       }
       resultBuilder.declarePosition();
     }

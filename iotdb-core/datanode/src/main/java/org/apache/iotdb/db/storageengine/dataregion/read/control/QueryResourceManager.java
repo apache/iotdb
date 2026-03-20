@@ -50,6 +50,16 @@ public class QueryResourceManager {
   }
 
   /**
+   * Register a unique internal read id that also participates in QueryFileManager reference
+   * tracking. Use this for non-session background reads that manage file references directly.
+   */
+  public long assignInternalQueryId() {
+    long queryId = queryIdAtom.incrementAndGet();
+    filePathsManager.addQueryId(queryId);
+    return queryId;
+  }
+
+  /**
    * Register a read id for compaction. The name of the compaction thread is
    * 'pool-x-IoTDB-Compaction-xx', xx in which is usually an integer from 0 to
    * MAXCOMPACTION_THREAD_NUM. We use the following rules to define read id for compaction: <br>

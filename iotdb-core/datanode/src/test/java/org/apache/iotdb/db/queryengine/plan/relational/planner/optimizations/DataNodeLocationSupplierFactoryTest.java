@@ -17,12 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.commons.consensus.iotv2.consistency.repair;
+package org.apache.iotdb.db.queryengine.plan.relational.planner.optimizations;
 
-/** Per-TsFile repair strategy selected by the cost model. */
-public enum RepairStrategy {
-  /** Send entire existing TsFile from Leader to Follower. Zero packaging cost. */
-  DIRECT_TSFILE_TRANSFER,
-  /** Stream individual diff points via RepairSession with atomic promote. */
-  POINT_STREAMING
+import org.apache.iotdb.commons.schema.table.InformationSchema;
+
+import org.junit.Assert;
+import org.junit.Test;
+
+public class DataNodeLocationSupplierFactoryTest {
+
+  @Test
+  public void testRepairProgressUsesLocalInformationSchemaSupplier() {
+    Assert.assertEquals(
+        1,
+        DataNodeLocationSupplierFactory.getSupplier()
+            .getDataNodeLocations(InformationSchema.REPAIR_PROGRESS)
+            .size());
+  }
 }

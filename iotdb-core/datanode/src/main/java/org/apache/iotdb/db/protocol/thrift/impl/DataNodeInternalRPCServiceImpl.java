@@ -217,6 +217,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TActiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterEncodingCompressorReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterTimeSeriesReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAlterViewReq;
+import org.apache.iotdb.mpp.rpc.thrift.TApplyLogicalRepairBatchReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAttributeUpdateReq;
 import org.apache.iotdb.mpp.rpc.thrift.TAuditLogReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
@@ -241,9 +242,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDataNodeHeartbeatResp;
-import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeactivateTemplateReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDecodeLeafDiffReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDecodeLeafDiffResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteColumnDataReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataForDeleteSchemaReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDeleteDataOrDevicesForDropTableReq;
@@ -254,15 +255,22 @@ import org.apache.iotdb.mpp.rpc.thrift.TDeviceViewResp;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropPipePluginInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropTriggerInstanceReq;
+import org.apache.iotdb.mpp.rpc.thrift.TEstimateLeafDiffReq;
+import org.apache.iotdb.mpp.rpc.thrift.TEstimateLeafDiffResp;
 import org.apache.iotdb.mpp.rpc.thrift.TExecuteCQ;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceInfoReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStatisticsResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchSchemaBlackListResp;
+import org.apache.iotdb.mpp.rpc.thrift.TFinishLogicalRepairSessionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TFireTriggerResp;
 import org.apache.iotdb.mpp.rpc.thrift.TFragmentInstanceInfoResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetConsistencyEligibilityReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetConsistencyEligibilityResp;
+import org.apache.iotdb.mpp.rpc.thrift.TGetSnapshotSubtreeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetSnapshotSubtreeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInactiveTriggerInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateColumnCacheReq;
@@ -293,7 +301,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionMigrateResult;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
-import org.apache.iotdb.mpp.rpc.thrift.TRepairTransferTsFileReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRollbackSchemaBlackListWithTemplateReq;
@@ -305,6 +312,8 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendBatchPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendSinglePlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TStreamLogicalRepairReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStreamLogicalRepairResp;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternAndFilterReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceDeletionWithPatternOrModReq;
 import org.apache.iotdb.mpp.rpc.thrift.TTableDeviceInvalidateCacheReq;
@@ -597,14 +606,39 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TDataRegionConsistencySnapshotResp getDataRegionConsistencySnapshot(
-      TDataRegionConsistencySnapshotReq req) {
-    return consistencyRepairService.getSnapshot(req);
+  public TGetConsistencyEligibilityResp getConsistencyEligibility(
+      TGetConsistencyEligibilityReq req) {
+    return consistencyRepairService.getConsistencyEligibility(req);
   }
 
   @Override
-  public TSStatus repairTransferTsFile(TRepairTransferTsFileReq req) {
-    return consistencyRepairService.repairTransferTsFile(req);
+  public TGetSnapshotSubtreeResp getSnapshotSubtree(TGetSnapshotSubtreeReq req) {
+    return consistencyRepairService.getSnapshotSubtree(req);
+  }
+
+  @Override
+  public TEstimateLeafDiffResp estimateLeafDiff(TEstimateLeafDiffReq req) {
+    return consistencyRepairService.estimateLeafDiff(req);
+  }
+
+  @Override
+  public TDecodeLeafDiffResp decodeLeafDiff(TDecodeLeafDiffReq req) {
+    return consistencyRepairService.decodeLeafDiff(req);
+  }
+
+  @Override
+  public TStreamLogicalRepairResp streamLogicalRepair(TStreamLogicalRepairReq req) {
+    return consistencyRepairService.streamLogicalRepair(req);
+  }
+
+  @Override
+  public TSStatus applyLogicalRepairBatch(TApplyLogicalRepairBatchReq req) {
+    return consistencyRepairService.applyLogicalRepairBatch(req);
+  }
+
+  @Override
+  public TSStatus finishLogicalRepairSession(TFinishLogicalRepairSessionReq req) {
+    return consistencyRepairService.finishLogicalRepairSession(req);
   }
 
   @Override

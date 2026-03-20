@@ -38,7 +38,6 @@ import org.apache.iotdb.consensus.pipe.consensuspipe.ConsensusPipeSink;
 import org.apache.iotdb.consensus.pipe.metric.IoTConsensusV2SyncLagManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.pipe.consensus.ReplicateProgressDataNodeManager;
 import org.apache.iotdb.db.pipe.consensus.metric.IoTConsensusV2SinkMetrics;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.deletion.PipeDeleteDataNodeEvent;
@@ -115,6 +114,10 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
   private IoTConsensusV2SyncSink retryConnector;
   private IClientManager<TEndPoint, AsyncIoTConsensusV2ServiceClient> asyncTransferClientManager;
   private IoTConsensusV2AsyncBatchReqBuilder tabletBatchBuilder;
+  // Track the highest replicate index that actually enters this connector instead of the
+  // source-side pre-assigned index, otherwise discarded realtime TsFile events can create
+  // phantom sync lag.
+  private volatile long leaderReplicateProgress = 0;
   private volatile long currentReplicateProgress = 0;
 
   @Override
@@ -196,6 +199,8 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
       iotConsensusV2SinkMetrics.recordConnectorEnqueueTimer(duration);
       // add reference
       if (result) {
+        leaderReplicateProgress =
+            Math.max(leaderReplicateProgress, event.getReplicateIndexForIoTV2());
         event.increaseReferenceCount(IoTConsensusV2AsyncSink.class.getName());
       }
       // if connector is closed when executing this method, need to clear this event's reference
@@ -717,7 +722,7 @@ public class IoTConsensusV2AsyncSink extends IoTDBSink implements ConsensusPipeS
 
   @Override
   public long getLeaderReplicateProgress() {
-    return ReplicateProgressDataNodeManager.getReplicateIndexForIoTV2(consensusPipeName);
+    return leaderReplicateProgress;
   }
 
   @Override

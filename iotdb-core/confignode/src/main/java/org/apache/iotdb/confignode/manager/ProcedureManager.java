@@ -53,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.database.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.datanode.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.procedure.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.region.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.manager.consistency.ConsistencyCheckScheduler;
 import org.apache.iotdb.confignode.manager.partition.PartitionManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.PartitionTableAutoCleaner;
@@ -151,6 +152,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.exception.BatchProcessException;
@@ -173,6 +175,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -207,6 +210,7 @@ public class ProcedureManager {
   private ProcedureMetrics procedureMetrics;
 
   private final PartitionTableAutoCleaner partitionTableCleaner;
+  private final ConsistencyCheckScheduler consistencyCheckScheduler;
 
   private final ReentrantLock tableLock = new ReentrantLock();
 
@@ -223,6 +227,7 @@ public class ProcedureManager {
             - IoTDBConstant.RAFT_LOG_BASIC_SIZE;
     this.procedureMetrics = new ProcedureMetrics(this);
     this.partitionTableCleaner = new PartitionTableAutoCleaner<>(configManager);
+    this.consistencyCheckScheduler = new ConsistencyCheckScheduler(configManager, this);
   }
 
   public void startExecutor() {
@@ -234,12 +239,14 @@ public class ProcedureManager {
           CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
       executor.addInternalProcedure(partitionTableCleaner);
       store.start();
+      consistencyCheckScheduler.start();
       LOGGER.info("ProcedureManager is started successfully.");
     }
   }
 
   public void stopExecutor() {
     if (executor.isRunning()) {
+      consistencyCheckScheduler.stop();
       executor.stop();
       if (!executor.isRunning()) {
         executor.join();
@@ -1376,7 +1383,21 @@ public class ProcedureManager {
     }
   }
 
+  public TSStatus triggerRegionConsistencyRepair(final TTriggerRegionConsistencyRepairReq req) {
+    return triggerRegionConsistencyRepair(
+        req.getConsensusGroupId(),
+        req.isSetPartitionFilter() ? req.getPartitionFilter() : Collections.emptyList(),
+        req.isSetRepairEpoch() ? req.getRepairEpoch() : null);
+  }
+
   public TSStatus triggerRegionConsistencyRepair(final TConsensusGroupId consensusGroupId) {
+    return triggerRegionConsistencyRepair(consensusGroupId, Collections.emptyList(), null);
+  }
+
+  public TSStatus triggerRegionConsistencyRepair(
+      final TConsensusGroupId consensusGroupId,
+      final List<Long> partitionFilter,
+      final String repairEpoch) {
     if (consensusGroupId == null || consensusGroupId.getType() != TConsensusGroupType.DataRegion) {
       return new TSStatus(TSStatusCode.ILLEGAL_PARAMETER.getStatusCode())
           .setMessage("Replica consistency repair currently only supports DataRegion");
@@ -1397,7 +1418,12 @@ public class ProcedureManager {
         RepairRegionProcedure procedure =
             new RepairRegionProcedure(
                 consensusGroupId,
-                new LiveDataRegionRepairExecutionContext(configManager, consensusGroupId));
+                new LiveDataRegionRepairExecutionContext(
+                    configManager,
+                    consensusGroupId,
+                    partitionFilter == null ? Collections.emptyList() : partitionFilter,
+                    repairEpoch,
+                    true));
         executor.submitProcedure(procedure);
         return waitingProcedureFinished(procedure);
       } catch (Exception e) {
@@ -1407,6 +1433,17 @@ public class ProcedureManager {
             .setMessage(e.getMessage());
       }
     }
+  }
+
+  public boolean hasRunningRepairProcedure(final TConsensusGroupId consensusGroupId) {
+    for (Procedure<?> procedure : executor.getProcedures().values()) {
+      if (procedure instanceof RepairRegionProcedure
+          && !procedure.isFinished()
+          && consensusGroupId.equals(((RepairRegionProcedure) procedure).getConsensusGroupId())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**

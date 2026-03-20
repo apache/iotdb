@@ -28,19 +28,24 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.exception.UncheckedStartupException;
+import org.apache.iotdb.mpp.rpc.thrift.TApplyLogicalRepairBatchReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCleanDataNodeCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreatePeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
-import org.apache.iotdb.mpp.rpc.thrift.TDataRegionConsistencySnapshotReq;
+import org.apache.iotdb.mpp.rpc.thrift.TDecodeLeafDiffReq;
+import org.apache.iotdb.mpp.rpc.thrift.TEstimateLeafDiffReq;
+import org.apache.iotdb.mpp.rpc.thrift.TFinishLogicalRepairSessionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetConsistencyEligibilityReq;
+import org.apache.iotdb.mpp.rpc.thrift.TGetSnapshotSubtreeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TKillQueryInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMaintainPeerReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeResp;
-import org.apache.iotdb.mpp.rpc.thrift.TRepairTransferTsFileReq;
 import org.apache.iotdb.mpp.rpc.thrift.TResetPeerListReq;
+import org.apache.iotdb.mpp.rpc.thrift.TStreamLogicalRepairReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTableReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -101,9 +106,26 @@ public class SyncDataNodeClientPool {
         CnToDnSyncRequestType.DELETE_REGION,
         (req, client) -> client.deleteRegion((TConsensusGroupId) req));
     actionMapBuilder.put(
-        CnToDnSyncRequestType.GET_DATA_REGION_CONSISTENCY_SNAPSHOT,
-        (req, client) ->
-            client.getDataRegionConsistencySnapshot((TDataRegionConsistencySnapshotReq) req));
+        CnToDnSyncRequestType.GET_CONSISTENCY_ELIGIBILITY,
+        (req, client) -> client.getConsistencyEligibility((TGetConsistencyEligibilityReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.GET_SNAPSHOT_SUBTREE,
+        (req, client) -> client.getSnapshotSubtree((TGetSnapshotSubtreeReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.ESTIMATE_LEAF_DIFF,
+        (req, client) -> client.estimateLeafDiff((TEstimateLeafDiffReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.DECODE_LEAF_DIFF,
+        (req, client) -> client.decodeLeafDiff((TDecodeLeafDiffReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.STREAM_LOGICAL_REPAIR,
+        (req, client) -> client.streamLogicalRepair((TStreamLogicalRepairReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.APPLY_LOGICAL_REPAIR_BATCH,
+        (req, client) -> client.applyLogicalRepairBatch((TApplyLogicalRepairBatchReq) req));
+    actionMapBuilder.put(
+        CnToDnSyncRequestType.FINISH_LOGICAL_REPAIR_SESSION,
+        (req, client) -> client.finishLogicalRepairSession((TFinishLogicalRepairSessionReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.INVALIDATE_PERMISSION_CACHE,
         (req, client) -> client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req));
@@ -140,9 +162,6 @@ public class SyncDataNodeClientPool {
     actionMapBuilder.put(
         CnToDnSyncRequestType.RESET_PEER_LIST,
         (req, client) -> client.resetPeerList((TResetPeerListReq) req));
-    actionMapBuilder.put(
-        CnToDnSyncRequestType.REPAIR_TRANSFER_TSFILE,
-        (req, client) -> client.repairTransferTsFile((TRepairTransferTsFileReq) req));
     actionMapBuilder.put(
         CnToDnSyncRequestType.SHOW_CONFIGURATION, (req, client) -> client.showConfiguration());
     actionMapBuilder.put(

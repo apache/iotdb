@@ -21,18 +21,6 @@ package org.apache.iotdb.confignode.procedure.impl.consistency;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.commons.consensus.iotv2.consistency.RepairProgressTable;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.RepairProgressTable.RegionRepairStatus;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.ibf.DiffEntry;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.ibf.RowRefIndex;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.merkle.MerkleFileContent;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.DiffAttribution;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.ModEntrySummary;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairConflictResolver;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairCostModel;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairPlan;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairRecord;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairSession;
-import org.apache.iotdb.commons.consensus.iotv2.consistency.repair.RepairStrategy;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.state.consistency.RepairState;
@@ -48,33 +36,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * RepairRegionProcedure orchestrates the consistency check and repair lifecycle for a single
- * consensus group. The procedure is intentionally isolated from transport details: all external
- * interactions are supplied by a {@link RepairExecutionContext}, while the procedure itself
- * persists the state-machine and applies the repair policy.
+ * RepairRegionProcedure orchestrates partition-scoped replica repair for a single consensus group.
+ *
+ * <p>The current repair path is logical-snapshot driven: ConfigNode first identifies the exact
+ * partition/leaf mismatch scope, then the procedure executes the corresponding logical repair
+ * operations and verifies the partition after repair.
  */
 public class RepairRegionProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, RepairState> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RepairRegionProcedure.class);
 
-  private static final RepairCostModel REPAIR_COST_MODEL = new RepairCostModel();
   private static final ConcurrentHashMap<String, RepairExecutionContext> EXECUTION_CONTEXTS =
       new ConcurrentHashMap<>();
 
   private TConsensusGroupId consensusGroupId;
   private long tSafe;
-  private long globalRepairedWatermark;
   private List<Long> pendingPartitions;
   private int currentPartitionIndex;
   private boolean hashMatched;
@@ -84,15 +69,8 @@ public class RepairRegionProcedure
   private transient RepairExecutionContext executionContext;
   private transient RepairProgressTable repairProgressTable;
   private transient PartitionRepairContext currentPartitionContext;
-  private transient DiffAttribution diffAttribution;
-  private transient RowRefIndex currentRowRefIndex;
-  private transient Map<String, List<DiffEntry>> attributedDiffs;
-  private transient Map<String, RepairPlan> repairPlans;
-  private transient Set<String> executedTsFileTransfers;
-  private transient Set<String> executedPointStreamingPlans;
-  private transient List<DiffEntry> decodedDiffs;
-  private transient RepairSession repairSession;
-  private transient long estimatedDiffCount;
+  private transient List<String> repairOperationIds;
+  private transient Set<String> executedRepairOperations;
 
   /** Required for deserialization. */
   public RepairRegionProcedure() {
@@ -130,7 +108,7 @@ public class RepairRegionProcedure
 
         case CHECK_SYNC_LAG:
           LOGGER.info("RepairRegionProcedure: CHECK_SYNC_LAG for group {}", consensusGroupId);
-          if (!checkSyncLagCompleted(env)) {
+          if (!requireExecutionContext().isReplicationComplete()) {
             LOGGER.info(
                 "RepairRegionProcedure: skipping group {} because replication is not complete",
                 consensusGroupId);
@@ -142,120 +120,47 @@ public class RepairRegionProcedure
 
         case COMPUTE_WATERMARK:
           LOGGER.info("RepairRegionProcedure: COMPUTE_WATERMARK for group {}", consensusGroupId);
-          computeWatermarkAndPartitions(env);
+          computeWatermarkAndPartitions();
           if (pendingPartitions.isEmpty()) {
-            LOGGER.info("No pending partitions to check for group {}", consensusGroupId);
+            LOGGER.info("No pending partitions to repair for group {}", consensusGroupId);
             finishWithoutRepair();
             return Flow.NO_MORE_STATE;
           }
-          setNextState(RepairState.BUILD_MERKLE_VIEW);
+          setNextState(RepairState.PREPARE_LOGICAL_SNAPSHOT);
           break;
 
-        case BUILD_MERKLE_VIEW:
+        case PREPARE_LOGICAL_SNAPSHOT:
           LOGGER.info(
-              "RepairRegionProcedure: BUILD_MERKLE_VIEW for partition {} of group {}",
+              "RepairRegionProcedure: PREPARE_LOGICAL_SNAPSHOT for partition {} of group {}",
               getCurrentPartitionId(),
               consensusGroupId);
-          buildMerkleView(env);
+          buildPartitionContext();
           setNextState(RepairState.COMPARE_ROOT_HASH);
           break;
 
         case COMPARE_ROOT_HASH:
-          hashMatched = compareRootHash(env);
+          hashMatched = requireCurrentPartitionContext().isRootHashMatched();
           if (hashMatched) {
-            LOGGER.info("Root hash matched for partition {}", getCurrentPartitionId());
+            LOGGER.info("Partition {} is already matched", getCurrentPartitionId());
             setNextState(RepairState.COMMIT_PARTITION);
           } else {
-            LOGGER.info("Root hash mismatched for partition {}", getCurrentPartitionId());
+            LOGGER.info("Partition {} is mismatched", getCurrentPartitionId());
             setNextState(RepairState.DRILL_DOWN);
           }
           break;
 
         case DRILL_DOWN:
-          LOGGER.info(
-              "RepairRegionProcedure: DRILL_DOWN for partition {}", getCurrentPartitionId());
-          drillDown(env);
-          setNextState(RepairState.SMALL_TSFILE_SHORT_CIRCUIT);
+          prepareRepairOperations();
+          setNextState(RepairState.EXECUTE_REPAIR_OPERATIONS);
           break;
 
-        case SMALL_TSFILE_SHORT_CIRCUIT:
-          if (prepareDirectTransferOnlyPlans()) {
-            setNextState(RepairState.EXECUTE_TSFILE_TRANSFER);
-          } else {
-            boolean hasSmallFiles = handleSmallTsFileShortCircuit(env);
-            if (hasLargeFilesNeedingIBF()) {
-              setNextState(RepairState.NEGOTIATE_KEY_MAPPING);
-            } else if (hasSmallFiles) {
-              setNextState(RepairState.EXECUTE_TSFILE_TRANSFER);
-            } else {
-              setNextState(RepairState.COMMIT_PARTITION);
-            }
-          }
-          break;
-
-        case NEGOTIATE_KEY_MAPPING:
-          LOGGER.info("RepairRegionProcedure: NEGOTIATE_KEY_MAPPING");
-          negotiateKeyMapping(env);
-          setNextState(RepairState.ESTIMATE_DIFF);
-          break;
-
-        case ESTIMATE_DIFF:
-          estimateDiff(env);
-          setNextState(RepairState.EXCHANGE_IBF);
-          break;
-
-        case EXCHANGE_IBF:
-          exchangeIBF(env);
-          setNextState(RepairState.DECODE_DIFF);
-          break;
-
-        case DECODE_DIFF:
-          boolean decodeSuccess = decodeDiff(env);
-          if (decodeSuccess) {
-            setNextState(RepairState.ATTRIBUTE_DIFFS);
-          } else {
-            LOGGER.warn(
-                "IBF decode failed for partition {}, falling back to direct transfer",
-                getCurrentPartitionId());
-            setNextState(RepairState.EXECUTE_TSFILE_TRANSFER);
-          }
-          break;
-
-        case ATTRIBUTE_DIFFS:
-          attributeDiffs(env);
-          setNextState(RepairState.SELECT_REPAIR_STRATEGY);
-          break;
-
-        case SELECT_REPAIR_STRATEGY:
-          selectRepairStrategy(env);
-          if (hasPendingTsFileTransfers()) {
-            setNextState(RepairState.EXECUTE_TSFILE_TRANSFER);
-          } else if (hasPendingPointStreaming()) {
-            setNextState(RepairState.EXECUTE_POINT_STREAMING);
-          } else {
-            setNextState(RepairState.VERIFY_REPAIR);
-          }
-          break;
-
-        case EXECUTE_TSFILE_TRANSFER:
-          LOGGER.info("RepairRegionProcedure: EXECUTE_TSFILE_TRANSFER");
-          executeTsFileTransfer(env);
-          if (hasPendingPointStreaming()) {
-            setNextState(RepairState.EXECUTE_POINT_STREAMING);
-          } else {
-            setNextState(RepairState.VERIFY_REPAIR);
-          }
-          break;
-
-        case EXECUTE_POINT_STREAMING:
-          LOGGER.info("RepairRegionProcedure: EXECUTE_POINT_STREAMING");
-          executePointStreaming(env);
+        case EXECUTE_REPAIR_OPERATIONS:
+          executeRepairOperations();
           setNextState(RepairState.VERIFY_REPAIR);
           break;
 
         case VERIFY_REPAIR:
-          boolean verified = verifyRepair(env);
-          if (verified) {
+          if (hashMatched || requireCurrentPartitionContext().verify()) {
             setNextState(RepairState.COMMIT_PARTITION);
           } else {
             lastFailureReason =
@@ -269,22 +174,22 @@ public class RepairRegionProcedure
           break;
 
         case COMMIT_PARTITION:
-          commitPartition(env);
+          commitPartition();
           currentPartitionIndex++;
           if (currentPartitionIndex < pendingPartitions.size()) {
-            setNextState(RepairState.BUILD_MERKLE_VIEW);
+            setNextState(RepairState.PREPARE_LOGICAL_SNAPSHOT);
           } else {
             setNextState(RepairState.ADVANCE_WATERMARK);
           }
           break;
 
         case ADVANCE_WATERMARK:
-          advanceWatermark(env);
+          advanceWatermark();
           return Flow.NO_MORE_STATE;
 
         case ROLLBACK:
           LOGGER.warn("RepairRegionProcedure: ROLLBACK for group {}", consensusGroupId);
-          rollback(env);
+          rollback();
           return Flow.NO_MORE_STATE;
 
         case DONE:
@@ -309,25 +214,18 @@ public class RepairRegionProcedure
     return Flow.HAS_MORE_STATE;
   }
 
-  private boolean checkSyncLagCompleted(ConfigNodeProcedureEnv env) {
-    return requireExecutionContext().isReplicationComplete();
-  }
-
-  private void computeWatermarkAndPartitions(ConfigNodeProcedureEnv env) {
+  private void computeWatermarkAndPartitions() {
     RepairExecutionContext context = requireExecutionContext();
     RepairProgressTable progressTable = getOrCreateRepairProgressTable();
-    progressTable.setRegionStatus(RegionRepairStatus.RUNNING);
-    globalRepairedWatermark =
-        Math.max(globalRepairedWatermark, progressTable.getGlobalRepairedWatermark());
-    tSafe = Math.max(globalRepairedWatermark, context.computeSafeWatermark());
+    tSafe = context.computeSafeWatermark();
 
     pendingPartitions.clear();
-    if (tSafe <= globalRepairedWatermark) {
+    if (tSafe == Long.MIN_VALUE) {
       return;
     }
 
     List<Long> candidatePartitions =
-        safeList(context.collectPendingPartitions(globalRepairedWatermark, tSafe, progressTable));
+        safeList(context.collectPendingPartitions(tSafe, progressTable));
     candidatePartitions.stream()
         .filter(Objects::nonNull)
         .filter(partitionId -> partitionId <= tSafe)
@@ -341,7 +239,7 @@ public class RepairRegionProcedure
     persistRepairProgressTable(progressTable);
   }
 
-  private void buildMerkleView(ConfigNodeProcedureEnv env) {
+  private void buildPartitionContext() {
     resetCurrentPartitionState();
     long partitionId = getCurrentPartitionId();
     currentPartitionContext = requireExecutionContext().getPartitionContext(partitionId);
@@ -361,249 +259,101 @@ public class RepairRegionProcedure
     }
   }
 
-  private boolean compareRootHash(ConfigNodeProcedureEnv env) {
-    return requireCurrentPartitionContext().isRootHashMatched();
-  }
-
-  private void drillDown(ConfigNodeProcedureEnv env) {
+  private void prepareRepairOperations() {
     PartitionRepairContext partitionContext = requireCurrentPartitionContext();
-    List<MerkleFileContent> mismatchedFiles =
-        safeList(partitionContext.getMismatchedLeaderMerkleFiles());
     LOGGER.info(
-        "Partition {} has {} mismatched TsFiles after Merkle drill-down",
+        "Partition {} has {} logical repair operations in the cached mismatch scope",
         partitionContext.getPartitionId(),
-        mismatchedFiles.size());
-    if (mismatchedFiles.isEmpty()) {
-      LOGGER.warn(
-          "Partition {} reported root mismatch but returned no mismatched TsFiles",
-          partitionContext.getPartitionId());
-    }
-  }
+        safeList(partitionContext.getRepairOperationIds()).size());
 
-  private boolean prepareDirectTransferOnlyPlans() {
-    PartitionRepairContext partitionContext = requireCurrentPartitionContext();
-    if (!partitionContext.shouldForceDirectTsFileTransfer()) {
-      return false;
-    }
-
-    List<String> fallbackTsFiles = safeList(partitionContext.getFallbackTsFiles());
-    if (fallbackTsFiles.isEmpty()) {
+    List<String> operationIds = safeList(partitionContext.getRepairOperationIds());
+    if (operationIds.isEmpty()) {
+      String blockingReason = partitionContext.getBlockingReason();
       throw new IllegalStateException(
-          "Partition "
-              + partitionContext.getPartitionId()
-              + " requested direct TsFile transfer but provided no fallback files");
+          blockingReason != null
+              ? blockingReason
+              : ("Partition "
+                  + partitionContext.getPartitionId()
+                  + " is mismatched but no repair operations were provided"));
     }
 
-    for (String tsFilePath : fallbackTsFiles) {
-      repairPlans.putIfAbsent(
-          tsFilePath,
-          RepairPlan.directTransfer(tsFilePath, partitionContext.getTsFileSize(tsFilePath)));
+    for (String operationId : operationIds) {
+      repairOperationIds.add(operationId);
     }
-    return true;
+
+    RepairProgressTable progressTable = getOrCreateRepairProgressTable();
+    String repairEpoch =
+        partitionContext.getRepairEpoch() != null
+            ? partitionContext.getRepairEpoch()
+            : progressTable
+                .getOrCreatePartition(partitionContext.getPartitionId())
+                .getRepairEpoch();
+    progressTable.markRepairRunning(partitionContext.getPartitionId(), repairEpoch);
+    persistRepairProgressTable(progressTable);
   }
 
-  private boolean handleSmallTsFileShortCircuit(ConfigNodeProcedureEnv env) {
-    boolean hasSmallFiles = false;
-    for (MerkleFileContent content :
-        safeList(requireCurrentPartitionContext().getMismatchedLeaderMerkleFiles())) {
-      String tsFilePath = content.getSourceTsFilePath();
-      long tsFileSize = requireCurrentPartitionContext().getTsFileSize(tsFilePath);
-      if (REPAIR_COST_MODEL.shouldBypassIBF(tsFileSize)) {
-        hasSmallFiles = true;
-        repairPlans.put(tsFilePath, RepairPlan.directTransfer(tsFilePath, tsFileSize));
-      }
-    }
-    return hasSmallFiles;
-  }
-
-  private boolean hasLargeFilesNeedingIBF() {
-    for (MerkleFileContent content :
-        safeList(requireCurrentPartitionContext().getMismatchedLeaderMerkleFiles())) {
-      String tsFilePath = content.getSourceTsFilePath();
-      if (repairPlans.containsKey(tsFilePath)) {
+  private void executeRepairOperations() throws Exception {
+    for (String operationId : repairOperationIds) {
+      if (!executedRepairOperations.add(operationId)) {
         continue;
       }
-      long tsFileSize = requireCurrentPartitionContext().getTsFileSize(tsFilePath);
-      if (!REPAIR_COST_MODEL.shouldBypassIBF(tsFileSize)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private void negotiateKeyMapping(ConfigNodeProcedureEnv env) {
-    currentRowRefIndex = requireCurrentPartitionContext().getRowRefIndex();
-    if (currentRowRefIndex == null) {
-      throw new IllegalStateException(
-          "Large-file diff localization requires a RowRefIndex for partition "
-              + getCurrentPartitionId());
+      requireExecutionContext().executeRepairOperation(operationId);
     }
   }
 
-  private void estimateDiff(ConfigNodeProcedureEnv env) {
-    estimatedDiffCount = requireCurrentPartitionContext().estimateDiffCount();
-    if (estimatedDiffCount <= 0 && requireCurrentPartitionContext().isDiffDecodeSuccessful()) {
-      estimatedDiffCount = safeList(requireCurrentPartitionContext().decodeDiffs()).size();
-    }
-    LOGGER.info(
-        "Estimated diff count for partition {} is {}", getCurrentPartitionId(), estimatedDiffCount);
-  }
-
-  private void exchangeIBF(ConfigNodeProcedureEnv env) {
-    decodedDiffs.clear();
-    decodedDiffs.addAll(safeList(requireCurrentPartitionContext().decodeDiffs()));
-  }
-
-  private boolean decodeDiff(ConfigNodeProcedureEnv env) {
-    PartitionRepairContext partitionContext = requireCurrentPartitionContext();
-    if (!partitionContext.isDiffDecodeSuccessful()) {
-      for (String tsFilePath : safeList(partitionContext.getFallbackTsFiles())) {
-        repairPlans.put(
-            tsFilePath,
-            RepairPlan.directTransfer(tsFilePath, partitionContext.getTsFileSize(tsFilePath)));
-      }
-      return false;
-    }
-    if (decodedDiffs.isEmpty()) {
-      decodedDiffs.addAll(safeList(partitionContext.decodeDiffs()));
-    }
-    return true;
-  }
-
-  private void attributeDiffs(ConfigNodeProcedureEnv env) {
-    attributedDiffs =
-        diffAttribution.attributeToSourceTsFiles(
-            decodedDiffs,
-            currentRowRefIndex,
-            safeList(requireCurrentPartitionContext().getLeaderMerkleFiles()));
-  }
-
-  private void selectRepairStrategy(ConfigNodeProcedureEnv env) {
-    PartitionRepairContext partitionContext = requireCurrentPartitionContext();
-    for (Map.Entry<String, List<DiffEntry>> entry : attributedDiffs.entrySet()) {
-      String tsFilePath = entry.getKey();
-      if (repairPlans.containsKey(tsFilePath)) {
-        continue;
-      }
-      List<DiffEntry> diffs = entry.getValue();
-      long tsFileSize = partitionContext.getTsFileSize(tsFilePath);
-      int totalPointCount = partitionContext.getTotalPointCount(tsFilePath);
-      RepairStrategy strategy =
-          REPAIR_COST_MODEL.selectStrategy(tsFileSize, totalPointCount, diffs.size());
-      if (strategy == RepairStrategy.DIRECT_TSFILE_TRANSFER) {
-        repairPlans.put(tsFilePath, RepairPlan.directTransfer(tsFilePath, tsFileSize));
-      } else {
-        repairPlans.put(tsFilePath, RepairPlan.pointStreaming(tsFilePath, tsFileSize, diffs));
-      }
-    }
-  }
-
-  private boolean hasPendingTsFileTransfers() {
-    return repairPlans.values().stream()
-        .anyMatch(
-            plan ->
-                plan.getStrategy() == RepairStrategy.DIRECT_TSFILE_TRANSFER
-                    && !executedTsFileTransfers.contains(plan.getTsFilePath()));
-  }
-
-  private boolean hasPendingPointStreaming() {
-    return repairPlans.values().stream()
-        .anyMatch(
-            plan ->
-                plan.getStrategy() == RepairStrategy.POINT_STREAMING
-                    && !executedPointStreamingPlans.contains(plan.getTsFilePath()));
-  }
-
-  private void executeTsFileTransfer(ConfigNodeProcedureEnv env) {
-    for (RepairPlan plan : repairPlans.values()) {
-      if (plan.getStrategy() != RepairStrategy.DIRECT_TSFILE_TRANSFER
-          || executedTsFileTransfers.contains(plan.getTsFilePath())) {
-        continue;
-      }
-      try {
-        requireExecutionContext().transferTsFile(plan.getTsFilePath());
-        executedTsFileTransfers.add(plan.getTsFilePath());
-      } catch (Exception e) {
-        throw new IllegalStateException(
-            "Failed to transfer TsFile " + plan.getTsFilePath() + ": " + e.getMessage(), e);
-      }
-    }
-  }
-
-  private void executePointStreaming(ConfigNodeProcedureEnv env) {
-    RepairConflictResolver conflictResolver =
-        new RepairConflictResolver(
-            safeList(requireCurrentPartitionContext().getLeaderDeletions()),
-            safeList(requireCurrentPartitionContext().getFollowerDeletions()));
-    repairSession = requireExecutionContext().createRepairSession(getCurrentPartitionId());
-
-    for (RepairPlan plan : repairPlans.values()) {
-      if (plan.getStrategy() != RepairStrategy.POINT_STREAMING
-          || executedPointStreamingPlans.contains(plan.getTsFilePath())) {
-        continue;
-      }
-      for (DiffEntry diff : plan.getDiffs()) {
-        RepairRecord record =
-            requireExecutionContext()
-                .buildRepairRecord(
-                    requireCurrentPartitionContext(), diff, currentRowRefIndex, conflictResolver);
-        if (record != null) {
-          repairSession.stage(record);
-        }
-      }
-      executedPointStreamingPlans.add(plan.getTsFilePath());
-    }
-
-    if (repairSession.getStagedCount() > 0 && !repairSession.promoteAtomically()) {
-      throw new IllegalStateException(
-          "Failed to atomically promote repair session " + repairSession.getSessionId());
-    }
-  }
-
-  private boolean verifyRepair(ConfigNodeProcedureEnv env) {
-    return hashMatched || requireCurrentPartitionContext().verify(repairPlans, hashMatched);
-  }
-
-  private void commitPartition(ConfigNodeProcedureEnv env) {
+  private void commitPartition() {
     long partitionId = getCurrentPartitionId();
     RepairProgressTable progressTable = getOrCreateRepairProgressTable();
-    long repairedTo =
-        Math.max(tSafe, progressTable.getOrCreatePartition(partitionId).getRepairedTo());
-    progressTable.commitPartition(partitionId, repairedTo);
-    requireExecutionContext().onPartitionCommitted(partitionId, repairedTo, progressTable);
-    if (repairSession != null) {
-      repairSession.cleanup();
+    long checkedAt = System.currentTimeMillis();
+    requireExecutionContext().onPartitionCommitted(partitionId, checkedAt, progressTable);
+    RepairProgressTable.PartitionProgress progress =
+        progressTable.getOrCreatePartition(partitionId);
+    if (progress.getCheckState() != RepairProgressTable.CheckState.VERIFIED) {
+      progressTable.markRepairSucceeded(
+          partitionId,
+          checkedAt,
+          tSafe,
+          progress.getPartitionMutationEpoch(),
+          progress.getSnapshotEpoch(),
+          progress.getSnapshotState(),
+          progress.getRepairEpoch());
     }
     persistRepairProgressTable(progressTable);
     LOGGER.info("Committed partition {} for group {}", partitionId, consensusGroupId);
     resetCurrentPartitionState();
   }
 
-  private void advanceWatermark(ConfigNodeProcedureEnv env) {
-    RepairProgressTable progressTable = getOrCreateRepairProgressTable();
-    globalRepairedWatermark = progressTable.advanceGlobalWatermark();
-    progressTable.setRegionStatus(RegionRepairStatus.IDLE);
-    requireExecutionContext().onWatermarkAdvanced(globalRepairedWatermark, progressTable);
-    persistRepairProgressTable(progressTable);
+  private void advanceWatermark() {
+    persistRepairProgressTable(getOrCreateRepairProgressTable());
     LOGGER.info(
-        "Advanced repair watermark for group {} to {}", consensusGroupId, globalRepairedWatermark);
+        "Finished repair procedure for group {} at safe watermark {}", consensusGroupId, tSafe);
     cleanupExecutionContext();
   }
 
-  protected void rollback(ConfigNodeProcedureEnv env) {
+  protected void rollback() {
     long partitionId = getCurrentPartitionId();
     RepairProgressTable progressTable = getOrCreateRepairProgressTable();
     if (partitionId >= 0) {
-      progressTable.failPartition(
-          partitionId, lastFailureReason == null ? "Unknown repair failure" : lastFailureReason);
-    }
-    progressTable.setRegionStatus(RegionRepairStatus.FAILED);
-    if (repairSession != null) {
-      repairSession.abort();
+      RepairProgressTable.PartitionProgress partitionProgress =
+          progressTable.getOrCreatePartition(partitionId);
+      progressTable.markRepairFailed(
+          partitionId,
+          partitionProgress.getRepairEpoch(),
+          "REPAIR_FAILED",
+          lastFailureReason == null ? "Unknown repair failure" : lastFailureReason);
+      progressTable.markCheckFailed(
+          partitionId,
+          System.currentTimeMillis(),
+          tSafe,
+          partitionProgress.getPartitionMutationEpoch(),
+          partitionProgress.getSnapshotEpoch(),
+          partitionProgress.getSnapshotState(),
+          "REPAIR_FAILED",
+          lastFailureReason == null ? "Unknown repair failure" : lastFailureReason);
     }
     RepairExecutionContext context = getExecutionContextIfPresent();
     if (context != null && partitionId >= 0) {
-      context.rollbackPartition(partitionId, repairSession, progressTable);
+      context.rollbackPartition(partitionId, progressTable);
     }
     persistRepairProgressTable(progressTable);
     LOGGER.warn("Rolled back repair for group {}", consensusGroupId);
@@ -648,7 +398,6 @@ public class RepairRegionProcedure
       stream.writeInt(consensusGroupId.getType().getValue());
     }
     stream.writeLong(tSafe);
-    stream.writeLong(globalRepairedWatermark);
     stream.writeInt(currentPartitionIndex);
     stream.writeBoolean(hashMatched);
     writeString(stream, executionContextId);
@@ -676,7 +425,6 @@ public class RepairRegionProcedure
     }
 
     this.tSafe = byteBuffer.getLong();
-    this.globalRepairedWatermark = byteBuffer.getLong();
     this.currentPartitionIndex = byteBuffer.getInt();
     this.hashMatched = byteBuffer.get() != 0;
     this.executionContextId = readString(byteBuffer);
@@ -692,10 +440,6 @@ public class RepairRegionProcedure
 
   public TConsensusGroupId getConsensusGroupId() {
     return consensusGroupId;
-  }
-
-  public long getGlobalRepairedWatermark() {
-    return globalRepairedWatermark;
   }
 
   public String getExecutionContextId() {
@@ -728,7 +472,6 @@ public class RepairRegionProcedure
     }
     RepairRegionProcedure that = (RepairRegionProcedure) o;
     return tSafe == that.tSafe
-        && globalRepairedWatermark == that.globalRepairedWatermark
         && currentPartitionIndex == that.currentPartitionIndex
         && hashMatched == that.hashMatched
         && Objects.equals(consensusGroupId, that.consensusGroupId)
@@ -742,7 +485,6 @@ public class RepairRegionProcedure
     return Objects.hash(
         consensusGroupId,
         tSafe,
-        globalRepairedWatermark,
         pendingPartitions,
         currentPartitionIndex,
         hashMatched,
@@ -754,28 +496,15 @@ public class RepairRegionProcedure
     this.executionContext = getExecutionContextIfPresent();
     this.currentPartitionContext = null;
     this.repairProgressTable = null;
-    this.diffAttribution = new DiffAttribution();
-    this.currentRowRefIndex = null;
-    this.attributedDiffs = new LinkedHashMap<>();
-    this.repairPlans = new LinkedHashMap<>();
-    this.executedTsFileTransfers = new HashSet<>();
-    this.executedPointStreamingPlans = new HashSet<>();
-    this.decodedDiffs = new ArrayList<>();
-    this.repairSession = null;
-    this.estimatedDiffCount = 0L;
+    this.repairOperationIds = new ArrayList<>();
+    this.executedRepairOperations = new LinkedHashSet<>();
   }
 
   private void resetCurrentPartitionState() {
     this.currentPartitionContext = null;
-    this.currentRowRefIndex = null;
-    this.attributedDiffs.clear();
-    this.repairPlans.clear();
-    this.executedTsFileTransfers.clear();
-    this.executedPointStreamingPlans.clear();
-    this.decodedDiffs.clear();
-    this.repairSession = null;
+    this.repairOperationIds.clear();
+    this.executedRepairOperations.clear();
     this.hashMatched = false;
-    this.estimatedDiffCount = 0L;
     this.lastFailureReason = null;
   }
 
@@ -816,23 +545,12 @@ public class RepairRegionProcedure
       if (repairProgressTable == null) {
         repairProgressTable = new RepairProgressTable(toConsensusGroupKey(consensusGroupId));
       }
-      repairProgressTable.setRegionStatus(RegionRepairStatus.RUNNING);
-      for (int i = 0; i < pendingPartitions.size(); i++) {
-        long partitionId = pendingPartitions.get(i);
-        RepairProgressTable.PartitionProgress progress =
-            repairProgressTable.getOrCreatePartition(partitionId);
-        if (i < currentPartitionIndex) {
-          progress.markVerified(tSafe);
-        }
-      }
-      repairProgressTable.advanceGlobalWatermark();
     }
     return repairProgressTable;
   }
 
   private void finishWithoutRepair() {
     if (repairProgressTable != null) {
-      repairProgressTable.setRegionStatus(RegionRepairStatus.IDLE);
       persistRepairProgressTable(repairProgressTable);
     }
     cleanupExecutionContext();
@@ -895,7 +613,7 @@ public class RepairRegionProcedure
 
   /**
    * Bridge between the state machine and the transport/runtime-specific implementation that
-   * provides Merkle snapshots, decoded diffs and repair primitives.
+   * provides logical-snapshot mismatch repair operations.
    */
   public interface RepairExecutionContext extends AutoCloseable {
 
@@ -904,21 +622,11 @@ public class RepairRegionProcedure
     long computeSafeWatermark();
 
     List<Long> collectPendingPartitions(
-        long globalRepairedWatermark, long safeWatermark, RepairProgressTable repairProgressTable);
+        long safeWatermark, RepairProgressTable repairProgressTable);
 
     PartitionRepairContext getPartitionContext(long partitionId);
 
-    RepairRecord buildRepairRecord(
-        PartitionRepairContext partitionContext,
-        DiffEntry diffEntry,
-        RowRefIndex rowRefIndex,
-        RepairConflictResolver conflictResolver);
-
-    void transferTsFile(String tsFilePath) throws Exception;
-
-    default RepairSession createRepairSession(long partitionId) {
-      return new RepairSession(partitionId);
-    }
+    void executeRepairOperation(String operationId) throws Exception;
 
     default RepairProgressTable loadRepairProgressTable(String consensusGroupKey) {
       return null;
@@ -927,13 +635,9 @@ public class RepairRegionProcedure
     default void persistRepairProgressTable(RepairProgressTable repairProgressTable) {}
 
     default void onPartitionCommitted(
-        long partitionId, long repairedTo, RepairProgressTable repairProgressTable) {}
+        long partitionId, long committedAt, RepairProgressTable repairProgressTable) {}
 
-    default void onWatermarkAdvanced(
-        long globalWatermark, RepairProgressTable repairProgressTable) {}
-
-    default void rollbackPartition(
-        long partitionId, RepairSession repairSession, RepairProgressTable repairProgressTable) {}
+    default void rollbackPartition(long partitionId, RepairProgressTable repairProgressTable) {}
 
     @Override
     default void close() {}
@@ -946,37 +650,17 @@ public class RepairRegionProcedure
 
     boolean isRootHashMatched();
 
-    List<MerkleFileContent> getLeaderMerkleFiles();
+    List<String> getRepairOperationIds();
 
-    List<MerkleFileContent> getMismatchedLeaderMerkleFiles();
-
-    RowRefIndex getRowRefIndex();
-
-    List<DiffEntry> decodeDiffs();
-
-    boolean isDiffDecodeSuccessful();
-
-    long estimateDiffCount();
-
-    List<String> getFallbackTsFiles();
-
-    long getTsFileSize(String tsFilePath);
-
-    int getTotalPointCount(String tsFilePath);
-
-    default List<ModEntrySummary> getLeaderDeletions() {
-      return Collections.emptyList();
+    default String getRepairEpoch() {
+      return null;
     }
 
-    default List<ModEntrySummary> getFollowerDeletions() {
-      return Collections.emptyList();
+    default String getBlockingReason() {
+      return null;
     }
 
-    default boolean shouldForceDirectTsFileTransfer() {
-      return false;
-    }
-
-    default boolean verify(Map<String, RepairPlan> repairPlans, boolean rootHashMatched) {
+    default boolean verify() {
       return true;
     }
   }

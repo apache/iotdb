@@ -43,4 +43,14 @@ public class RemoteConfigNodeConfig implements ConfigNodeConfig {
   public ConfigNodeConfig setLeaderDistributionPolicy(String policy) {
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setConsistencyCheckSchedulerInitialDelayInMs(long initialDelayInMs) {
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setConsistencyCheckSchedulerIntervalInMs(long intervalInMs) {
+    return this;
+  }
 }
