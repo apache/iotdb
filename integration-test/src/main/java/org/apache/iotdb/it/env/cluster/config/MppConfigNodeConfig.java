@@ -73,4 +73,18 @@ public class MppConfigNodeConfig extends MppBaseConfig implements ConfigNodeConf
     properties.setProperty("leader_distribution_policy", policy);
     return this;
   }
+
+  @Override
+  public ConfigNodeConfig setConsistencyCheckSchedulerInitialDelayInMs(long initialDelayInMs) {
+    properties.setProperty(
+        "consistency_check_scheduler_initial_delay_in_ms", String.valueOf(initialDelayInMs));
+    return this;
+  }
+
+  @Override
+  public ConfigNodeConfig setConsistencyCheckSchedulerIntervalInMs(long intervalInMs) {
+    properties.setProperty(
+        "consistency_check_scheduler_interval_in_ms", String.valueOf(intervalInMs));
+    return this;
+  }
 }

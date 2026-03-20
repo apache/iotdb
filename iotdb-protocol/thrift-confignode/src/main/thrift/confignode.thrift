@@ -173,6 +173,12 @@ struct TSetDataNodeStatusReq {
   2: required string status
 }
 
+struct TTriggerRegionConsistencyRepairReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: optional list<i64> partitionFilter
+  3: optional string repairEpoch
+}
+
 // Database
 struct TDeleteDatabaseReq {
   1: required string prefixPath
@@ -709,6 +715,29 @@ struct TConfigNodeInfo4InformationSchema {
 struct TShowConfigNodes4InformationSchemaResp {
   1: required common.TSStatus status
   2: optional list<TConfigNodeInfo4InformationSchema> configNodesInfoList
+}
+
+struct TRepairProgressInfo {
+  1: required i32 regionId
+  2: required i64 timePartition
+  3: required string checkState
+  4: required string repairState
+  5: required i64 lastCheckedAt
+  6: required i64 lastSafeWatermark
+  7: required i64 partitionMutationEpoch
+  8: required i64 snapshotEpoch
+  9: required string snapshotState
+  10: required i64 lastMismatchAt
+  11: optional string mismatchScopeRef
+  12: required i32 mismatchLeafCount
+  13: optional string repairEpoch
+  14: optional string lastErrorCode
+  15: optional string lastErrorMessage
+}
+
+struct TShowRepairProgressResp {
+  1: required common.TSStatus status
+  2: optional list<TRepairProgressInfo> repairProgressInfoList
 }
 
 // Show Database
@@ -1753,6 +1782,9 @@ service IConfigNodeRPCService {
 
   common.TSStatus removeRegion(TRemoveRegionReq req)
 
+  /** Trigger replica consistency check and repair for a single DataRegion */
+  common.TSStatus triggerRegionConsistencyRepair(TTriggerRegionConsistencyRepairReq req)
+
   /** Kill query */
   common.TSStatus killQuery(string queryId, i32 dataNodeId, string allowedUsername)
 
@@ -1780,6 +1812,9 @@ service IConfigNodeRPCService {
 
   /** Show cluster ConfigNodes' information for information schema */
   TShowConfigNodes4InformationSchemaResp showConfigNodes4InformationSchema()
+
+  /** Show replica consistency check / repair progress for information schema */
+  TShowRepairProgressResp showRepairProgress()
 
   /** Show cluster Databases' information */
   TShowDatabaseResp showDatabase(TGetDatabaseReq req)
@@ -2055,4 +2090,3 @@ service IConfigNodeRPCService {
 
   common.TSStatus createTableView(TCreateTableViewReq req)
 }
-

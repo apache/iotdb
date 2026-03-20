@@ -46,6 +46,7 @@ public class InformationSchema {
   public static final String TABLES = "tables";
   public static final String COLUMNS = "columns";
   public static final String REGIONS = "regions";
+  public static final String REPAIR_PROGRESS = "repair_progress";
   public static final String PIPES = "pipes";
   public static final String PIPE_PLUGINS = "pipe_plugins";
   public static final String TOPICS = "topics";
@@ -185,6 +186,51 @@ public class InformationSchema {
         new AttributeColumnSchema(
             ColumnHeaderConstant.COMPRESSION_RATIO_TABLE_MODEL, TSDataType.DOUBLE));
     schemaTables.put(REGIONS, regionTable);
+
+    final TsTable repairProgressTable = new TsTable(REPAIR_PROGRESS);
+    repairProgressTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.REGION_ID_TABLE_MODEL, TSDataType.INT32));
+    repairProgressTable.addColumnSchema(
+        new TagColumnSchema(ColumnHeaderConstant.TIME_PARTITION_TABLE_MODEL, TSDataType.INT64));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(ColumnHeaderConstant.CHECK_STATE_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REPAIR_STATE_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_CHECKED_AT_TABLE_MODEL, TSDataType.TIMESTAMP));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_SAFE_WATERMARK_TABLE_MODEL, TSDataType.INT64));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.PARTITION_MUTATION_EPOCH_TABLE_MODEL, TSDataType.INT64));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SNAPSHOT_EPOCH_TABLE_MODEL, TSDataType.INT64));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.SNAPSHOT_STATE_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_MISMATCH_AT_TABLE_MODEL, TSDataType.TIMESTAMP));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MISMATCH_SCOPE_REF_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.MISMATCH_LEAF_COUNT_TABLE_MODEL, TSDataType.INT32));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.REPAIR_EPOCH_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_ERROR_CODE_TABLE_MODEL, TSDataType.STRING));
+    repairProgressTable.addColumnSchema(
+        new AttributeColumnSchema(
+            ColumnHeaderConstant.LAST_ERROR_MESSAGE_TABLE_MODEL, TSDataType.STRING));
+    schemaTables.put(REPAIR_PROGRESS, repairProgressTable);
 
     final TsTable pipeTable = new TsTable(PIPES);
     pipeTable.addColumnSchema(

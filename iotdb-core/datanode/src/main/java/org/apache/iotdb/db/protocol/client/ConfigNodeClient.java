@@ -165,6 +165,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTTLResp;
@@ -181,6 +182,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSystemConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTestOperation;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -828,6 +830,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
   }
 
   @Override
+  public TSStatus triggerRegionConsistencyRepair(TTriggerRegionConsistencyRepairReq req)
+      throws TException {
+    throw new UnsupportedOperationException(UNSUPPORTED_INVOCATION);
+  }
+
+  @Override
   public TSStatus submitLoadConfigurationTask() throws TException {
     return executeRemoteCallWithRetry(
         () -> client.submitLoadConfigurationTask(), status -> !updateConfigNodeLeader(status));
@@ -908,6 +916,12 @@ public class ConfigNodeClient implements IConfigNodeRPCService.Iface, ThriftClie
     return executeRemoteCallWithRetry(
         () -> client.showConfigNodes4InformationSchema(),
         resp -> !updateConfigNodeLeader(resp.status));
+  }
+
+  @Override
+  public TShowRepairProgressResp showRepairProgress() throws TException {
+    return executeRemoteCallWithRetry(
+        () -> client.showRepairProgress(), resp -> !updateConfigNodeLeader(resp.status));
   }
 
   @Override

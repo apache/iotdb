@@ -109,6 +109,7 @@ import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.Compacti
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduleTaskManager;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionScheduler;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.schedule.CompactionTaskManager;
+import org.apache.iotdb.db.storageengine.dataregion.consistency.DataRegionConsistencyManager;
 import org.apache.iotdb.db.storageengine.dataregion.flush.CloseFileListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushListener;
 import org.apache.iotdb.db.storageengine.dataregion.flush.FlushStatus;
@@ -1237,6 +1238,7 @@ public class DataRegion implements IDataRegionForQuery {
         PERFORMANCE_OVERVIEW_METRICS.recordScheduleUpdateLastCacheCost(
             System.nanoTime() - startTime);
       }
+      markConsistencyDirtyForInsert(insertRowNode.getTime());
     } finally {
       writeUnlock();
     }
@@ -1394,6 +1396,7 @@ public class DataRegion implements IDataRegionForQuery {
       // infoForMetrics[4]: InsertedPointsNumber
       boolean noFailure = executeInsertTablet(insertTabletNode, results, infoForMetrics);
       updateTsFileProcessorMetric(insertTabletNode, infoForMetrics);
+      markConsistencyDirtyForTablet(insertTabletNode.getTimes());
 
       if (!noFailure) {
         throw new BatchProcessException(results);
@@ -2878,6 +2881,10 @@ public class DataRegion implements IDataRegionForQuery {
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
       }
+      DataRegionConsistencyManager.getInstance()
+          .onDeletion(dataRegionId.convertToTConsensusGroupId(), sealedTsFileResource);
+      DataRegionConsistencyManager.getInstance()
+          .onDeletion(dataRegionId.convertToTConsensusGroupId(), startTime, endTime);
       writeUnlock();
       hasReleasedLock = true;
 
@@ -2982,6 +2989,17 @@ public class DataRegion implements IDataRegionForQuery {
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
       }
+      for (TableDeletionEntry modEntry : modEntries) {
+        DataRegionConsistencyManager.getInstance()
+            .onDeletion(
+                dataRegionId.convertToTConsensusGroupId(),
+                modEntry.getStartTime(),
+                modEntry.getEndTime());
+      }
+      for (List<TsFileResource> sealedTsFileResources : sealedTsFileResourceLists) {
+        DataRegionConsistencyManager.getInstance()
+            .onDeletion(dataRegionId.convertToTConsensusGroupId(), sealedTsFileResources);
+      }
 
       writeUnlock();
       hasReleasedLock = true;
@@ -3040,6 +3058,10 @@ public class DataRegion implements IDataRegionForQuery {
       if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
         throw deletionResource.getCause();
       }
+      DataRegionConsistencyManager.getInstance()
+          .onDeletion(dataRegionId.convertToTConsensusGroupId(), sealedTsFileResource);
+      DataRegionConsistencyManager.getInstance()
+          .onDeletion(dataRegionId.convertToTConsensusGroupId(), startTime, endTime);
       writeUnlock();
       releasedLock = true;
       deleteDataDirectlyInFile(sealedTsFileResource, deletion);
@@ -3989,6 +4011,8 @@ public class DataRegion implements IDataRegionForQuery {
       }
 
       onTsFileLoaded(newTsFileResource, isFromConsensus, lastReader);
+      DataRegionConsistencyManager.getInstance()
+          .onPartitionMutation(dataRegionId.convertToTConsensusGroupId(), newFilePartitionId);
       logger.info("TsFile {} is successfully loaded in unsequence list.", newFileName);
     } catch (final DiskSpaceInsufficientException e) {
       logger.error(
@@ -4633,6 +4657,7 @@ public class DataRegion implements IDataRegionForQuery {
       if (!insertRowsNode.getResults().isEmpty()) {
         throw new BatchProcessException("Partial failed inserting rows");
       }
+      markConsistencyDirtyForRows(timePartitionIds);
     } finally {
       writeUnlock();
     }
@@ -4697,6 +4722,7 @@ public class DataRegion implements IDataRegionForQuery {
           }
           insertMultiTabletsNode.getResults().put(i, firstStatus);
         }
+        markConsistencyDirtyForTablet(insertTabletNode.getTimes());
       }
       updateTsFileProcessorMetric(insertMultiTabletsNode, infoForMetrics);
 
@@ -4990,6 +5016,40 @@ public class DataRegion implements IDataRegionForQuery {
       return DataNodeTTLCache.getInstance().getTTLForTree(insertNode.getTargetPath().getNodes());
     } else {
       return DataNodeTTLCache.getInstance().getTTLForTable(databaseName, insertNode.getTableName());
+    }
+  }
+
+  private void markConsistencyDirtyForInsert(long time) {
+    DataRegionConsistencyManager.getInstance()
+        .onPartitionMutation(
+            dataRegionId.convertToTConsensusGroupId(), TimePartitionUtils.getTimePartitionId(time));
+  }
+
+  private void markConsistencyDirtyForTablet(long[] times) {
+    if (times == null || times.length == 0) {
+      return;
+    }
+    Set<Long> partitions = new HashSet<>();
+    for (long time : times) {
+      partitions.add(TimePartitionUtils.getTimePartitionId(time));
+    }
+    for (Long partitionId : partitions) {
+      DataRegionConsistencyManager.getInstance()
+          .onPartitionMutation(dataRegionId.convertToTConsensusGroupId(), partitionId);
+    }
+  }
+
+  private void markConsistencyDirtyForRows(long[] timePartitionIds) {
+    if (timePartitionIds == null || timePartitionIds.length == 0) {
+      return;
+    }
+    Set<Long> partitions = new HashSet<>();
+    for (long partitionId : timePartitionIds) {
+      partitions.add(partitionId);
+    }
+    for (Long partitionId : partitions) {
+      DataRegionConsistencyManager.getInstance()
+          .onPartitionMutation(dataRegionId.convertToTConsensusGroupId(), partitionId);
     }
   }
 }

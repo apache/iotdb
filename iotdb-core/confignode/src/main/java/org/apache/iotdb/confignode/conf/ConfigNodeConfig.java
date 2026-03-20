@@ -317,6 +317,9 @@ public class ConfigNodeConfig {
   /** The getOrCreatePartitionTable interface will log new created Partition if set true. */
   private boolean isEnablePrintingNewlyCreatedPartition = false;
 
+  private long consistencyCheckSchedulerInitialDelayInMs = 60_000L;
+  private long consistencyCheckSchedulerIntervalInMs = 900_000L;
+
   private long forceWalPeriodForConfigNodeSimpleInMs = 100;
 
   public ConfigNodeConfig() {
@@ -1172,6 +1175,23 @@ public class ConfigNodeConfig {
 
   public void setEnablePrintingNewlyCreatedPartition(boolean enablePrintingNewlyCreatedPartition) {
     isEnablePrintingNewlyCreatedPartition = enablePrintingNewlyCreatedPartition;
+  }
+
+  public long getConsistencyCheckSchedulerInitialDelayInMs() {
+    return consistencyCheckSchedulerInitialDelayInMs;
+  }
+
+  public void setConsistencyCheckSchedulerInitialDelayInMs(
+      long consistencyCheckSchedulerInitialDelayInMs) {
+    this.consistencyCheckSchedulerInitialDelayInMs = consistencyCheckSchedulerInitialDelayInMs;
+  }
+
+  public long getConsistencyCheckSchedulerIntervalInMs() {
+    return consistencyCheckSchedulerIntervalInMs;
+  }
+
+  public void setConsistencyCheckSchedulerIntervalInMs(long consistencyCheckSchedulerIntervalInMs) {
+    this.consistencyCheckSchedulerIntervalInMs = consistencyCheckSchedulerIntervalInMs;
   }
 
   public long getForceWalPeriodForConfigNodeSimpleInMs() {

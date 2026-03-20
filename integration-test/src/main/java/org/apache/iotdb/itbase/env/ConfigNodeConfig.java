@@ -31,4 +31,8 @@ public interface ConfigNodeConfig {
   ConfigNodeConfig setMetricPrometheusReporterPassword(String password);
 
   ConfigNodeConfig setLeaderDistributionPolicy(String policy);
+
+  ConfigNodeConfig setConsistencyCheckSchedulerInitialDelayInMs(long initialDelayInMs);
+
+  ConfigNodeConfig setConsistencyCheckSchedulerIntervalInMs(long intervalInMs);
 }

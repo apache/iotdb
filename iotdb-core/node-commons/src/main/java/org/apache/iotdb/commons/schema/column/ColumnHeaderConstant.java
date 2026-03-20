@@ -247,6 +247,20 @@ public class ColumnHeaderConstant {
 
   public static final String REGION_ID_TABLE_MODEL = "region_id";
   public static final String DATANODE_ID_TABLE_MODEL = "datanode_id";
+  public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
+  public static final String CHECK_STATE_TABLE_MODEL = "check_state";
+  public static final String REPAIR_STATE_TABLE_MODEL = "repair_state";
+  public static final String LAST_CHECKED_AT_TABLE_MODEL = "last_checked_at";
+  public static final String LAST_SAFE_WATERMARK_TABLE_MODEL = "last_safe_watermark";
+  public static final String PARTITION_MUTATION_EPOCH_TABLE_MODEL = "partition_mutation_epoch";
+  public static final String SNAPSHOT_EPOCH_TABLE_MODEL = "snapshot_epoch";
+  public static final String SNAPSHOT_STATE_TABLE_MODEL = "snapshot_state";
+  public static final String LAST_MISMATCH_AT_TABLE_MODEL = "last_mismatch_at";
+  public static final String MISMATCH_SCOPE_REF_TABLE_MODEL = "mismatch_scope_ref";
+  public static final String MISMATCH_LEAF_COUNT_TABLE_MODEL = "mismatch_leaf_count";
+  public static final String REPAIR_EPOCH_TABLE_MODEL = "repair_epoch";
+  public static final String LAST_ERROR_CODE_TABLE_MODEL = "last_error_code";
+  public static final String LAST_ERROR_MESSAGE_TABLE_MODEL = "last_error_message";
   public static final String SERIES_SLOT_NUM_TABLE_MODEL = "series_slot_num";
   public static final String TIME_SLOT_NUM_TABLE_MODEL = "time_slot_num";
   public static final String RPC_ADDRESS_TABLE_MODEL = "rpc_address";

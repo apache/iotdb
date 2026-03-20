@@ -47,6 +47,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.ConfigurationFileUtils;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.conf.TrimProperties;
+import org.apache.iotdb.commons.consensus.iotv2.consistency.RepairProgressTable;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.MeasurementPath;
@@ -109,6 +110,7 @@ import org.apache.iotdb.confignode.consensus.response.template.TemplateSetInfoRe
 import org.apache.iotdb.confignode.consensus.response.ttl.ShowTTLResp;
 import org.apache.iotdb.confignode.consensus.statemachine.ConfigRegionStateMachine;
 import org.apache.iotdb.confignode.manager.consensus.ConsensusManager;
+import org.apache.iotdb.confignode.manager.consistency.ConsistencyProgressManager;
 import org.apache.iotdb.confignode.manager.cq.CQManager;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceManager;
@@ -125,6 +127,7 @@ import org.apache.iotdb.confignode.manager.schema.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.schema.ClusterSchemaQuotaStatistics;
 import org.apache.iotdb.confignode.manager.subscription.SubscriptionManager;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
+import org.apache.iotdb.confignode.persistence.ConsistencyProgressInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -217,6 +220,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TPipeConfigTransferResp;
 import org.apache.iotdb.confignode.rpc.thrift.TReconstructRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRemoveRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRepairProgressInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataNodeStatusReq;
@@ -232,6 +236,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TShowDatabaseResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipePluginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowPipeResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRepairProgressResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowSubscriptionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowTable4InformationSchemaResp;
@@ -246,6 +251,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStopPipeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSubscribeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TThrottleQuotaResp;
 import org.apache.iotdb.confignode.rpc.thrift.TTimeSlotList;
+import org.apache.iotdb.confignode.rpc.thrift.TTriggerRegionConsistencyRepairReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TUnsubscribeReq;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -343,6 +349,8 @@ public class ConfigManager implements IManager {
   /** Subscription */
   private final SubscriptionManager subscriptionManager;
 
+  private final ConsistencyProgressManager consistencyProgressManager;
+
   private final ConfigRegionStateMachine stateMachine;
 
   private final RetryFailedTasksThread retryFailedTasksThread;
@@ -366,6 +374,7 @@ public class ConfigManager implements IManager {
     QuotaInfo quotaInfo = new QuotaInfo();
     TTLInfo ttlInfo = new TTLInfo();
     SubscriptionInfo subscriptionInfo = new SubscriptionInfo();
+    ConsistencyProgressInfo consistencyProgressInfo = new ConsistencyProgressInfo();
 
     // Build state machine and executor
     ConfigPlanExecutor executor =
@@ -383,7 +392,8 @@ public class ConfigManager implements IManager {
             pipeInfo,
             subscriptionInfo,
             quotaInfo,
-            ttlInfo);
+            ttlInfo,
+            consistencyProgressInfo);
     this.stateMachine = new ConfigRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -404,6 +414,7 @@ public class ConfigManager implements IManager {
     this.cqManager = new CQManager(this);
     this.pipeManager = new PipeManager(this, pipeInfo);
     this.subscriptionManager = new SubscriptionManager(this, subscriptionInfo);
+    this.consistencyProgressManager = new ConsistencyProgressManager(consistencyProgressInfo);
     this.auditLogger = new CNAuditLogger(this);
 
     // 1. keep PipeManager initialization before LoadManager initialization, because
@@ -1290,6 +1301,10 @@ public class ConfigManager implements IManager {
     return subscriptionManager;
   }
 
+  public ConsistencyProgressManager getConsistencyProgressManager() {
+    return consistencyProgressManager;
+  }
+
   @Override
   public CNAuditLogger getAuditLogger() {
     return auditLogger;
@@ -1996,6 +2011,63 @@ public class ConfigManager implements IManager {
     }
   }
 
+  public TShowRepairProgressResp showRepairProgress() {
+    final TSStatus status = confirmLeader();
+    final TShowRepairProgressResp resp = new TShowRepairProgressResp();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.setStatus(status);
+    }
+
+    List<TRepairProgressInfo> progressInfoList = new ArrayList<>();
+    for (RepairProgressTable table : consistencyProgressManager.getAllTables()) {
+      int regionId = parseRegionId(table.getConsensusGroupId());
+      for (RepairProgressTable.PartitionProgress progress : table.getAllPartitions()) {
+        TRepairProgressInfo progressInfo =
+            new TRepairProgressInfo(
+                regionId,
+                progress.getPartitionId(),
+                progress.getCheckState().name(),
+                progress.getRepairState().name(),
+                progress.getLastCheckedAt(),
+                progress.getLastSafeWatermark(),
+                progress.getPartitionMutationEpoch(),
+                progress.getSnapshotEpoch(),
+                progress.getSnapshotState().name(),
+                progress.getLastMismatchAt(),
+                progress.getMismatchLeafCount());
+        if (progress.getMismatchScopeRef() != null) {
+          progressInfo.setMismatchScopeRef(progress.getMismatchScopeRef());
+        }
+        if (progress.getRepairEpoch() != null) {
+          progressInfo.setRepairEpoch(progress.getRepairEpoch());
+        }
+        if (progress.getLastErrorCode() != null) {
+          progressInfo.setLastErrorCode(progress.getLastErrorCode());
+        }
+        if (progress.getLastErrorMessage() != null) {
+          progressInfo.setLastErrorMessage(progress.getLastErrorMessage());
+        }
+        progressInfoList.add(progressInfo);
+      }
+    }
+    progressInfoList.sort(
+        Comparator.comparingInt(TRepairProgressInfo::getRegionId)
+            .thenComparingLong(TRepairProgressInfo::getTimePartition));
+    return resp.setRepairProgressInfoList(progressInfoList).setStatus(StatusUtils.OK);
+  }
+
+  private int parseRegionId(String consensusGroupKey) {
+    int separatorIndex = consensusGroupKey.lastIndexOf('-');
+    if (separatorIndex < 0 || separatorIndex == consensusGroupKey.length() - 1) {
+      return -1;
+    }
+    try {
+      return Integer.parseInt(consensusGroupKey.substring(separatorIndex + 1));
+    } catch (NumberFormatException e) {
+      return -1;
+    }
+  }
+
   @Override
   public TShowDatabaseResp showDatabase(final TGetDatabaseReq req) {
     final TSStatus status = confirmLeader();
@@ -2598,6 +2670,13 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? procedureManager.removeRegions(req)
+        : status;
+  }
+
+  public TSStatus triggerRegionConsistencyRepair(TTriggerRegionConsistencyRepairReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? procedureManager.triggerRegionConsistencyRepair(req)
         : status;
   }
 

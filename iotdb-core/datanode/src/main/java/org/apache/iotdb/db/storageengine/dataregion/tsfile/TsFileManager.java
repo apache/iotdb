@@ -19,8 +19,11 @@
 
 package org.apache.iotdb.db.storageengine.dataregion.tsfile;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.utils.TimePartitionUtils;
 import org.apache.iotdb.db.pipe.resource.PipeDataNodeResourceManager;
+import org.apache.iotdb.db.storageengine.dataregion.consistency.DataRegionConsistencyManager;
 import org.apache.iotdb.db.storageengine.dataregion.modification.ModFileManagement;
 import org.apache.iotdb.db.storageengine.dataregion.modification.PartitionLevelModFileManager;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
@@ -361,6 +364,14 @@ public class TsFileManager {
               unseqFileResources,
               targetFileResources);
     }
+
+    DataRegionConsistencyManager.getInstance()
+        .onCompaction(
+            new TConsensusGroupId(TConsensusGroupType.DataRegion, Integer.parseInt(dataRegionId)),
+            seqFileResources,
+            unseqFileResources,
+            targetFileResources,
+            timePartition);
   }
 
   public boolean contains(TsFileResource tsFileResource, boolean sequence) {

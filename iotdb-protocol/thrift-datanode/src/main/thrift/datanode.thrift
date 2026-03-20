@@ -428,6 +428,161 @@ struct TLoadResp {
   3: optional common.TSStatus status
 }
 
+struct TConsistencyDeletionSummary {
+  1: required string pathPattern
+  2: required i64 timeRangeStart
+  3: required i64 timeRangeEnd
+  4: required binary serializedProgressIndex
+}
+
+struct TPartitionConsistencyEligibility {
+  1: required i64 timePartitionId
+  2: required i64 partitionMutationEpoch
+  3: required i64 snapshotEpoch
+  4: required string snapshotState
+  5: required i64 liveRootXorHash
+  6: required i64 liveRootAddHash
+  7: required i64 tombstoneRootXorHash
+  8: required i64 tombstoneRootAddHash
+}
+
+struct TGetConsistencyEligibilityReq {
+  1: required common.TConsensusGroupId consensusGroupId
+}
+
+struct TGetConsistencyEligibilityResp {
+  1: required common.TSStatus status
+  2: required i64 syncLag
+  3: required i64 safeWatermark
+  4: optional list<TPartitionConsistencyEligibility> partitions
+}
+
+struct TSnapshotSubtreeNode {
+  1: required string parentNodeHandle
+  2: required string nodeHandle
+  3: required string treeKind
+  4: required i32 depth
+  5: required bool leaf
+  6: required i64 xorHash
+  7: required i64 addHash
+  8: required i64 itemCount
+  9: optional string leafId
+  10: optional string keyRangeStart
+  11: optional string keyRangeEnd
+}
+
+struct TGetSnapshotSubtreeReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: required string treeKind
+  5: required list<string> nodeHandles
+}
+
+struct TGetSnapshotSubtreeResp {
+  1: required common.TSStatus status
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: optional bool stale
+  5: optional list<TSnapshotSubtreeNode> nodes
+}
+
+struct TLeafDiffEstimate {
+  1: required i64 timePartitionId
+  2: required i64 snapshotEpoch
+  3: required string treeKind
+  4: required string leafId
+  5: required i64 rowCount
+  6: required i64 tombstoneCount
+  7: required i64 strataEstimate
+  8: optional string keyRangeStart
+  9: optional string keyRangeEnd
+}
+
+struct TEstimateLeafDiffReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: required string treeKind
+  5: required string leafId
+}
+
+struct TEstimateLeafDiffResp {
+  1: required common.TSStatus status
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: optional bool stale
+  5: optional TLeafDiffEstimate leafDiff
+}
+
+struct TLeafDiffEntry {
+  1: required string logicalKey
+  2: required string diffType
+}
+
+struct TDecodeLeafDiffReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: required string treeKind
+  5: required string leafId
+}
+
+struct TDecodeLeafDiffResp {
+  1: required common.TSStatus status
+  2: required i64 timePartitionId
+  3: required i64 snapshotEpoch
+  4: optional bool stale
+  5: optional list<TLeafDiffEntry> diffEntries
+}
+
+struct TLogicalRepairLeafSelector {
+  1: required string treeKind
+  2: required string leafId
+}
+
+struct TLogicalRepairBatch {
+  1: required string sessionId
+  2: required string treeKind
+  3: required string leafId
+  4: required i32 seqNo
+  5: required string batchKind
+  6: required binary payload
+}
+
+struct TStreamLogicalRepairReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required string repairEpoch
+  4: required list<TLogicalRepairLeafSelector> leafSelectors
+}
+
+struct TStreamLogicalRepairResp {
+  1: required common.TSStatus status
+  2: required i64 timePartitionId
+  3: optional bool stale
+  4: optional list<TLogicalRepairBatch> batches
+}
+
+struct TApplyLogicalRepairBatchReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required string repairEpoch
+  4: required string sessionId
+  5: required string treeKind
+  6: required string leafId
+  7: required i32 seqNo
+  8: required string batchKind
+  9: required binary payload
+}
+
+struct TFinishLogicalRepairSessionReq {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required i64 timePartitionId
+  3: required string repairEpoch
+  4: required string sessionId
+}
+
 struct TConstructSchemaBlackListReq {
   1: required list<common.TConsensusGroupId> schemaRegionIdList
   2: required binary pathPatternTree
@@ -819,6 +974,20 @@ service IDataNodeRPCService {
   TLoadResp sendTsFilePieceNode(TTsFilePieceReq req);
 
   TLoadResp sendLoadCommand(TLoadCommandReq req);
+
+  TGetConsistencyEligibilityResp getConsistencyEligibility(TGetConsistencyEligibilityReq req);
+
+  TGetSnapshotSubtreeResp getSnapshotSubtree(TGetSnapshotSubtreeReq req);
+
+  TEstimateLeafDiffResp estimateLeafDiff(TEstimateLeafDiffReq req);
+
+  TDecodeLeafDiffResp decodeLeafDiff(TDecodeLeafDiffReq req);
+
+  TStreamLogicalRepairResp streamLogicalRepair(TStreamLogicalRepairReq req);
+
+  common.TSStatus applyLogicalRepairBatch(TApplyLogicalRepairBatchReq req);
+
+  common.TSStatus finishLogicalRepairSession(TFinishLogicalRepairSessionReq req);
 
   common.TSStatus updateAttribute(TAttributeUpdateReq req);
 

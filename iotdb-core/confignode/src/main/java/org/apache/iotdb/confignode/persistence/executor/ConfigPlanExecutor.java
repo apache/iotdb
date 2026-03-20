@@ -151,6 +151,7 @@ import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeExc
 import org.apache.iotdb.confignode.manager.externalservice.ExternalServiceInfo;
 import org.apache.iotdb.confignode.manager.pipe.agent.PipeConfigNodeAgent;
 import org.apache.iotdb.confignode.persistence.ClusterInfo;
+import org.apache.iotdb.confignode.persistence.ConsistencyProgressInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.TTLInfo;
 import org.apache.iotdb.confignode.persistence.TriggerInfo;
@@ -220,6 +221,8 @@ public class ConfigPlanExecutor {
 
   private final TTLInfo ttlInfo;
 
+  private final ConsistencyProgressInfo consistencyProgressInfo;
+
   public ConfigPlanExecutor(
       ClusterInfo clusterInfo,
       NodeInfo nodeInfo,
@@ -234,7 +237,8 @@ public class ConfigPlanExecutor {
       PipeInfo pipeInfo,
       SubscriptionInfo subscriptionInfo,
       QuotaInfo quotaInfo,
-      TTLInfo ttlInfo) {
+      TTLInfo ttlInfo,
+      ConsistencyProgressInfo consistencyProgressInfo) {
 
     this.snapshotProcessorList = new ArrayList<>();
 
@@ -279,6 +283,9 @@ public class ConfigPlanExecutor {
 
     this.ttlInfo = ttlInfo;
     this.snapshotProcessorList.add(ttlInfo);
+
+    this.consistencyProgressInfo = consistencyProgressInfo;
+    this.snapshotProcessorList.add(consistencyProgressInfo);
 
     this.snapshotProcessorList.add(PipeConfigNodeAgent.runtime().listener());
   }

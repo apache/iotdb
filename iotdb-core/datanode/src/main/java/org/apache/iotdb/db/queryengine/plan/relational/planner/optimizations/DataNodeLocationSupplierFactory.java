@@ -127,6 +127,7 @@ public class DataNodeLocationSupplierFactory {
         case InformationSchema.TABLES:
         case InformationSchema.COLUMNS:
         case InformationSchema.REGIONS:
+        case InformationSchema.REPAIR_PROGRESS:
         case InformationSchema.PIPES:
         case InformationSchema.PIPE_PLUGINS:
         case InformationSchema.TOPICS:
