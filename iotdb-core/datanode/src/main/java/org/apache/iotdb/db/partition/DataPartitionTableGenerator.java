@@ -76,9 +76,11 @@ public class DataPartitionTableGenerator {
   private final RateLimiter limiter =
       RateLimiter.create(
           (long)
-              IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getPartitionTableRecoverMaxReadMBsPerSecond());
+                  IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getPartitionTableRecoverMaxReadMBsPerSecond()
+              * 1024
+              * 1024);
 
   public static final Set<String> IGNORE_DATABASE =
       new HashSet<String>() {
