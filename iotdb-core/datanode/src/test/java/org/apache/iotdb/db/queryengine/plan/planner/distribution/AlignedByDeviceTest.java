@@ -50,6 +50,37 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AlignedByDeviceTest {
+  private PlanNode getChildOfType(PlanNode parent, Class<? extends PlanNode> expectedType) {
+    for (PlanNode child : parent.getChildren()) {
+      if (expectedType.isInstance(child)) {
+        return child;
+      }
+    }
+    throw new AssertionError(
+        String.format(
+            "Expected child of type %s under %s",
+            expectedType.getSimpleName(), parent.getClass().getSimpleName()));
+  }
+
+  private void assertChildrenAreType(
+      PlanNode parent, int expectedCount, Class<? extends PlanNode> expectedType) {
+    assertEquals(expectedCount, parent.getChildren().size());
+    for (PlanNode child : parent.getChildren()) {
+      assertTrue(expectedType.isInstance(child));
+    }
+  }
+
+  private void assertProjectOrJoinChildren(PlanNode parent, int expectedCount) {
+    assertEquals(expectedCount, parent.getChildren().size());
+    for (PlanNode child : parent.getChildren()) {
+      if (child instanceof ProjectNode) {
+        assertTrue(child.getChildren().get(0) instanceof FullOuterTimeJoinNode);
+      } else {
+        assertTrue(child instanceof FullOuterTimeJoinNode);
+      }
+    }
+  }
+
   @Test
   public void testAggregation2Device2Region() {
     QueryId queryId = new QueryId("test");
@@ -65,16 +96,17 @@ public class AlignedByDeviceTest {
     assertEquals(2, plan.getInstances().size());
     PlanNode f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     PlanNode f2Root = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    if (!(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode)) {
+      PlanNode tmp = f1Root;
+      f1Root = f2Root;
+      f2Root = tmp;
+    }
     assertTrue(f1Root instanceof IdentitySinkNode);
     assertTrue(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof SeriesSourceNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(1)
-            instanceof SeriesSourceNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
+    PlanNode f1MergeSortNode = f1Root.getChildren().get(0);
+    PlanNode f1DeviceViewNode = getChildOfType(f1MergeSortNode, DeviceViewNode.class);
+    assertChildrenAreType(f1DeviceViewNode, 2, SeriesSourceNode.class);
+    assertTrue(getChildOfType(f1MergeSortNode, ExchangeNode.class) instanceof ExchangeNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
     assertTrue(f2Root.getChildren().get(0) instanceof DeviceViewNode);
     assertTrue(
@@ -89,32 +121,20 @@ public class AlignedByDeviceTest {
     assertEquals(2, plan.getInstances().size());
     f1Root = plan.getInstances().get(0).getFragment().getPlanNodeTree();
     f2Root = plan.getInstances().get(1).getFragment().getPlanNodeTree();
+    if (!(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode)) {
+      PlanNode tmp = f1Root;
+      f1Root = f2Root;
+      f2Root = tmp;
+    }
     assertTrue(f1Root instanceof IdentitySinkNode);
     assertTrue(f1Root.getChildren().get(0) instanceof AggregationMergeSortNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof ProjectNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(1)
-            instanceof ProjectNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FullOuterTimeJoinNode);
-    assertTrue(
-        f1Root.getChildren().get(0).getChildren().get(0).getChildren().get(1).getChildren().get(0)
-            instanceof FullOuterTimeJoinNode);
-    assertTrue(f1Root.getChildren().get(0).getChildren().get(1) instanceof ExchangeNode);
+    f1MergeSortNode = f1Root.getChildren().get(0);
+    f1DeviceViewNode = getChildOfType(f1MergeSortNode, DeviceViewNode.class);
+    assertProjectOrJoinChildren(f1DeviceViewNode, 2);
+    assertTrue(getChildOfType(f1MergeSortNode, ExchangeNode.class) instanceof ExchangeNode);
     assertTrue(f2Root instanceof IdentitySinkNode);
     assertTrue(f2Root.getChildren().get(0) instanceof DeviceViewNode);
-    assertTrue(f2Root.getChildren().get(0).getChildren().get(0) instanceof ProjectNode);
-    assertTrue(f2Root.getChildren().get(0).getChildren().get(1) instanceof ProjectNode);
-    assertTrue(
-        f2Root.getChildren().get(0).getChildren().get(0).getChildren().get(0)
-            instanceof FullOuterTimeJoinNode);
-    assertTrue(
-        f2Root.getChildren().get(0).getChildren().get(1).getChildren().get(0)
-            instanceof FullOuterTimeJoinNode);
+    assertProjectOrJoinChildren(f2Root.getChildren().get(0), 2);
   }
 
   @Test
