@@ -144,13 +144,13 @@ public class OpcUaNameSpace extends ManagedNamespaceWithLifecycle {
         folderNode = nextFolderNode;
       } else {
         folderNode =
-                getNodeManager()
-                    .getNode(folderNodeId)
-                    .orElseThrow(
-                        () ->
-                            new PipeRuntimeCriticalException(
-                                String.format(
-                                    "The folder node for %s does not exist.", tablet.deviceId)));
+            getNodeManager()
+                .getNode(folderNodeId)
+                .orElseThrow(
+                    () ->
+                        new PipeRuntimeCriticalException(
+                            String.format(
+                                "The folder node for %s does not exist.", tablet.deviceId)));
       }
     }
 
