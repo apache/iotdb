@@ -21,27 +21,21 @@ class PatchTSTFMPipeline(ForecastPipeline):
 
     def forecast(self, inputs, **infer_kwargs) -> list[torch.Tensor]:
         """
-        TODO: YOU WRITE THIS.
-        1. Create an empty list called `forecasts`.
-        2. Iterate through the [inputs](cci:1://file:///Users/karthik/Documents/projects/iotdb/iotdb-core/ainode/iotdb/ainode/core/model/chronos2/pipeline_chronos2.py:143:4-178:77) list.
-        3. For each input dictionary, extract the "targets" tensor.
-        4. Extract the prediction length using `infer_kwargs.get("output_length", 96)`.
-        5. Move the tensor to the model's device: `tensor = tensor.to(self.device)`
-        6. IBM's PatchTST expects "past_values" and "prediction_length" as arguments.
-           Run the forward pass inside a `with torch.no_grad():` block natively using:
-           output = self.model(past_values=tensor, prediction_length=pred_len)
-        7. Extract the forecast using `output.prediction_outputs` and append it to your list.
-        8. Return the list.
+        Run the PatchTST-FM-R1 forward pass for each input in the batch.
+        The model expects a list of 1D tensors (one per variate) and returns
+        a PatchTSTFMPredictionOutput with a `quantile_predictions` attribute.
         """
         forecasts = []
-        for input in inputs:
-            targets = input['targets']
+        for item in inputs:
+            targets = item["targets"]
             pred_length = infer_kwargs.get("output_length", 96)
+            # Move to device and convert [n_variates, length] → list of 1D tensors
+            # as required by PatchTSTFMForPrediction.forward()
             tensor = targets.to(self.device)
+            tensor_list = [tensor[i] for i in range(tensor.shape[0])]
             with torch.no_grad():
-                output = self.model(past_values = tensor, prediction_length = pred_length)
-
-            forecasts.append(output.prediction_outputs)
+                output = self.model(inputs=tensor_list, prediction_length=pred_length)
+            forecasts.append(output.quantile_predictions)
         return forecasts
 
 
