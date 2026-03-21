@@ -56,17 +56,23 @@ class ForecastPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(
+    # ========================= Preprocess =========================
+    def preprocess(self, inputs, **infer_kwargs):
+        inputs = self._base_preprocess(inputs, **infer_kwargs)
+        return self._preprocess(inputs, **infer_kwargs)
+
+    def _base_preprocess(
         self,
-        inputs: list[dict[str, dict[str, torch.Tensor] | torch.Tensor]],
+        inputs,
         **infer_kwargs,
-    ):
+    ) -> list[dict[str, dict[str, torch.Tensor] | torch.Tensor]]:
         """
-        Preprocess the input data before passing it to the model for inference, validating the shape and type of the input data.
+        The common preprocess logic for all forecast pipelines,
+        validating the shape and type of the input data.
 
         Args:
             inputs (list[dict]):
-                The input data, a list of dictionaries, where each dictionary contains:
+                The input data, expected a list of dictionaries, where each dictionary contains:
                     - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
                     - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
                     - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
@@ -79,7 +85,11 @@ class ForecastPipeline(BasicPipeline):
             ValueError: If the input format is incorrect (e.g., missing keys, invalid tensor shapes).
 
         Returns:
-            The preprocessed inputs, validated and ready for model inference.
+            list[dict]:
+                The validated input data, a list of dictionaries, where each dictionary contains:
+                    - 'targets': A tensor (1D or 2D) of shape (input_length,) or (target_count, input_length).
+                    - 'past_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
+                    - 'future_covariates': A dictionary of tensors (optional), where each tensor has shape (input_length,).
         """
 
         if isinstance(inputs, list):
@@ -211,10 +221,34 @@ class ForecastPipeline(BasicPipeline):
             )
         return inputs
 
+    def _preprocess(
+        self,
+        inputs: list[dict[str, dict[str, torch.Tensor] | torch.Tensor]],
+        **infer_kwargs,
+    ):
+        """
+        Optional hook for subclasses to implement custom preprocessing logic.
+        This method is called after the base validation in `_base_preprocess`, so the inputs
+        are unified when this method is invoked.
+
+        Args:
+            inputs (list[dict]): The validated input data, a list of dictionaries, where each dictionary contains:
+                - 'targets': A tensor of shape (input_length,) or (target_count, input_length).
+                - 'past_covariates' (optional): A dictionary of 1-D tensors, each of shape (input_length,).
+                - 'future_covariates' (optional): A dictionary of 1-D tensors, each of shape (output_length,),
+                  whose keys are guaranteed to be a subset of 'past_covariates'.
+            **infer_kwargs: Additional keyword arguments passed through from the pipeline.
+
+        Returns:
+            inputs: The modified inputs ready for model inference.
+        """
+        return inputs
+
+    # ========================== Forecast ==========================
     @abstractmethod
     def forecast(self, inputs, **infer_kwargs):
         """
-        Perform forecasting on the given inputs.
+        Perform forecasting on the given inputs, which must be implemented by the subclasses.
 
         Parameters:
             inputs: The input data used for making predictions. The type and structure
@@ -225,13 +259,35 @@ class ForecastPipeline(BasicPipeline):
         Returns:
             The forecasted output, which will depend on the specific model's implementation.
         """
-        pass
+        raise NotImplementedError("forecast not implemented")
 
-    def postprocess(
+    # ========================= Postprocess ========================
+    def postprocess(self, outputs, **infer_kwargs):
+        outputs = self._postprocess(outputs, **infer_kwargs)
+        return self._base_postprocess(outputs, **infer_kwargs)
+
+    def _postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
+        """
+        Optional hook for subclasses to implement custom postprocessing logic.
+        This method is called before the base validation in `_base_postprocess`, so the outputs
+        must conform to the expected format when this method returns.
+
+        Args:
+            outputs: The raw model outputs.
+            **infer_kwargs: Additional keyword arguments passed through from the pipeline.
+
+        Returns:
+            list[torch.Tensor]: The modified outputs, which must be a list of 2-D tensors
+                with shape (target_count, output_length), as this will be validated by `_base_postprocess`.
+        """
+        return outputs
+
+    def _base_postprocess(
         self, outputs: list[torch.Tensor], **infer_kwargs
     ) -> list[torch.Tensor]:
         """
-        Postprocess the model outputs after inference, validating the shape of the output data and ensures it matches the expected dimensions.
+        The common postprocess logic for all forecast pipelines.
+        validating the shape of the output data and ensures it matches the expected dimensions.
 
         Args:
             outputs:
@@ -262,14 +318,114 @@ class ClassificationPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **kwargs):
+    # ========================= Preprocess =========================
+    def preprocess(self, inputs, **infer_kwargs):
+        inputs = self._base_preprocess(inputs, **infer_kwargs)
+        return self._preprocess(inputs, **infer_kwargs)
+
+    def _base_preprocess(self, inputs, **infer_kwargs) -> torch.Tensor:
+        """
+        The common preprocess logic for all classification pipelines,
+        validating and preprocess the inputs.
+
+        Args:
+            inputs: The input data, expected to be a 3D-tensor.
+            **infer_kwargs: Additional inference parameters.
+
+        Returns:
+            torch.Tensor:
+                The preprocessed inputs, which will be a 3D-tensor with shape (batch_size, variable_count, sequence_length).
+
+        Raises:
+            ValueError: If the input format is incorrect.
+        """
+        if isinstance(inputs, torch.Tensor) and inputs.ndim == 3:
+            return inputs
+        else:
+            raise ValueError(
+                f"The inputs should be a 3D-tensor, but got {type(inputs)} with shape {tuple(inputs.shape)}."
+            )
+
+    def _preprocess(self, inputs: torch.Tensor, **infer_kwargs):
+        """
+        Optional hook for subclasses to implement custom preprocessing logic.
+        This method is called after the base validation in `_base_preprocess`, so the inputs
+        are unified when this method is invoked.
+
+        Args:
+            inputs (torch.Tensor): The validated input data, a 3D tensor.
+            **infer_kwargs: Additional keyword arguments passed through from the pipeline.
+
+        Returns:
+            torch.Tensor: The modified inputs ready for model inference.
+        """
         return inputs
 
+    # ========================== Classify ==========================
     @abstractmethod
-    def classify(self, inputs, **kwargs):
-        pass
+    def classify(self, inputs, **infer_kwargs):
+        """
+        Perform classification on the given inputs, which must be implemented by the subclasses.
 
-    def postprocess(self, outputs, **kwargs):
+        Parameters:
+            inputs: The input data used for making classification. The type and structure
+                    depend on the specific implementation of the model.
+            **infer_kwargs: Additional inference parameters.
+
+        Returns:
+            The classified result, which will depend on the specific model's implementation.
+        """
+        raise NotImplementedError("classify not implemented")
+
+    # ========================= Postprocess ========================
+    def postprocess(self, outputs, **infer_kwargs):
+        outputs = self._postprocess(outputs, **infer_kwargs)
+        return self._base_postprocess(outputs, **infer_kwargs)
+
+    def _postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
+        """
+        Optional hook for subclasses to implement custom postprocessing logic.
+        This method is called before the base validation in `_base_postprocess`, so the outputs
+        must conform to the expected format when this method returns.
+
+        Args:
+            outputs: The raw model outputs.
+            **infer_kwargs: Additional keyword arguments passed through from the pipeline.
+
+        Returns:
+            list[torch.Tensor]: The modified outputs, which must be a list of tensors,
+             as this will be validated by `_base_postprocess`.
+
+        Raises:
+            ValueError: If the output format is incorrect.
+        """
+        return outputs
+
+    def _base_postprocess(self, outputs, **infer_kwargs) -> list[torch.Tensor]:
+        """
+        The common postprocess logic for all classification pipelines,
+        validating the shape of the output data.
+
+        Args:
+            outputs (list[torch.Tensor]):
+                The output from the model.
+            **infer_kwargs:
+                Additional keyword arguments.
+
+        Returns:
+            list[torch.Tensor]:
+                The postprocessed outputs.
+
+        Raises:
+            ValueError:
+                If the output format is incorrect.
+        """
+        if not isinstance(outputs, list) or any(
+            not isinstance(output, torch.Tensor) for output in outputs
+        ):
+            raise ValueError(
+                f"The outputs should be a list of tensors, but got {type(outputs)}."
+            )
         return outputs
 
 
@@ -277,12 +433,29 @@ class ChatPipeline(BasicPipeline):
     def __init__(self, model_info: ModelInfo, **model_kwargs):
         super().__init__(model_info, **model_kwargs)
 
-    def preprocess(self, inputs, **kwargs):
+    # ========================= Preprocess =========================
+    def preprocess(self, inputs, **infer_kwargs):
+        inputs = self._base_preprocess(inputs, **infer_kwargs)
+        return self._preprocess(inputs, **infer_kwargs)
+
+    def _base_preprocess(self, inputs, **infer_kwargs):
         return inputs
 
-    @abstractmethod
-    def chat(self, inputs, **kwargs):
-        pass
+    def _preprocess(self, inputs, **infer_kwargs):
+        return inputs
 
-    def postprocess(self, outputs, **kwargs):
+    # ========================== Chat ==========================
+    @abstractmethod
+    def chat(self, inputs, **infer_kwargs):
+        raise NotImplementedError("chat not implemented")
+
+    # ========================= Postprocess ========================
+    def postprocess(self, outputs, **infer_kwargs):
+        outputs = self._postprocess(outputs, **infer_kwargs)
+        return self._base_postprocess(outputs, **infer_kwargs)
+
+    def _postprocess(self, outputs, **infer_kwargs):
+        return outputs
+
+    def _base_postprocess(self, outputs, **infer_kwargs):
         return outputs

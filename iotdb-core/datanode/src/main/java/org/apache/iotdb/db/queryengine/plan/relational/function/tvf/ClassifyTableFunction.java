@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.queryengine.plan.relational.function.tvf;
 
-import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
-import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
+import org.apache.iotdb.ainode.rpc.thrift.TClassifyReq;
+import org.apache.iotdb.ainode.rpc.thrift.TClassifyResp;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.exception.ClientManagerException;
 import org.apache.iotdb.commons.exception.IoTDBRuntimeException;
@@ -62,7 +62,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
@@ -73,6 +73,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.checkType;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.parseOptions;
 import static org.apache.iotdb.db.queryengine.plan.relational.utils.ResultColumnAppender.createResultColumnAppender;
 
 public class ClassifyTableFunction implements TableFunction {
@@ -80,14 +82,19 @@ public class ClassifyTableFunction implements TableFunction {
   public static class ClassifyTableFunctionHandle implements TableFunctionHandle {
     String modelId;
     int maxInputLength;
+    Map<String, String> options;
     List<Type> inputColumnTypes;
 
     public ClassifyTableFunctionHandle() {}
 
     public ClassifyTableFunctionHandle(
-        String modelId, int maxInputLength, List<Type> inputColumnTypes) {
+        String modelId,
+        int maxInputLength,
+        Map<String, String> options,
+        List<Type> inputColumnTypes) {
       this.modelId = modelId;
       this.maxInputLength = maxInputLength;
+      this.options = options;
       this.inputColumnTypes = inputColumnTypes;
     }
 
@@ -97,6 +104,7 @@ public class ClassifyTableFunction implements TableFunction {
           DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
         ReadWriteIOUtils.write(modelId, outputStream);
         ReadWriteIOUtils.write(maxInputLength, outputStream);
+        ReadWriteIOUtils.write(options, outputStream);
         ReadWriteIOUtils.write(inputColumnTypes.size(), outputStream);
         for (Type type : inputColumnTypes) {
           ReadWriteIOUtils.write(type.getType(), outputStream);
@@ -106,7 +114,7 @@ public class ClassifyTableFunction implements TableFunction {
       } catch (IOException e) {
         throw new IoTDBRuntimeException(
             String.format(
-                "Error occurred while serializing ForecastTableFunctionHandle: %s", e.getMessage()),
+                "Error occurred while serializing ClassifyTableFunctionHandle: %s", e.getMessage()),
             TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     }
@@ -116,6 +124,7 @@ public class ClassifyTableFunction implements TableFunction {
       ByteBuffer buffer = ByteBuffer.wrap(bytes);
       this.modelId = ReadWriteIOUtils.readString(buffer);
       this.maxInputLength = ReadWriteIOUtils.readInt(buffer);
+      this.options = ReadWriteIOUtils.readMap(buffer);
       int size = ReadWriteIOUtils.readInt(buffer);
       this.inputColumnTypes = new ArrayList<>(size);
       for (int i = 0; i < size; i++) {
@@ -130,30 +139,24 @@ public class ClassifyTableFunction implements TableFunction {
       ClassifyTableFunctionHandle that = (ClassifyTableFunctionHandle) o;
       return maxInputLength == that.maxInputLength
           && Objects.equals(modelId, that.modelId)
+          && Objects.equals(options, that.options)
           && Objects.equals(inputColumnTypes, that.inputColumnTypes);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(modelId, maxInputLength, inputColumnTypes);
+      return Objects.hash(modelId, maxInputLength, options, inputColumnTypes);
     }
   }
 
-  private static final String INPUT_PARAMETER_NAME = "INPUT";
+  private static final String INPUT_PARAMETER_NAME = "INPUTS";
   private static final String MODEL_ID_PARAMETER_NAME = "MODEL_ID";
   public static final String TIMECOL_PARAMETER_NAME = "TIMECOL";
   private static final String DEFAULT_TIME_COL = "time";
   private static final String DEFAULT_OUTPUT_COLUMN_NAME = "category";
+  protected static final String OPTIONS_PARAMETER_NAME = "MODEL_OPTIONS";
+  protected static final String DEFAULT_OPTIONS = "";
   private static final int MAX_INPUT_LENGTH = 2880;
-
-  private static final Set<Type> ALLOWED_INPUT_TYPES = new HashSet<>();
-
-  static {
-    ALLOWED_INPUT_TYPES.add(Type.INT32);
-    ALLOWED_INPUT_TYPES.add(Type.INT64);
-    ALLOWED_INPUT_TYPES.add(Type.FLOAT);
-    ALLOWED_INPUT_TYPES.add(Type.DOUBLE);
-  }
 
   @Override
   public List<ParameterSpecification> getArgumentsSpecifications() {
@@ -167,6 +170,11 @@ public class ClassifyTableFunction implements TableFunction {
             .name(TIMECOL_PARAMETER_NAME)
             .type(Type.STRING)
             .defaultValue(DEFAULT_TIME_COL)
+            .build(),
+        ScalarParameterSpecification.builder()
+            .name(OPTIONS_PARAMETER_NAME)
+            .type(Type.STRING)
+            .defaultValue(DEFAULT_OPTIONS)
             .build());
   }
 
@@ -200,8 +208,6 @@ public class ClassifyTableFunction implements TableFunction {
     // List of required column indexes
     List<Integer> requiredIndexList = new ArrayList<>();
     requiredIndexList.add(timeColumnIndex);
-    DescribedSchema.Builder properColumnSchemaBuilder =
-        new DescribedSchema.Builder().addField(timeColumn, Type.TIMESTAMP);
 
     List<Type> inputColumnTypes = new ArrayList<>();
     List<Optional<String>> allInputColumnsName = input.getFieldNames();
@@ -209,7 +215,7 @@ public class ClassifyTableFunction implements TableFunction {
 
     for (int i = 0, size = allInputColumnsName.size(); i < size; i++) {
       Optional<String> fieldName = allInputColumnsName.get(i);
-      // All input value columns are required for model forecasting
+      // All input value columns are required for model classification
       if (!fieldName.isPresent()
           || !excludedColumns.contains(fieldName.get().toLowerCase(Locale.ENGLISH))) {
         Type columnType = allInputColumnsType.get(i);
@@ -218,10 +224,15 @@ public class ClassifyTableFunction implements TableFunction {
         requiredIndexList.add(i);
       }
     }
-    properColumnSchemaBuilder.addField(DEFAULT_OUTPUT_COLUMN_NAME, Type.INT32);
 
+    // Define output schema with classification result column
+    DescribedSchema.Builder properColumnSchemaBuilder =
+        new DescribedSchema.Builder().addField(DEFAULT_OUTPUT_COLUMN_NAME, Type.INT32);
+
+    String options = (String) ((ScalarArgument) arguments.get(OPTIONS_PARAMETER_NAME)).getValue();
     ClassifyTableFunctionHandle functionHandle =
-        new ClassifyTableFunctionHandle(modelId, MAX_INPUT_LENGTH, inputColumnTypes);
+        new ClassifyTableFunctionHandle(
+            modelId, MAX_INPUT_LENGTH, parseOptions(options), inputColumnTypes);
 
     // outputColumnSchema
     return TableFunctionAnalysis.builder()
@@ -229,16 +240,6 @@ public class ClassifyTableFunction implements TableFunction {
         .handle(functionHandle)
         .requiredColumns(INPUT_PARAMETER_NAME, requiredIndexList)
         .build();
-  }
-
-  // only allow for INT32, INT64, FLOAT, DOUBLE
-  private void checkType(Type type, String columnName) {
-    if (!ALLOWED_INPUT_TYPES.contains(type)) {
-      throw new SemanticException(
-          String.format(
-              "The type of the column [%s] is [%s], only INT32, INT64, FLOAT, DOUBLE is allowed",
-              columnName, type));
-    }
   }
 
   @Override
@@ -266,6 +267,7 @@ public class ClassifyTableFunction implements TableFunction {
     private final String modelId;
     private final int maxInputLength;
     private final LinkedList<Record> inputRecords;
+    protected final Map<String, String> options;
     private final TsBlockBuilder inputTsBlockBuilder;
     private final List<ResultColumnAppender> inputColumnAppenderList;
     private final List<ResultColumnAppender> resultColumnAppenderList;
@@ -273,6 +275,7 @@ public class ClassifyTableFunction implements TableFunction {
     public ClassifyDataProcessor(ClassifyTableFunctionHandle functionHandle) {
       this.modelId = functionHandle.modelId;
       this.maxInputLength = functionHandle.maxInputLength;
+      this.options = functionHandle.options;
       this.inputRecords = new LinkedList<>();
       List<TSDataType> inputTsDataTypeList =
           new ArrayList<>(functionHandle.inputColumnTypes.size());
@@ -303,6 +306,9 @@ public class ClassifyTableFunction implements TableFunction {
     public void finish(
         List<ColumnBuilder> properColumnBuilders, ColumnBuilder passThroughIndexBuilder) {
 
+      // sort inputRecords in ascending order by timestamp
+      inputRecords.sort(Comparator.comparingLong(r -> r.getLong(0)));
+
       // time column
       long inputStartTime = inputRecords.getFirst().getLong(0);
       long inputEndTime = inputRecords.getLast().getLong(0);
@@ -312,28 +318,18 @@ public class ClassifyTableFunction implements TableFunction {
                 "input end time should never less than start time, start time is %s, end time is %s",
                 inputStartTime, inputEndTime));
       }
-      int outputLength = inputRecords.size();
-      for (Record inputRecord : inputRecords) {
-        properColumnBuilders.get(0).writeLong(inputRecord.getLong(0));
-      }
 
       // predicated columns
       TsBlock predicatedResult = classify();
-      if (predicatedResult.getPositionCount() != outputLength) {
-        throw new IoTDBRuntimeException(
-            String.format(
-                "Model %s output length is %s, doesn't equal to specified %s",
-                modelId, predicatedResult.getPositionCount(), outputLength),
-            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
-      }
 
-      for (int columnIndex = 1, size = predicatedResult.getValueColumnCount();
-          columnIndex <= size;
+      // construct result column
+      for (int columnIndex = 0, columnCount = predicatedResult.getValueColumnCount();
+          columnIndex < columnCount;
           columnIndex++) {
-        Column column = predicatedResult.getColumn(columnIndex - 1);
+        Column column = predicatedResult.getColumn(columnIndex);
         ColumnBuilder builder = properColumnBuilders.get(columnIndex);
-        ResultColumnAppender appender = resultColumnAppenderList.get(columnIndex - 1);
-        for (int row = 0; row < outputLength; row++) {
+        ResultColumnAppender appender = resultColumnAppenderList.get(columnIndex);
+        for (int row = 0, rowCount = predicatedResult.getPositionCount(); row < rowCount; row++) {
           if (column.isNull(row)) {
             builder.appendNull();
           } else {
@@ -345,7 +341,6 @@ public class ClassifyTableFunction implements TableFunction {
     }
 
     private TsBlock classify() {
-      int outputLength = inputRecords.size();
       // construct inputTSBlock for AINode
       while (!inputRecords.isEmpty()) {
         Record row = inputRecords.removeFirst();
@@ -365,10 +360,12 @@ public class ClassifyTableFunction implements TableFunction {
       }
       TsBlock inputData = inputTsBlockBuilder.build();
 
-      TForecastResp resp;
+      TClassifyResp resp;
       try (AINodeClient client =
           CLIENT_MANAGER.borrowClient(AINodeClientManager.AINODE_ID_PLACEHOLDER)) {
-        resp = client.forecast(new TForecastReq(modelId, SERDE.serialize(inputData), outputLength));
+        resp =
+            client.classify(
+                new TClassifyReq(modelId, SERDE.serialize(inputData)).setOptions(options));
       } catch (ClientManagerException | TException e) {
         throw new AINodeConnectionException(e);
       } catch (IOException e) {
@@ -381,7 +378,17 @@ public class ClassifyTableFunction implements TableFunction {
                 "Error occurred while executing classify:[%s]", resp.getStatus().getMessage());
         throw new IoTDBRuntimeException(message, resp.getStatus().getCode());
       }
-      return SERDE.deserialize(resp.forecastResult.get(0));
+
+      // Only support one column output for now
+      TsBlock res = SERDE.deserialize(resp.classifyResult.get(0));
+      if (res.getValueColumnCount() != 1) {
+        throw new IoTDBRuntimeException(
+            String.format(
+                "Model %s output %s columns, doesn't equal to specified %s",
+                modelId, res.getValueColumnCount(), 1),
+            TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+      return res;
     }
   }
 }

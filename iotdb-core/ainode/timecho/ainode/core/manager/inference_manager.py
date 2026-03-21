@@ -1,11 +1,18 @@
 import torch
 
+from iotdb.ainode.core.config import AINodeDescriptor
 from iotdb.ainode.core.constant import TSStatusCode
+from iotdb.ainode.core.exception import NumericalRangeException
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.ainode.core.util.serde import convert_tsblock_to_tensor
-from iotdb.thrift.ainode.ttypes import TForecastReq, TForecastResp
+from iotdb.thrift.ainode.ttypes import (
+    TClassifyReq,
+    TClassifyResp,
+    TForecastReq,
+    TForecastResp,
+)
 from timecho.ainode.core.ingress.data_fetcher import IoTDBDataFetcher
 
 logger = Logger()
@@ -112,7 +119,29 @@ class TimechoInferenceManager(InferenceManager):
         # Note: Currently, only contain one dict in list
         return model_inputs
 
-    def _run(
+    def _run_classify(self, req, data_getter, extract_attrs, resp_cls, single_batch):
+        model_id = req.modelId
+        try:
+            raw = data_getter(req)
+
+            inputs = convert_tsblock_to_tensor(raw)
+            inference_attrs = extract_attrs(req)
+
+            resp_list = self._do_inference_and_construct_resp(
+                model_id, inputs, inference_attrs
+            )
+
+            return resp_cls(
+                get_status(TSStatusCode.SUCCESS_STATUS),
+                [resp_list[0]] if single_batch else resp_list,
+            )
+        except Exception as e:
+            logger.error(e)
+            status = get_status(TSStatusCode.AINODE_INTERNAL_ERROR, str(e))
+            empty = b"" if single_batch else []
+            return resp_cls(status, empty)
+
+    def _run_forecast(
         self,
         req,
         data_getter,
@@ -128,21 +157,31 @@ class TimechoInferenceManager(InferenceManager):
             inputs = convert_tsblock_to_tensor(raw)
 
             inference_attrs = extract_attrs(req)
-            output_length = int(inference_attrs.pop("output_length", 96))
+
+            output_length = int(inference_attrs.get("output_length", 96))
+            if (
+                output_length
+                > AINodeDescriptor().get_config().get_ain_inference_max_output_length()
+            ):
+                raise NumericalRangeException(
+                    "output_length",
+                    output_length,
+                    1,
+                    AINodeDescriptor()
+                    .get_config()
+                    .get_ain_inference_max_output_length(),
+                )
+
             history_covs_sql = str(inference_attrs.pop("history_covs", ""))
             future_covs_sql = str(inference_attrs.pop("future_covs", ""))
-            auto_adapt = bool(inference_attrs.pop("auto_adapt", True))
-
-            model_inputs_list: list[
-                dict[str, torch.Tensor | dict[str, torch.Tensor]]
-            ] = self._get_covariate_if_needed(inputs, history_covs_sql, future_covs_sql)
+            model_inputs: list[dict[str, torch.Tensor | dict[str, torch.Tensor]]] = (
+                self._get_covariate_if_needed(inputs, history_covs_sql, future_covs_sql)
+            )
 
             resp_list = self._do_inference_and_construct_resp(
                 model_id,
-                model_inputs_list,
-                output_length,
+                model_inputs,
                 inference_attrs,
-                auto_adapt=auto_adapt,
             )
 
             return resp_cls(
@@ -157,7 +196,7 @@ class TimechoInferenceManager(InferenceManager):
             return resp_cls(status, empty)
 
     def forecast(self, req: TForecastReq):
-        return self._run(
+        return self._run_forecast(
             req,
             data_getter=lambda r: r.inputData,
             extract_attrs=lambda r: {
@@ -168,5 +207,16 @@ class TimechoInferenceManager(InferenceManager):
                 **(r.options or {}),
             },
             resp_cls=TForecastResp,
+            single_batch=True,
+        )
+
+    def classify(self, req: TClassifyReq):
+        return self._run_classify(
+            req,
+            data_getter=lambda r: r.inputData,
+            extract_attrs=lambda r: {
+                **(r.options or {}),
+            },
+            resp_cls=TClassifyResp,
             single_batch=True,
         )

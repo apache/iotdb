@@ -96,6 +96,17 @@ struct TForecastResp {
   2: optional list<binary> forecastResult
 }
 
+struct TClassifyReq {
+  1: required string modelId
+  2: required binary inputData
+  3: optional map<string, string> options
+}
+
+struct TClassifyResp {
+  1: required common.TSStatus status
+  2: optional list<binary> classifyResult
+}
+
 struct TShowModelsReq {
   1: optional string modelId
 }
@@ -155,6 +166,8 @@ service IAINodeRPCService {
   TInferenceResp inference(TInferenceReq req)
 
   TForecastResp forecast(TForecastReq req)
+
+  TClassifyResp classify(TClassifyReq req)
 
   common.TSStatus createTuningTask(TTuningReq req)
 }

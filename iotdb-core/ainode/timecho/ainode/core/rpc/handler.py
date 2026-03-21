@@ -3,6 +3,8 @@ from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.rpc.handler import AINodeRPCServiceHandler
 from iotdb.ainode.core.rpc.status import TSStatusCode, get_status
 from iotdb.thrift.ainode.ttypes import (
+    TClassifyReq,
+    TClassifyResp,
     TDeleteModelReq,
     TForecastReq,
     TForecastResp,
@@ -91,6 +93,20 @@ class TimechoAINodeRPCServiceHandler(AINodeRPCServiceHandler):
                 [],
             )
         return super().forecast(req)
+
+    def classify(self, req: TClassifyReq) -> TClassifyResp:
+        if not AIN_CONFIG.is_activated():
+            return TClassifyResp(
+                get_status(
+                    TSStatusCode.AINODE_INTERNAL_ERROR,
+                    "Reject classify because TimechoDB-AINode is unactivated.",
+                ),
+                [],
+            )
+        status = self._ensure_model_is_registered(req.modelId)
+        if status.code != TSStatusCode.SUCCESS_STATUS.value:
+            return TClassifyResp(status, [])
+        return self._inference_manager.classify(req)
 
     # ==================== FineTune ====================
 

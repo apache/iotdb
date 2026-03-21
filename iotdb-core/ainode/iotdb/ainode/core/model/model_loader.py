@@ -55,6 +55,8 @@ BACKEND = DeviceManager()
 def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
     if model_info.auto_map is not None:
         model = _load_transformers_model(model_info, **model_kwargs)
+    elif model_info.hub_mixin_cls is not None:
+        model = _load_hub_mixin_model(model_info, **model_kwargs)
     else:
         if model_info.model_type == "sktime":
             model = create_sktime_model(model_info.model_id)
@@ -62,7 +64,7 @@ def load_model(model_info: ModelInfo, **model_kwargs) -> Any:
             model = _load_torchscript_model(model_info, **model_kwargs)
 
     logger.info(
-        f"Model {model_info.model_id} loaded to device {model.device if model_info.model_type != 'sktime' else 'cpu'} successfully."
+        f"Model {model_info.model_id} loaded to device {next(model.parameters()).device if model_info.model_type != 'sktime' else 'cpu'} successfully."
     )
     return model
 
@@ -111,6 +113,18 @@ def _load_transformers_model(model_info: ModelInfo, **model_kwargs):
     if is_finetuned:
         model = _apply_adapter(model, model_path)
 
+    return BACKEND.move_model(model, device_map)
+
+
+def _load_hub_mixin_model(model_info: ModelInfo, **model_kwargs):
+    device_map = model_kwargs.get("device_map", "cpu")
+    model_path = get_model_path(model_info)
+    model_class, _ = get_model_and_config_by_native_code(model_info)
+    if model_class is None:
+        logger.error(f"Model class not found for '{model_info.model_id}'")
+        raise ModelNotExistException(model_info.model_id)
+    # Load model
+    model = model_class.from_pretrained(model_path)
     return BACKEND.move_model(model, device_map)
 
 
@@ -196,6 +210,7 @@ def load_pretrained_for_finetune(
 
     model_path = get_model_path(model_info)
     model_class, config_instance = get_model_and_config_by_native_code(model_info)
+    # TODO: Handle the case where config_instance is None (e.g. hub mixin models).
     if model_class is None:
         model_class, config_instance = get_model_and_config_by_auto_class(model_path)
 

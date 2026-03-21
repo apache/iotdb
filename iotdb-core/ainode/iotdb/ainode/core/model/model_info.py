@@ -31,6 +31,7 @@ class ModelInfo:
         pipeline_cls: str = "",
         repo_id: str = "",
         auto_map: Optional[Dict] = None,
+        hub_mixin_cls: Optional[str] = None,
         transformers_registered: bool = False,
         base_model_id: Optional[str] = None,
     ):
@@ -41,6 +42,7 @@ class ModelInfo:
         self.pipeline_cls = pipeline_cls
         self.repo_id = repo_id
         self.auto_map = auto_map
+        self.hub_mixin_cls = hub_mixin_cls
         self.transformers_registered = transformers_registered
         self.base_model_id = base_model_id
 
@@ -59,6 +61,7 @@ class ModelInfo:
             pipeline_cls=self.pipeline_cls,
             repo_id=self.repo_id,
             auto_map=self.auto_map.copy() if self.auto_map else None,
+            hub_mixin_cls=self.hub_mixin_cls,
             transformers_registered=self.transformers_registered,
             base_model_id=(
                 base_model_id if base_model_id is not None else self.base_model_id
@@ -70,7 +73,8 @@ class ModelInfo:
         return (
             f"ModelInfo(model_id={self.model_id}, model_type={self.model_type}, "
             f"category={self.category.value}, state={self.state.value}, "
-            f"has_auto_map={self.auto_map is not None})"
+            f"has_auto_map={self.auto_map is not None}), "
+            f"has_hub_mix_in_cls={self.hub_mixin_cls is not None})"
         )
 
 
@@ -166,6 +170,7 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
             "AutoConfig": "config.Chronos2CoreConfig",
             "AutoModelForCausalLM": "model.Chronos2Model",
         },
+        transformers_registered=True,
     ),
     "moirai2": ModelInfo(
         model_id="moirai2",

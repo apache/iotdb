@@ -22,6 +22,8 @@ package org.apache.iotdb.db.protocol.client.an;
 import org.apache.iotdb.ainode.rpc.thrift.IAINodeRPCService;
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatReq;
 import org.apache.iotdb.ainode.rpc.thrift.TAIHeartbeatResp;
+import org.apache.iotdb.ainode.rpc.thrift.TClassifyReq;
+import org.apache.iotdb.ainode.rpc.thrift.TClassifyResp;
 import org.apache.iotdb.ainode.rpc.thrift.TDeleteModelReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastReq;
 import org.apache.iotdb.ainode.rpc.thrift.TForecastResp;
@@ -151,6 +153,11 @@ public class AINodeClient implements IAINodeRPCService.Iface, AutoCloseable, Thr
   @Override
   public TForecastResp forecast(TForecastReq req) throws TException {
     return executeRemoteCallWithRetry(() -> client.forecast(req));
+  }
+
+  @Override
+  public TClassifyResp classify(TClassifyReq req) throws TException {
+    return executeRemoteCallWithRetry(() -> client.classify(req));
   }
 
   @FunctionalInterface

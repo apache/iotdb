@@ -20,7 +20,6 @@ from iotdb.ainode.core.constant import TSStatusCode
 from iotdb.ainode.core.log import Logger
 from iotdb.ainode.core.manager.cluster_manager import ClusterManager
 from iotdb.ainode.core.manager.device_manager import DeviceManager
-from iotdb.ainode.core.manager.inference_manager import InferenceManager
 from iotdb.ainode.core.manager.model_manager import ModelManager
 from iotdb.ainode.core.rpc.status import get_status
 from iotdb.thrift.ainode import IAINodeRPCService

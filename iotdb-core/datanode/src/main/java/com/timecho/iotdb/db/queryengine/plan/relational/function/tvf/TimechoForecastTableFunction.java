@@ -63,6 +63,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.udf.builtin.relational.tvf.WindowTVFUtils.findColumnIndex;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.checkType;
+import static org.apache.iotdb.db.queryengine.plan.relational.function.tvf.TableFunctionUtils.parseOptions;
 
 public class TimechoForecastTableFunction extends ForecastTableFunction {
 
