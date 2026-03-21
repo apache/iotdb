@@ -561,7 +561,7 @@ public class IoTDBDataRegionSource extends IoTDBSource {
   @Override
   protected void login(final @Nonnull String password) {
     if (!pipeName.startsWith(PipeStaticMeta.CONSENSUS_PIPE_PREFIX)) {
-        final boolean useEncryptedPassword = regionId >= 0;
+      final boolean useEncryptedPassword = regionId >= 0;
       if (SessionManager.getInstance()
               .login(
                   new InternalClientSession("Source_login_session_" + regionId),
@@ -575,7 +575,9 @@ public class IoTDBDataRegionSource extends IoTDBSource {
               .getCode()
           != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new PipePasswordCheckException(
-            String.format("Failed to check password for pipe %s, useEncryptedPassword: %s", pipeName, useEncryptedPassword));
+            String.format(
+                "Failed to check password for pipe %s, useEncryptedPassword: %s",
+                pipeName, useEncryptedPassword));
       }
     }
   }
