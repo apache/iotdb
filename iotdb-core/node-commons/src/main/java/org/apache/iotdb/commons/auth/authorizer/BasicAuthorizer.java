@@ -107,7 +107,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   }
 
   @Override
-  public boolean login(
+  public void login(
       final String username, final String password, final boolean useEncryptedPassword)
       throws AuthException {
     User user = userManager.getEntity(username);
@@ -117,13 +117,13 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     if (useEncryptedPassword) {
       if (password.equals(user.getPassword())) {
-        return true;
+        return;
       }
       throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {
-      return true;
+      return;
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.MD5)) {
@@ -131,7 +131,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         forceUpdateUserPassword(username, password);
       } catch (AuthException ignore) {
       }
-      return true;
+      return;
     }
     throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
   }

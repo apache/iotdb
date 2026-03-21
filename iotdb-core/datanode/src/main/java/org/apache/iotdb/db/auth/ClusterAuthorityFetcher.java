@@ -580,6 +580,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       } finally {
         if (status == null) {
           status = new TPermissionInfoResp();
+          status.setStatus(RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR));
         }
       }
       if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
