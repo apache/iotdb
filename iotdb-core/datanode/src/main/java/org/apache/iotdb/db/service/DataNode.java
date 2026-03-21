@@ -1408,9 +1408,6 @@ public class DataNode extends ServerCommandLine implements DataNodeMBean {
     ExternalServiceManagementService.getInstance().stopRunningServices();
     JMXService.deregisterMBean(mbeanName);
     MetricService.getInstance().stop();
-    if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
-      DNAuditLogger.getInstance().stop();
-    }
     if (schemaRegionConsensusStarted) {
       try {
         SchemaRegionConsensusImpl.getInstance().stop();

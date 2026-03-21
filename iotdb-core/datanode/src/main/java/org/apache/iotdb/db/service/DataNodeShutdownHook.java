@@ -200,6 +200,10 @@ public class DataNodeShutdownHook extends Thread {
 
       watcherThread.interrupt();
     } finally {
+      // Flush and shutdown audit log async batch while encryption key is still valid.
+      if (CommonDescriptor.getInstance().getConfig().isEnableAuditLog()) {
+        DNAuditLogger.getInstance().stop();
+      }
       // set encryption key to 16-byte zero.
       TSFileDescriptor.getInstance().getConfig().setEncryptKey(new byte[16]);
     }
