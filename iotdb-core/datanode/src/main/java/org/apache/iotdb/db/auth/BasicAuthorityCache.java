@@ -114,6 +114,6 @@ public class BasicAuthorityCache implements IAuthorCache {
   public void invalidAllCache() {
     userCache.invalidateAll();
     roleCache.invalidateAll();
-      LOGGER.info("Invalidated all users and roles cache.");
+    LOGGER.info("Invalidated all users and roles cache.");
   }
 }
