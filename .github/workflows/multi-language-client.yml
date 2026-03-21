@@ -45,11 +45,11 @@ jobs:
       fail-fast: false
       max-parallel: 15
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-latest, macos-latest]
+        os: [ubuntu-22.04, ubuntu-24.04, windows-2022, windows-latest, windows-2025-vs2026, macos-latest]
     runs-on: ${{ matrix.os}}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install CPP Dependencies (Ubuntu)
         if: runner.os == 'Linux'
         shell: bash
@@ -82,7 +82,7 @@ jobs:
           echo "$sslPath\bin" >> $env:GITHUB_PATH
           echo "OPENSSL_ROOT_DIR=$sslPath" >> $env:GITHUB_ENV
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -96,10 +96,14 @@ jobs:
         # Explicitly using "install" instead of package in order to be sure we're using libs built on this machine
         # (was causing problems on windows, but could cause problem on linux, when updating the thrift module)
         run: |
-          ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+          if [[ "${{ matrix.os }}" == "windows-2025-vs2026" ]]; then
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am -Dcmake.generator="Visual Studio 18 2026"
+          else
+            ./mvnw clean verify -P with-cpp -pl iotdb-client/client-cpp,example/client-cpp-example -am
+          fi
       - name: Upload Artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cpp-IT-${{ runner.os }}
           path: distribution/target/apache-iotdb-*-all-bin/apache-iotdb-*-all-bin/logs
@@ -109,12 +113,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           token: ${{secrets.GITHUB_TOKEN}}
           submodules: recursive
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
@@ -138,18 +142,18 @@ jobs:
     runs-on: ${{ 'ubuntu-latest' }}
 
     steps:
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2-
       - name: Cache pip packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}

@@ -97,11 +97,16 @@ public class IoTDBTreePatternTest {
     final String[] patternsNotOverlapWithDevice = {
       "root.db.d2.**", "root.db2.d1.**", "root.db.db.d1.**",
     };
+    final String[] patternsFalsePositiveOverLap = {"root.**.d2.**"};
     for (final String s : patternsOverlapWithDevice) {
       Assert.assertTrue(new IoTDBTreePattern(s).mayOverlapWithDevice(device));
     }
     for (final String t : patternsNotOverlapWithDevice) {
       Assert.assertFalse(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
+    }
+    for (final String t : patternsFalsePositiveOverLap) {
+      Assert.assertTrue(new IoTDBTreePattern(t).mayOverlapWithDevice(device));
+      Assert.assertFalse(new IoTDBTreePattern(t).overlapWithDevice(device));
     }
 
     // Test pattern match measurement

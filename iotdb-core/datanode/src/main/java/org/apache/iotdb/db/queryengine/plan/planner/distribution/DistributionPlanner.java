@@ -41,8 +41,10 @@ import org.apache.iotdb.db.queryengine.plan.planner.plan.node.process.ExchangeNo
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.IdentitySinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.MultiChildrenSinkNode;
 import org.apache.iotdb.db.queryengine.plan.planner.plan.node.sink.ShuffleSinkNode;
+import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.queryengine.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.queryengine.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.db.queryengine.plan.statement.sys.ExplainAnalyzeStatement;
 
 import org.apache.tsfile.external.commons.lang3.Validate;
 
@@ -111,9 +113,7 @@ public class DistributionPlanner {
       return;
     }
 
-    final boolean needShuffleSinkNode =
-        analysis.getTreeStatement() instanceof QueryStatement
-            && needShuffleSinkNode((QueryStatement) analysis.getTreeStatement(), context);
+    final boolean needShuffleSinkNode = needShuffleSinkNode(analysis.getTreeStatement(), context);
 
     adjustUpStreamHelper(root, new HashMap<>(), needShuffleSinkNode, context);
   }
@@ -162,8 +162,18 @@ public class DistributionPlanner {
   }
 
   /** Return true if we need to use ShuffleSinkNode instead of IdentitySinkNode. */
-  private boolean needShuffleSinkNode(
-      QueryStatement queryStatement, NodeGroupContext nodeGroupContext) {
+  private boolean needShuffleSinkNode(Statement statement, NodeGroupContext nodeGroupContext) {
+
+    QueryStatement queryStatement = null;
+    if (statement instanceof QueryStatement) {
+      queryStatement = (QueryStatement) statement;
+    } else if (statement instanceof ExplainAnalyzeStatement) {
+      queryStatement = ((ExplainAnalyzeStatement) statement).getQueryStatement();
+    }
+    if (queryStatement == null) {
+      return false;
+    }
+
     OrderByComponent orderByComponent = queryStatement.getOrderByComponent();
 
     if (nodeGroupContext.isAlignByDevice() && orderByComponent != null) {

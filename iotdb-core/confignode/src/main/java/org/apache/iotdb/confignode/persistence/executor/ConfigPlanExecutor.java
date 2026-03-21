@@ -459,7 +459,6 @@ public class ConfigPlanExecutor {
       case DropUser:
       case DropUserV2:
       case DropRole:
-      case AccountUnlock:
       case GrantRole:
       case GrantUser:
       case GrantRoleToUser:

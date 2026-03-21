@@ -108,9 +108,8 @@ public class PipeDataNodeRuntimeAgent implements IService {
   @Override
   public synchronized void start() throws StartupException {
     PipeConfig.getInstance().printAllConfigs();
-    PipeAgentLauncher.launchPipeTaskAgent();
-
     pipePeriodicalJobExecutor.start();
+    pipePeriodicalJobExecutor.runDirectly(PipeAgentLauncher::launchPipeTaskAgent);
 
     if (PipeConfig.getInstance().getPipeEventReferenceTrackingEnabled()) {
       pipePeriodicalPhantomReferenceCleaner.start();
@@ -175,9 +174,9 @@ public class PipeDataNodeRuntimeAgent implements IService {
     simpleProgressIndexAssigner.assignIfNeeded(insertNode);
   }
 
-  ////////////////////// PipeConsensus ProgressIndex Assigner //////////////////////
+  ////////////////////// IoTConsensusV2 ProgressIndex Assigner //////////////////////
 
-  public ProgressIndex assignProgressIndexForPipeConsensus() {
+  public ProgressIndex assignProgressIndexForIoTConsensusV2() {
     return new RecoverProgressIndex(
         DATA_NODE_ID, simpleProgressIndexAssigner.getSimpleProgressIndex());
   }

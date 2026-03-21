@@ -202,7 +202,7 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>com.googlecode.cmake-maven-project</groupId>
+                <groupId>io.github.cmake-maven-plugin</groupId>
                 <artifactId>cmake-maven-plugin</artifactId>
                 <executions>
                     <!-- Uses a CMake generator to generate the build using the build tool of choice -->
@@ -215,7 +215,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/main</sourcePath>
-                            <targetPath>${project.build.directory}/build/main</targetPath>
+                            <projectDirectory>${project.build.directory}/build/main</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
@@ -232,7 +232,7 @@
                         <configuration>
                             <generator>${cmake.generator}</generator>
                             <sourcePath>${project.build.directory}/build/test</sourcePath>
-                            <targetPath>${project.build.directory}/build/test</targetPath>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
                             <options>
                                 <option>-DBOOST_INCLUDEDIR=${boost.include.dir}</option>
                                 <option>-DWITH_SSL=${with.ssl}</option>
@@ -273,8 +273,8 @@
                         </goals>
                         <phase>integration-test</phase>
                         <configuration>
-                            <buildDirectory>${project.build.directory}/build/test</buildDirectory>
-                            <skipTests>${ctest.skip.tests}</skipTests>
+                            <projectDirectory>${project.build.directory}/build/test</projectDirectory>
+                            <skipTests>${maven.test.skip}</skipTests>
                         </configuration>
                     </execution>
                 </executions>
@@ -415,8 +415,8 @@
                 </os>
             </activation>
             <properties>
-                <iotdb.start.script>start-standalone.bat</iotdb.start.script>
-                <iotdb.stop.script>stop-standalone.bat</iotdb.stop.script>
+                <iotdb.start.script>windows/start-standalone.bat</iotdb.start.script>
+                <iotdb.stop.script>windows/stop-standalone.bat</iotdb.stop.script>
                 <os.suffix>win</os.suffix>
             </properties>
         </profile>
@@ -430,7 +430,7 @@
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>com.googlecode.cmake-maven-project</groupId>
+                        <groupId>io.github.cmake-maven-plugin</groupId>
                         <artifactId>cmake-maven-plugin</artifactId>
                         <executions>
                             <execution>

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils.datastructure;
 
+import org.apache.iotdb.db.queryengine.execution.fragment.QueryContext;
 import org.apache.iotdb.db.queryengine.plan.statement.component.Ordering;
 
 import org.apache.tsfile.enums.TSDataType;
@@ -52,7 +53,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
       List<TimeRange> deletionList,
       Integer floatPrecision,
       TSEncoding encoding,
-      int maxNumberOfPointsInPage) {
+      int maxNumberOfPointsInPage,
+      QueryContext queryContext) {
     super(
         scanOrder,
         globalTimeFilter,
@@ -62,7 +64,8 @@ public class MergeSortMultiTVListIterator extends MultiTVListIterator {
         deletionList,
         floatPrecision,
         encoding,
-        maxNumberOfPointsInPage);
+        maxNumberOfPointsInPage,
+        queryContext);
     this.probeIterators =
         IntStream.range(0, tvListIterators.size()).boxed().collect(Collectors.toList());
     this.heap =

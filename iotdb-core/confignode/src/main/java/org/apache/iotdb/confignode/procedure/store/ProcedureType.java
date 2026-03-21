@@ -172,7 +172,10 @@ public enum ProcedureType {
   @TestOnly
   NEVER_FINISH_PROCEDURE((short) 30000),
   @TestOnly
-  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 30001);
+  ADD_NEVER_FINISH_SUB_PROCEDURE_PROCEDURE((short) 30001),
+
+  /** Data Partition Table Integrity Check */
+  DATA_PARTITION_TABLE_INTEGRITY_CHECK_PROCEDURE((short) 1600);
 
   private final short typeCode;
 

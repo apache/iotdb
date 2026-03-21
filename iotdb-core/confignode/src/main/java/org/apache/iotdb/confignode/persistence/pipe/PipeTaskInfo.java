@@ -563,6 +563,20 @@ public class PipeTaskInfo implements SnapshotProcessor {
     }
   }
 
+  public Map<String, PipeStatus> getConsensusPipeStatusMap() {
+    acquireReadLock();
+    try {
+      return StreamSupport.stream(pipeMetaKeeper.getPipeMetaList().spliterator(), false)
+          .filter(pipeMeta -> PipeType.CONSENSUS.equals(pipeMeta.getStaticMeta().getPipeType()))
+          .collect(
+              Collectors.toMap(
+                  pipeMeta -> pipeMeta.getStaticMeta().getPipeName(),
+                  pipeMeta -> pipeMeta.getRuntimeMeta().getStatus().get()));
+    } finally {
+      releaseReadLock();
+    }
+  }
+
   public boolean isEmpty() {
     acquireReadLock();
     try {

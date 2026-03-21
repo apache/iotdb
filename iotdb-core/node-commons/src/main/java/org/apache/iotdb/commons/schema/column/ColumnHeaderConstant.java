@@ -351,6 +351,9 @@ public class ColumnHeaderConstant {
 
   public static final String COLUMN_NAME_DUCKDB = "column_name";
   public static final String COLUMN_TYPE_DUCKDB = "column_type";
+  public static final String SIZE_IN_BYTES = "SizeInBytes";
+  public static final String SIZE_IN_BYTES_TABLE_MODEL = "size_in_bytes";
+  public static final String TIME_PARTITION_TABLE_MODEL = "time_partition";
 
   public static final List<ColumnHeader> lastQueryColumnHeaders =
       ImmutableList.of(
@@ -372,7 +375,7 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DEADBAND_PARAMETERS, TSDataType.TEXT),
           new ColumnHeader(VIEW_TYPE, TSDataType.TEXT));
 
-  public static final List<ColumnHeader> showDevicesWithSgColumnHeaders =
+  public static final List<ColumnHeader> showDevicesWithDbColumnHeaders =
       ImmutableList.of(
           new ColumnHeader(DEVICE, TSDataType.TEXT),
           new ColumnHeader(DATABASE, TSDataType.TEXT),
@@ -648,6 +651,14 @@ public class ColumnHeaderConstant {
           new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
           new ColumnHeader(ELAPSED_TIME, TSDataType.FLOAT),
           new ColumnHeader(STATEMENT, TSDataType.TEXT));
+
+  public static final List<ColumnHeader> showDiskUsageColumnHeaders =
+      ImmutableList.of(
+          new ColumnHeader(DATABASE, TSDataType.TEXT),
+          new ColumnHeader(DATA_NODE_ID, TSDataType.INT32),
+          new ColumnHeader(REGION_ID, TSDataType.INT32),
+          new ColumnHeader(TIME_PARTITION, TSDataType.INT64),
+          new ColumnHeader(SIZE_IN_BYTES, TSDataType.INT64));
 
   public static final List<ColumnHeader> showSpaceQuotaColumnHeaders =
       ImmutableList.of(

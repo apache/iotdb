@@ -56,7 +56,7 @@ public class DatasetHeaderFactory {
   }
 
   public static DatasetHeader getShowDevicesWithSgHeader() {
-    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithSgColumnHeaders, true);
+    return new DatasetHeader(ColumnHeaderConstant.showDevicesWithDbColumnHeaders, true);
   }
 
   public static DatasetHeader getShowDatabaseHeader(final boolean isDetailed) {
@@ -205,6 +205,10 @@ public class DatasetHeaderFactory {
 
   public static DatasetHeader getShowQueriesHeader() {
     return new DatasetHeader(ColumnHeaderConstant.showQueriesColumnHeaders, false);
+  }
+
+  public static DatasetHeader getShowDiskUsageHeader() {
+    return new DatasetHeader(ColumnHeaderConstant.showDiskUsageColumnHeaders, true);
   }
 
   public static DatasetHeader getShowSpaceQuotaHeader() {

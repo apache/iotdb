@@ -143,7 +143,8 @@ public class CteMaterializer {
               context.getExplainType(),
               context.getTimeOut(),
               false,
-              context.isDebug());
+              context.isDebug(),
+              context.isVerbose());
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return null;
       }

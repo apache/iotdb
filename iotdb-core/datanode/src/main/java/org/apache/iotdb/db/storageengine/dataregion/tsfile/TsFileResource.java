@@ -50,6 +50,7 @@ import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.PlainDevice
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.storageengine.rescon.disk.TierManager;
 
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.tsfile.file.metadata.IChunkMetadata;
 import org.apache.tsfile.file.metadata.IDeviceID;
 import org.apache.tsfile.file.metadata.ITimeSeriesMetadata;
@@ -101,7 +102,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
   private static final long INSTANCE_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(TsFileResource.class)
           + RamUsageEstimator.shallowSizeOfInstance(TsFileRepairStatus.class)
-          + RamUsageEstimator.shallowSizeOfInstance(TsFileID.class);
+          + TsFileID.SHALLOW_SIZE;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
@@ -198,8 +199,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
 
   private final AtomicReference<ProgressIndex> maxProgressIndex = new AtomicReference<>();
 
-  /** used to prevent circular replication in PipeConsensus */
-  private volatile boolean isGeneratedByPipeConsensus = false;
+  /** used to prevent circular replication in IoTConsensusV2 */
+  private volatile boolean isGeneratedByIoTConsensusV2 = false;
 
   /** used to prevent circular replication in Pipe */
   private volatile boolean isGeneratedByPipe = false;
@@ -311,7 +312,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     }
 
     TsFileResourceBlockType.PIPE_MARK.serialize(outputStream);
-    ReadWriteIOUtils.write(isGeneratedByPipeConsensus, outputStream);
+    ReadWriteIOUtils.write(isGeneratedByIoTConsensusV2, outputStream);
     ReadWriteIOUtils.write(isGeneratedByPipe, outputStream);
   }
 
@@ -346,7 +347,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
             maxProgressIndex.set(ProgressIndexType.deserializeFrom(inputStream));
             break;
           case PIPE_MARK:
-            isGeneratedByPipeConsensus = ReadWriteIOUtils.readBoolean(inputStream);
+            isGeneratedByIoTConsensusV2 = ReadWriteIOUtils.readBoolean(inputStream);
             isGeneratedByPipe = ReadWriteIOUtils.readBoolean(inputStream);
             break;
           default:
@@ -677,6 +678,10 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return timeIndex.getDevices(file.getPath(), this);
   }
 
+  public Set<IDeviceID> getDevices(RateLimiter limiter) {
+    return timeIndex.getDevices(file.getPath(), this, limiter);
+  }
+
   public ArrayDeviceTimeIndex buildDeviceTimeIndex(IDeviceID.Deserializer deserializer)
       throws IOException {
     readLock();
@@ -761,12 +766,12 @@ public class TsFileResource implements PersistentResource, Cloneable {
     return processor;
   }
 
-  public boolean isGeneratedByPipeConsensus() {
-    return isGeneratedByPipeConsensus;
+  public boolean isGeneratedByIoTConsensusV2() {
+    return isGeneratedByIoTConsensusV2;
   }
 
-  public void setGeneratedByPipeConsensus(boolean generatedByPipeConsensus) {
-    isGeneratedByPipeConsensus = generatedByPipeConsensus;
+  public void setGeneratedByIoTConsensusV2(boolean generatedByIoTConsensusV2) {
+    isGeneratedByIoTConsensusV2 = generatedByIoTConsensusV2;
   }
 
   public boolean isGeneratedByPipe() {
@@ -1034,7 +1039,8 @@ public class TsFileResource implements PersistentResource, Cloneable {
             endTime);
         return false;
       }
-
+      // we cannot count the filtered rows in tsfile due to the lack of related info about the
+      // tsfile
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
       if (debug && !res) {
         DEBUG_LOGGER.info(
@@ -1615,7 +1621,7 @@ public class TsFileResource implements PersistentResource, Cloneable {
     cloned.tsFileSize = this.tsFileSize;
     cloned.processor = this.processor;
     cloned.originTsFileResource = this.originTsFileResource;
-    cloned.isGeneratedByPipeConsensus = this.isGeneratedByPipeConsensus;
+    cloned.isGeneratedByIoTConsensusV2 = this.isGeneratedByIoTConsensusV2;
     cloned.isGeneratedByPipe = this.isGeneratedByPipe;
     cloned.insertionCompactionCandidateStatus = this.insertionCompactionCandidateStatus;
     cloned.tierLevel = this.tierLevel;

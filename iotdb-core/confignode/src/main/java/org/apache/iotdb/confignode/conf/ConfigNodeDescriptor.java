@@ -205,6 +205,9 @@ public class ConfigNodeDescriptor {
         properties.getProperty(
             "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
 
+    conf.setIotConsensusV2Mode(
+        properties.getProperty("iot_consensus_v2_mode", conf.getIotConsensusV2Mode()));
+
     conf.setDataReplicationFactor(
         Integer.parseInt(
             properties.getProperty(
@@ -318,6 +321,12 @@ public class ConfigNodeDescriptor {
             properties.getProperty(
                 "failure_detector_phi_acceptable_pause_in_ms",
                 String.valueOf(conf.getFailureDetectorPhiAcceptablePauseInMs()))));
+
+    conf.setPartitionTableRecoverWaitAllDnUpTimeoutInMs(
+        Long.parseLong(
+            properties.getProperty(
+                "partition_table_recover_wait_all_dn_up_timeout_ms",
+                String.valueOf(conf.getPartitionTableRecoverWaitAllDnUpTimeoutInMs()))));
 
     String leaderDistributionPolicy =
         properties.getProperty("leader_distribution_policy", conf.getLeaderDistributionPolicy());

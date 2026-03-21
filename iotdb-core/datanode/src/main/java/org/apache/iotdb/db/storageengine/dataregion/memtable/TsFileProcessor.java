@@ -66,6 +66,7 @@ import org.apache.iotdb.db.storageengine.dataregion.read.filescan.impl.UnclosedF
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.timeindex.FileTimeIndexCacheRecorder;
 import org.apache.iotdb.db.storageengine.dataregion.utils.SharedTimeDataBuffer;
+import org.apache.iotdb.db.storageengine.dataregion.utils.tableDiskUsageIndex.TableDiskUsageIndex;
 import org.apache.iotdb.db.storageengine.dataregion.wal.WALManager;
 import org.apache.iotdb.db.storageengine.dataregion.wal.node.IWALNode;
 import org.apache.iotdb.db.storageengine.dataregion.wal.utils.listener.AbstractResultListener;
@@ -177,7 +178,9 @@ public class TsFileProcessor {
 
   public static final long FLUSH_POINT_COUNT_NOT_SET = -1;
 
-  /** Point count when the memtable is flushed. Used for metrics on PipeConsensus' receiver side. */
+  /**
+   * Point count when the memtable is flushed. Used for metrics on IoTConsensusV2' receiver side.
+   */
   private long memTableFlushPointCount = FLUSH_POINT_COUNT_NOT_SET;
 
   /** Wal node. */
@@ -1336,53 +1339,6 @@ public class TsFileProcessor {
     return CompletableFuture.completedFuture(null);
   }
 
-  /**
-   * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup Tips: I am
-   * trying to solve this issue by checking whether the table exist before wait()
-   */
-  @TestOnly
-  public void syncFlush() throws IOException {
-    IMemTable tmpMemTable;
-    flushQueryLock.writeLock().lock();
-    logFlushQueryWriteLocked();
-    try {
-      tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
-      if (logger.isDebugEnabled() && tmpMemTable.isSignalMemTable()) {
-        logger.debug(
-            "{}: {} add a signal memtable into flushing memtable list when sync flush",
-            dataRegionName,
-            tsFileResource.getTsFile().getName());
-      }
-      addAMemtableIntoFlushingList(tmpMemTable);
-    } finally {
-      flushQueryLock.writeLock().unlock();
-      logFlushQueryWriteUnlocked();
-    }
-
-    synchronized (flushingMemTables) {
-      try {
-        long startWait = System.currentTimeMillis();
-        while (flushingMemTables.contains(tmpMemTable)) {
-          flushingMemTables.wait(1000);
-
-          if ((System.currentTimeMillis() - startWait) > 60_000) {
-            logger.warn(
-                "has waited for synced flushing a memtable in {} for 60 seconds.",
-                this.tsFileResource.getTsFile().getAbsolutePath());
-            startWait = System.currentTimeMillis();
-          }
-        }
-      } catch (InterruptedException e) {
-        logger.error(
-            "{}: {} wait flush finished meets error",
-            dataRegionName,
-            tsFileResource.getTsFile().getName(),
-            e);
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
   /** Put the working memtable into flushing list and set the working memtable to null */
   public void asyncFlush() {
     flushQueryLock.writeLock().lock();
@@ -1393,7 +1349,7 @@ public class TsFileProcessor {
       }
       logger.info(
           "Async flush a memtable to tsfile: {}", tsFileResource.getTsFile().getAbsolutePath());
-      addAMemtableIntoFlushingList(workMemTable);
+      closeFuture = addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error(
           "{}: {} add a memtable into flushing list failed",
@@ -1759,6 +1715,11 @@ public class TsFileProcessor {
 
     tsFileResource.serialize();
     FileTimeIndexCacheRecorder.getInstance().logFileTimeIndex(tsFileResource);
+    TableDiskUsageIndex.getInstance()
+        .write(
+            tsFileResource.getDatabaseName(),
+            tsFileResource.getTsFileID(),
+            writer.getTableSizeMap());
     if (logger.isDebugEnabled()) {
       logger.debug("Ended file {}", tsFileResource);
     }

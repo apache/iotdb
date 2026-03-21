@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.procedure.impl.node.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveAINodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.node.RemoveDataNodesProcedure;
+import org.apache.iotdb.confignode.procedure.impl.partition.DataPartitionTableIntegrityCheckProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.CreatePipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.plugin.DropPipePluginProcedure;
 import org.apache.iotdb.confignode.procedure.impl.pipe.runtime.PipeHandleLeaderChangeProcedure;
@@ -1374,6 +1375,16 @@ public class ProcedureManager {
     }
   }
 
+  /** Used to repair the lost data partition table */
+  public TSStatus dataPartitionTableIntegrityCheck() {
+    DataPartitionTableIntegrityCheckProcedure procedure;
+    synchronized (this) {
+      procedure = new DataPartitionTableIntegrityCheckProcedure();
+      executor.submitProcedure(procedure);
+    }
+    return waitingProcedureFinished(procedure);
+  }
+
   /**
    * Generate {@link CreateTriggerProcedure} and wait until it finished.
    *
@@ -1485,6 +1496,23 @@ public class ProcedureManager {
     }
   }
 
+  /**
+   * Submit a consensus pipe creation procedure without blocking. The procedure will execute in the
+   * background. Failures are logged and can be repaired by the consensus pipe guardian.
+   */
+  public void createConsensusPipeAsync(TCreatePipeReq req) {
+    try {
+      CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
+      executor.submitProcedure(procedure);
+      LOGGER.info("Submitted async consensus pipe creation: {}", req.getPipeName());
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to submit async consensus pipe creation for {}: {}",
+          req.getPipeName(),
+          e.getMessage());
+    }
+  }
+
   public TSStatus createPipe(TCreatePipeReq req) {
     try {
       CreatePipeProcedureV2 procedure = new CreatePipeProcedureV2(req);
@@ -1576,6 +1604,21 @@ public class ProcedureManager {
       return handleConsensusPipeProcedure(procedure);
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.PIPE_ERROR.getStatusCode()).setMessage(e.getMessage());
+    }
+  }
+
+  /**
+   * Submit a consensus pipe drop procedure without blocking. The procedure will execute in the
+   * background. Failures are logged and can be repaired by the consensus pipe guardian.
+   */
+  public void dropConsensusPipeAsync(String pipeName) {
+    try {
+      DropPipeProcedureV2 procedure = new DropPipeProcedureV2(pipeName);
+      executor.submitProcedure(procedure);
+      LOGGER.info("Submitted async consensus pipe drop: {}", pipeName);
+    } catch (Exception e) {
+      LOGGER.warn(
+          "Failed to submit async consensus pipe drop for {}: {}", pipeName, e.getMessage());
     }
   }
 

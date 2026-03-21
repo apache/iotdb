@@ -35,10 +35,11 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.session.subscription.SubscriptionTreeSession;
 import org.apache.iotdb.session.subscription.consumer.tree.SubscriptionTreePullConsumer;
 import org.apache.iotdb.session.subscription.payload.SubscriptionMessage;
-import org.apache.iotdb.session.subscription.payload.SubscriptionSessionDataSet;
+import org.apache.iotdb.session.subscription.payload.SubscriptionRecordHandler;
 import org.apache.iotdb.subscription.it.AbstractSubscriptionIT;
 import org.apache.iotdb.subscription.it.IoTDBSubscriptionITConstant;
 
+import org.apache.tsfile.read.query.dataset.ResultSet;
 import org.apache.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
@@ -202,10 +203,13 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        final long timestamp = dataSet.next().getTimestamp();
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        final long timestamp =
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp();
                         timestamps.put(new Pair<>(timestamp, consumerRef1.toString()), timestamp);
                       }
                     }
@@ -236,10 +240,13 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        final long timestamp = dataSet.next().getTimestamp();
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        final long timestamp =
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp();
                         timestamps.put(new Pair<>(timestamp, consumerRef2.toString()), timestamp);
                       }
                     }
@@ -354,10 +361,13 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        final long timestamp = dataSet.next().getTimestamp();
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        final long timestamp =
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp();
                         timestamps.put(timestamp, timestamp);
                       }
                     }
@@ -482,10 +492,13 @@ public class IoTDBSubscriptionRestartIT extends AbstractSubscriptionIT {
                     continue;
                   }
                   for (final SubscriptionMessage message : messages) {
-                    for (final SubscriptionSessionDataSet dataSet :
-                        message.getSessionDataSetsHandler()) {
-                      while (dataSet.hasNext()) {
-                        final long timestamp = dataSet.next().getTimestamp();
+                    for (final ResultSet dataSet : message.getResultSets()) {
+                      while (((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                          .hasNext()) {
+                        final long timestamp =
+                            ((SubscriptionRecordHandler.SubscriptionResultSet) dataSet)
+                                .nextRecord()
+                                .getTimestamp();
                         timestamps.put(timestamp, timestamp);
                       }
                     }

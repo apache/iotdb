@@ -58,9 +58,6 @@ public class CommonConfig {
   private static final Logger logger = LoggerFactory.getLogger(CommonConfig.class);
   public static final long DEFAULT_TIME_PARTITION_INTERVAL = 604_800_000L;
 
-  // Open ID Secret
-  private String openIdProviderUrl = "";
-
   // The authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider =
       "org.apache.iotdb.commons.auth.authorizer.LocalFileAuthorizer";
@@ -270,6 +267,7 @@ public class CommonConfig {
   private long pipeSourceMatcherCacheSize = 1024;
 
   private int pipeSinkHandshakeTimeoutMs = 10 * 1000; // 10 seconds
+  private int pipeAirGapSinkTabletTimeoutMs = 60 * 1000; // 1 min
   private int pipeSinkTransferTimeoutMs = 15 * 60 * 1000; // 15 minutes
   private int pipeSinkReadFileBufferSize = 5242880; // 5MB
   private boolean isPipeSinkReadFileBufferMemoryControlEnabled = false;
@@ -532,14 +530,6 @@ public class CommonConfig {
 
   public String getUserEncryptTokenHint() {
     return userEncryptTokenHint;
-  }
-
-  public String getOpenIdProviderUrl() {
-    return openIdProviderUrl;
-  }
-
-  public void setOpenIdProviderUrl(String openIdProviderUrl) {
-    this.openIdProviderUrl = openIdProviderUrl;
   }
 
   public String getAuthorizerProvider() {
@@ -1073,6 +1063,26 @@ public class CommonConfig {
       if (fPipeConnectorHandshakeTimeoutMs != this.pipeSinkHandshakeTimeoutMs) {
         logger.info(
             "pipeConnectorHandshakeTimeoutMs is set to {}.", this.pipeSinkHandshakeTimeoutMs);
+      }
+    }
+  }
+
+  public int getPipeAirGapSinkTabletTimeoutMs() {
+    return pipeAirGapSinkTabletTimeoutMs;
+  }
+
+  public void setPipeAirGapSinkTabletTimeoutMs(long pipeAirGapSinkTabletTimeoutMs) {
+    final int fPipeAirGapSinkTabletTimeoutMs = this.pipeAirGapSinkTabletTimeoutMs;
+    try {
+      this.pipeAirGapSinkTabletTimeoutMs = Math.toIntExact(pipeAirGapSinkTabletTimeoutMs);
+    } catch (ArithmeticException e) {
+      this.pipeAirGapSinkTabletTimeoutMs = Integer.MAX_VALUE;
+      logger.warn(
+          "Given pipe air gap sink tablet timeout is too large, set to {} ms.", Integer.MAX_VALUE);
+    } finally {
+      if (fPipeAirGapSinkTabletTimeoutMs != this.pipeAirGapSinkTabletTimeoutMs) {
+        logger.info(
+            "pipeAirGapSinkTabletTimeoutMs is set to {}.", this.pipeAirGapSinkTabletTimeoutMs);
       }
     }
   }
