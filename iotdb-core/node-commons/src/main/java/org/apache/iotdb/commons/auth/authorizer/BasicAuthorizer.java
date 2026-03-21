@@ -116,7 +116,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           TSStatusCode.USER_NOT_EXIST, String.format("The user %s does not exist.", username));
     }
     if (useEncryptedPassword) {
-      return password.equals(user.getPassword());
+      if (password.equals(user.getPassword())) {
+        return true;
+      }
+      throw new AuthException(TSStatusCode.WRONG_LOGIN_PASSWORD, "Incorrect password.");
     }
     if (AuthUtils.validatePassword(
         password, user.getPassword(), AsymmetricEncrypt.DigestAlgorithm.SHA_256)) {

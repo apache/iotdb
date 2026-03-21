@@ -83,7 +83,6 @@ public class AuthorPlanExecutor implements IAuthorPlanExecutor {
       status = authorizer.login(username, password, useEncryptedPassword);
       if (status) {
         result = getUserPermissionInfo(username, ModelType.ALL);
-
         result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully"));
       } else {
         result = AuthUtils.generateEmptyPermissionInfoResp();
