@@ -28,10 +28,14 @@ class TotoPipeline(ForecastPipeline):
                     ),
                     id_mask=torch.arange(
                         variate_count, dtype=torch.int64, device=device
-                    ).unsqueeze(-1).expand(variate_count, series_len),
+                    )
+                    .unsqueeze(-1)
+                    .expand(variate_count, series_len),
                     timestamp_seconds=torch.arange(
                         series_len, dtype=torch.int64, device=device
-                    ).unsqueeze(0).expand(variate_count, series_len),
+                    )
+                    .unsqueeze(0)
+                    .expand(variate_count, series_len),
                     time_interval_seconds=torch.ones(
                         variate_count, dtype=torch.int64, device=device
                     ),

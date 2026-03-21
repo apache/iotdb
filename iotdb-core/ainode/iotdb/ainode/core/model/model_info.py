@@ -167,15 +167,10 @@ BUILTIN_HF_TRANSFORMERS_MODEL_MAP = {
         model_type="toto",
         pipeline_cls="pipeline_toto.TotoPipeline",
         repo_id="Datadog/Toto-Open-Base-1.0",
-<<<<<<< Updated upstream
-        auto_map=None,
-        transformers_registered=False,
-=======
         auto_map={
             "AutoConfig": "configuration_toto.TotoConfig",
             "AutoModelForCausalLM": "modeling_toto.TotoForPrediction",
         },
         transformers_registered=True,
->>>>>>> Stashed changes
     ),
 }
