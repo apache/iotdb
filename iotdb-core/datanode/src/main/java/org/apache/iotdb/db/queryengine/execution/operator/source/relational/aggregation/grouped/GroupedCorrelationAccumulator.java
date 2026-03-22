@@ -230,7 +230,7 @@ public class GroupedCorrelationAccumulator implements GroupedAccumulator {
         if (counts.get(groupId) < 2) {
           columnBuilder.appendNull();
         } else if (m2Xs.get(groupId) == 0 || m2Ys.get(groupId) == 0) {
-          columnBuilder.writeDouble(0.0);
+          columnBuilder.appendNull();
         } else {
           columnBuilder.writeDouble(
               c2s.get(groupId) / Math.sqrt(m2Xs.get(groupId) * m2Ys.get(groupId)));

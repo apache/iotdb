@@ -180,7 +180,7 @@ public class CorrelationAccumulator implements Accumulator {
           columnBuilder.appendNull();
         } else if (m2X == 0 || m2Y == 0) {
 
-          columnBuilder.writeDouble(0.0);
+          columnBuilder.appendNull();
         } else {
           columnBuilder.writeDouble(c2 / Math.sqrt(m2X * m2Y));
         }

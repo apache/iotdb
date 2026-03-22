@@ -177,13 +177,10 @@ public class CentralMomentAccumulator implements Accumulator {
     if (momentType == MomentType.SKEWNESS) {
       if (count < 3) {
         columnBuilder.appendNull();
-      } else {
-
-        double variance = m2 / (count - 1);
-        double stdev = Math.sqrt(variance);
-        double result = (count * m3) / ((count - 1) * (count - 2) * stdev * stdev * stdev);
-        columnBuilder.writeDouble(result);
+        return;
       }
+      double result = Math.sqrt((double) count) * m3 / Math.pow(m2, 1.5);
+      columnBuilder.writeDouble(result);
     } else {
       if (count < 4) {
         columnBuilder.appendNull();
