@@ -866,17 +866,33 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   private void refreshModFileState() {
-    // Once the event is pinned (referenceCount > 0), `modFile` should already be the
-    // hardlinked/copied file managed by PipeTsFileResourceManager. Refreshing it from
-    // `resource.getExclusiveModFile()` would overwrite the pinned path, which may break reference
-    // tracking and cause the sink to transfer an unpinned file.
-    if (referenceCount.get() > 0) {
-      return;
-    }
-
     if (!shouldTransferModFile || Objects.isNull(resource)) {
       isWithMod = false;
       modFile = null;
+      return;
+    }
+
+    // Once the event is pinned (referenceCount > 0), `modFile` should already be the
+    // hardlinked/copied file managed by PipeTsFileResourceManager. We must not overwrite it by
+    // reloading the original `resource.getExclusiveModFile()` path, otherwise reference tracking
+    // will be broken. However, we still need to support the case where the mod file is created
+    // after pinning: in this case we pin it lazily and then keep the pinned path stable.
+    if (referenceCount.get() > 0) {
+      if (Objects.isNull(modFile) && resource.getExclusiveModFile().exists()) {
+        try {
+          modFile =
+              PipeDataNodeResourceManager.tsfile()
+                  .increaseFileReference(resource.getExclusiveModFile().getFile(), false, pipeName);
+        } catch (final Exception e) {
+          LOGGER.warn(
+              "Failed to pin late-created mod file {} for tsfile {}, will transfer without mod.",
+              resource.getExclusiveModFile().getFile(),
+              tsFile,
+              e);
+          modFile = null;
+        }
+      }
+      isWithMod = Objects.nonNull(modFile);
       return;
     }
 

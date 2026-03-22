@@ -405,10 +405,7 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
       }
 
       final boolean supportMod = clientManager.supportModsIfIsDataNodeReceiver();
-      final File modFile =
-          (supportMod && pipeTsFileInsertionEvent.isWithMod())
-              ? pipeTsFileInsertionEvent.getModFile()
-              : null;
+      final File modFile = supportMod ? pipeTsFileInsertionEvent.getModFile() : null;
 
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
