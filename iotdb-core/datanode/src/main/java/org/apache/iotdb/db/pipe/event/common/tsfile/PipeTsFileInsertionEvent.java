@@ -866,6 +866,14 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   private void refreshModFileState() {
+    // Once the event is pinned (referenceCount > 0), `modFile` should already be the
+    // hardlinked/copied file managed by PipeTsFileResourceManager. Refreshing it from
+    // `resource.getExclusiveModFile()` would overwrite the pinned path, which may break reference
+    // tracking and cause the sink to transfer an unpinned file.
+    if (referenceCount.get() > 0) {
+      return;
+    }
+
     if (!shouldTransferModFile || Objects.isNull(resource)) {
       isWithMod = false;
       modFile = null;

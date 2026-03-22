@@ -235,6 +235,71 @@ public class PipeTsFileInsertionEventTest {
     }
   }
 
+  @Test
+  public void testPinnedModFilePathIsStableAfterIncreaseReferenceCount() throws Exception {
+    final File tsFile =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 2));
+    PipeTsFileInsertionEvent event = null;
+    try {
+      Assert.assertTrue(tsFile.getParentFile().mkdirs() || tsFile.getParentFile().exists());
+      Assert.assertTrue(tsFile.createNewFile() || tsFile.exists());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+
+      event =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              true,
+              false,
+              false,
+              null,
+              "testPipe",
+              1L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+
+      Assert.assertFalse(event.isWithMod());
+
+      // Create the mod file after event construction but before pinning.
+      resource
+          .getExclusiveModFile()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.s1"), 0, 1));
+      final File originalModFile = resource.getExclusiveModFile().getFile();
+      Assert.assertTrue(originalModFile.exists());
+      Assert.assertTrue(event.isWithMod());
+      Assert.assertEquals(originalModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
+
+      // Pin the event: mod file should be copied to pipe dir and must not be overwritten by refresh.
+      Assert.assertTrue(event.increaseReferenceCount("test"));
+      final File pinnedModFile = event.getModFile();
+      Assert.assertNotNull(pinnedModFile);
+      Assert.assertNotEquals(originalModFile.getAbsolutePath(), pinnedModFile.getAbsolutePath());
+
+      // Ensure subsequent refresh calls won't revert it to the original path.
+      Assert.assertTrue(event.isWithMod());
+      Assert.assertEquals(pinnedModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
+    } finally {
+      if (event != null) {
+        event.clearReferenceCount("test");
+        event.close();
+      }
+      FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
   static class TestAccessControl implements AccessControl {
 
     @Override
