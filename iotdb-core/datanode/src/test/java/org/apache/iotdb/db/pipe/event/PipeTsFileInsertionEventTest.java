@@ -282,7 +282,8 @@ public class PipeTsFileInsertionEventTest {
       Assert.assertTrue(event.isWithMod());
       Assert.assertEquals(originalModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
 
-      // Pin the event: mod file should be copied to pipe dir and must not be overwritten by refresh.
+      // Pin the event: mod file should be copied to pipe dir and must not be overwritten by
+      // refresh.
       Assert.assertTrue(event.increaseReferenceCount("test"));
       final File pinnedModFile = event.getModFile();
       Assert.assertNotNull(pinnedModFile);
