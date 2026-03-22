@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.audit.IAuditEntity;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.auth.AccessDeniedException;
+import org.apache.iotdb.commons.path.MeasurementPath;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.queryengine.plan.relational.security.TreeAccessCheckC
 import org.apache.iotdb.db.queryengine.plan.relational.sql.ast.RelationalAuthorStatement;
 import org.apache.iotdb.db.queryengine.plan.statement.Statement;
 import org.apache.iotdb.db.storageengine.dataregion.compaction.utils.CompactionTestFileWriter;
+import org.apache.iotdb.db.storageengine.dataregion.modification.TreeDeletionEntry;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResource;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.TsFileResourceStatus;
 import org.apache.iotdb.db.storageengine.dataregion.tsfile.generator.TsFileNameGenerator;
@@ -154,6 +156,82 @@ public class PipeTsFileInsertionEventTest {
     } finally {
       AuthorityChecker.setAccessControl(oldControl);
       FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testLateCreatedModFileCanStillBeObservedAfterShallowCopy() throws Exception {
+    final File baseDir = new File(TestConstant.BASE_OUTPUT_PATH, "late-mod");
+    final File tsFile = new File(baseDir, "late-mod.tsfile");
+    PipeTsFileInsertionEvent originalEvent = null;
+    PipeTsFileInsertionEvent copiedEvent = null;
+    try {
+      Assert.assertTrue(baseDir.mkdirs() || baseDir.exists());
+      Assert.assertTrue(tsFile.createNewFile() || tsFile.exists());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+
+      originalEvent =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              true,
+              false,
+              false,
+              null,
+              "testPipe",
+              1L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      copiedEvent =
+          originalEvent.shallowCopySelfAndBindPipeTaskMetaForProgressReport(
+              "testPipeCopy",
+              2L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+
+      Assert.assertFalse(originalEvent.isWithMod());
+      Assert.assertFalse(copiedEvent.isWithMod());
+
+      resource
+          .getExclusiveModFile()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.s1"), 0, 1));
+      final File modFile = resource.getExclusiveModFile().getFile();
+      Assert.assertTrue(modFile.exists());
+
+      Assert.assertTrue(originalEvent.isWithMod());
+      Assert.assertEquals(modFile, originalEvent.getModFile());
+      Assert.assertTrue(copiedEvent.isWithMod());
+      Assert.assertEquals(modFile, copiedEvent.getModFile());
+
+      copiedEvent.disableMod4NonTransferPipes(false);
+      Assert.assertFalse(copiedEvent.isWithMod());
+      Assert.assertNull(copiedEvent.getModFile());
+    } finally {
+      if (originalEvent != null) {
+        originalEvent.close();
+      }
+      if (copiedEvent != null) {
+        copiedEvent.close();
+      }
+      FileUtils.deleteFileOrDirectory(baseDir);
     }
   }
 

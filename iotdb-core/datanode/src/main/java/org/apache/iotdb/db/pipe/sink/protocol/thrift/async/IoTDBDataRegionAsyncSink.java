@@ -404,6 +404,12 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
         throw new FileNotFoundException(pipeTsFileInsertionEvent.getTsFile().getAbsolutePath());
       }
 
+      final boolean supportMod = clientManager.supportModsIfIsDataNodeReceiver();
+      final File modFile =
+          (supportMod && pipeTsFileInsertionEvent.isWithMod())
+              ? pipeTsFileInsertionEvent.getModFile()
+              : null;
+
       final PipeTransferTsFileHandler pipeTransferTsFileHandler =
           new PipeTransferTsFileHandler(
               this,
@@ -416,9 +422,8 @@ public class IoTDBDataRegionAsyncSink extends IoTDBSink {
               new AtomicInteger(1),
               new AtomicBoolean(false),
               pipeTsFileInsertionEvent.getTsFile(),
-              pipeTsFileInsertionEvent.getModFile(),
-              pipeTsFileInsertionEvent.isWithMod()
-                  && clientManager.supportModsIfIsDataNodeReceiver(),
+              modFile,
+              modFile != null,
               pipeTsFileInsertionEvent.isTableModelEvent()
                   ? pipeTsFileInsertionEvent.getTableModelDatabaseName()
                   : null);

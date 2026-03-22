@@ -81,6 +81,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   private File tsFile;
   private long extractTime = 0;
 
+  // Whether this event should transfer mod files if they exist.
+  private boolean shouldTransferModFile;
   // This is true iff the modFile exists and should be transferred
   private boolean isWithMod;
   private File modFile;
@@ -174,8 +176,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
     // hard-link it to each pipe dir
     this.tsFile = Objects.isNull(tsFile) ? resource.getTsFile() : tsFile;
 
-    this.isWithMod = isWithMod && resource.anyModFileExists();
-    this.modFile = this.isWithMod ? resource.getExclusiveModFile().getFile() : null;
+    this.shouldTransferModFile = isWithMod;
+    refreshModFileState();
     // TODO: process the shared mod file
     this.sharedModFile =
         resource.getSharedModFile() != null ? resource.getSharedModFile().getFile() : null;
@@ -276,6 +278,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public File getModFile() {
+    refreshModFileState();
     return modFile;
   }
 
@@ -284,13 +287,13 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   }
 
   public boolean isWithMod() {
+    refreshModFileState();
     return isWithMod;
   }
 
-  // If the previous "isWithMod" is false, the modFile has been set to "null", then the isWithMod
-  // can't be set to true
-  public void disableMod4NonTransferPipes(final boolean isWithMod) {
-    this.isWithMod = isWithMod && this.isWithMod;
+  public void disableMod4NonTransferPipes(final boolean shouldTransferModFile) {
+    this.shouldTransferModFile = shouldTransferModFile && this.shouldTransferModFile;
+    refreshModFileState();
   }
 
   public boolean isLoaded() {
@@ -323,6 +326,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
+      refreshModFileState();
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {
         modFile =
@@ -423,7 +427,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         getSourceDatabaseNameFromDataRegion(),
         resource,
         tsFile,
-        isWithMod,
+        shouldTransferModFile,
         isLoaded,
         isGeneratedByHistoricalExtractor,
         tableNames,
@@ -754,6 +758,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   private TsFileInsertionEventParser initEventParser() {
     try {
+      refreshModFileState();
       eventParser.compareAndSet(
           null,
           new TsFileInsertionEventParserProvider(
@@ -848,6 +853,7 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
   @Override
   public PipeEventResource eventResourceBuilder() {
+    refreshModFileState();
     return new PipeTsFileInsertionEventResource(
         this.isReleased,
         this.referenceCount,
@@ -857,6 +863,17 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
         this.modFile,
         this.sharedModFile,
         this.eventParser);
+  }
+
+  private void refreshModFileState() {
+    if (!shouldTransferModFile || Objects.isNull(resource)) {
+      isWithMod = false;
+      modFile = null;
+      return;
+    }
+
+    isWithMod = resource.anyModFileExists();
+    modFile = isWithMod ? resource.getExclusiveModFile().getFile() : null;
   }
 
   private static class PipeTsFileInsertionEventResource extends PipeEventResource {
