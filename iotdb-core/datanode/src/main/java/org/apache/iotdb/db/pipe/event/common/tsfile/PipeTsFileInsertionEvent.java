@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TreePattern;
 import org.apache.iotdb.commons.pipe.resource.ref.PipePhantomReferenceManager.PipeEventResource;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.consensus.deletion.PipeTsFileDeletionBarrier;
 import org.apache.iotdb.db.pipe.event.ReferenceTrackableEvent;
 import org.apache.iotdb.db.pipe.event.common.PipeInsertionEvent;
 import org.apache.iotdb.db.pipe.event.common.tablet.PipeRawTabletInsertionEvent;
@@ -326,6 +327,10 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
   public boolean internallyIncreaseResourceReferenceCount(final String holderMessage) {
     extractTime = System.nanoTime();
     try {
+      if (Objects.nonNull(resource)) {
+        PipeTsFileDeletionBarrier.getInstance()
+            .awaitPendingDeletionIfNecessary(resource.getTsFilePath());
+      }
       refreshModFileState();
       tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
       if (isWithMod) {

@@ -164,7 +164,6 @@ public class PipeInsertionDataNodeListener {
     }
 
     assigner.publishToAssign(PipeRealtimeEventFactory.createRealtimeEvent(node));
-
     return deletionResource;
   }
 

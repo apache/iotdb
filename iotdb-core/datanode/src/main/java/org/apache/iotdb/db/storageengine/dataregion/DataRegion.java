@@ -67,6 +67,7 @@ import org.apache.iotdb.db.exception.runtime.TableLostRuntimeException;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResource.Status;
 import org.apache.iotdb.db.pipe.consensus.deletion.DeletionResourceManager;
+import org.apache.iotdb.db.pipe.consensus.deletion.PipeTsFileDeletionBarrier;
 import org.apache.iotdb.db.pipe.consensus.deletion.persist.PageCacheDeletionBuffer;
 import org.apache.iotdb.db.pipe.resource.memory.PipeMemoryWeightUtil;
 import org.apache.iotdb.db.pipe.source.dataregion.realtime.listener.PipeInsertionDataNodeListener;
@@ -2870,18 +2871,33 @@ public class DataRegion implements IDataRegionForQuery {
       // deviceMatchInfo is used for filter the matched deviceId in TsFileResource
       // deviceMatchInfo contains the DeviceId means this device matched the pattern
       deleteDataInUnsealedFiles(unsealedTsFileResource, deletion, sealedTsFileResource);
-      // capture deleteDataNode and wait it to be persisted to DAL.
-      DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance()
-              .listenToDeleteData(dataRegionId.getId(), node);
-      // just get result. We have already waited for result in `listenToDeleteData`
-      if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
-        throw deletionResource.getCause();
-      }
-      writeUnlock();
-      hasReleasedLock = true;
 
-      deleteDataInSealedFiles(sealedTsFileResource, deletion);
+      // Prevent a TsFile event from being pinned/transferred before this deletion is materialized
+      // to its corresponding mod files.
+      final Set<String> tsFilePathsPendingDeletion =
+          DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)
+              ? sealedTsFileResource.stream()
+                  .filter(resource -> !canSkipDelete(resource, deletion))
+                  .map(TsFileResource::getTsFilePath)
+                  .collect(Collectors.toSet())
+              : Collections.emptySet();
+      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      try {
+        // capture deleteDataNode and wait it to be persisted to DAL.
+        final DeletionResource deletionResource =
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToDeleteData(dataRegionId.getId(), node);
+        // just get result. We have already waited for result in `listenToDeleteData`
+        if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
+          throw deletionResource.getCause();
+        }
+        writeUnlock();
+        hasReleasedLock = true;
+
+        deleteDataInSealedFiles(sealedTsFileResource, deletion);
+      } finally {
+        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
+      }
     } catch (Exception e) {
       throw new IOException(e);
     } finally {
@@ -2974,20 +2990,36 @@ public class DataRegion implements IDataRegionForQuery {
         sealedTsFileResourceLists.add(sealedTsFileResource);
       }
 
-      // capture deleteDataNode and wait it to be persisted to DAL.
-      DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance()
-              .listenToDeleteData(dataRegionId.getId(), node);
-      // just get result. We have already waited for result in `listenToDeleteData`
-      if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
-        throw deletionResource.getCause();
+      final Set<String> tsFilePathsPendingDeletion = new HashSet<>();
+      if (DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)) {
+        for (int i = 0; i < modEntries.size(); i++) {
+          final TableDeletionEntry modEntry = modEntries.get(i);
+          tsFilePathsPendingDeletion.addAll(
+              sealedTsFileResourceLists.get(i).stream()
+                  .filter(resource -> !canSkipDelete(resource, modEntry))
+                  .map(TsFileResource::getTsFilePath)
+                  .collect(Collectors.toSet()));
+        }
       }
+      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      try {
+        // capture deleteDataNode and wait it to be persisted to DAL.
+        final DeletionResource deletionResource =
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToDeleteData(dataRegionId.getId(), node);
+        // just get result. We have already waited for result in `listenToDeleteData`
+        if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
+          throw deletionResource.getCause();
+        }
 
-      writeUnlock();
-      hasReleasedLock = true;
+        writeUnlock();
+        hasReleasedLock = true;
 
-      for (int i = 0; i < modEntries.size(); i++) {
-        deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
+        for (int i = 0; i < modEntries.size(); i++) {
+          deleteDataInSealedFiles(sealedTsFileResourceLists.get(i), modEntries.get(i));
+        }
+      } finally {
+        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
       }
     } catch (Exception e) {
       throw new IOException(e);
@@ -3032,17 +3064,29 @@ public class DataRegion implements IDataRegionForQuery {
       List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
       getTwoKindsOfTsFiles(sealedTsFileResource, unsealedTsFileResource, startTime, endTime);
       deleteDataDirectlyInFile(unsealedTsFileResource, deletion);
-      // capture deleteDataNode and wait it to be persisted to DAL.
-      DeletionResource deletionResource =
-          PipeInsertionDataNodeListener.getInstance()
-              .listenToDeleteData(dataRegionId.getId(), node);
-      // just get result. We have already waited for result in `listenToDeleteData`
-      if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
-        throw deletionResource.getCause();
+      final Set<String> tsFilePathsPendingDeletion =
+          DeletionResource.isDeleteNodeGeneratedInLocalByIoTV2(node)
+              ? sealedTsFileResource.stream()
+                  .filter(resource -> !canSkipDelete(resource, deletion))
+                  .map(TsFileResource::getTsFilePath)
+                  .collect(Collectors.toSet())
+              : Collections.emptySet();
+      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePathsPendingDeletion);
+      try {
+        // capture deleteDataNode and wait it to be persisted to DAL.
+        final DeletionResource deletionResource =
+            PipeInsertionDataNodeListener.getInstance()
+                .listenToDeleteData(dataRegionId.getId(), node);
+        // just get result. We have already waited for result in `listenToDeleteData`
+        if (deletionResource != null && deletionResource.waitForResult() == Status.FAILURE) {
+          throw deletionResource.getCause();
+        }
+        writeUnlock();
+        releasedLock = true;
+        deleteDataDirectlyInFile(sealedTsFileResource, deletion);
+      } finally {
+        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePathsPendingDeletion);
       }
-      writeUnlock();
-      releasedLock = true;
-      deleteDataDirectlyInFile(sealedTsFileResource, deletion);
     } catch (Exception e) {
       throw new IOException(e);
     } finally {

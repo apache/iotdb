@@ -30,6 +30,7 @@ import org.apache.iotdb.commons.pipe.datastructure.pattern.IoTDBTreePattern;
 import org.apache.iotdb.commons.pipe.datastructure.pattern.TablePattern;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.pipe.consensus.deletion.PipeTsFileDeletionBarrier;
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.queryengine.plan.relational.metadata.QualifiedObjectName;
 import org.apache.iotdb.db.queryengine.plan.relational.security.AccessControl;
@@ -58,6 +59,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -295,6 +299,95 @@ public class PipeTsFileInsertionEventTest {
     } finally {
       if (event != null) {
         event.clearReferenceCount("test");
+        event.close();
+      }
+      FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
+    }
+  }
+
+  @Test
+  public void testIncreaseReferenceCountWaitsForPendingDeletionBarrier() throws Exception {
+    final File tsFile =
+        new File(
+            TsFileNameGenerator.generateNewTsFilePath(
+                TestConstant.BASE_OUTPUT_PATH + IoTDBConstant.SEQUENCE_FOLDER_NAME, 1, 1, 1, 3));
+    PipeTsFileInsertionEvent event = null;
+    final String holder = "test";
+    String tsFilePath = null;
+    Thread t = null;
+    try {
+      Assert.assertTrue(tsFile.getParentFile().mkdirs() || tsFile.getParentFile().exists());
+      Assert.assertTrue(tsFile.createNewFile() || tsFile.exists());
+
+      final TsFileResource resource = new TsFileResource(tsFile);
+      resource.setStatus(TsFileResourceStatus.NORMAL);
+
+      event =
+          new PipeTsFileInsertionEvent(
+              false,
+              "root.db",
+              resource,
+              null,
+              true,
+              false,
+              false,
+              null,
+              "testPipe",
+              1L,
+              null,
+              buildUnionPattern(true, Collections.singletonList(new IoTDBTreePattern(true, null))),
+              new TablePattern(false, null, null),
+              null,
+              null,
+              null,
+              true,
+              Long.MIN_VALUE,
+              Long.MAX_VALUE);
+      final PipeTsFileInsertionEvent finalEvent = event;
+
+      tsFilePath = resource.getTsFilePath();
+      PipeTsFileDeletionBarrier.getInstance().registerPendingDeletion(tsFilePath);
+      final CountDownLatch started = new CountDownLatch(1);
+      final CountDownLatch finished = new CountDownLatch(1);
+      final AtomicBoolean increased = new AtomicBoolean(false);
+
+      t =
+          new Thread(
+              () -> {
+                started.countDown();
+                increased.set(finalEvent.increaseReferenceCount(holder));
+                finished.countDown();
+              },
+              "test-tsfile-delete-barrier");
+      t.start();
+
+      Assert.assertTrue(started.await(5, TimeUnit.SECONDS));
+      Assert.assertFalse(finished.await(200, TimeUnit.MILLISECONDS));
+
+      resource
+          .getExclusiveModFile()
+          .write(new TreeDeletionEntry(new MeasurementPath("root.db.d1.s1"), 0, 1));
+      final File originalModFile = resource.getExclusiveModFile().getFile();
+      Assert.assertTrue(originalModFile.exists());
+
+      PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePath);
+      tsFilePath = null;
+
+      Assert.assertTrue(finished.await(5, TimeUnit.SECONDS));
+      Assert.assertTrue(increased.get());
+      Assert.assertTrue(event.isWithMod());
+      Assert.assertNotNull(event.getModFile());
+      Assert.assertNotEquals(originalModFile.getAbsolutePath(), event.getModFile().getAbsolutePath());
+    } finally {
+      // Ensure the singleton barrier is not leaked into other tests.
+      if (tsFilePath != null) {
+        PipeTsFileDeletionBarrier.getInstance().releasePendingDeletion(tsFilePath);
+      }
+      if (t != null) {
+        t.join(TimeUnit.SECONDS.toMillis(5));
+      }
+      if (event != null) {
+        event.clearReferenceCount(holder);
         event.close();
       }
       FileUtils.deleteFileOrDirectory(new File(TestConstant.BASE_OUTPUT_PATH));
