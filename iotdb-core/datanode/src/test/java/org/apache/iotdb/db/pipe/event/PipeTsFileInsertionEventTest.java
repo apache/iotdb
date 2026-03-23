@@ -320,7 +320,8 @@ public class PipeTsFileInsertionEventTest {
       final File pipePinnedModFile = copiedEvent.getModFile();
       Assert.assertNotNull(pipePinnedModFile);
       Assert.assertTrue(pipePinnedModFile.exists());
-      Assert.assertNotEquals(originalModFile.getAbsolutePath(), pipePinnedModFile.getAbsolutePath());
+      Assert.assertNotEquals(
+          originalModFile.getAbsolutePath(), pipePinnedModFile.getAbsolutePath());
     } finally {
       if (copiedEvent != null) {
         copiedEvent.clearReferenceCount("source");

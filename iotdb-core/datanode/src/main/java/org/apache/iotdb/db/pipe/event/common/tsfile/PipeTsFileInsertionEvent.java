@@ -915,7 +915,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     tsFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(tsFile, true, pipeName);
     if (Objects.nonNull(modFile)) {
-      modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+      modFile =
+          PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
       isWithMod = true;
     } else {
       isWithMod = false;
@@ -932,7 +933,8 @@ public class PipeTsFileInsertionEvent extends PipeInsertionEvent
 
     if (!shouldRefreshModFileStateFromResource) {
       if (Objects.nonNull(modFile)) {
-        modFile = PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
+        modFile =
+            PipeDataNodeResourceManager.tsfile().increaseFileReference(modFile, false, pipeName);
         isWithMod = true;
       } else {
         isWithMod = false;
