@@ -37,8 +37,8 @@ public abstract class AbstractPipeTableModelDualManualIT {
     senderEnv = MultiEnvFactory.getEnv(0);
     receiverEnv = MultiEnvFactory.getEnv(1);
     setupConfig();
-    senderEnv.initClusterEnvironment(1, 1);
-    receiverEnv.initClusterEnvironment(1, 1);
+    senderEnv.initClusterEnvironment();
+    receiverEnv.initClusterEnvironment();
   }
 
   protected void setupConfig() {
@@ -51,8 +51,6 @@ public abstract class AbstractPipeTableModelDualManualIT {
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
         .setIsPipeEnableMemoryCheck(false)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setPipeAutoSplitFullEnabled(false);
     receiverEnv
         .getConfig()
@@ -62,8 +60,6 @@ public abstract class AbstractPipeTableModelDualManualIT {
         .setSchemaRegionConsensusProtocolClass(ConsensusFactory.RATIS_CONSENSUS)
         .setEnforceStrongPassword(false)
         .setPipeMemoryManagementEnabled(false)
-        .setSchemaReplicationFactor(1)
-        .setDataReplicationFactor(1)
         .setIsPipeEnableMemoryCheck(false)
         .setPipeAutoSplitFullEnabled(false);
 
