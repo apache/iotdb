@@ -514,18 +514,24 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualAutoIT {
               receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
     }
 
-    TestUtils.executeNonQueries(
-        senderEnv,
-        Arrays.asList(
-            "create timeSeries root.vehicle.d0.s1 double",
-            "create timeSeries root.vehicle.d0.s2 float",
-            "insert into root.vehicle.d0(time, s1, s2) values (2, 1, 'abc')"),
-        null);
+    try {
+      TestUtils.executeNonQueries(
+          senderEnv,
+          Arrays.asList(
+              "create timeSeries root.vehicle.d0.s1 double",
+              "create timeSeries root.vehicle.d0.s2 float",
+              "insert into root.vehicle.d0(time, s1, s2) values (2, 1, 'abc')"),
+          null);
+    } catch (final Exception e) {
+      Assert.assertEquals(
+          "org.apache.iotdb.jdbc.IoTDBSQLException: 507: Fail to insert measurements [s2] caused by [data type is not consistent, input 'abc', registered FLOAT]",
+          e.getMessage());
+    }
 
     TestUtils.assertDataEventuallyOnEnv(
         receiverEnv,
         "select * from root.vehicle.**",
-        "Time,root.vehicle.d0.s1,root.vehicle.d0.s2",
-        Collections.singleton("2,1.0,null"));
+        "Time,root.vehicle.d0.s1,",
+        Collections.singleton("2,1.0,"));
   }
 }
