@@ -40,7 +40,6 @@ import org.apache.iotdb.db.pipe.event.common.tablet.PipeInsertNodeTabletInsertio
 import org.apache.iotdb.db.pipe.event.common.tsfile.PipeTsFileInsertionEvent;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.builder.IoTConsensusV2SyncBatchReqBuilder;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2DeleteNodeReq;
-import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletBinaryReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TabletInsertNodeReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceReq;
 import org.apache.iotdb.db.pipe.sink.protocol.iotconsensusv2.payload.request.IoTConsensusV2TsFilePieceWithModReq;
@@ -326,21 +325,10 @@ public class IoTConsensusV2SyncSink extends IoTDBSink {
       insertNode = pipeInsertNodeTabletInsertionEvent.getInsertNode();
       progressIndex = pipeInsertNodeTabletInsertionEvent.getProgressIndex();
 
-      if (insertNode != null) {
-        resp =
-            syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
-                IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
-                    insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId));
-      } else {
-        resp =
-            syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
-                IoTConsensusV2TabletBinaryReq.toTIoTConsensusV2TransferReq(
-                    pipeInsertNodeTabletInsertionEvent.getByteBuffer(),
-                    tCommitId,
-                    tConsensusGroupId,
-                    progressIndex,
-                    thisDataNodeId));
-      }
+      resp =
+          syncIoTConsensusV2ServiceClient.iotConsensusV2Transfer(
+              IoTConsensusV2TabletInsertNodeReq.toTIoTConsensusV2TransferReq(
+                  insertNode, tCommitId, tConsensusGroupId, progressIndex, thisDataNodeId));
     } catch (final Exception e) {
       throw new PipeRuntimeSinkRetryTimesConfigurableException(
           String.format(

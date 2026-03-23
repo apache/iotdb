@@ -96,12 +96,11 @@ public class PipeTransferTabletBatchReq extends TPipeTransferReq {
   /////////////////////////////// Thrift ///////////////////////////////
 
   public static PipeTransferTabletBatchReq toTPipeTransferReq(
-      final List<ByteBuffer> insertNodeBuffers,
-      final List<ByteBuffer> tabletBuffers)
+      final List<ByteBuffer> insertNodeBuffers, final List<ByteBuffer> tabletBuffers)
       throws IOException {
     final PipeTransferTabletBatchReq batchReq = new PipeTransferTabletBatchReq();
 
-    // batchReq.binaryReqs, batchReq.insertNodeReqs, batchReq.tabletReqs are empty
+    // batchReq.insertNodeReqs, batchReq.tabletReqs are empty
     // when this method is called from PipeTransferTabletBatchReqBuilder.toTPipeTransferReq()
 
     batchReq.version = IoTDBSinkRequestVersion.VERSION_1.getVersion();
