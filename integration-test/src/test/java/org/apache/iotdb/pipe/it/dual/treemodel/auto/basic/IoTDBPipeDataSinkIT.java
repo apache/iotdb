@@ -530,7 +530,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
         Arrays.asList(
             "create timeSeries root.vehicle.d0.s1 double",
             "create timeSeries root.vehicle.d0.s2 float",
-            "insert into root.vehicle.d0(time, s1, s2) values (2, 1, abc)"),
+            "insert into root.vehicle.d0(time, s1, s2) values (2, 1, 'abc')"),
         null);
 
     TestUtils.assertDataEventuallyOnEnv(
