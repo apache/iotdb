@@ -55,7 +55,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testThriftConnectorWithRealtimeFirstDisabled() throws Exception {
+  public void testThriftSinkWithRealtimeFirstDisabled() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -207,7 +207,7 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
   }
 
   @Test
-  public void testLegacyConnector() throws Exception {
+  public void testLegacySink() throws Exception {
     final DataNodeWrapper receiverDataNode = receiverEnv.getDataNodeWrapper(0);
 
     final String receiverIp = receiverDataNode.getIp();
@@ -513,5 +513,30 @@ public class IoTDBPipeDataSinkIT extends AbstractPipeDualTreeModelAutoIT {
           "Time,root.vehicle.d0.s1,",
           Collections.unmodifiableSet(new HashSet<>(Arrays.asList("1,1.0,", "2,1.0,"))));
     }
+  }
+
+  @Test
+  public void testSpecialPartialInsert() throws Exception {
+    try (final Connection connection = senderEnv.getConnection();
+        final Statement statement = connection.createStatement()) {
+      statement.execute(
+          String.format(
+              "create pipe a2b with sink ('node-urls'='%s')",
+              receiverEnv.getDataNodeWrapperList().get(0).getIpAndPortString()));
+    }
+
+    TestUtils.executeNonQueries(
+        senderEnv,
+        Arrays.asList(
+            "create timeSeries root.vehicle.d0.s1 double",
+            "create timeSeries root.vehicle.d0.s2 float",
+            "insert into root.vehicle.d0(time, s1, s2) values (2, 1, abc)"),
+        null);
+
+    TestUtils.assertDataEventuallyOnEnv(
+        receiverEnv,
+        "select * from root.vehicle.**",
+        "Time,root.vehicle.d0.s1,root.vehicle.d0.s2",
+        Collections.singleton("2,1.0,null"));
   }
 }
