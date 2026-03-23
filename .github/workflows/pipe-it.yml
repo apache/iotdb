@@ -1,107 +1,79 @@
-name: Pipe IT Debug (Single Test Loop)
+name: Pipe IT Debug (Final Stable)
 
 on:
   push:
-    branches:
-      - "**" # 只要有代码推送就跑，方便你在 PR 上触发
+    branches: [ "**" ]
   pull_request:
-    branches:
-      - "**"
+    branches: [ "**" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true # 如果有新的提交，取消旧的构建，节省资源
+  cancel-in-progress: true
 
 env:
-  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.class=standard -Dmaven.wagon.http.retryHandler.count=3
-  MAVEN_ARGS: --batch-mode --no-transfer-progress
+  MAVEN_OPTS: -Dhttp.keepAlive=false -Dmaven.wagon.http.pool=false -Dmaven.wagon.http.retryHandler.count=3
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   debug-specific-it:
-    name: Run IoTDBPipePermissionIT in Loop
     runs-on: ubuntu-latest
+    name: Loop testIllegalPassword
     strategy:
-      fail-fast: false
       matrix:
         java: [17]
         cluster1: [HighPerformanceMode]
         cluster2: [HighPerformanceMode]
+
     steps:
       - uses: actions/checkout@v5
-
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK
         uses: actions/setup-java@v5
-        with:
-          distribution: corretto
-          java-version: ${{ matrix.java }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with: distribution: corretto, java-version: ${{ matrix.java }}
 
-      - name: Cache Maven packages
+      - name: Cache Maven
         uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2-
 
-      - name: Run Test in Loop Until Failure
-        shell: bash
+      # ===== 关键修复 1/2：只在最开始做一次全量构建，生成 template-node =====
+      - name: Build Once and Generate Template
         run: |
-          # 确保日志目录存在
-          mkdir -p integration-test/target/cluster-logs
-          
-          attempt=1
-          
-          while true; do
-            echo "===================================================="
-            echo "Starting attempt #$attempt"
-            echo "===================================================="
+          mvn clean package \
+            -P with-integration-tests,MultiClusterIT2DualTreeManual \
+            -pl integration-test -am \
+            -DskipTests -ntp
 
-            # 注意：这里使用 mvn verify 或 test，重点是 -Dtest 参数
-            # 请根据你的项目模块结构调整 -pl 参数，如果 integration-test 是根模块则不需要 -pl
-            # 我保留了你原有的 -PMultiClusterIT2DualTreeManual Profile，请确认这是正确的 Profile
+      # ===== 关键修复 2/2：循环里绝对不 clean，直接跑 test =====
+      - name: Run Test in Loop
+        run: |
+          attempt=1
+          while true; do
+            echo "--- Attempt $attempt ---"
           
-            mvn clean verify \
+            # 注意：这里没有 clean，用的是 test 而不是 verify，速度更快
+            mvn test \
               -P with-integration-tests,MultiClusterIT2DualTreeManual \
-              -DskipUTs \
               -Dtest=IoTDBPipePermissionIT#testIllegalPassword \
               -DintegrationTest.forkCount=1 \
               -DConfigNodeMaxHeapSize=256 \
               -DDataNodeMaxHeapSize=1024 \
               -DDataNodeMaxDirectMemorySize=768 \
-              -Dsurefire.failIfNoSpecifiedTests=false \
               -DClusterConfigurations=${{ matrix.cluster1 }},${{ matrix.cluster2 }} \
-              -pl integration-test \
-              -am \
-              -ntp
+              -pl integration-test -ntp
 
-            EXIT_CODE=$?
-
-            # 收集日志（每次跑完都把当前的日志存一下，防止 runner 被重置）
-            if [ -d "integration-test/target/cluster-logs" ]; then
-              # 简单的打包一下当前状态，防止文件被 clean 清空
-              tar -czf integration-test/target/last-run-logs-$attempt.tar.gz integration-test/target/cluster-logs || true
-            fi
-
-            if [ $EXIT_CODE -ne 0 ]; then
-              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-              echo "FAIL: Test failed on attempt #$attempt"
-              echo "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+            if [ $? -ne 0 ]; then
+              echo "FAILED at $attempt"
               exit 1
-            else
-              echo "PASS: Attempt #$attempt succeeded. Looping again immediately..."
-              attempt=$((attempt + 1))
-              # 如果你想让机器歇一会，可以在这加个 sleep 10
             fi
+          
+            echo "PASSED $attempt"
+            attempt=$((attempt + 1))
           done
 
-      - name: Upload Failure Logs
+      - name: Upload Logs
         if: failure()
         uses: actions/upload-artifact@v6
         with:
-          name: failure-logs-${{ matrix.cluster1 }}-${{ matrix.cluster2 }}
-          path: |
-            integration-test/target/cluster-logs
-            integration-test/target/last-run-logs-*.tar.gz
-          retention-days: 30
+          name: failure-logs
+          path: integration-test/target/cluster-logs
